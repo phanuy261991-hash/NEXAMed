@@ -14852,6 +14852,7 @@ export interface paths {
                                 name: string;
                                 address: string | null;
                                 phone: string | null;
+                                taxCode: string | null;
                                 printLogoUrl: string | null;
                             };
                             meta: Record<string, never>;
@@ -18315,6 +18316,941 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/print-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quản lý mẫu in — mọi bản mẫu của phòng khám (chứng từ chưa lưu gì trả bản dựng sẵn id=null) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string | null;
+                                    /** @enum {string} */
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                    name: string;
+                                    /** @enum {string} */
+                                    paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                    isDefault: boolean;
+                                    isBuiltin: boolean;
+                                    config: {
+                                        margins: {
+                                            topMm: number;
+                                            rightMm: number;
+                                            bottomMm: number;
+                                            leftMm: number;
+                                        };
+                                        header: {
+                                            showLogo: boolean;
+                                            showClinicName: boolean;
+                                            showAddress: boolean;
+                                            showPhone: boolean;
+                                            showTaxCode: boolean;
+                                            showDivider: boolean;
+                                        };
+                                        title: {
+                                            text: string;
+                                        };
+                                        footer: {
+                                            note: string;
+                                            showSignature: boolean;
+                                            showSignatureHint: boolean;
+                                        };
+                                        copies: {
+                                            count: number;
+                                            labels: string[];
+                                        };
+                                    };
+                                    version: number | null;
+                                }[];
+                                catalog: {
+                                    documentTypes: {
+                                        /** @enum {string} */
+                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                        label: string;
+                                        group: string;
+                                        allowedPapers: ("A4" | "A5" | "A5_LANDSCAPE" | "K80")[];
+                                        /** @enum {string} */
+                                        defaultPaper: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                        defaultTitle: string;
+                                    }[];
+                                    papers: {
+                                        /** @enum {string} */
+                                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                        label: string;
+                                        description: string;
+                                        widthMm: number;
+                                        heightMm: number | null;
+                                    }[];
+                                    defaultConfigs: {
+                                        A4?: {
+                                            margins: {
+                                                topMm: number;
+                                                rightMm: number;
+                                                bottomMm: number;
+                                                leftMm: number;
+                                            };
+                                            header: {
+                                                showLogo: boolean;
+                                                showClinicName: boolean;
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showTaxCode: boolean;
+                                                showDivider: boolean;
+                                            };
+                                            title: {
+                                                text: string;
+                                            };
+                                            footer: {
+                                                note: string;
+                                                showSignature: boolean;
+                                                showSignatureHint: boolean;
+                                            };
+                                            copies: {
+                                                count: number;
+                                                labels: string[];
+                                            };
+                                        };
+                                        A5?: {
+                                            margins: {
+                                                topMm: number;
+                                                rightMm: number;
+                                                bottomMm: number;
+                                                leftMm: number;
+                                            };
+                                            header: {
+                                                showLogo: boolean;
+                                                showClinicName: boolean;
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showTaxCode: boolean;
+                                                showDivider: boolean;
+                                            };
+                                            title: {
+                                                text: string;
+                                            };
+                                            footer: {
+                                                note: string;
+                                                showSignature: boolean;
+                                                showSignatureHint: boolean;
+                                            };
+                                            copies: {
+                                                count: number;
+                                                labels: string[];
+                                            };
+                                        };
+                                        A5_LANDSCAPE?: {
+                                            margins: {
+                                                topMm: number;
+                                                rightMm: number;
+                                                bottomMm: number;
+                                                leftMm: number;
+                                            };
+                                            header: {
+                                                showLogo: boolean;
+                                                showClinicName: boolean;
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showTaxCode: boolean;
+                                                showDivider: boolean;
+                                            };
+                                            title: {
+                                                text: string;
+                                            };
+                                            footer: {
+                                                note: string;
+                                                showSignature: boolean;
+                                                showSignatureHint: boolean;
+                                            };
+                                            copies: {
+                                                count: number;
+                                                labels: string[];
+                                            };
+                                        };
+                                        K80?: {
+                                            margins: {
+                                                topMm: number;
+                                                rightMm: number;
+                                                bottomMm: number;
+                                                leftMm: number;
+                                            };
+                                            header: {
+                                                showLogo: boolean;
+                                                showClinicName: boolean;
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showTaxCode: boolean;
+                                                showDivider: boolean;
+                                            };
+                                            title: {
+                                                text: string;
+                                            };
+                                            footer: {
+                                                note: string;
+                                                showSignature: boolean;
+                                                showSignatureHint: boolean;
+                                            };
+                                            copies: {
+                                                count: number;
+                                                labels: string[];
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Thêm bản mẫu in cho 1 chứng từ + khổ giấy (mỗi chứng từ chỉ 1 bản/khổ) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                        name: string;
+                        /** @enum {string} */
+                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                        config?: {
+                            margins: {
+                                topMm: number;
+                                rightMm: number;
+                                bottomMm: number;
+                                leftMm: number;
+                            };
+                            header: {
+                                showLogo: boolean;
+                                showClinicName: boolean;
+                                showAddress: boolean;
+                                showPhone: boolean;
+                                showTaxCode: boolean;
+                                showDivider: boolean;
+                            };
+                            title: {
+                                text: string;
+                            };
+                            footer: {
+                                note: string;
+                                showSignature: boolean;
+                                showSignatureHint: boolean;
+                            };
+                            copies: {
+                                count: number;
+                                labels: string[];
+                            };
+                        };
+                        isDefault?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string | null;
+                                /** @enum {string} */
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                name: string;
+                                /** @enum {string} */
+                                paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                isDefault: boolean;
+                                isBuiltin: boolean;
+                                config: {
+                                    margins: {
+                                        topMm: number;
+                                        rightMm: number;
+                                        bottomMm: number;
+                                        leftMm: number;
+                                    };
+                                    header: {
+                                        showLogo: boolean;
+                                        showClinicName: boolean;
+                                        showAddress: boolean;
+                                        showPhone: boolean;
+                                        showTaxCode: boolean;
+                                        showDivider: boolean;
+                                    };
+                                    title: {
+                                        text: string;
+                                    };
+                                    footer: {
+                                        note: string;
+                                        showSignature: boolean;
+                                        showSignatureHint: boolean;
+                                    };
+                                    copies: {
+                                        count: number;
+                                        labels: string[];
+                                    };
+                                };
+                                version: number | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đã có bản mẫu cho khổ giấy này (PRINT_TEMPLATE_DUPLICATE_PAPER) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Khổ giấy không dùng được cho chứng từ này (PRINT_TEMPLATE_PAPER_NOT_ALLOWED) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/print-templates/resolved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bản mẫu in MẶC ĐỊNH đang áp dụng của từng chứng từ — tự-phục vụ, mọi nhân viên đã đăng nhập đọc được */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** @enum {string} */
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                    /** @enum {string} */
+                                    paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                    widthMm: number;
+                                    heightMm: number | null;
+                                    config: {
+                                        margins: {
+                                            topMm: number;
+                                            rightMm: number;
+                                            bottomMm: number;
+                                            leftMm: number;
+                                        };
+                                        header: {
+                                            showLogo: boolean;
+                                            showClinicName: boolean;
+                                            showAddress: boolean;
+                                            showPhone: boolean;
+                                            showTaxCode: boolean;
+                                            showDivider: boolean;
+                                        };
+                                        title: {
+                                            text: string;
+                                        };
+                                        footer: {
+                                            note: string;
+                                            showSignature: boolean;
+                                            showSignatureHint: boolean;
+                                        };
+                                        copies: {
+                                            count: number;
+                                            labels: string[];
+                                        };
+                                    };
+                                    options: {
+                                        /** @enum {string} */
+                                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                        label: string;
+                                        widthMm: number;
+                                        heightMm: number | null;
+                                        isDefault: boolean;
+                                        config: {
+                                            margins: {
+                                                topMm: number;
+                                                rightMm: number;
+                                                bottomMm: number;
+                                                leftMm: number;
+                                            };
+                                            header: {
+                                                showLogo: boolean;
+                                                showClinicName: boolean;
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showTaxCode: boolean;
+                                                showDivider: boolean;
+                                            };
+                                            title: {
+                                                text: string;
+                                            };
+                                            footer: {
+                                                note: string;
+                                                showSignature: boolean;
+                                                showSignatureHint: boolean;
+                                            };
+                                            copies: {
+                                                count: number;
+                                                labels: string[];
+                                            };
+                                        };
+                                    }[];
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/print-templates/quick-setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Thiết lập nhanh" — khai khổ giấy + đầu trang một lần, áp cho nhiều chứng từ và đặt làm mặc định */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        paperPreset: "ALL_A4" | "MONEY_A5_REST_A4" | "KEEP";
+                        header: {
+                            showLogo: boolean;
+                            showClinicName: boolean;
+                            showAddress: boolean;
+                            showPhone: boolean;
+                            showTaxCode: boolean;
+                            showDivider: boolean;
+                        };
+                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER")[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Áp dụng thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                appliedCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/print-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Xoá bản mẫu in (không xoá được bản mặc định khi còn bản khác) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Xoá thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp hoặc đang là bản mặc định */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Sửa bản mẫu in (tên/cấu hình/đặt làm mặc định), bắt buộc kèm version */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        config?: {
+                            margins: {
+                                topMm: number;
+                                rightMm: number;
+                                bottomMm: number;
+                                leftMm: number;
+                            };
+                            header: {
+                                showLogo: boolean;
+                                showClinicName: boolean;
+                                showAddress: boolean;
+                                showPhone: boolean;
+                                showTaxCode: boolean;
+                                showDivider: boolean;
+                            };
+                            title: {
+                                text: string;
+                            };
+                            footer: {
+                                note: string;
+                                showSignature: boolean;
+                                showSignatureHint: boolean;
+                            };
+                            copies: {
+                                count: number;
+                                labels: string[];
+                            };
+                        };
+                        /** @enum {boolean} */
+                        isDefault?: true;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string | null;
+                                /** @enum {string} */
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                name: string;
+                                /** @enum {string} */
+                                paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                isDefault: boolean;
+                                isBuiltin: boolean;
+                                config: {
+                                    margins: {
+                                        topMm: number;
+                                        rightMm: number;
+                                        bottomMm: number;
+                                        leftMm: number;
+                                    };
+                                    header: {
+                                        showLogo: boolean;
+                                        showClinicName: boolean;
+                                        showAddress: boolean;
+                                        showPhone: boolean;
+                                        showTaxCode: boolean;
+                                        showDivider: boolean;
+                                    };
+                                    title: {
+                                        text: string;
+                                    };
+                                    footer: {
+                                        note: string;
+                                        showSignature: boolean;
+                                        showSignatureHint: boolean;
+                                    };
+                                    copies: {
+                                        count: number;
+                                        labels: string[];
+                                    };
+                                };
+                                version: number | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/drugs/import/preview": {

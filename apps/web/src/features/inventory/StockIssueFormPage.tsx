@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Check, Copy, MagnifyingGlass, PencilSimple, Printer, Trash } from '@phosphor-icons/react';
+import { Check, Copy, MagnifyingGlass, PencilSimple, Trash } from '@phosphor-icons/react';
 import type { CreateManualStockIssueRequest, DrugSummary, ManualStockIssueType, StockIssueDetail, StockIssueStatus } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { PrintButton } from '../../shared/print/PrintButton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -13,7 +14,6 @@ import { SummaryField } from '../../shared/ui/SummaryField';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useSuppliersQuery } from '../drug/supplier.queries';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
@@ -94,7 +94,6 @@ export function StockIssueFormPage() {
   const createMutation = useCreateManualStockIssueMutation();
   const updateMutation = useUpdateManualStockIssueMutation();
   const approveMutation = useApproveStockIssueMutation();
-  const clinicQuery = useClinicPrintHeaderQuery();
 
   const readOnly = isEdit && issueQuery.data !== undefined && issueQuery.data.status !== 'DRAFT';
 
@@ -621,14 +620,11 @@ export function StockIssueFormPage() {
           </div>
         )}
         {readOnly && issueQuery.data?.status === 'POSTED' && (
-          <Button type="button" variant="secondary" className="ml-auto" onClick={handlePrint}>
-            <Printer size={15} weight="bold" aria-hidden="true" />
-            In phiếu
-          </Button>
+          <PrintButton documentType="STOCK_ISSUE" className="ml-auto" onPrint={handlePrint}>In phiếu</PrintButton>
         )}
       </div>
 
-      {printing && issueQuery.data && clinicQuery.data && <StockIssuePrintView issue={issueQuery.data} clinicHeader={clinicQuery.data} />}
+      {printing && issueQuery.data && <StockIssuePrintView issue={issueQuery.data} />}
 
       {rejecting && issueQuery.data && (
         <ReasonConfirmDialog

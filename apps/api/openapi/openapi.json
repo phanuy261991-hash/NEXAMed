@@ -37691,6 +37691,12 @@
                             "null"
                           ]
                         },
+                        "taxCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "printLogoUrl": {
                           "type": [
                             "string",
@@ -37702,6 +37708,7 @@
                         "name",
                         "address",
                         "phone",
+                        "taxCode",
                         "printLogoUrl"
                       ]
                     },
@@ -45327,6 +45334,2868 @@
           },
           "403": {
             "description": "Không có quyền work_shift_assignment.create, hoặc không phải scope global",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/print-templates": {
+      "get": {
+        "tags": [
+          "print-template"
+        ],
+        "summary": "Quản lý mẫu in — mọi bản mẫu của phòng khám (chứng từ chưa lưu gì trả bản dựng sẵn id=null)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "documentType": {
+                                "type": "string",
+                                "enum": [
+                                  "PRESCRIPTION",
+                                  "MEDICAL_RECORD",
+                                  "INVOICE",
+                                  "INVOICE_COMBINED",
+                                  "WALLET_TOPUP_RECEIPT",
+                                  "CASHIER_SHIFT_RECEIPT",
+                                  "CASH_VOUCHER",
+                                  "STOCK_RECEIPT",
+                                  "STOCK_ISSUE",
+                                  "STOCK_COUNT",
+                                  "STOCK_TRANSFER"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "paperSize": {
+                                "type": "string",
+                                "enum": [
+                                  "A4",
+                                  "A5",
+                                  "A5_LANDSCAPE",
+                                  "K80"
+                                ]
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
+                              "isBuiltin": {
+                                "type": "boolean"
+                              },
+                              "config": {
+                                "type": "object",
+                                "properties": {
+                                  "margins": {
+                                    "type": "object",
+                                    "properties": {
+                                      "topMm": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 40
+                                      },
+                                      "rightMm": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 40
+                                      },
+                                      "bottomMm": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 40
+                                      },
+                                      "leftMm": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 40
+                                      }
+                                    },
+                                    "required": [
+                                      "topMm",
+                                      "rightMm",
+                                      "bottomMm",
+                                      "leftMm"
+                                    ]
+                                  },
+                                  "header": {
+                                    "type": "object",
+                                    "properties": {
+                                      "showLogo": {
+                                        "type": "boolean"
+                                      },
+                                      "showClinicName": {
+                                        "type": "boolean"
+                                      },
+                                      "showAddress": {
+                                        "type": "boolean"
+                                      },
+                                      "showPhone": {
+                                        "type": "boolean"
+                                      },
+                                      "showTaxCode": {
+                                        "type": "boolean"
+                                      },
+                                      "showDivider": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "showLogo",
+                                      "showClinicName",
+                                      "showAddress",
+                                      "showPhone",
+                                      "showTaxCode",
+                                      "showDivider"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "text": {
+                                        "type": "string",
+                                        "maxLength": 60
+                                      }
+                                    },
+                                    "required": [
+                                      "text"
+                                    ]
+                                  },
+                                  "footer": {
+                                    "type": "object",
+                                    "properties": {
+                                      "note": {
+                                        "type": "string",
+                                        "maxLength": 200
+                                      },
+                                      "showSignature": {
+                                        "type": "boolean"
+                                      },
+                                      "showSignatureHint": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "note",
+                                      "showSignature",
+                                      "showSignatureHint"
+                                    ]
+                                  },
+                                  "copies": {
+                                    "type": "object",
+                                    "properties": {
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 3
+                                      },
+                                      "labels": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "maxLength": 40
+                                        },
+                                        "maxItems": 3
+                                      }
+                                    },
+                                    "required": [
+                                      "count",
+                                      "labels"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "margins",
+                                  "header",
+                                  "title",
+                                  "footer",
+                                  "copies"
+                                ]
+                              },
+                              "version": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "documentType",
+                              "name",
+                              "paperSize",
+                              "isDefault",
+                              "isBuiltin",
+                              "config",
+                              "version"
+                            ]
+                          }
+                        },
+                        "catalog": {
+                          "type": "object",
+                          "properties": {
+                            "documentTypes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "documentType": {
+                                    "type": "string",
+                                    "enum": [
+                                      "PRESCRIPTION",
+                                      "MEDICAL_RECORD",
+                                      "INVOICE",
+                                      "INVOICE_COMBINED",
+                                      "WALLET_TOPUP_RECEIPT",
+                                      "CASHIER_SHIFT_RECEIPT",
+                                      "CASH_VOUCHER",
+                                      "STOCK_RECEIPT",
+                                      "STOCK_ISSUE",
+                                      "STOCK_COUNT",
+                                      "STOCK_TRANSFER"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "group": {
+                                    "type": "string"
+                                  },
+                                  "allowedPapers": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "A4",
+                                        "A5",
+                                        "A5_LANDSCAPE",
+                                        "K80"
+                                      ]
+                                    }
+                                  },
+                                  "defaultPaper": {
+                                    "type": "string",
+                                    "enum": [
+                                      "A4",
+                                      "A5",
+                                      "A5_LANDSCAPE",
+                                      "K80"
+                                    ]
+                                  },
+                                  "defaultTitle": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "documentType",
+                                  "label",
+                                  "group",
+                                  "allowedPapers",
+                                  "defaultPaper",
+                                  "defaultTitle"
+                                ]
+                              }
+                            },
+                            "papers": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "paperSize": {
+                                    "type": "string",
+                                    "enum": [
+                                      "A4",
+                                      "A5",
+                                      "A5_LANDSCAPE",
+                                      "K80"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "widthMm": {
+                                    "type": "integer"
+                                  },
+                                  "heightMm": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "paperSize",
+                                  "label",
+                                  "description",
+                                  "widthMm",
+                                  "heightMm"
+                                ]
+                              }
+                            },
+                            "defaultConfigs": {
+                              "type": "object",
+                              "properties": {
+                                "A4": {
+                                  "type": "object",
+                                  "properties": {
+                                    "margins": {
+                                      "type": "object",
+                                      "properties": {
+                                        "topMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "rightMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "bottomMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "leftMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        }
+                                      },
+                                      "required": [
+                                        "topMm",
+                                        "rightMm",
+                                        "bottomMm",
+                                        "leftMm"
+                                      ]
+                                    },
+                                    "header": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showLogo": {
+                                          "type": "boolean"
+                                        },
+                                        "showClinicName": {
+                                          "type": "boolean"
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showTaxCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showDivider": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showLogo",
+                                        "showClinicName",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showTaxCode",
+                                        "showDivider"
+                                      ]
+                                    },
+                                    "title": {
+                                      "type": "object",
+                                      "properties": {
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        }
+                                      },
+                                      "required": [
+                                        "text"
+                                      ]
+                                    },
+                                    "footer": {
+                                      "type": "object",
+                                      "properties": {
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "showSignature": {
+                                          "type": "boolean"
+                                        },
+                                        "showSignatureHint": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "note",
+                                        "showSignature",
+                                        "showSignatureHint"
+                                      ]
+                                    },
+                                    "copies": {
+                                      "type": "object",
+                                      "properties": {
+                                        "count": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 3
+                                        },
+                                        "labels": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "maxLength": 40
+                                          },
+                                          "maxItems": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "count",
+                                        "labels"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "margins",
+                                    "header",
+                                    "title",
+                                    "footer",
+                                    "copies"
+                                  ]
+                                },
+                                "A5": {
+                                  "type": "object",
+                                  "properties": {
+                                    "margins": {
+                                      "type": "object",
+                                      "properties": {
+                                        "topMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "rightMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "bottomMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "leftMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        }
+                                      },
+                                      "required": [
+                                        "topMm",
+                                        "rightMm",
+                                        "bottomMm",
+                                        "leftMm"
+                                      ]
+                                    },
+                                    "header": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showLogo": {
+                                          "type": "boolean"
+                                        },
+                                        "showClinicName": {
+                                          "type": "boolean"
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showTaxCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showDivider": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showLogo",
+                                        "showClinicName",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showTaxCode",
+                                        "showDivider"
+                                      ]
+                                    },
+                                    "title": {
+                                      "type": "object",
+                                      "properties": {
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        }
+                                      },
+                                      "required": [
+                                        "text"
+                                      ]
+                                    },
+                                    "footer": {
+                                      "type": "object",
+                                      "properties": {
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "showSignature": {
+                                          "type": "boolean"
+                                        },
+                                        "showSignatureHint": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "note",
+                                        "showSignature",
+                                        "showSignatureHint"
+                                      ]
+                                    },
+                                    "copies": {
+                                      "type": "object",
+                                      "properties": {
+                                        "count": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 3
+                                        },
+                                        "labels": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "maxLength": 40
+                                          },
+                                          "maxItems": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "count",
+                                        "labels"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "margins",
+                                    "header",
+                                    "title",
+                                    "footer",
+                                    "copies"
+                                  ]
+                                },
+                                "A5_LANDSCAPE": {
+                                  "type": "object",
+                                  "properties": {
+                                    "margins": {
+                                      "type": "object",
+                                      "properties": {
+                                        "topMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "rightMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "bottomMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "leftMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        }
+                                      },
+                                      "required": [
+                                        "topMm",
+                                        "rightMm",
+                                        "bottomMm",
+                                        "leftMm"
+                                      ]
+                                    },
+                                    "header": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showLogo": {
+                                          "type": "boolean"
+                                        },
+                                        "showClinicName": {
+                                          "type": "boolean"
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showTaxCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showDivider": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showLogo",
+                                        "showClinicName",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showTaxCode",
+                                        "showDivider"
+                                      ]
+                                    },
+                                    "title": {
+                                      "type": "object",
+                                      "properties": {
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        }
+                                      },
+                                      "required": [
+                                        "text"
+                                      ]
+                                    },
+                                    "footer": {
+                                      "type": "object",
+                                      "properties": {
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "showSignature": {
+                                          "type": "boolean"
+                                        },
+                                        "showSignatureHint": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "note",
+                                        "showSignature",
+                                        "showSignatureHint"
+                                      ]
+                                    },
+                                    "copies": {
+                                      "type": "object",
+                                      "properties": {
+                                        "count": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 3
+                                        },
+                                        "labels": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "maxLength": 40
+                                          },
+                                          "maxItems": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "count",
+                                        "labels"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "margins",
+                                    "header",
+                                    "title",
+                                    "footer",
+                                    "copies"
+                                  ]
+                                },
+                                "K80": {
+                                  "type": "object",
+                                  "properties": {
+                                    "margins": {
+                                      "type": "object",
+                                      "properties": {
+                                        "topMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "rightMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "bottomMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "leftMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        }
+                                      },
+                                      "required": [
+                                        "topMm",
+                                        "rightMm",
+                                        "bottomMm",
+                                        "leftMm"
+                                      ]
+                                    },
+                                    "header": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showLogo": {
+                                          "type": "boolean"
+                                        },
+                                        "showClinicName": {
+                                          "type": "boolean"
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showTaxCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showDivider": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showLogo",
+                                        "showClinicName",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showTaxCode",
+                                        "showDivider"
+                                      ]
+                                    },
+                                    "title": {
+                                      "type": "object",
+                                      "properties": {
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        }
+                                      },
+                                      "required": [
+                                        "text"
+                                      ]
+                                    },
+                                    "footer": {
+                                      "type": "object",
+                                      "properties": {
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "showSignature": {
+                                          "type": "boolean"
+                                        },
+                                        "showSignatureHint": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "note",
+                                        "showSignature",
+                                        "showSignatureHint"
+                                      ]
+                                    },
+                                    "copies": {
+                                      "type": "object",
+                                      "properties": {
+                                        "count": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 3
+                                        },
+                                        "labels": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "maxLength": 40
+                                          },
+                                          "maxItems": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "count",
+                                        "labels"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "margins",
+                                    "header",
+                                    "title",
+                                    "footer",
+                                    "copies"
+                                  ]
+                                }
+                              }
+                            }
+                          },
+                          "required": [
+                            "documentTypes",
+                            "papers",
+                            "defaultConfigs"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "catalog"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "print-template"
+        ],
+        "summary": "Thêm bản mẫu in cho 1 chứng từ + khổ giấy (mỗi chứng từ chỉ 1 bản/khổ)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "documentType": {
+                    "type": "string",
+                    "enum": [
+                      "PRESCRIPTION",
+                      "MEDICAL_RECORD",
+                      "INVOICE",
+                      "INVOICE_COMBINED",
+                      "WALLET_TOPUP_RECEIPT",
+                      "CASHIER_SHIFT_RECEIPT",
+                      "CASH_VOUCHER",
+                      "STOCK_RECEIPT",
+                      "STOCK_ISSUE",
+                      "STOCK_COUNT",
+                      "STOCK_TRANSFER"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "paperSize": {
+                    "type": "string",
+                    "enum": [
+                      "A4",
+                      "A5",
+                      "A5_LANDSCAPE",
+                      "K80"
+                    ]
+                  },
+                  "config": {
+                    "type": "object",
+                    "properties": {
+                      "margins": {
+                        "type": "object",
+                        "properties": {
+                          "topMm": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 40
+                          },
+                          "rightMm": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 40
+                          },
+                          "bottomMm": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 40
+                          },
+                          "leftMm": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 40
+                          }
+                        },
+                        "required": [
+                          "topMm",
+                          "rightMm",
+                          "bottomMm",
+                          "leftMm"
+                        ]
+                      },
+                      "header": {
+                        "type": "object",
+                        "properties": {
+                          "showLogo": {
+                            "type": "boolean"
+                          },
+                          "showClinicName": {
+                            "type": "boolean"
+                          },
+                          "showAddress": {
+                            "type": "boolean"
+                          },
+                          "showPhone": {
+                            "type": "boolean"
+                          },
+                          "showTaxCode": {
+                            "type": "boolean"
+                          },
+                          "showDivider": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "showLogo",
+                          "showClinicName",
+                          "showAddress",
+                          "showPhone",
+                          "showTaxCode",
+                          "showDivider"
+                        ]
+                      },
+                      "title": {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string",
+                            "maxLength": 60
+                          }
+                        },
+                        "required": [
+                          "text"
+                        ]
+                      },
+                      "footer": {
+                        "type": "object",
+                        "properties": {
+                          "note": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "showSignature": {
+                            "type": "boolean"
+                          },
+                          "showSignatureHint": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "note",
+                          "showSignature",
+                          "showSignatureHint"
+                        ]
+                      },
+                      "copies": {
+                        "type": "object",
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 3
+                          },
+                          "labels": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 40
+                            },
+                            "maxItems": 3
+                          }
+                        },
+                        "required": [
+                          "count",
+                          "labels"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "margins",
+                      "header",
+                      "title",
+                      "footer",
+                      "copies"
+                    ]
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "documentType",
+                  "name",
+                  "paperSize"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tạo thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "documentType": {
+                          "type": "string",
+                          "enum": [
+                            "PRESCRIPTION",
+                            "MEDICAL_RECORD",
+                            "INVOICE",
+                            "INVOICE_COMBINED",
+                            "WALLET_TOPUP_RECEIPT",
+                            "CASHIER_SHIFT_RECEIPT",
+                            "CASH_VOUCHER",
+                            "STOCK_RECEIPT",
+                            "STOCK_ISSUE",
+                            "STOCK_COUNT",
+                            "STOCK_TRANSFER"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "paperSize": {
+                          "type": "string",
+                          "enum": [
+                            "A4",
+                            "A5",
+                            "A5_LANDSCAPE",
+                            "K80"
+                          ]
+                        },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
+                        "isBuiltin": {
+                          "type": "boolean"
+                        },
+                        "config": {
+                          "type": "object",
+                          "properties": {
+                            "margins": {
+                              "type": "object",
+                              "properties": {
+                                "topMm": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 40
+                                },
+                                "rightMm": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 40
+                                },
+                                "bottomMm": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 40
+                                },
+                                "leftMm": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 40
+                                }
+                              },
+                              "required": [
+                                "topMm",
+                                "rightMm",
+                                "bottomMm",
+                                "leftMm"
+                              ]
+                            },
+                            "header": {
+                              "type": "object",
+                              "properties": {
+                                "showLogo": {
+                                  "type": "boolean"
+                                },
+                                "showClinicName": {
+                                  "type": "boolean"
+                                },
+                                "showAddress": {
+                                  "type": "boolean"
+                                },
+                                "showPhone": {
+                                  "type": "boolean"
+                                },
+                                "showTaxCode": {
+                                  "type": "boolean"
+                                },
+                                "showDivider": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "showLogo",
+                                "showClinicName",
+                                "showAddress",
+                                "showPhone",
+                                "showTaxCode",
+                                "showDivider"
+                              ]
+                            },
+                            "title": {
+                              "type": "object",
+                              "properties": {
+                                "text": {
+                                  "type": "string",
+                                  "maxLength": 60
+                                }
+                              },
+                              "required": [
+                                "text"
+                              ]
+                            },
+                            "footer": {
+                              "type": "object",
+                              "properties": {
+                                "note": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                },
+                                "showSignature": {
+                                  "type": "boolean"
+                                },
+                                "showSignatureHint": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "note",
+                                "showSignature",
+                                "showSignatureHint"
+                              ]
+                            },
+                            "copies": {
+                              "type": "object",
+                              "properties": {
+                                "count": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 3
+                                },
+                                "labels": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "maxLength": 40
+                                  },
+                                  "maxItems": 3
+                                }
+                              },
+                              "required": [
+                                "count",
+                                "labels"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "margins",
+                            "header",
+                            "title",
+                            "footer",
+                            "copies"
+                          ]
+                        },
+                        "version": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "documentType",
+                        "name",
+                        "paperSize",
+                        "isDefault",
+                        "isBuiltin",
+                        "config",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Đã có bản mẫu cho khổ giấy này (PRINT_TEMPLATE_DUPLICATE_PAPER)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Khổ giấy không dùng được cho chứng từ này (PRINT_TEMPLATE_PAPER_NOT_ALLOWED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/print-templates/resolved": {
+      "get": {
+        "tags": [
+          "print-template"
+        ],
+        "summary": "Bản mẫu in MẶC ĐỊNH đang áp dụng của từng chứng từ — tự-phục vụ, mọi nhân viên đã đăng nhập đọc được",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "documentType": {
+                                "type": "string",
+                                "enum": [
+                                  "PRESCRIPTION",
+                                  "MEDICAL_RECORD",
+                                  "INVOICE",
+                                  "INVOICE_COMBINED",
+                                  "WALLET_TOPUP_RECEIPT",
+                                  "CASHIER_SHIFT_RECEIPT",
+                                  "CASH_VOUCHER",
+                                  "STOCK_RECEIPT",
+                                  "STOCK_ISSUE",
+                                  "STOCK_COUNT",
+                                  "STOCK_TRANSFER"
+                                ]
+                              },
+                              "paperSize": {
+                                "type": "string",
+                                "enum": [
+                                  "A4",
+                                  "A5",
+                                  "A5_LANDSCAPE",
+                                  "K80"
+                                ]
+                              },
+                              "widthMm": {
+                                "type": "integer"
+                              },
+                              "heightMm": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "config": {
+                                "type": "object",
+                                "properties": {
+                                  "margins": {
+                                    "type": "object",
+                                    "properties": {
+                                      "topMm": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 40
+                                      },
+                                      "rightMm": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 40
+                                      },
+                                      "bottomMm": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 40
+                                      },
+                                      "leftMm": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 40
+                                      }
+                                    },
+                                    "required": [
+                                      "topMm",
+                                      "rightMm",
+                                      "bottomMm",
+                                      "leftMm"
+                                    ]
+                                  },
+                                  "header": {
+                                    "type": "object",
+                                    "properties": {
+                                      "showLogo": {
+                                        "type": "boolean"
+                                      },
+                                      "showClinicName": {
+                                        "type": "boolean"
+                                      },
+                                      "showAddress": {
+                                        "type": "boolean"
+                                      },
+                                      "showPhone": {
+                                        "type": "boolean"
+                                      },
+                                      "showTaxCode": {
+                                        "type": "boolean"
+                                      },
+                                      "showDivider": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "showLogo",
+                                      "showClinicName",
+                                      "showAddress",
+                                      "showPhone",
+                                      "showTaxCode",
+                                      "showDivider"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "object",
+                                    "properties": {
+                                      "text": {
+                                        "type": "string",
+                                        "maxLength": 60
+                                      }
+                                    },
+                                    "required": [
+                                      "text"
+                                    ]
+                                  },
+                                  "footer": {
+                                    "type": "object",
+                                    "properties": {
+                                      "note": {
+                                        "type": "string",
+                                        "maxLength": 200
+                                      },
+                                      "showSignature": {
+                                        "type": "boolean"
+                                      },
+                                      "showSignatureHint": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "note",
+                                      "showSignature",
+                                      "showSignatureHint"
+                                    ]
+                                  },
+                                  "copies": {
+                                    "type": "object",
+                                    "properties": {
+                                      "count": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 3
+                                      },
+                                      "labels": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "maxLength": 40
+                                        },
+                                        "maxItems": 3
+                                      }
+                                    },
+                                    "required": [
+                                      "count",
+                                      "labels"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "margins",
+                                  "header",
+                                  "title",
+                                  "footer",
+                                  "copies"
+                                ]
+                              },
+                              "options": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "paperSize": {
+                                      "type": "string",
+                                      "enum": [
+                                        "A4",
+                                        "A5",
+                                        "A5_LANDSCAPE",
+                                        "K80"
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "widthMm": {
+                                      "type": "integer"
+                                    },
+                                    "heightMm": {
+                                      "type": [
+                                        "integer",
+                                        "null"
+                                      ]
+                                    },
+                                    "isDefault": {
+                                      "type": "boolean"
+                                    },
+                                    "config": {
+                                      "type": "object",
+                                      "properties": {
+                                        "margins": {
+                                          "type": "object",
+                                          "properties": {
+                                            "topMm": {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 40
+                                            },
+                                            "rightMm": {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 40
+                                            },
+                                            "bottomMm": {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 40
+                                            },
+                                            "leftMm": {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 40
+                                            }
+                                          },
+                                          "required": [
+                                            "topMm",
+                                            "rightMm",
+                                            "bottomMm",
+                                            "leftMm"
+                                          ]
+                                        },
+                                        "header": {
+                                          "type": "object",
+                                          "properties": {
+                                            "showLogo": {
+                                              "type": "boolean"
+                                            },
+                                            "showClinicName": {
+                                              "type": "boolean"
+                                            },
+                                            "showAddress": {
+                                              "type": "boolean"
+                                            },
+                                            "showPhone": {
+                                              "type": "boolean"
+                                            },
+                                            "showTaxCode": {
+                                              "type": "boolean"
+                                            },
+                                            "showDivider": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "showLogo",
+                                            "showClinicName",
+                                            "showAddress",
+                                            "showPhone",
+                                            "showTaxCode",
+                                            "showDivider"
+                                          ]
+                                        },
+                                        "title": {
+                                          "type": "object",
+                                          "properties": {
+                                            "text": {
+                                              "type": "string",
+                                              "maxLength": 60
+                                            }
+                                          },
+                                          "required": [
+                                            "text"
+                                          ]
+                                        },
+                                        "footer": {
+                                          "type": "object",
+                                          "properties": {
+                                            "note": {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            "showSignature": {
+                                              "type": "boolean"
+                                            },
+                                            "showSignatureHint": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "note",
+                                            "showSignature",
+                                            "showSignatureHint"
+                                          ]
+                                        },
+                                        "copies": {
+                                          "type": "object",
+                                          "properties": {
+                                            "count": {
+                                              "type": "integer",
+                                              "minimum": 1,
+                                              "maximum": 3
+                                            },
+                                            "labels": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string",
+                                                "maxLength": 40
+                                              },
+                                              "maxItems": 3
+                                            }
+                                          },
+                                          "required": [
+                                            "count",
+                                            "labels"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "margins",
+                                        "header",
+                                        "title",
+                                        "footer",
+                                        "copies"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "paperSize",
+                                    "label",
+                                    "widthMm",
+                                    "heightMm",
+                                    "isDefault",
+                                    "config"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "documentType",
+                              "paperSize",
+                              "widthMm",
+                              "heightMm",
+                              "config",
+                              "options"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/print-templates/quick-setup": {
+      "post": {
+        "tags": [
+          "print-template"
+        ],
+        "summary": "\"Thiết lập nhanh\" — khai khổ giấy + đầu trang một lần, áp cho nhiều chứng từ và đặt làm mặc định",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paperPreset": {
+                    "type": "string",
+                    "enum": [
+                      "ALL_A4",
+                      "MONEY_A5_REST_A4",
+                      "KEEP"
+                    ]
+                  },
+                  "header": {
+                    "type": "object",
+                    "properties": {
+                      "showLogo": {
+                        "type": "boolean"
+                      },
+                      "showClinicName": {
+                        "type": "boolean"
+                      },
+                      "showAddress": {
+                        "type": "boolean"
+                      },
+                      "showPhone": {
+                        "type": "boolean"
+                      },
+                      "showTaxCode": {
+                        "type": "boolean"
+                      },
+                      "showDivider": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "showLogo",
+                      "showClinicName",
+                      "showAddress",
+                      "showPhone",
+                      "showTaxCode",
+                      "showDivider"
+                    ]
+                  },
+                  "documentTypes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "PRESCRIPTION",
+                        "MEDICAL_RECORD",
+                        "INVOICE",
+                        "INVOICE_COMBINED",
+                        "WALLET_TOPUP_RECEIPT",
+                        "CASHIER_SHIFT_RECEIPT",
+                        "CASH_VOUCHER",
+                        "STOCK_RECEIPT",
+                        "STOCK_ISSUE",
+                        "STOCK_COUNT",
+                        "STOCK_TRANSFER"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "paperPreset",
+                  "header",
+                  "documentTypes"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Áp dụng thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "appliedCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "appliedCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/print-templates/{id}": {
+      "patch": {
+        "tags": [
+          "print-template"
+        ],
+        "summary": "Sửa bản mẫu in (tên/cấu hình/đặt làm mặc định), bắt buộc kèm version",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "config": {
+                    "type": "object",
+                    "properties": {
+                      "margins": {
+                        "type": "object",
+                        "properties": {
+                          "topMm": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 40
+                          },
+                          "rightMm": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 40
+                          },
+                          "bottomMm": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 40
+                          },
+                          "leftMm": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 40
+                          }
+                        },
+                        "required": [
+                          "topMm",
+                          "rightMm",
+                          "bottomMm",
+                          "leftMm"
+                        ]
+                      },
+                      "header": {
+                        "type": "object",
+                        "properties": {
+                          "showLogo": {
+                            "type": "boolean"
+                          },
+                          "showClinicName": {
+                            "type": "boolean"
+                          },
+                          "showAddress": {
+                            "type": "boolean"
+                          },
+                          "showPhone": {
+                            "type": "boolean"
+                          },
+                          "showTaxCode": {
+                            "type": "boolean"
+                          },
+                          "showDivider": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "showLogo",
+                          "showClinicName",
+                          "showAddress",
+                          "showPhone",
+                          "showTaxCode",
+                          "showDivider"
+                        ]
+                      },
+                      "title": {
+                        "type": "object",
+                        "properties": {
+                          "text": {
+                            "type": "string",
+                            "maxLength": 60
+                          }
+                        },
+                        "required": [
+                          "text"
+                        ]
+                      },
+                      "footer": {
+                        "type": "object",
+                        "properties": {
+                          "note": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "showSignature": {
+                            "type": "boolean"
+                          },
+                          "showSignatureHint": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "note",
+                          "showSignature",
+                          "showSignatureHint"
+                        ]
+                      },
+                      "copies": {
+                        "type": "object",
+                        "properties": {
+                          "count": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 3
+                          },
+                          "labels": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 40
+                            },
+                            "maxItems": 3
+                          }
+                        },
+                        "required": [
+                          "count",
+                          "labels"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "margins",
+                      "header",
+                      "title",
+                      "footer",
+                      "copies"
+                    ]
+                  },
+                  "isDefault": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sửa thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "documentType": {
+                          "type": "string",
+                          "enum": [
+                            "PRESCRIPTION",
+                            "MEDICAL_RECORD",
+                            "INVOICE",
+                            "INVOICE_COMBINED",
+                            "WALLET_TOPUP_RECEIPT",
+                            "CASHIER_SHIFT_RECEIPT",
+                            "CASH_VOUCHER",
+                            "STOCK_RECEIPT",
+                            "STOCK_ISSUE",
+                            "STOCK_COUNT",
+                            "STOCK_TRANSFER"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "paperSize": {
+                          "type": "string",
+                          "enum": [
+                            "A4",
+                            "A5",
+                            "A5_LANDSCAPE",
+                            "K80"
+                          ]
+                        },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
+                        "isBuiltin": {
+                          "type": "boolean"
+                        },
+                        "config": {
+                          "type": "object",
+                          "properties": {
+                            "margins": {
+                              "type": "object",
+                              "properties": {
+                                "topMm": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 40
+                                },
+                                "rightMm": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 40
+                                },
+                                "bottomMm": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 40
+                                },
+                                "leftMm": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 40
+                                }
+                              },
+                              "required": [
+                                "topMm",
+                                "rightMm",
+                                "bottomMm",
+                                "leftMm"
+                              ]
+                            },
+                            "header": {
+                              "type": "object",
+                              "properties": {
+                                "showLogo": {
+                                  "type": "boolean"
+                                },
+                                "showClinicName": {
+                                  "type": "boolean"
+                                },
+                                "showAddress": {
+                                  "type": "boolean"
+                                },
+                                "showPhone": {
+                                  "type": "boolean"
+                                },
+                                "showTaxCode": {
+                                  "type": "boolean"
+                                },
+                                "showDivider": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "showLogo",
+                                "showClinicName",
+                                "showAddress",
+                                "showPhone",
+                                "showTaxCode",
+                                "showDivider"
+                              ]
+                            },
+                            "title": {
+                              "type": "object",
+                              "properties": {
+                                "text": {
+                                  "type": "string",
+                                  "maxLength": 60
+                                }
+                              },
+                              "required": [
+                                "text"
+                              ]
+                            },
+                            "footer": {
+                              "type": "object",
+                              "properties": {
+                                "note": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                },
+                                "showSignature": {
+                                  "type": "boolean"
+                                },
+                                "showSignatureHint": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "note",
+                                "showSignature",
+                                "showSignatureHint"
+                              ]
+                            },
+                            "copies": {
+                              "type": "object",
+                              "properties": {
+                                "count": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 3
+                                },
+                                "labels": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "maxLength": 40
+                                  },
+                                  "maxItems": 3
+                                }
+                              },
+                              "required": [
+                                "count",
+                                "labels"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "margins",
+                            "header",
+                            "title",
+                            "footer",
+                            "copies"
+                          ]
+                        },
+                        "version": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "documentType",
+                        "name",
+                        "paperSize",
+                        "isDefault",
+                        "isBuiltin",
+                        "config",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "print-template"
+        ],
+        "summary": "Xoá bản mẫu in (không xoá được bản mặc định khi còn bản khác)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Xoá thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp hoặc đang là bản mặc định",
             "content": {
               "application/json": {
                 "schema": {

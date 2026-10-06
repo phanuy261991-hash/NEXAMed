@@ -548,12 +548,14 @@ export type ClinicProfile = z.infer<typeof clinicProfileSchema>;
  * tân (Thu ngân, in phiếu thu) và bác sĩ (kê đơn, in đơn thuốc) đều KHÔNG có `clinic_config.read`
  * (chỉ `clinic_admin`) — phát hiện thật lúc kiểm bằng trình duyệt cho màn Thu ngân, tiện vá luôn
  * `PrescriptionPanel.tsx` (cùng lỗ hổng, trước đó chỉ chưa lộ ra vì luôn kiểm bằng tài khoản admin).
- * Không lộ `taxCode`/`currency`/`timezone`/`version` (không cần cho tiêu đề in).
+ * Không lộ `currency`/`timezone`/`version`; `taxCode` chỉ để bản mẫu in tuỳ chọn hiện mã số thuế (#211).
  */
 export const clinicPrintHeaderSchema = z.object({
   name: z.string(),
   address: z.string().nullable(),
   phone: z.string().nullable(),
+  /** Mã số thuế — chỉ hiện trên bản in khi bản mẫu bật "Mã số thuế" (docs/DECISIONS.md #211). */
+  taxCode: z.string().nullable(),
   printLogoUrl: z.string().nullable(),
 });
 export type ClinicPrintHeader = z.infer<typeof clinicPrintHeaderSchema>;

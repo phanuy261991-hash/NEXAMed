@@ -7,7 +7,6 @@ import type {
   BusinessCodeType,
   CashierShiftRequiredStatus,
   WalletMixedPaymentStatus,
-  ClinicPrintHeader,
   ClinicProfile,
   ClinicSettings,
   CreateExamStationRequest,
@@ -108,11 +107,6 @@ export async function getClinicProfile(): Promise<ClinicProfile> {
 
 export async function updateClinicProfile(body: UpdateClinicProfileRequest): Promise<ClinicProfile> {
   return unwrap(await getApiClient().PATCH('/api/v1/clinic-profile', { body })) as ClinicProfile;
-}
-
-/** Tự-phục vụ (Thu ngân/Kê đơn) — không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
-export async function getClinicPrintHeader(): Promise<ClinicPrintHeader> {
-  return unwrap(await getApiClient().GET('/api/v1/clinic-profile/print-header')) as ClinicPrintHeader;
 }
 
 /** Upload logo — multipart, xem shared/api/client.ts#uploadFile (cùng mẫu uploadPatientPhoto). */

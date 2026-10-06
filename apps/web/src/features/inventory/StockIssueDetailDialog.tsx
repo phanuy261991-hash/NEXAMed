@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Archive, Printer } from '@phosphor-icons/react';
+import { Archive } from '@phosphor-icons/react';
 import type { StockIssueStatus } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
+import { PrintButton } from '../../shared/print/PrintButton';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useHasPermission } from '../auth/usePermission';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useStockIssueQuery } from './inventory.queries';
 import { StockIssuePrintView } from './StockIssuePrintView';
 
@@ -37,7 +37,6 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
   const navigate = useNavigate();
   const canViewInvoice = useHasPermission('invoice', 'read');
   const query = useStockIssueQuery(issueId);
-  const clinicQuery = useClinicPrintHeaderQuery();
   const issue = query.data;
 
   const [printing, setPrinting] = useState(false);
@@ -142,10 +141,7 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
           {/* In phiếu — CHỈ phiếu ĐÃ XUẤT chưa huỷ, bổ sung 22/09/2026 theo yêu cầu chủ dự án
               (`docs/DECISIONS.md` #171). */}
           {issue && issue.status === 'POSTED' && (
-            <Button type="button" variant="secondary" onClick={handlePrint}>
-              <Printer size={15} weight="bold" aria-hidden="true" />
-              In phiếu
-            </Button>
+            <PrintButton documentType="STOCK_ISSUE" onPrint={handlePrint}>In phiếu</PrintButton>
           )}
           {canViewInvoice && issue?.attachedInvoice && issue.encounterId && (
             <Button type="button" variant="secondary" onClick={() => navigate(`/billing/${issue.encounterId}?invoiceId=${issue.attachedInvoice!.invoiceId}`)}>
@@ -158,7 +154,7 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
         </div>
       </div>
 
-      {printing && issue && clinicQuery.data && <StockIssuePrintView issue={issue} clinicHeader={clinicQuery.data} />}
+      {printing && issue && <StockIssuePrintView issue={issue} />}
     </div>
   );
 }

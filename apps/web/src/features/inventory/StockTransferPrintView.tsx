@@ -1,43 +1,35 @@
-import type { ClinicPrintHeader, StockTransferDetail } from '@nexamed/shared';
-
-function formatPrintDate(iso: string): string {
-  const d = new Date(iso);
-  const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  return `Ngày ${String(vn.getUTCDate()).padStart(2, '0')} tháng ${String(vn.getUTCMonth() + 1).padStart(2, '0')} năm ${vn.getUTCFullYear()}`;
-}
+import type { StockTransferDetail } from '@nexamed/shared';
+import { formatPrintDate } from '../../shared/format/print-date';
+import { PrintDocument } from '../../shared/print/PrintDocument';
 
 /**
- * Bố cục in "Phiếu điều chuyển kho" (Kho Thuốc GĐ4, bổ sung 23/09/2026, chủ dự án yêu cầu trực
- * tiếp sau khi verify "Điều chuyển kho" — xem `docs/DECISIONS.md` #173) — đúng khuôn
- * `StockReceiptPrintView.tsx`/`StockIssuePrintView.tsx`. Một phiếu DÙNG CHUNG cho CẢ HAI kho: kho
- * NGUỒN in ngay sau khi Duyệt xuất (status `IN_TRANSIT`, cột "SL thực nhận" còn trống) để kèm theo
- * hàng; kho ĐÍCH in lại/in mới sau khi Xác nhận nhận hàng (status `COMPLETED`, cột "SL thực nhận"
- * + ghi chú chênh lệch đã có đủ) để lưu hồ sơ nhận hàng — không phải 2 bố cục riêng, cùng 1
- * component tự đổi nội dung theo dữ liệu đã có trên phiếu. Không hiển thị giá vốn/thành tiền —
- * "Điều chuyển kho" không phải chứng từ Thu/Chi, giá chỉ snapshot nội bộ để tính giá vốn liên hoàn.
- * Nhận dữ liệu qua props, không tự gọi API. CHỈ in được phiếu `IN_TRANSIT`/`COMPLETED` (nơi gọi tự
- * gate — `DRAFT` chưa xuất kho, `REJECTED` không có hàng di chuyển).
+ * Bản in "Phiếu điều chuyển kho" (Kho Thuốc GĐ4, `docs/DECISIONS.md` #173/#174) — khung/đầu trang/chữ ký/khổ giấy do
+ * `PrintDocument` lo theo bản mẫu `STOCK_TRANSFER` (#211), file này chỉ giữ phần THÂN. Một phiếu DÙNG CHUNG cho CẢ
+ * HAI kho: kho NGUỒN in ngay sau khi Duyệt xuất (status `IN_TRANSIT`, cột "SL thực nhận" còn trống) để kèm theo hàng;
+ * kho ĐÍCH in lại/in mới sau khi Xác nhận nhận hàng (status `COMPLETED`, đủ "SL thực nhận" + ghi chú chênh lệch) để
+ * lưu hồ sơ nhận hàng — cùng 1 component tự đổi nội dung theo dữ liệu đã có. Không hiển thị giá vốn/thành tiền —
+ * "Điều chuyển kho" không phải chứng từ Thu/Chi. CHỈ in được phiếu `IN_TRANSIT`/`COMPLETED` (nơi gọi tự gate). Nhận
+ * dữ liệu qua props, không tự gọi API.
  */
-export function StockTransferPrintView({ transfer, clinicHeader }: { transfer: StockTransferDetail; clinicHeader: ClinicPrintHeader }) {
+export function StockTransferPrintView({ transfer }: { transfer: StockTransferDetail }) {
   const isCompleted = transfer.status === 'COMPLETED';
 
   return (
-    <div className="print-area hidden bg-white p-10 text-slate-900 print:block">
-      <div className="flex items-center gap-4 border-b-2 border-slate-800 pb-3">
-        {clinicHeader.printLogoUrl && <img src={clinicHeader.printLogoUrl} alt="" className="h-16 w-16 object-contain" />}
-        <div>
-          <p className="text-lg font-bold uppercase">{clinicHeader.name}</p>
-          {clinicHeader.address && <p className="text-sm">Địa chỉ: {clinicHeader.address}</p>}
-          {clinicHeader.phone && <p className="text-sm">Điện thoại: {clinicHeader.phone}</p>}
-        </div>
-      </div>
-
-      <h1 className="mt-6 text-center text-2xl font-bold uppercase tracking-wide">Phiếu điều chuyển kho</h1>
-      <p className="text-center text-sm">
-        Số: <strong>{transfer.transferNo}</strong>
-      </p>
-
-      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+    <PrintDocument
+      documentType="STOCK_TRANSFER"
+      title="Phiếu điều chuyển kho"
+      subtitle={
+        <p>
+          Số: <strong>{transfer.transferNo}</strong>
+        </p>
+      }
+      signatures={[
+        { label: 'Người lập phiếu', name: transfer.createdByName },
+        { label: 'Thủ kho nguồn (giao hàng)', name: transfer.shippedByName },
+        { label: 'Thủ kho đích (nhận hàng)', name: isCompleted ? transfer.receivedByName : null },
+      ]}
+    >
+      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
         <p>
           Kho nguồn (xuất): <strong>{transfer.fromWarehouseName}</strong>
         </p>
@@ -65,7 +57,7 @@ export function StockTransferPrintView({ transfer, clinicHeader }: { transfer: S
         </p>
       </div>
 
-      <table className="mt-6 w-full border-collapse text-sm">
+      <table className="mt-6 w-full border-collapse">
         <thead>
           <tr className="border-b-2 border-slate-800 text-left">
             <th className="w-8 py-1.5">#</th>
@@ -93,26 +85,10 @@ export function StockTransferPrintView({ transfer, clinicHeader }: { transfer: S
       </table>
 
       {transfer.note && (
-        <p className="mt-3 text-sm">
+        <p className="mt-3">
           <span className="font-semibold">Ghi chú phiếu:</span> {transfer.note}
         </p>
       )}
-
-      <div className="mt-12 flex justify-between text-center text-sm">
-        <div>
-          <p className="font-semibold">Người lập phiếu</p>
-          <p className="mt-14 font-semibold">{transfer.createdByName}</p>
-        </div>
-        <div>
-          <p className="font-semibold">Thủ kho nguồn (giao hàng)</p>
-          <p className="mt-14 font-semibold">{transfer.shippedByName ?? ''}</p>
-        </div>
-        <div>
-          <p className="font-semibold">Thủ kho đích (nhận hàng)</p>
-          <p className="mt-14 font-semibold">{isCompleted ? (transfer.receivedByName ?? '') : ''}</p>
-          {!isCompleted && <p className="text-xs text-slate-500">(Ký, ghi rõ họ tên)</p>}
-        </div>
-      </div>
-    </div>
+    </PrintDocument>
   );
 }

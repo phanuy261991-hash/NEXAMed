@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
-import { ArrowRight, CheckCircle, ClockCounterClockwise, PencilSimple, Pill, Plus, Printer, Stack, Warning, X } from '@phosphor-icons/react';
+import { ArrowRight, CheckCircle, ClockCounterClockwise, PencilSimple, Pill, Plus, Stack, Warning, X } from '@phosphor-icons/react';
 import type { PrescriptionItem, PrescriptionResponse, PrescriptionTemplate } from '@nexamed/shared';
 import { computePrescriptionQuantityPreview as computePrescriptionQuantity, formatDoseSummaryPreview as formatDoseSummary } from './prescription-dose-preview';
 import { ApiError } from '../../shared/api/client';
 import { useAuthStore } from '../auth/auth.store';
-import { useClinicPrintHeaderQuery, usePharmacyStockTrackingEnabledQuery, useSoloClinicWorkflowEnabledQuery } from '../clinic/clinic.queries';
+import { usePharmacyStockTrackingEnabledQuery, useSoloClinicWorkflowEnabledQuery } from '../clinic/clinic.queries';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
+import { PrintButton } from '../../shared/print/PrintButton';
 import { Combobox } from '../../shared/ui/Combobox';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -121,7 +122,6 @@ export function PrescriptionPanel({
   diagnosisLabel: string;
 }) {
   const doctorName = useAuthStore((s) => s.user?.displayName ?? s.user?.fullName) ?? '';
-  const clinicQuery = useClinicPrintHeaderQuery();
   // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — chỉ gợi ý ghép câu vào ô "Hướng dẫn dùng"
   // của từng dòng thuốc, không phải trường lưu riêng trên `prescription_item`.
   const usageTimingQuery = useReferenceCatalogQuery('DRUG_USAGE_TIMING');
@@ -342,7 +342,6 @@ export function PrescriptionPanel({
   }
 
   const warnings = prescription?.warnings ?? [];
-  const clinic = clinicQuery.data;
 
   return (
     <div className="flex flex-col gap-4">
@@ -395,10 +394,9 @@ export function PrescriptionPanel({
                   Phát thuốc
                 </Button>
               )}
-              <Button type="button" onClick={() => void handlePrint()} loading={printMutation.isPending}>
-                <Printer size={15} weight="bold" aria-hidden="true" />
+              <PrintButton documentType="PRESCRIPTION" variant="primary" onPrint={() => void handlePrint()} loading={printMutation.isPending}>
                 In đơn
-              </Button>
+              </PrintButton>
             </div>
           </div>
           <PrescriptionItemsTable items={prescription!.items} />
@@ -534,12 +532,8 @@ export function PrescriptionPanel({
         </div>
       )}
 
-      {isSigned && prescription && clinic && (
+      {isSigned && prescription && (
         <PrescriptionPrintView
-          clinicName={clinic.name}
-          clinicAddress={clinic.address}
-          clinicPhone={clinic.phone}
-          printLogoUrl={clinic.printLogoUrl}
           doctorName={doctorName}
           patientFullName={patientFullName}
           patientDob={patientDob}

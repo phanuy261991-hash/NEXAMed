@@ -41,6 +41,8 @@ const SupplierDetailPage = lazy(() =>
 const PrescriptionTemplateCatalogPage = lazy(() =>
   import('../features/drug/PrescriptionTemplateCatalogPage').then((m) => ({ default: m.PrescriptionTemplateCatalogPage })),
 );
+// "Quản lý mẫu in" (docs/DECISIONS.md #211) — trang riêng trong Quản trị.
+const PrintTemplatePage = lazy(() => import('../features/print-template/PrintTemplatePage').then((m) => ({ default: m.PrintTemplatePage })));
 // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — tổng hợp mọi NCC + lịch sử thanh toán.
 const SupplierDebtListPage = lazy(() =>
   import('../features/supplier-debt/SupplierDebtListPage').then((m) => ({ default: m.SupplierDebtListPage })),
@@ -283,6 +285,7 @@ export const router = createBrowserRouter([
       // "Đơn thuốc mẫu" (docs/DECISIONS.md #196) — gác bằng `.read` (mọi vai trò lâm sàng đều xem
       // được, đúng khuôn popup chọn mẫu); nút Thêm/Sửa/Ẩn trong `PrescriptionTemplatePane.tsx` tự
       // ẩn nếu thiếu `.manage`.
+      { path: 'admin/print-templates', element: <RequirePermissionRoute module="clinic_config" action="update"><PrintTemplatePage /></RequirePermissionRoute> },
       { path: 'admin/prescription-templates', element: <RequirePermissionRoute module="prescription_template" action="read"><PrescriptionTemplateCatalogPage /></RequirePermissionRoute> },
       // S5-05 (ADM-03) — "Nhật ký hoạt động", lọc theo bệnh nhân/người dùng/khoảng ngày.
       { path: 'admin/activity-log', element: <RequirePermissionRoute module="audit_log" action="read"><ActivityLogPage /></RequirePermissionRoute> },

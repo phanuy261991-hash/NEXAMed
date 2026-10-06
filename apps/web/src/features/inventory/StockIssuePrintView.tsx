@@ -1,11 +1,7 @@
-import type { ClinicPrintHeader, StockIssueDetail, StockIssueType } from '@nexamed/shared';
+import type { StockIssueDetail, StockIssueType } from '@nexamed/shared';
+import { formatPrintDate } from '../../shared/format/print-date';
 import { formatVnd } from '../../shared/format/currency';
-
-function formatPrintDate(iso: string): string {
-  const d = new Date(iso);
-  const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  return `Ngày ${String(vn.getUTCDate()).padStart(2, '0')} tháng ${String(vn.getUTCMonth() + 1).padStart(2, '0')} năm ${vn.getUTCFullYear()}`;
-}
+import { PrintDocument } from '../../shared/print/PrintDocument';
 
 const TYPE_LABEL: Record<StockIssueType, string> = {
   RETAIL_SALE: 'Phát thuốc theo đơn',
@@ -18,28 +14,23 @@ const TYPE_LABEL: Record<StockIssueType, string> = {
 };
 
 /**
- * Bố cục in "Phiếu xuất kho" (Kho Thuốc GĐ3, bổ sung 22/09/2026, `docs/DECISIONS.md` #171) — đúng
- * khuôn `InvoicePrintView.tsx`/`StockReceiptPrintView.tsx`. CHỈ in phiếu ĐÃ XUẤT (`status='POSTED'`,
- * nơi gọi tự gate). Nhận dữ liệu qua props, không tự gọi API.
+ * Bản in "Phiếu xuất kho" (Kho Thuốc GĐ3, `docs/DECISIONS.md` #171) — khung/đầu trang/chữ ký/khổ giấy do `PrintDocument`
+ * lo theo bản mẫu `STOCK_ISSUE` (#211), file này chỉ giữ phần THÂN. CHỈ in phiếu ĐÃ XUẤT (`status='POSTED'`, nơi gọi
+ * tự gate). Nhận dữ liệu qua props, không tự gọi API.
  */
-export function StockIssuePrintView({ issue, clinicHeader }: { issue: StockIssueDetail; clinicHeader: ClinicPrintHeader }) {
+export function StockIssuePrintView({ issue }: { issue: StockIssueDetail }) {
   return (
-    <div className="print-area hidden bg-white p-10 text-slate-900 print:block">
-      <div className="flex items-center gap-4 border-b-2 border-slate-800 pb-3">
-        {clinicHeader.printLogoUrl && <img src={clinicHeader.printLogoUrl} alt="" className="h-16 w-16 object-contain" />}
-        <div>
-          <p className="text-lg font-bold uppercase">{clinicHeader.name}</p>
-          {clinicHeader.address && <p className="text-sm">Địa chỉ: {clinicHeader.address}</p>}
-          {clinicHeader.phone && <p className="text-sm">Điện thoại: {clinicHeader.phone}</p>}
-        </div>
-      </div>
-
-      <h1 className="mt-6 text-center text-2xl font-bold uppercase tracking-wide">Phiếu xuất kho</h1>
-      <p className="text-center text-sm">
-        Số: <strong>{issue.issueNo}</strong>
-      </p>
-
-      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+    <PrintDocument
+      documentType="STOCK_ISSUE"
+      title="Phiếu xuất kho"
+      subtitle={
+        <p>
+          Số: <strong>{issue.issueNo}</strong>
+        </p>
+      }
+      signatures={[{ label: 'Người lập phiếu', name: issue.createdByName }, { label: 'Người nhận hàng' }, { label: 'Thủ kho' }]}
+    >
+      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
         <p>
           Loại phiếu: <strong>{TYPE_LABEL[issue.issueType]}</strong>
         </p>
@@ -74,7 +65,7 @@ export function StockIssuePrintView({ issue, clinicHeader }: { issue: StockIssue
         </p>
       </div>
 
-      <table className="mt-6 w-full border-collapse text-sm">
+      <table className="mt-6 w-full border-collapse">
         <thead>
           <tr className="border-b-2 border-slate-800 text-left">
             <th className="w-8 py-1.5">#</th>
@@ -102,29 +93,16 @@ export function StockIssuePrintView({ issue, clinicHeader }: { issue: StockIssue
       </table>
 
       <div className="mt-3 flex justify-end border-t-2 border-slate-800 pt-2 text-base font-bold">
-        <span>{issue.issueType === 'RETURN_TO_SUPPLIER' ? 'Giá trị trừ công nợ' : 'Tổng cộng'}: {formatVnd(issue.totalAmount)}</span>
+        <span>
+          {issue.issueType === 'RETURN_TO_SUPPLIER' ? 'Giá trị trừ công nợ' : 'Tổng cộng'}: {formatVnd(issue.totalAmount)}
+        </span>
       </div>
 
       {issue.note && (
-        <p className="mt-2 text-sm">
+        <p className="mt-2">
           <span className="font-semibold">{issue.prescriptionId ? 'Ghi chú' : 'Lý do'}:</span> {issue.note}
         </p>
       )}
-
-      <div className="mt-12 flex justify-between text-center text-sm">
-        <div>
-          <p className="font-semibold">Người lập phiếu</p>
-          <p className="mt-14 font-semibold">{issue.createdByName}</p>
-        </div>
-        <div>
-          <p className="font-semibold">Người nhận hàng</p>
-          <p className="mt-14 text-xs text-slate-500">(Ký, ghi rõ họ tên)</p>
-        </div>
-        <div>
-          <p className="font-semibold">Thủ kho</p>
-          <p className="mt-14 text-xs text-slate-500">(Ký, ghi rõ họ tên)</p>
-        </div>
-      </div>
-    </div>
+    </PrintDocument>
   );
 }

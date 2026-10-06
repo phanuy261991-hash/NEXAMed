@@ -1,10 +1,6 @@
-import type { ClinicPrintHeader, StockCountDetail } from '@nexamed/shared';
-
-function formatPrintDate(iso: string): string {
-  const d = new Date(iso);
-  const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  return `Ngày ${String(vn.getUTCDate()).padStart(2, '0')} tháng ${String(vn.getUTCMonth() + 1).padStart(2, '0')} năm ${vn.getUTCFullYear()}`;
-}
+import type { StockCountDetail } from '@nexamed/shared';
+import { formatPrintDate } from '../../shared/format/print-date';
+import { PrintDocument } from '../../shared/print/PrintDocument';
 
 function diffLabel(diff: number | null): string {
   if (diff === null) return '—';
@@ -14,29 +10,23 @@ function diffLabel(diff: number | null): string {
 }
 
 /**
- * Bố cục in "Phiếu kiểm kê" (Kho Thuốc GĐ4, rà soát lỗ hổng quy trình 22/09/2026, `docs/DECISIONS.md`
- * #171) — đúng khuôn `InvoicePrintView.tsx`/`CashVoucherPrintView.tsx` (`.print-area`, hạ tầng in
- * chung `apps/web/src/app/index.css`). CHỈ in phiếu ĐÃ DUYỆT (nơi gọi tự gate — `difference` chỉ có
- * giá trị thật sau khi Duyệt). Nhận dữ liệu qua props, không tự gọi API.
+ * Bản in "Phiếu kiểm kê" (Kho Thuốc GĐ4, `docs/DECISIONS.md` #171) — khung/đầu trang/chữ ký/khổ giấy do `PrintDocument`
+ * lo theo bản mẫu `STOCK_COUNT` (#211), file này chỉ giữ phần THÂN. CHỈ in phiếu ĐÃ DUYỆT (nơi gọi tự gate —
+ * `difference` chỉ có giá trị thật sau khi Duyệt). Nhận dữ liệu qua props, không tự gọi API.
  */
-export function StockCountPrintView({ count, clinicHeader }: { count: StockCountDetail; clinicHeader: ClinicPrintHeader }) {
+export function StockCountPrintView({ count }: { count: StockCountDetail }) {
   return (
-    <div className="print-area hidden bg-white p-10 text-slate-900 print:block">
-      <div className="flex items-center gap-4 border-b-2 border-slate-800 pb-3">
-        {clinicHeader.printLogoUrl && <img src={clinicHeader.printLogoUrl} alt="" className="h-16 w-16 object-contain" />}
-        <div>
-          <p className="text-lg font-bold uppercase">{clinicHeader.name}</p>
-          {clinicHeader.address && <p className="text-sm">Địa chỉ: {clinicHeader.address}</p>}
-          {clinicHeader.phone && <p className="text-sm">Điện thoại: {clinicHeader.phone}</p>}
-        </div>
-      </div>
-
-      <h1 className="mt-6 text-center text-2xl font-bold uppercase tracking-wide">Phiếu kiểm kê</h1>
-      <p className="text-center text-sm">
-        Số: <strong>{count.countNo}</strong>
-      </p>
-
-      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+    <PrintDocument
+      documentType="STOCK_COUNT"
+      title="Phiếu kiểm kê"
+      subtitle={
+        <p>
+          Số: <strong>{count.countNo}</strong>
+        </p>
+      }
+      signatures={[{ label: 'Người kiểm kê' }, { label: 'Thủ kho' }, { label: 'Người duyệt', name: count.approvedByName }]}
+    >
+      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
         <p>
           Kho kiểm kê: <strong>{count.warehouseName}</strong>
         </p>
@@ -51,7 +41,7 @@ export function StockCountPrintView({ count, clinicHeader }: { count: StockCount
         </p>
       </div>
 
-      <table className="mt-6 w-full border-collapse text-sm">
+      <table className="mt-6 w-full border-collapse">
         <thead>
           <tr className="border-b-2 border-slate-800 text-left">
             <th className="w-8 py-1.5">#</th>
@@ -79,30 +69,15 @@ export function StockCountPrintView({ count, clinicHeader }: { count: StockCount
       </table>
 
       {count.approvalReason && (
-        <p className="mt-3 text-sm">
+        <p className="mt-3">
           <span className="font-semibold">Lý do chênh lệch:</span> {count.approvalReason}
         </p>
       )}
       {count.note && (
-        <p className="mt-1 text-sm">
+        <p className="mt-1">
           <span className="font-semibold">Ghi chú:</span> {count.note}
         </p>
       )}
-
-      <div className="mt-12 flex justify-between text-center text-sm">
-        <div>
-          <p className="font-semibold">Người kiểm kê</p>
-          <p className="mt-14 text-xs text-slate-500">(Ký, ghi rõ họ tên)</p>
-        </div>
-        <div>
-          <p className="font-semibold">Thủ kho</p>
-          <p className="mt-14 text-xs text-slate-500">(Ký, ghi rõ họ tên)</p>
-        </div>
-        <div>
-          <p className="font-semibold">Người duyệt</p>
-          <p className="mt-14 font-semibold">{count.approvedByName ?? ''}</p>
-        </div>
-      </div>
-    </div>
+    </PrintDocument>
   );
 }

@@ -33,3 +33,4 @@ export * from './audit/entity-type-labels';
 export * from './backup-status';
 export * from './inventory';
 export * from './supplier-debt';
+export * from './print-template';

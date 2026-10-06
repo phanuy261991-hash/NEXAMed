@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Check, MagnifyingGlass, Printer, Trash, Truck, Warning } from '@phosphor-icons/react';
+import { Check, MagnifyingGlass, Trash, Truck, Warning } from '@phosphor-icons/react';
 import type { CreateStockTransferRequest, DrugSummary, ReceiveStockTransferLineInput, StockTransferStatus } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { PrintButton } from '../../shared/print/PrintButton';
 import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -13,7 +14,6 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { getDrugBatchBalances } from './inventory.api';
@@ -96,7 +96,6 @@ export function StockTransferFormPage() {
   const updateMutation = useUpdateStockTransferMutation();
   const shipMutation = useShipStockTransferMutation();
   const receiveMutation = useReceiveStockTransferMutation();
-  const clinicQuery = useClinicPrintHeaderQuery();
 
   const status = transferQuery.data?.status;
   const isDraftEditable = !isEdit || status === 'DRAFT';
@@ -606,10 +605,7 @@ export function StockTransferFormPage() {
         )}
         {isReceiving && (
           <div className="ml-auto flex gap-2">
-            <Button type="button" variant="secondary" onClick={handlePrint}>
-              <Printer size={15} weight="bold" aria-hidden="true" />
-              In phiếu
-            </Button>
+            <PrintButton documentType="STOCK_TRANSFER" onPrint={handlePrint}>In phiếu</PrintButton>
             {canApprove && (
               <Button type="button" loading={receiveMutation.isPending} onClick={() => void handleReceive()}>
                 <Truck size={15} weight="bold" aria-hidden="true" />
@@ -619,14 +615,11 @@ export function StockTransferFormPage() {
           </div>
         )}
         {isPureReadOnly && transferQuery.data?.status === 'COMPLETED' && (
-          <Button type="button" variant="secondary" className="ml-auto" onClick={handlePrint}>
-            <Printer size={15} weight="bold" aria-hidden="true" />
-            In phiếu
-          </Button>
+          <PrintButton documentType="STOCK_TRANSFER" className="ml-auto" onPrint={handlePrint}>In phiếu</PrintButton>
         )}
       </div>
 
-      {printing && transferQuery.data && clinicQuery.data && <StockTransferPrintView transfer={transferQuery.data} clinicHeader={clinicQuery.data} />}
+      {printing && transferQuery.data && <StockTransferPrintView transfer={transferQuery.data} />}
       {isReceiving && (
         <p className="flex-shrink-0 px-1 text-xs text-slate-500">
           Xác nhận là <strong>MỘT LẦN DUY NHẤT</strong> — không nhận nhiều đợt/một phần. Sau khi xác nhận: sinh phiếu Nhập kho tại kho đích đúng SL thực nhận. Phần chênh lệch chỉ ghi vào Nhật ký hoạt

@@ -8,8 +8,8 @@ import { WizardStepper } from '../../shared/ui/WizardStepper';
 import { useHasPermission } from '../auth/usePermission';
 import { CashVoucherFormDialog, type CashVoucherSubmitDto } from '../cash-book/CashVoucherFormDialog';
 import { useCreateCashVoucherMutation } from '../cash-book/cash-voucher.queries';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
-import { CashierShiftReceiptView, computeCashierShiftDiff, computeCashierShiftTotalRevenue, formatDateTimeVn } from './CashierShiftReceiptView';
+import { formatPrintShortDateTime } from '../../shared/format/print-date';
+import { CashierShiftReceiptView, computeCashierShiftDiff, computeCashierShiftTotalRevenue } from './CashierShiftReceiptView';
 import { CloseShiftCountStep, CloseShiftHandoverStep, CloseShiftReconcileStep, CloseShiftRevenueStep } from './CloseShiftSteps';
 import { useCashierShiftBlindCloseEnabledQuery, useCashierShiftSummaryQuery, useCloseCashierShiftMutation } from './cashier-shift.queries';
 
@@ -35,7 +35,6 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
 
   const blindQuery = useCashierShiftBlindCloseEnabledQuery();
   const summaryQuery = useCashierShiftSummaryQuery(shift.id);
-  const clinicHeaderQuery = useClinicPrintHeaderQuery();
   const closeMutation = useCloseCashierShiftMutation(shift.id);
 
   async function handleCreateCashVoucher(dto: CashVoucherSubmitDto) {
@@ -121,8 +120,8 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
                   <div className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3">
                     <ShiftMetaRow label="Ca" value={closedShift.shiftLabel} />
                     <ShiftMetaRow label="Thu ngân" value={closedShift.cashierName} />
-                    <ShiftMetaRow label="Mở ca" value={formatDateTimeVn(closedShift.openedAt)} />
-                    <ShiftMetaRow label="Chốt ca" value={closedShift.closedAt ? formatDateTimeVn(closedShift.closedAt) : '—'} />
+                    <ShiftMetaRow label="Mở ca" value={formatPrintShortDateTime(closedShift.openedAt)} />
+                    <ShiftMetaRow label="Chốt ca" value={closedShift.closedAt ? formatPrintShortDateTime(closedShift.closedAt) : '—'} />
                   </div>
                 </div>
 
@@ -233,7 +232,7 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
         />
       )}
 
-      {receiptOpen && closedShift && clinicHeaderQuery.data && (
+      {receiptOpen && closedShift && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="close-shift-receipt-title">
           <div className="flex max-h-[92vh] w-full max-w-[620px] flex-col rounded-xl bg-white shadow-xl">
             <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-6 pt-6 pb-4">
@@ -245,7 +244,7 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
               </button>
             </div>
             <div className="scroll-hover flex-1 overflow-y-auto px-6 py-5">
-              <CashierShiftReceiptView shift={closedShift} clinicHeader={clinicHeaderQuery.data} onAfterPrint={onClose} />
+              <CashierShiftReceiptView shift={closedShift} onAfterPrint={onClose} />
             </div>
           </div>
         </div>

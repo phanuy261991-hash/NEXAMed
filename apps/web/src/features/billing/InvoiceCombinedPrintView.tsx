@@ -1,10 +1,7 @@
 import type { CombinedInvoicePrintResponse, Invoice, InvoiceStatus } from '@nexamed/shared';
+import { formatPrintDate } from '../../shared/format/print-date';
 import { formatVnd } from '../../shared/format/currency';
-
-function formatPrintDate(iso: string): string {
-  const d = new Date(iso);
-  return `Ngày ${String(d.getDate()).padStart(2, '0')} tháng ${String(d.getMonth() + 1).padStart(2, '0')} năm ${d.getFullYear()}`;
-}
+import { PrintDocument } from '../../shared/print/PrintDocument';
 
 // Trình duyệt mặc định BỎ nền khi in — nhãn "CHƯA THU" nền đen chữ trắng sẽ biến mất nếu không ép.
 const KEEP_BACKGROUND = '[print-color-adjust:exact] [-webkit-print-color-adjust:exact]';
@@ -74,25 +71,16 @@ function InvoiceGroup({ invoice }: { invoice: Invoice }) {
 }
 
 /**
- * Bản in "Phiếu thu tổng hợp" — gộp MỌI phiếu thu chưa huỷ của 1 lượt khám thành 1 tờ (mockup đã
- * duyệt 2026-09-30). Không phải hoá đơn mới: chỉ là cách trình bày lúc in, mỗi nhóm giữ nguyên số
- * phiếu + trạng thái của chính nó. Cùng hạ tầng `.print-area` với `InvoicePrintView` — CHỈ MỘT
- * trong hai được render tại một thời điểm (CSS in đặt mọi `.print-area` ở cùng toạ độ, xem
- * `apps/web/src/app/index.css`), người gọi tự chọn. Nhận dữ liệu qua props, không tự gọi API.
+ * Bản in "Phiếu thu tổng hợp" — gộp MỌI phiếu thu chưa huỷ của 1 lượt khám thành 1 tờ (mockup đã duyệt 2026-09-30).
+ * Không phải hoá đơn mới: chỉ là cách trình bày lúc in, mỗi nhóm giữ nguyên số phiếu + trạng thái của chính nó. Khung/
+ * đầu trang/chữ ký/khổ giấy do `PrintDocument` lo theo bản mẫu `INVOICE_COMBINED` (#211). CHỈ MỘT trong
+ * `InvoicePrintView`/view này được render tại một thời điểm (người gọi tự chọn). Nhận dữ liệu qua props.
  */
 export function InvoiceCombinedPrintView({
-  clinicName,
-  clinicAddress,
-  clinicPhone,
-  printLogoUrl,
   collectedByName,
   paymentMethodName,
   data,
 }: {
-  clinicName: string;
-  clinicAddress: string | null;
-  clinicPhone: string | null;
-  printLogoUrl: string | null;
   collectedByName: string;
   /** Tên hiển thị của mã phương thức (`reference_catalog` PAYMENT_METHOD) — người gọi truyền vào vì component thuần này không tự tra. */
   paymentMethodName: (code: string) => string;
@@ -127,76 +115,66 @@ export function InvoiceCombinedPrintView({
   }
 
   return (
-    <div className="print-area hidden bg-white p-10 text-[13px] text-slate-900 print:block">
-      <div className="flex items-center gap-4 border-b-2 border-slate-800 pb-3">
-        {printLogoUrl && <img src={printLogoUrl} alt="" className="h-16 w-16 object-contain" />}
-        <div>
-          <p className="text-lg font-bold uppercase">{clinicName}</p>
-          {clinicAddress && <p>Địa chỉ: {clinicAddress}</p>}
-          {clinicPhone && <p>Điện thoại: {clinicPhone}</p>}
-        </div>
-      </div>
-
-      <h1 className="mt-4 text-center text-2xl font-bold uppercase tracking-wide">Phiếu thu</h1>
-      <p className="text-center">
-        Số phiếu:{' '}
-        {invoices.map((inv, i) => (
-          <span key={inv.id}>
-            {i > 0 && ' · '}
-            <strong>{inv.invoiceNo}</strong>
-          </span>
-        ))}
-      </p>
-
-      <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1">
+    <PrintDocument
+      documentType="INVOICE_COMBINED"
+      title="Phiếu thu"
+      subtitle={
         <p>
-          Họ tên khách hàng: <strong>{head.fullName}</strong>
-        </p>
-        <p>
-          Mã bệnh nhân: <strong>{head.patientCode}</strong>
-        </p>
-        <p>
-          Mã lượt khám: <strong>{head.encounterNo}</strong>
-        </p>
-        <p>
-          Khoa: <strong>{head.departmentName}</strong>
-        </p>
-      </div>
-
-      {invoices.map((invoice) => (
-        <InvoiceGroup key={invoice.id} invoice={invoice} />
-      ))}
-
-      <div className="mt-3 flex justify-between gap-6 border-t-2 border-slate-800 pt-2">
-        <div className="flex-1 text-xs">
-          {byMethod.size > 0 && (
-            <>
-              <p className="mb-0.5 font-bold">Thanh toán đã ghi nhận</p>
-              {[...byMethod.entries()].map(([method, amount]) => (
-                <p key={method}>
-                  {paymentMethodName(method)}: {formatVnd(amount)}
-                </p>
-              ))}
-            </>
-          )}
-        </div>
-        <div className="flex w-72 flex-col gap-0.5">
-          {summaryRows.map((row) => (
-            <div key={row.label} className={`flex justify-between ${row.strong ? 'mt-1 border-t border-slate-800 pt-1 text-base font-bold' : ''}`}>
-              <span>{row.label}</span>
-              <span className={row.strong ? '' : 'font-semibold'}>{row.value}</span>
-            </div>
+          Số phiếu:{' '}
+          {invoices.map((inv, i) => (
+            <span key={inv.id}>
+              {i > 0 && ' · '}
+              <strong>{inv.invoiceNo}</strong>
+            </span>
           ))}
+        </p>
+      }
+      signatureDateText={formatPrintDate(new Date().toISOString())}
+      signatures={[{ label: 'Người thu', name: collectedByName }]}
+    >
+      <div className="text-[13px]">
+        <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1">
+          <p>
+            Họ tên khách hàng: <strong>{head.fullName}</strong>
+          </p>
+          <p>
+            Mã bệnh nhân: <strong>{head.patientCode}</strong>
+          </p>
+          <p>
+            Mã lượt khám: <strong>{head.encounterNo}</strong>
+          </p>
+          <p>
+            Khoa: <strong>{head.departmentName}</strong>
+          </p>
         </div>
-      </div>
 
-      <div className="mt-8 flex justify-end break-inside-avoid">
-        <div className="text-center">
-          <p>{formatPrintDate(new Date().toISOString())}</p>
-          <p className="mt-1 font-semibold">Người thu</p>
-          <p className="mt-14 font-semibold">{collectedByName}</p>
+        {invoices.map((invoice) => (
+          <InvoiceGroup key={invoice.id} invoice={invoice} />
+        ))}
+
+        <div className="mt-3 flex justify-between gap-6 border-t-2 border-slate-800 pt-2">
+          <div className="flex-1 text-xs">
+            {byMethod.size > 0 && (
+              <>
+                <p className="mb-0.5 font-bold">Thanh toán đã ghi nhận</p>
+                {[...byMethod.entries()].map(([method, amount]) => (
+                  <p key={method}>
+                    {paymentMethodName(method)}: {formatVnd(amount)}
+                  </p>
+                ))}
+              </>
+            )}
+          </div>
+          <div className="flex w-72 flex-col gap-0.5">
+            {summaryRows.map((row) => (
+              <div key={row.label} className={`flex justify-between ${row.strong ? 'mt-1 border-t border-slate-800 pt-1 text-base font-bold' : ''}`}>
+                <span>{row.label}</span>
+                <span className={row.strong ? '' : 'font-semibold'}>{row.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </PrintDocument>
   );
 }

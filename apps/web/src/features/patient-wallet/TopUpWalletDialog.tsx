@@ -7,7 +7,6 @@ import { Combobox } from '../../shared/ui/Combobox';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { formatVnd } from '../../shared/format/currency';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useCashAccountsQuery } from '../cash-book/cash-account.queries';
 import { usePatientQuery } from '../patient/patient.queries';
@@ -37,7 +36,6 @@ export function TopUpWalletDialog({ patientId, defaultAmount, onClose }: { patie
   const walletQuery = useWalletQuery(patientId);
   const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD');
   const cashAccountsQuery = useCashAccountsQuery();
-  const clinicHeaderQuery = useClinicPrintHeaderQuery();
   const topUpMutation = useTopUpWalletMutation();
 
   const paymentMethods = useMemo(() => paymentMethodQuery.data?.items.filter((i) => i.isActive) ?? [], [paymentMethodQuery.data]);
@@ -187,9 +185,8 @@ export function TopUpWalletDialog({ patientId, defaultAmount, onClose }: { patie
             <span className="text-lg font-bold tabular-nums text-emerald-700">{formatVnd(balanceAfterPreview)}</span>
           </div>
 
-          {printing && receipt && patientQuery.data && clinicHeaderQuery.data && (
+          {printing && receipt && patientQuery.data && (
             <WalletReceiptPrintView
-              clinicHeader={clinicHeaderQuery.data}
               voucherNo={receipt.voucherNo}
               occurredAt={receipt.occurredAt}
               patientFullName={patientQuery.data.fullName}

@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle, PencilSimple, Printer, Receipt, Trash, XCircle } from '@phosphor-icons/react';
+import { CheckCircle, PencilSimple, Receipt, Trash, XCircle } from '@phosphor-icons/react';
 import type { CashVoucherStatus } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
+import { PrintButton } from '../../shared/print/PrintButton';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useHasPermission } from '../auth/usePermission';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useCashAccountsQuery } from './cash-account.queries';
 import { CashVoucherFormDialog, type CashVoucherSubmitDto } from './CashVoucherFormDialog';
@@ -54,7 +54,6 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
 
   const voucherQuery = useCashVoucherQuery(voucherId);
   const voucher = voucherQuery.data ?? null;
-  const clinicQuery = useClinicPrintHeaderQuery();
   const incomeExpenseTypeQuery = useReferenceCatalogQuery('INCOME_EXPENSE_TYPE', true);
   const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD', true);
   const cashAccountsQuery = useCashAccountsQuery();
@@ -294,10 +293,9 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
               </div>
             )}
 
-            {printing && clinicQuery.data && (
+            {printing && (
               <CashVoucherPrintView
                 voucher={voucher}
-                clinicHeader={clinicQuery.data}
                 incomeExpenseTypeLabel={incomeExpenseTypeLabel}
                 cashAccountName={cashAccountName}
                 paymentMethodLabel={paymentMethodLabel}
@@ -305,10 +303,9 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
             )}
 
             <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
-              <Button type="button" variant="secondary" onClick={handlePrint} loading={printMutation.isPending}>
-                <Printer size={15} weight="bold" aria-hidden="true" />
+              <PrintButton documentType="CASH_VOUCHER" onPrint={() => void handlePrint()} loading={printMutation.isPending}>
                 In phiếu
-              </Button>
+              </PrintButton>
               {canUpdate && !voucher.voided && voucher.status !== 'REJECTED' && (
                 <>
                   {/* "Sửa" mở `CashVoucherFormDialog` — form đó CHỈ có "Loại thu chi", không có "Quỹ
