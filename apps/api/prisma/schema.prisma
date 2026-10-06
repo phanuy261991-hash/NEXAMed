@@ -99,6 +99,12 @@ model Tenant {
   prescriptionItems           PrescriptionItem[]
   prescriptionTemplates       PrescriptionTemplate[]
   printTemplates              PrintTemplate[]
+  technicalServices           TechnicalService[]
+  technicalServicePrices      TechnicalServicePrice[]
+  labIndicators               LabIndicator[]
+  labIndicatorReferences      LabIndicatorReference[]
+  technicalServiceIndicators  TechnicalServiceIndicator[]
+  resultTemplates             ResultTemplate[]
   icd10PhraseUsages           Icd10PhraseUsage[]
   prescriptionTemplateItems   PrescriptionTemplateItem[]
   patientAllergens            PatientAllergen[]
@@ -461,6 +467,7 @@ model Department {
   // Đích của composite FK (tenant_id, id) từ user_account/encounter/warehouse.
   @@unique([tenantId, id])
   @@map("department")
+  technicalServices TechnicalService[]
 }
 
 model UserAccount {
@@ -701,6 +708,10 @@ enum ReferenceCatalogCategory {
   // (Postgres không cho dùng giá trị enum mới ngay trong cùng transaction với `ADD VALUE`), quản lý
   // thêm/sửa/ẩn qua UI "Danh mục Chuyên môn".
   ICD10_ABBREVIATION
+  // Cận lâm sàng GĐ1 (docs/DECISIONS.md #212) — "Nhóm dịch vụ kỹ thuật" (Huyết học/Sinh hoá/X-quang...,
+  // gom nhóm trên phiếu kết quả) và "Mẫu bệnh phẩm" (Máu EDTA/Nước tiểu...). Không seed cứng, mã tự sinh.
+  TECH_SERVICE_CATEGORY
+  SPECIMEN_TYPE
 
   @@map("reference_catalog_category")
 }
@@ -3661,4 +3672,239 @@ model PrintTemplate {
 
   @@unique([tenantId, id])
   @@map("print_template")
+}
+
+
+// ===== Cận lâm sàng GĐ1 — Danh mục (docs/DECISIONS.md #212) =====
+
+enum TechnicalServiceKind {
+  LAB
+  IMAGING
+  FUNCTIONAL
+
+  @@map("technical_service_kind")
+}
+
+/// Kiểu nhập kết quả: theo chỉ số (xét nghiệm), mô tả + kết luận (CĐHA), hoặc cả hai (thăm dò chức năng).
+enum TechnicalServiceResultType {
+  INDICATORS
+  NARRATIVE
+  BOTH
+
+  @@map("technical_service_result_type")
+}
+
+enum LabIndicatorValueType {
+  NUMBER
+  TEXT
+  CHOICE
+
+  @@map("lab_indicator_value_type")
+}
+
+enum LabReferenceSex {
+  ANY
+  MALE
+  FEMALE
+
+  @@map("lab_reference_sex")
+}
+
+/// Danh mục dịch vụ kỹ thuật cận lâm sàng — TÁCH THEO TENANT (khuôn `drug`), KHÔNG nhét vào
+/// `reference_catalog` (toàn hệ thống) và KHÔNG gộp `EXAM_TYPE` (dịch vụ khám đang chạy thật ở pilot).
+/// `is_performed_in_house=false` = phòng khám không tự làm, chỉ dùng để chỉ định cho bệnh nhân ra ngoài.
+model TechnicalService {
+  id                  String                     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String                     @map("tenant_id") @db.Uuid
+  code                String
+  name                String
+  shortName           String?                    @map("short_name")
+  /// Mã Bộ Y tế — tuỳ chọn, chưa tích hợp cổng nào.
+  nationalCode        String?                    @map("national_code")
+  serviceKind         TechnicalServiceKind       @map("service_kind")
+  /// `reference_catalog` category TECH_SERVICE_CATEGORY (không FK cứng, cùng khuôn `drug.drug_group_code`).
+  categoryCode        String?                    @map("category_code")
+  /// `reference_catalog` category SPECIMEN_TYPE — chỉ có ý nghĩa với LAB.
+  specimenTypeCode    String?                    @map("specimen_type_code")
+  isPerformedInHouse  Boolean                    @default(true) @map("is_performed_in_house")
+  departmentId        String?                    @map("department_id") @db.Uuid
+  turnaroundMinutes   Int?                       @map("turnaround_minutes")
+  resultType          TechnicalServiceResultType @default(INDICATORS) @map("result_type")
+  isActive            Boolean                    @default(true) @map("is_active")
+  sortOrder           Int                        @default(0) @map("sort_order")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant      Tenant                      @relation(fields: [tenantId], references: [id])
+  department  Department?                 @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  prices      TechnicalServicePrice[]
+  indicators  TechnicalServiceIndicator[]
+  templates   ResultTemplate[]
+
+  @@unique([tenantId, id])
+  @@map("technical_service")
+}
+
+/// Đơn giá đa mức của 1 dịch vụ kỹ thuật — đúng khuôn `exam_type_price` (#079): Loại giá × Đơn vị ×
+/// khoảng ngày hiệu lực, C20-style chặn chồng lấn cùng (dịch vụ, loại giá) ở DB.
+model TechnicalServicePrice {
+  id                 String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  technicalServiceId String    @map("technical_service_id") @db.Uuid
+  priceTypeCode      String    @map("price_type_code")
+  unitCode           String    @map("unit_code")
+  amount             BigInt
+  effectiveFrom      DateTime  @map("effective_from") @db.Date
+  effectiveTo        DateTime? @map("effective_to") @db.Date
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant  Tenant           @relation(fields: [tenantId], references: [id])
+  service TechnicalService @relation(fields: [tenantId, technicalServiceId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("technical_service_price")
+}
+
+/// Chỉ số xét nghiệm (HGB, WBC, Glucose...) — dùng chung cho nhiều dịch vụ qua `technical_service_indicator`.
+model LabIndicator {
+  id            String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String                @map("tenant_id") @db.Uuid
+  code          String
+  name          String
+  /// Ký hiệu in trên phiếu ("HGB").
+  abbreviation  String?
+  unit          String?
+  valueType     LabIndicatorValueType @default(NUMBER) @map("value_type")
+  /// Số lẻ thập phân hiển thị — chỉ NUMBER.
+  decimals      Int?                  @db.SmallInt
+  /// Danh sách lựa chọn — chỉ CHOICE (mảng chuỗi, ví dụ ["Âm tính","Dương tính"]).
+  choiceOptions Json?                 @map("choice_options")
+  isActive      Boolean               @default(true) @map("is_active")
+  sortOrder     Int                   @default(0) @map("sort_order")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant     Tenant                      @relation(fields: [tenantId], references: [id])
+  references LabIndicatorReference[]
+  services   TechnicalServiceIndicator[]
+
+  @@unique([tenantId, id])
+  @@map("lab_indicator")
+}
+
+/// Khoảng tham chiếu của chỉ số theo (giới tính × khoảng tuổi NĂM, bao gồm cả hai đầu). Dòng cụ thể
+/// hơn thắng: giới tính cụ thể > ANY, khoảng tuổi hẹp hơn > rộng hơn. Ngưỡng `Float` (KHÔNG phải cột
+/// tiền nên quy tắc cấm numeric/double không áp). `display_text` là chữ IN trên phiếu (ví dụ "< 0.03",
+/// "Âm tính", hoặc nhiều dòng kiểu HbA1c); trống thì tự sinh từ low/high.
+model LabIndicatorReference {
+  id           String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String          @map("tenant_id") @db.Uuid
+  indicatorId  String          @map("indicator_id") @db.Uuid
+  sex          LabReferenceSex @default(ANY)
+  ageFromYears Int             @default(0) @map("age_from_years") @db.SmallInt
+  /// null = không giới hạn trên.
+  ageToYears   Int?            @map("age_to_years") @db.SmallInt
+  lowValue     Float?          @map("low_value")
+  highValue    Float?          @map("high_value")
+  lowInclusive  Boolean        @default(true) @map("low_inclusive")
+  highInclusive Boolean        @default(true) @map("high_inclusive")
+  /// Giá trị "bình thường" dạng chữ — dùng cho chỉ số TEXT/CHOICE (so khớp thay vì so ngưỡng).
+  normalText   String?         @map("normal_text")
+  displayText  String?         @map("display_text")
+  note         String?
+  sortOrder    Int             @default(0) @map("sort_order")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id])
+  indicator LabIndicator @relation(fields: [tenantId, indicatorId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("lab_indicator_reference")
+}
+
+/// Chỉ số nào thuộc dịch vụ xét nghiệm nào, theo thứ tự in. `interpretation_text` = dòng "Diễn giải"
+/// chen dưới chỉ số trên phiếu kết quả (theo phiếu mẫu thật của chủ dự án).
+model TechnicalServiceIndicator {
+  id                 String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String  @map("tenant_id") @db.Uuid
+  technicalServiceId String  @map("technical_service_id") @db.Uuid
+  indicatorId        String  @map("indicator_id") @db.Uuid
+  sortOrder          Int     @default(0) @map("sort_order")
+  interpretationText String? @map("interpretation_text")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id])
+  service   TechnicalService @relation(fields: [tenantId, technicalServiceId], references: [tenantId, id])
+  indicator LabIndicator     @relation(fields: [tenantId, indicatorId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("technical_service_indicator")
+}
+
+/// "Mẫu kết quả" — lời Mô tả/Kết luận điền sẵn, DÙNG CHUNG toàn phòng khám (đúng khuôn
+/// `prescription_template`). KHÔNG chứa giá trị chỉ số xét nghiệm, và không khoá nội dung sau khi chèn.
+model ResultTemplate {
+  id                 String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String  @map("tenant_id") @db.Uuid
+  technicalServiceId String  @map("technical_service_id") @db.Uuid
+  name               String
+  descriptionText    String? @map("description_text")
+  conclusionText     String? @map("conclusion_text")
+  /// Tự điền sẵn khi mở phiếu kết quả — tối đa 1 mẫu mặc định mỗi dịch vụ.
+  isDefault          Boolean @default(false) @map("is_default")
+  isActive           Boolean @default(true) @map("is_active")
+  sortOrder          Int     @default(0) @map("sort_order")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant  Tenant           @relation(fields: [tenantId], references: [id])
+  service TechnicalService @relation(fields: [tenantId, technicalServiceId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("result_template")
 }

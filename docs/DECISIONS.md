@@ -3646,3 +3646,55 @@ Web: `DiagnosisSuggestionPanel.tsx` (thuần trình bày, `forwardRef` `focusFir
 **Điểm lệch so với mockup / chưa làm**: khối khổ giấy chỉ đọc (đổi khổ qua "Thêm bản mẫu"); thêm ô nhập tiêu đề; xem trước Bệnh án là thân minh hoạ; **chưa thử trên máy in nhiệt thật**.
 
 **Đã xác minh thật**: `print-template-http.spec.ts` 20/20, `permission-matrix-enforcement-http.spec.ts`, renderer bệnh án 8/8; `typecheck`/`lint`/`build` sạch. Chrome thật: khổ in đúng (PDF A5 148×210, A5 ngang 210×148, K80 80×297, A4 210×297 mm), popup chọn khổ (mặc định chọn sẵn + Enter, chọn K80, lần sau về mặc định, Esc không in), đổi khổ mặc định rồi khôi phục, nút số liên không còn vỡ chữ, PDF bệnh án phản ánh tiêu đề/ghi chú/header trong mẫu.
+
+## 212 — Cận lâm sàng (Xét nghiệm / CĐHA / Thăm dò chức năng) + Bảng giá có thời hạn: MỞ RỘNG PHẠM VI v1 (06/10/2026)
+
+**Ngày**: 06/10/2026. Chủ dự án yêu cầu trực tiếp: quản lý dịch vụ cận lâm sàng trọn vẹn — danh mục dịch vụ kỹ thuật, chỉ định của bác sĩ, gói dịch vụ, quản lý giá, nhập kết quả kèm chỉ số xét nghiệm có khoảng tham chiếu theo giới tính. Giữa chừng bổ sung yêu cầu **Bảng giá có thời hạn** cho cả dịch vụ lẫn thuốc/vật tư.
+
+**Mở rộng phạm vi**: `docs/product/prd.md` mục "Sau v1" xếp cận lâm sàng (LIS/PACS) vào **v3+**. Quyết định này đưa phần NGHIỆP VỤ của cận lâm sàng vào v1 (nhập kết quả tay), **KHÔNG** gồm tích hợp máy xét nghiệm (LIS) hay PACS — hai thứ đó vẫn v3+. Tiền lệ mở rộng tương tự: Kho Thuốc #146, Công nợ NCC #180.
+
+**Mockup đã duyệt**: Artifact `https://claude.ai/artifact/BPXwUuXzxPYEgnebhQDuN7` — 14 artboard, chủ dự án xác nhận "chốt mockup" sau 4 vòng chỉnh.
+
+### Đã chốt (qua `AskUserQuestion`, 4 đợt)
+
+1. **Bảng mới `technical_service` TÁCH THEO TENANT** (khuôn `drug`), KHÔNG nhét vào `reference_catalog` (bảng đó toàn hệ thống, không chứa được trường đặc thù theo phòng khám) và KHÔNG gộp `EXAM_TYPE` hiện có (tránh migrate dữ liệu đang chạy thật tại pilot). Trường đặc thù: nhóm (LAB/IMAGING/FUNCTIONAL), nhóm con, Khoa/Phòng thực hiện, loại mẫu bệnh phẩm, thời gian trả kết quả, kiểu nhập kết quả.
+2. **Gói dịch vụ**: chọn kiểu giá theo từng gói — **giá cố định** HOẶC **tổng dịch vụ con trừ chiết khấu**. Gói chứa **Dịch vụ khám + Dịch vụ kỹ thuật**, KHÔNG chứa thuốc/vật tư (trừ kho theo lô + cần y lệnh, xem #192/#164).
+3. **Luồng có bước nhận mẫu riêng**: Chỉ định → Thu tiền → **Lấy mẫu / Gọi vào phòng** → Đang thực hiện → Nhập kết quả → Duyệt → Bác sĩ đọc. Giữ công tắc "cho thực hiện trước khi thu tiền" đúng tiền lệ checkbox "Thanh toán sau" #080.
+4. **Khoảng tham chiếu theo (giới tính × khoảng tuổi)**, dòng cụ thể hơn thắng. KHÔNG làm điều kiện thai kỳ (v1 chưa ghi nhận tình trạng này trên hồ sơ bệnh nhân).
+5. **Chỉ định 2 đường — ĐÚNG KHUÔN "Kê thuốc tự do" #192**: *Làm tại phòng khám* (có giá, vào hoá đơn, vào hàng đợi, nhập kết quả) và *Chỉ định ra ngoài* (không giá, không hàng đợi, chỉ in phiếu; cho nhập **tên tự do** ngoài danh mục). Cờ `is_performed_in_house` trên `technical_service` quyết định mặc định rơi vào nhóm nào.
+6. **Mẫu kết quả**: pill thứ 6 trong "Danh mục cận lâm sàng" (master-detail theo dịch vụ), **dùng chung toàn phòng khám** đúng khuôn `prescription_template` (không có mẫu riêng từng bác sĩ). Hai ràng buộc chủ dự án nhấn mạnh: mẫu **không khoá nội dung** (chèn xong sửa thoải mái, không ảnh hưởng mẫu gốc) và **không điền giá trị chỉ số** (mẫu chỉ áp cho lời Nhận xét/Kết luận; từng thông số luôn nhập tay).
+7. **Bảng giá có thời hạn** (`price_list`): mỗi bảng có **độ ưu tiên dạng số, cao thắng**; cho phép chồng lấn có chủ đích (khuyến mại Tết đè lên giá quý). **Một bảng trộn đủ 5 loại** mặt hàng: Dịch vụ khám, Dịch vụ kỹ thuật, Gói dịch vụ, Thuốc, Vật tư y tế. Mỗi dòng chọn **Giảm %** hoặc **Giá mới**, kèm nút áp % hàng loạt. **"Bảng giá chung" = giá nhập trực tiếp trên mặt hàng** (ưu tiên 0, không thời hạn, KHÔNG lưu bản sao) nên mặt hàng mới tự có mặt, không bao giờ lệch hai nguồn giá.
+
+### Bài học từ phiếu kết quả THẬT chủ dự án gửi (`26020695088_vi.pdf`, 5 trang)
+
+Bố cục mockup ban đầu sai nhiều điểm, đã dựng lại theo mẫu thật:
+
+- Bảng **4 cột** (Tên xét nghiệm / Kết quả / Khoảng tham chiếu / Đơn vị) — **không** có cột "Đánh giá" riêng; giá trị bất thường báo bằng **in đậm + gạch chân**, không dùng ký hiệu H/L.
+- Gom **nhóm lĩnh vực** (HUYẾT HỌC, SINH HOÁ, MIỄN DỊCH, NƯỚC TIỂU) → dưới đó là **tên panel in nghiêng** kèm dòng nhỏ ghi bệnh phẩm + máy chạy.
+- Dòng **"Diễn giải"** chen GIỮA bảng (theo panel hoặc theo chỉ số), không phải một ô nhận xét cuối phiếu.
+- **4 mốc thời gian**: Đăng ký / Lấy mẫu / Nhận mẫu / Có kết quả.
+- Header + thông tin bệnh nhân **lặp mọi trang**, đánh số `x/y`, trang cuối có khuyến cáo + "- KẾT THÚC -" + QR tra cứu + chữ ký bác sĩ duyệt.
+
+**Ba điểm buộc đổi thiết kế schema so với dự kiến ban đầu**:
+- **Khoảng tham chiếu phải lưu được cả dạng CHỮ**: mẫu thật có `< 0.03`, `≤ 1`, `Âm tính`, `Bình thường`, và loại nhiều dòng (HbA1c: `Bình thường: < 5.7` / `Tiền tiểu đường: 5.7 - 6.4` / `Tiểu đường: ≥ 6.5`). Mỗi dòng tham chiếu giữ **cả** `low`/`high` số (để tự gắn cờ bất thường) **lẫn** `display_text` (để in); trống `display_text` thì tự sinh từ low–high.
+- **Kết quả không phải lúc nào cũng là số** (`Âm tính`, `Bình thường`, `Vàng nhạt`) → chỉ số khai kiểu giá trị Số / Chữ / Chọn; kiểu chữ so khớp giá trị bình thường thay vì so ngưỡng.
+- **Một chỉ số có thể in hai đơn vị** (Creatinin `µmol/L` + `mg/dL`) — **CHỦ ĐỘNG hoãn**, chỉ để sẵn chỗ, vì cần hệ số quy đổi riêng từng chỉ số.
+
+### Lộ trình 4 giai đoạn
+
+- **GĐ1 — Danh mục**: `technical_service`, `technical_service_price`, `lab_indicator`, `lab_indicator_reference`, bảng nối dịch vụ ↔ chỉ số, `result_template`; danh mục Nhóm dịch vụ / Mẫu bệnh phẩm; trang `/admin/catalog-paraclinical` (thay `ComingSoonPage` đã để sẵn chỗ từ trước).
+- **GĐ2 — Gói + Bảng giá**: `service_package(_item)`, `price_list(_item)`; hàm thuần `resolveEffectivePrice(mặt hàng, ngày)` ở `packages/core` dùng chung cho Tiếp nhận / chỉ định / hoá đơn thuốc. Làm TRƯỚC GĐ3 vì chỉ định cần giá đúng lúc lập hoá đơn.
+- **GĐ3 — Chỉ định**: `clinical_order(_item)` (tại chỗ / ra ngoài / tên tự do, snapshot giá), sinh dòng hoá đơn, in phiếu chỉ định.
+- **GĐ4 — Thực hiện & kết quả**: hàng đợi; `lab_result(_value)`/`imaging_result` là **bản ký** (sửa sau duyệt phải đính chính kèm lý do, đúng khuôn `prescription` #C8); in phiếu kết quả; bác sĩ đọc kết quả ở màn khám + trong bệnh án PDF.
+
+**Rủi ro cao nhất**: GĐ2/GĐ3 chạm luồng tạo hoá đơn ĐANG CHẠY THẬT tại pilot (Tiếp nhận #080 và hoá đơn thuốc #164/#202).
+
+**Menu**: nhóm sidebar mới "Cận lâm sàng" (Hàng đợi / Phiếu chỉ định / Tra cứu kết quả) + mục Quản trị "Bảng giá"; vai trò mặc định mới "Kỹ thuật viên".
+
+**GĐ1 — Danh mục: ĐÃ CODE + TEST + VERIFY Chrome thật (06/10/2026).** 6 bảng mới (migration `20261006100000_paraclinical_catalog_enums` + `20261006100100_paraclinical_catalog`): `technical_service`, `technical_service_price` (exclusion constraint chặn chồng lấn ngày cùng dịch vụ + Loại giá, dùng lại hàm `nexamed_exam_type_price_range` của C20), `lab_indicator`, `lab_indicator_reference`, `technical_service_indicator`, `result_template`; 2 danh mục dùng chung mới `TECH_SERVICE_CATEGORY` (Nhóm dịch vụ) / `SPECIMEN_TYPE` (Mẫu bệnh phẩm). Quyền mới `technical_service.read/create/update` (chỉ `clinic_admin` ghi) và `result_template.read/manage` (bác sĩ + `clinic_admin` quản lý). Mã tự sinh theo loại XN/CD/TD/CS qua `BusinessCodeService` (4 loại mã nghiệp vụ mới, khuôn mặc định `<prefix><yyMM><seq6>`, tenant tự đổi được). Logic thuần ở `packages/core/src/lab/lab-reference.ts` (`selectLabReference`, `evaluateLabValue`, `formatLabReferenceText`) — chọn dòng tham chiếu cụ thể nhất theo (giới tính × tuổi) và **gắn cờ LOW/HIGH/NORMAL/ABNORMAL**, 15 unit test. Web `/admin/catalog-paraclinical` (5 pill: Dịch vụ kỹ thuật / Chỉ số xét nghiệm / Nhóm dịch vụ / Mẫu bệnh phẩm / Mẫu kết quả) dựng bám sát mockup đã chốt.
+
+**Lệch có chủ đích so với mockup GĐ1** (đều do tính năng chưa có backend hoặc cần thiết để nhập đủ dữ liệu): bỏ nút Nhập/Xuất Excel và "Thêm theo nhóm chỉ số" (chưa xây); pill "Gói dịch vụ" ẩn tới GĐ2 (không dựng pill "Sắp có", ui-guidelines mục 10); khoảng tham chiếu thêm bộ chọn `≥/>` `≤/<` cạnh ngưỡng (để biểu diễn "< 0.03") và dòng phụ "Chữ in trên phiếu" (HbA1c nhiều dòng); chưa có ô nhập "Diễn giải" dưới từng chỉ số của dịch vụ (backend đã lưu `interpretation_text`, UI để GĐ4 cùng phiếu in).
+
+**Yêu cầu bổ sung (06/10/2026, chủ dự án) — BẮT BUỘC ở GĐ4**: chỉ số có kết quả **vượt khoảng tham chiếu phải được làm nổi bật** — trên màn nhập kết quả (badge ▲ Cao / ▼ Thấp) **và trên phiếu in kết quả: in ĐẬM + gạch chân giá trị bất thường** (đúng phiếu mẫu thật, mockup 9/9b). Cờ do `evaluateLabValue()` tính, KHÔNG lưu cột riêng — tính lại từ giá trị + khoảng tham chiếu của bệnh nhân lúc hiển thị/in; riêng bản đã duyệt phải **chụp lại khoảng tham chiếu đã dùng** vào dòng kết quả (snapshot) để phiếu in lại sau này không đổi khi danh mục tham chiếu bị sửa.
+
+**Bài học**: `apps/web` không import được GIÁ TRỊ từ `@nexamed/shared` (lặp lại bẫy #211) — nhãn/mặc định đặt ở `features/paraclinical/paraclinical-labels.ts` với `as const satisfies Record<Kind, ...>` để typecheck bắt lệch khoá. Permission mới cần `db:seed` **và khởi động lại API** (đồng bộ `role_permission` chạy lúc startup) trước khi tài khoản đang có thấy được.

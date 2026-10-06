@@ -43,4 +43,7 @@ export const REFERENCE_CATALOG_SHORT_CODE_PREFIXES: Partial<Record<ReferenceCata
   COUNTRY_OF_ORIGIN: 'QG',
   STORAGE_LOCATION: 'VT',
   DRUG_USAGE_TIMING: 'TD',
+  // Cận lâm sàng GĐ1 (docs/DECISIONS.md #212) — Nhóm dịch vụ kỹ thuật / Mẫu bệnh phẩm.
+  TECH_SERVICE_CATEGORY: 'NK',
+  SPECIMEN_TYPE: 'MB',
 };

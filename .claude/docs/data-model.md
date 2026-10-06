@@ -306,6 +306,10 @@ Quyền: `supplier`/`warehouse` dùng lại `drug.read`/`drug.manage` (không pe
 
 Bản mẫu in theo (chứng từ × khổ giấy). Cột đặc thù: `document_type`, `paper_size`, `name`, `is_default`, `config jsonb` (validate bằng `printTemplateConfigSchema` ở `packages/shared`; hỏng thì rơi về mặc định theo khổ). Partial unique `(tenant_id, document_type, paper_size)` và đúng một `is_default` mỗi `(tenant_id, document_type)`, đều `WHERE deleted_at IS NULL`. Chưa có dòng → API trả "bản dựng sẵn" (không lưu DB). Xoá = soft delete, không xoá được bản mặc định khi còn bản khác.
 
+### technical_service / lab_indicator / result_template (Cận lâm sàng GĐ1, `docs/DECISIONS.md` #212)
+
+6 bảng THEO TENANT, đủ 8 cột bắt buộc + RLS. `technical_service` (dịch vụ kỹ thuật, mã tự sinh theo loại) + `technical_service_price` (đơn giá đa mức, exclusion constraint chặn chồng lấn ngày cùng dịch vụ + Loại giá — khuôn `exam_type_price`); `lab_indicator` + `lab_indicator_reference` (khoảng tham chiếu theo giới tính × tuổi NĂM; ngưỡng `DOUBLE PRECISION` vì không phải cột tiền; `display_text` là chữ in); `technical_service_indicator` (nối dịch vụ ↔ chỉ số, kèm `interpretation_text`); `result_template` (mẫu Mô tả/Kết luận dùng chung, tối đa 1 mặc định/dịch vụ). Đơn giá/chỉ số/khoảng tham chiếu quản lý bằng **bulk-replace** (xoá mềm rồi tạo lại trong cùng transaction) — gửi mảng = thay TOÀN BỘ, bỏ trống = không đụng.
+
 Sơ đồ quan hệ đầy đủ và ràng buộc DB xem `ERD.md` ở thư mục gốc.
 
 ## Chỗ để sẵn cho v2

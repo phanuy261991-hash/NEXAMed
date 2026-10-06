@@ -326,6 +326,21 @@ import {
   finalizeSupplierDebtReconciliationRequestSchema,
   supplierDebtReconciliationSchema,
   listSupplierDebtReconciliationsResponseSchema,
+  createLabIndicatorRequestSchema,
+  createResultTemplateRequestSchema,
+  createTechnicalServiceRequestSchema,
+  labIndicatorDetailSchema,
+  listLabIndicatorsQuerySchema,
+  listLabIndicatorsResponseSchema,
+  listResultTemplatesQuerySchema,
+  listResultTemplatesResponseSchema,
+  listTechnicalServicesQuerySchema,
+  listTechnicalServicesResponseSchema,
+  resultTemplateItemSchema,
+  technicalServiceDetailSchema,
+  updateLabIndicatorRequestSchema,
+  updateResultTemplateRequestSchema,
+  updateTechnicalServiceRequestSchema,
 } from '@nexamed/shared';
 
 /**
@@ -4416,6 +4431,186 @@ registry.registerPath({
     403: errorResponse('Không có quyền supplier_debt.approve'),
     404: errorResponse('Không tìm thấy biên bản'),
     409: errorResponse('Biên bản chưa sẵn sàng Chốt (phiếu điều chỉnh chưa Duyệt xong, hoặc biên bản không còn DRAFT) — SUPPLIER_DEBT_RECONCILIATION_NOT_READY'),
+  },
+});
+
+// ===== Cận lâm sàng GĐ1 — Danh mục (docs/DECISIONS.md #212) =====
+
+const technicalServiceIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/technical-services',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — liệt kê dịch vụ kỹ thuật (lọc loại/nhóm/tự làm-ra ngoài, tìm tên-mã-viết tắt) kèm đếm theo loại',
+  security: [{ bearerAuth: [] }],
+  request: { query: listTechnicalServicesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listTechnicalServicesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền technical_service.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/technical-services/{id}',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — chi tiết dịch vụ kỹ thuật kèm đơn giá đa mức và chỉ số',
+  security: [{ bearerAuth: [] }],
+  request: { params: technicalServiceIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(technicalServiceDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền technical_service.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/technical-services',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — tạo dịch vụ kỹ thuật, mã tự sinh theo loại (XN/CD/TD), kèm đơn giá + chỉ số',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createTechnicalServiceRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(technicalServiceDetailSchema)),
+    400: errorResponse('Khoa/Phòng hoặc chỉ số không tồn tại / chỉ số trùng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền technical_service.create'),
+    409: errorResponse('Đơn giá cùng Loại giá chồng lấn ngày hiệu lực (TECHNICAL_SERVICE_PRICE_OVERLAP)'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/technical-services/{id}',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — sửa/ẩn dịch vụ kỹ thuật, bắt buộc kèm version; gửi prices/indicators = thay TOÀN BỘ',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: technicalServiceIdParams,
+    body: { content: { 'application/json': { schema: updateTechnicalServiceRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(technicalServiceDetailSchema)),
+    400: errorResponse('Khoa/Phòng hoặc chỉ số không tồn tại / chỉ số trùng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền technical_service.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION) hoặc đơn giá chồng lấn'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-indicators',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — liệt kê chỉ số xét nghiệm (tìm tên/mã/ký hiệu)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listLabIndicatorsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listLabIndicatorsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền technical_service.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-indicators/{id}',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — chi tiết chỉ số xét nghiệm kèm khoảng tham chiếu theo giới tính × tuổi',
+  security: [{ bearerAuth: [] }],
+  request: { params: technicalServiceIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(labIndicatorDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền technical_service.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/lab-indicators',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — tạo chỉ số xét nghiệm, mã tự sinh (CS), kèm khoảng tham chiếu',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createLabIndicatorRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(labIndicatorDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền technical_service.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/lab-indicators/{id}',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — sửa/ẩn chỉ số xét nghiệm, bắt buộc kèm version; gửi references = thay TOÀN BỘ',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: technicalServiceIdParams,
+    body: { content: { 'application/json': { schema: updateLabIndicatorRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(labIndicatorDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền technical_service.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp, hoặc đổi Kiểu giá trị khi chỉ số đang dùng trong dịch vụ (LAB_INDICATOR_VALUE_TYPE_LOCKED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/result-templates',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — liệt kê mẫu kết quả (lọc theo dịch vụ), dùng chung toàn tenant',
+  security: [{ bearerAuth: [] }],
+  request: { query: listResultTemplatesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listResultTemplatesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền result_template.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/result-templates',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — tạo mẫu kết quả cho 1 dịch vụ (chỉ lời Mô tả/Kết luận, không giá trị chỉ số)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createResultTemplateRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(resultTemplateItemSchema)),
+    400: errorResponse('Dịch vụ không tồn tại / mẫu rỗng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền result_template.manage'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/result-templates/{id}',
+  tags: ['technical-service'],
+  summary: 'Cận lâm sàng GĐ1 — sửa/ẩn/đặt mặc định mẫu kết quả, bắt buộc kèm version',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: technicalServiceIdParams,
+    body: { content: { 'application/json': { schema: updateResultTemplateRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(resultTemplateItemSchema)),
+    400: errorResponse('Mẫu rỗng sau khi sửa'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền result_template.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
   },
 });
 

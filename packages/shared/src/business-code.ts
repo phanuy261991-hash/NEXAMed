@@ -45,6 +45,10 @@ export const businessCodeTypeSchema = z.enum([
   'SUPPLIER_DEBT_ADJUSTMENT',
   'SUPPLIER_DEBT_RECONCILIATION',
   'INVOICE_REFUND',
+  'TECH_SERVICE_LAB',
+  'TECH_SERVICE_IMAGING',
+  'TECH_SERVICE_FUNCTIONAL',
+  'LAB_INDICATOR',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -94,6 +98,12 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, { label: stri
   // Hoàn tiền MỘT PHẦN theo dòng thuốc (docs/DECISIONS.md #203) — "Phiếu hoàn tiền", không trùng tiền
   // tố nào đã dùng ở trên.
   INVOICE_REFUND: { label: 'Mã phiếu hoàn tiền', internalPrefix: 'PHT' },
+  // Cận lâm sàng GĐ1 (docs/DECISIONS.md #212) — mã dịch vụ kỹ thuật theo loại (XN/CD/TD) và chỉ số xét
+  // nghiệm (CS). Không trùng tiền tố nào đã dùng ở trên.
+  TECH_SERVICE_LAB: { label: 'Mã dịch vụ xét nghiệm', internalPrefix: 'XN' },
+  TECH_SERVICE_IMAGING: { label: 'Mã dịch vụ chẩn đoán hình ảnh', internalPrefix: 'CD' },
+  TECH_SERVICE_FUNCTIONAL: { label: 'Mã dịch vụ thăm dò chức năng', internalPrefix: 'TD' },
+  LAB_INDICATOR: { label: 'Mã chỉ số xét nghiệm', internalPrefix: 'CS' },
 };
 
 export const DEFAULT_BUSINESS_CODE_COUNTER_DIGITS = 6;

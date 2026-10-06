@@ -123,6 +123,12 @@ const ACTION_LABELS: Record<string, string> = {
   'print_template.updated': 'Sửa bản mẫu in',
   'print_template.deleted': 'Xoá bản mẫu in',
   'print_template.quick_setup': 'Thiết lập nhanh mẫu in',
+  'technical_service.created': 'Thêm dịch vụ kỹ thuật',
+  'technical_service.updated': 'Sửa dịch vụ kỹ thuật',
+  'lab_indicator.created': 'Thêm chỉ số xét nghiệm',
+  'lab_indicator.updated': 'Sửa chỉ số xét nghiệm',
+  'result_template.created': 'Thêm mẫu kết quả',
+  'result_template.updated': 'Sửa mẫu kết quả',
 
   // doctor-room-session / break-glass
   'doctor_room_session.set': 'Chọn phòng làm việc',

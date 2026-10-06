@@ -1,14 +1,12 @@
 import { lazy } from 'react';
-import { Flask } from '@phosphor-icons/react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { RequireAnyPermissionRoute, RequireDoctorQueueRoute, RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS } from '../features/auth/admin-permissions';
+import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS } from '../features/auth/admin-permissions';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { AppShell } from '../shared/layout/AppShell';
-import { ComingSoonPage } from '../shared/ui/ComingSoonPage';
 import { NotFoundPage } from './NotFoundPage';
 
 /**
@@ -100,6 +98,9 @@ const StockLedgerReportPage = lazy(() => import('../features/inventory/StockLedg
 // Nhóm Quản trị — chỉ `clinic_admin` dùng tới; lễ tân/điều dưỡng/bác sĩ không bao giờ tải các
 // chunk này (gồm cả trang tra cứu ICD-10 và toàn bộ màn hình danh mục).
 const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage').then((m) => ({ default: m.CatalogAdminPage })));
+const CatalogParaclinicalPage = lazy(() =>
+  import('../features/paraclinical/CatalogParaclinicalPage').then((m) => ({ default: m.CatalogParaclinicalPage })),
+);
 const CatalogClinicalPage = lazy(() =>
   import('../features/catalog-clinical/CatalogClinicalPage').then((m) => ({ default: m.CatalogClinicalPage })),
 );
@@ -210,12 +211,8 @@ export const router = createBrowserRouter([
       {
         path: 'admin/catalog-paraclinical',
         element: (
-          <RequireAnyPermissionRoute permissions={ADMIN_ANY_PERMISSIONS}>
-            <ComingSoonPage
-              pageTitle="Danh mục Cận lâm sàng"
-              icon={Flask}
-              description="Danh mục xét nghiệm, chẩn đoán hình ảnh sẽ quản lý được ở đây khi module tương ứng ra đời."
-            />
+          <RequireAnyPermissionRoute permissions={PARACLINICAL_CATALOG_PERMISSIONS}>
+            <CatalogParaclinicalPage />
           </RequireAnyPermissionRoute>
         ),
       },
