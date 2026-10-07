@@ -39,6 +39,11 @@ export const paraclinicalQueueRowSchema = z.object({
   gender: z.enum(['male', 'female', 'other']).nullable(),
   serviceKind: technicalServiceKindSchema,
   serviceNames: z.array(z.string()),
+  /** Tên Mẫu bệnh phẩm / Nhóm dịch vụ của các dịch vụ trong dòng (không trùng) — cột "Mẫu bệnh phẩm" và bộ lọc ở hàng đợi Xét nghiệm. */
+  specimenNames: z.array(z.string()),
+  categoryNames: z.array(z.string()),
+  /** Kết quả của dòng này là BẢN ĐÍNH CHÍNH (đang soạn lại hoặc đã duyệt lại) — hàng đợi hiện chip "Đính chính". */
+  isAmendment: z.boolean(),
   departmentId: z.string().uuid().nullable(),
   departmentName: z.string().nullable(),
   bucket: paraclinicalQueueBucketSchema,
@@ -144,6 +149,14 @@ export type ParaclinicalResultSection = z.infer<typeof paraclinicalResultSection
 export const paraclinicalApproverSchema = z.object({ id: z.string().uuid(), fullName: z.string() });
 export type ParaclinicalApprover = z.infer<typeof paraclinicalApproverSchema>;
 
+/** Thông tin đính chính của kết quả đang xem (bản đang soạn lại hoặc bản đính chính đã duyệt). Bản gốc đã ký được giữ nguyên trong DB, không xoá. */
+export const paraclinicalAmendmentInfoSchema = z.object({
+  reason: z.string(),
+  originalSignedAt: z.string().nullable(),
+  originalSignedByName: z.string().nullable(),
+});
+export type ParaclinicalAmendmentInfo = z.infer<typeof paraclinicalAmendmentInfoSchema>;
+
 export const paraclinicalResultFormSchema = z.object({
   orderNo: z.string(),
   encounterId: z.string().uuid(),
@@ -169,6 +182,8 @@ export const paraclinicalResultFormSchema = z.object({
   approvers: z.array(paraclinicalApproverSchema),
   signedAt: z.string().nullable(),
   signedByName: z.string().nullable(),
+  /** `null` = kết quả gốc; có giá trị = bản đính chính. */
+  amendment: paraclinicalAmendmentInfoSchema.nullable(),
 });
 export type ParaclinicalResultForm = z.infer<typeof paraclinicalResultFormSchema>;
 
@@ -197,6 +212,15 @@ export const saveParaclinicalResultRequestSchema = z.object({
   submit: z.boolean().default(false),
 });
 export type SaveParaclinicalResultRequest = z.infer<typeof saveParaclinicalResultRequestSchema>;
+
+/**
+ * Đính chính kết quả ĐÃ DUYỆT (docs/DECISIONS.md #215): người có quyền Nhập của nhóm đề nghị, bắt buộc kèm lý do (Thông tư 46/2018/TT-BYT); kết quả quay lại
+ * "Đang thực hiện" để sửa rồi gửi duyệt, bác sĩ có quyền Duyệt ký lại. Bản gốc được giữ nguyên (không xoá) và khôi phục được nếu huỷ đính chính.
+ */
+export const amendParaclinicalResultRequestSchema = z.object({
+  reason: z.string().trim().min(5, 'Nhập lý do đính chính (ít nhất 5 ký tự).').max(500),
+});
+export type AmendParaclinicalResultRequest = z.infer<typeof amendParaclinicalResultRequestSchema>;
 
 export const getParaclinicalResultResponseSchema = z.object({ form: paraclinicalResultFormSchema });
 export type GetParaclinicalResultResponse = z.infer<typeof getParaclinicalResultResponseSchema>;

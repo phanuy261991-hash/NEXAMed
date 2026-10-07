@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check as CheckIcon } from '@phosphor-icons/react';
 import type { PrintPaperInfo, PrintTemplateConfig } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
+import { Textarea } from '../../shared/ui/Textarea';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -84,6 +85,7 @@ export function PrintTemplateConfigPanel({
   config,
   onConfigChange,
   defaultTitle,
+  notice,
   disabled,
   isDefault,
   onSetDefault,
@@ -94,12 +96,18 @@ export function PrintTemplateConfigPanel({
   config: PrintTemplateConfig;
   onConfigChange: (config: PrintTemplateConfig) => void;
   defaultTitle: string;
+  /** Khối khuyến cáo mặc định của chứng từ; `null` = chứng từ không có khối này (không hiện mục cấu hình). */
+  notice: { title: string; defaultText: string } | null;
   disabled: boolean;
   /** Bản mẫu này đang là khổ in mặc định của chứng từ. */
   isDefault: boolean;
   /** Đặt bản này làm khổ in mặc định; `null` = chưa đặt được (bản dựng sẵn chưa lưu, hoặc còn thay đổi chưa lưu). */
   onSetDefault: (() => void) | null;
 }) {
+  const currentNotice = config.notice ?? (notice ? { show: true, title: notice.title, text: notice.defaultText } : undefined);
+  const setNotice = (patch: Partial<NonNullable<PrintTemplateConfig['notice']>>) => {
+    if (currentNotice) onConfigChange({ ...config, notice: { ...currentNotice, ...patch } });
+  };
   const setHeader = (key: HeaderKey, value: boolean) => onConfigChange({ ...config, header: { ...config.header, [key]: value } });
   const setMargin = (key: MarginKey, value: number) => onConfigChange({ ...config, margins: { ...config.margins, [key]: value } });
   const setCopyCount = (count: number) => onConfigChange({ ...config, copies: { ...config.copies, count } });
@@ -166,6 +174,36 @@ export function PrintTemplateConfigPanel({
           className={inputClassName}
         />
       </Block>
+
+      {notice && currentNotice && (
+        <Block title="Khuyến cáo (in sau bảng kết quả)">
+          <Check id="pt-notice-show" label="In khối khuyến cáo" checked={currentNotice.show} onChange={(v) => setNotice({ show: v })} />
+          {currentNotice.show && (
+            <div className="mt-3 flex flex-col gap-3">
+              <div>
+                <label htmlFor="pt-notice-title" className="mb-1 block text-sm font-semibold text-slate-800">
+                  Tiêu đề khối
+                </label>
+                <input id="pt-notice-title" value={currentNotice.title} onChange={(e) => setNotice({ title: e.target.value })} maxLength={60} className={inputClassName} />
+              </div>
+              <Textarea
+                id="pt-notice-text"
+                label="Nội dung (mỗi dòng là một ý)"
+                dense
+                rows={6}
+                maxLength={1000}
+                value={currentNotice.text}
+                onChange={(e) => setNotice({ text: e.target.value })}
+              />
+              <div>
+                <Button type="button" variant="secondary" className="h-8 px-2.5 text-xs" onClick={() => setNotice({ title: notice.title, text: notice.defaultText })}>
+                  Khôi phục nội dung mặc định
+                </Button>
+              </div>
+            </div>
+          )}
+        </Block>
+      )}
 
       <Block title="Cuối trang & chữ ký">
         <label htmlFor="pt-note" className="mb-1 block text-sm font-semibold text-slate-800">

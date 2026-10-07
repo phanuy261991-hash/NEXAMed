@@ -388,6 +388,8 @@ export class ClinicalOrderService {
       placeName: i.technicalService?.department?.name ?? null,
       note: i.note,
       status: i.status,
+      resultReturnedAt: i.results[0]?.signedAt?.toISOString() ?? null,
+      amendmentPending: i.results[0] !== undefined && i.results[0].supersedesId !== null && i.results[0].signedAt === null,
       editable: i.status === 'ORDERED' && (i.clinicalOrderPackageId === null ? unpaid(invoiceOfItem.get(i.id)) : unpaid(invoiceOfPackage.get(i.clinicalOrderPackageId))),
     }));
     const packages: ClinicalOrderPackageView[] = order.packages.map((p) => ({

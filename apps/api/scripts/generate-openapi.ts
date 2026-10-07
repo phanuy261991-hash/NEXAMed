@@ -100,6 +100,9 @@ import {
   listBusinessCodeTemplatesResponseSchema,
   updateBusinessCodeTemplateRequestSchema,
   backupStatusResponseSchema,
+  backupConfigResponseSchema,
+  backupRunRequestResponseSchema,
+  updateBackupConfigRequestSchema,
   clinicProfileSchema,
   clinicSettingsSchema,
   clinicalNoteResponseSchema,
@@ -362,6 +365,7 @@ import {
   getParaclinicalResultResponseSchema,
   itemsByGroupsRequestSchema,
   listPriceableGroupsResponseSchema,
+  amendParaclinicalResultRequestSchema,
   listParaclinicalQueueQuerySchema,
   listParaclinicalQueueResponseSchema,
   saveParaclinicalResultRequestSchema,
@@ -2234,6 +2238,49 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(backupStatusResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/backup-config',
+  tags: ['clinic'],
+  summary: 'Cấu hình sao lưu dữ liệu (#217) — bật/tắt, giờ chạy (giờ VN), số ngày giữ, thư mục đích (chỉ hiển thị), yêu cầu "Sao lưu ngay" đang chờ. `available=false` ở máy không có container sao lưu',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(backupConfigResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền system_backup.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/backup-config',
+  tags: ['clinic'],
+  summary: 'Sửa cấu hình sao lưu dữ liệu — ghi file cấu hình cho container sao lưu đọc lại (không cần khởi động lại); ghi audit trước/sau',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: updateBackupConfigRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(backupConfigResponseSchema)),
+    400: errorResponse('Giờ ngoài 0-23 hoặc số ngày giữ ngoài 1-365'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền system_backup.manage'),
+    409: errorResponse('Máy này không chạy dịch vụ sao lưu (BACKUP_NOT_AVAILABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/backup-config/run-now',
+  tags: ['clinic'],
+  summary: '"Sao lưu ngay" — gửi yêu cầu cho container sao lưu (nhận trong vài chục giây); ghi audit',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Đã gửi yêu cầu', envelope(backupRunRequestResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền system_backup.manage'),
+    409: errorResponse('Máy này không chạy dịch vụ sao lưu (BACKUP_NOT_AVAILABLE)'),
   },
 });
 
@@ -4870,139 +4917,182 @@ registry.registerPath({
 // ---------------------------------------------------------------------------------------------
 const paraclinicalItemParams = z.object({ itemId: z.string().uuid() });
 
-registry.registerPath({
-  method: 'get',
-  path: '/api/v1/paraclinical/queue',
-  tags: ['paraclinical-result'],
-  summary:
-    'Cận lâm sàng GĐ4 — hàng đợi (xét nghiệm cùng phiếu + cùng trạng thái gộp 1 dòng; mỗi CĐHA/thăm dò 1 dòng) kèm số dòng từng tab. Việc chưa xong lấy mọi ngày; "Đã trả kết quả" chỉ lấy ngày đang xem',
-  security: [{ bearerAuth: [] }],
-  request: { query: listParaclinicalQueueQuerySchema },
-  responses: {
-    200: jsonResponse('Thành công', envelope(listParaclinicalQueueResponseSchema)),
-    400: errorResponse('Tham số sai định dạng'),
-    401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền paraclinical_result.read'),
-  },
-});
+// Tách 2 menu (docs/DECISIONS.md #215): mỗi nhóm có đường dẫn + quyền riêng — Xét nghiệm `lab_result.*`, CĐHA & Thăm dò chức năng `imaging_result.*`.
+const paraclinicalOpenApiGroups = [
+  { key: 'lab', module: 'lab_result' },
+  { key: 'imaging', module: 'imaging_result' },
+] as const;
 
-registry.registerPath({
-  method: 'post',
-  path: '/api/v1/paraclinical/start',
-  tags: ['paraclinical-result'],
-  summary: 'Cận lâm sàng GĐ4 — "Lấy mẫu" / "Gọi vào phòng": các dòng cùng phiếu chuyển ORDERED → IN_PROGRESS. Chưa thu tiền thì chặn trừ khi phòng khám bật "thực hiện trước khi thu tiền"',
-  security: [{ bearerAuth: [] }],
-  request: { body: { content: { 'application/json': { schema: startParaclinicalItemsRequestSchema } } } },
-  responses: {
-    200: jsonResponse('Thành công', envelope(startParaclinicalItemsResponseSchema)),
-    400: errorResponse('Dữ liệu sai'),
-    401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền paraclinical_result.enter'),
-    404: errorResponse('Dòng chỉ định không tồn tại hoặc thuộc tenant khác'),
-    409: errorResponse('Dòng không ở trạng thái chờ lấy mẫu (PARACLINICAL_ITEM_INVALID_STATE), lượt khám đã huỷ hoặc chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED)'),
-  },
-});
+for (const g of paraclinicalOpenApiGroups) {
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/paraclinical/${g.key}/queue`,
+    tags: ['paraclinical-result'],
+    summary:
+      'Cận lâm sàng GĐ4 — hàng đợi (xét nghiệm cùng phiếu + cùng trạng thái gộp 1 dòng; mỗi CĐHA/thăm dò 1 dòng) kèm số dòng từng tab. Việc chưa xong lấy mọi ngày; "Đã trả kết quả" chỉ lấy ngày đang xem',
+    security: [{ bearerAuth: [] }],
+    request: { query: listParaclinicalQueueQuerySchema },
+    responses: {
+      200: jsonResponse('Thành công', envelope(listParaclinicalQueueResponseSchema)),
+      400: errorResponse('Tham số sai định dạng'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.read`),
+    },
+  });
 
-registry.registerPath({
-  method: 'get',
-  path: '/api/v1/paraclinical/items/{itemId}/result',
-  tags: ['paraclinical-result'],
-  summary: 'Cận lâm sàng GĐ4 — màn nhập/xem kết quả của một dòng chỉ định (xét nghiệm cùng nhóm hiện chung 1 màn): chỉ số + khoảng tham chiếu theo giới tính/tuổi + cờ Cao/Thấp. Ghi audit "xem"',
-  security: [{ bearerAuth: [] }],
-  request: { params: paraclinicalItemParams },
-  responses: {
-    200: jsonResponse('Thành công', envelope(getParaclinicalResultResponseSchema)),
-    401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền paraclinical_result.read'),
-    404: errorResponse('Không tìm thấy dòng chỉ định'),
-    409: errorResponse('Chưa lấy mẫu / gọi vào phòng'),
-  },
-});
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/start`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng GĐ4 — "Lấy mẫu" / "Gọi vào phòng": các dòng cùng phiếu chuyển ORDERED → IN_PROGRESS. Chưa thu tiền thì chặn trừ khi phòng khám bật "thực hiện trước khi thu tiền"',
+    security: [{ bearerAuth: [] }],
+    request: { body: { content: { 'application/json': { schema: startParaclinicalItemsRequestSchema } } } },
+    responses: {
+      200: jsonResponse('Thành công', envelope(startParaclinicalItemsResponseSchema)),
+      400: errorResponse('Dữ liệu sai'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.enter`),
+      404: errorResponse('Dòng chỉ định không tồn tại hoặc thuộc tenant khác'),
+      409: errorResponse('Dòng không ở trạng thái chờ lấy mẫu (PARACLINICAL_ITEM_INVALID_STATE), lượt khám đã huỷ hoặc chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED)'),
+    },
+  });
 
-registry.registerPath({
-  method: 'put',
-  path: '/api/v1/paraclinical/items/{itemId}/result',
-  tags: ['paraclinical-result'],
-  summary: 'Cận lâm sàng GĐ4 — lưu nháp kết quả, hoặc gửi duyệt khi submit=true (phải đủ chỉ số / mô tả + kết luận). Kết quả đã duyệt không sửa trực tiếp',
-  security: [{ bearerAuth: [] }],
-  request: { params: paraclinicalItemParams, body: { content: { 'application/json': { schema: saveParaclinicalResultRequestSchema } } } },
-  responses: {
-    200: jsonResponse('Lưu thành công', envelope(getParaclinicalResultResponseSchema)),
-    400: errorResponse('Dữ liệu sai'),
-    401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền paraclinical_result.enter'),
-    404: errorResponse('Không tìm thấy dòng chỉ định'),
-    409: errorResponse('Chưa lấy mẫu, đã duyệt (bản ký) hoặc lượt khám đã huỷ (PARACLINICAL_ITEM_INVALID_STATE)'),
-    422: errorResponse('Kết quả chưa đủ hoặc giá trị không hợp lệ (PARACLINICAL_RESULT_INCOMPLETE)'),
-  },
-});
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng GĐ4 — màn nhập/xem kết quả của một dòng chỉ định (xét nghiệm cùng nhóm hiện chung 1 màn): chỉ số + khoảng tham chiếu theo giới tính/tuổi + cờ Cao/Thấp. Ghi audit "xem"',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams },
+    responses: {
+      200: jsonResponse('Thành công', envelope(getParaclinicalResultResponseSchema)),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.read`),
+      404: errorResponse('Không tìm thấy dòng chỉ định'),
+      409: errorResponse('Chưa lấy mẫu / gọi vào phòng'),
+    },
+  });
 
-registry.registerPath({
-  method: 'post',
-  path: '/api/v1/paraclinical/items/{itemId}/result/approve',
-  tags: ['paraclinical-result'],
-  summary: 'Cận lâm sàng GĐ4 — "Duyệt & trả kết quả" (ký): lưu nội dung gửi kèm, kiểm đủ rồi ký mọi kết quả của nhóm trong cùng transaction; sau đó là bản ký bất biến',
-  security: [{ bearerAuth: [] }],
-  request: { params: paraclinicalItemParams, body: { content: { 'application/json': { schema: saveParaclinicalResultRequestSchema } } } },
-  responses: {
-    200: jsonResponse('Duyệt thành công', envelope(getParaclinicalResultResponseSchema)),
-    400: errorResponse('Dữ liệu sai'),
-    401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền paraclinical_result.approve'),
-    404: errorResponse('Không tìm thấy dòng chỉ định'),
-    409: errorResponse('Đã duyệt trước đó, chưa lấy mẫu hoặc lượt khám đã huỷ (PARACLINICAL_ITEM_INVALID_STATE)'),
-    422: errorResponse('Kết quả chưa đủ hoặc giá trị không hợp lệ (PARACLINICAL_RESULT_INCOMPLETE)'),
-  },
-});
+  registry.registerPath({
+    method: 'put',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng GĐ4 — lưu nháp kết quả, hoặc gửi duyệt khi submit=true (phải đủ chỉ số / mô tả + kết luận). Kết quả đã duyệt không sửa trực tiếp',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams, body: { content: { 'application/json': { schema: saveParaclinicalResultRequestSchema } } } },
+    responses: {
+      200: jsonResponse('Lưu thành công', envelope(getParaclinicalResultResponseSchema)),
+      400: errorResponse('Dữ liệu sai'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.enter`),
+      404: errorResponse('Không tìm thấy dòng chỉ định'),
+      409: errorResponse('Chưa lấy mẫu, đã duyệt (bản ký) hoặc lượt khám đã huỷ (PARACLINICAL_ITEM_INVALID_STATE)'),
+      422: errorResponse('Kết quả chưa đủ hoặc giá trị không hợp lệ (PARACLINICAL_RESULT_INCOMPLETE)'),
+    },
+  });
 
-registry.registerPath({
-  method: 'post',
-  path: '/api/v1/paraclinical/items/{itemId}/result/print',
-  tags: ['paraclinical-result'],
-  summary: 'Cận lâm sàng GĐ4 — ghi audit mỗi lần in phiếu kết quả (web tự dựng bản in từ dữ liệu đã tải)',
-  security: [{ bearerAuth: [] }],
-  request: { params: paraclinicalItemParams },
-  responses: {
-    200: jsonResponse('Đã ghi audit', envelope(z.object({ ok: z.boolean() }))),
-    401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền paraclinical_result.read'),
-    404: errorResponse('Không tìm thấy kết quả'),
-    409: errorResponse('Chưa lấy mẫu / gọi vào phòng'),
-  },
-});
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result/approve`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng GĐ4 — "Duyệt & trả kết quả" (ký): lưu nội dung gửi kèm, kiểm đủ rồi ký mọi kết quả của nhóm trong cùng transaction; sau đó là bản ký bất biến',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams, body: { content: { 'application/json': { schema: saveParaclinicalResultRequestSchema } } } },
+    responses: {
+      200: jsonResponse('Duyệt thành công', envelope(getParaclinicalResultResponseSchema)),
+      400: errorResponse('Dữ liệu sai'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.approve`),
+      404: errorResponse('Không tìm thấy dòng chỉ định'),
+      409: errorResponse('Đã duyệt trước đó, chưa lấy mẫu hoặc lượt khám đã huỷ (PARACLINICAL_ITEM_INVALID_STATE)'),
+      422: errorResponse('Kết quả chưa đủ hoặc giá trị không hợp lệ (PARACLINICAL_RESULT_INCOMPLETE)'),
+    },
+  });
 
-registry.registerPath({
-  method: 'post',
-  path: '/api/v1/paraclinical/items/{itemId}/images',
-  tags: ['paraclinical-result'],
-  summary: 'Cận lâm sàng GĐ4 — thêm ảnh đính kèm (multipart "file", JPG/PNG ≤ 5MB, tối đa 8 ảnh) vào kết quả đang thực hiện; trả lại form kết quả',
-  security: [{ bearerAuth: [] }],
-  request: { params: paraclinicalItemParams },
-  responses: {
-    200: jsonResponse('Đã thêm ảnh', envelope(getParaclinicalResultResponseSchema)),
-    400: errorResponse('Thiếu file hoặc ảnh không hợp lệ'),
-    401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền paraclinical_result.enter'),
-    404: errorResponse('Không tìm thấy dòng chỉ định'),
-    409: errorResponse('Đã duyệt/chưa lấy mẫu, xét nghiệm không có ảnh hoặc quá 8 ảnh'),
-  },
-});
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result/amend`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng — "Đính chính" kết quả ĐÃ DUYỆT: đề nghị kèm lý do bắt buộc; bản đã ký được giữ nguyên (soft-delete) và thay bằng bản nháp sao chép nội dung, dịch vụ quay lại "Đang thực hiện"; bác sĩ có quyền Duyệt ký lại',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams, body: { content: { 'application/json': { schema: amendParaclinicalResultRequestSchema } } } },
+    responses: {
+      200: jsonResponse('Đã mở bản đính chính', envelope(getParaclinicalResultResponseSchema)),
+      400: errorResponse('Thiếu lý do đính chính'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.enter`),
+      404: errorResponse('Không tìm thấy dòng chỉ định'),
+      409: errorResponse('Kết quả chưa duyệt hoặc vừa được người khác đính chính (PARACLINICAL_ITEM_INVALID_STATE)'),
+    },
+  });
 
-registry.registerPath({
-  method: 'delete',
-  path: '/api/v1/paraclinical/images/{imageId}',
-  tags: ['paraclinical-result'],
-  summary: 'Cận lâm sàng GĐ4 — gỡ ảnh đính kèm (soft-delete) khỏi kết quả chưa duyệt; trả lại form kết quả',
-  security: [{ bearerAuth: [] }],
-  request: { params: z.object({ imageId: z.string().uuid() }) },
-  responses: {
-    200: jsonResponse('Đã gỡ ảnh', envelope(getParaclinicalResultResponseSchema)),
-    401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền paraclinical_result.enter'),
-    404: errorResponse('Không tìm thấy ảnh'),
-    409: errorResponse('Kết quả đã duyệt (bản ký)'),
-  },
-});
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result/amend/cancel`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng — huỷ đính chính đang soạn/chờ duyệt: bỏ bản nháp, khôi phục bản đã duyệt cũ',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams },
+    responses: {
+      200: jsonResponse('Đã huỷ đính chính', envelope(getParaclinicalResultResponseSchema)),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.enter`),
+      404: errorResponse('Không tìm thấy dòng chỉ định'),
+      409: errorResponse('Không có đính chính đang soạn (PARACLINICAL_ITEM_INVALID_STATE)'),
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result/print`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng GĐ4 — ghi audit mỗi lần in phiếu kết quả (web tự dựng bản in từ dữ liệu đã tải)',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams },
+    responses: {
+      200: jsonResponse('Đã ghi audit', envelope(z.object({ ok: z.boolean() }))),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.read`),
+      404: errorResponse('Không tìm thấy kết quả'),
+      409: errorResponse('Chưa lấy mẫu / gọi vào phòng'),
+    },
+  });
+
+  if (g.key === 'imaging') {
+    registry.registerPath({
+      method: 'post',
+      path: `/api/v1/paraclinical/${g.key}/items/{itemId}/images`,
+      tags: ['paraclinical-result'],
+      summary: 'Cận lâm sàng GĐ4 — thêm ảnh đính kèm (multipart "file", JPG/PNG ≤ 5MB, tối đa 8 ảnh) vào kết quả đang thực hiện; trả lại form kết quả',
+      security: [{ bearerAuth: [] }],
+      request: { params: paraclinicalItemParams },
+      responses: {
+        200: jsonResponse('Đã thêm ảnh', envelope(getParaclinicalResultResponseSchema)),
+        400: errorResponse('Thiếu file hoặc ảnh không hợp lệ'),
+        401: errorResponse('Thiếu hoặc sai access token'),
+        403: errorResponse(`Không có quyền ${g.module}.enter`),
+        404: errorResponse('Không tìm thấy dòng chỉ định'),
+        409: errorResponse('Đã duyệt/chưa lấy mẫu, xét nghiệm không có ảnh hoặc quá 8 ảnh'),
+      },
+    });
+
+    registry.registerPath({
+      method: 'delete',
+      path: `/api/v1/paraclinical/${g.key}/images/{imageId}`,
+      tags: ['paraclinical-result'],
+      summary: 'Cận lâm sàng GĐ4 — gỡ ảnh đính kèm (soft-delete) khỏi kết quả chưa duyệt; trả lại form kết quả',
+      security: [{ bearerAuth: [] }],
+      request: { params: z.object({ imageId: z.string().uuid() }) },
+      responses: {
+        200: jsonResponse('Đã gỡ ảnh', envelope(getParaclinicalResultResponseSchema)),
+        401: errorResponse('Thiếu hoặc sai access token'),
+        403: errorResponse(`Không có quyền ${g.module}.enter`),
+        404: errorResponse('Không tìm thấy ảnh'),
+        409: errorResponse('Kết quả đã duyệt (bản ký)'),
+      },
+    });
+  }
+}
 
 // Thêm hàng loạt vào bảng giá: theo nhóm + nhập Excel (docs/DECISIONS.md #212, yêu cầu chủ dự án 07/10/2026)
 registry.registerPath({

@@ -148,7 +148,8 @@ export function resolveApiUrl(path: string): string {
   if (!currentConfig) {
     throw new Error('resolveApiUrl() gọi trước khi configureApiClient().');
   }
-  return path.startsWith('http://') || path.startsWith('https://') ? path : `${currentConfig.apiBaseUrl}${path}`;
+  // `data:` (ảnh minh hoạ nhúng sẵn, vd. bản xem trước mẫu in) giữ nguyên, không ghép địa chỉ API.
+  return path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:') ? path : `${currentConfig.apiBaseUrl}${path}`;
 }
 
 /** Truy cập client đã cấu hình `baseUrl`/cookie/Authorization — dùng trong `*.api.ts` của từng feature. */

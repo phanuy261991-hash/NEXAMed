@@ -42,10 +42,7 @@ export function ClinicalOrderPrintView({
       title="Phiếu chỉ định cận lâm sàng"
       subtitle={`Số: ${order.orderNo}`}
       signatureDateText={formatPrintDate(printedAt)}
-      signatures={[
-        { label: 'Người bệnh / Người nhà', name: '' },
-        { label: 'Bác sĩ chỉ định', name: doctorName },
-      ]}
+      signatures={[{ label: 'Bác sĩ chỉ định', name: doctorName }]}
     >
       <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
         <p>

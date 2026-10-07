@@ -59,9 +59,9 @@ describe('RBAC: seed vai trò + RLS', () => {
     await appPrisma.$disconnect();
   });
 
-  it('seed đủ 5 vai trò mặc định cho mỗi tenant, đúng số dòng role_permission theo ma trận', async () => {
+  it('seed đủ 7 vai trò mặc định cho mỗi tenant, đúng số dòng role_permission theo ma trận', async () => {
     const rolesA = await privileged.role.findMany({ where: { tenantId: tenantAId } });
-    expect(rolesA).toHaveLength(5);
+    expect(rolesA).toHaveLength(7);
     expect(rolesA.every((r) => r.isSystemDefault)).toBe(true);
 
     const doctorRole = rolesA.find((r) => r.name === 'doctor');
@@ -75,11 +75,11 @@ describe('RBAC: seed vai trò + RLS', () => {
 
   it('RLS cách ly role/role_permission theo tenant', async () => {
     const rolesAsA = await unitOfWork.runInTenantScope(tenantAId, (tx) => tx.role.findMany());
-    expect(rolesAsA).toHaveLength(5);
+    expect(rolesAsA).toHaveLength(7);
     expect(rolesAsA.every((r) => r.tenantId === tenantAId)).toBe(true);
 
     const rolesAsB = await unitOfWork.runInTenantScope(tenantBId, (tx) => tx.role.findMany());
-    expect(rolesAsB).toHaveLength(5);
+    expect(rolesAsB).toHaveLength(7);
     expect(rolesAsB.every((r) => r.tenantId === tenantBId)).toBe(true);
   });
 

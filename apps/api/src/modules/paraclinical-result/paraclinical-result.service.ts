@@ -25,6 +25,7 @@ import {
   type ClinicConfigReaderPort,
   type LabReferenceRow,
   type ParaclinicalItemStatus,
+  type ParaclinicalServiceKind,
 } from '@nexamed/core';
 import {
   calculateAgeYears,
@@ -32,6 +33,7 @@ import {
   PARACLINICAL_IMAGE_MAX_BYTES,
   PARACLINICAL_IMAGE_MAX_COUNT,
   type ListParaclinicalQueueQuery,
+  type AmendParaclinicalResultRequest,
   type ListParaclinicalQueueResponse,
   type ParaclinicalQueueBucket,
   type ParaclinicalReference,
@@ -53,6 +55,17 @@ import { TechnicalServiceRepository, type IndicatorLinkFullRow } from '../techni
 import { ParaclinicalResultRepository, type ResultValueData, type ResultWithValues } from './paraclinical-result.repository';
 
 type Gender = 'male' | 'female' | 'other';
+
+/**
+ * Phạm vi của MỘT lần gọi (docs/DECISIONS.md #215): `dataScope` của quyền thuộc nhóm menu (`lab_result.*` hoặc `imaging_result.*`) + các loại dịch vụ mà nhóm đó phục vụ.
+ * Dịch vụ ngoài `kinds` coi như không tồn tại với endpoint này (404) — tài khoản chỉ có quyền Xét nghiệm không mở được kết quả siêu âm và ngược lại.
+ */
+export interface ResultAccessScope {
+  dataScope: DataScope;
+  kinds: readonly ParaclinicalServiceKind[];
+  /** Module quyền của nhóm (`lab_result` | `imaging_result`) — dùng để liệt kê bác sĩ có quyền duyệt đúng nhóm. */
+  permissionModule: string;
+}
 
 interface EnrichedItem {
   row: QueueItemRow;
@@ -130,22 +143,30 @@ export class ParaclinicalResultService {
   // Hàng đợi
   // ---------------------------------------------------------------------------------------------
 
-  async listQueue(tenantId: string, actorId: string, dataScope: DataScope, query: ListParaclinicalQueueQuery): Promise<ListParaclinicalQueueResponse> {
+  async listQueue(tenantId: string, actorId: string, scope: ResultAccessScope, query: ListParaclinicalQueueQuery): Promise<ListParaclinicalQueueResponse> {
     const allowBeforePayment = await this.clinicConfigReader.getParaclinicalBeforePaymentEnabled(tenantId);
     const date = query.date ?? getVietnamDateString();
     const { startUtc, endUtc } = vietnamDayRange(date);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const scopeDepartmentId = await this.resolveScopeDepartment(tx, tenantId, actorId, dataScope);
+      const scopeDepartmentId = await this.resolveScopeDepartment(tx, tenantId, actorId, scope.dataScope);
       // Scope `department` mà actor chưa gán Khoa/Phòng thì không khớp phòng nào → hàng đợi rỗng (không lỗi).
       const items = enrich(await this.orderRepository.listQueueItems(tx, tenantId, { from: startUtc, to: endUtc })).filter(
-        (i) => scopeDepartmentId === undefined || (scopeDepartmentId !== null && i.row.technicalService?.departmentId === scopeDepartmentId),
+        (i) => scope.kinds.includes(i.serviceKind) && (scopeDepartmentId === undefined || (scopeDepartmentId !== null && i.row.technicalService?.departmentId === scopeDepartmentId)),
       );
       const groups = groupQueueItems(items);
 
       const counts = Object.fromEntries(PARACLINICAL_QUEUE_BUCKETS.map((b) => [b, 0])) as Record<ParaclinicalQueueBucket, number>;
       const needle = query.q ? stripVietnameseDiacritics(query.q).toLowerCase() : null;
       const rows: ListParaclinicalQueueResponse['items'] = [];
+      // Tên Mẫu bệnh phẩm / Nhóm dịch vụ theo mã — tra 1 lần mỗi mã trong lượt gọi này.
+      const catalogNames = new Map<string, Promise<string | null>>();
+      const nameOf = (category: 'SPECIMEN_TYPE' | 'TECH_SERVICE_CATEGORY', code: string | null | undefined): Promise<string | null> => {
+        if (!code) return Promise.resolve(null);
+        const key = `${category}:${code}`;
+        if (!catalogNames.has(key)) catalogNames.set(key, this.referenceCatalogRepository.findByCategoryAndCode(tx, category, code).then((r) => r?.name ?? null));
+        return catalogNames.get(key)!;
+      };
 
       for (const group of groups) {
         const first = group[0]!;
@@ -164,6 +185,8 @@ export class ParaclinicalResultService {
           if (!haystack.includes(needle)) continue;
         }
 
+        const specimenNames = [...new Set((await Promise.all(group.map((g) => nameOf('SPECIMEN_TYPE', g.row.technicalService!.specimenTypeCode)))).filter((n): n is string => n !== null))];
+        const categoryNames = [...new Set((await Promise.all(group.map((g) => nameOf('TECH_SERVICE_CATEGORY', g.row.technicalService!.categoryCode)))).filter((n): n is string => n !== null))];
         const waitingSince = first.status === 'IN_PROGRESS' && first.row.collectedAt ? first.row.collectedAt : first.row.order.createdAt;
         rows.push({
           key: first.id,
@@ -177,6 +200,9 @@ export class ParaclinicalResultService {
           gender: toGender(patient.gender),
           serviceKind: first.serviceKind,
           serviceNames,
+          specimenNames,
+          categoryNames,
+          isAmendment: group.some((g) => g.row.results.some((r) => r.supersedesId !== null)),
           departmentId: service.department?.id ?? null,
           departmentName: service.department?.name ?? null,
           bucket,
@@ -192,13 +218,13 @@ export class ParaclinicalResultService {
   }
 
   /** "Lấy mẫu" / "Gọi vào phòng": các dòng cùng phiếu ORDERED → IN_PROGRESS. */
-  async startItems(tenantId: string, actorId: string, dataScope: DataScope, dto: StartParaclinicalItemsRequest, meta: RequestMeta): Promise<StartParaclinicalItemsResponse> {
+  async startItems(tenantId: string, actorId: string, scope: ResultAccessScope, dto: StartParaclinicalItemsRequest, meta: RequestMeta): Promise<StartParaclinicalItemsResponse> {
     const allowBeforePayment = await this.clinicConfigReader.getParaclinicalBeforePaymentEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const ids = [...new Set(dto.itemIds)];
       const items = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, ids));
       if (items.length !== ids.length) throw new NotFoundException();
-      for (const item of items) await this.assertInDepartmentScope(tx, tenantId, actorId, dataScope, item);
+      for (const item of items) await this.assertInDepartmentScope(tx, tenantId, actorId, scope, item);
       const orderId = items[0]!.clinicalOrderId;
       if (items.some((i) => i.clinicalOrderId !== orderId)) throw new ParaclinicalItemInvalidStateError('Chỉ lấy mẫu / gọi vào phòng được các dịch vụ cùng một phiếu chỉ định.');
       await this.lockOrder(tx, tenantId, orderId);
@@ -228,14 +254,14 @@ export class ParaclinicalResultService {
   // Màn nhập / duyệt kết quả
   // ---------------------------------------------------------------------------------------------
 
-  async getForm(tenantId: string, actorId: string, dataScope: DataScope, itemId: string): Promise<ParaclinicalResultForm> {
-    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.buildForm(tx, tenantId, actorId, dataScope, itemId));
+  async getForm(tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string): Promise<ParaclinicalResultForm> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.buildForm(tx, tenantId, actorId, scope, itemId));
   }
 
   /** Lưu nháp, hoặc gửi duyệt khi `dto.submit`. Người có quyền `enter` (không cần quyền duyệt). */
-  async save(tenantId: string, actorId: string, dataScope: DataScope, itemId: string, dto: SaveParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+  async save(tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string, dto: SaveParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
       await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
       this.assertEditable(group);
 
@@ -254,28 +280,30 @@ export class ParaclinicalResultService {
           userAgent: meta.userAgent,
         });
       }
-      return this.buildForm(tx, tenantId, actorId, dataScope, itemId);
+      return this.buildForm(tx, tenantId, actorId, scope, itemId);
     });
   }
 
   /** "Duyệt & trả kết quả" (ký): lưu nội dung gửi kèm, kiểm đủ rồi ký mọi kết quả của nhóm trong CÙNG transaction. Người có quyền `approve`. */
-  async approve(tenantId: string, actorId: string, dataScope: DataScope, itemId: string, dto: SaveParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+  async approve(tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string, dto: SaveParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
       await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
       this.assertEditable(group);
 
       const results = await this.persistSections(tx, tenantId, actorId, group, dto, true);
+      const supersededBy = new Map((await this.resultRepository.findActiveByItemIds(tx, tenantId, group.map((g) => g.id))).filter((r) => r.supersedesId !== null).map((r) => [r.id, r.supersedesId as string]));
       const signedAt = new Date();
       for (const r of results) {
         const signed = await this.resultRepository.sign(tx, tenantId, r.id, actorId, signedAt);
         if (signed !== 1) throw new ParaclinicalItemInvalidStateError('Kết quả đã được duyệt trước đó.');
+        const supersedes = supersededBy.get(r.id);
         await writeAuditLog(tx, tenantId, {
           actorId,
-          action: 'paraclinical_result.approved',
+          action: supersedes ? 'paraclinical_result.amended' : 'paraclinical_result.approved',
           entityType: 'paraclinical_result',
           entityId: r.id,
-          afterJson: { signedAt: signedAt.toISOString() },
+          afterJson: supersedes ? { signedAt: signedAt.toISOString(), supersedesId: supersedes } : { signedAt: signedAt.toISOString() },
           ip: meta.ip,
           userAgent: meta.userAgent,
         });
@@ -283,7 +311,7 @@ export class ParaclinicalResultService {
       const ids = group.map((g) => g.id);
       const moved = await this.orderRepository.transitionStatus(tx, tenantId, ids, ['IN_PROGRESS', 'RESULTED'], 'COMPLETED', actorId);
       if (moved !== ids.length) throw new ParaclinicalItemInvalidStateError('Dịch vụ vừa được người khác xử lý — tải lại.');
-      return this.buildForm(tx, tenantId, actorId, dataScope, itemId);
+      return this.buildForm(tx, tenantId, actorId, scope, itemId);
     });
   }
 
@@ -297,13 +325,13 @@ export class ParaclinicalResultService {
    * Thêm ảnh đính kèm (siêu âm, X-quang...) vào kết quả của một dịch vụ đang thực hiện. Kiểm magic-byte (không tin Content-Type của client), ≤ 5 MB, tối đa 8 ảnh;
    * tạo bản nháp kết quả nếu chưa có. Chỉ khi chưa duyệt (đã duyệt là bản ký — DB còn trigger chặn lần nữa).
    */
-  async addImage(tenantId: string, actorId: string, dataScope: DataScope, itemId: string, file: { buffer: Buffer; originalname: string }, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+  async addImage(tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string, file: { buffer: Buffer; originalname: string }, meta: RequestMeta): Promise<ParaclinicalResultForm> {
     if (file.buffer.byteLength > PARACLINICAL_IMAGE_MAX_BYTES) throw new InvalidPhotoError('Ảnh vượt quá 5MB, vui lòng chọn ảnh nhỏ hơn.');
     const extension = sniffImageExtension(file.buffer);
     if (!extension) throw new InvalidPhotoError('Chỉ nhận ảnh định dạng JPG hoặc PNG.');
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
       await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
       this.assertEditable(group);
       const item = group.find((g) => g.id === itemId) ?? group[0]!;
@@ -333,29 +361,29 @@ export class ParaclinicalResultService {
         await this.storage.delete(tenantId, key); // ghi DB lỗi thì dọn file vừa lưu, không để rác không ai trỏ tới
         throw err;
       }
-      return this.buildForm(tx, tenantId, actorId, dataScope, itemId);
+      return this.buildForm(tx, tenantId, actorId, scope, itemId);
     });
   }
 
   /** Gỡ ảnh đính kèm (soft-delete; file giữ lại trong kho để truy vết). Chỉ khi kết quả chưa duyệt. */
-  async removeImage(tenantId: string, actorId: string, dataScope: DataScope, imageId: string, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+  async removeImage(tenantId: string, actorId: string, scope: ResultAccessScope, imageId: string, meta: RequestMeta): Promise<ParaclinicalResultForm> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const image = await this.resultRepository.findImage(tx, tenantId, imageId);
       if (!image) throw new NotFoundException();
       const itemId = image.result.clinicalOrderItemId;
-      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
       await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
       this.assertEditable(group);
       await this.resultRepository.softDeleteImage(tx, tenantId, imageId, actorId, 'removed_by_user');
       await writeAuditLog(tx, tenantId, { actorId, action: 'paraclinical_result.image_removed', entityType: 'paraclinical_result', entityId: image.resultId, afterJson: { imageId }, ip: meta.ip, userAgent: meta.userAgent });
-      return this.buildForm(tx, tenantId, actorId, dataScope, itemId);
+      return this.buildForm(tx, tenantId, actorId, scope, itemId);
     });
   }
 
   /** Ghi audit mỗi lần in phiếu kết quả (dữ liệu y tế đưa ra giấy) — web tự dựng bản in từ dữ liệu đã tải. Một dòng audit cho mỗi kết quả trong nhóm. */
-  async recordPrint(tenantId: string, actorId: string, dataScope: DataScope, itemId: string, meta: RequestMeta): Promise<void> {
+  async recordPrint(tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string, meta: RequestMeta): Promise<void> {
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
       if (group[0]!.status === 'ORDERED') throw new ParaclinicalItemInvalidStateError('Chưa có kết quả để in.');
       const results = await this.resultRepository.findActiveByItemIds(tx, tenantId, group.map((g) => g.id));
       if (results.length === 0) throw new NotFoundException();
@@ -373,6 +401,72 @@ export class ParaclinicalResultService {
     });
   }
 
+  /**
+   * "Đính chính" kết quả ĐÃ DUYỆT (docs/DECISIONS.md #215, luồng chủ dự án chốt): người có quyền Nhập của nhóm đề nghị kèm lý do bắt buộc (Thông tư 46/2018/TT-BYT);
+   * bản đã ký được giữ nguyên (soft-delete, không xoá) và thay bằng bản NHÁP sao chép nội dung + chỉ số + ảnh, dịch vụ quay lại "Đang thực hiện" để sửa rồi gửi duyệt;
+   * bác sĩ có quyền Duyệt ký lại. Toàn bộ nhóm (xét nghiệm cùng phiếu) đính chính cùng lúc vì cùng một phiếu kết quả.
+   */
+  async startAmendment(tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string, dto: AmendParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
+      await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
+      this.assertEncounterOpen(group[0]!);
+      if (group.some((g) => g.status !== 'COMPLETED')) throw new ParaclinicalItemInvalidStateError('Chỉ đính chính được kết quả đã duyệt.');
+
+      const results = await this.resultRepository.findActiveByItemIds(tx, tenantId, group.map((g) => g.id));
+      if (results.length !== group.length || results.some((r) => r.signedAt === null)) throw new ParaclinicalItemInvalidStateError('Kết quả chưa có bản đã duyệt để đính chính.');
+      const images = await this.resultRepository.listImages(tx, tenantId, results.map((r) => r.id));
+
+      for (const original of results) {
+        const draft = await this.resultRepository.createAmendmentDraft(tx, tenantId, actorId, original, images.filter((img) => img.resultId === original.id), dto.reason);
+        if (!draft) throw new ParaclinicalItemInvalidStateError('Kết quả vừa được người khác đính chính — tải lại.');
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'paraclinical_result.amendment_started',
+          entityType: 'paraclinical_result',
+          entityId: draft.id,
+          afterJson: { supersedesId: original.id, reason: dto.reason },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+      }
+      const ids = group.map((g) => g.id);
+      const moved = await this.orderRepository.transitionStatus(tx, tenantId, ids, ['COMPLETED'], 'IN_PROGRESS', actorId);
+      if (moved !== ids.length) throw new ParaclinicalItemInvalidStateError('Dịch vụ vừa được người khác xử lý — tải lại.');
+      return this.buildForm(tx, tenantId, actorId, scope, itemId);
+    });
+  }
+
+  /** Huỷ đính chính đang soạn/chờ duyệt: bỏ bản nháp, KHÔI PHỤC bản đã duyệt cũ và đưa dịch vụ về "Đã trả kết quả". Người có quyền Nhập của nhóm. */
+  async cancelAmendment(tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
+      await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
+      this.assertEncounterOpen(group[0]!);
+      const results = await this.resultRepository.findActiveByItemIds(tx, tenantId, group.map((g) => g.id));
+      const drafts = results.filter((r) => r.supersedesId !== null && r.signedAt === null);
+      if (drafts.length === 0) throw new ParaclinicalItemInvalidStateError('Không có đính chính nào đang soạn để huỷ.');
+
+      for (const draft of drafts) {
+        const restored = await this.resultRepository.restoreOriginal(tx, tenantId, actorId, draft);
+        if (!restored) throw new ParaclinicalItemInvalidStateError('Đính chính vừa được người khác xử lý — tải lại.');
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'paraclinical_result.amendment_cancelled',
+          entityType: 'paraclinical_result',
+          entityId: draft.id,
+          afterJson: { restoredId: draft.supersedesId },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+      }
+      const draftItemIds = drafts.map((d) => d.clinicalOrderItemId);
+      const moved = await this.orderRepository.transitionStatus(tx, tenantId, draftItemIds, ['IN_PROGRESS', 'RESULTED'], 'COMPLETED', actorId);
+      if (moved !== draftItemIds.length) throw new ParaclinicalItemInvalidStateError('Dịch vụ vừa được người khác xử lý — tải lại.');
+      return this.buildForm(tx, tenantId, actorId, scope, itemId);
+    });
+  }
+
   // ---------------------------------------------------------------------------------------------
   // Nội bộ
   // ---------------------------------------------------------------------------------------------
@@ -387,8 +481,9 @@ export class ParaclinicalResultService {
   }
 
   /** Chặn 404 (không phải 403, đúng multi-tenancy.md) khi dịch vụ không thuộc phòng của actor (scope `department`). */
-  private async assertInDepartmentScope(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dataScope: DataScope, item: EnrichedItem): Promise<void> {
-    const scopeDepartmentId = await this.resolveScopeDepartment(tx, tenantId, actorId, dataScope);
+  private async assertInDepartmentScope(tx: Prisma.TransactionClient, tenantId: string, actorId: string, scope: ResultAccessScope, item: EnrichedItem): Promise<void> {
+    if (!scope.kinds.includes(item.serviceKind)) throw new NotFoundException();
+    const scopeDepartmentId = await this.resolveScopeDepartment(tx, tenantId, actorId, scope.dataScope);
     if (scopeDepartmentId === undefined) return;
     if (scopeDepartmentId === null || item.row.technicalService?.departmentId !== scopeDepartmentId) throw new NotFoundException();
   }
@@ -411,11 +506,11 @@ export class ParaclinicalResultService {
   }
 
   /** Nhóm dòng cùng màn nhập với `itemId`: xét nghiệm cùng phiếu + cùng trạng thái + cùng tình trạng thu tiền; dịch vụ khác loại thì đứng một mình. */
-  private async resolveGroup(tx: Prisma.TransactionClient, tenantId: string, itemId: string, actorId: string, dataScope: DataScope): Promise<EnrichedItem[]> {
+  private async resolveGroup(tx: Prisma.TransactionClient, tenantId: string, itemId: string, actorId: string, scope: ResultAccessScope): Promise<EnrichedItem[]> {
     const [anchor] = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, [itemId]));
     if (!anchor) throw new NotFoundException();
     if (anchor.status === 'CANCELLED') throw new NotFoundException();
-    await this.assertInDepartmentScope(tx, tenantId, actorId, dataScope, anchor);
+    await this.assertInDepartmentScope(tx, tenantId, actorId, scope, anchor);
     if (anchor.serviceKind !== 'LAB') return [anchor];
     const siblings = enrich(await this.orderRepository.findQueueItemsByOrder(tx, tenantId, anchor.clinicalOrderId));
     return siblings.filter((s) => s.serviceKind === 'LAB' && s.status === anchor.status && s.paid === anchor.paid);
@@ -426,8 +521,8 @@ export class ParaclinicalResultService {
     return { gender: toGender(patient.gender), ageYears: calculateAgeYears(patient.dob.toISOString()) };
   }
 
-  private async buildForm(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dataScope: DataScope, itemId: string): Promise<ParaclinicalResultForm> {
-    const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
+  private async buildForm(tx: Prisma.TransactionClient, tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string): Promise<ParaclinicalResultForm> {
+    const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
     const first = group[0]!;
     if (first.status === 'ORDERED') throw new ParaclinicalItemInvalidStateError('Chưa lấy mẫu / gọi vào phòng — thực hiện bước đó trước khi nhập kết quả.');
     const ctx = this.patientContext(first);
@@ -474,8 +569,10 @@ export class ParaclinicalResultService {
 
     const signed = results.find((r) => r.signedAt !== null) ?? null;
     const any = results[0] ?? null;
-    const approverRows = await this.userRepository.listActiveUsersWithPermission(tx, tenantId, 'paraclinical_result', 'approve');
-    const nameIds = [actorId, first.row.order.encounter.doctorId, any?.performedBy, signed?.signedBy].filter((x): x is string => typeof x === 'string');
+    const approverRows = await this.userRepository.listActiveUsersWithPermission(tx, tenantId, scope.permissionModule, 'approve');
+    const amended = results.find((r) => r.supersedesId !== null) ?? null;
+    const original = amended?.supersedesId ? await this.resultRepository.findByIdIncludingDeleted(tx, tenantId, amended.supersedesId) : null;
+    const nameIds = [actorId, first.row.order.encounter.doctorId, any?.performedBy, signed?.signedBy, original?.signedBy].filter((x): x is string => typeof x === 'string');
     const names = new Map((await this.userRepository.findFullNamesByIds(tx, tenantId, [...new Set(nameIds)])).map((u) => [u.id, u.fullName]));
     const performedById = any?.performedBy ?? actorId;
 
@@ -501,6 +598,9 @@ export class ParaclinicalResultService {
       approvers: approverRows.map((u) => ({ id: u.id, fullName: u.displayName ?? u.fullName })),
       signedAt: signed?.signedAt?.toISOString() ?? null,
       signedByName: signed?.signedBy ? (names.get(signed.signedBy) ?? null) : null,
+      amendment: amended
+        ? { reason: amended.amendmentReason ?? '', originalSignedAt: original?.signedAt?.toISOString() ?? null, originalSignedByName: original?.signedBy ? (names.get(original.signedBy) ?? null) : null }
+        : null,
     };
   }
 

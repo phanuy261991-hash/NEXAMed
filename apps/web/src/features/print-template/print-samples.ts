@@ -349,7 +349,7 @@ export const SAMPLE_STOCK_TRANSFER: StockTransferDetail = {
 
 /** Kết quả cận lâm sàng mẫu (Cận lâm sàng GĐ4 đợt 2, #214) — dữ liệu minh hoạ cho bản xem trước ở Quản lý mẫu in. */
 const SAMPLE_REFERENCE = { sex: 'ANY', ageFromYears: 0, ageToYears: null, lowInclusive: true, highInclusive: true, normalText: null } as const;
-export const SAMPLE_PARACLINICAL_RESULT: ParaclinicalResultForm = {
+export const SAMPLE_LAB_RESULT: ParaclinicalResultForm = {
   orderNo: 'CLS2610000309',
   encounterId: '00000000-0000-4000-8000-0000000000e1',
   encounterNo: 'LK2609000921',
@@ -370,6 +370,7 @@ export const SAMPLE_PARACLINICAL_RESULT: ParaclinicalResultForm = {
   approvers: [],
   signedAt: '2026-10-06T03:50:00.000Z',
   signedByName: 'BS. Lê Thanh Tùng',
+  amendment: null,
   sections: [
     {
       itemId: 'r1',
@@ -412,6 +413,47 @@ export const SAMPLE_PARACLINICAL_RESULT: ParaclinicalResultForm = {
   ],
 };
 
+/** Ảnh minh hoạ (khung xám có chữ) cho bản xem trước mẫu in CĐHA — ảnh thật do kỹ thuật viên tải lên ở màn nhập kết quả. */
+function sampleImage(id: string, label: string): { id: string; fileName: string; url: string } {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320"><rect width="480" height="320" fill="#1e293b"/><text x="240" y="165" font-family="sans-serif" font-size="22" fill="#94a3b8" text-anchor="middle">${label}</text></svg>`;
+  return { id, fileName: `${label}.svg`, url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` };
+}
+
+/** Kết quả siêu âm mẫu — bản xem trước của mẫu in "Kết quả CĐHA & Thăm dò chức năng" (bố cục dạng khối: mô tả → kết luận → hình ảnh, khác bảng chỉ số của xét nghiệm). */
+export const SAMPLE_IMAGING_RESULT: ParaclinicalResultForm = {
+  ...SAMPLE_LAB_RESULT,
+  orderNo: 'CLS2610000311',
+  patientName: 'Trần Minh Khoa',
+  patientCode: 'BN2610000131',
+  patientGender: 'male',
+  patientDob: '1974-02-20',
+  ageYears: 52,
+  collectedAt: '2026-10-06T02:21:00.000Z',
+  performedByName: 'BS. Phan Văn Lực',
+  resultedAt: '2026-10-06T02:38:00.000Z',
+  signedAt: '2026-10-06T02:41:00.000Z',
+  signedByName: 'BS. Phan Văn Lực',
+  sections: [
+    {
+      itemId: 'i1',
+      technicalServiceId: 'i1',
+      code: 'CD0008',
+      name: 'Siêu âm ổ bụng tổng quát',
+      serviceKind: 'IMAGING',
+      resultType: 'NARRATIVE',
+      specimenTypeName: null,
+      departmentName: 'P. Siêu âm',
+      categoryName: null,
+      images: [sampleImage('img1', 'Hình ảnh 1'), sampleImage('img2', 'Hình ảnh 2')],
+      status: 'COMPLETED',
+      descriptionText:
+        '- Gan: kích thước bình thường, nhu mô tăng âm lan toả, bờ đều, không thấy khối khu trú.\n- Đường mật trong và ngoài gan không giãn.\n- Túi mật: thành mỏng, lòng không có sỏi.\n- Thận phải, thận trái: kích thước bình thường, không sỏi, không ứ nước.\n- Không có dịch tự do ổ bụng.',
+      conclusionText: 'Gan nhiễm mỡ độ I. Chưa phát hiện bất thường khác trên siêu âm ổ bụng.',
+      indicators: [],
+    },
+  ],
+};
+
 /** Phiếu chỉ định cận lâm sàng mẫu (Cận lâm sàng GĐ3, #212) — dữ liệu minh hoạ cho bản xem trước ở Quản lý mẫu in. */
 export const SAMPLE_CLINICAL_ORDER: ClinicalOrderDetail = {
   id: '00000000-0000-4000-8000-0000000000c1',
@@ -423,10 +465,10 @@ export const SAMPLE_CLINICAL_ORDER: ClinicalOrderDetail = {
   invoices: [],
   packages: [],
   items: [
-    { id: 'i1', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'XN0014', name: 'Định lượng Glucose lúc đói [Huyết tương]', performance: 'IN_HOUSE', quantity: 1, unitPrice: 80000, lineTotal: 80000, packageId: null, placeName: 'P. Xét nghiệm', note: null, status: 'ORDERED', editable: true },
-    { id: 'i2', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'XN0027', name: 'Định lượng HbA1c [Máu toàn phần]', performance: 'IN_HOUSE', quantity: 1, unitPrice: 180000, lineTotal: 180000, packageId: null, placeName: 'P. Xét nghiệm', note: null, status: 'ORDERED', editable: true },
-    { id: 'i3', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'CD0008', name: 'Siêu âm ổ bụng tổng quát', performance: 'IN_HOUSE', quantity: 1, unitPrice: 420000, lineTotal: 420000, packageId: null, placeName: 'P. Siêu âm', note: null, status: 'ORDERED', editable: true },
-    { id: 'i4', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'CD0021', name: 'Chụp CT scan bụng có thuốc cản quang', performance: 'EXTERNAL', quantity: 1, unitPrice: null, lineTotal: null, packageId: null, placeName: null, note: 'Nhịn ăn 6 giờ trước khi chụp', status: 'ORDERED', editable: true },
-    { id: 'i5', itemKind: 'FREE_TEXT', technicalServiceId: null, examTypeCode: null, code: null, name: 'Đo mật độ xương DEXA cột sống thắt lưng', performance: 'EXTERNAL', quantity: 1, unitPrice: null, lineTotal: null, packageId: null, placeName: null, note: null, status: 'ORDERED', editable: true },
+    { id: 'i1', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'XN0014', name: 'Định lượng Glucose lúc đói [Huyết tương]', performance: 'IN_HOUSE', quantity: 1, unitPrice: 80000, lineTotal: 80000, packageId: null, placeName: 'P. Xét nghiệm', note: null, status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true },
+    { id: 'i2', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'XN0027', name: 'Định lượng HbA1c [Máu toàn phần]', performance: 'IN_HOUSE', quantity: 1, unitPrice: 180000, lineTotal: 180000, packageId: null, placeName: 'P. Xét nghiệm', note: null, status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true },
+    { id: 'i3', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'CD0008', name: 'Siêu âm ổ bụng tổng quát', performance: 'IN_HOUSE', quantity: 1, unitPrice: 420000, lineTotal: 420000, packageId: null, placeName: 'P. Siêu âm', note: null, status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true },
+    { id: 'i4', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'CD0021', name: 'Chụp CT scan bụng có thuốc cản quang', performance: 'EXTERNAL', quantity: 1, unitPrice: null, lineTotal: null, packageId: null, placeName: null, note: 'Nhịn ăn 6 giờ trước khi chụp', status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true },
+    { id: 'i5', itemKind: 'FREE_TEXT', technicalServiceId: null, examTypeCode: null, code: null, name: 'Đo mật độ xương DEXA cột sống thắt lưng', performance: 'EXTERNAL', quantity: 1, unitPrice: null, lineTotal: null, packageId: null, placeName: null, note: null, status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true },
   ],
 };

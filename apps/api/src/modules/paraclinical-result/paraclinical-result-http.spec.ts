@@ -43,7 +43,13 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
   const authed = (token: string) => ({ Authorization: `Bearer ${token}` });
   const randomNationalId = (): string => '079' + Math.floor(100000000 + Math.random() * 899999999).toString();
   const orderUrl = (encounterId: string) => `/api/v1/encounters/${encounterId}/clinical-orders`;
-  const resultUrl = (itemId: string) => `/api/v1/paraclinical/items/${itemId}/result`;
+  // Tách 2 menu (#215): mỗi dòng chỉ định thuộc nhóm `lab` (xét nghiệm) hoặc `imaging` (CĐHA/thăm dò) — URL, quyền và hàng đợi khác nhau. Sổ này ghi nhớ nhóm của từng dòng.
+  type Group = 'lab' | 'imaging';
+  const groupByService = new Map<string, Group>();
+  const groupByItem = new Map<string, Group>();
+  const groupOfItem = (itemId: string): Group => groupByItem.get(itemId) ?? 'lab';
+  const baseUrl = (group: Group) => `/api/v1/paraclinical/${group}`;
+  const resultUrl = (itemId: string) => `${baseUrl(groupOfItem(itemId))}/items/${itemId}/result`;
 
   async function createUserWithRole(tenantId: string, roleName: string) {
     const username = `e2e-para-${roleName}-${randomUUID()}`;
@@ -69,6 +75,7 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       .set(authed(adminToken))
       .send({ isPerformedInHouse: true, prices: [{ priceTypeCode: 'THUONG', unitCode: 'LUOT', amount: 100_000, effectiveFrom: '2020-01-01' }], ...body });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
+    groupByService.set(res.body.data.id as string, body.serviceKind === 'LAB' ? 'lab' : 'imaging');
     return res.body.data.id as string;
   }
 
@@ -104,6 +111,7 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       .set(authed(doctorToken))
       .send({ items: technicalServiceIds.map((technicalServiceId) => ({ performance: 'IN_HOUSE', technicalServiceId, quantity: 1 })) });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
+    for (const item of res.body.data.order.items as { id: string; technicalServiceId: string }[]) groupByItem.set(item.id, groupByService.get(item.technicalServiceId) ?? 'lab');
     return res.body.data.order;
   }
 
@@ -115,15 +123,30 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
   }
 
   type QueueRow = { key: string; itemIds: string[]; orderNo: string; bucket: string; paid: boolean; serviceKind: string; serviceNames: string[] };
-  async function queue(token: string, params: Record<string, string> = {}): Promise<{ items: QueueRow[]; counts: Record<string, number>; allowBeforePayment: boolean }> {
-    const res = await http().get('/api/v1/paraclinical/queue').set(authed(token)).query(params);
+  type QueueData = { items: QueueRow[]; counts: Record<string, number>; allowBeforePayment: boolean };
+  async function queueOf(group: Group, token: string, params: Record<string, string> = {}): Promise<QueueData> {
+    const res = await http().get(`${baseUrl(group)}/queue`).set(authed(token)).query(params);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
+    for (const row of (res.body.data as QueueData).items) for (const id of row.itemIds) groupByItem.set(id, group);
     return res.body.data;
+  }
+  /** Hàng đợi của CẢ HAI menu gộp lại (mọi test cũ vốn xem chung); token thiếu quyền một nhóm thì nhóm đó coi như rỗng. */
+  async function queue(token: string, params: Record<string, string> = {}): Promise<QueueData> {
+    const merged: QueueData = { items: [], counts: {}, allowBeforePayment: false };
+    for (const group of ['lab', 'imaging'] as const) {
+      const probe = await http().get(`${baseUrl(group)}/queue`).set(authed(token)).query(params);
+      if (probe.status === 403) continue;
+      const data = await queueOf(group, token, params);
+      merged.items.push(...data.items);
+      for (const [bucket, n] of Object.entries(data.counts)) merged.counts[bucket] = (merged.counts[bucket] ?? 0) + n;
+      merged.allowBeforePayment = data.allowBeforePayment;
+    }
+    return merged;
   }
   const rowsOf = async (orderNo: string, token = adminToken): Promise<QueueRow[]> => (await queue(token)).items.filter((r) => r.orderNo === orderNo);
 
   async function start(token: string, itemIds: string[]) {
-    return http().post('/api/v1/paraclinical/start').set(authed(token)).send({ itemIds });
+    return http().post(`${baseUrl(groupOfItem(itemIds[0]!))}/start`).set(authed(token)).send({ itemIds });
   }
 
   const form = async (itemId: string, token = adminToken) => {
@@ -193,7 +216,8 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
 
   describe('phân quyền', () => {
     it('không token → 401; lễ tân chỉ XEM hàng đợi (không lấy mẫu → 403); điều dưỡng lấy mẫu/nhập được nhưng KHÔNG duyệt (403); bác sĩ duyệt được', async () => {
-      expect((await http().get('/api/v1/paraclinical/queue')).status).toBe(401);
+      expect((await http().get('/api/v1/paraclinical/lab/queue')).status).toBe(401);
+      expect((await http().get('/api/v1/paraclinical/imaging/queue')).status).toBe(401);
       expect((await queue(receptionistToken)).items).toBeDefined();
       expect((await start(receptionistToken, [randomUUID()])).status).toBe(403);
 
@@ -215,7 +239,7 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       const labDept = await makeDept('Phòng xét nghiệm (test)');
       const imgDept = await makeDept('Phòng CĐHA (test)');
 
-      // Vai trò tuỳ biến: paraclinical_result.read/enter ở scope "department".
+      // Vai trò tuỳ biến: lab_result + imaging_result (read/enter) ở scope "department".
       const created = await http().post('/api/v1/roles').set(authed(adminToken)).send({ name: `KTV theo phòng ${randomUUID().slice(0, 6)}` });
       expect(created.status, JSON.stringify(created.body)).toBe(200);
       const roleId = created.body.data.id as string;
@@ -224,7 +248,7 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       const saved = await http()
         .put(`/api/v1/roles/${roleId}/permissions`)
         .set(authed(adminToken))
-        .send({ version: matrix.body.data.role.version, entries: ['paraclinical_result.read', 'paraclinical_result.enter'].map((k) => ({ permissionId: perm(k), dataScope: 'department' })) });
+        .send({ version: matrix.body.data.role.version, entries: ['lab_result.read', 'lab_result.enter', 'imaging_result.read', 'imaging_result.enter'].map((k) => ({ permissionId: perm(k), dataScope: 'department' })) });
       expect(saved.status, JSON.stringify(saved.body)).toBe(200);
 
       const makeUser = async (departmentId: string | null) => {
@@ -464,10 +488,19 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       expect(draft.status).toBe(200);
       expect(draft.body.data.form.sections[0].descriptionText).toBe('Gan nhiễm mỡ nhẹ.');
 
+      // Khối "Kết quả đã có" ở màn khám: chưa duyệt thì chưa có mốc "Trả lúc".
+      const beforeApprove = await http().get(orderUrl(encounterId)).set(authed(doctorToken));
+      expect(beforeApprove.status, JSON.stringify(beforeApprove.body)).toBe(200);
+      expect(beforeApprove.body.data.order.items[0].resultReturnedAt).toBeNull();
+
       const approved = await http().post(`${resultUrl(row.key)}/approve`).set(authed(doctorToken)).send({ sections: [section('Gan nhiễm mỡ nhẹ.', 'Gan nhiễm mỡ độ I.')] });
       expect(approved.status, JSON.stringify(approved.body)).toBe(200);
       expect(approved.body.data.form.bucket).toBe('COMPLETED');
       expect(approved.body.data.form.sections[0].conclusionText).toBe('Gan nhiễm mỡ độ I.');
+
+      const afterApprove = await http().get(orderUrl(encounterId)).set(authed(doctorToken));
+      expect(afterApprove.body.data.order.items[0].status).toBe('COMPLETED');
+      expect(afterApprove.body.data.order.items[0].resultReturnedAt).toBe(approved.body.data.form.signedAt);
 
       const actions = (await privileged.auditLog.findMany({ where: { tenantId: fixture.tenantA.id, entityType: 'paraclinical_result' }, select: { action: true } })).map((a) => a.action);
       expect(actions).toEqual(expect.arrayContaining(['paraclinical_result.saved', 'paraclinical_result.approved']));
@@ -494,7 +527,7 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       await start(nurseToken, [labItem.id]);
 
       const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 1)]);
-      const upload = (itemId: string, buffer: Buffer, name = 'sieu-am.png', token = nurseToken) => http().post(`/api/v1/paraclinical/items/${itemId}/images`).set(authed(token)).attach('file', buffer, name);
+      const upload = (itemId: string, buffer: Buffer, name = 'sieu-am.png', token = nurseToken) => http().post(`${baseUrl('imaging')}/items/${itemId}/images`).set(authed(token)).attach('file', buffer, name);
 
       const ok = await upload(imgItem.id, png);
       expect(ok.status, JSON.stringify(ok.body)).toBe(200);
@@ -507,12 +540,13 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
 
       // Sai định dạng / không có file / quyền / xét nghiệm không có ảnh.
       expect((await upload(imgItem.id, Buffer.from('không phải ảnh'), 'x.png')).status).toBeGreaterThanOrEqual(400);
-      expect((await http().post(`/api/v1/paraclinical/items/${imgItem.id}/images`).set(authed(nurseToken))).status).toBe(400);
+      expect((await http().post(`${baseUrl('imaging')}/items/${imgItem.id}/images`).set(authed(nurseToken))).status).toBe(400);
       expect((await upload(imgItem.id, png, 'a.png', receptionistToken)).status).toBe(403);
-      expect((await upload(labItem.id, png)).status).toBe(409);
+      // Xét nghiệm không có ảnh: endpoint ảnh thuộc menu CĐHA nên dịch vụ loại LAB không tồn tại ở đó (404).
+      expect((await upload(labItem.id, png)).status).toBe(404);
 
       // Gỡ ảnh.
-      const removed = await http().delete(`/api/v1/paraclinical/images/${images[0]!.id}`).set(authed(nurseToken));
+      const removed = await http().delete(`${baseUrl('imaging')}/images/${images[0]!.id}`).set(authed(nurseToken));
       expect(removed.status, JSON.stringify(removed.body)).toBe(200);
       expect(removed.body.data.form.sections[0].images).toHaveLength(0);
 
@@ -526,7 +560,7 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       expect(approved.status, JSON.stringify(approved.body)).toBe(200);
       expect(approved.body.data.form.sections[0].images).toHaveLength(1);
       expect((await upload(imgItem.id, png)).status).toBe(409);
-      expect((await http().delete(`/api/v1/paraclinical/images/${keptId}`).set(authed(nurseToken))).status).toBe(409);
+      expect((await http().delete(`${baseUrl('imaging')}/images/${keptId}`).set(authed(nurseToken))).status).toBe(409);
       await expect(privileged.paraclinicalResultImage.updateMany({ where: { tenantId: fixture.tenantA.id, id: keptId }, data: { deletedAt: new Date() } })).rejects.toThrow(/đã ký/);
 
       const audit = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, action: 'paraclinical_result.image_added' } });
@@ -543,6 +577,170 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       expect((await http().get(resultUrl(itemId)).set(authed(adminToken))).status).toBe(200);
       const viewed = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, action: 'paraclinical_result.viewed', entityId: itemId } });
       expect(viewed).not.toBeNull();
+    });
+  });
+  describe('tách 2 menu Xét nghiệm / CĐHA & Thăm dò chức năng (#215)', () => {
+    it('Kỹ thuật viên xét nghiệm chỉ thấy + làm việc ở menu Xét nghiệm, KTV CĐHA chỉ ở menu CĐHA; không ai duyệt được; điều dưỡng/bác sĩ có cả hai', async () => {
+      const labTech = await createUserWithRole(fixture.tenantA.id, 'lab_technician');
+      const imgTech = await createUserWithRole(fixture.tenantA.id, 'imaging_technician');
+      const { encounterId } = await prepareEncounterInConsultation();
+      const placed = await order(encounterId, [glucoseId, ultrasoundId]);
+      await payAll(encounterId);
+      const labItem = placed.items.find((i) => i.name.startsWith('Glucose'))!;
+      const imgItem = placed.items.find((i) => i.name.startsWith('Siêu âm'))!;
+
+      // Mỗi menu chỉ trả đúng loại dịch vụ của mình; menu còn lại 403.
+      const labRows = (await queueOf('lab', labTech.token)).items.filter((r) => r.orderNo === placed.orderNo);
+      expect(labRows.map((r) => r.serviceKind)).toEqual(['LAB']);
+      expect((await http().get(`${baseUrl('imaging')}/queue`).set(authed(labTech.token))).status).toBe(403);
+      const imgRows = (await queueOf('imaging', imgTech.token)).items.filter((r) => r.orderNo === placed.orderNo);
+      expect(imgRows.map((r) => r.serviceKind)).toEqual(['IMAGING']);
+      expect((await http().get(`${baseUrl('lab')}/queue`).set(authed(imgTech.token))).status).toBe(403);
+
+      // Dịch vụ của menu kia: không tồn tại với endpoint này (404), dù tài khoản có quyền ở endpoint đó.
+      expect((await http().post(`${baseUrl('lab')}/start`).set(authed(labTech.token)).send({ itemIds: [imgItem.id] })).status).toBe(404);
+      expect((await http().get(`${baseUrl('lab')}/items/${imgItem.id}/result`).set(authed(adminToken))).status).toBe(404);
+      expect((await http().get(`${baseUrl('imaging')}/items/${labItem.id}/result`).set(authed(adminToken))).status).toBe(404);
+
+      // Làm việc đúng nhóm; kỹ thuật viên không duyệt/ký.
+      expect((await http().post(`${baseUrl('lab')}/start`).set(authed(labTech.token)).send({ itemIds: [labItem.id] })).status).toBe(200);
+      expect((await http().post(`${baseUrl('imaging')}/start`).set(authed(imgTech.token)).send({ itemIds: [imgItem.id] })).status).toBe(200);
+      const labBody = { sections: [{ itemId: labItem.id, values: [{ indicatorId: glucoseIndicatorId, valueText: '5,0' }] }], submit: true };
+      expect((await http().put(`${baseUrl('lab')}/items/${labItem.id}/result`).set(authed(labTech.token)).send(labBody)).status).toBe(200);
+      expect((await http().post(`${baseUrl('lab')}/items/${labItem.id}/result/approve`).set(authed(labTech.token)).send(labBody)).status).toBe(403);
+      const imgBody = { sections: [{ itemId: imgItem.id, values: [], descriptionText: 'Gan bình thường.', conclusionText: 'Không bất thường.' }] };
+      expect((await http().post(`${baseUrl('imaging')}/items/${imgItem.id}/result/approve`).set(authed(imgTech.token)).send(imgBody)).status).toBe(403);
+      // Bác sĩ duyệt được cả hai nhóm.
+      expect((await http().post(`${baseUrl('lab')}/items/${labItem.id}/result/approve`).set(authed(doctorToken)).send(labBody)).status).toBe(200);
+      expect((await http().post(`${baseUrl('imaging')}/items/${imgItem.id}/result/approve`).set(authed(doctorToken)).send(imgBody)).status).toBe(200);
+      // Điều dưỡng thấy cả hai menu.
+      expect((await http().get(`${baseUrl('lab')}/queue`).set(authed(nurseToken))).status).toBe(200);
+      expect((await http().get(`${baseUrl('imaging')}/queue`).set(authed(nurseToken))).status).toBe(200);
+    });
+  });
+  describe('đính chính kết quả đã duyệt (#215)', () => {
+    /** Đưa 1 xét nghiệm glucose tới trạng thái ĐÃ DUYỆT (điều dưỡng nhập, bác sĩ duyệt) — trả id dòng chỉ định + id lượt khám. */
+    async function approvedGlucose(value = '5,0') {
+      const { encounterId } = await prepareEncounterInConsultation();
+      const placed = await order(encounterId, [glucoseId]);
+      await payAll(encounterId);
+      const itemId = placed.items[0]!.id;
+      expect((await start(nurseToken, [itemId])).status).toBe(200);
+      const body = { sections: [{ itemId, values: [{ indicatorId: glucoseIndicatorId, valueText: value }] }], submit: true };
+      expect((await http().put(resultUrl(itemId)).set(authed(nurseToken)).send(body)).status).toBe(200);
+      expect((await http().post(`${resultUrl(itemId)}/approve`).set(authed(doctorToken)).send(body)).status).toBe(200);
+      return { encounterId, itemId };
+    }
+    const orderItem = async (encounterId: string) => (await http().get(orderUrl(encounterId)).set(authed(doctorToken))).body.data.order.items[0] as { status: string; resultReturnedAt: string | null; amendmentPending: boolean };
+
+    it('điều dưỡng (quyền Nhập) đề nghị đính chính kèm lý do → quay lại "Đang thực hiện" với nội dung cũ; sửa + gửi duyệt; bác sĩ duyệt lại → bản mới có supersedes_id + lý do, bản gốc được giữ (soft-delete), mốc "Trả lúc" là bản mới', async () => {
+      const { encounterId, itemId } = await approvedGlucose('5,0');
+      const original = await privileged.paraclinicalResult.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: itemId, deletedAt: null } });
+      expect(original.signedAt).not.toBeNull();
+
+      // Lý do bắt buộc (>= 5 ký tự); người chỉ có quyền Xem không đề nghị được.
+      expect((await http().post(`${resultUrl(itemId)}/amend`).set(authed(nurseToken)).send({})).status).toBe(400);
+      expect((await http().post(`${resultUrl(itemId)}/amend`).set(authed(nurseToken)).send({ reason: 'ab' })).status).toBe(400);
+      expect((await http().post(`${resultUrl(itemId)}/amend`).set(authed(receptionistToken)).send({ reason: 'Nhập nhầm chỉ số glucose' })).status).toBe(403);
+
+      const started = await http().post(`${resultUrl(itemId)}/amend`).set(authed(nurseToken)).send({ reason: 'Nhập nhầm chỉ số glucose' });
+      expect(started.status, JSON.stringify(started.body)).toBe(200);
+      const draft = started.body.data.form as Awaited<ReturnType<typeof form>> & { amendment: { reason: string; originalSignedAt: string | null } | null };
+      expect(draft.bucket).toBe('IN_PROGRESS');
+      expect(draft.signedAt).toBeNull();
+      expect(draft.amendment).toMatchObject({ reason: 'Nhập nhầm chỉ số glucose' });
+      expect(draft.amendment!.originalSignedAt).toBe(original.signedAt!.toISOString());
+      expect(draft.sections[0]!.indicators[0]!.valueText).toBe('5,0');
+
+      // Bản gốc đã ký được giữ nguyên trong DB (bị thay thế, KHÔNG xoá cứng); đang đính chính thì màn khám thấy "đang đính chính", chưa có "Trả lúc".
+      const retired = await privileged.paraclinicalResult.findUniqueOrThrow({ where: { id: original.id } });
+      expect(retired.deletedAt).not.toBeNull();
+      expect(retired.signedAt?.toISOString()).toBe(original.signedAt!.toISOString());
+      expect(await orderItem(encounterId)).toMatchObject({ status: 'IN_PROGRESS', amendmentPending: true, resultReturnedAt: null });
+      const inQueue = (await queue(adminToken)).items.find((r) => r.itemIds.includes(itemId)) as unknown as { bucket: string; isAmendment: boolean };
+      expect(inQueue).toMatchObject({ bucket: 'IN_PROGRESS', isAmendment: true });
+      // Đã đang đính chính thì không mở thêm lần nữa (kết quả chưa ở trạng thái đã duyệt).
+      expect((await http().post(`${resultUrl(itemId)}/amend`).set(authed(nurseToken)).send({ reason: 'Đính chính lần hai' })).status).toBe(409);
+
+      // Sửa giá trị + gửi duyệt; điều dưỡng không tự duyệt được, bác sĩ duyệt.
+      const fixedBody = { sections: [{ itemId, values: [{ indicatorId: glucoseIndicatorId, valueText: '6,1' }] }], submit: true };
+      expect((await http().put(resultUrl(itemId)).set(authed(nurseToken)).send(fixedBody)).status).toBe(200);
+      expect((await http().post(`${resultUrl(itemId)}/approve`).set(authed(nurseToken)).send(fixedBody)).status).toBe(403);
+      const approved = await http().post(`${resultUrl(itemId)}/approve`).set(authed(doctorToken)).send(fixedBody);
+      expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+      const done = approved.body.data.form as typeof draft;
+      expect(done.bucket).toBe('COMPLETED');
+      expect(done.signedAt).not.toBeNull();
+      expect(done.sections[0]!.indicators[0]).toMatchObject({ valueText: '6,1', flag: 'HIGH' });
+      expect(done.amendment).toMatchObject({ reason: 'Nhập nhầm chỉ số glucose' });
+
+      const active = await privileged.paraclinicalResult.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: itemId, deletedAt: null } });
+      expect(active.id).not.toBe(original.id);
+      expect(active.supersedesId).toBe(original.id);
+      expect(active.amendmentReason).toBe('Nhập nhầm chỉ số glucose');
+      expect(active.signedAt).not.toBeNull();
+      expect(await orderItem(encounterId)).toMatchObject({ status: 'COMPLETED', amendmentPending: false, resultReturnedAt: active.signedAt!.toISOString() });
+      const actions = (await privileged.auditLog.findMany({ where: { tenantId: fixture.tenantA.id, entityType: 'paraclinical_result', entityId: { in: [active.id] } }, select: { action: true } })).map((a) => a.action);
+      expect(actions).toEqual(expect.arrayContaining(['paraclinical_result.amendment_started', 'paraclinical_result.amended']));
+      // Hàng đợi "Đã trả kết quả" vẫn đánh dấu là bản đính chính.
+      expect(((await queue(adminToken, { bucket: 'COMPLETED' })).items.find((r) => r.itemIds.includes(itemId)) as unknown as { isAmendment: boolean }).isAmendment).toBe(true);
+    });
+
+    it('huỷ đính chính → bỏ bản nháp, KHÔI PHỤC bản đã duyệt cũ nguyên vẹn (kết quả, mốc ký, trạng thái "Đã trả"); không có đính chính thì huỷ → 409; chưa duyệt thì đề nghị đính chính → 409', async () => {
+      const { encounterId, itemId } = await approvedGlucose('5,2');
+      const original = await privileged.paraclinicalResult.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: itemId, deletedAt: null } });
+
+      expect((await http().post(`${resultUrl(itemId)}/amend/cancel`).set(authed(nurseToken)).send({})).status).toBe(409);
+      expect((await http().post(`${resultUrl(itemId)}/amend`).set(authed(nurseToken)).send({ reason: 'Muốn kiểm tra lại mẫu' })).status).toBe(200);
+      const cancelled = await http().post(`${resultUrl(itemId)}/amend/cancel`).set(authed(nurseToken)).send({});
+      expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+      const back = cancelled.body.data.form as { bucket: string; signedAt: string | null; amendment: unknown; sections: { indicators: { valueText: string | null }[] }[] };
+      expect(back.bucket).toBe('COMPLETED');
+      expect(back.signedAt).toBe(original.signedAt!.toISOString());
+      expect(back.amendment).toBeNull();
+      expect(back.sections[0]!.indicators[0]!.valueText).toBe('5,2');
+
+      const restored = await privileged.paraclinicalResult.findUniqueOrThrow({ where: { id: original.id } });
+      expect(restored.deletedAt).toBeNull();
+      const all = await privileged.paraclinicalResult.findMany({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: itemId } });
+      expect(all.filter((r) => r.deletedAt === null)).toHaveLength(1);
+      expect(all.filter((r) => r.supersedesId !== null && r.deletedAt !== null)).toHaveLength(1);
+      expect(await orderItem(encounterId)).toMatchObject({ status: 'COMPLETED', amendmentPending: false, resultReturnedAt: original.signedAt!.toISOString() });
+
+      // Dịch vụ chưa duyệt (đang thực hiện) không đính chính được.
+      const fresh = await prepareEncounterInConsultation();
+      const placed = await order(fresh.encounterId, [glucoseId]);
+      await payAll(fresh.encounterId);
+      const freshItem = placed.items[0]!.id;
+      await start(nurseToken, [freshItem]);
+      expect((await http().post(`${resultUrl(freshItem)}/amend`).set(authed(nurseToken)).send({ reason: 'Chưa duyệt mà đính chính' })).status).toBe(409);
+    });
+
+    it('đính chính giữ cả ảnh đính kèm của CĐHA (sao chép sang bản nháp) và dịch vụ nhóm khác không đính chính được qua endpoint này (404)', async () => {
+      const { encounterId } = await prepareEncounterInConsultation();
+      const placed = await order(encounterId, [ultrasoundId]);
+      await payAll(encounterId);
+      const imgItem = placed.items[0]!.id;
+      await start(nurseToken, [imgItem]);
+      const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 1)]);
+      const uploaded = await http().post(`${baseUrl('imaging')}/items/${imgItem}/images`).set(authed(nurseToken)).attach('file', png, 'sieu-am.png');
+      expect(uploaded.status).toBe(200);
+      const body = { sections: [{ itemId: imgItem, values: [], descriptionText: 'Gan bình thường.', conclusionText: 'Không bất thường.' }] };
+      expect((await http().post(`${resultUrl(imgItem)}/approve`).set(authed(doctorToken)).send(body)).status).toBe(200);
+
+      // Dịch vụ CĐHA không đính chính được qua endpoint của xét nghiệm.
+      expect((await http().post(`${baseUrl('lab')}/items/${imgItem}/result/amend`).set(authed(adminToken)).send({ reason: 'Sai nhóm menu' })).status).toBe(404);
+
+      const started = await http().post(`${resultUrl(imgItem)}/amend`).set(authed(nurseToken)).send({ reason: 'Kết luận ghi thiếu' });
+      expect(started.status, JSON.stringify(started.body)).toBe(200);
+      const images = started.body.data.form.sections[0].images as { id: string; url: string }[];
+      expect(images).toHaveLength(1);
+      expect((await http().get(images[0]!.url)).status).toBe(200);
+      const corrected = { sections: [{ itemId: imgItem, values: [], descriptionText: 'Gan bình thường.', conclusionText: 'Gan nhiễm mỡ độ I.' }] };
+      const approved = await http().post(`${resultUrl(imgItem)}/approve`).set(authed(doctorToken)).send(corrected);
+      expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+      expect(approved.body.data.form.sections[0].conclusionText).toBe('Gan nhiễm mỡ độ I.');
+      expect(approved.body.data.form.sections[0].images).toHaveLength(1);
     });
   });
 });

@@ -1,28 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ListParaclinicalQueueQuery, SaveParaclinicalResultRequest, StartParaclinicalItemsRequest } from '@nexamed/shared';
+import type { AmendParaclinicalResultRequest, ListParaclinicalQueueQuery, SaveParaclinicalResultRequest, StartParaclinicalItemsRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { approveParaclinicalResult, deleteParaclinicalImage, getParaclinicalResult, listParaclinicalQueue, recordParaclinicalResultPrint, saveParaclinicalResult, startParaclinicalItems, uploadParaclinicalImage } from './paraclinical-result.api';
+import type { ParaclinicalGroup } from './paraclinical-group';
+import { amendParaclinicalResult, approveParaclinicalResult, cancelParaclinicalAmendment, deleteParaclinicalImage, getParaclinicalResult, listParaclinicalQueue, recordParaclinicalResultPrint, saveParaclinicalResult, startParaclinicalItems, uploadParaclinicalImage } from './paraclinical-result.api';
 
-/** Cận lâm sàng GĐ4 đợt 1 — Hàng đợi & kết quả (docs/DECISIONS.md #212). */
+/** Cận lâm sàng GĐ4 — Hàng đợi & kết quả (docs/DECISIONS.md #212), tách 2 menu theo nhóm (#215). Cache key có `group` vì 2 nhóm là 2 hàng đợi độc lập. */
 
 const QUEUE_REFRESH_MS = 30_000;
 
-export function useParaclinicalQueueQuery(params: ListParaclinicalQueueQuery) {
+export function useParaclinicalQueueQuery(group: ParaclinicalGroup, params: ListParaclinicalQueueQuery) {
   const { tenantId } = useAppConfig();
   return useQuery({
-    queryKey: queryKey(tenantId, 'paraclinical', 'queue', JSON.stringify(params)),
-    queryFn: () => listParaclinicalQueue(params),
+    queryKey: queryKey(tenantId, 'paraclinical', 'queue', group, JSON.stringify(params)),
+    queryFn: () => listParaclinicalQueue(group, params),
     // Hàng đợi là màn "treo" ở quầy kỹ thuật — tự làm mới để thấy phiếu mới thu tiền/chỉ định, không bắt bấm F5.
     refetchInterval: QUEUE_REFRESH_MS,
   });
 }
 
-export function useParaclinicalResultQuery(itemId: string) {
+export function useParaclinicalResultQuery(group: ParaclinicalGroup, itemId: string) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'paraclinical', 'result', itemId),
-    queryFn: () => getParaclinicalResult(itemId),
+    queryFn: () => getParaclinicalResult(group, itemId),
   });
 }
 
@@ -32,17 +33,17 @@ function useInvalidateQueue() {
   return () => void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'paraclinical', 'queue') });
 }
 
-export function useStartParaclinicalMutation() {
+export function useStartParaclinicalMutation(group: ParaclinicalGroup) {
   const invalidateQueue = useInvalidateQueue();
-  return useMutation({ mutationFn: (body: StartParaclinicalItemsRequest) => startParaclinicalItems(body), onSuccess: invalidateQueue });
+  return useMutation({ mutationFn: (body: StartParaclinicalItemsRequest) => startParaclinicalItems(group, body), onSuccess: invalidateQueue });
 }
 
-export function useSaveParaclinicalResultMutation(itemId: string) {
+export function useSaveParaclinicalResultMutation(group: ParaclinicalGroup, itemId: string) {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
   const invalidateQueue = useInvalidateQueue();
   return useMutation({
-    mutationFn: (body: SaveParaclinicalResultRequest) => saveParaclinicalResult(itemId, body),
+    mutationFn: (body: SaveParaclinicalResultRequest) => saveParaclinicalResult(group, itemId, body),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKey(tenantId, 'paraclinical', 'result', itemId), data);
       invalidateQueue();
@@ -50,12 +51,12 @@ export function useSaveParaclinicalResultMutation(itemId: string) {
   });
 }
 
-export function useApproveParaclinicalResultMutation(itemId: string) {
+export function useApproveParaclinicalResultMutation(group: ParaclinicalGroup, itemId: string) {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
   const invalidateQueue = useInvalidateQueue();
   return useMutation({
-    mutationFn: (body: SaveParaclinicalResultRequest) => approveParaclinicalResult(itemId, body),
+    mutationFn: (body: SaveParaclinicalResultRequest) => approveParaclinicalResult(group, itemId, body),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKey(tenantId, 'paraclinical', 'result', itemId), data);
       invalidateQueue();
@@ -63,8 +64,23 @@ export function useApproveParaclinicalResultMutation(itemId: string) {
   });
 }
 
-export function usePrintParaclinicalResultMutation(itemId: string) {
-  return useMutation({ mutationFn: () => recordParaclinicalResultPrint(itemId) });
+/** Đính chính / huỷ đính chính: form trả về thay luôn dữ liệu màn hình, làm mới hàng đợi và khối "Kết quả đã có" ở màn khám. */
+export function useAmendParaclinicalMutations(group: ParaclinicalGroup, itemId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  const invalidateQueue = useInvalidateQueue();
+  const apply = (data: Awaited<ReturnType<typeof amendParaclinicalResult>>) => {
+    queryClient.setQueryData(queryKey(tenantId, 'paraclinical', 'result', itemId), data);
+    invalidateQueue();
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinical-order', 'detail') });
+  };
+  const amend = useMutation({ mutationFn: (body: AmendParaclinicalResultRequest) => amendParaclinicalResult(group, itemId, body), onSuccess: apply });
+  const cancel = useMutation({ mutationFn: () => cancelParaclinicalAmendment(group, itemId), onSuccess: apply });
+  return { amend, cancel };
+}
+
+export function usePrintParaclinicalResultMutation(group: ParaclinicalGroup, itemId: string) {
+  return useMutation({ mutationFn: () => recordParaclinicalResultPrint(group, itemId) });
 }
 
 /** Thêm / gỡ ảnh đính kèm của màn nhập đang mở (`pageItemId`); form trả về thay luôn dữ liệu màn hình. */

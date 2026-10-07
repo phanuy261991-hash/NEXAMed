@@ -27,6 +27,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   appointment: 'Lịch hẹn',
   drug: 'Thuốc',
   print_template: 'Mẫu in',
+  system_backup: 'Sao lưu dữ liệu',
   technical_service: 'Dịch vụ kỹ thuật',
   lab_indicator: 'Chỉ số xét nghiệm',
   result_template: 'Mẫu kết quả',

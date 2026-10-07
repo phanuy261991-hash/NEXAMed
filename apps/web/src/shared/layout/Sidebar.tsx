@@ -11,6 +11,7 @@ import {
   Export,
   FileText,
   Flask,
+  Scan,
   FolderSimple,
   GearSix,
   GraduationCap,
@@ -65,6 +66,8 @@ import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context'
 /** Route của "Hàng đợi khám" — giữ nguyên dưới `features/reception/` (chưa có module `encounter`/
  * `examination` thật ở web), chỉ đổi vị trí hiển thị sang nhóm "Khám bệnh" trong sidebar. */
 const EXAMINATION_GROUP_PATH = '/reception/doctor-queue';
+/** Nhóm "Cận lâm sàng" (#215): 2 mục con Xét nghiệm / CĐHA & Thăm dò chức năng, mục nào hiện tuỳ quyền `lab_result.read` / `imaging_result.read`. */
+const PARACLINICAL_GROUP_PATH = '/paraclinical';
 /** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong
  * đó. Loại trừ `EXAMINATION_GROUP_PATH` vì cùng tiền tố `/reception` nhưng nay thuộc nhóm khác.
  * KHÔNG còn `/patients` (2026-09-08) — "Danh sách bệnh nhân" đã chuyển sang nhóm "Hồ sơ Bệnh nhân"
@@ -188,6 +191,7 @@ export function Sidebar() {
   const [examinationGroupOpen, setExaminationGroupOpen] = useState(
     location.pathname.startsWith(EXAMINATION_GROUP_PATH),
   );
+  const [paraclinicalGroupOpen, setParaclinicalGroupOpen] = useState(location.pathname.startsWith(PARACLINICAL_GROUP_PATH));
   const [patientRecordsGroupOpen, setPatientRecordsGroupOpen] = useState(
     PATIENT_RECORDS_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
@@ -224,8 +228,10 @@ export function Sidebar() {
   const canSeeCatalogPharmacy = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
   // "Bảng giá" (#212 GĐ2) — gate theo ĐÚNG quyền của route guard (`PRICE_LIST_ADMIN_PERMISSIONS`); `price_list.read` một mình không đủ.
   const canSeePriceLists = useHasAnyPermission(PRICE_LIST_ADMIN_PERMISSIONS);
-  // "Cận lâm sàng" (GĐ4 đợt 1) — gate theo ĐÚNG quyền của route `/paraclinical/*`.
-  const canSeeParaclinical = useHasPermission('paraclinical_result', 'read');
+  // "Cận lâm sàng" (GĐ4, tách 2 menu #215) — mỗi mục con gate theo ĐÚNG quyền của route của nó; không có quyền nhóm nào thì cả nhóm ẩn.
+  const canSeeLabQueue = useHasPermission('lab_result', 'read');
+  const canSeeImagingQueue = useHasPermission('imaging_result', 'read');
+  const canSeeParaclinical = canSeeLabQueue || canSeeImagingQueue;
   // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — 2 mục "Công nợ nhà cung cấp"/
   // "Phiếu thanh toán NCC" trong nhóm "Quản lý nhà cung cấp", gate RIÊNG khỏi `canSeeCatalogPharmacy`
   // (mặc định CHỈ clinic_admin có `supplier_debt.read`, khác `drug.create`/`drug.update`).
@@ -278,6 +284,7 @@ export function Sidebar() {
   const canSeeStaffSchedule = useDataScope('work_shift_assignment', 'read') === 'global';
   const receptionGroupExpanded = receptionGroupOpen && !collapsed;
   const examinationGroupExpanded = examinationGroupOpen && !collapsed;
+  const paraclinicalGroupExpanded = paraclinicalGroupOpen && !collapsed;
   const patientRecordsGroupExpanded = patientRecordsGroupOpen && !collapsed;
   const adminGroupExpanded = adminGroupOpen && !collapsed;
   const billingGroupExpanded = billingGroupOpen && !collapsed;
@@ -387,8 +394,47 @@ export function Sidebar() {
             </li>
           )}
 
-          {/* "Cận lâm sàng" (GĐ4 đợt 1, #212) — mục cấp 1 ngay dưới "Khám bệnh". Hiện MỖI "Hàng đợi" (Phiếu chỉ định / Tra cứu kết quả chưa xây — không dựng mục giả); khi có thêm mục sẽ thành nhóm xổ xuống như mockup. */}
-          {canSeeParaclinical && <NavItem to="/paraclinical/queue" label="Cận lâm sàng" icon={Flask} collapsed={collapsed} />}
+          {/* "Cận lâm sàng" (GĐ4, #212; tách 2 menu #215) — nhóm xổ xuống ngay dưới "Khám bệnh": "Xét nghiệm" và "CĐHA & Thăm dò chức năng", mục nào hiện tuỳ quyền. */}
+          {canSeeParaclinical && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Cận lâm sàng' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    // Cùng quy tắc bắt buộc ở các nhóm khác (ui-guidelines.md mục 8.1/8.3): bấm icon lúc thu gọn phải mở lại sidebar.
+                    setCollapsed(false);
+                    setParaclinicalGroupOpen(true);
+                  } else {
+                    setParaclinicalGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={paraclinicalGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <Flask size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Cận lâm sàng</span>
+                    <CaretRight
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                      className={`ml-auto flex-shrink-0 transition-transform ${paraclinicalGroupExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </>
+                )}
+              </button>
+              {paraclinicalGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  {canSeeLabQueue && <NavItem to="/paraclinical/lab" label="Xét nghiệm" icon={Flask} collapsed={false} indent />}
+                  {canSeeImagingQueue && <NavItem to="/paraclinical/imaging" label="CĐHA & Thăm dò CN" icon={Scan} collapsed={false} indent />}
+                </ul>
+              )}
+            </li>
+          )}
 
           {/* "Hồ sơ Bệnh nhân" (2026-09-08, chủ dự án yêu cầu trực tiếp) — tách khỏi "Tiếp nhận và
               Đặt lịch", đặt ngay dưới "Khám bệnh". Gate bằng ĐÚNG quyền route `/patients*` cần

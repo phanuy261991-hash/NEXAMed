@@ -23,6 +23,8 @@ export const envSchema = z.object({
   // `backup`). Để trống (mặc định, đúng cho máy dev — không chạy container backup) thì
   // `GET /backup-status` trả `configured: false`, FE không hiện banner cảnh báo giả.
   BACKUP_STATUS_FILE: z.string().min(1).optional(),
+  // Thư mục đích sao lưu TRÊN MÁY CHỦ (giá trị `BACKUP_HOST_DIR` trong `.env`) — chỉ để HIỂN THỊ ở "Cấu hình hệ thống → Sao lưu dữ liệu" (#217); API không đổi được điểm gắn của container.
+  BACKUP_HOST_DIR_DISPLAY: z.string().min(1).optional(),
   // Đường dẫn thực thi Chrome/Chromium cho xuất bệnh án PDF (S6-06, ADM-05, `PuppeteerPdfRendererAdapter`).
   // Để trống thì adapter tự dò /usr/bin/chromium (đúng gói `apt-get install chromium` trong
   // apps/api/Dockerfile) — đủ cho container Docker. Máy dev Windows PHẢI đặt tường minh, trỏ tới

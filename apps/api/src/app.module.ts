@@ -36,6 +36,7 @@ import { PatientWalletModule } from './modules/patient-wallet/patient-wallet.mod
 import { SupplierDebtModule } from './modules/supplier-debt/supplier-debt.module';
 import { HealthModule } from './modules/health/health.module';
 import { BackupStatusModule } from './modules/backup-status/backup-status.module';
+import { BackupConfigModule } from './modules/backup-config/backup-config.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -82,6 +83,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     SupplierDebtModule,
     HealthModule,
     BackupStatusModule,
+    BackupConfigModule,
   ],
 })
 export class AppModule implements NestModule {

@@ -31,6 +31,7 @@ export * from './audit-log';
 export * from './audit/action-labels';
 export * from './audit/entity-type-labels';
 export * from './backup-status';
+export * from './backup-config';
 export * from './inventory';
 export * from './supplier-debt';
 export * from './print-template';

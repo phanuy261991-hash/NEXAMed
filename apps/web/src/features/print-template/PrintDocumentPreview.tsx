@@ -16,7 +16,8 @@ import { WalletReceiptPrintView } from '../patient-wallet/WalletReceiptPrintView
 import {
   SAMPLE_CASH_VOUCHER,
   SAMPLE_CLINICAL_ORDER,
-  SAMPLE_PARACLINICAL_RESULT,
+  SAMPLE_IMAGING_RESULT,
+  SAMPLE_LAB_RESULT,
   SAMPLE_CASHIER_SHIFT,
   SAMPLE_COMBINED_INVOICES,
   SAMPLE_INVOICE,
@@ -63,8 +64,10 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
           printedAt="2026-10-06T02:30:00.000Z"
         />
       );
-    case 'PARACLINICAL_RESULT':
-      return <ParaclinicalResultPrintView form={SAMPLE_PARACLINICAL_RESULT} />;
+    case 'LAB_RESULT':
+      return <ParaclinicalResultPrintView form={SAMPLE_LAB_RESULT} />;
+    case 'IMAGING_RESULT':
+      return <ParaclinicalResultPrintView form={SAMPLE_IMAGING_RESULT} />;
     case 'INVOICE':
       return <InvoicePrintView collectedByName="Nguyễn Thị Bích Ngọc" paymentMethodLabel="Tiền mặt" invoice={SAMPLE_INVOICE} />;
     case 'INVOICE_COMBINED':

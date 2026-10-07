@@ -4,6 +4,61 @@ import { USER_ROLES, type DataScope, type UserRole } from '@nexamed/shared';
 import type { UnitOfWorkService } from './unit-of-work.service';
 import { ensureDefaultCashAccount, ensureDefaultWarehouse } from './seed-tenant-roles';
 
+/** Module quyền cũ trước khi tách cận lâm sàng thành 2 menu (docs/DECISIONS.md #215). */
+const LEGACY_PARACLINICAL_MODULE = 'paraclinical_result';
+const SPLIT_PARACLINICAL_MODULES = ['lab_result', 'imaging_result'] as const;
+const ROLES_ADDED_AFTER_TENANT_CREATION: readonly UserRole[] = ['lab_technician', 'imaging_technician'];
+
+/**
+ * Tách quyền cận lâm sàng (#215): mọi vai trò (hệ thống lẫn tuỳ biến) đang có `paraclinical_result.<hành động>` được cấp lại ĐÚNG hành động đó, cùng phạm vi, cho cả
+ * `lab_result` và `imaging_result` rồi thu hồi (soft-delete) dòng cũ — không ai mất quyền, quản trị viên bỏ bớt nhóm không cần ở "Vai trò & Phân quyền" sau đó.
+ * Idempotent; chỉ thu hồi dòng cũ khi CẢ HAI quyền mới đã có trong danh mục (chưa chạy `db:seed` thì giữ nguyên, lần khởi động sau làm tiếp).
+ */
+export async function migrateLegacyParaclinicalPermissions(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  actorId: string,
+  permissionIdByKey: ReadonlyMap<string, string>,
+): Promise<string[]> {
+  const legacy = await tx.permission.findMany({ where: { module: LEGACY_PARACLINICAL_MODULE } });
+  if (legacy.length === 0) return [];
+  const actionByLegacyId = new Map(legacy.map((p) => [p.id, p.action]));
+  const rows = await tx.rolePermission.findMany({ where: { tenantId, deletedAt: null, permissionId: { in: legacy.map((p) => p.id) } } });
+
+  const added: string[] = [];
+  const convertedIds: string[] = [];
+  for (const row of rows) {
+    const action = actionByLegacyId.get(row.permissionId)!;
+    const targets = SPLIT_PARACLINICAL_MODULES.map((module) => ({ key: `${module}.${action}`, permissionId: permissionIdByKey.get(`${module}.${action}`) }));
+    if (targets.some((target) => !target.permissionId)) continue;
+    await tx.rolePermission.createMany({
+      data: targets.map((target) => ({ tenantId, roleId: row.roleId, permissionId: target.permissionId as string, dataScope: row.dataScope, createdBy: actorId, updatedBy: actorId })),
+      skipDuplicates: true,
+    });
+    convertedIds.push(row.id);
+    for (const target of targets) added.push(`${tenantId}/${row.roleId}/${target.key}`);
+  }
+  if (convertedIds.length > 0) {
+    await tx.rolePermission.updateMany({
+      where: { tenantId, id: { in: convertedIds } },
+      data: { deletedAt: new Date(), deletedReason: 'Tách quyền cận lâm sàng thành Xét nghiệm / CĐHA & Thăm dò chức năng (docs/DECISIONS.md #215)', updatedBy: actorId, version: { increment: 1 } },
+    });
+  }
+  return added;
+}
+
+/** Vai trò hệ thống thêm SAU khi tenant đã tạo (vd. 2 vai trò Kỹ thuật viên, #215): tạo nếu tenant chưa có — `seedDefaultRolesForTenant` chỉ chạy lúc tạo tenant mới. */
+export async function ensureSystemRoles(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<void> {
+  // Chỉ bổ sung cho tenant THẬT (đã có vai trò hệ thống) — không biến tenant trống thành tenant có vai trò.
+  const hasSystemRoles = await tx.role.findFirst({ where: { tenantId, isSystemDefault: true }, select: { id: true } });
+  if (!hasSystemRoles) return;
+  for (const roleName of ROLES_ADDED_AFTER_TENANT_CREATION) {
+    const existing = await tx.role.findFirst({ where: { tenantId, name: roleName } });
+    if (existing) continue;
+    await tx.role.create({ data: { tenantId, name: roleName, isSystemDefault: true, createdBy: actorId, updatedBy: actorId } });
+  }
+}
+
 /**
  * Đồng bộ `role_permission` còn thiếu cho MỘT tenant, so với `DEFAULT_ROLE_PERMISSIONS`
  * (packages/core/src/rbac/permissions.ts) — chỉ THÊM dòng còn thiếu cho vai trò
@@ -22,11 +77,13 @@ export async function syncRolePermissionsForTenant(
   const permissions = await tx.permission.findMany();
   const permissionIdByKey = new Map(permissions.map((p) => [permissionKey(p), p.id]));
 
+  await ensureSystemRoles(tx, tenantId, actorId);
+
   const roles = await tx.role.findMany({
     where: { tenantId, isSystemDefault: true, deletedAt: null },
   });
 
-  const added: string[] = [];
+  const added: string[] = await migrateLegacyParaclinicalPermissions(tx, tenantId, actorId, permissionIdByKey);
 
   for (const role of roles) {
     if (!(USER_ROLES as readonly string[]).includes(role.name)) continue;

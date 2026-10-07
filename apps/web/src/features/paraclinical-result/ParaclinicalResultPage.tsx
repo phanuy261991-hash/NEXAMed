@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle, Plus, Trash, Warning } from '@phosphor-icons/react';
+import { ArrowsClockwise, CheckCircle, Plus, Trash, Warning } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ParaclinicalResultForm, ParaclinicalResultSection, SaveParaclinicalResultRequest } from '@nexamed/shared';
 import { ApiError, resolveApiUrl } from '../../shared/api/client';
@@ -17,8 +17,10 @@ import { TimeInput } from '../../shared/ui/TimeInput';
 import { useHasPermission } from '../auth/usePermission';
 import { useResultTemplatesQuery } from '../paraclinical/paraclinical.queries';
 import { formatDateTimeVn, genderShort, previewFlag, RESULT_STATUS_META, SERVICE_KIND_LABELS } from './paraclinical-result-labels';
+import { PARACLINICAL_GROUP_META, type ParaclinicalGroup } from './paraclinical-group';
+import { AmendResultDialog, CancelAmendmentDialog } from './ParaclinicalAmendDialogs';
 import { ParaclinicalResultPrintView } from './ParaclinicalResultPrintView';
-import { useApproveParaclinicalResultMutation, useParaclinicalImageMutations, useParaclinicalResultQuery, usePrintParaclinicalResultMutation, useSaveParaclinicalResultMutation } from './paraclinical-result.queries';
+import { useAmendParaclinicalMutations, useApproveParaclinicalResultMutation, useParaclinicalImageMutations, useParaclinicalResultQuery, usePrintParaclinicalResultMutation, useSaveParaclinicalResultMutation } from './paraclinical-result.queries';
 
 interface SectionDraft {
   values: Record<string, { valueText: string; note: string }>;
@@ -49,12 +51,13 @@ function initDrafts(form: ParaclinicalResultForm): Record<string, SectionDraft> 
   );
 }
 
-/** Màn nhập/duyệt kết quả (`/paraclinical/items/:itemId`) — mở từ Hàng đợi cận lâm sàng; xét nghiệm cùng nhóm hiện chung 1 màn. */
-export function ParaclinicalResultPage() {
+/** Màn nhập/duyệt kết quả (`/paraclinical/<lab|imaging>/items/:itemId`) — mở từ hàng đợi của đúng nhóm menu; xét nghiệm cùng nhóm hiện chung 1 màn. */
+export function ParaclinicalResultPage({ group }: { group: ParaclinicalGroup }) {
   const { itemId = '' } = useParams();
-  const query = useParaclinicalResultQuery(itemId);
+  const query = useParaclinicalResultQuery(group, itemId);
   const form = query.data?.form;
-  useBreadcrumb([{ label: 'Cận lâm sàng' }, { label: 'Hàng đợi cận lâm sàng', to: '/paraclinical/queue' }, { label: form ? `Nhập kết quả — ${form.orderNo}` : 'Nhập kết quả' }]);
+  const meta = PARACLINICAL_GROUP_META[group];
+  useBreadcrumb([{ label: 'Cận lâm sàng' }, { label: meta.label, to: meta.basePath }, { label: form ? `Nhập kết quả — ${form.orderNo}` : 'Nhập kết quả' }]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -70,19 +73,23 @@ export function ParaclinicalResultPage() {
           <ErrorBanner message={query.error instanceof ApiError ? query.error.message : 'Không tải được phiếu kết quả.'} onRetry={() => query.refetch()} />
         </div>
       )}
-      {form && <ResultForm key={itemId} itemId={itemId} form={form} />}
+      {form && <ResultForm key={`${itemId}:${form.signedAt ?? 'draft'}:${form.amendment ? 'amended' : 'original'}`} group={group} itemId={itemId} form={form} />}
     </div>
   );
 }
 
-function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResultForm }) {
+function ResultForm({ group, itemId, form }: { group: ParaclinicalGroup; itemId: string; form: ParaclinicalResultForm }) {
   const navigate = useNavigate();
-  const canEnter = useHasPermission('paraclinical_result', 'enter');
-  const canApprove = useHasPermission('paraclinical_result', 'approve');
-  const saveMutation = useSaveParaclinicalResultMutation(itemId);
-  const approveMutation = useApproveParaclinicalResultMutation(itemId);
-  const printMutation = usePrintParaclinicalResultMutation(itemId);
+  const meta = PARACLINICAL_GROUP_META[group];
+  const canEnter = useHasPermission(meta.permissionModule, 'enter');
+  const canApprove = useHasPermission(meta.permissionModule, 'approve');
+  const saveMutation = useSaveParaclinicalResultMutation(group, itemId);
+  const approveMutation = useApproveParaclinicalResultMutation(group, itemId);
+  const printMutation = usePrintParaclinicalResultMutation(group, itemId);
   const imageMutations = useParaclinicalImageMutations(itemId);
+  const amendMutations = useAmendParaclinicalMutations(group, itemId);
+  const [amendOpen, setAmendOpen] = useState(false);
+  const [cancelAmendOpen, setCancelAmendOpen] = useState(false);
 
   const [drafts, setDrafts] = useState<Record<string, SectionDraft>>(() => initDrafts(form));
   // Bản in lấy từ dữ liệu ĐÃ LƯU ở máy chủ — còn thay đổi chưa lưu thì khoá nút in để phiếu in không lệch màn hình.
@@ -165,6 +172,7 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
   const serviceNames = form.sections.map((s) => s.name);
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="flex h-full min-h-0 flex-col">
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
@@ -185,6 +193,36 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
       </div>
 
       <div className="scroll-hover flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-10 pt-4 [&>*]:flex-shrink-0">
+        {form.amendment && !signed && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
+            <div className="flex min-w-0 items-start gap-2">
+              <ArrowsClockwise size={18} weight="fill" className="mt-0.5 flex-none" aria-hidden="true" />
+              <div>
+                <p className="font-semibold">
+                  Đang đính chính kết quả đã duyệt{form.amendment.originalSignedAt ? ` lúc ${formatDateTimeVn(form.amendment.originalSignedAt)}` : ''}
+                  {form.amendment.originalSignedByName ? ` bởi ${form.amendment.originalSignedByName}` : ''}
+                </p>
+                <p className="mt-0.5">
+                  Lý do: <span className="font-semibold">{form.amendment.reason}</span> — sửa chỗ sai rồi gửi duyệt; bản đã duyệt cũ được giữ lại.
+                </p>
+              </div>
+            </div>
+            {canEnter && (
+              <Button type="button" variant="secondary" onClick={() => setCancelAmendOpen(true)}>
+                Huỷ đính chính
+              </Button>
+            )}
+          </div>
+        )}
+        {form.amendment && signed && (
+          <div className="flex items-start gap-2 rounded-md border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700">
+            <ArrowsClockwise size={18} weight="bold" className="mt-0.5 flex-none text-slate-500" aria-hidden="true" />
+            <p>
+              <span className="font-semibold">Bản đính chính</span> — thay thế bản đã duyệt{form.amendment.originalSignedAt ? ` lúc ${formatDateTimeVn(form.amendment.originalSignedAt)}` : ''}. Lý do:{' '}
+              <span className="font-semibold">{form.amendment.reason}</span>
+            </p>
+          </div>
+        )}
         {signed && (
           <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm font-semibold text-emerald-800">
             <CheckCircle size={18} weight="fill" aria-hidden="true" />
@@ -254,19 +292,25 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-6 py-3">
         <p className="text-[12.5px] text-slate-500">
           {signed
-            ? 'Kết quả đã duyệt là bản ký — sửa sau khi duyệt phải tạo bản đính chính kèm lý do, bản cũ được giữ lại.'
+            ? 'Kết quả đã duyệt là bản ký — cần sửa thì bấm "Đính chính" (bắt buộc nêu lý do), bản cũ được giữ lại.'
             : form.bucket === 'PENDING_APPROVAL' && !canApprove
               ? 'Đã gửi duyệt — chờ bác sĩ duyệt và trả kết quả.'
-              : 'Kết quả đã duyệt là bản ký — sửa sau khi duyệt phải tạo bản đính chính kèm lý do, bản cũ được giữ lại.'}
+              : 'Kết quả chỉ có hiệu lực sau khi bác sĩ duyệt; lưu nháp để nhập tiếp sau.'}
           {savedFlash && <span className="ml-3 font-semibold text-emerald-600">Đã lưu</span>}
         </p>
         <div className="flex gap-2.5">
-          <Button type="button" variant="secondary" onClick={() => navigate('/paraclinical/queue')}>
+          <Button type="button" variant="secondary" onClick={() => navigate(meta.basePath)}>
             {editable ? 'Về hàng đợi' : 'Đóng'}
           </Button>
-          <PrintButton documentType="PARACLINICAL_RESULT" onPrint={() => void handlePrint()} loading={printMutation.isPending} disabled={busy || dirty}>
+          <PrintButton documentType={group === 'lab' ? 'LAB_RESULT' : 'IMAGING_RESULT'} onPrint={() => void handlePrint()} loading={printMutation.isPending} disabled={busy || dirty}>
             In phiếu kết quả
           </PrintButton>
+          {signed && canEnter && (
+            <Button type="button" variant="secondary" onClick={() => setAmendOpen(true)}>
+              <ArrowsClockwise size={15} weight="bold" aria-hidden="true" />
+              Đính chính
+            </Button>
+          )}
           {editable && (
             <Button type="button" variant="secondary" loading={saveMutation.isPending} disabled={busy} onClick={() => void saveDraft()}>
               Lưu nháp
@@ -286,6 +330,33 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
       </div>
       <ParaclinicalResultPrintView form={form} />
     </form>
+    {amendOpen && (
+      <AmendResultDialog
+        onClose={() => setAmendOpen(false)}
+        onSubmit={async (reason) => {
+          try {
+            await amendMutations.amend.mutateAsync({ reason });
+            setAmendOpen(false);
+          } catch (err) {
+            throw new Error(err instanceof ApiError ? err.message : 'Không mở được đính chính. Thử lại sau.');
+          }
+        }}
+      />
+    )}
+    {cancelAmendOpen && (
+      <CancelAmendmentDialog
+        onClose={() => setCancelAmendOpen(false)}
+        onConfirm={async () => {
+          try {
+            await amendMutations.cancel.mutateAsync();
+            setCancelAmendOpen(false);
+          } catch (err) {
+            throw new Error(err instanceof ApiError ? err.message : 'Không huỷ được đính chính. Thử lại sau.');
+          }
+        }}
+      />
+    )}
+    </>
   );
 }
 

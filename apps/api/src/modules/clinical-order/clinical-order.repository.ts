@@ -27,7 +27,7 @@ export interface CreateOrderPackageData {
 
 /** Phiếu kèm dòng/gói còn hiệu lực + Khoa/Phòng thực hiện của từng dịch vụ kỹ thuật (cột "Nơi thực hiện"). */
 export interface ClinicalOrderWithLines extends ClinicalOrder {
-  items: (ClinicalOrderItem & { technicalService: { department: { name: string } | null } | null })[];
+  items: (ClinicalOrderItem & { technicalService: { department: { name: string } | null } | null; results: { signedAt: Date | null; supersedesId: string | null }[] })[];
   packages: ClinicalOrderPackage[];
 }
 
@@ -35,7 +35,11 @@ const ORDER_INCLUDE = {
   items: {
     where: { deletedAt: null },
     orderBy: [{ sortOrder: 'asc' as const }, { createdAt: 'asc' as const }],
-    include: { technicalService: { select: { department: { select: { name: true } } } } },
+    include: {
+      technicalService: { select: { department: { select: { name: true } } } },
+      // Kết quả còn hiệu lực (đúng 1 bản/dịch vụ — bản đính chính thay bản cũ): mốc "Trả lúc" và cờ "đang đính chính" cho màn khám.
+      results: { where: { deletedAt: null }, select: { signedAt: true, supersedesId: true }, take: 1 },
+    },
   },
   packages: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' as const } },
 } satisfies Prisma.ClinicalOrderInclude;
@@ -64,6 +68,7 @@ const QUEUE_ITEM_INCLUDE = {
     select: { id: true, code: true, name: true, serviceKind: true, resultType: true, specimenTypeCode: true, categoryCode: true, departmentId: true, department: { select: { id: true, name: true } } },
   },
   invoiceLines: INVOICE_STATUS_SELECT,
+  results: { where: { deletedAt: null }, select: { supersedesId: true, signedAt: true } },
   package: { select: { invoiceLines: INVOICE_STATUS_SELECT } },
 } satisfies Prisma.ClinicalOrderItemInclude;
 

@@ -11,6 +11,7 @@ import {
   buildPrintTemplateCatalog,
   buildResolvedPrintTemplate,
   buildDefaultPrintTemplateConfig,
+  withDefaultPrintNotice,
   defaultPrintTemplateName,
   paperForQuickSetupPreset,
   printDocumentTypeSchema,
@@ -38,6 +39,14 @@ const ALL_DOCUMENT_TYPES = printDocumentTypeSchema.options;
 
 function isUniqueViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+}
+
+/**
+ * Enum Postgres vẫn còn giá trị cũ `PARACLINICAL_RESULT` (không gỡ được) nhưng migration `20261008120100` đã chuyển hết dòng sang `LAB_RESULT`/`IMAGING_RESULT`,
+ * nên ở đây coi như không bao giờ gặp — ép về kiểu chứng từ hiện hành của `@nexamed/shared`.
+ */
+function documentTypeOf(row: PrintTemplateRow): PrintDocumentType {
+  return row.documentType as PrintDocumentType;
 }
 
 /**
@@ -244,13 +253,13 @@ export class PrintTemplateService {
   /** Cấu hình lưu hỏng/cũ → rơi về mặc định theo khổ giấy (in không bao giờ vỡ vì dữ liệu cấu hình). */
   private parseConfig(row: PrintTemplateRow): PrintTemplateConfig {
     const parsed = printTemplateConfigSchema.safeParse(row.configJson);
-    return parsed.success ? parsed.data : buildDefaultPrintTemplateConfig(row.paperSize);
+    return withDefaultPrintNotice(documentTypeOf(row), parsed.success ? parsed.data : buildDefaultPrintTemplateConfig(row.paperSize));
   }
 
   private toDto(row: PrintTemplateRow): PrintTemplate {
     return {
       id: row.id,
-      documentType: row.documentType,
+      documentType: documentTypeOf(row),
       name: row.name,
       paperSize: row.paperSize,
       isDefault: row.isDefault,

@@ -135,17 +135,35 @@ export function PrintDocument({
             {/* Thân chứng từ */}
             {body}
 
+            {/* Khuyến cáo / lưu ý (tuỳ chọn, sửa được ở Quản lý mẫu in) — chỉ chứng từ có khối này (vd. Kết quả xét nghiệm) */}
+            {config.notice?.show && config.notice.text.trim() !== '' && (
+              <div className="mt-3 break-inside-avoid text-[0.82em] leading-relaxed text-slate-600">
+                {config.notice.title.trim() !== '' && <p className="font-bold text-slate-800">{config.notice.title.trim()}:</p>}
+                {config.notice.text
+                  .split('\n')
+                  .filter((line) => line.trim() !== '')
+                  .map((line, index) => (
+                    <p key={index}>{line.trim()}</p>
+                  ))}
+              </div>
+            )}
+
             {/* Cuối trang */}
             {footer.note.trim() && <p className="mt-4 border-l-2 border-slate-400 pl-2 text-sm italic">{footer.note.trim()}</p>}
             {showSignatures && (
               <div className={`${compact ? 'mt-4' : 'mt-10'} break-inside-avoid`}>
-                {signatureDateText && <p className="mb-1 text-right text-sm italic">{signatureDateText}</p>}
+                {/* Dòng ngày tháng nằm CÙNG lưới với các ô ký, căn giữa trên ô ký cuối (ô bên phải) — trước đây căn sát lề phải nên lệch so với tên người ký. */}
                 <div
                   className={`grid text-center text-sm ${signatures.length === 1 && !compact ? 'ml-auto w-56' : ''}`}
                   style={{ gridTemplateColumns: `repeat(${compact ? 1 : signatures.length}, minmax(0, 1fr))`, gap: compact ? '1rem' : '0.5rem' }}
                 >
-                  {signatures.map((s) => (
-                    <div key={s.label}>
+                  {signatureDateText && (
+                    <p className="mb-1 italic" style={{ gridColumn: compact ? 1 : signatures.length, gridRow: 1 }}>
+                      {signatureDateText}
+                    </p>
+                  )}
+                  {signatures.map((s, index) => (
+                    <div key={s.label} style={compact ? undefined : { gridColumn: index + 1, gridRow: 2 }}>
                       <p className="font-semibold">{s.label}</p>
                       {s.name ? (
                         <p className={`font-semibold ${compact ? 'mt-8' : 'mt-14'}`}>{s.name}</p>

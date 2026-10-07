@@ -4,6 +4,23 @@
 
 ## 2026-10-07
 
+### Cận lâm sàng: đính chính kết quả đã duyệt (`docs/DECISIONS.md` #215b)
+
+Kết quả đã duyệt (bản ký) nay sửa được qua luồng **Đính chính**: người có quyền Nhập của nhóm (kỹ thuật viên, điều dưỡng) bấm "Đính chính" kèm lý do bắt buộc, kết quả quay lại "Đang thực hiện" để sửa rồi gửi duyệt, bác sĩ có quyền Duyệt ký lại. Bản đã duyệt cũ được giữ lại (không xoá, xem được ở nhật ký hoạt động) và khôi phục nguyên vẹn nếu bấm "Huỷ đính chính". Hàng đợi hiện chip "Đính chính"; phiếu in của bản đính chính ghi rõ thay thế bản nào và lý do. Không cần migration mới.
+
+### Cấu hình sao lưu dữ liệu — phần nền (`docs/DECISIONS.md` #217)
+
+Giờ chạy (giờ VN), số ngày giữ, bật/tắt sao lưu tự động và nút "Sao lưu ngay" nay đổi được qua API mà không cần sửa `.env`/khởi động lại container; quyền mới `system_backup.read/manage` (mặc định quản trị hệ thống + quản lý phòng khám bản cài tại chỗ). Giao diện "Cấu hình hệ thống → Sao lưu dữ liệu" đang chờ duyệt mockup. Môi trường khác: `db:seed` rồi khởi động lại API.
+
+### Sao lưu thư mục ảnh đính kèm (`docs/DECISIONS.md` #216)
+
+Dịch vụ `backup` (bản cài tại chỗ) nay sao lưu cả thư mục ảnh đính kèm — ảnh kết quả cận lâm sàng, ảnh đại diện bệnh nhân, logo — sang `<thư mục backup>/storage`, tăng dần và giữ nguyên bản gốc (KHÔNG nén ảnh); trước đây chỉ sao lưu database nên phục hồi sẽ mất hết ảnh. Chép ảnh lỗi thì lần sao lưu tính là thất bại và banner cảnh báo hiện cho quản trị viên. Bản cài cũ: cập nhật `docker-compose.yml` + nạp ảnh `nexamed-backup` mới rồi `docker compose up -d backup`. Sửa kèm: ảnh Docker backup tự đổi script về xuống dòng LF (máy dev Windows checkout CRLF làm container không chạy). Hướng dẫn khôi phục ảnh ở `docs/Deploy.md`.
+
+### Cận lâm sàng: tách 2 menu Xét nghiệm / CĐHA & Thăm dò chức năng, 2 mẫu in riêng, khuyến cáo tuỳ chọn (`docs/DECISIONS.md` #215)
+
+Menu "Cận lâm sàng" thành nhóm xổ xuống 2 mục: **Xét nghiệm** (lấy mẫu, bảng chỉ số, cột Mẫu bệnh phẩm) và **CĐHA & Thăm dò CN** (gọi vào phòng, mô tả + kết luận + ảnh, cột Loại/Phòng); mỗi tài khoản chỉ thấy mục mình có quyền. Quyền `paraclinical_result.*` tách thành `lab_result.*` và `imaging_result.*` (xem/nhập/duyệt), thêm 2 vai trò hệ thống **Kỹ thuật viên xét nghiệm** và **Kỹ thuật viên CĐHA & Thăm dò CN** (không có quyền duyệt). Quyền cũ của mọi vai trò tự được chuyển sang cả hai nhóm khi API khởi động — môi trường khác: `db:deploy` + `db:seed` rồi **khởi động lại API**. Mẫu in "Kết quả cận lâm sàng" tách thành **Kết quả xét nghiệm** và **Kết quả CĐHA & Thăm dò chức năng** (bản mẫu đã chỉnh được giữ cho cả hai); khối **Khuyến cáo khách hàng** của phiếu xét nghiệm nay bật/tắt và sửa nội dung được ở "Quản lý mẫu in". Sửa chung: dòng "Ngày … tháng … năm …" ở mọi mẫu in căn giữa trên ô ký; phiếu chỉ định bỏ ô ký "Người bệnh / Người nhà"; chữ trong pill tab hàng đợi căn giữa. Migration `20261008120000`, `20261008120100`.
+
+
 ### Cận lâm sàng — GĐ4 đợt 2: In phiếu kết quả, ảnh đính kèm CĐHA, tách hàng đợi theo phòng
 
 **In phiếu kết quả** (mẫu in thứ 13 `PARACLINICAL_RESULT`, nút "In phiếu kết quả" ở màn nhập): xét nghiệm in theo nhóm lĩnh vực → dịch vụ → chỉ số, **giá trị vượt khoảng tham chiếu in ĐẬM + gạch chân**, dòng "Diễn giải", nhận xét, 3 mốc thời gian (Đăng ký / Lấy mẫu hoặc Gọi vào phòng / Có kết quả), thông tin bệnh nhân + tiêu đề cột nằm trong `<thead>` nên lặp mọi trang, khuyến cáo khách hàng (xét nghiệm), chữ ký bác sĩ duyệt; phiếu **chẩn đoán hình ảnh/siêu âm** trình bày dạng khối (Mô tả hình ảnh → Kết luận → Hình ảnh), không đóng bảng 4 cột. Nút in khoá khi còn thay đổi chưa lưu; ghi audit `paraclinical_result.printed`. **Ảnh đính kèm** (siêu âm, X-quang...): khối "Hình ảnh đính kèm" ở màn nhập (JPG/PNG ≤ 5 MB, tối đa 8 ảnh, kiểm magic-byte, lưu qua StoragePort, phục vụ bằng signed URL; bảng mới `paraclinical_result_image`, trigger DB chặn thêm/gỡ khi đã duyệt) và in trên phiếu. **Hàng đợi tách theo phòng**: vai trò có `paraclinical_result.read/enter` ở scope **"department"** chỉ thấy/xử lý dịch vụ do ĐÚNG Khoa/Phòng của mình thực hiện (xét nghiệm và CĐHA không thấy việc của nhau; phòng khác → 404; chưa gán phòng → rỗng); scope global thấy tất cả. Màn nhập thêm "Thời gian nhận mẫu / gọi vào phòng" ở thanh trên cùng, ô "Chèn mẫu" nằm cùng dòng nhãn. `Combobox floating` tự lật lên trên khi dưới không đủ chỗ; sửa lỗi thẻ kết quả bị co/cắt ở màn thấp. Migration `20261008100000` (enum mẫu in) + `20261008110000` (bảng ảnh). Đã bỏ dòng "- KẾT THÚC -" khỏi phiếu theo yêu cầu.

@@ -93,7 +93,7 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
   it('danh sách kèm DANH MỤC TĨNH (loại chứng từ, khổ giấy, cấu hình mặc định từng khổ) — web không import giá trị từ shared nên lấy qua API', async () => {
     const res = await request(app.getHttpServer()).get(API).set(authed(adminToken));
     const { catalog } = res.body.data;
-    expect(catalog.documentTypes).toHaveLength(13);
+    expect(catalog.documentTypes).toHaveLength(14);
     expect(catalog.papers.map((p: { paperSize: string }) => p.paperSize)).toEqual(['A4', 'A5', 'A5_LANDSCAPE', 'K80']);
     expect(catalog.papers.find((p: { paperSize: string }) => p.paperSize === 'K80')).toMatchObject({ widthMm: 80, heightMm: null });
     expect(catalog.defaultConfigs.A4).toEqual(buildDefaultPrintTemplateConfig('A4'));
@@ -101,19 +101,19 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
     expect(k80Types).toEqual(['CASHIER_SHIFT_RECEIPT', 'CASH_VOUCHER', 'INVOICE', 'WALLET_TOPUP_RECEIPT']);
   });
 
-  it('chưa lưu gì → danh sách có đủ 13 chứng từ dùng bản DỰNG SẴN (id null, isBuiltin, mặc định), in được ngay', async () => {
+  it('chưa lưu gì → danh sách có đủ 14 chứng từ dùng bản DỰNG SẴN (id null, isBuiltin, mặc định), in được ngay', async () => {
     const items = await list(adminToken);
-    expect(items).toHaveLength(13);
+    expect(items).toHaveLength(14);
     expect(items.every((i) => i.id === null && i.isBuiltin && i.isDefault && i.version === null)).toBe(true);
     expect(ofType(items, 'PRESCRIPTION')[0]).toMatchObject({ paperSize: 'A4', name: 'Đơn thuốc A4' });
     expect(ofType(items, 'INVOICE')[0]!.paperSize).toBe('A5');
     expect(ofType(items, 'INVOICE')[0]!.config).toEqual(buildDefaultPrintTemplateConfig('A5'));
   });
 
-  it('GET resolved: MỌI nhân viên đăng nhập đọc được (bác sĩ, lễ tân) → 13 mục; không token → 401', async () => {
+  it('GET resolved: MỌI nhân viên đăng nhập đọc được (bác sĩ, lễ tân) → 14 mục; không token → 401', async () => {
     for (const token of [doctorToken, receptionistToken, adminToken]) {
       const items = await resolved(token);
-      expect(items).toHaveLength(13);
+      expect(items).toHaveLength(14);
       expect(items.find((i) => i.documentType === 'INVOICE')).toMatchObject({ paperSize: 'A5', widthMm: 148, heightMm: 210 });
     }
     expect((await request(app.getHttpServer()).get(`${API}/resolved`)).status).toBe(401);
@@ -130,6 +130,38 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
     expect(k80.config.header.showLogo).toBe(false);
     expect(k80.config.footer.showSignature).toBe(false);
     expect(k80.config.margins.topMm).toBe(3);
+  });
+
+  it('Kết quả xét nghiệm và Kết quả CĐHA & Thăm dò chức năng là 2 mẫu in riêng; chỉ xét nghiệm có khối "Khuyến cáo" (mặc định BẬT), sửa/tắt được và lưu lại', async () => {
+    const items = await list(adminToken);
+    const lab = ofType(items, 'LAB_RESULT')[0]!;
+    const imaging = ofType(items, 'IMAGING_RESULT')[0]!;
+    expect(lab.name).toBe('Kết quả xét nghiệm A4');
+    expect(imaging.name).toBe('Kết quả CĐHA & Thăm dò chức năng A4');
+    expect(lab.config.notice).toMatchObject({ show: true, title: 'Khuyến cáo khách hàng' });
+    expect(lab.config.notice!.text.split('\n')).toHaveLength(4);
+    expect(imaging.config.notice).toBeUndefined();
+    expect(ofType(items, 'PARACLINICAL_RESULT' as never)).toHaveLength(0);
+    const catalog = (await request(app.getHttpServer()).get(API).set(authed(adminToken))).body.data.catalog;
+    expect(catalog.documentTypes.find((d: { documentType: string }) => d.documentType === 'LAB_RESULT').notice).toMatchObject({ title: 'Khuyến cáo khách hàng' });
+    expect(catalog.documentTypes.find((d: { documentType: string }) => d.documentType === 'IMAGING_RESULT').notice).toBeNull();
+
+    // Sửa nội dung + đổi tiêu đề → lưu, lần đọc sau (và bản "resolved" dùng khi in) thấy đúng nội dung mới.
+    const created = await request(app.getHttpServer())
+      .post(API)
+      .set(authed(adminToken))
+      .send({ documentType: 'LAB_RESULT', name: 'Kết quả xét nghiệm A4', paperSize: 'A4', config: { ...lab.config, notice: { show: true, title: 'Lưu ý', text: '- Kết quả chỉ có giá trị với mẫu đã xét nghiệm.' } } });
+    expect(created.status, JSON.stringify(created.body)).toBe(200);
+    const resolvedLab = (await resolved(doctorToken)).find((i) => i.documentType === 'LAB_RESULT')!;
+    expect(resolvedLab.config.notice).toEqual({ show: true, title: 'Lưu ý', text: '- Kết quả chỉ có giá trị với mẫu đã xét nghiệm.' });
+
+    // Tắt khối khuyến cáo.
+    const off = await request(app.getHttpServer())
+      .patch(`${API}/${created.body.data.id}`)
+      .set(authed(adminToken))
+      .send({ config: { ...created.body.data.config, notice: { show: false, title: 'Lưu ý', text: 'x' } }, version: created.body.data.version });
+    expect(off.status, JSON.stringify(off.body)).toBe(200);
+    expect((await resolved(doctorToken)).find((i) => i.documentType === 'LAB_RESULT')!.config.notice?.show).toBe(false);
   });
 
   it('thêm bản KHÁC khổ dựng sẵn: bản dựng sẵn được LƯU làm mặc định, bản mới không mặc định (không biến mất)', async () => {

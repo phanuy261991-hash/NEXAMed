@@ -40,6 +40,102 @@ export class ParaclinicalResultRepository {
     return tx.paraclinicalResult.create({ data: { tenantId, ...data, createdBy: actorId, updatedBy: actorId } });
   }
 
+  /** Kết quả theo id, KỂ CẢ bản đã bị thay thế (soft-delete) — dùng để hiện thông tin bản gốc của bản đính chính. */
+  findByIdIncludingDeleted(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<ParaclinicalResult | null> {
+    return tx.paraclinicalResult.findFirst({ where: { tenantId, id } });
+  }
+
+  /**
+   * Đính chính: soft-delete bản ĐÃ KÝ (giữ nguyên nội dung — trigger DB chỉ chặn sửa nội dung) rồi tạo bản NHÁP thay thế trỏ về bản gốc (`supersedes_id` + lý do),
+   * sao chép nội dung, các chỉ số (kèm khoảng tham chiếu đã chụp) và ảnh để người sửa chỉ việc chỉnh chỗ sai. Thứ tự soft-delete → tạo mới là bắt buộc vì
+   * chỉ mục duy nhất cho phép đúng 1 kết quả hiệu lực mỗi dịch vụ. Trả `null` nếu bản gốc vừa bị người khác đính chính.
+   */
+  async createAmendmentDraft(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    original: ResultWithValues,
+    images: ParaclinicalResultImage[],
+    reason: string,
+  ): Promise<ParaclinicalResult | null> {
+    const retired = await tx.paraclinicalResult.updateMany({
+      where: { tenantId, id: original.id, deletedAt: null, signedAt: { not: null } },
+      data: { deletedAt: new Date(), deletedReason: `Đính chính: ${reason}`, updatedBy: actorId, version: { increment: 1 } },
+    });
+    if (retired.count !== 1) return null;
+    const draft = await tx.paraclinicalResult.create({
+      data: {
+        tenantId,
+        clinicalOrderItemId: original.clinicalOrderItemId,
+        descriptionText: original.descriptionText,
+        conclusionText: original.conclusionText,
+        performedBy: actorId,
+        resultedAt: original.resultedAt,
+        approverId: null,
+        supersedesId: original.id,
+        amendmentReason: reason,
+        createdBy: actorId,
+        updatedBy: actorId,
+      },
+    });
+    if (original.values.length > 0) {
+      await tx.paraclinicalResultValue.createMany({
+        data: original.values.map((v) => ({
+          tenantId,
+          resultId: draft.id,
+          labIndicatorId: v.labIndicatorId,
+          indicatorCode: v.indicatorCode,
+          indicatorName: v.indicatorName,
+          abbreviation: v.abbreviation,
+          unit: v.unit,
+          valueType: v.valueType,
+          decimals: v.decimals,
+          valueText: v.valueText,
+          note: v.note,
+          interpretationText: v.interpretationText,
+          referenceSnapshot: (v.referenceSnapshot as Prisma.InputJsonValue | null) ?? Prisma.DbNull,
+          sortOrder: v.sortOrder,
+          createdBy: actorId,
+          updatedBy: actorId,
+        })),
+      });
+    }
+    if (images.length > 0) {
+      await tx.paraclinicalResultImage.createMany({
+        data: images.map((img) => ({
+          tenantId,
+          resultId: draft.id,
+          storageKey: img.storageKey,
+          fileName: img.fileName,
+          contentType: img.contentType,
+          sizeBytes: img.sizeBytes,
+          sortOrder: img.sortOrder,
+          createdBy: actorId,
+          updatedBy: actorId,
+        })),
+      });
+    }
+    return draft;
+  }
+
+  /**
+   * Huỷ đính chính: soft-delete bản NHÁP đính chính rồi KHÔI PHỤC bản gốc đã ký (bỏ soft-delete). Thứ tự bắt buộc (chỉ mục duy nhất 1 kết quả hiệu lực/dịch vụ).
+   * Trả `false` nếu bản nháp đã bị người khác duyệt/huỷ trước.
+   */
+  async restoreOriginal(tx: Prisma.TransactionClient, tenantId: string, actorId: string, draft: ParaclinicalResult): Promise<boolean> {
+    if (draft.supersedesId === null) return false;
+    const dropped = await tx.paraclinicalResult.updateMany({
+      where: { tenantId, id: draft.id, deletedAt: null, signedAt: null },
+      data: { deletedAt: new Date(), deletedReason: 'Huỷ đính chính — khôi phục bản đã duyệt', updatedBy: actorId, version: { increment: 1 } },
+    });
+    if (dropped.count !== 1) return false;
+    const restored = await tx.paraclinicalResult.updateMany({
+      where: { tenantId, id: draft.supersedesId, deletedAt: { not: null } },
+      data: { deletedAt: null, deletedReason: null, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return restored.count === 1;
+  }
+
   /** Sửa NHÁP — `WHERE signed_at IS NULL` (DB còn trigger chặn lần nữa); trả số dòng cập nhật. */
   async updateDraft(
     tx: Prisma.TransactionClient,

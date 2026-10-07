@@ -9,6 +9,20 @@ export type ParaclinicalQueueBucket = 'AWAITING_PAYMENT' | 'WAITING' | 'IN_PROGR
 export type ParaclinicalServiceKind = 'LAB' | 'IMAGING' | 'FUNCTIONAL';
 export type ParaclinicalResultType = 'INDICATORS' | 'NARRATIVE' | 'BOTH';
 
+/**
+ * Nhóm menu Cận lâm sàng (docs/DECISIONS.md #215): "Xét nghiệm" (`lab`) và "Chẩn đoán hình ảnh & Thăm dò chức năng" (`imaging`). Mỗi nhóm có quyền riêng
+ * (`lab_result.*` / `imaging_result.*`) và chỉ phục vụ đúng các loại dịch vụ của mình. Bản web phản chiếu bảng này (`paraclinical-group.ts`).
+ */
+export type ParaclinicalGroup = 'lab' | 'imaging';
+export const PARACLINICAL_GROUP_KINDS: Readonly<Record<ParaclinicalGroup, readonly ParaclinicalServiceKind[]>> = {
+  lab: ['LAB'],
+  imaging: ['IMAGING', 'FUNCTIONAL'],
+};
+export const PARACLINICAL_GROUP_PERMISSION_MODULE: Readonly<Record<ParaclinicalGroup, string>> = {
+  lab: 'lab_result',
+  imaging: 'imaging_result',
+};
+
 export const PARACLINICAL_QUEUE_BUCKETS: readonly ParaclinicalQueueBucket[] = ['AWAITING_PAYMENT', 'WAITING', 'IN_PROGRESS', 'PENDING_APPROVAL', 'COMPLETED'];
 
 /**

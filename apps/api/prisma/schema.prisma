@@ -3647,7 +3647,10 @@ model AuditLog {
 
 /// Loại chứng từ in được quản lý ở "Quản lý mẫu in" (docs/DECISIONS.md #211). Khớp `printDocumentTypeSchema` (packages/shared).
 enum PrintDocumentType {
+  /// Đã thay bằng LAB_RESULT + IMAGING_RESULT (docs/DECISIONS.md #215) — giữ trong enum vì Postgres không gỡ được giá trị enum; không còn dòng nào dùng.
   PARACLINICAL_RESULT
+  LAB_RESULT
+  IMAGING_RESULT
   PRESCRIPTION
   MEDICAL_RECORD
   CLINICAL_ORDER

@@ -157,9 +157,13 @@ export const router = createBrowserRouter([
       // Màn hình khám bệnh (S3-06/07) — vào từ "Hàng đợi khám", không có mục sidebar riêng (cùng
       // cách patient/appointment detail không có mục sidebar riêng).
       { path: 'encounters/:id', element: <RequirePermissionRoute module="encounter" action="read"><EncounterConsultationPage /></RequirePermissionRoute> },
-      // Cận lâm sàng GĐ4 — Hàng đợi (mục sidebar "Cận lâm sàng") + màn nhập/duyệt kết quả (vào từ hàng đợi, không có mục sidebar riêng).
-      { path: 'paraclinical/queue', element: <RequirePermissionRoute module="paraclinical_result" action="read"><ParaclinicalQueuePage /></RequirePermissionRoute> },
-      { path: 'paraclinical/items/:itemId', element: <RequirePermissionRoute module="paraclinical_result" action="read"><ParaclinicalResultPage /></RequirePermissionRoute> },
+      // Cận lâm sàng GĐ4, tách 2 menu (#215): mỗi nhóm có hàng đợi + màn nhập/duyệt kết quả riêng, gác bằng quyền của đúng nhóm (`lab_result` / `imaging_result`).
+      // Màn nhập vào từ hàng đợi, không có mục sidebar riêng. `key` buộc React dựng lại trang (và bỏ bộ lọc cũ) khi chuyển giữa 2 nhóm.
+      { path: 'paraclinical/queue', element: <Navigate to="/paraclinical/lab" replace /> },
+      { path: 'paraclinical/lab', element: <RequirePermissionRoute module="lab_result" action="read"><ParaclinicalQueuePage key="lab" group="lab" /></RequirePermissionRoute> },
+      { path: 'paraclinical/lab/items/:itemId', element: <RequirePermissionRoute module="lab_result" action="read"><ParaclinicalResultPage key="lab" group="lab" /></RequirePermissionRoute> },
+      { path: 'paraclinical/imaging', element: <RequirePermissionRoute module="imaging_result" action="read"><ParaclinicalQueuePage key="imaging" group="imaging" /></RequirePermissionRoute> },
+      { path: 'paraclinical/imaging/items/:itemId', element: <RequirePermissionRoute module="imaging_result" action="read"><ParaclinicalResultPage key="imaging" group="imaging" /></RequirePermissionRoute> },
       // Thu ngân cơ bản (Sprint 5/6) — không có mục sidebar riêng cho chi tiết (cùng cách
       // patient/appointment/encounter detail không có mục sidebar riêng).
       { path: 'billing', element: <RequirePermissionRoute module="invoice" action="read"><InvoiceListPage /></RequirePermissionRoute> },

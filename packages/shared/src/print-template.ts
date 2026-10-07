@@ -14,7 +14,8 @@ export const printDocumentTypeSchema = z.enum([
   'PRESCRIPTION',
   'MEDICAL_RECORD',
   'CLINICAL_ORDER',
-  'PARACLINICAL_RESULT',
+  'LAB_RESULT',
+  'IMAGING_RESULT',
   'INVOICE',
   'INVOICE_COMBINED',
   'WALLET_TOPUP_RECEIPT',
@@ -48,14 +49,34 @@ const PAPERS_MONEY: PrintPaperSize[] = ['A4', 'A5', 'A5_LANDSCAPE', 'K80'];
  * K80 chỉ mở cho 4 chứng từ TIỀN (chốt 01/10/2026): đơn thuốc cần ô ký bác
  * sĩ, phiếu kho nhiều cột — ép xuống 72mm không đọc được.
  */
+/**
+ * Khối "Khuyến cáo / lưu ý" in ngay sau thân chứng từ — chỉ chứng từ khai `notice` mới có (hiện: Kết quả xét nghiệm). Bật/tắt và sửa nội dung ở "Quản lý mẫu in";
+ * chưa sửa thì dùng nội dung mặc định này. Mỗi dòng của `text` là một dòng in (người dùng tự gõ "- " nếu muốn gạch đầu dòng).
+ */
+export interface PrintNoticeDefaults {
+  title: string;
+  defaultText: string;
+}
+
+const LAB_RESULT_NOTICE: PrintNoticeDefaults = {
+  title: 'Khuyến cáo khách hàng',
+  defaultText: [
+    '- Kết quả phụ thuộc vào mẫu xét nghiệm được thu thập và chất lượng của mẫu.',
+    '- Xét nghiệm là công cụ giúp chẩn đoán, cần tương quan với lâm sàng bởi bác sĩ chỉ định.',
+    '- Mẫu lặp lại được chấp nhận theo yêu cầu của bác sĩ chỉ định trong vòng 24 giờ sau khi trả kết quả.',
+    '- Kết quả có thể khác nhau giữa các phòng xét nghiệm khác nhau.',
+  ].join('\n'),
+};
+
 export const PRINT_DOCUMENT_TYPE_REGISTRY: Record<
   PrintDocumentType,
-  { label: string; group: PrintDocumentGroup; allowedPapers: PrintPaperSize[]; defaultPaper: PrintPaperSize; defaultTitle: string }
+  { label: string; group: PrintDocumentGroup; allowedPapers: PrintPaperSize[]; defaultPaper: PrintPaperSize; defaultTitle: string; notice?: PrintNoticeDefaults }
 > = {
   PRESCRIPTION: { label: 'Đơn thuốc', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Đơn thuốc' },
   MEDICAL_RECORD: { label: 'Bệnh án (xuất PDF)', group: 'Khám bệnh', allowedPapers: ['A4'], defaultPaper: 'A4', defaultTitle: 'Bệnh án' },
   CLINICAL_ORDER: { label: 'Phiếu chỉ định cận lâm sàng', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu chỉ định cận lâm sàng' },
-  PARACLINICAL_RESULT: { label: 'Kết quả cận lâm sàng', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Kết quả cận lâm sàng' },
+  LAB_RESULT: { label: 'Kết quả xét nghiệm', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Kết quả xét nghiệm', notice: LAB_RESULT_NOTICE },
+  IMAGING_RESULT: { label: 'Kết quả CĐHA & Thăm dò chức năng', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Kết quả chẩn đoán hình ảnh' },
   INVOICE: { label: 'Phiếu thu', group: 'Thu ngân', allowedPapers: PAPERS_MONEY, defaultPaper: 'A5', defaultTitle: 'Phiếu thu' },
   INVOICE_COMBINED: { label: 'Phiếu thu tổng hợp', group: 'Thu ngân', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu thu tổng hợp' },
   WALLET_TOPUP_RECEIPT: { label: 'Phiếu nạp ví', group: 'Thu ngân', allowedPapers: PAPERS_MONEY, defaultPaper: 'A5', defaultTitle: 'Phiếu thu tạm ứng' },
@@ -90,10 +111,33 @@ export const printTemplateConfigSchema = z.object({
     showSignature: z.boolean(),
     showSignatureHint: z.boolean(),
   }),
+  /** Khối khuyến cáo/lưu ý sau thân chứng từ — chỉ chứng từ có `notice` ở registry. Vắng = dùng mặc định của registry (xem `withDefaultPrintNotice`). */
+  notice: z.object({ show: z.boolean(), title: z.string().max(60), text: z.string().max(1000) }).optional(),
   /** Số liên in mỗi lần bấm In (1-3) + nhãn từng liên ("Liên 1 — Lưu"...). */
   copies: z.object({ count: z.number().int().min(1).max(3), labels: z.array(z.string().max(40)).max(3) }),
 });
 export type PrintTemplateConfig = z.infer<typeof printTemplateConfigSchema>;
+
+/** Nội dung khuyến cáo mặc định của chứng từ (`undefined` nếu chứng từ không có khối này). */
+export function defaultPrintNotice(documentType: PrintDocumentType): PrintTemplateConfig['notice'] {
+  const notice = PRINT_DOCUMENT_TYPE_REGISTRY[documentType].notice;
+  return notice ? { show: true, title: notice.title, text: notice.defaultText } : undefined;
+}
+
+/**
+ * Điền khối khuyến cáo mặc định nếu cấu hình CHƯA có (bản mẫu lưu trước khi có tính năng, hoặc bản dựng sẵn) và bỏ khối đó ở chứng từ không hỗ trợ — để web chỉ việc
+ * đọc `config.notice`, không cần biết bảng mặc định (web không import được giá trị từ `@nexamed/shared`, #032).
+ */
+export function withDefaultPrintNotice(documentType: PrintDocumentType, config: PrintTemplateConfig): PrintTemplateConfig {
+  const fallback = defaultPrintNotice(documentType);
+  if (!fallback) {
+    if (config.notice === undefined) return config;
+    const { notice: _dropped, ...rest } = config;
+    void _dropped;
+    return rest;
+  }
+  return { ...config, notice: config.notice ?? fallback };
+}
 
 export const DEFAULT_PRINT_COPY_LABELS = ['Liên 1 — Lưu', 'Liên 2 — Khách hàng', 'Liên 3'];
 
@@ -147,6 +191,8 @@ export const printDocumentTypeInfoSchema = z.object({
   allowedPapers: z.array(printPaperSizeSchema),
   defaultPaper: printPaperSizeSchema,
   defaultTitle: z.string(),
+  /** Khối khuyến cáo mặc định của chứng từ (`null` = chứng từ không có khối này) — cho nút "Khôi phục nội dung mặc định" ở màn Quản lý mẫu in. */
+  notice: z.object({ title: z.string(), defaultText: z.string() }).nullable(),
 });
 export type PrintDocumentTypeInfo = z.infer<typeof printDocumentTypeInfoSchema>;
 
@@ -254,7 +300,7 @@ export function buildBuiltinPrintTemplate(documentType: PrintDocumentType): Prin
     paperSize,
     isDefault: true,
     isBuiltin: true,
-    config: buildDefaultPrintTemplateConfig(paperSize),
+    config: withDefaultPrintNotice(documentType, buildDefaultPrintTemplateConfig(paperSize)),
     version: null,
   };
 }
@@ -271,6 +317,7 @@ export function deriveConfigForPaper(paperSize: PrintPaperSize, base: PrintTempl
     header: { ...base.header, showLogo: roll ? false : base.header.showLogo },
     title: base.title,
     footer: { ...defaults.footer, note: base.footer.note },
+    ...(base.notice ? { notice: base.notice } : {}),
     copies: base.copies,
   };
 }
@@ -292,9 +339,9 @@ export function buildResolvedPrintTemplate(
     widthMm: PRINT_PAPER_SPECS[size].widthMm,
     heightMm: PRINT_PAPER_SPECS[size].heightMm,
     isDefault: size === paperSize,
-    config: size === paperSize ? config : (storedByPaper[size] ?? deriveConfigForPaper(size, config)),
+    config: withDefaultPrintNotice(documentType, size === paperSize ? config : (storedByPaper[size] ?? deriveConfigForPaper(size, config))),
   }));
-  return { documentType, paperSize, widthMm: spec.widthMm, heightMm: spec.heightMm, config, options };
+  return { documentType, paperSize, widthMm: spec.widthMm, heightMm: spec.heightMm, config: withDefaultPrintNotice(documentType, config), options };
 }
 
 /** Danh mục tĩnh (loại chứng từ + khổ giấy + cấu hình mặc định từng khổ) trả kèm `GET /print-templates`. */
@@ -303,7 +350,7 @@ export function buildPrintTemplateCatalog(): PrintTemplateCatalog {
   return {
     documentTypes: printDocumentTypeSchema.options.map((documentType) => {
       const info = PRINT_DOCUMENT_TYPE_REGISTRY[documentType];
-      return { documentType, label: info.label, group: info.group, allowedPapers: sortPrintPapers(info.allowedPapers), defaultPaper: info.defaultPaper, defaultTitle: info.defaultTitle };
+      return { documentType, label: info.label, group: info.group, allowedPapers: sortPrintPapers(info.allowedPapers), defaultPaper: info.defaultPaper, defaultTitle: info.defaultTitle, notice: info.notice ?? null };
     }),
     papers: papers.map((paperSize) => ({ paperSize, ...PRINT_PAPER_SPECS[paperSize] })),
     defaultConfigs: Object.fromEntries(papers.map((p) => [p, buildDefaultPrintTemplateConfig(p)])) as Record<PrintPaperSize, PrintTemplateConfig>,

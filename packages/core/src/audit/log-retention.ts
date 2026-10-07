@@ -43,6 +43,7 @@ const SYSTEM_LOG_ENTITY_TYPES = new Set([
   'cash_account',
   'prescription_template',
   'print_template',
+  'system_backup',
 ]);
 
 export function isSystemLogEntityType(entityType: string): boolean {

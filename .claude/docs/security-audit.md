@@ -6,7 +6,7 @@
 
 ### Bảng cốt lõi
 
-- `role` — vai trò, theo tenant (mỗi tenant có bản sao riêng, cho phép `clinic_admin` tạo vai trò tuỳ biến sau này). Seed sẵn 5 vai trò mặc định (`is_system_default = true`) khi tenant được tạo: `receptionist`, `nurse`, `doctor`, `clinic_admin`, `system_admin`.
+- `role` — vai trò, theo tenant (mỗi tenant có bản sao riêng, cho phép `clinic_admin` tạo vai trò tuỳ biến sau này). Seed sẵn 5 vai trò mặc định (`is_system_default = true`) khi tenant được tạo: `receptionist`, `nurse`, `doctor`, `clinic_admin`, `system_admin`. **Từ 07/10/2026 (`docs/DECISIONS.md` #215) thêm 2 vai trò hệ thống `lab_technician` (Kỹ thuật viên xét nghiệm) và `imaging_technician` (Kỹ thuật viên CĐHA & Thăm dò chức năng)** — chỉ `lab_result`/`imaging_result` read+enter (không `approve`); tenant cũ được tạo tự động lúc API khởi động. Quyền `paraclinical_result.*` đã tách thành `lab_result.*` và `imaging_result.*` (xem/nhập/duyệt) để ẩn/hiện menu theo nhóm.
 - `permission` — danh mục hành động, **toàn hệ thống** (giống `icd10_catalog`, không có `tenant_id`, seed sẵn, không do phòng khám tự định nghĩa). Định dạng `<module>.<action>`, ví dụ `clinical_note.sign`.
 - `role_permission` — ma trận: `(tenant_id, role_id, permission_id) → data_scope`.
 - `department` — khoa/phòng trong 1 tenant, phục vụ scope `department`. v1 phần lớn phòng khám không dùng (1-3 bác sĩ, không chia khoa), nhưng bảng luôn tồn tại.

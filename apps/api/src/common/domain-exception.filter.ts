@@ -39,6 +39,7 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // Cận lâm sàng GĐ3 — gỡ/đổi dòng chỉ định đã thu tiền/đã thực hiện: xung đột trạng thái, không phải lỗi input.
   CLINICAL_ORDER_ITEM_LOCKED: HttpStatus.CONFLICT,
   PARACLINICAL_ITEM_INVALID_STATE: HttpStatus.CONFLICT,
+  BACKUP_NOT_AVAILABLE: HttpStatus.CONFLICT,
   PARACLINICAL_PAYMENT_REQUIRED: HttpStatus.CONFLICT,
   PARACLINICAL_RESULT_INCOMPLETE: HttpStatus.UNPROCESSABLE_ENTITY,
   // Sprint 3, Tiếp nhận — chuyển trạng thái/tạo encounter xung đột trạng thái hiện có, không phải

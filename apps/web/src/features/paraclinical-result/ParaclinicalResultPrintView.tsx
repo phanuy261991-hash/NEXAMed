@@ -8,15 +8,14 @@ import { formatDateTimeVn, genderShort } from './paraclinical-result-labels';
 function documentTitle(sections: ParaclinicalResultSection[]): string {
   if (sections.every((s) => s.serviceKind === 'LAB')) return 'Kết quả xét nghiệm';
   if (sections.every((s) => s.serviceKind === 'IMAGING')) return 'Kết quả chẩn đoán hình ảnh';
+  if (sections.every((s) => s.serviceKind === 'FUNCTIONAL')) return 'Kết quả thăm dò chức năng';
   return 'Kết quả cận lâm sàng';
 }
 
-const KHUYEN_CAO = [
-  'Kết quả phụ thuộc vào mẫu xét nghiệm được thu thập và chất lượng của mẫu.',
-  'Xét nghiệm là công cụ giúp chẩn đoán, cần tương quan với lâm sàng bởi bác sĩ chỉ định.',
-  'Mẫu lặp lại được chấp nhận theo yêu cầu của bác sĩ chỉ định trong vòng 24 giờ sau khi trả kết quả.',
-  'Kết quả có thể khác nhau giữa các phòng xét nghiệm khác nhau.',
-];
+/** Mẫu in theo nhóm menu (#215): xét nghiệm và CĐHA/thăm dò chức năng có bố cục + bản mẫu riêng ở "Quản lý mẫu in". */
+function documentTypeOf(sections: ParaclinicalResultSection[]): 'LAB_RESULT' | 'IMAGING_RESULT' {
+  return sections.every((s) => s.serviceKind === 'LAB') ? 'LAB_RESULT' : 'IMAGING_RESULT';
+}
 
 /**
  * Bản in "Kết quả cận lâm sàng" (Cận lâm sàng GĐ4 đợt 2, docs/DECISIONS.md #214, mockup `PhieuKetQua`/`PhieuKetQuaCuoi`). Khung/đầu trang/chữ ký/khổ giấy do `PrintDocument` lo theo
@@ -38,7 +37,7 @@ export function ParaclinicalResultPrintView({ form, display = 'print' }: { form:
   let lastCategory: string | null | undefined;
   return (
     <PrintDocument
-      documentType="PARACLINICAL_RESULT"
+      documentType={documentTypeOf(form.sections)}
       title={documentTitle(form.sections)}
       subtitle={`Số: ${form.orderNo}`}
       signatures={[{ label: 'Bác sĩ duyệt kết quả', name: form.signedByName }]}
@@ -47,6 +46,11 @@ export function ParaclinicalResultPrintView({ form, display = 'print' }: { form:
     >
       <div>
         {!signed && <p className="mt-2 text-center text-xs font-bold uppercase text-slate-600">Bản nháp — kết quả chưa được duyệt</p>}
+        {signed && form.amendment && (
+          <p className="mt-2 text-center text-xs font-bold text-slate-700">
+            Bản đính chính{form.amendment.originalSignedAt ? ` — thay thế bản đã duyệt lúc ${formatDateTimeVn(form.amendment.originalSignedAt)}` : ''}. Lý do: {form.amendment.reason}
+          </p>
+        )}
         <table className="mt-3 w-full border-collapse text-[0.92em]">
           <thead className="table-header-group">
             <tr>
@@ -104,15 +108,6 @@ export function ParaclinicalResultPrintView({ form, display = 'print' }: { form:
             })}
           </tbody>
         </table>
-
-        {hasLab && (
-          <div className="mt-3 break-inside-avoid text-[0.82em] leading-relaxed text-slate-600">
-            <p className="font-bold text-slate-800">Khuyến cáo khách hàng:</p>
-            {KHUYEN_CAO.map((line) => (
-              <p key={line}>- {line}</p>
-            ))}
-          </div>
-        )}
       </div>
     </PrintDocument>
   );

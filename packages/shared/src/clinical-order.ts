@@ -76,6 +76,10 @@ export const clinicalOrderItemViewSchema = z.object({
   placeName: z.string().nullable(),
   note: z.string().nullable(),
   status: clinicalOrderItemStatusSchema,
+  /** Lúc bác sĩ duyệt & trả kết quả (kết quả đã ký còn hiệu lực); `null` nếu chưa có kết quả được duyệt — khối "Kết quả đã có" ở màn khám. */
+  resultReturnedAt: z.string().nullable(),
+  /** Kết quả đã duyệt đang được đính chính (soạn lại, chờ bác sĩ duyệt lại) — màn khám hiện "Đang đính chính". */
+  amendmentPending: z.boolean(),
   /** Có gỡ/đổi số lượng được không: còn `ORDERED` và dòng hoá đơn tương ứng chưa thu tiền. */
   editable: z.boolean(),
 });
