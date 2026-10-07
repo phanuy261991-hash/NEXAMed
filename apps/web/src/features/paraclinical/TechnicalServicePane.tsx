@@ -53,7 +53,7 @@ export function TechnicalServicePane() {
   const countOf = (key: TechnicalServiceKind | 'ALL') => (counts === undefined ? undefined : key === 'ALL' ? counts.total : counts[key]);
 
   return (
-    <div className="flex h-full min-h-0 gap-3.5 px-6 pb-5 pt-3.5">
+    <div className="flex h-full min-h-0 gap-3.5">
       <aside aria-label="Nhóm dịch vụ" className="flex w-52 flex-shrink-0 flex-col gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-2">
         <h2 className="px-2 pb-2 pt-1 text-[10.5px] font-bold uppercase tracking-wider text-slate-700">Nhóm dịch vụ</h2>
         {KIND_FILTERS.map((f) => {
@@ -64,8 +64,8 @@ export function TechnicalServicePane() {
               type="button"
               onClick={() => setKind(f.key)}
               aria-pressed={active}
-              className={`flex items-center justify-between rounded-md border-l-2 px-2 py-2 text-left text-[13px] ${
-                active ? 'border-blue-600 bg-white font-semibold text-blue-700' : 'border-transparent text-slate-700 hover:bg-white'
+              className={`flex items-center justify-between rounded-r-md border-l-2 px-2 py-2 text-left text-[13px] font-medium transition-colors ${
+                active ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-800'
               }`}
             >
               <span>{f.label}</span>

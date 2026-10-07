@@ -144,6 +144,8 @@ export function ClinicalOrderPanel({
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [mode, setMode] = useState<ClinicalOrderPerformance>('IN_HOUSE');
   const [searchText, setSearchText] = useState('');
+  /** Dòng đang được tô trong danh sách kết quả (phím ↑↓); Enter thêm đúng dòng này. */
+  const [activeIndex, setActiveIndex] = useState(0);
   const search = useDebouncedValue(searchText.trim(), 200);
   const [packageMenuOpen, setPackageMenuOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -310,12 +312,21 @@ export function ClinicalOrderPanel({
                 type="search"
                 aria-label="Tìm dịch vụ cận lâm sàng"
                 value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
+                onChange={(e) => {
+                  setSearchText(e.target.value);
+                  setActiveIndex(0);
+                }}
                 onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    if (results.length === 0) return;
+                    e.preventDefault();
+                    setActiveIndex((i) => (e.key === 'ArrowDown' ? Math.min(i + 1, results.length - 1) : Math.max(i - 1, 0)));
+                    return;
+                  }
                   if (e.key !== 'Enter') return;
                   e.preventDefault();
-                  const first = results[0];
-                  if (first) void addService(first);
+                  const picked = results[Math.min(activeIndex, results.length - 1)];
+                  if (picked) void addService(picked);
                   else if (mode === 'EXTERNAL') addFreeText();
                 }}
                 placeholder="Gõ tên, mã hoặc viết tắt dịch vụ — VD: ctm, xq nguc, sieu am bung…"
@@ -323,9 +334,13 @@ export function ClinicalOrderPanel({
               />
               {search !== '' && (results.length > 0 || mode === 'EXTERNAL') && (
                 <ul role="listbox" aria-label="Kết quả tìm dịch vụ" className="absolute left-0 right-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg">
-                  {results.map((s) => (
-                    <li key={s.id} role="option" aria-selected={false}>
-                      <button type="button" onClick={() => void addService(s)} className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50">
+                  {results.map((s, index) => (
+                    <li key={s.id} role="option" aria-selected={index === activeIndex}>
+                      <button
+                        type="button"
+                        onClick={() => void addService(s)}
+                        className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50 ${index === activeIndex ? 'bg-blue-50' : ''}`}
+                      >
                         <span className="min-w-0 truncate font-semibold text-slate-900">{s.name}</span>
                         <span className="flex-none text-xs font-semibold text-slate-500">
                           {s.code}

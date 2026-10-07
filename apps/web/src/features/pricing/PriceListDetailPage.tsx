@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MagnifyingGlass, Trash, Warning } from '@phosphor-icons/react';
+import { FileXls, MagnifyingGlass, Trash, Warning } from '@phosphor-icons/react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type {
   CreatePriceListRequest,
@@ -9,10 +9,10 @@ import type {
   PriceListItemKind,
   PriceListLineInput,
   PriceListLineMode,
+  PriceListImportRow,
   PriceListLineView,
 } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
-import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
@@ -31,15 +31,17 @@ import { makeDraftId } from '../../shared/make-draft-id';
 import { useHasPermission } from '../auth/usePermission';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { PRICE_LIST_ITEM_KINDS, PRICE_LIST_ITEM_KIND_LABELS, PRICE_LIST_STATUS_META } from './pricing-labels';
+import { PriceListGroupDialog } from './PriceListGroupDialog';
+import { PriceListImportDialog } from './PriceListImportDialog';
 import { useCreatePriceListMutation, usePriceableItemSearch, usePriceListQuery, useUpdatePriceListMutation } from './pricing.queries';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800';
 const labelClassName = 'text-sm font-semibold text-slate-800';
 
-// ≈ 1060px tối thiểu — vừa vùng nội dung ở màn 1440px (sidebar 240px + lề); tên mặt hàng co giãn.
-const GRID_COLUMNS = '36px 108px 112px minmax(160px,1fr) 150px 112px 140px 108px 112px 40px';
-const TABLE_MIN_WIDTH_PX = 1060;
+// Cột phải của bố cục 2 cột (cột trái 340px) — ≈ 900px tối thiểu; tên mặt hàng co giãn.
+const GRID_COLUMNS = '32px minmax(170px,1fr) 148px 92px 160px 100px 96px 36px';
+const TABLE_MIN_WIDTH_PX = 840;
 
 /** Một dòng đang soạn — gom đủ dữ liệu để đổi phạm vi (Loại giá/Đơn vị) và tính lại giá áp dụng mà không gọi lại API. */
 interface LineDraft {
@@ -163,7 +165,7 @@ export function PriceListDetailPage() {
   const [formKey, setFormKey] = useState(0);
 
   const title = isNew ? 'Tạo bảng giá' : (query.data?.name ?? 'Bảng giá');
-  useBreadcrumb([{ label: 'Quản trị' }, { label: 'Bảng giá', to: '/admin/price-lists' }, { label: title }]);
+  useBreadcrumb([{ label: 'Bảng giá', to: '/admin/price-lists' }, { label: title }]);
 
   async function reload() {
     await query.refetch();
@@ -210,6 +212,8 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmStop, setConfirmStop] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const itemSearch = usePriceableItemSearch(debouncedSearch, undefined);
   const priceTypeQuery = useReferenceCatalogQuery('PRICE_TYPE');
@@ -260,6 +264,21 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
     const percent = Math.min(100, Math.max(1, Number(bulkPercent) || 10));
     setLines((prev) => [...prev, fromItem(item, percent)]);
     setSearch('');
+  }
+
+  /** "Thêm theo nhóm": mỗi mặt hàng thành 1 dòng "Giảm %" theo ô phần trăm của hộp thoại (mặt hàng đã có đã được lọc ở hộp thoại). */
+  function addByGroup(items: PriceableItem[], percent: number) {
+    setLines((prev) => [...prev, ...items.map((item) => fromItem(item, percent))]);
+  }
+
+  /** Nhập Excel: file THẮNG — dòng đã có của cùng mặt hàng bị thay bằng dòng trong file. */
+  function applyImport(rows: PriceListImportRow[]) {
+    const keyOf = (kind: PriceListItemKind, ref: string) => `${kind === 'MEDICAL_SUPPLY' ? 'DRUG' : kind}:${ref}`;
+    const incoming = new Set(rows.map((r) => keyOf(r.item.itemKind, r.item.ref)));
+    setLines((prev) => [
+      ...prev.filter((l) => !incoming.has(keyOf(l.itemKind, itemRef(l)))),
+      ...rows.map((r) => ({ ...fromItem(r.item, r.value), mode: r.mode, priceTypeCode: r.priceTypeCode, unitCode: r.unitCode, value: r.value })),
+    ]);
   }
 
   function applyBulkPercent() {
@@ -345,74 +364,31 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
     const fromScopes = line.scopes.filter((s) => s.priceTypeCode !== null).map((s) => s.priceTypeCode as string);
     const fromCatalog = (priceTypeQuery.data?.items ?? []).map((i) => i.code);
     const codes = [...new Set([...fromScopes, ...fromCatalog])];
-    const options = codes.map((code) => {
-      const amount = line.scopes.find((s) => s.priceTypeCode === code)?.amount;
-      return { value: code, label: `${priceTypeName.get(code) ?? code}${amount !== undefined && amount !== null ? ` · ${formatVnd(amount)}` : ''}` };
-    });
+    // Nhãn chỉ có TÊN Loại giá — giá đã hiện ở cột "Giá mặc định" (phản hồi chủ dự án 07/10/2026: không lặp giá trong ô chọn).
+    const options = codes.map((code) => ({ value: code, label: priceTypeName.get(code) ?? code }));
     return withAll ? [{ value: '', label: 'Mọi loại giá' }, ...options] : options;
   }
 
   function unitOptions(line: LineDraft): ComboboxOption[] {
-    return line.scopes.filter((s) => s.unitCode !== null).map((s) => ({ value: s.unitCode as string, label: `${unitName.get(s.unitCode as string) ?? s.unitCode}${s.amount !== null ? ` · ${formatVnd(s.amount)}` : ''}` }));
+    return line.scopes.filter((s) => s.unitCode !== null).map((s) => ({ value: s.unitCode as string, label: unitName.get(s.unitCode as string) ?? (s.unitCode as string) }));
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex h-full min-h-0 flex-col">
-      <div className="scroll-hover flex min-h-0 flex-1 flex-col gap-7 overflow-y-auto px-6 pb-5 pt-6">
-        <BoxedSection badge="Thông tin bảng giá">
-          <div className="grid grid-cols-2 items-end gap-x-3 gap-y-3.5 lg:grid-cols-[156px_minmax(0,2fr)_160px_160px_120px_150px]">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="pl-code" className={labelClassName}>
-                Mã
+    <>
+    <form onSubmit={handleSubmit} className="flex h-full min-h-0 flex-col gap-3 p-3">
+      <div className="flex min-h-0 flex-1 gap-3">
+        <section aria-label="Mặt hàng trong bảng giá" className="flex min-w-0 flex-1 flex-col gap-3">
+      {canWrite && (
+          <div className="flex flex-shrink-0 flex-wrap items-end gap-2.5 rounded-lg border-2 border-blue-200 bg-blue-50 p-3 shadow-sm">
+            <div className="relative min-w-[240px] flex-1">
+              <label htmlFor="pl-item-search" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                Thêm mặt hàng vào bảng giá
               </label>
-              <input id="pl-code" value={detail?.code ?? ''} readOnly placeholder="Tự động" className={`${inputClassName} bg-slate-50`} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="pl-name" className={labelClassName}>
-                Tên bảng giá <span className="text-rose-500">*</span>
-              </label>
-              <input id="pl-name" autoFocus={isCreate} value={name} onChange={(e) => setName(e.target.value)} disabled={!canWrite} className={inputClassName} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="pl-from" className={labelClassName}>
-                Từ ngày <span className="text-rose-500">*</span>
-              </label>
-              <DateInput id="pl-from" value={effectiveFrom} onChange={setEffectiveFrom} disabled={!canWrite} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="pl-to" className={labelClassName}>
-                Đến ngày <span className="text-rose-500">*</span>
-              </label>
-              <DateInput id="pl-to" value={effectiveTo} onChange={setEffectiveTo} disabled={!canWrite} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="pl-priority" className={labelClassName}>
-                Độ ưu tiên <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="pl-priority"
-                inputMode="numeric"
-                value={priority}
-                disabled={!canWrite}
-                onChange={(e) => setPriority(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                className={`${inputClassName} text-center`}
-              />
-            </div>
-            <div className="pb-2">{status && <StatusBadge tone={status.tone}>{status.label}</StatusBadge>}</div>
-          </div>
-          <p className="mt-2.5 text-xs text-slate-500">
-            Cùng ngày có nhiều bảng chứa một mặt hàng thì bảng có độ ưu tiên cao hơn được dùng. Bảng giá chung luôn là 0.
-          </p>
-        </BoxedSection>
-
-        <BoxedSection badge="Mặt hàng trong bảng giá">
-          {canWrite && (
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="relative min-w-[280px] flex-1">
-                <MagnifyingGlass size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <div className="relative">
+                <MagnifyingGlass size={16} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-500" aria-hidden="true" />
                 <input
+                  id="pl-item-search"
                   type="search"
-                  aria-label="Tìm mặt hàng để thêm"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => {
@@ -423,77 +399,82 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                       if (first) pickItem(first);
                     }
                   }}
-                  placeholder="Gõ tên hoặc mã dịch vụ, gói, thuốc, vật tư để thêm…"
-                  className="w-full rounded-md border-2 border-blue-600 py-2 pl-9 pr-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  placeholder="Gõ tên hoặc mã dịch vụ, gói, thuốc, vật tư — Enter để thêm kết quả đầu…"
+                  className="w-full rounded-md border border-blue-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
-                {debouncedSearch !== '' && searchResults.length > 0 && (
-                  <ul role="listbox" aria-label="Kết quả tìm mặt hàng" className="absolute left-0 right-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg">
-                    {searchResults.map((item) => (
-                      <li key={`${item.itemKind}:${item.ref}`} role="option" aria-selected={false}>
-                        <button type="button" onClick={() => pickItem(item)} className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50">
-                          <span className="min-w-0 truncate font-semibold text-slate-900">{item.name}</span>
-                          <span className="flex-none text-xs font-semibold text-slate-500">
-                            {PRICE_LIST_ITEM_KIND_LABELS[item.itemKind]} · {item.code}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
-              <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
-                <label htmlFor="pl-bulk" className="whitespace-nowrap text-sm font-semibold text-slate-800">
-                  Giảm % cho các dòng đang chọn
-                </label>
-                <input
-                  id="pl-bulk"
-                  inputMode="numeric"
-                  value={bulkPercent}
-                  onChange={(e) => setBulkPercent(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                  className="w-16 rounded-md border border-slate-300 px-2 py-2 text-right text-[15px] font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-                <Button type="button" variant="secondary" disabled={selectedCount === 0} onClick={applyBulkPercent}>
-                  Áp dụng
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Lọc mặt hàng theo loại">
-            {([{ key: 'ALL', label: 'Tất cả', count: lines.length }, ...PRICE_LIST_ITEM_KINDS.map((k) => ({ key: k, label: PRICE_LIST_ITEM_KIND_LABELS[k], count: countsByKind.get(k) ?? 0 }))] as const).map((f) => {
-              const active = kindFilter === f.key;
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => setKindFilter(f.key)}
-                  aria-pressed={active}
-                  className={`rounded-full border px-3 py-1 text-xs font-bold ${active ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}
-                >
-                  {f.label} {f.count}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
-            <div className="scroll-hover overflow-x-auto overflow-y-hidden">
-              <div style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
-                <div
-                  role="row"
-                  className="grid items-center border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-bold uppercase tracking-wide text-slate-800"
-                  style={{ gridTemplateColumns: GRID_COLUMNS }}
-                >
-                  <div className="flex items-center justify-center px-1 py-2.5">
-                    <SelectionCheckbox checked={allVisibleSelected} indeterminate={someVisibleSelected} onChange={toggleAllVisible} ariaLabel="Chọn tất cả dòng đang hiện" />
-                  </div>
-                  {['Loại', 'Mã', 'Tên mặt hàng', 'Đơn vị / Loại giá', 'Giá mặc định', 'Cách tính', 'Giá trị', 'Giá áp dụng', ''].map((h, i) => (
-                    <div key={i} role="columnheader" className="px-2 py-2.5">
-                      {h}
-                    </div>
+              {debouncedSearch !== '' && searchResults.length > 0 && (
+                <ul role="listbox" aria-label="Kết quả tìm mặt hàng" className="absolute left-0 right-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+                  {searchResults.map((item) => (
+                    <li key={`${item.itemKind}:${item.ref}`} role="option" aria-selected={false}>
+                      <button type="button" onClick={() => pickItem(item)} className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50">
+                        <span className="min-w-0 truncate font-semibold text-slate-900">{item.name}</span>
+                        <span className="flex-none text-xs font-semibold text-slate-500">
+                          {PRICE_LIST_ITEM_KIND_LABELS[item.itemKind]} · {item.code}
+                        </span>
+                      </button>
+                    </li>
                   ))}
+                </ul>
+              )}
+            </div>
+            <Button type="button" variant="add" onClick={() => setGroupOpen(true)}>
+              Thêm theo nhóm
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setImportOpen(true)}>
+              <FileXls size={15} weight="bold" aria-hidden="true" />
+              Nhập từ Excel
+            </Button>
+            <div className="flex items-center gap-2 border-l border-blue-200 pl-3">
+              <label htmlFor="pl-bulk" className="whitespace-nowrap text-sm font-semibold text-slate-800">
+                Giảm % cho các dòng đang chọn
+              </label>
+              <input
+                id="pl-bulk"
+                inputMode="numeric"
+                value={bulkPercent}
+                onChange={(e) => setBulkPercent(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                className="w-16 rounded-md border border-slate-300 bg-white px-2 py-2 text-right text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+              <Button type="button" variant="secondary" disabled={selectedCount === 0} onClick={applyBulkPercent}>
+                Áp dụng
+              </Button>
+            </div>
+          </div>
+      )}
+      <div className="flex flex-shrink-0 flex-wrap gap-2" role="group" aria-label="Lọc mặt hàng theo loại">
+        {([{ key: 'ALL', label: 'Tất cả', count: lines.length }, ...PRICE_LIST_ITEM_KINDS.map((k) => ({ key: k, label: PRICE_LIST_ITEM_KIND_LABELS[k], count: countsByKind.get(k) ?? 0 }))] as const).map((f) => {
+          const active = kindFilter === f.key;
+          return (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setKindFilter(f.key)}
+              aria-pressed={active}
+              className={`rounded-full border px-3.5 py-1 text-[13px] font-semibold ${active ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}
+            >
+              {f.label} {f.count}
+            </button>
+          );
+        })}
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="scroll-hover h-full overflow-auto">
+          <div style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
+            <div
+              role="row"
+              className="sticky top-0 z-10 grid items-center border-b-2 px-3 border-blue-600 bg-slate-100 text-center text-xs font-bold uppercase tracking-wide text-slate-800"
+              style={{ gridTemplateColumns: GRID_COLUMNS }}
+            >
+              <div className="flex items-center justify-center px-1 py-2.5">
+                <SelectionCheckbox checked={allVisibleSelected} indeterminate={someVisibleSelected} onChange={toggleAllVisible} ariaLabel="Chọn tất cả dòng đang hiện" />
+              </div>
+              {['Mặt hàng', 'Đơn vị', 'Giá mặc định', 'Cách tính', 'Giá trị', 'Giá áp dụng', ''].map((h, i) => (
+                <div key={i} role="columnheader" className="px-2 py-2.5">
+                  {h}
                 </div>
-
+              ))}
+            </div>
                 {visibleLines.length === 0 && (
                   <div className="px-4 py-8 text-center text-sm font-medium italic text-slate-400">
                     {lines.length === 0 ? 'Chưa có mặt hàng nào — gõ vào ô tìm phía trên để thêm.' : 'Không có mặt hàng thuộc loại này.'}
@@ -503,17 +484,17 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                   const base = baseOf(line);
                   const final = finalOf(line);
                   return (
-                    <div key={line.key} role="row" className="grid items-center border-b border-slate-100 text-center text-sm last:border-0" style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: 54 }}>
+                    <div key={line.key} role="row" className="grid items-center border-b border-slate-100 px-3 text-center text-sm last:border-0" style={{ gridTemplateColumns: GRID_COLUMNS, minHeight: 54 }}>
                       <div className="flex items-center justify-center">
                         <SelectionCheckbox checked={line.selected} onChange={() => updateLine(line.key, { selected: !line.selected })} ariaLabel={`Chọn ${line.name}`} />
                       </div>
-                      <div className="px-1.5">
-                        <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">{PRICE_LIST_ITEM_KIND_LABELS[line.itemKind]}</span>
-                      </div>
-                      <div className="px-1.5 font-semibold text-slate-800">{line.code}</div>
                       <div className="min-w-0 px-2.5 py-1.5 text-left">
                         <div className="truncate font-medium text-slate-900" title={line.name}>
                           {line.name}
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-bold text-slate-700">{PRICE_LIST_ITEM_KIND_LABELS[line.itemKind]}</span>
+                          <span className="truncate font-semibold text-slate-500">{line.code}</span>
                         </div>
                         {line.itemMissing && (
                           <div className="flex items-center gap-1 text-[11px] font-semibold text-amber-700">
@@ -532,11 +513,13 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                             onChange={(v) => updateLine(line.key, { priceTypeCode: v === '' ? null : v })}
                             options={priceTypeOptions(line, line.mode === 'PERCENT_OFF')}
                             disabled={!canWrite}
+                            dense
+                            floating
                           />
                         ) : line.mode === 'PERCENT_OFF' ? (
                           'Mọi bậc'
                         ) : (
-                          <Combobox id={`pl-scope-${line.key}`} value={line.unitCode ?? ''} onChange={(v) => updateLine(line.key, { unitCode: v === '' ? null : v })} options={unitOptions(line)} disabled={!canWrite} />
+                          <Combobox id={`pl-scope-${line.key}`} value={line.unitCode ?? ''} onChange={(v) => updateLine(line.key, { unitCode: v === '' ? null : v })} options={unitOptions(line)} disabled={!canWrite} dense floating />
                         )}
                       </div>
                       <div className="px-2.5 text-right font-medium tabular-nums text-slate-600">{base === null ? <span className="text-slate-400">Chưa có giá</span> : formatVnd(base)}</div>
@@ -553,7 +536,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                       </div>
                       <div className="px-1.5">
                         {line.mode === 'PERCENT_OFF' ? (
-                          <div className="flex items-center gap-1">
+                          <div className="mx-auto flex max-w-[92px] items-center gap-1">
                             <input
                               aria-label={`Phần trăm giảm ${line.name}`}
                               inputMode="numeric"
@@ -563,9 +546,9 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                                 const digits = e.target.value.replace(/\D/g, '').slice(0, 3);
                                 updateLine(line.key, { value: digits === '' ? undefined : Math.min(100, Number(digits)) });
                               }}
-                              className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                              className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
                             />
-                            <span className="text-sm font-bold text-slate-600">%</span>
+                            <span className="text-[13px] font-semibold text-slate-600">%</span>
                           </div>
                         ) : (
                           <MoneyInput
@@ -573,7 +556,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                             value={line.value}
                             onChange={(v) => updateLine(line.key, { value: v })}
                             disabled={!canWrite}
-                            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
                           />
                         )}
                       </div>
@@ -593,24 +576,73 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                     </div>
                   );
                 })}
-              </div>
+          </div>
+        </div>
+      </div>
+      <p className="flex-shrink-0 text-xs text-slate-500">
+        Thuốc có nhiều bậc đơn vị (Hộp/Vỉ/Viên): "Giảm %" áp cho mọi bậc; "Giá mới" chỉ áp cho đúng đơn vị đã chọn. Gói dịch vụ tính trọn gói — bảng giá đổi giá của cả gói, không đụng tới từng dịch vụ con. Giá áp dụng làm tròn về 1 đồng.
+      </p>
+
+      {formError && (
+        <div role="alert" className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">
+          <Warning size={15} weight="fill" className="flex-none" aria-hidden="true" />
+          {formError}
+        </div>
+      )}
+      <RecordFormNotice saveError={saveError} onReload={isCreate ? undefined : onReload} />
+        </section>
+        <aside aria-label="Thông tin bảng giá" className="scroll-hover flex w-[300px] flex-shrink-0 flex-col gap-3 overflow-y-auto">
+      <div className="flex flex-shrink-0 items-center gap-2.5">
+        <h2 className="text-lg font-bold text-slate-900">{isCreate ? 'Tạo bảng giá' : detail.name}</h2>
+        {status && <StatusBadge tone={status.tone}>{status.label}</StatusBadge>}
+      </div>
+      <div className="flex-shrink-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+            <div className="col-span-2 flex flex-col gap-1.5">
+              <label htmlFor="pl-code" className={labelClassName}>
+                Mã
+              </label>
+              <input id="pl-code" value={detail?.code ?? ''} readOnly placeholder="Tự động" className={`${inputClassName} bg-slate-50`} />
+            </div>
+            <div className="col-span-2 flex flex-col gap-1.5">
+              <label htmlFor="pl-name" className={labelClassName}>
+                Tên bảng giá <span className="text-rose-500">*</span>
+              </label>
+              <input id="pl-name" autoFocus={isCreate} value={name} onChange={(e) => setName(e.target.value)} disabled={!canWrite} className={inputClassName} />
+            </div>
+            <div className="col-span-2 flex flex-col gap-1.5">
+              <label htmlFor="pl-from" className={labelClassName}>
+                Từ ngày <span className="text-rose-500">*</span>
+              </label>
+              <DateInput id="pl-from" value={effectiveFrom} onChange={setEffectiveFrom} disabled={!canWrite} />
+            </div>
+            <div className="col-span-2 flex flex-col gap-1.5">
+              <label htmlFor="pl-to" className={labelClassName}>
+                Đến ngày <span className="text-rose-500">*</span>
+              </label>
+              <DateInput id="pl-to" value={effectiveTo} onChange={setEffectiveTo} disabled={!canWrite} />
+            </div>
+            <div className="col-span-2 flex flex-col gap-1.5">
+              <label htmlFor="pl-priority" className={labelClassName}>
+                Độ ưu tiên <span className="text-rose-500">*</span>
+              </label>
+              <input
+                id="pl-priority"
+                inputMode="numeric"
+                value={priority}
+                disabled={!canWrite}
+                onChange={(e) => setPriority(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className={`${inputClassName} text-center`}
+              />
             </div>
           </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Thuốc có nhiều bậc đơn vị (Hộp/Vỉ/Viên): "Giảm %" áp cho mọi bậc; "Giá mới" chỉ áp cho đúng đơn vị đã chọn. Gói dịch vụ tính trọn gói — bảng giá đổi giá của cả gói, không đụng tới từng dịch vụ con. Giá áp dụng làm tròn về 1 đồng.
+          <p className="mt-2.5 text-xs text-slate-500">
+            Cùng ngày có nhiều bảng chứa một mặt hàng thì bảng có độ ưu tiên cao hơn được dùng. Bảng giá chung luôn là 0.
           </p>
-        </BoxedSection>
-
-        {formError && (
-          <div role="alert" className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">
-            <Warning size={15} weight="fill" className="flex-none" aria-hidden="true" />
-            {formError}
-          </div>
-        )}
-        <RecordFormNotice saveError={saveError} onReload={isCreate ? undefined : onReload} />
       </div>
-
-      <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-200 bg-white px-6 py-3">
+        </aside>
+      </div>
+      <div className="flex flex-shrink-0 items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div>
           {detail && canWrite && (
             <Button type="button" variant="danger" onClick={() => (detail.isActive ? setConfirmStop(true) : void toggleActive())}>
@@ -640,6 +672,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
         </div>
       </div>
 
+
       {confirmStop && detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4" role="alertdialog" aria-modal="true" aria-labelledby="pl-stop-title">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
@@ -661,5 +694,10 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
         </div>
       )}
     </form>
+
+      {/* Hộp thoại đặt NGOÀI <form> của trang: form lồng nhau không hợp lệ, nút submit của hộp thoại sẽ kích hoạt form ngoài thay vì chính nó. */}
+      {groupOpen && <PriceListGroupDialog existingKeys={addedKeys} defaultPercent={bulkPercent} onAdd={addByGroup} onClose={() => setGroupOpen(false)} />}
+      {importOpen && <PriceListImportDialog onApply={applyImport} onClose={() => setImportOpen(false)} />}
+    </>
   );
 }

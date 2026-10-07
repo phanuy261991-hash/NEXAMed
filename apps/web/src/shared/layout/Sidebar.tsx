@@ -115,8 +115,6 @@ const ADMIN_GROUP_PATHS = [
   '/admin/catalog-organization',
   '/admin/catalog-clinical',
   '/admin/catalog-paraclinical',
-  // "Bảng giá" (Cận lâm sàng GĐ2, #212) — thêm cả trang chi tiết `/admin/price-lists/:id` ở chỗ khởi tạo `adminGroupOpen` (khớp tiền tố).
-  '/admin/price-lists',
   // "Danh mục kho" — chuyển từ nhóm "Quản lý kho" xuống đây theo yêu cầu chủ dự án (16/09/2026,
   // docs/DECISIONS.md #157), route/quyền giữ nguyên (`/admin/catalog-pharmacy` KHÔNG chuyển).
   '/admin/catalog-warehouse',
@@ -195,7 +193,7 @@ export function Sidebar() {
   );
   const [adminGroupOpen, setAdminGroupOpen] = useState(
     // So khớp CHÍNH XÁC (không phải tiền tố) — xem comment ở khai báo ADMIN_GROUP_PATHS.
-    ADMIN_GROUP_PATHS.includes(location.pathname) || location.pathname.startsWith('/admin/price-lists/'),
+    ADMIN_GROUP_PATHS.includes(location.pathname),
   );
   const [billingGroupOpen, setBillingGroupOpen] = useState(
     BILLING_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
@@ -226,6 +224,8 @@ export function Sidebar() {
   const canSeeCatalogPharmacy = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
   // "Bảng giá" (#212 GĐ2) — gate theo ĐÚNG quyền của route guard (`PRICE_LIST_ADMIN_PERMISSIONS`); `price_list.read` một mình không đủ.
   const canSeePriceLists = useHasAnyPermission(PRICE_LIST_ADMIN_PERMISSIONS);
+  // "Cận lâm sàng" (GĐ4 đợt 1) — gate theo ĐÚNG quyền của route `/paraclinical/*`.
+  const canSeeParaclinical = useHasPermission('paraclinical_result', 'read');
   // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — 2 mục "Công nợ nhà cung cấp"/
   // "Phiếu thanh toán NCC" trong nhóm "Quản lý nhà cung cấp", gate RIÊNG khỏi `canSeeCatalogPharmacy`
   // (mặc định CHỈ clinic_admin có `supplier_debt.read`, khác `drug.create`/`drug.update`).
@@ -386,6 +386,9 @@ export function Sidebar() {
               )}
             </li>
           )}
+
+          {/* "Cận lâm sàng" (GĐ4 đợt 1, #212) — mục cấp 1 ngay dưới "Khám bệnh". Hiện MỖI "Hàng đợi" (Phiếu chỉ định / Tra cứu kết quả chưa xây — không dựng mục giả); khi có thêm mục sẽ thành nhóm xổ xuống như mockup. */}
+          {canSeeParaclinical && <NavItem to="/paraclinical/queue" label="Cận lâm sàng" icon={Flask} collapsed={collapsed} />}
 
           {/* "Hồ sơ Bệnh nhân" (2026-09-08, chủ dự án yêu cầu trực tiếp) — tách khỏi "Tiếp nhận và
               Đặt lịch", đặt ngay dưới "Khám bệnh". Gate bằng ĐÚNG quyền route `/patients*` cần
@@ -670,6 +673,9 @@ export function Sidebar() {
             </li>
           )}
 
+          {/* "Bảng giá" — mục cấp 1 ngang hàng "Lịch làm việc" (chủ dự án yêu cầu 07/10/2026), không còn nằm trong nhóm Quản trị. Route vẫn `/admin/price-lists`. */}
+          {canSeePriceLists && <NavItem to="/admin/price-lists" label="Bảng giá" icon={Tag} collapsed={collapsed} />}
+
           {isAdmin && (
             <li>
               <button
@@ -714,7 +720,6 @@ export function Sidebar() {
                   {canSeeCatalogParaclinical && (
                     <NavItem to="/admin/catalog-paraclinical" label="Danh mục cận lâm sàng" icon={Flask} collapsed={false} indent />
                   )}
-                  {canSeePriceLists && <NavItem to="/admin/price-lists" label="Bảng giá" icon={Tag} collapsed={false} indent />}
                   {/* "Danh mục kho" — chuyển từ nhóm "Quản lý kho" xuống đây theo yêu cầu chủ dự án
                       (16/09/2026, docs/DECISIONS.md #157), route/quyền giữ nguyên. */}
                   {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-warehouse" label="Danh mục kho" icon={Warehouse} collapsed={false} indent />}

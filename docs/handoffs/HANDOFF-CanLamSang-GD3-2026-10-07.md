@@ -28,7 +28,7 @@
 - **ĐÃ CHỐT sau commit đầu (07/10/2026)**: chủ dự án chọn đưa 10 entityType danh mục vào System Log 90 ngày (`log-retention.ts` + spec). (b) before/afterJson cho `supplier.*`/`warehouse.*` ĐÃ bổ sung (chỉ trường đổi; liên hệ NCC chỉ ghi tên trường, không ghi giá trị). Ghi chú cũ: (a) xếp `entityType` danh mục (technical_service, lab_indicator, result_template, service_package, price_list, supplier, warehouse, cash_account, prescription_template, print_template) vào "System Log" 90 ngày (`packages/core/src/audit/log-retention.ts`) hay giữ vĩnh viễn như hiện tại (mặc định an toàn; `drug` đang là System Log); (b) bổ sung `beforeJson/afterJson` cho `supplier.*`/`warehouse.*` (hiện chỉ ghi ai/khi nào, không ghi sửa gì).
 
 ### Sửa test đi kèm
-- `print-template-http.spec.ts`: 11 → 12 mẫu in. `business-code-http.spec.ts`: 27 loại mã, thêm `CLINICAL_ORDER` (CD) vào danh sách mong đợi.
+- `print-template-http.spec.ts`: 11 → 12 mẫu in. `business-code-http.spec.ts`: 27 loại mã, thêm `CLINICAL_ORDER` (CLS) vào danh sách mong đợi.
 
 ## 2. Kiểm thử đã chạy
 - `pnpm -r typecheck` sạch (shared/core/web/api); `pnpm lint` 0 lỗi (8 cảnh báo `exhaustive-deps` cũ, không liên quan).

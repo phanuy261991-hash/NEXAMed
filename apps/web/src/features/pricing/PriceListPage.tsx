@@ -35,7 +35,7 @@ const FILTERS: { key: StatusFilter; label: string }[] = [
  * nó là giá nhập trực tiếp trên từng mặt hàng nên mặt hàng mới tự có mặt, không bao giờ lệch hai nguồn giá.
  */
 export function PriceListPage() {
-  useBreadcrumb([{ label: 'Quản trị' }, { label: 'Bảng giá' }]);
+  useBreadcrumb([{ label: 'Bảng giá' }]);
   const navigate = useNavigate();
   const canCreate = useHasPermission('price_list', 'create');
   const [filter, setFilter] = useState<StatusFilter>('ALL');
@@ -59,7 +59,7 @@ export function PriceListPage() {
                 type="button"
                 onClick={() => setFilter(f.key)}
                 aria-pressed={active}
-                className={`rounded-full border px-3.5 py-1.5 text-[12.5px] font-bold ${
+                className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${
                   active ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                 }`}
               >
@@ -75,6 +75,10 @@ export function PriceListPage() {
           </Button>
         )}
       </div>
+
+      <p className="flex-shrink-0 text-[13px] text-slate-600">
+        Hệ thống ưu tiên áp dụng bảng giá có thời hạn theo chỉ số từ cao đến thấp. Khi hết hạn, giá sẽ tự động lùi về bảng giá có ưu tiên kế tiếp hoặc Bảng giá chung.
+      </p>
 
       <div className="flex min-h-0 flex-1 gap-3.5">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -131,9 +135,6 @@ export function PriceListPage() {
               </div>
             </div>
           </div>
-          <p className="text-xs text-slate-500">
-            Bảng giá có thời hạn được ưu tiên hơn giá mặc định; độ ưu tiên (số) cao thắng. Hết hạn thì tự quay về bảng có ưu tiên thấp hơn, cuối cùng là Bảng giá chung.
-          </p>
         </div>
 
         <PriceLookupPanel />

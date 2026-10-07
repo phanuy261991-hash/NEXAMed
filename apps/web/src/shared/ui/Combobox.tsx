@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { CaretDown } from '@phosphor-icons/react';
 
 export interface ComboboxOption {
@@ -49,6 +50,8 @@ export function Combobox({
   allowCreate = false,
   onCreateOption,
   className = '',
+  dense = false,
+  floating = false,
 }: {
   id: string;
   value: string;
@@ -68,6 +71,13 @@ export function Combobox({
   /** Tuỳ chỉnh bề rộng/khoảng cách container (ví dụ `min-w-[220px]`) — component tự chiếm `w-full`
    * bên trong, dùng khi nơi gọi không đủ ép rộng qua wrapper cha (thay `<select>` cần `min-width`). */
   className?: string;
+  /** Cỡ gọn cho ô nằm TRONG hàng bảng (chữ 13px, đệm ít) — cân với chữ nội dung quanh nó; mặc định cỡ form thường. */
+  dense?: boolean;
+  /**
+   * Panel xổ xuống NỔI trên mọi khung (portal ra `document.body`, `position: fixed` bám theo ô) — dùng cho ô nằm TRONG vùng cuộn/`overflow` (hàng bảng, khung cuộn)
+   * nơi panel `absolute` mặc định bị cắt mất (bug thật ở bảng "Mặt hàng trong bảng giá"). Mặc định tắt — không đổi hành vi các nơi khác.
+   */
+  floating?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -75,6 +85,8 @@ export function Combobox({
   const [creating, setCreating] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [anchor, setAnchor] = useState<{ left: number; top: number; width: number } | null>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   const selected = options.find((o) => o.value === value) ?? null;
@@ -102,7 +114,8 @@ export function Combobox({
   useEffect(() => {
     if (!open) return;
     function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (containerRef.current && !containerRef.current.contains(target) && !listRef.current?.contains(target)) {
         setOpen(false);
         setQuery('');
       }
@@ -110,6 +123,21 @@ export function Combobox({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !floating) return;
+    function measure() {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) setAnchor({ left: rect.left, top: rect.bottom + 4, width: rect.width });
+    }
+    measure();
+    window.addEventListener('scroll', measure, true);
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener('resize', measure);
+    };
+  }, [open, floating]);
 
   function openDropdown() {
     if (disabled) return;
@@ -177,6 +205,72 @@ export function Combobox({
   // thô, gắn icon đè lên sẽ đè cả lên ký tự đầu người dùng đang gõ.
   const showLeadingIcon = !open && Boolean(selected?.icon);
 
+  const panelStyle: CSSProperties = floating
+    ? { position: 'fixed', left: anchor?.left, top: anchor?.top, width: anchor?.width, maxHeight: ROW_HEIGHT_PX * VISIBLE_ROWS + 8, zIndex: 60 }
+    : { maxHeight: ROW_HEIGHT_PX * VISIBLE_ROWS + 8 };
+
+  const panel = (
+    <ul
+      ref={listRef}
+      id={`${id}-listbox`}
+      role="listbox"
+      style={panelStyle}
+      className={`overflow-y-auto rounded-md border border-slate-300 bg-white py-1 shadow-lg ${floating ? '' : 'absolute left-0 right-0 top-full z-20 mt-1'}`}
+    >
+      {filtered.length === 0 && !showCreateRow ? (
+        <li className="px-3 py-2 text-sm text-slate-400">Không tìm thấy</li>
+      ) : (
+        <>
+          {filtered.map((opt, i) => (
+            <li
+              key={opt.value}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
+              role="option"
+              aria-selected={opt.value === value}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                selectOption(opt);
+              }}
+              onMouseEnter={() => setHighlighted(i)}
+              className={`flex min-h-9 cursor-pointer items-center gap-1.5 px-3 py-1.5 text-sm leading-snug ${
+                i === highlighted ? 'bg-blue-50 text-blue-700' : 'text-slate-900'
+              } ${opt.value === value ? 'font-semibold' : ''}`}
+            >
+              {opt.icon && (
+                <span aria-hidden="true" className="mr-2 flex shrink-0 items-center">
+                  {opt.icon}
+                </span>
+              )}
+              {opt.label}
+            </li>
+          ))}
+          {showCreateRow && (
+            <li
+              ref={(el) => {
+                itemRefs.current[filtered.length] = el;
+              }}
+              role="option"
+              aria-selected={false}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                void handleCreate();
+              }}
+              onMouseEnter={() => setHighlighted(filtered.length)}
+              className={`flex min-h-9 cursor-pointer items-center gap-1.5 border-t border-slate-100 px-3 py-1.5 text-sm font-semibold leading-snug ${
+                filtered.length === highlighted ? 'bg-blue-50 text-blue-700' : 'text-blue-600'
+              }`}
+            >
+              {creating ? 'Đang thêm...' : `+ Thêm mới: "${trimmedQuery}"`}
+            </li>
+          )}
+        </>
+      )}
+      {createError && <li className="px-3 py-1.5 text-xs font-medium text-rose-600">{createError}</li>}
+    </ul>
+  );
+
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       {showLeadingIcon && (
@@ -203,7 +297,7 @@ export function Combobox({
           setOpen(true);
         }}
         onKeyDown={handleKeyDown}
-        className={`w-full rounded-md border border-slate-300 py-2 ${showLeadingIcon ? 'pl-8' : 'pl-3'} pr-9 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800`}
+        className={`w-full rounded-md border border-slate-300 ${dense ? 'py-1.5 text-[13px]' : 'py-2 text-[15px]'} ${showLeadingIcon ? 'pl-8' : 'pl-3'} pr-9 font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800`}
       />
 
       <button
@@ -217,66 +311,7 @@ export function Combobox({
         <CaretDown size={13} weight="bold" className={`transition-transform duration-150 ${open ? 'rotate-180 text-blue-600' : ''}`} />
       </button>
 
-      {open && (
-        <ul
-          id={`${id}-listbox`}
-          role="listbox"
-          style={{ maxHeight: ROW_HEIGHT_PX * VISIBLE_ROWS + 8 }}
-          className="absolute left-0 right-0 top-full z-20 mt-1 overflow-y-auto rounded-md border border-slate-300 bg-white py-1 shadow-lg"
-        >
-          {filtered.length === 0 && !showCreateRow ? (
-            <li className="px-3 py-2 text-sm text-slate-400">Không tìm thấy</li>
-          ) : (
-            <>
-              {filtered.map((opt, i) => (
-                <li
-                  key={opt.value}
-                  ref={(el) => {
-                    itemRefs.current[i] = el;
-                  }}
-                  role="option"
-                  aria-selected={opt.value === value}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    selectOption(opt);
-                  }}
-                  onMouseEnter={() => setHighlighted(i)}
-                  className={`flex min-h-9 cursor-pointer items-center gap-1.5 px-3 py-1.5 text-sm leading-snug ${
-                    i === highlighted ? 'bg-blue-50 text-blue-700' : 'text-slate-900'
-                  } ${opt.value === value ? 'font-semibold' : ''}`}
-                >
-                  {opt.icon && (
-                    <span aria-hidden="true" className="mr-2 flex shrink-0 items-center">
-                      {opt.icon}
-                    </span>
-                  )}
-                  {opt.label}
-                </li>
-              ))}
-              {showCreateRow && (
-                <li
-                  ref={(el) => {
-                    itemRefs.current[filtered.length] = el;
-                  }}
-                  role="option"
-                  aria-selected={false}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    void handleCreate();
-                  }}
-                  onMouseEnter={() => setHighlighted(filtered.length)}
-                  className={`flex min-h-9 cursor-pointer items-center gap-1.5 border-t border-slate-100 px-3 py-1.5 text-sm font-semibold leading-snug ${
-                    filtered.length === highlighted ? 'bg-blue-50 text-blue-700' : 'text-blue-600'
-                  }`}
-                >
-                  {creating ? 'Đang thêm...' : `+ Thêm mới: "${trimmedQuery}"`}
-                </li>
-              )}
-            </>
-          )}
-          {createError && <li className="px-3 py-1.5 text-xs font-medium text-rose-600">{createError}</li>}
-        </ul>
-      )}
+      {open && (floating ? anchor && createPortal(panel, document.body) : panel)}
     </div>
   );
 }

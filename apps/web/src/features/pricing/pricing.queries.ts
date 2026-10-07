@@ -23,6 +23,7 @@ import {
   searchPriceableItems,
   updatePriceList,
   updateServicePackage,
+  listPriceableGroups,
 } from './pricing.api';
 
 /** Cận lâm sàng GĐ2 — Gói dịch vụ + Bảng giá có thời hạn (docs/DECISIONS.md #212). Mọi truy vấn lấy dữ liệu MỚI khi mở màn quản trị. */
@@ -59,6 +60,12 @@ export function usePriceListQuery(id: string | null) {
     queryFn: () => getPriceList(id!),
     enabled: id !== null,
   });
+}
+
+/** Các nhóm mặt hàng cho hộp thoại "Thêm theo nhóm" — chỉ tải khi hộp thoại mở. */
+export function usePriceableGroupsQuery(enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({ queryKey: queryKey(tenantId, 'price-list', 'groups'), queryFn: listPriceableGroups, enabled });
 }
 
 /** Tìm mặt hàng để thêm vào bảng giá/tra thử giá — gọi khi người dùng đã gõ (không tải trước). */

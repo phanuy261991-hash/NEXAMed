@@ -138,6 +138,11 @@ const ACTION_LABELS: Record<string, string> = {
   'price_list.exported': 'Xuất bảng giá ra Excel',
   'clinical_order.saved': 'Lưu chỉ định cận lâm sàng',
   'clinical_order.printed': 'In phiếu chỉ định cận lâm sàng',
+  'paraclinical.started': 'Lấy mẫu / gọi vào phòng thực hiện cận lâm sàng',
+  'paraclinical_result.saved': 'Lưu nháp kết quả cận lâm sàng',
+  'paraclinical_result.submitted': 'Gửi duyệt kết quả cận lâm sàng',
+  'paraclinical_result.approved': 'Duyệt và trả kết quả cận lâm sàng',
+  'paraclinical_result.viewed': 'Xem kết quả cận lâm sàng',
 
   // Bổ sung rà soát log (2026-10-07): các action dưới đây đã ghi audit từ trước nhưng thiếu nhãn tiếng Việt
   // (hiện nguyên văn dạng kỹ thuật ở màn Nhật ký). Test `audit-labels-coverage.spec.ts` chặn tái diễn.

@@ -75,7 +75,7 @@ export function LabIndicatorPane() {
   const items = listQuery.data?.items ?? [];
 
   return (
-    <div className="flex h-full min-h-0 gap-3.5 px-6 pb-5 pt-3.5">
+    <div className="flex h-full min-h-0 gap-3.5">
       <section className="flex w-[306px] flex-shrink-0 flex-col gap-2.5" aria-label="Danh sách chỉ số xét nghiệm">
         <div className="relative">
           <MagnifyingGlass size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />

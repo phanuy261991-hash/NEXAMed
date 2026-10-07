@@ -410,6 +410,37 @@ describe('HTTP e2e — /api/v1/encounters/:id/clinical-orders (Chỉ định c�
     });
   });
 
+  describe('huỷ lượt khám + log xem', () => {
+    it('huỷ lượt khám: hoá đơn Cận lâm sàng CHƯA thu tự đóng (CANCELLED), hoá đơn đã thu GIỮ NGUYÊN chờ hoàn tiền; sau huỷ không chỉ định thêm được', async () => {
+      const { encounterId } = await prepareEncounterInConsultation();
+      const first = await savedOrder(encounterId, { items: [inHouse(glucoseId)] });
+      // Thu hoá đơn khám (gồm dòng glucose) rồi chỉ định thêm → hoá đơn PARACLINICAL riêng, chưa thu.
+      const exam = await invoiceOf(encounterId);
+      expect((await http().post(`/api/v1/billing/invoices/${encounterId}/pay`).set(authed(receptionistToken)).send({ method: 'CASH', version: exam.version })).status).toBe(200);
+      const second = await savedOrder(encounterId, { items: [{ id: first.items[0]!.id, ...inHouse(glucoseId) }, inHouse(imagingId)] });
+      const paraInvoice = second.invoices.find((i) => i.invoiceType === 'PARACLINICAL')!;
+      expect(paraInvoice.status).toBe('UNPAID');
+
+      const cancel = await http().post(`/api/v1/encounters/${encounterId}/cancel`).set(authed(adminToken)).send({ cancelReason: 'Khách bỏ về giữa chừng', version: 2 });
+      expect(cancel.status, JSON.stringify(cancel.body)).toBe(200);
+
+      expect((await invoiceOf(encounterId, paraInvoice.invoiceId)).status).toBe('CANCELLED');
+      expect((await invoiceOf(encounterId)).status).toBe('PAID');
+
+      const after = await save(encounterId, { items: [inHouse(glucoseId)] });
+      expect(after.status).toBe(409);
+      expect(after.body.error.code).toBe('ENCOUNTER_NOT_IN_CONSULTATION');
+    });
+
+    it('GET chỉ định ghi audit "xem" (clinical_order.viewed) vào đúng lượt khám', async () => {
+      const { encounterId } = await prepareEncounterInConsultation();
+      await savedOrder(encounterId, { items: [inHouse(glucoseId)] });
+      expect((await http().get(orderUrl(encounterId)).set(authed(doctorToken))).status).toBe(200);
+      const audit = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, action: 'clinical_order.viewed', entityId: encounterId } });
+      expect(audit).not.toBeNull();
+    });
+  });
+
   describe('in phiếu', () => {
     it('ghi audit in phiếu; chưa có phiếu → 404', async () => {
       const { encounterId } = await prepareEncounterInConsultation();

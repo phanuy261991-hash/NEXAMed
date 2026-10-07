@@ -302,6 +302,11 @@ export const clinicSettingsSchema = z.object({
    */
   allowFreeTextPrescriptionEnabled: z.boolean(),
   /**
+   * "Cho thực hiện cận lâm sàng trước khi thu tiền" (Cận lâm sàng GĐ4, #212) — TẮT (mặc định): dịch vụ chưa thu tiền nằm ở tab "Chờ thu tiền", chưa lấy mẫu/gọi vào phòng được.
+   * BẬT: chưa thu vẫn lấy mẫu/thực hiện được (hàng đợi hiện nhãn "Nợ phí") — đúng tiền lệ "Thanh toán sau" #080.
+   */
+  paraclinicalBeforePaymentEnabled: z.boolean(),
+  /**
    * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — TẮT (mặc định, giữ nguyên hành vi pilot đang chạy). BẬT: màn
    * khám hiện khối gợi ý (tối đa 3 mã/cụm bệnh, từ danh mục BYT + lịch sử dùng mã của bác sĩ), bác sĩ
    * bấm từng mã mới thêm — hệ thống không bao giờ tự gán mã.
@@ -346,6 +351,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   pharmacyStockTrackingEnabled: z.boolean().optional(),
   prescriptionStockBlockEnabled: z.boolean().optional(),
   allowFreeTextPrescriptionEnabled: z.boolean().optional(),
+  paraclinicalBeforePaymentEnabled: z.boolean().optional(),
   icd10SuggestionEnabled: z.boolean().optional(),
   icd10SuggestionLearningEnabled: z.boolean().optional(),
 });
@@ -400,6 +406,8 @@ export const DEFAULT_PRESCRIPTION_STOCK_BLOCK_ENABLED = false;
 /** Tắt theo mặc định (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — giữ nguyên ràng buộc
  * `drugId` bắt buộc tới khi tenant chủ động bật "Kê thuốc tự do, không qua danh mục". */
 export const DEFAULT_ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED = false;
+/** Tắt theo mặc định (Cận lâm sàng GĐ4) — dịch vụ cận lâm sàng phải thu tiền trước khi lấy mẫu/gọi vào phòng. */
+export const DEFAULT_PARACLINICAL_BEFORE_PAYMENT_ENABLED = false;
 /** Tắt theo mặc định ("Gợi ý mã ICD-10") — không đổi gì với pilot đang chạy tới khi admin chủ động bật. */
 export const DEFAULT_ICD10_SUGGESTION_ENABLED = false;
 /** Tắt theo mặc định ("Học từ lịch sử chọn mã") — không ghi thêm dữ liệu nào tới khi chủ động bật. */

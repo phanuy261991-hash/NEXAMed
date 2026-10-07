@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { computeServicePackagePrice, computeUnitConversion, stripVietnameseDiacritics } from '@nexamed/core';
-import type { PriceableItem, PriceableScope, PriceListItemKind } from '@nexamed/shared';
+import type { PriceableGroup, PriceableItem, PriceableScope, PriceListItemKind } from '@nexamed/shared';
 import { DrugRepository, type DrugWithDetails } from '../drug/drug.repository';
 import { ReferenceCatalogRepository } from '../reference-catalog/reference-catalog.repository';
 import { ExamTypePriceRepository } from '../reference-catalog/exam-type-price.repository';
@@ -235,4 +235,133 @@ export class PriceableCatalogService {
     }
     return out.slice(0, limit * (kind ? 1 : 5));
   }
+
+  // ---------------------------------------------------------------------------------------------
+  // Thêm hàng loạt vào bảng giá (hộp thoại "Thêm theo nhóm" + nhập Excel)
+  // ---------------------------------------------------------------------------------------------
+
+  /**
+   * Các nhóm chọn được cho từng loại mặt hàng kèm số mặt hàng đang dùng. Dịch vụ khám và gói không có nhóm nên mỗi loại là MỘT nhóm "tất cả" (`code = null`);
+   * dịch vụ kỹ thuật theo Nhóm dịch vụ, thuốc/vật tư theo Nhóm thuốc, mặt hàng chưa gán nhóm gom vào "Chưa phân nhóm" (`code = null`).
+   */
+  async listGroups(tx: Prisma.TransactionClient, tenantId: string): Promise<PriceableGroup[]> {
+    const groups: PriceableGroup[] = [];
+
+    const exams = await this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', false);
+    groups.push({ kind: 'EXAM_TYPE', code: null, name: 'Tất cả dịch vụ khám', itemCount: exams.length });
+
+    const techRows = await this.technicalServiceRepository.list(tx, tenantId, { includeInactive: false });
+    const techCategoryNames = new Map((await this.referenceCatalogRepository.listByCategory(tx, 'TECH_SERVICE_CATEGORY', true)).map((c) => [c.code, c.name]));
+    groups.push(...countGroups('TECHNICAL_SERVICE', techRows.map((r) => r.categoryCode), techCategoryNames));
+
+    const packages = await this.servicePackageRepository.countActive(tx, tenantId);
+    groups.push({ kind: 'PACKAGE', code: null, name: 'Tất cả gói dịch vụ', itemCount: packages });
+
+    const drugGroupNames = new Map((await this.referenceCatalogRepository.listByCategory(tx, 'DRUG_GROUP', true)).map((c) => [c.code, c.name]));
+    const medicines = await this.drugRepository.list(tx, tenantId, { itemType: 'MEDICINE', includeInactive: false });
+    groups.push(...countGroups('DRUG', medicines.map((d) => d.drugGroupCode), drugGroupNames));
+    const supplies = await this.drugRepository.list(tx, tenantId, { itemType: 'SUPPLY', includeInactive: false });
+    groups.push(...countGroups('MEDICAL_SUPPLY', supplies.map((d) => d.drugGroupCode), drugGroupNames));
+
+    return groups.filter((g) => g.itemCount > 0);
+  }
+
+  /** Mặt hàng thuộc các nhóm đã chọn (kèm giá mặc định hôm nay). Mỗi mặt hàng chỉ xuất hiện một lần dù thuộc nhiều nhóm được chọn. */
+  async listByGroups(tx: Prisma.TransactionClient, tenantId: string, date: string, selections: readonly { kind: PriceListItemKind; code: string | null }[]): Promise<PriceableItem[]> {
+    const refs: ItemRef[] = [];
+    const seen = new Set<string>();
+    const push = (itemKind: PriceListItemKind, ref: string) => {
+      const key = itemKey(itemKind, ref);
+      if (seen.has(key)) return;
+      seen.add(key);
+      refs.push({ itemKind, ref });
+    };
+    const codesOf = (kind: PriceListItemKind) => selections.filter((s) => s.kind === kind);
+
+    if (codesOf('EXAM_TYPE').length > 0) {
+      for (const row of await this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', false)) push('EXAM_TYPE', row.code);
+    }
+    const techSel = codesOf('TECHNICAL_SERVICE');
+    if (techSel.length > 0) {
+      const wanted = new Set(techSel.map((s) => s.code));
+      for (const row of await this.technicalServiceRepository.list(tx, tenantId, { includeInactive: false })) {
+        if (wanted.has(row.categoryCode ?? null)) push('TECHNICAL_SERVICE', row.id);
+      }
+    }
+    if (codesOf('PACKAGE').length > 0) {
+      for (const row of await this.servicePackageRepository.list(tx, tenantId, { includeInactive: false })) push('PACKAGE', row.id);
+    }
+    for (const [kind, itemType] of [['DRUG', 'MEDICINE'], ['MEDICAL_SUPPLY', 'SUPPLY']] as const) {
+      const sel = codesOf(kind);
+      if (sel.length === 0) continue;
+      const wanted = new Set(sel.map((s) => s.code));
+      for (const row of await this.drugRepository.list(tx, tenantId, { itemType, includeInactive: false })) {
+        if (wanted.has(row.drugGroupCode ?? null)) push(kind, row.id);
+      }
+    }
+
+    const loaded = await this.load(tx, tenantId, date, refs);
+    const out: PriceableItem[] = [];
+    for (const r of refs) {
+      const found = loaded.get(itemKey(r.itemKind, r.ref));
+      if (found) out.push(found.item);
+    }
+    return out;
+  }
+
+  /**
+   * Tra mặt hàng theo MÃ cho nhập Excel (không phân biệt hoa/thường): dịch vụ khám theo `code`, dịch vụ kỹ thuật/gói/thuốc/vật tư theo `code` của bảng riêng.
+   * Trả map `<loại>:<mã chữ thường>` → mặt hàng kèm giá mặc định; mã không có trong danh mục (hoặc đã ngừng) không có trong map.
+   */
+  async findByCodes(tx: Prisma.TransactionClient, tenantId: string, date: string, wanted: readonly { kind: PriceListItemKind; code: string }[]): Promise<Map<string, PriceableItem>> {
+    const norm = (c: string) => c.trim().toLowerCase();
+    const wantedByKind = (kind: PriceListItemKind) => new Set(wanted.filter((w) => w.kind === kind).map((w) => norm(w.code)));
+    const refs: { ref: ItemRef; lookup: string }[] = [];
+
+    const exam = wantedByKind('EXAM_TYPE');
+    if (exam.size > 0) {
+      for (const row of await this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', false)) {
+        if (exam.has(norm(row.code))) refs.push({ ref: { itemKind: 'EXAM_TYPE', ref: row.code }, lookup: `EXAM_TYPE:${norm(row.code)}` });
+      }
+    }
+    const tech = wantedByKind('TECHNICAL_SERVICE');
+    if (tech.size > 0) {
+      for (const row of await this.technicalServiceRepository.list(tx, tenantId, { includeInactive: false })) {
+        if (tech.has(norm(row.code))) refs.push({ ref: { itemKind: 'TECHNICAL_SERVICE', ref: row.id }, lookup: `TECHNICAL_SERVICE:${norm(row.code)}` });
+      }
+    }
+    const packages = wantedByKind('PACKAGE');
+    if (packages.size > 0) {
+      for (const row of await this.servicePackageRepository.list(tx, tenantId, { includeInactive: false })) {
+        if (packages.has(norm(row.code))) refs.push({ ref: { itemKind: 'PACKAGE', ref: row.id }, lookup: `PACKAGE:${norm(row.code)}` });
+      }
+    }
+    for (const [kind, itemType] of [['DRUG', 'MEDICINE'], ['MEDICAL_SUPPLY', 'SUPPLY']] as const) {
+      const codes = wantedByKind(kind);
+      if (codes.size === 0) continue;
+      for (const row of await this.drugRepository.list(tx, tenantId, { itemType, includeInactive: false })) {
+        if (codes.has(norm(row.code))) refs.push({ ref: { itemKind: kind, ref: row.id }, lookup: `${kind}:${norm(row.code)}` });
+      }
+    }
+
+    const loaded = await this.load(tx, tenantId, date, refs.map((r) => r.ref));
+    const out = new Map<string, PriceableItem>();
+    for (const r of refs) {
+      const found = loaded.get(itemKey(r.ref.itemKind, r.ref.ref));
+      if (found) out.set(r.lookup, found.item);
+    }
+    return out;
+  }
+}
+
+/** Đếm mặt hàng theo mã nhóm → danh sách nhóm (tên nhóm lấy từ danh mục; mã không còn trong danh mục thì hiện chính mã), nhóm trống gom vào "Chưa phân nhóm". */
+function countGroups(kind: PriceListItemKind, groupCodes: readonly (string | null)[], names: Map<string, string>): PriceableGroup[] {
+  const counts = new Map<string | null, number>();
+  for (const code of groupCodes) counts.set(code ?? null, (counts.get(code ?? null) ?? 0) + 1);
+  const named = [...counts.entries()]
+    .filter(([code]) => code !== null)
+    .map(([code, itemCount]) => ({ kind, code, name: names.get(code as string) ?? (code as string), itemCount }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  const none = counts.get(null);
+  return none ? [...named, { kind, code: null, name: 'Chưa phân nhóm', itemCount: none }] : named;
 }

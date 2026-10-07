@@ -38,6 +38,9 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   LAB_INDICATOR_VALUE_TYPE_LOCKED: HttpStatus.CONFLICT,
   // Cận lâm sàng GĐ3 — gỡ/đổi dòng chỉ định đã thu tiền/đã thực hiện: xung đột trạng thái, không phải lỗi input.
   CLINICAL_ORDER_ITEM_LOCKED: HttpStatus.CONFLICT,
+  PARACLINICAL_ITEM_INVALID_STATE: HttpStatus.CONFLICT,
+  PARACLINICAL_PAYMENT_REQUIRED: HttpStatus.CONFLICT,
+  PARACLINICAL_RESULT_INCOMPLETE: HttpStatus.UNPROCESSABLE_ENTITY,
   // Sprint 3, Tiếp nhận — chuyển trạng thái/tạo encounter xung đột trạng thái hiện có, không phải
   // lỗi input (422 mặc định không phù hợp), cùng nhóm APPOINTMENT_* ở trên.
   ENCOUNTER_INVALID_TRANSITION: HttpStatus.CONFLICT,

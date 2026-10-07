@@ -1,7 +1,9 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import {
   createPriceListRequestSchema,
+  itemsByGroupsRequestSchema,
   listPriceListsQuerySchema,
   lookupPriceQuerySchema,
   resolvePricesRequestSchema,
@@ -13,6 +15,7 @@ import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
 import { PriceListExportService } from './price-list-export.service';
+import { PriceListImportService } from './price-list-import.service';
 import { PriceListService } from './price-list.service';
 import { PricingService } from './pricing.service';
 
@@ -21,6 +24,9 @@ import { PricingService } from './pricing.service';
  * cần tra giá (lễ tân lúc tiếp nhận, bác sĩ lúc chỉ định, "Tra thử giá"); tạo/sửa/ngừng chỉ clinic_admin.
  * Các route tĩnh (`items/search`, `lookup`, `resolve`) khai báo TRƯỚC `:id` — Express khớp theo thứ tự khai báo.
  */
+const MAX_IMPORT_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const EXCEL_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
 @Controller('price-lists')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class PriceListController {
@@ -28,12 +34,48 @@ export class PriceListController {
     private readonly service: PriceListService,
     private readonly pricing: PricingService,
     private readonly exporter: PriceListExportService,
+    private readonly importer: PriceListImportService,
   ) {}
 
   @Get()
   @RequirePermission('price_list', 'read')
   async list(@Query() query: unknown, @Req() req: Request) {
     return this.service.list(req.user!.tenantId, listPriceListsQuerySchema.parse(query));
+  }
+
+  /** Các nhóm chọn được ở hộp thoại "Thêm theo nhóm" (dịch vụ kỹ thuật theo Nhóm dịch vụ, thuốc/vật tư theo Nhóm thuốc...) kèm số mặt hàng. */
+  @Get('items/groups')
+  @RequirePermission('price_list', 'read')
+  async listGroups(@Req() req: Request) {
+    return this.service.listGroups(req.user!.tenantId);
+  }
+
+  /** Mặt hàng thuộc các nhóm đã chọn (kèm giá mặc định) — POST chỉ vì có body, KHÔNG ghi gì. */
+  @Post('items/by-groups')
+  @RequirePermission('price_list', 'read')
+  @HttpCode(200)
+  async itemsByGroups(@Body() body: unknown, @Req() req: Request) {
+    return this.service.itemsByGroups(req.user!.tenantId, itemsByGroupsRequestSchema.parse(body));
+  }
+
+  /** Tải file mẫu nhập Excel (sheet nhập có dòng ví dụ + Hướng dẫn + Danh mục hiện có) — trả thẳng binary, không qua envelope. */
+  @Get('import-template')
+  @RequirePermission('price_list', 'read')
+  async downloadImportTemplate(@Req() req: Request, @Res() res: Response): Promise<void> {
+    const buffer = await this.importer.buildTemplate(req.user!.tenantId);
+    res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
+    res.setHeader('Content-Disposition', 'attachment; filename="mau-nhap-bang-gia.xlsx"');
+    res.send(buffer);
+  }
+
+  /** Đọc + đối chiếu file Excel, KHÔNG ghi gì — trả dòng hợp lệ và lỗi từng dòng; web gộp vào danh sách đang soạn. */
+  @Post('import/preview')
+  @RequirePermission('price_list', 'read')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_IMPORT_FILE_SIZE_BYTES } }))
+  async previewImport(@UploadedFile() file: Express.Multer.File | undefined, @Req() req: Request) {
+    if (!file) throw new BadRequestException('Thiếu file Excel.');
+    return this.importer.preview(req.user!.tenantId, file.buffer);
   }
 
   @Get('items/search')

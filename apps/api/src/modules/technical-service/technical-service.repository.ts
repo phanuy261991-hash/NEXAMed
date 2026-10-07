@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma, TechnicalService, TechnicalServiceIndicator, TechnicalServicePrice } from '@prisma/client';
+import type { LabIndicator, LabIndicatorReference, Prisma, TechnicalService, TechnicalServiceIndicator, TechnicalServicePrice } from '@prisma/client';
 
 export interface CreateTechnicalServiceData {
   code: string;
@@ -45,6 +45,11 @@ export interface IndicatorLinkData {
   indicatorId: string;
   sortOrder: number;
   interpretationText: string | null;
+}
+
+/** Chỉ số kèm đủ định nghĩa + các dòng khoảng tham chiếu — màn nhập kết quả xét nghiệm (Cận lâm sàng GĐ4). */
+export interface IndicatorLinkFullRow extends TechnicalServiceIndicator {
+  indicator: LabIndicator & { references: LabIndicatorReference[] };
 }
 
 export interface IndicatorLinkRow extends TechnicalServiceIndicator {
@@ -158,6 +163,16 @@ export class TechnicalServiceRepository {
     return tx.technicalServiceIndicator.findMany({
       where: { tenantId, technicalServiceId: serviceId, deletedAt: null },
       include: { indicator: { select: { code: true, name: true, abbreviation: true, unit: true } } },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
+  /** Chỉ số (đủ định nghĩa + khoảng tham chiếu còn hiệu lực) của nhiều dịch vụ một lượt — Cận lâm sàng GĐ4, màn nhập/duyệt kết quả. */
+  listIndicatorLinksFull(tx: Prisma.TransactionClient, tenantId: string, serviceIds: string[]): Promise<IndicatorLinkFullRow[]> {
+    if (serviceIds.length === 0) return Promise.resolve([]);
+    return tx.technicalServiceIndicator.findMany({
+      where: { tenantId, technicalServiceId: { in: serviceIds }, deletedAt: null, indicator: { deletedAt: null } },
+      include: { indicator: { include: { references: { where: { deletedAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] } } } },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
   }

@@ -18,7 +18,7 @@ export const clinicalOrderItemKindSchema = z.enum(['TECHNICAL_SERVICE', 'EXAM_TY
 export type ClinicalOrderItemKind = z.infer<typeof clinicalOrderItemKindSchema>;
 
 /** GĐ4 mở rộng thêm các trạng thái lấy mẫu/thực hiện/có kết quả/đã duyệt. */
-export const clinicalOrderItemStatusSchema = z.enum(['ORDERED', 'CANCELLED']);
+export const clinicalOrderItemStatusSchema = z.enum(['ORDERED', 'CANCELLED', 'IN_PROGRESS', 'RESULTED', 'COMPLETED']);
 export type ClinicalOrderItemStatus = z.infer<typeof clinicalOrderItemStatusSchema>;
 
 export const clinicalOrderItemInputSchema = z

@@ -3,6 +3,8 @@ import type { PriceList, PriceListItem, Prisma } from '@prisma/client';
 import { applyPriceListLine, computePriceListStatus, ConcurrentModificationError, getVietnamDateString } from '@nexamed/core';
 import type {
   CreatePriceListRequest,
+  ItemsByGroupsRequest,
+  ListPriceableGroupsResponse,
   ListPriceListsQuery,
   ListPriceListsResponse,
   PriceListDetail,
@@ -136,6 +138,14 @@ export class PriceListService {
   }
 
   /** Tìm mặt hàng để thêm vào bảng giá / tra thử giá — kèm mức giá mặc định hôm nay của từng Loại giá/Bậc đơn vị. */
+  async listGroups(tenantId: string): Promise<ListPriceableGroupsResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => ({ groups: await this.catalog.listGroups(tx, tenantId) }));
+  }
+
+  async itemsByGroups(tenantId: string, dto: ItemsByGroupsRequest): Promise<SearchPriceableItemsResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => ({ items: await this.catalog.listByGroups(tx, tenantId, getVietnamDateString(), dto.groups) }));
+  }
+
   async searchItems(tenantId: string, query: SearchPriceableItemsQuery): Promise<SearchPriceableItemsResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => ({
       items: await this.catalog.search(tx, tenantId, getVietnamDateString(), query.q, query.kind, query.limit),

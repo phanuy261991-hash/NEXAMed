@@ -108,6 +108,11 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // in phiếu — bác sĩ chỉ với lượt khám của mình (personal); `read` mở cho lễ tân/điều dưỡng (thu tiền, theo dõi).
   { module: 'clinical_order', action: 'read', description: 'Xem phiếu chỉ định cận lâm sàng' },
   { module: 'clinical_order', action: 'create', description: 'Chỉ định/sửa/in phiếu chỉ định cận lâm sàng' },
+  // Cận lâm sàng GĐ4 (#212) — Hàng đợi & kết quả. `read` xem hàng đợi/kết quả; `enter` lấy mẫu/gọi vào phòng + nhập kết quả (kỹ thuật viên, điều dưỡng);
+  // `approve` duyệt & trả kết quả (bản ký) — chỉ bác sĩ/clinic_admin mặc định, tách khỏi `enter` để kỹ thuật viên không tự ký kết quả.
+  { module: 'paraclinical_result', action: 'read', description: 'Xem hàng đợi và kết quả cận lâm sàng' },
+  { module: 'paraclinical_result', action: 'enter', description: 'Lấy mẫu/gọi vào phòng, nhập và gửi duyệt kết quả cận lâm sàng' },
+  { module: 'paraclinical_result', action: 'approve', description: 'Duyệt và trả kết quả cận lâm sàng (ký)' },
   // Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — không có `invoice.create` riêng: phiếu thu luôn tạo
   // tự động kèm `encounter.create` (check-in/tiếp nhận trực tiếp), không có endpoint tạo riêng.
   { module: 'invoice', action: 'read', description: 'Xem phiếu thu' },
@@ -271,6 +276,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'service_package.read': 'global',
     'price_list.read': 'global',
     'clinical_order.read': 'global',
+    'paraclinical_result.read': 'global',
     // Thu ngân cơ bản — lễ tân là người thu tiền chính (PRD mục 4.7 "Là lễ tân...").
     'invoice.read': 'global',
     'invoice.update': 'global',
@@ -319,6 +325,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'service_package.read': 'global',
     'price_list.read': 'global',
     'clinical_order.read': 'global',
+    'paraclinical_result.read': 'global',
+    'paraclinical_result.enter': 'global',
     'result_template.read': 'global',
     // Kho Thuốc GĐ5 — điều dưỡng chỉ xem đơn thuốc mẫu, không tự thêm/sửa (bác sĩ/clinic_admin quyết định phác đồ).
     'prescription_template.read': 'global',
@@ -372,6 +380,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'price_list.read': 'global',
     'clinical_order.read': 'global',
     'clinical_order.create': 'personal',
+    'paraclinical_result.read': 'global',
+    'paraclinical_result.enter': 'global',
+    'paraclinical_result.approve': 'global',
     'result_template.read': 'global',
     'result_template.manage': 'global',
     // Kho Thuốc GĐ5 — bác sĩ tự lập/sửa/xoá đơn thuốc mẫu của mình lẫn của người khác (mẫu dùng
@@ -427,6 +438,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'price_list.read': 'global',
     'clinical_order.read': 'global',
     'clinical_order.create': 'global',
+    'paraclinical_result.read': 'global',
+    'paraclinical_result.enter': 'global',
+    'paraclinical_result.approve': 'global',
     'technical_service.create': 'global',
     'technical_service.update': 'global',
     'service_package.create': 'global',

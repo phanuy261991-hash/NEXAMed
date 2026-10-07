@@ -35,7 +35,6 @@ export function ClinicalOrderPrintView({
   const inHouseItems = order.items.filter((i) => i.performance === 'IN_HOUSE' && i.packageId === null);
   const externalItems = order.items.filter((i) => i.performance === 'EXTERNAL');
   const hasInHouse = inHouseItems.length > 0 || order.packages.length > 0;
-  let rowNo = 0;
 
   return (
     <PrintDocument
@@ -85,7 +84,7 @@ export function ClinicalOrderPrintView({
             <thead>
               <tr className="border-b-2 border-slate-800 text-left">
                 <th className="w-8 py-1.5">TT</th>
-                <th className="w-24 py-1.5">Mã</th>
+                <th className="w-28 py-1.5">Mã</th>
                 <th className="py-1.5">Tên dịch vụ</th>
                 <th className="w-32 py-1.5">Nơi thực hiện</th>
                 <th className="w-10 py-1.5 text-center">SL</th>
@@ -93,9 +92,9 @@ export function ClinicalOrderPrintView({
               </tr>
             </thead>
             <tbody>
-              {inHouseItems.map((item) => (
+              {inHouseItems.map((item, index) => (
                 <tr key={item.id} className="border-b border-slate-300 align-top">
-                  <td className="py-1.5">{++rowNo}</td>
+                  <td className="py-1.5">{index + 1}</td>
                   <td className="py-1.5">{item.code ?? ''}</td>
                   <td className="py-1.5">{item.name}</td>
                   <td className="py-1.5">{item.placeName ?? ''}</td>
@@ -103,8 +102,8 @@ export function ClinicalOrderPrintView({
                   <td className="py-1.5 text-right">{item.lineTotal === null ? '' : formatVnd(item.lineTotal)}</td>
                 </tr>
               ))}
-              {order.packages.map((pkg) => (
-                <PackageRows key={pkg.id} pkg={pkg} children={order.items.filter((i) => i.packageId === pkg.id)} nextNo={() => ++rowNo} />
+              {order.packages.map((pkg, index) => (
+                <PackageRows key={pkg.id} no={inHouseItems.length + index + 1} pkg={pkg} children={order.items.filter((i) => i.packageId === pkg.id)} />
               ))}
               <tr>
                 <td colSpan={5} className="py-2 text-right font-bold">
@@ -152,18 +151,19 @@ export function ClinicalOrderPrintView({
 
 /** 1 dòng "gói" (giá gói) + các dịch vụ con thụt lề, không có giá riêng ("trong gói"). */
 function PackageRows({
+  no,
   pkg,
   children,
-  nextNo,
 }: {
+  /** Số thứ tự đã tính sẵn ở nơi gọi — KHÔNG tăng biến ngoài trong lúc render (StrictMode render 2 lần làm nhảy số). */
+  no: number;
   pkg: ClinicalOrderDetail['packages'][number];
   children: ClinicalOrderDetail['items'];
-  nextNo: () => number;
 }) {
   return (
     <>
       <tr className="border-b border-slate-300 align-top">
-        <td className="py-1.5">{nextNo()}</td>
+        <td className="py-1.5">{no}</td>
         <td className="py-1.5">{pkg.code}</td>
         <td className="py-1.5 font-semibold">Gói: {pkg.name}</td>
         <td className="py-1.5" />

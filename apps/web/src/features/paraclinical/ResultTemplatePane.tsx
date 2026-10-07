@@ -51,7 +51,7 @@ export function ResultTemplatePane() {
   const selectedTemplate = selection.kind === 'existing' ? (serviceTemplates.find((t) => t.id === selection.id) ?? null) : null;
 
   return (
-    <div className="flex h-full min-h-0 gap-3.5 px-6 pb-5 pt-3.5">
+    <div className="flex h-full min-h-0 gap-3.5">
       <section className="flex w-[274px] flex-shrink-0 flex-col gap-2.5" aria-label="Dịch vụ kỹ thuật">
         <div className="relative">
           <MagnifyingGlass size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />

@@ -1,5 +1,8 @@
 import type {
   CreatePriceListRequest,
+  ItemsByGroupsRequest,
+  ListPriceableGroupsResponse,
+  PriceListImportPreviewResponse,
   CreateServicePackageRequest,
   ListPriceListsResponse,
   ListServicePackagesResponse,
@@ -15,7 +18,7 @@ import type {
   UpdatePriceListRequest,
   UpdateServicePackageRequest,
 } from '@nexamed/shared';
-import { getApiClient, unwrap } from '../../shared/api/client';
+import { downloadFile, getApiClient, unwrap, uploadFile } from '../../shared/api/client';
 
 /** Cận lâm sàng GĐ2 — Gói dịch vụ + Bảng giá có thời hạn (docs/DECISIONS.md #212). */
 
@@ -75,4 +78,23 @@ export async function lookupPrice(query: LookupPriceQuery): Promise<LookupPriceR
 
 export async function resolvePrices(body: ResolvePricesRequest): Promise<ResolvePricesResponse> {
   return unwrap(await getApiClient().POST('/api/v1/price-lists/resolve', { body })) as ResolvePricesResponse;
+}
+
+/** Thêm hàng loạt vào bảng giá (docs/DECISIONS.md #212): theo nhóm + nhập Excel. File nhị phân/multipart nên gọi `downloadFile`/`uploadFile`. */
+export async function listPriceableGroups(): Promise<ListPriceableGroupsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/price-lists/items/groups')) as ListPriceableGroupsResponse;
+}
+
+export async function listPriceableItemsByGroups(body: ItemsByGroupsRequest): Promise<SearchPriceableItemsResponse> {
+  return unwrap(await getApiClient().POST('/api/v1/price-lists/items/by-groups', { body })) as SearchPriceableItemsResponse;
+}
+
+export async function downloadPriceListImportTemplate(): Promise<void> {
+  await downloadFile('/api/v1/price-lists/import-template', 'mau-nhap-bang-gia.xlsx');
+}
+
+export async function previewPriceListImport(file: File): Promise<PriceListImportPreviewResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return uploadFile<PriceListImportPreviewResponse>('/api/v1/price-lists/import/preview', formData);
 }

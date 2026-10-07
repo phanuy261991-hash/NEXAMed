@@ -163,6 +163,34 @@ export class UserAccountRepository {
     return rows;
   }
 
+  /**
+   * Tài khoản đang hoạt động có quyền `<module>.<action>` qua BẤT KỲ vai trò nào (không xét data_scope) — phục vụ ô "Bác sĩ duyệt kết quả" của Cận lâm sàng GĐ4.
+   * Cùng điều kiện lọc `deletedAt: null` ở cả 3 tầng như `findScopesForUserPermission` (quyền đã thu hồi không được tính).
+   */
+  async listActiveUsersWithPermission(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    module: string,
+    action: string,
+  ): Promise<{ id: string; fullName: string; displayName: string | null }[]> {
+    return tx.userAccount.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        isActive: true,
+        userRoles: {
+          some: {
+            tenantId,
+            deletedAt: null,
+            role: { tenantId, deletedAt: null, rolePermissions: { some: { tenantId, deletedAt: null, permission: { module, action } } } },
+          },
+        },
+      },
+      select: { id: true, fullName: true, displayName: true },
+      orderBy: { fullName: 'asc' },
+    });
+  }
+
   /** "Hàng đợi ảo" (#064) — Khoa của một bác sĩ cụ thể, phục vụ `DoctorDirectoryPort.getDoctorDepartmentId`. `null` nếu không tồn tại/không active hoặc chưa gán Khoa. */
   async findDepartmentId(tx: Prisma.TransactionClient, tenantId: string, userId: string): Promise<string | null> {
     const row = await tx.userAccount.findFirst({

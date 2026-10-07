@@ -54,4 +54,5 @@ export * from './backup/backup-status';
 export * from './medical-record/render-patient-medical-record-html';
 export * from './drug-import/parse-cells';
 export * from './lab/lab-reference';
+export * from './paraclinical/paraclinical-result';
 export * from './pricing/resolve-effective-price';

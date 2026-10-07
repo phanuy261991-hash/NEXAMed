@@ -35,7 +35,7 @@ export function ServicePackagePane() {
   const items = query.data?.items ?? [];
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 px-6 pb-5 pt-3.5">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex items-center gap-2.5">
         <div className="relative flex-1">
           <MagnifyingGlass size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />

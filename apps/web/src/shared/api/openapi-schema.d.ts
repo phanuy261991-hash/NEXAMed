@@ -1963,6 +1963,7 @@ export interface paths {
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
+                                paraclinicalBeforePaymentEnabled: boolean;
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
                             };
@@ -13565,6 +13566,7 @@ export interface paths {
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
+                                paraclinicalBeforePaymentEnabled: boolean;
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
                             };
@@ -13673,6 +13675,7 @@ export interface paths {
                         pharmacyStockTrackingEnabled?: boolean;
                         prescriptionStockBlockEnabled?: boolean;
                         allowFreeTextPrescriptionEnabled?: boolean;
+                        paraclinicalBeforePaymentEnabled?: boolean;
                         icd10SuggestionEnabled?: boolean;
                         icd10SuggestionLearningEnabled?: boolean;
                     };
@@ -13740,6 +13743,7 @@ export interface paths {
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
+                                paraclinicalBeforePaymentEnabled: boolean;
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
                             };
@@ -32803,7 +32807,7 @@ export interface paths {
                                         placeName: string | null;
                                         note: string | null;
                                         /** @enum {string} */
-                                        status: "ORDERED" | "CANCELLED";
+                                        status: "ORDERED" | "CANCELLED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED";
                                         editable: boolean;
                                     }[];
                                     packages: {
@@ -32951,7 +32955,7 @@ export interface paths {
                                         placeName: string | null;
                                         note: string | null;
                                         /** @enum {string} */
-                                        status: "ORDERED" | "CANCELLED";
+                                        status: "ORDERED" | "CANCELLED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED";
                                         editable: boolean;
                                     }[];
                                     packages: {
@@ -33146,6 +33150,1063 @@ export interface paths {
                 };
                 /** @description Lượt khám chưa có phiếu chỉ định (hoặc không tìm thấy) */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ4 — hàng đợi (xét nghiệm cùng phiếu + cùng trạng thái gộp 1 dòng; mỗi CĐHA/thăm dò 1 dòng) kèm số dòng từng tab. Việc chưa xong lấy mọi ngày; "Đã trả kết quả" chỉ lấy ngày đang xem */
+        get: {
+            parameters: {
+                query?: {
+                    date?: string;
+                    bucket?: "AWAITING_PAYMENT" | "WAITING" | "IN_PROGRESS" | "PENDING_APPROVAL" | "COMPLETED";
+                    departmentId?: string;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    itemIds: string[];
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientName: string;
+                                    patientCode: string;
+                                    ageYears: number | null;
+                                    /** @enum {string|null} */
+                                    gender: "male" | "female" | "other" | null;
+                                    /** @enum {string} */
+                                    serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                                    serviceNames: string[];
+                                    /** Format: uuid */
+                                    departmentId: string | null;
+                                    departmentName: string | null;
+                                    /** @enum {string} */
+                                    bucket: "AWAITING_PAYMENT" | "WAITING" | "IN_PROGRESS" | "PENDING_APPROVAL" | "COMPLETED";
+                                    paid: boolean;
+                                    waitingSince: string;
+                                }[];
+                                counts: {
+                                    AWAITING_PAYMENT?: number;
+                                    WAITING?: number;
+                                    IN_PROGRESS?: number;
+                                    PENDING_APPROVAL?: number;
+                                    COMPLETED?: number;
+                                };
+                                allowBeforePayment: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số sai định dạng */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền paraclinical_result.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cận lâm sàng GĐ4 — "Lấy mẫu" / "Gọi vào phòng": các dòng cùng phiếu chuyển ORDERED → IN_PROGRESS. Chưa thu tiền thì chặn trừ khi phòng khám bật "thực hiện trước khi thu tiền" */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        itemIds: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                itemId: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền paraclinical_result.enter */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Dòng chỉ định không tồn tại hoặc thuộc tenant khác */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Dòng không ở trạng thái chờ lấy mẫu (PARACLINICAL_ITEM_INVALID_STATE), lượt khám đã huỷ hoặc chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/items/{itemId}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ4 — màn nhập/xem kết quả của một dòng chỉ định (xét nghiệm cùng nhóm hiện chung 1 màn): chỉ số + khoảng tham chiếu theo giới tính/tuổi + cờ Cao/Thấp. Ghi audit "xem" */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    itemId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                form: {
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    /** @enum {string|null} */
+                                    patientGender: "male" | "female" | "other" | null;
+                                    ageYears: number | null;
+                                    doctorName: string | null;
+                                    collectedAt: string | null;
+                                    /** @enum {string} */
+                                    bucket: "AWAITING_PAYMENT" | "WAITING" | "IN_PROGRESS" | "PENDING_APPROVAL" | "COMPLETED";
+                                    sections: {
+                                        /** Format: uuid */
+                                        itemId: string;
+                                        /** Format: uuid */
+                                        technicalServiceId: string;
+                                        code: string | null;
+                                        name: string;
+                                        /** @enum {string} */
+                                        serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                                        /** @enum {string} */
+                                        resultType: "INDICATORS" | "NARRATIVE" | "BOTH";
+                                        specimenTypeName: string | null;
+                                        departmentName: string | null;
+                                        /** @enum {string} */
+                                        status: "ORDERED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED" | "CANCELLED";
+                                        indicators: {
+                                            /** Format: uuid */
+                                            indicatorId: string;
+                                            code: string;
+                                            name: string;
+                                            abbreviation: string | null;
+                                            unit: string | null;
+                                            /** @enum {string} */
+                                            valueType: "NUMBER" | "TEXT" | "CHOICE";
+                                            decimals: number | null;
+                                            choiceOptions: string[];
+                                            reference: {
+                                                /** @enum {string} */
+                                                sex: "ANY" | "MALE" | "FEMALE";
+                                                ageFromYears: number;
+                                                ageToYears: number | null;
+                                                lowValue: number | null;
+                                                highValue: number | null;
+                                                lowInclusive: boolean;
+                                                highInclusive: boolean;
+                                                normalText: string | null;
+                                                displayText: string | null;
+                                            } | null;
+                                            referenceText: string;
+                                            valueText: string | null;
+                                            note: string | null;
+                                            interpretationText: string | null;
+                                            /** @enum {string|null} */
+                                            flag: "LOW" | "HIGH" | "NORMAL" | "ABNORMAL" | null;
+                                        }[];
+                                        descriptionText: string | null;
+                                        conclusionText: string | null;
+                                    }[];
+                                    /** Format: uuid */
+                                    performedById: string | null;
+                                    performedByName: string | null;
+                                    resultedAt: string | null;
+                                    /** Format: uuid */
+                                    approverId: string | null;
+                                    approvers: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        fullName: string;
+                                    }[];
+                                    signedAt: string | null;
+                                    signedByName: string | null;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền paraclinical_result.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy dòng chỉ định */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chưa lấy mẫu / gọi vào phòng */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        /** Cận lâm sàng GĐ4 — lưu nháp kết quả, hoặc gửi duyệt khi submit=true (phải đủ chỉ số / mô tả + kết luận). Kết quả đã duyệt không sửa trực tiếp */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    itemId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        sections: {
+                            /** Format: uuid */
+                            itemId: string;
+                            /** @default [] */
+                            values?: {
+                                /** Format: uuid */
+                                indicatorId: string;
+                                valueText?: string | null;
+                                note?: string | null;
+                            }[];
+                            descriptionText?: string | null;
+                            conclusionText?: string | null;
+                        }[];
+                        /** Format: date-time */
+                        resultedAt?: string;
+                        /** Format: uuid */
+                        approverId?: string | null;
+                        /** @default false */
+                        submit?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Lưu thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                form: {
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    /** @enum {string|null} */
+                                    patientGender: "male" | "female" | "other" | null;
+                                    ageYears: number | null;
+                                    doctorName: string | null;
+                                    collectedAt: string | null;
+                                    /** @enum {string} */
+                                    bucket: "AWAITING_PAYMENT" | "WAITING" | "IN_PROGRESS" | "PENDING_APPROVAL" | "COMPLETED";
+                                    sections: {
+                                        /** Format: uuid */
+                                        itemId: string;
+                                        /** Format: uuid */
+                                        technicalServiceId: string;
+                                        code: string | null;
+                                        name: string;
+                                        /** @enum {string} */
+                                        serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                                        /** @enum {string} */
+                                        resultType: "INDICATORS" | "NARRATIVE" | "BOTH";
+                                        specimenTypeName: string | null;
+                                        departmentName: string | null;
+                                        /** @enum {string} */
+                                        status: "ORDERED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED" | "CANCELLED";
+                                        indicators: {
+                                            /** Format: uuid */
+                                            indicatorId: string;
+                                            code: string;
+                                            name: string;
+                                            abbreviation: string | null;
+                                            unit: string | null;
+                                            /** @enum {string} */
+                                            valueType: "NUMBER" | "TEXT" | "CHOICE";
+                                            decimals: number | null;
+                                            choiceOptions: string[];
+                                            reference: {
+                                                /** @enum {string} */
+                                                sex: "ANY" | "MALE" | "FEMALE";
+                                                ageFromYears: number;
+                                                ageToYears: number | null;
+                                                lowValue: number | null;
+                                                highValue: number | null;
+                                                lowInclusive: boolean;
+                                                highInclusive: boolean;
+                                                normalText: string | null;
+                                                displayText: string | null;
+                                            } | null;
+                                            referenceText: string;
+                                            valueText: string | null;
+                                            note: string | null;
+                                            interpretationText: string | null;
+                                            /** @enum {string|null} */
+                                            flag: "LOW" | "HIGH" | "NORMAL" | "ABNORMAL" | null;
+                                        }[];
+                                        descriptionText: string | null;
+                                        conclusionText: string | null;
+                                    }[];
+                                    /** Format: uuid */
+                                    performedById: string | null;
+                                    performedByName: string | null;
+                                    resultedAt: string | null;
+                                    /** Format: uuid */
+                                    approverId: string | null;
+                                    approvers: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        fullName: string;
+                                    }[];
+                                    signedAt: string | null;
+                                    signedByName: string | null;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền paraclinical_result.enter */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy dòng chỉ định */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chưa lấy mẫu, đã duyệt (bản ký) hoặc lượt khám đã huỷ (PARACLINICAL_ITEM_INVALID_STATE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Kết quả chưa đủ hoặc giá trị không hợp lệ (PARACLINICAL_RESULT_INCOMPLETE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/items/{itemId}/result/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cận lâm sàng GĐ4 — "Duyệt & trả kết quả" (ký): lưu nội dung gửi kèm, kiểm đủ rồi ký mọi kết quả của nhóm trong cùng transaction; sau đó là bản ký bất biến */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    itemId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        sections: {
+                            /** Format: uuid */
+                            itemId: string;
+                            /** @default [] */
+                            values?: {
+                                /** Format: uuid */
+                                indicatorId: string;
+                                valueText?: string | null;
+                                note?: string | null;
+                            }[];
+                            descriptionText?: string | null;
+                            conclusionText?: string | null;
+                        }[];
+                        /** Format: date-time */
+                        resultedAt?: string;
+                        /** Format: uuid */
+                        approverId?: string | null;
+                        /** @default false */
+                        submit?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Duyệt thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                form: {
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    /** @enum {string|null} */
+                                    patientGender: "male" | "female" | "other" | null;
+                                    ageYears: number | null;
+                                    doctorName: string | null;
+                                    collectedAt: string | null;
+                                    /** @enum {string} */
+                                    bucket: "AWAITING_PAYMENT" | "WAITING" | "IN_PROGRESS" | "PENDING_APPROVAL" | "COMPLETED";
+                                    sections: {
+                                        /** Format: uuid */
+                                        itemId: string;
+                                        /** Format: uuid */
+                                        technicalServiceId: string;
+                                        code: string | null;
+                                        name: string;
+                                        /** @enum {string} */
+                                        serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                                        /** @enum {string} */
+                                        resultType: "INDICATORS" | "NARRATIVE" | "BOTH";
+                                        specimenTypeName: string | null;
+                                        departmentName: string | null;
+                                        /** @enum {string} */
+                                        status: "ORDERED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED" | "CANCELLED";
+                                        indicators: {
+                                            /** Format: uuid */
+                                            indicatorId: string;
+                                            code: string;
+                                            name: string;
+                                            abbreviation: string | null;
+                                            unit: string | null;
+                                            /** @enum {string} */
+                                            valueType: "NUMBER" | "TEXT" | "CHOICE";
+                                            decimals: number | null;
+                                            choiceOptions: string[];
+                                            reference: {
+                                                /** @enum {string} */
+                                                sex: "ANY" | "MALE" | "FEMALE";
+                                                ageFromYears: number;
+                                                ageToYears: number | null;
+                                                lowValue: number | null;
+                                                highValue: number | null;
+                                                lowInclusive: boolean;
+                                                highInclusive: boolean;
+                                                normalText: string | null;
+                                                displayText: string | null;
+                                            } | null;
+                                            referenceText: string;
+                                            valueText: string | null;
+                                            note: string | null;
+                                            interpretationText: string | null;
+                                            /** @enum {string|null} */
+                                            flag: "LOW" | "HIGH" | "NORMAL" | "ABNORMAL" | null;
+                                        }[];
+                                        descriptionText: string | null;
+                                        conclusionText: string | null;
+                                    }[];
+                                    /** Format: uuid */
+                                    performedById: string | null;
+                                    performedByName: string | null;
+                                    resultedAt: string | null;
+                                    /** Format: uuid */
+                                    approverId: string | null;
+                                    approvers: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        fullName: string;
+                                    }[];
+                                    signedAt: string | null;
+                                    signedByName: string | null;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền paraclinical_result.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy dòng chỉ định */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đã duyệt trước đó, chưa lấy mẫu hoặc lượt khám đã huỷ (PARACLINICAL_ITEM_INVALID_STATE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Kết quả chưa đủ hoặc giá trị không hợp lệ (PARACLINICAL_RESULT_INCOMPLETE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/price-lists/items/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bảng giá — các nhóm mặt hàng chọn được ở hộp thoại "Thêm theo nhóm" (dịch vụ kỹ thuật theo Nhóm dịch vụ, thuốc/vật tư theo Nhóm thuốc...) kèm số mặt hàng */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                groups: {
+                                    /** @enum {string} */
+                                    kind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                                    code: string | null;
+                                    name: string;
+                                    itemCount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền price_list.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/price-lists/items/by-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bảng giá — mặt hàng thuộc các nhóm đã chọn kèm giá mặc định hôm nay (POST chỉ vì có body, không ghi gì) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        groups: {
+                            /** @enum {string} */
+                            kind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                            code: string | null;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** @enum {string} */
+                                    itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                                    ref: string;
+                                    code: string;
+                                    name: string;
+                                    groupName: string | null;
+                                    scopes: {
+                                        priceTypeCode: string | null;
+                                        unitCode: string | null;
+                                        amount: number | null;
+                                    }[];
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền price_list.read */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };

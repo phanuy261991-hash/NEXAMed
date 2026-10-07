@@ -6,6 +6,7 @@ import { TechnicalServiceModule } from '../technical-service/technical-service.m
 import { PriceableCatalogService } from './priceable-catalog.service';
 import { PriceListController } from './price-list.controller';
 import { PriceListExportService } from './price-list-export.service';
+import { PriceListImportService } from './price-list-import.service';
 import { PriceListRepository } from './price-list.repository';
 import { PriceListService } from './price-list.service';
 import { PricingService } from './pricing.service';
@@ -21,7 +22,7 @@ import { ServicePackageService } from './service-package.service';
 @Module({
   imports: [ClinicModule, DrugModule, ReferenceCatalogModule, TechnicalServiceModule],
   controllers: [ServicePackageController, PriceListController],
-  providers: [ServicePackageService, ServicePackageRepository, PriceListService, PriceListRepository, PriceListExportService, PricingService, PriceableCatalogService],
+  providers: [ServicePackageService, ServicePackageRepository, PriceListService, PriceListRepository, PriceListExportService, PriceListImportService, PricingService, PriceableCatalogService],
   exports: [PricingService, ServicePackageRepository, PriceListRepository, PriceableCatalogService],
 })
 export class PricingModule {}

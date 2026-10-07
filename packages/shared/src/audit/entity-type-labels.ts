@@ -33,6 +33,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   service_package: 'Gói dịch vụ',
   price_list: 'Bảng giá',
   clinical_order: 'Phiếu chỉ định cận lâm sàng',
+  paraclinical_result: 'Kết quả cận lâm sàng',
   doctor_room_session: 'Phòng làm việc',
   break_glass_session: 'Quyền khẩn cấp (break-glass)',
   // Bổ sung #109 — thiếu từ lúc thêm module work_shift/work_shift_assignment (#101/#102) và

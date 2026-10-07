@@ -20,3 +20,4 @@ export * from './supplier-debt-errors';
 export * from './print-template-errors';
 export * from './technical-service-errors';
 export * from './clinical-order-errors';
+export * from './paraclinical-result-errors';

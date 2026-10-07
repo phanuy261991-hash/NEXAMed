@@ -4,9 +4,17 @@
 
 ## 2026-10-07
 
-### Cận lâm sàng — GĐ3: Chỉ định của bác sĩ (code + test HTTP, chưa verify Chrome)
+### Cận lâm sàng — GĐ4 đợt 1: Hàng đợi, lấy mẫu, nhập + duyệt kết quả
 
-Tab thứ 3 "Chỉ định cận lâm sàng" ở màn khám: bác sĩ chỉ định dịch vụ kỹ thuật/dịch vụ khám **tại phòng khám** (có giá, vào hoá đơn) hoặc **ra ngoài** (không giá, chỉ in phiếu; cho gõ tên tự do), thêm theo **gói dịch vụ** (1 dòng hoá đơn, giá gói chốt lúc chỉ định). Lưu = tính tiền ngay: nối vào hoá đơn khám còn chưa thu, hoặc tạo hoá đơn "Cận lâm sàng" riêng (`invoice_type = PARACLINICAL`); đã thu rồi thì không gỡ/đổi được dòng đã thu (409 `CLINICAL_ORDER_ITEM_LOCKED`) nhưng vẫn thêm được. In "Phiếu chỉ định cận lâm sàng" (mẫu in thứ 12 `CLINICAL_ORDER`). 3 bảng mới `clinical_order`/`clinical_order_package`/`clinical_order_item`, 4 migration, mã `CD`. Quyền mới `clinical_order.*`.
+Menu mới "Cận lâm sàng" → **Hàng đợi cận lâm sàng** (5 tab: Chờ thu tiền / Chờ lấy mẫu-gọi vào phòng / Đang thực hiện / Chờ duyệt / Đã trả kết quả; tự làm mới 30 giây). Xét nghiệm cùng phiếu + cùng trạng thái **gộp 1 dòng và 1 màn nhập** (không phải ra vào nhiều màn); mỗi chẩn đoán hình ảnh/thăm dò chức năng 1 dòng riêng. Màn nhập kết quả: bảng chỉ số kèm **khoảng tham chiếu tự chọn theo giới tính + tuổi**, badge ▲ Cao / ▼ Thấp / Bất thường ngay khi gõ, chèn mẫu kết quả (sửa lại được), lưu nháp → gửi duyệt → bác sĩ **Duyệt & trả kết quả** (bản ký bất biến, DB cưỡng chế bằng trigger; khoảng tham chiếu được chụp lại nên sửa danh mục sau đó không đổi phiếu đã duyệt). Quyền tách đôi: `paraclinical_result.enter` (điều dưỡng, bác sĩ) và `.approve` (bác sĩ, clinic_admin). Công tắc mới "Cho thực hiện cận lâm sàng trước khi thu tiền" ở Cấu hình thanh toán (mặc định tắt). Migration `20261008090000` + `20261008090100` (2 bảng `paraclinical_result`/`_value`) — môi trường khác: `db:deploy` + `db:seed` + khởi động lại API. **Chưa có**: in phiếu kết quả (đợt 2), bác sĩ xem kết quả ở màn khám + bệnh án PDF + đính chính + vai trò "Kỹ thuật viên" (đợt 3), ảnh đính kèm CĐHA. Chi tiết `docs/DECISIONS.md` #214.
+
+### Bảng giá: thêm hàng loạt + giao diện
+
+Trang chi tiết bảng giá dựng lại **2 cột**: trái là ô thêm mặt hàng (tìm từng cái, **"Thêm theo nhóm"** chọn 1 hoặc nhiều nhóm trong hộp thoại, **"Nhập từ Excel"** có file mẫu + hướng dẫn + danh mục mã, % giảm hàng loạt) trên danh sách; phải là thông tin bảng giá. Nhập Excel chỉ đọc + đối chiếu (không ghi DB), file thắng dòng đã có, vẫn phải "Lưu bảng giá". Menu "Bảng giá" chuyển ra cấp 1 ngang hàng "Lịch làm việc". `Combobox` thêm `dense` (cỡ gọn trong hàng bảng) và `floating` (panel nổi, không bị khung bảng cắt). Sửa lỗi phiếu in chỉ định đánh số nhảy (1, 3) và mã phiếu ghi nhầm `CD` (đúng là `CLS`); ô tìm dịch vụ ở tab Chỉ định hỗ trợ phím ↑↓.
+
+### Cận lâm sàng — GĐ3: Chỉ định của bác sĩ (code + test HTTP + verify Chrome thật)
+
+Tab thứ 3 "Chỉ định cận lâm sàng" ở màn khám: bác sĩ chỉ định dịch vụ kỹ thuật/dịch vụ khám **tại phòng khám** (có giá, vào hoá đơn) hoặc **ra ngoài** (không giá, chỉ in phiếu; cho gõ tên tự do), thêm theo **gói dịch vụ** (1 dòng hoá đơn, giá gói chốt lúc chỉ định). Lưu = tính tiền ngay: nối vào hoá đơn khám còn chưa thu, hoặc tạo hoá đơn "Cận lâm sàng" riêng (`invoice_type = PARACLINICAL`); đã thu rồi thì không gỡ/đổi được dòng đã thu (409 `CLINICAL_ORDER_ITEM_LOCKED`) nhưng vẫn thêm được. In "Phiếu chỉ định cận lâm sàng" (mẫu in thứ 12 `CLINICAL_ORDER`). 3 bảng mới `clinical_order`/`clinical_order_package`/`clinical_order_item`, 4 migration, mã `CLS`. Quyền mới `clinical_order.*`.
 
 ### Rà soát log kiểm toán (`docs/DECISIONS.md` #213)
 

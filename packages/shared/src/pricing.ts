@@ -480,3 +480,49 @@ export const lookupPriceResponseSchema = z.object({
   result: resolvedPriceSchema,
 });
 export type LookupPriceResponse = z.infer<typeof lookupPriceResponseSchema>;
+
+// ---------------------------------------------------------------------------------------------
+// Thêm hàng loạt vào bảng giá: theo nhóm + nhập Excel (docs/DECISIONS.md #212, yêu cầu chủ dự án 07/10/2026)
+// ---------------------------------------------------------------------------------------------
+
+/** Một nhóm mặt hàng chọn được ở hộp thoại "Thêm theo nhóm". `code = null` nghĩa là "Chưa phân nhóm" (dịch vụ kỹ thuật/thuốc/vật tư) hoặc "tất cả" (dịch vụ khám/gói — không có nhóm). */
+export const priceableGroupSchema = z.object({
+  kind: priceListItemKindSchema,
+  code: z.string().nullable(),
+  name: z.string(),
+  itemCount: z.number().int().nonnegative(),
+});
+export type PriceableGroup = z.infer<typeof priceableGroupSchema>;
+
+export const listPriceableGroupsResponseSchema = z.object({ groups: z.array(priceableGroupSchema) });
+export type ListPriceableGroupsResponse = z.infer<typeof listPriceableGroupsResponseSchema>;
+
+export const itemsByGroupsRequestSchema = z.object({
+  groups: z.array(z.object({ kind: priceListItemKindSchema, code: z.string().nullable() })).min(1).max(200),
+});
+export type ItemsByGroupsRequest = z.infer<typeof itemsByGroupsRequestSchema>;
+
+/** Dòng hợp lệ của file Excel đã đối chiếu với danh mục — web gộp vào danh sách đang soạn (file thắng dòng đã có của cùng mặt hàng). */
+export const priceListImportRowSchema = z.object({
+  rowNumber: z.number().int(),
+  item: priceableItemSchema,
+  priceTypeCode: z.string().nullable(),
+  unitCode: z.string().nullable(),
+  mode: priceListLineModeSchema,
+  value: z.number().int().nonnegative(),
+});
+export type PriceListImportRow = z.infer<typeof priceListImportRowSchema>;
+
+export const priceListImportErrorSchema = z.object({ rowNumber: z.number().int(), message: z.string() });
+export type PriceListImportError = z.infer<typeof priceListImportErrorSchema>;
+
+export const priceListImportPreviewResponseSchema = z.object({
+  rows: z.array(priceListImportRowSchema),
+  errors: z.array(priceListImportErrorSchema),
+  /** Số dòng ví dụ (mã bắt đầu bằng "VD-") đã tự bỏ qua. */
+  exampleRowCount: z.number().int().nonnegative(),
+});
+export type PriceListImportPreviewResponse = z.infer<typeof priceListImportPreviewResponseSchema>;
+
+export const PRICE_LIST_IMPORT_MAX_ROWS = 5000;
+export const PRICE_LIST_IMPORT_EXAMPLE_CODE_PREFIX = 'VD-';

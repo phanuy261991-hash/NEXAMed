@@ -21,6 +21,7 @@ import { PrintTemplateModule } from './modules/print-template/print-template.mod
 import { TechnicalServiceModule } from './modules/technical-service/technical-service.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { ClinicalOrderModule } from './modules/clinical-order/clinical-order.module';
+import { ParaclinicalResultModule } from './modules/paraclinical-result/paraclinical-result.module';
 import { PricingPortModule } from './modules/pricing/pricing-port.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { StockAvailabilityModule } from './modules/inventory/stock-availability.module';
@@ -69,6 +70,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     EncounterModule,
     BillingModule,
     ClinicalOrderModule,
+    ParaclinicalResultModule,
     ReceptionModule,
     AuditModule,
     DoctorAvailabilityModule,

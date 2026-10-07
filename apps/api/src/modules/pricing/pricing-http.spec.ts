@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
+import ExcelJS from 'exceljs';
 import { AppModule } from '../../app.module';
 import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
@@ -541,6 +542,120 @@ describe('HTTP e2e — Gói dịch vụ + Bảng giá có thời hạn', () => {
       expect(onlySupply.body.data.items.every((i: { itemKind: string }) => i.itemKind === 'MEDICAL_SUPPLY')).toBe(true);
       const none = await http().get(`${LISTS}/items/search`).query({ q: 'zzzkhongco' }).set(authed(adminToken));
       expect(none.body.data.items).toEqual([]);
+    });
+  });
+
+  describe('thêm hàng loạt: theo nhóm + nhập Excel', () => {
+    const groupsOf = async (token = adminToken) => {
+      const res = await http().get(`${LISTS}/items/groups`).set(authed(token));
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      return res.body.data.groups as { kind: string; code: string | null; name: string; itemCount: number }[];
+    };
+
+    async function buildXlsx(rows: (string | number)[][], header = ['Loại mặt hàng (*)', 'Mã mặt hàng (*)', 'Loại giá / Đơn vị', 'Cách tính (*)', 'Giá trị (*)']): Promise<Buffer> {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Mặt hàng');
+      ws.addRow(header);
+      for (const r of rows) ws.addRow(r);
+      return Buffer.from(await wb.xlsx.writeBuffer());
+    }
+    const preview = (buffer: Buffer, token = adminToken) => http().post(`${LISTS}/import/preview`).set(authed(token)).attach('file', buffer, 'bang-gia.xlsx');
+
+    it('liệt kê nhóm: dịch vụ khám/gói là 1 nhóm "tất cả", thuốc/vật tư theo Nhóm thuốc kèm số lượng; cần quyền price_list.read', async () => {
+      expect((await http().get(`${LISTS}/items/groups`)).status).toBe(401);
+      const groups = await groupsOf();
+      expect(groups.find((g) => g.kind === 'EXAM_TYPE')).toMatchObject({ code: null, name: 'Tất cả dịch vụ khám' });
+      expect(groups.find((g) => g.kind === 'EXAM_TYPE')!.itemCount).toBeGreaterThanOrEqual(1);
+      const drugGroup = groups.find((g) => g.kind === 'DRUG' && g.code === 'TEST_GROUP');
+      expect(drugGroup!.itemCount).toBeGreaterThanOrEqual(1);
+      expect(groups.some((g) => g.kind === 'MEDICAL_SUPPLY')).toBe(true);
+      // Nhóm trống bị ẩn.
+      expect(groups.every((g) => g.itemCount > 0)).toBe(true);
+    });
+
+    it('mặt hàng theo nhóm: đúng mặt hàng của nhóm đã chọn (kèm giá mặc định), không trùng khi chọn nhiều nhóm; tenant khác không thấy', async () => {
+      const res = await http()
+        .post(`${LISTS}/items/by-groups`)
+        .set(authed(adminToken))
+        .send({ groups: [{ kind: 'DRUG', code: 'TEST_GROUP' }, { kind: 'DRUG', code: 'TEST_GROUP' }, { kind: 'MEDICAL_SUPPLY', code: null }] });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      const items = res.body.data.items as { itemKind: string; ref: string; scopes: { amount: number | null }[] }[];
+      const medicine = items.find((i) => i.ref === medicineId)!;
+      expect(medicine.itemKind).toBe('DRUG');
+      expect(medicine.scopes.some((sc) => sc.amount === 2_000)).toBe(true);
+      expect(items.find((i) => i.ref === supplyId)?.itemKind).toBe('MEDICAL_SUPPLY');
+      expect(new Set(items.map((i) => `${i.itemKind}:${i.ref}`)).size).toBe(items.length);
+
+      const other = await http().post(`${LISTS}/items/by-groups`).set(authed(tenantBAdminToken)).send({ groups: [{ kind: 'DRUG', code: 'TEST_GROUP' }] });
+      expect(other.status).toBe(200);
+      expect(other.body.data.items.some((i: { ref: string }) => i.ref === medicineId)).toBe(false);
+
+      expect((await http().post(`${LISTS}/items/by-groups`).set(authed(adminToken)).send({ groups: [] })).status).toBe(400);
+    });
+
+    it('tải file mẫu: xlsx 3 sheet (Mặt hàng có dòng ví dụ VD-, Hướng dẫn, Danh mục hiện có chứa mã mặt hàng)', async () => {
+      const res = await http().get(`${LISTS}/import-template`).set(authed(adminToken)).buffer(true).parse((r, cb) => {
+        const chunks: Buffer[] = [];
+        r.on('data', (c: Buffer) => chunks.push(c));
+        r.on('end', () => cb(null, Buffer.concat(chunks)));
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers['content-disposition']).toContain('mau-nhap-bang-gia.xlsx');
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(res.body as unknown as ExcelJS.Buffer);
+      expect(wb.worksheets.map((w) => w.name)).toEqual(['Mặt hàng', 'Hướng dẫn', 'Danh mục hiện có']);
+      expect(String(wb.getWorksheet('Mặt hàng')!.getCell(2, 2).value)).toMatch(/^VD-/);
+      const catalogCodes: string[] = [];
+      wb.getWorksheet('Danh mục hiện có')!.eachRow((row) => catalogCodes.push(String(row.getCell(2).value ?? '')));
+      expect(catalogCodes).toContain(examCode);
+    });
+
+    it('xem trước nhập Excel: dòng hợp lệ (Giảm %, Giá mới theo Loại giá/Đơn vị), dòng ví dụ bị bỏ qua, lỗi từng dòng có số dòng', async () => {
+      const medicineCode = (await http().get(`${LISTS}/items/search`).query({ q: 'Paracetamol bang gia', kind: 'DRUG' }).set(authed(adminToken))).body.data.items[0].code as string;
+      const buffer = await buildXlsx([
+        ['Dịch vụ khám', examCode, 'Mọi loại giá', 'Giảm %', '15'],
+        ['thuốc', medicineCode.toLowerCase(), 'HOP', 'Giá mới', '1.500'],
+        ['Thuốc', 'KHONG-CO-MA', '', 'Giảm %', '10'],
+        ['Vật tư y tế', 'VD-BO-QUA', '', 'Giảm %', '10'],
+        ['Dịch vụ khám', examCode, '', 'Giảm %', '20'],
+        ['Món lạ', examCode, '', 'Giảm %', '20'],
+        ['Thuốc', medicineCode, '', 'Giảm %', '150'],
+        ['Thuốc', medicineCode, '', 'Giá mới', 'abc'],
+        ['Dịch vụ khám', 'XXX', '', 'Tăng', '10'],
+      ]);
+      const res = await preview(buffer);
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      const { rows, errors, exampleRowCount } = res.body.data as {
+        rows: { rowNumber: number; item: { code: string }; priceTypeCode: string | null; unitCode: string | null; mode: string; value: number }[];
+        errors: { rowNumber: number; message: string }[];
+        exampleRowCount: number;
+      };
+      expect(exampleRowCount).toBe(1);
+      expect(rows.map((r) => r.rowNumber), JSON.stringify(errors)).toEqual([2, 3]);
+      expect(rows[0]).toMatchObject({ mode: 'PERCENT_OFF', value: 15, unitCode: null });
+      expect(rows[1]).toMatchObject({ mode: 'NEW_PRICE', value: 1500, unitCode: 'HOP' });
+      expect(errors.map((e) => e.rowNumber)).toEqual([4, 6, 7, 8, 9, 10]);
+      expect(errors.find((e) => e.rowNumber === 4)!.message).toContain('Không tìm thấy mã');
+      expect(errors.find((e) => e.rowNumber === 6)!.message).toContain('xuất hiện ở dòng trên');
+      expect(errors.find((e) => e.rowNumber === 7)!.message).toContain('không hợp lệ');
+      expect(errors.find((e) => e.rowNumber === 8)!.message).toContain('1 đến 100');
+      expect(errors.find((e) => e.rowNumber === 9)!.message).toContain('số nguyên');
+    });
+
+    it('"Giá mới" thiếu đơn vị: thuốc nhiều bậc → lỗi; vật tư chỉ 1 bậc → tự điền; sai tiêu đề cột/không phải xlsx/không có file → 400; chỉ xem được khi có quyền', async () => {
+      const medicineCode = (await http().get(`${LISTS}/items/search`).query({ q: 'Paracetamol bang gia', kind: 'DRUG' }).set(authed(adminToken))).body.data.items[0].code as string;
+      const supplyCode = (await http().get(`${LISTS}/items/search`).query({ q: 'Bom tiem 5ml bang gia', kind: 'MEDICAL_SUPPLY' }).set(authed(adminToken))).body.data.items[0].code as string;
+      const res = await preview(await buildXlsx([['Thuốc', medicineCode, '', 'Giá mới', '1000'], ['Vật tư y tế', supplyCode, '', 'Giá mới', '3000']]));
+      expect(res.body.data.errors).toHaveLength(1);
+      expect(res.body.data.errors[0].message).toContain('Đơn vị');
+      expect(res.body.data.rows[0]).toMatchObject({ mode: 'NEW_PRICE', value: 3000, unitCode: 'CAI' });
+
+      const wrongHeader = await preview(await buildXlsx([], ['Cột A', 'Cột B', 'Cột C', 'Cột D', 'Cột E']));
+      expect(wrongHeader.status).toBe(400);
+      const notXlsx = await preview(Buffer.from('không phải excel'));
+      expect(notXlsx.status).toBe(400);
+      expect((await http().post(`${LISTS}/import/preview`).set(authed(adminToken))).status).toBe(400);
+      expect((await http().post(`${LISTS}/import/preview`)).status).toBe(401);
     });
   });
 });
