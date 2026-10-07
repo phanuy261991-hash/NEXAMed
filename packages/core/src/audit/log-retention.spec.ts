@@ -8,6 +8,12 @@ describe('isSystemLogEntityType', () => {
     expect(isSystemLogEntityType('drug')).toBe(true);
   });
 
+  it('danh mục/cấu hình mới (cận lâm sàng, bảng giá, NCC, kho, quỹ, mẫu in) thuộc System Log', () => {
+    for (const t of ['technical_service', 'lab_indicator', 'result_template', 'service_package', 'price_list', 'supplier', 'warehouse', 'cash_account', 'prescription_template', 'print_template']) {
+      expect(isSystemLogEntityType(t)).toBe(true);
+    }
+  });
+
   it('log nghiệp vụ (gắn hồ sơ bệnh án) không thuộc System Log', () => {
     expect(isSystemLogEntityType('patient')).toBe(false);
     expect(isSystemLogEntityType('encounter')).toBe(false);

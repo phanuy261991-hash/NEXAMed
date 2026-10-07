@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { ConcurrentModificationError, formatShortSequentialCode } from '@nexamed/core';
 import type { CreateWarehouseRequest, ListWarehousesResponse, UpdateWarehouseRequest, WarehouseSummary } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
@@ -41,6 +42,7 @@ export class WarehouseService {
         action: 'warehouse.created',
         entityType: 'warehouse',
         entityId: created.id,
+        afterJson: { code, name: created.name, departmentId: created.departmentId, isDefault: created.isDefault },
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
@@ -84,6 +86,13 @@ export class WarehouseService {
       if (dto.isDefault !== undefined) patch.isDefault = dto.isDefault;
       if (dto.isActive !== undefined) patch.isActive = dto.isActive;
 
+      const beforeJson: Record<string, Prisma.InputJsonValue | null> = {};
+      const afterJson: Record<string, Prisma.InputJsonValue | null> = {};
+      if (patch.name !== undefined && patch.name !== existing.name) { beforeJson.name = existing.name; afterJson.name = patch.name; }
+      if (patch.departmentId !== undefined && patch.departmentId !== existing.departmentId) { beforeJson.departmentId = existing.departmentId; afterJson.departmentId = patch.departmentId; }
+      if (patch.isDefault !== undefined && patch.isDefault !== existing.isDefault) { beforeJson.isDefault = existing.isDefault; afterJson.isDefault = patch.isDefault; }
+      if (patch.isActive !== undefined && patch.isActive !== existing.isActive) { beforeJson.isActive = existing.isActive; afterJson.isActive = patch.isActive; }
+
       const count = await this.warehouseRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, patch);
       if (count === 0) {
         throw new ConcurrentModificationError();
@@ -94,6 +103,8 @@ export class WarehouseService {
         action: 'warehouse.updated',
         entityType: 'warehouse',
         entityId: id,
+        beforeJson,
+        afterJson,
         ip: meta.ip,
         userAgent: meta.userAgent,
       });

@@ -114,6 +114,29 @@ describe('HTTP e2e — /api/v1/suppliers, /api/v1/warehouses', () => {
     expect(defaults[0].name).toBe('Tủ trực phòng khám 1');
   });
 
+  it('audit sửa NCC/Kho ghi trước/sau CHỈ trường đổi; liên hệ NCC chỉ ghi tên trường, không ghi giá trị', async () => {
+    const sup = await request(app.getHttpServer()).post('/api/v1/suppliers').set(authed(clinicAdminToken)).send({ name: 'NCC audit', taxCode: '0100000001', phone: '0900000001' });
+    const supId = sup.body.data.id as string;
+    await request(app.getHttpServer())
+      .patch(`/api/v1/suppliers/${supId}`)
+      .set(authed(clinicAdminToken))
+      .send({ name: 'NCC audit mới', phone: '0911111111', version: 1 })
+      .expect(200);
+    const created = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, entityId: supId, action: 'supplier.created' } });
+    expect(created?.afterJson).toMatchObject({ name: 'NCC audit', taxCode: '0100000001' });
+    const updated = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, entityId: supId, action: 'supplier.updated' } });
+    expect(updated?.beforeJson).toEqual({ name: 'NCC audit' });
+    expect(updated?.afterJson).toEqual({ name: 'NCC audit mới', changedContactFields: ['phone'] });
+    expect(JSON.stringify(updated)).not.toContain('0911111111');
+
+    const wh = await request(app.getHttpServer()).post('/api/v1/warehouses').set(authed(clinicAdminToken)).send({ name: 'Kho audit' });
+    const whId = wh.body.data.id as string;
+    await request(app.getHttpServer()).patch(`/api/v1/warehouses/${whId}`).set(authed(clinicAdminToken)).send({ name: 'Kho audit mới', isActive: false, version: 1 }).expect(200);
+    const whLog = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, entityId: whId, action: 'warehouse.updated' } });
+    expect(whLog?.beforeJson).toEqual({ name: 'Kho audit', isActive: true });
+    expect(whLog?.afterJson).toEqual({ name: 'Kho audit mới', isActive: false });
+  });
+
   it('version cũ khi sửa Nhà cung cấp → 409 CONCURRENT_MODIFICATION', async () => {
     const created = await request(app.getHttpServer()).post('/api/v1/suppliers').set(authed(clinicAdminToken)).send({ name: 'NCC version test' });
     const id = created.body.data.id as string;
