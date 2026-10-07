@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
-import { listParaclinicalQueueQuerySchema, saveParaclinicalResultRequestSchema, startParaclinicalItemsRequestSchema } from '@nexamed/shared';
+import { PARACLINICAL_IMAGE_MAX_BYTES, listParaclinicalQueueQuerySchema, saveParaclinicalResultRequestSchema, startParaclinicalItemsRequestSchema } from '@nexamed/shared';
 import { AuditView } from '../../common/audit-view.decorator';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -22,7 +23,7 @@ export class ParaclinicalResultController {
   @Get('queue')
   @RequirePermission('paraclinical_result', 'read')
   async queue(@Query() query: unknown, @Req() req: Request) {
-    return this.service.listQueue(req.user!.tenantId, listParaclinicalQueueQuerySchema.parse(query));
+    return this.service.listQueue(req.user!.tenantId, req.user!.userId, req.dataScope!, listParaclinicalQueueQuerySchema.parse(query));
   }
 
   /** "Lấy mẫu" / "Gọi vào phòng" — các dòng cùng phiếu chuyển sang "Đang thực hiện". */
@@ -32,7 +33,7 @@ export class ParaclinicalResultController {
   async start(@Body() body: unknown, @Req() req: Request) {
     const dto = startParaclinicalItemsRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.service.startItems(tenantId, userId, dto, extractRequestMeta(req));
+    return this.service.startItems(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   // Kết quả cận lâm sàng là dữ liệu lâm sàng → ghi audit "xem" (security-audit.md). entityId = id dòng chỉ định mở màn.
@@ -42,7 +43,7 @@ export class ParaclinicalResultController {
   @UseInterceptors(AuditViewInterceptor)
   async getResult(@Param('itemId', ParseUUIDPipe) itemId: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return { form: await this.service.getForm(tenantId, userId, itemId) };
+    return { form: await this.service.getForm(tenantId, userId, req.dataScope!, itemId) };
   }
 
   @Put('items/:itemId/result')
@@ -50,7 +51,35 @@ export class ParaclinicalResultController {
   async saveResult(@Param('itemId', ParseUUIDPipe) itemId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = saveParaclinicalResultRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return { form: await this.service.save(tenantId, userId, itemId, dto, extractRequestMeta(req)) };
+    return { form: await this.service.save(tenantId, userId, req.dataScope!, itemId, dto, extractRequestMeta(req)) };
+  }
+
+  /** Ghi audit in phiếu kết quả (web tự dựng bản in từ dữ liệu đã tải). */
+  @Post('items/:itemId/result/print')
+  @RequirePermission('paraclinical_result', 'read')
+  @HttpCode(200)
+  async printResult(@Param('itemId', ParseUUIDPipe) itemId: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    await this.service.recordPrint(tenantId, userId, req.dataScope!, itemId, extractRequestMeta(req));
+    return { ok: true };
+  }
+
+  /** Thêm ảnh đính kèm (siêu âm, X-quang...) — multipart `file`; kiểm magic-byte/dung lượng ở service (không tin Content-Type). */
+  @Post('items/:itemId/images')
+  @RequirePermission('paraclinical_result', 'enter')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: PARACLINICAL_IMAGE_MAX_BYTES } }))
+  async addImage(@Param('itemId', ParseUUIDPipe) itemId: string, @UploadedFile() file: Express.Multer.File | undefined, @Req() req: Request) {
+    if (!file) throw new BadRequestException('Thiếu file ảnh.');
+    const { userId, tenantId } = req.user!;
+    return { form: await this.service.addImage(tenantId, userId, req.dataScope!, itemId, { buffer: file.buffer, originalname: file.originalname }, extractRequestMeta(req)) };
+  }
+
+  @Delete('images/:imageId')
+  @RequirePermission('paraclinical_result', 'enter')
+  async removeImage(@Param('imageId', ParseUUIDPipe) imageId: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return { form: await this.service.removeImage(tenantId, userId, req.dataScope!, imageId, extractRequestMeta(req)) };
   }
 
   @Post('items/:itemId/result/approve')
@@ -59,6 +88,6 @@ export class ParaclinicalResultController {
   async approveResult(@Param('itemId', ParseUUIDPipe) itemId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = saveParaclinicalResultRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return { form: await this.service.approve(tenantId, userId, itemId, dto, extractRequestMeta(req)) };
+    return { form: await this.service.approve(tenantId, userId, req.dataScope!, itemId, dto, extractRequestMeta(req)) };
   }
 }

@@ -6,6 +6,7 @@ import { InvoicePrintView } from '../billing/InvoicePrintView';
 import { CashVoucherPrintView } from '../cash-book/CashVoucherPrintView';
 import { CashierShiftReceiptDocument } from '../cashier-shift/CashierShiftReceiptView';
 import { ClinicalOrderPrintView } from '../clinical-order/ClinicalOrderPrintView';
+import { ParaclinicalResultPrintView } from '../paraclinical-result/ParaclinicalResultPrintView';
 import { PrescriptionPrintView } from '../encounter/PrescriptionPrintView';
 import { StockCountPrintView } from '../inventory/StockCountPrintView';
 import { StockIssuePrintView } from '../inventory/StockIssuePrintView';
@@ -15,6 +16,7 @@ import { WalletReceiptPrintView } from '../patient-wallet/WalletReceiptPrintView
 import {
   SAMPLE_CASH_VOUCHER,
   SAMPLE_CLINICAL_ORDER,
+  SAMPLE_PARACLINICAL_RESULT,
   SAMPLE_CASHIER_SHIFT,
   SAMPLE_COMBINED_INVOICES,
   SAMPLE_INVOICE,
@@ -61,6 +63,8 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
           printedAt="2026-10-06T02:30:00.000Z"
         />
       );
+    case 'PARACLINICAL_RESULT':
+      return <ParaclinicalResultPrintView form={SAMPLE_PARACLINICAL_RESULT} />;
     case 'INVOICE':
       return <InvoicePrintView collectedByName="Nguyễn Thị Bích Ngọc" paymentMethodLabel="Tiền mặt" invoice={SAMPLE_INVOICE} />;
     case 'INVOICE_COMBINED':

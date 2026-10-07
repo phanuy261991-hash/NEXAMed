@@ -73,3 +73,10 @@ export function previewFlag(valueType: 'NUMBER' | 'TEXT' | 'CHOICE', raw: string
   const norm = (v: string) => v.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').trim().replace(/\s+/g, ' ').toLowerCase();
   return norm(raw) === norm(reference.normalText) ? 'NORMAL' : 'ABNORMAL';
 }
+
+/** "06/10/2026 08:41" theo giờ Việt Nam (UTC+7 cố định) — mốc thời gian trên màn nhập kết quả và phiếu in. */
+export function formatDateTimeVn(iso: string): string {
+  const vn = new Date(new Date(iso).getTime() + 7 * 3_600_000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(vn.getUTCDate())}/${pad(vn.getUTCMonth() + 1)}/${vn.getUTCFullYear()} ${pad(vn.getUTCHours())}:${pad(vn.getUTCMinutes())}`;
+}

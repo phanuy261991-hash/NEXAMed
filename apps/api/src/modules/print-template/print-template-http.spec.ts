@@ -93,7 +93,7 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
   it('danh sách kèm DANH MỤC TĨNH (loại chứng từ, khổ giấy, cấu hình mặc định từng khổ) — web không import giá trị từ shared nên lấy qua API', async () => {
     const res = await request(app.getHttpServer()).get(API).set(authed(adminToken));
     const { catalog } = res.body.data;
-    expect(catalog.documentTypes).toHaveLength(12);
+    expect(catalog.documentTypes).toHaveLength(13);
     expect(catalog.papers.map((p: { paperSize: string }) => p.paperSize)).toEqual(['A4', 'A5', 'A5_LANDSCAPE', 'K80']);
     expect(catalog.papers.find((p: { paperSize: string }) => p.paperSize === 'K80')).toMatchObject({ widthMm: 80, heightMm: null });
     expect(catalog.defaultConfigs.A4).toEqual(buildDefaultPrintTemplateConfig('A4'));
@@ -101,19 +101,19 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
     expect(k80Types).toEqual(['CASHIER_SHIFT_RECEIPT', 'CASH_VOUCHER', 'INVOICE', 'WALLET_TOPUP_RECEIPT']);
   });
 
-  it('chưa lưu gì → danh sách có đủ 12 chứng từ dùng bản DỰNG SẴN (id null, isBuiltin, mặc định), in được ngay', async () => {
+  it('chưa lưu gì → danh sách có đủ 13 chứng từ dùng bản DỰNG SẴN (id null, isBuiltin, mặc định), in được ngay', async () => {
     const items = await list(adminToken);
-    expect(items).toHaveLength(12);
+    expect(items).toHaveLength(13);
     expect(items.every((i) => i.id === null && i.isBuiltin && i.isDefault && i.version === null)).toBe(true);
     expect(ofType(items, 'PRESCRIPTION')[0]).toMatchObject({ paperSize: 'A4', name: 'Đơn thuốc A4' });
     expect(ofType(items, 'INVOICE')[0]!.paperSize).toBe('A5');
     expect(ofType(items, 'INVOICE')[0]!.config).toEqual(buildDefaultPrintTemplateConfig('A5'));
   });
 
-  it('GET resolved: MỌI nhân viên đăng nhập đọc được (bác sĩ, lễ tân) → 12 mục; không token → 401', async () => {
+  it('GET resolved: MỌI nhân viên đăng nhập đọc được (bác sĩ, lễ tân) → 13 mục; không token → 401', async () => {
     for (const token of [doctorToken, receptionistToken, adminToken]) {
       const items = await resolved(token);
-      expect(items).toHaveLength(12);
+      expect(items).toHaveLength(13);
       expect(items.find((i) => i.documentType === 'INVOICE')).toMatchObject({ paperSize: 'A5', widthMm: 148, heightMm: 210 });
     }
     expect((await request(app.getHttpServer()).get(`${API}/resolved`)).status).toBe(401);

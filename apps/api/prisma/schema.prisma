@@ -111,6 +111,7 @@ model Tenant {
   clinicalOrderPackages       ClinicalOrderPackage[]
   paraclinicalResults         ParaclinicalResult[]
   paraclinicalResultValues    ParaclinicalResultValue[]
+  paraclinicalResultImages    ParaclinicalResultImage[]
   servicePackageItems         ServicePackageItem[]
   priceLists                  PriceList[]
   priceListItems              PriceListItem[]
@@ -3646,6 +3647,7 @@ model AuditLog {
 
 /// Loại chứng từ in được quản lý ở "Quản lý mẫu in" (docs/DECISIONS.md #211). Khớp `printDocumentTypeSchema` (packages/shared).
 enum PrintDocumentType {
+  PARACLINICAL_RESULT
   PRESCRIPTION
   MEDICAL_RECORD
   CLINICAL_ORDER
@@ -4257,6 +4259,7 @@ model ParaclinicalResult {
   tenant       Tenant                    @relation(fields: [tenantId], references: [id])
   orderItem    ClinicalOrderItem         @relation(fields: [tenantId, clinicalOrderItemId], references: [tenantId, id])
   values       ParaclinicalResultValue[]
+  images       ParaclinicalResultImage[]
   supersedes   ParaclinicalResult?       @relation("ParaclinicalResultAmendment", fields: [tenantId, supersedesId], references: [tenantId, id])
   supersededBy ParaclinicalResult[]      @relation("ParaclinicalResultAmendment")
 
@@ -4299,4 +4302,32 @@ model ParaclinicalResultValue {
 
   @@unique([tenantId, id])
   @@map("paraclinical_result_value")
+}
+
+/// Ảnh đính kèm kết quả chẩn đoán hình ảnh / thăm dò chức năng (Cận lâm sàng GĐ4 đợt 2, #214). File nằm ngoài DB (StoragePort), bảng chỉ giữ khoá lưu; là một phần
+/// NỘI DUNG kết quả nên kết quả đã ký thì trigger DB chặn thêm/đổi/gỡ ảnh.
+model ParaclinicalResultImage {
+  id          String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  resultId    String @map("result_id") @db.Uuid
+  storageKey  String @map("storage_key")
+  fileName    String @map("file_name")
+  contentType String @map("content_type")
+  sizeBytes   Int    @map("size_bytes")
+  sortOrder   Int    @default(0) @map("sort_order")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant             @relation(fields: [tenantId], references: [id])
+  result ParaclinicalResult @relation(fields: [tenantId, resultId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("paraclinical_result_image")
 }

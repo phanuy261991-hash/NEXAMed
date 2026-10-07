@@ -144,6 +144,7 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // Cận lâm sàng GĐ3 (#212) — dòng/gói/phiếu chỉ định tham chiếu encounter, technical_service, service_package (FK RESTRICT) nên xoá trước cả ba;
       // invoice_line (đã xoá ở trên) tham chiếu dòng/gói chỉ định. Dòng con trước gói, gói trước phiếu.
       // Cận lâm sàng GĐ4 — kết quả (và giá trị chỉ số) tham chiếu dòng chỉ định + chỉ số xét nghiệm (FK RESTRICT): xoá giá trị trước kết quả, kết quả trước dòng chỉ định.
+      await prisma.paraclinicalResultImage.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.paraclinicalResultValue.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.paraclinicalResult.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalOrderItem.deleteMany({ where: { tenantId: { in: tenantIds } } });

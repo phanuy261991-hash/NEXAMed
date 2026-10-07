@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type ParaclinicalResult, type ParaclinicalResultValue } from '@prisma/client';
+import { Prisma, type ParaclinicalResult, type ParaclinicalResultImage, type ParaclinicalResultValue } from '@prisma/client';
 
 export type ResultWithValues = ParaclinicalResult & { values: ParaclinicalResultValue[] };
 
@@ -82,5 +82,36 @@ export class ParaclinicalResultRepository {
         });
       }
     }
+  }
+
+  // ---- ảnh đính kèm ----
+
+  listImages(tx: Prisma.TransactionClient, tenantId: string, resultIds: string[]): Promise<ParaclinicalResultImage[]> {
+    if (resultIds.length === 0) return Promise.resolve([]);
+    return tx.paraclinicalResultImage.findMany({ where: { tenantId, resultId: { in: resultIds }, deletedAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] });
+  }
+
+  findImage(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<(ParaclinicalResultImage & { result: ParaclinicalResult }) | null> {
+    return tx.paraclinicalResultImage.findFirst({ where: { tenantId, id, deletedAt: null }, include: { result: true } });
+  }
+
+  countImages(tx: Prisma.TransactionClient, tenantId: string, resultId: string): Promise<number> {
+    return tx.paraclinicalResultImage.count({ where: { tenantId, resultId, deletedAt: null } });
+  }
+
+  createImage(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    data: { resultId: string; storageKey: string; fileName: string; contentType: string; sizeBytes: number; sortOrder: number },
+  ): Promise<ParaclinicalResultImage> {
+    return tx.paraclinicalResultImage.create({ data: { tenantId, ...data, createdBy: actorId, updatedBy: actorId } });
+  }
+
+  async softDeleteImage(tx: Prisma.TransactionClient, tenantId: string, id: string, actorId: string, reason: string): Promise<void> {
+    await tx.paraclinicalResultImage.updateMany({
+      where: { tenantId, id, deletedAt: null },
+      data: { deletedAt: new Date(), deletedReason: reason, updatedBy: actorId, version: { increment: 1 } },
+    });
   }
 }

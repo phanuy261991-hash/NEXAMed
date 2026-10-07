@@ -1,7 +1,13 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { ParaclinicalResultValue, Prisma } from '@prisma/client';
 import {
   CLINIC_CONFIG_READER_PORT,
+  InvalidPhotoError,
+  sniffImageExtension,
+  STORAGE_PORT,
+  type StoragePort,
   checkParaclinicalSectionComplete,
   deriveQueueBucket,
   evaluateLabValue,
@@ -22,6 +28,9 @@ import {
 } from '@nexamed/core';
 import {
   calculateAgeYears,
+  type DataScope,
+  PARACLINICAL_IMAGE_MAX_BYTES,
+  PARACLINICAL_IMAGE_MAX_COUNT,
   type ListParaclinicalQueueQuery,
   type ListParaclinicalQueueResponse,
   type ParaclinicalQueueBucket,
@@ -36,6 +45,7 @@ import {
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
+import { signFileToken } from '../../infrastructure/storage/signed-url';
 import { ClinicalOrderRepository, type QueueItemRow } from '../clinical-order/clinical-order.repository';
 import { UserAccountRepository } from '../iam/user-account.repository';
 import { ReferenceCatalogRepository } from '../reference-catalog/reference-catalog.repository';
@@ -112,19 +122,25 @@ export class ParaclinicalResultService {
     private readonly userRepository: UserAccountRepository,
     private readonly referenceCatalogRepository: ReferenceCatalogRepository,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+    private readonly configService: ConfigService,
   ) {}
 
   // ---------------------------------------------------------------------------------------------
   // Hàng đợi
   // ---------------------------------------------------------------------------------------------
 
-  async listQueue(tenantId: string, query: ListParaclinicalQueueQuery): Promise<ListParaclinicalQueueResponse> {
+  async listQueue(tenantId: string, actorId: string, dataScope: DataScope, query: ListParaclinicalQueueQuery): Promise<ListParaclinicalQueueResponse> {
     const allowBeforePayment = await this.clinicConfigReader.getParaclinicalBeforePaymentEnabled(tenantId);
     const date = query.date ?? getVietnamDateString();
     const { startUtc, endUtc } = vietnamDayRange(date);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const items = enrich(await this.orderRepository.listQueueItems(tx, tenantId, { from: startUtc, to: endUtc }));
+      const scopeDepartmentId = await this.resolveScopeDepartment(tx, tenantId, actorId, dataScope);
+      // Scope `department` mà actor chưa gán Khoa/Phòng thì không khớp phòng nào → hàng đợi rỗng (không lỗi).
+      const items = enrich(await this.orderRepository.listQueueItems(tx, tenantId, { from: startUtc, to: endUtc })).filter(
+        (i) => scopeDepartmentId === undefined || (scopeDepartmentId !== null && i.row.technicalService?.departmentId === scopeDepartmentId),
+      );
       const groups = groupQueueItems(items);
 
       const counts = Object.fromEntries(PARACLINICAL_QUEUE_BUCKETS.map((b) => [b, 0])) as Record<ParaclinicalQueueBucket, number>;
@@ -176,12 +192,13 @@ export class ParaclinicalResultService {
   }
 
   /** "Lấy mẫu" / "Gọi vào phòng": các dòng cùng phiếu ORDERED → IN_PROGRESS. */
-  async startItems(tenantId: string, actorId: string, dto: StartParaclinicalItemsRequest, meta: RequestMeta): Promise<StartParaclinicalItemsResponse> {
+  async startItems(tenantId: string, actorId: string, dataScope: DataScope, dto: StartParaclinicalItemsRequest, meta: RequestMeta): Promise<StartParaclinicalItemsResponse> {
     const allowBeforePayment = await this.clinicConfigReader.getParaclinicalBeforePaymentEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const ids = [...new Set(dto.itemIds)];
       const items = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, ids));
       if (items.length !== ids.length) throw new NotFoundException();
+      for (const item of items) await this.assertInDepartmentScope(tx, tenantId, actorId, dataScope, item);
       const orderId = items[0]!.clinicalOrderId;
       if (items.some((i) => i.clinicalOrderId !== orderId)) throw new ParaclinicalItemInvalidStateError('Chỉ lấy mẫu / gọi vào phòng được các dịch vụ cùng một phiếu chỉ định.');
       await this.lockOrder(tx, tenantId, orderId);
@@ -211,14 +228,14 @@ export class ParaclinicalResultService {
   // Màn nhập / duyệt kết quả
   // ---------------------------------------------------------------------------------------------
 
-  async getForm(tenantId: string, actorId: string, itemId: string): Promise<ParaclinicalResultForm> {
-    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.buildForm(tx, tenantId, actorId, itemId));
+  async getForm(tenantId: string, actorId: string, dataScope: DataScope, itemId: string): Promise<ParaclinicalResultForm> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.buildForm(tx, tenantId, actorId, dataScope, itemId));
   }
 
   /** Lưu nháp, hoặc gửi duyệt khi `dto.submit`. Người có quyền `enter` (không cần quyền duyệt). */
-  async save(tenantId: string, actorId: string, itemId: string, dto: SaveParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+  async save(tenantId: string, actorId: string, dataScope: DataScope, itemId: string, dto: SaveParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const group = await this.resolveGroup(tx, tenantId, itemId);
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
       await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
       this.assertEditable(group);
 
@@ -237,14 +254,14 @@ export class ParaclinicalResultService {
           userAgent: meta.userAgent,
         });
       }
-      return this.buildForm(tx, tenantId, actorId, itemId);
+      return this.buildForm(tx, tenantId, actorId, dataScope, itemId);
     });
   }
 
   /** "Duyệt & trả kết quả" (ký): lưu nội dung gửi kèm, kiểm đủ rồi ký mọi kết quả của nhóm trong CÙNG transaction. Người có quyền `approve`. */
-  async approve(tenantId: string, actorId: string, itemId: string, dto: SaveParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+  async approve(tenantId: string, actorId: string, dataScope: DataScope, itemId: string, dto: SaveParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const group = await this.resolveGroup(tx, tenantId, itemId);
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
       await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
       this.assertEditable(group);
 
@@ -266,13 +283,115 @@ export class ParaclinicalResultService {
       const ids = group.map((g) => g.id);
       const moved = await this.orderRepository.transitionStatus(tx, tenantId, ids, ['IN_PROGRESS', 'RESULTED'], 'COMPLETED', actorId);
       if (moved !== ids.length) throw new ParaclinicalItemInvalidStateError('Dịch vụ vừa được người khác xử lý — tải lại.');
-      return this.buildForm(tx, tenantId, actorId, itemId);
+      return this.buildForm(tx, tenantId, actorId, dataScope, itemId);
+    });
+  }
+
+  /** Đường dẫn ký có hạn 60 phút (đủ cho 1 ca làm việc ở màn nhập + in phiếu) — cùng cơ chế `signFileToken` của ảnh đại diện bệnh nhân. */
+  private signImageUrl(tenantId: string, key: string, encryptionKey: string): string {
+    const exp = Math.floor(Date.now() / 1000) + 60 * 60;
+    return `/api/v1/files/${signFileToken({ tenantId, key, exp }, encryptionKey)}`;
+  }
+
+  /**
+   * Thêm ảnh đính kèm (siêu âm, X-quang...) vào kết quả của một dịch vụ đang thực hiện. Kiểm magic-byte (không tin Content-Type của client), ≤ 5 MB, tối đa 8 ảnh;
+   * tạo bản nháp kết quả nếu chưa có. Chỉ khi chưa duyệt (đã duyệt là bản ký — DB còn trigger chặn lần nữa).
+   */
+  async addImage(tenantId: string, actorId: string, dataScope: DataScope, itemId: string, file: { buffer: Buffer; originalname: string }, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+    if (file.buffer.byteLength > PARACLINICAL_IMAGE_MAX_BYTES) throw new InvalidPhotoError('Ảnh vượt quá 5MB, vui lòng chọn ảnh nhỏ hơn.');
+    const extension = sniffImageExtension(file.buffer);
+    if (!extension) throw new InvalidPhotoError('Chỉ nhận ảnh định dạng JPG hoặc PNG.');
+
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
+      await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
+      this.assertEditable(group);
+      const item = group.find((g) => g.id === itemId) ?? group[0]!;
+      if (item.serviceKind === 'LAB') throw new ParaclinicalItemInvalidStateError('Xét nghiệm không có ảnh đính kèm.');
+
+      let [result] = await this.resultRepository.findActiveByItemIds(tx, tenantId, [item.id]);
+      if (!result) {
+        const created = await this.resultRepository.createResult(tx, tenantId, actorId, { clinicalOrderItemId: item.id, descriptionText: null, conclusionText: null, performedBy: actorId, resultedAt: null, approverId: null });
+        result = { ...created, values: [] };
+      }
+      const count = await this.resultRepository.countImages(tx, tenantId, result.id);
+      if (count >= PARACLINICAL_IMAGE_MAX_COUNT) throw new ParaclinicalItemInvalidStateError(`Mỗi kết quả tối đa ${PARACLINICAL_IMAGE_MAX_COUNT} ảnh.`);
+
+      const key = `paraclinical/${result.id}/${randomUUID()}.${extension}`;
+      await this.storage.save(tenantId, key, file.buffer, extension === 'jpg' ? 'image/jpeg' : 'image/png');
+      try {
+        const image = await this.resultRepository.createImage(tx, tenantId, actorId, {
+          resultId: result.id,
+          storageKey: key,
+          fileName: file.originalname.slice(0, 200),
+          contentType: extension === 'jpg' ? 'image/jpeg' : 'image/png',
+          sizeBytes: file.buffer.byteLength,
+          sortOrder: count,
+        });
+        await writeAuditLog(tx, tenantId, { actorId, action: 'paraclinical_result.image_added', entityType: 'paraclinical_result', entityId: result.id, afterJson: { imageId: image.id }, ip: meta.ip, userAgent: meta.userAgent });
+      } catch (err) {
+        await this.storage.delete(tenantId, key); // ghi DB lỗi thì dọn file vừa lưu, không để rác không ai trỏ tới
+        throw err;
+      }
+      return this.buildForm(tx, tenantId, actorId, dataScope, itemId);
+    });
+  }
+
+  /** Gỡ ảnh đính kèm (soft-delete; file giữ lại trong kho để truy vết). Chỉ khi kết quả chưa duyệt. */
+  async removeImage(tenantId: string, actorId: string, dataScope: DataScope, imageId: string, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const image = await this.resultRepository.findImage(tx, tenantId, imageId);
+      if (!image) throw new NotFoundException();
+      const itemId = image.result.clinicalOrderItemId;
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
+      await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
+      this.assertEditable(group);
+      await this.resultRepository.softDeleteImage(tx, tenantId, imageId, actorId, 'removed_by_user');
+      await writeAuditLog(tx, tenantId, { actorId, action: 'paraclinical_result.image_removed', entityType: 'paraclinical_result', entityId: image.resultId, afterJson: { imageId }, ip: meta.ip, userAgent: meta.userAgent });
+      return this.buildForm(tx, tenantId, actorId, dataScope, itemId);
+    });
+  }
+
+  /** Ghi audit mỗi lần in phiếu kết quả (dữ liệu y tế đưa ra giấy) — web tự dựng bản in từ dữ liệu đã tải. Một dòng audit cho mỗi kết quả trong nhóm. */
+  async recordPrint(tenantId: string, actorId: string, dataScope: DataScope, itemId: string, meta: RequestMeta): Promise<void> {
+    await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
+      if (group[0]!.status === 'ORDERED') throw new ParaclinicalItemInvalidStateError('Chưa có kết quả để in.');
+      const results = await this.resultRepository.findActiveByItemIds(tx, tenantId, group.map((g) => g.id));
+      if (results.length === 0) throw new NotFoundException();
+      for (const r of results) {
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'paraclinical_result.printed',
+          entityType: 'paraclinical_result',
+          entityId: r.id,
+          afterJson: { signed: r.signedAt !== null },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+      }
     });
   }
 
   // ---------------------------------------------------------------------------------------------
   // Nội bộ
   // ---------------------------------------------------------------------------------------------
+
+  /**
+   * Phòng thực hiện actor được thấy: `undefined` = không giới hạn (scope global); `null` = scope `department` nhưng chưa gán Khoa/Phòng (không thấy gì);
+   * chuỗi = chỉ thấy dịch vụ do ĐÚNG Khoa/Phòng đó thực hiện (`technical_service.department_id`) — phòng xét nghiệm và phòng chẩn đoán hình ảnh không thấy việc của nhau.
+   */
+  private async resolveScopeDepartment(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dataScope: DataScope): Promise<string | null | undefined> {
+    if (dataScope !== 'department') return undefined;
+    return this.userRepository.findDepartmentId(tx, tenantId, actorId);
+  }
+
+  /** Chặn 404 (không phải 403, đúng multi-tenancy.md) khi dịch vụ không thuộc phòng của actor (scope `department`). */
+  private async assertInDepartmentScope(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dataScope: DataScope, item: EnrichedItem): Promise<void> {
+    const scopeDepartmentId = await this.resolveScopeDepartment(tx, tenantId, actorId, dataScope);
+    if (scopeDepartmentId === undefined) return;
+    if (scopeDepartmentId === null || item.row.technicalService?.departmentId !== scopeDepartmentId) throw new NotFoundException();
+  }
 
   private async lockOrder(tx: Prisma.TransactionClient, tenantId: string, orderId: string): Promise<void> {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${tenantId}:paraclinical:${orderId}`}, 0))`;
@@ -292,10 +411,11 @@ export class ParaclinicalResultService {
   }
 
   /** Nhóm dòng cùng màn nhập với `itemId`: xét nghiệm cùng phiếu + cùng trạng thái + cùng tình trạng thu tiền; dịch vụ khác loại thì đứng một mình. */
-  private async resolveGroup(tx: Prisma.TransactionClient, tenantId: string, itemId: string): Promise<EnrichedItem[]> {
+  private async resolveGroup(tx: Prisma.TransactionClient, tenantId: string, itemId: string, actorId: string, dataScope: DataScope): Promise<EnrichedItem[]> {
     const [anchor] = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, [itemId]));
     if (!anchor) throw new NotFoundException();
     if (anchor.status === 'CANCELLED') throw new NotFoundException();
+    await this.assertInDepartmentScope(tx, tenantId, actorId, dataScope, anchor);
     if (anchor.serviceKind !== 'LAB') return [anchor];
     const siblings = enrich(await this.orderRepository.findQueueItemsByOrder(tx, tenantId, anchor.clinicalOrderId));
     return siblings.filter((s) => s.serviceKind === 'LAB' && s.status === anchor.status && s.paid === anchor.paid);
@@ -306,8 +426,8 @@ export class ParaclinicalResultService {
     return { gender: toGender(patient.gender), ageYears: calculateAgeYears(patient.dob.toISOString()) };
   }
 
-  private async buildForm(tx: Prisma.TransactionClient, tenantId: string, actorId: string, itemId: string): Promise<ParaclinicalResultForm> {
-    const group = await this.resolveGroup(tx, tenantId, itemId);
+  private async buildForm(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dataScope: DataScope, itemId: string): Promise<ParaclinicalResultForm> {
+    const group = await this.resolveGroup(tx, tenantId, itemId, actorId, dataScope);
     const first = group[0]!;
     if (first.status === 'ORDERED') throw new ParaclinicalItemInvalidStateError('Chưa lấy mẫu / gọi vào phòng — thực hiện bước đó trước khi nhập kết quả.');
     const ctx = this.patientContext(first);
@@ -325,12 +445,15 @@ export class ParaclinicalResultService {
       linksByService.set(link.technicalServiceId, list);
     }
     const resultByItem = new Map(results.map((r) => [r.clinicalOrderItemId, r]));
+    const images = await this.resultRepository.listImages(tx, tenantId, results.map((r) => r.id));
+    const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
 
     const sections: ParaclinicalResultSection[] = [];
     for (const item of group) {
       const service = item.row.technicalService!;
       const result = resultByItem.get(item.id) ?? null;
       const specimen = service.specimenTypeCode ? await this.referenceCatalogRepository.findByCategoryAndCode(tx, 'SPECIMEN_TYPE', service.specimenTypeCode) : null;
+      const category = service.categoryCode ? await this.referenceCatalogRepository.findByCategoryAndCode(tx, 'TECH_SERVICE_CATEGORY', service.categoryCode) : null;
       sections.push({
         itemId: item.id,
         technicalServiceId: service.id,
@@ -340,10 +463,12 @@ export class ParaclinicalResultService {
         resultType: service.resultType,
         specimenTypeName: specimen?.name ?? null,
         departmentName: service.department?.name ?? null,
+        categoryName: category?.name ?? null,
         status: item.status,
         indicators: this.buildIndicatorViews(linksByService.get(service.id) ?? [], result, ctx),
         descriptionText: result?.descriptionText ?? null,
         conclusionText: result?.conclusionText ?? null,
+        images: result ? images.filter((img) => img.resultId === result.id).map((img) => ({ id: img.id, fileName: img.fileName, url: this.signImageUrl(tenantId, img.storageKey, encryptionKey) })) : [],
       });
     }
 
@@ -361,7 +486,10 @@ export class ParaclinicalResultService {
       patientName: patient.fullName,
       patientCode: patient.patientCode,
       patientGender: ctx.gender,
+      patientDob: patient.dob.toISOString().slice(0, 10),
+      patientPhone: patient.phone || null,
       ageYears: ctx.ageYears,
+      registeredAt: first.row.order.createdAt.toISOString(),
       doctorName: first.row.order.encounter.doctorId ? (names.get(first.row.order.encounter.doctorId) ?? null) : null,
       collectedAt: first.row.collectedAt?.toISOString() ?? null,
       bucket: deriveQueueBucket(first.status, first.paid, true) as ParaclinicalQueueBucket,

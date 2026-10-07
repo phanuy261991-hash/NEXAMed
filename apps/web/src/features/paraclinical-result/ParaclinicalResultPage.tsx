@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle, Warning } from '@phosphor-icons/react';
+import { CheckCircle, Plus, Trash, Warning } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ParaclinicalResultForm, ParaclinicalResultSection, SaveParaclinicalResultRequest } from '@nexamed/shared';
-import { ApiError } from '../../shared/api/client';
+import { ApiError, resolveApiUrl } from '../../shared/api/client';
 import { formatClockTime } from '../../shared/format/time';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -11,12 +11,14 @@ import { DateInput } from '../../shared/ui/DateInput';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
+import { PrintButton } from '../../shared/print/PrintButton';
 import { Textarea } from '../../shared/ui/Textarea';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useHasPermission } from '../auth/usePermission';
 import { useResultTemplatesQuery } from '../paraclinical/paraclinical.queries';
-import { genderShort, previewFlag, RESULT_STATUS_META, SERVICE_KIND_LABELS } from './paraclinical-result-labels';
-import { useApproveParaclinicalResultMutation, useParaclinicalResultQuery, useSaveParaclinicalResultMutation } from './paraclinical-result.queries';
+import { formatDateTimeVn, genderShort, previewFlag, RESULT_STATUS_META, SERVICE_KIND_LABELS } from './paraclinical-result-labels';
+import { ParaclinicalResultPrintView } from './ParaclinicalResultPrintView';
+import { useApproveParaclinicalResultMutation, useParaclinicalImageMutations, useParaclinicalResultQuery, usePrintParaclinicalResultMutation, useSaveParaclinicalResultMutation } from './paraclinical-result.queries';
 
 interface SectionDraft {
   values: Record<string, { valueText: string; note: string }>;
@@ -79,8 +81,13 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
   const canApprove = useHasPermission('paraclinical_result', 'approve');
   const saveMutation = useSaveParaclinicalResultMutation(itemId);
   const approveMutation = useApproveParaclinicalResultMutation(itemId);
+  const printMutation = usePrintParaclinicalResultMutation(itemId);
+  const imageMutations = useParaclinicalImageMutations(itemId);
 
   const [drafts, setDrafts] = useState<Record<string, SectionDraft>>(() => initDrafts(form));
+  // Bản in lấy từ dữ liệu ĐÃ LƯU ở máy chủ — còn thay đổi chưa lưu thì khoá nút in để phiếu in không lệch màn hình.
+  const [savedJson, setSavedJson] = useState(() => JSON.stringify(initDrafts(form)));
+  const dirty = JSON.stringify(drafts) !== savedJson;
   const initial = useMemo(() => splitVn(form.resultedAt ?? new Date().toISOString()), [form.resultedAt]);
   const [resultDate, setResultDate] = useState(initial.date);
   const [resultTime, setResultTime] = useState(initial.time);
@@ -124,8 +131,10 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
   async function run(action: () => Promise<unknown>, flash: boolean) {
     setError(null);
     setSavedFlash(false);
+    const snapshot = JSON.stringify(drafts);
     try {
       await action();
+      setSavedJson(snapshot);
       if (flash) {
         setSavedFlash(true);
         setTimeout(() => setSavedFlash(false), 2500);
@@ -133,6 +142,11 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Không lưu được. Thử lại sau.');
     }
+  }
+
+  async function handlePrint() {
+    await printMutation.mutateAsync();
+    setTimeout(() => window.print(), 100);
   }
 
   const saveDraft = () => run(() => saveMutation.mutateAsync(buildRequest(false)), true);
@@ -161,11 +175,16 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
             secondary={serviceNames.length === 1 ? [form.sections[0]!.code, form.sections[0]!.specimenTypeName, form.collectedAt ? `Lấy mẫu ${formatClockTime(form.collectedAt)}` : null].filter(Boolean).join(' · ') : serviceNames.join(', ')}
           />
           <InfoBlock label="Bác sĩ chỉ định" primary={form.doctorName ?? '—'} secondary={form.encounterNo ?? ''} />
+          <InfoBlock
+            label={form.sections.some((s) => s.serviceKind === 'LAB') ? 'Thời gian nhận mẫu' : 'Thời gian gọi vào phòng'}
+            primary={form.collectedAt ? formatDateTimeVn(form.collectedAt) : '—'}
+            secondary={`Đăng ký ${formatDateTimeVn(form.registeredAt)}`}
+          />
         </div>
         <StatusBadge tone={statusMeta.tone}>{statusMeta.label}</StatusBadge>
       </div>
 
-      <div className="scroll-hover flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-5 pt-4">
+      <div className="scroll-hover flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-10 pt-4 [&>*]:flex-shrink-0">
         {signed && (
           <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm font-semibold text-emerald-800">
             <CheckCircle size={18} weight="fill" aria-hidden="true" />
@@ -175,7 +194,25 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
         )}
 
         {form.sections.map((section) => (
-          <SectionCard key={section.itemId} section={section} draft={drafts[section.itemId]!} editable={editable} onValue={setValue} onPatch={patchSection} showName={form.sections.length > 1} />
+          <SectionCard
+            key={section.itemId}
+            section={section}
+            draft={drafts[section.itemId]!}
+            editable={editable}
+            onValue={setValue}
+            onPatch={patchSection}
+            showName={form.sections.length > 1}
+            onUploadImages={async (files) => {
+              setError(null);
+              try {
+                for (const file of files) await imageMutations.upload.mutateAsync({ itemId: section.itemId, file });
+              } catch (err) {
+                setError(err instanceof ApiError ? err.message : 'Không tải được ảnh. Thử lại sau.');
+              }
+            }}
+            onRemoveImage={(imageId) => void imageMutations.remove.mutateAsync(imageId).catch((err) => setError(err instanceof ApiError ? err.message : 'Không gỡ được ảnh.'))}
+            imageBusy={imageMutations.upload.isPending || imageMutations.remove.isPending}
+          />
         ))}
 
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -227,6 +264,9 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
           <Button type="button" variant="secondary" onClick={() => navigate('/paraclinical/queue')}>
             {editable ? 'Về hàng đợi' : 'Đóng'}
           </Button>
+          <PrintButton documentType="PARACLINICAL_RESULT" onPrint={() => void handlePrint()} loading={printMutation.isPending} disabled={busy || dirty}>
+            In phiếu kết quả
+          </PrintButton>
           {editable && (
             <Button type="button" variant="secondary" loading={saveMutation.isPending} disabled={busy} onClick={() => void saveDraft()}>
               Lưu nháp
@@ -244,7 +284,72 @@ function ResultForm({ itemId, form }: { itemId: string; form: ParaclinicalResult
           )}
         </div>
       </div>
+      <ParaclinicalResultPrintView form={form} />
     </form>
+  );
+}
+
+/**
+ * Khối "Hình ảnh đính kèm" của kết quả chẩn đoán hình ảnh / thăm dò chức năng (mockup `NhapKetQuaCDHA`): lưới 2 cột ảnh nhỏ (bấm để xem cỡ đầy đủ ở tab mới), "+ Thêm ảnh" chọn nhiều
+ * file JPG/PNG từ máy, nút xoá trên từng ảnh khi còn sửa được. Chưa kết nối PACS — ảnh do người dùng chọn từ máy hoặc chụp màn hình máy siêu âm.
+ */
+function ImagesPanel({ images, editable, busy, onUpload, onRemove }: { images: ParaclinicalResultSection['images']; editable: boolean; busy: boolean; onUpload: (files: File[]) => Promise<void>; onRemove: (imageId: string) => void }) {
+  return (
+    <aside aria-label="Hình ảnh đính kèm" className="w-full flex-shrink-0 lg:w-[300px]">
+      <div className="mb-1.5 text-sm font-semibold text-slate-800">Hình ảnh đính kèm</div>
+      <div className="grid grid-cols-2 gap-2">
+        {images.map((img) => (
+          <div key={img.id} className="group relative aspect-[4/3] overflow-hidden rounded-md border border-slate-200 bg-slate-900">
+            <a href={resolveApiUrl(img.url)} target="_blank" rel="noreferrer" title={img.fileName} className="block h-full w-full">
+              <img src={resolveApiUrl(img.url)} alt={img.fileName} className="h-full w-full object-contain" />
+            </a>
+            {editable && (
+              <button
+                type="button"
+                onClick={() => onRemove(img.id)}
+                disabled={busy}
+                aria-label={`Gỡ ảnh ${img.fileName}`}
+                className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-md bg-rose-600 text-white shadow hover:bg-rose-700 disabled:opacity-60"
+              >
+                <Trash size={14} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        ))}
+        {editable && (
+          <label className={`flex aspect-[4/3] cursor-pointer items-center justify-center gap-1.5 rounded-md border-2 border-dashed border-slate-300 text-sm font-semibold text-slate-600 hover:border-blue-400 hover:bg-blue-50 ${busy ? 'pointer-events-none opacity-60' : ''}`}>
+            <input
+              type="file"
+              accept="image/jpeg,image/png"
+              multiple
+              className="hidden"
+              aria-label="Thêm ảnh đính kèm"
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                e.target.value = '';
+                if (files.length > 0) void onUpload(files);
+              }}
+            />
+            <Plus size={14} weight="bold" aria-hidden="true" />
+            {busy ? 'Đang tải…' : 'Thêm ảnh'}
+          </label>
+        )}
+      </div>
+      <p className="mt-2 text-[11.5px] text-slate-500">Ảnh chọn từ máy (JPG/PNG, ≤ 5 MB, tối đa 8 ảnh) hoặc chụp màn hình máy siêu âm. Chưa kết nối PACS.</p>
+    </aside>
+  );
+}
+
+/** Dòng nhãn của ô nhập (trái) kèm điều khiển phụ (phải, ví dụ chọn mẫu) — thay cho nhãn của `Textarea` (đã ẩn bằng `hideLabel`). */
+function FieldHeader({ label, required, htmlFor, children }: { label: string; required: boolean; htmlFor: string; children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-9 items-center justify-between gap-3">
+      <label htmlFor={htmlFor} className="text-sm font-semibold text-slate-800">
+        {label}
+        {required && <span className="text-rose-500"> *</span>}
+      </label>
+      {children}
+    </div>
   );
 }
 
@@ -271,6 +376,9 @@ function SectionCard({
   onValue,
   onPatch,
   showName,
+  onUploadImages,
+  onRemoveImage,
+  imageBusy,
 }: {
   section: ParaclinicalResultSection;
   draft: SectionDraft;
@@ -278,6 +386,9 @@ function SectionCard({
   onValue: (section: ParaclinicalResultSection, indicatorId: string, patch: Partial<{ valueText: string; note: string }>) => void;
   onPatch: (itemId: string, patch: Partial<Pick<SectionDraft, 'description' | 'conclusion'>>) => void;
   showName: boolean;
+  onUploadImages: (files: File[]) => Promise<void>;
+  onRemoveImage: (imageId: string) => void;
+  imageBusy: boolean;
 }) {
   const wantsIndicators = section.resultType === 'INDICATORS' || section.resultType === 'BOTH';
   const wantsNarrative = section.resultType === 'NARRATIVE' || section.resultType === 'BOTH';
@@ -292,6 +403,23 @@ function SectionCard({
       ...(t.conclusionText ? { conclusion: t.conclusionText } : {}),
     });
   }
+
+  const templatePicker =
+    editable && templates.length > 0 ? (
+      <div className="flex items-center gap-2.5">
+        <span className="hidden text-xs text-slate-500 sm:inline">Chèn xong sửa lại được bình thường</span>
+        <div className="w-64">
+          <Combobox
+            id={`pr-tpl-${section.itemId}`}
+            value=""
+            onChange={insertTemplate}
+            options={[{ value: '', label: 'Chèn mẫu…' }, ...templates.map((t) => ({ value: t.id, label: `Chèn mẫu: ${t.name}` }))]}
+            dense
+            floating
+          />
+        </div>
+      </div>
+    ) : null;
 
   /** Enter trong ô kết quả → nhảy sang ô kết quả kế tiếp (nhập nhanh); ô cuối thì để Enter gửi form. */
   function focusNext(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -388,35 +516,26 @@ function SectionCard({
         </div>
       )}
 
-      <div className="flex flex-col gap-3 p-4">
-        {editable && templates.length > 0 && (
-          <div className="flex items-center justify-end gap-2.5">
-            <span className="text-xs text-slate-500">Chèn xong sửa lại được bình thường</span>
-            <div className="w-64">
-              <Combobox
-                id={`pr-tpl-${section.itemId}`}
-                value=""
-                onChange={insertTemplate}
-                options={[{ value: '', label: 'Chèn mẫu…' }, ...templates.map((t) => ({ value: t.id, label: `Chèn mẫu: ${t.name}` }))]}
-                placeholder="Chèn mẫu…"
-                dense
-                floating
-              />
-            </div>
-          </div>
-        )}
+      <div className={section.serviceKind === 'LAB' ? 'p-4' : 'flex flex-col gap-4 p-4 lg:flex-row'}>
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <FieldHeader label={wantsNarrative ? 'Mô tả hình ảnh / kết quả' : 'Nhận xét của người thực hiện'} required={wantsNarrative} htmlFor={wantsNarrative ? `pr-desc-${section.itemId}` : `pr-concl-${section.itemId}`}>
+          {templatePicker}
+        </FieldHeader>
         {wantsNarrative && (
-          <Textarea id={`pr-desc-${section.itemId}`} label="Mô tả hình ảnh / kết quả" required rows={wantsIndicators ? 4 : 9} value={draft.description} disabled={!editable} onChange={(e) => onPatch(section.itemId, { description: e.target.value })} />
+          <Textarea id={`pr-desc-${section.itemId}`} label="Mô tả hình ảnh / kết quả" hideLabel required rows={wantsIndicators ? 4 : 9} value={draft.description} disabled={!editable} onChange={(e) => onPatch(section.itemId, { description: e.target.value })} />
         )}
         <Textarea
           id={`pr-concl-${section.itemId}`}
           label={wantsNarrative ? 'Kết luận' : 'Nhận xét của người thực hiện'}
+          hideLabel={!wantsNarrative}
           required={wantsNarrative}
           rows={wantsNarrative ? 3 : 2}
           value={draft.conclusion}
           disabled={!editable}
           onChange={(e) => onPatch(section.itemId, { conclusion: e.target.value })}
         />
+        </div>
+        {section.serviceKind !== 'LAB' && <ImagesPanel images={section.images} editable={editable} busy={imageBusy} onUpload={onUploadImages} onRemove={onRemoveImage} />}
       </div>
     </section>
   );

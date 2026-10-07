@@ -108,6 +108,18 @@ export const paraclinicalResultValueViewSchema = z.object({
 });
 export type ParaclinicalResultValueView = z.infer<typeof paraclinicalResultValueViewSchema>;
 
+export const paraclinicalResultImageSchema = z.object({
+  id: z.string().uuid(),
+  fileName: z.string(),
+  /** Đường dẫn ký có hạn (`/api/v1/files/<token>`) — dùng thẳng làm `src` của thẻ ảnh. */
+  url: z.string(),
+});
+export type ParaclinicalResultImage = z.infer<typeof paraclinicalResultImageSchema>;
+
+/** Giới hạn ảnh đính kèm: số ảnh/kết quả và dung lượng mỗi ảnh. */
+export const PARACLINICAL_IMAGE_MAX_COUNT = 8;
+export const PARACLINICAL_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
 export const paraclinicalResultSectionSchema = z.object({
   itemId: z.string().uuid(),
   technicalServiceId: z.string().uuid(),
@@ -117,11 +129,15 @@ export const paraclinicalResultSectionSchema = z.object({
   resultType: technicalServiceResultTypeSchema,
   specimenTypeName: z.string().nullable(),
   departmentName: z.string().nullable(),
+  /** Tên Nhóm dịch vụ (HUYẾT HỌC, SINH HOÁ...) — tiêu đề nhóm lĩnh vực trên phiếu in; `null` nếu chưa phân nhóm. */
+  categoryName: z.string().nullable(),
   /** Trạng thái dòng chỉ định (IN_PROGRESS / RESULTED / COMPLETED). */
   status: z.enum(['ORDERED', 'IN_PROGRESS', 'RESULTED', 'COMPLETED', 'CANCELLED']),
   indicators: z.array(paraclinicalResultValueViewSchema),
   descriptionText: z.string().nullable(),
   conclusionText: z.string().nullable(),
+  /** Ảnh đính kèm (siêu âm, X-quang...); rỗng với xét nghiệm. */
+  images: z.array(paraclinicalResultImageSchema),
 });
 export type ParaclinicalResultSection = z.infer<typeof paraclinicalResultSectionSchema>;
 
@@ -135,7 +151,12 @@ export const paraclinicalResultFormSchema = z.object({
   patientName: z.string(),
   patientCode: z.string(),
   patientGender: z.enum(['male', 'female', 'other']).nullable(),
+  /** Ngày sinh `YYYY-MM-DD` và điện thoại — in trên phiếu kết quả. */
+  patientDob: z.string(),
+  patientPhone: z.string().nullable(),
   ageYears: z.number().int().nullable(),
+  /** Lúc bác sĩ chỉ định (mốc "Đăng ký" trên phiếu in). */
+  registeredAt: z.string(),
   doctorName: z.string().nullable(),
   /** Lúc lấy mẫu / gọi vào phòng. */
   collectedAt: z.string().nullable(),

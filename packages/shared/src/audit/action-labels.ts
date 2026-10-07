@@ -143,6 +143,9 @@ const ACTION_LABELS: Record<string, string> = {
   'paraclinical_result.submitted': 'Gửi duyệt kết quả cận lâm sàng',
   'paraclinical_result.approved': 'Duyệt và trả kết quả cận lâm sàng',
   'paraclinical_result.viewed': 'Xem kết quả cận lâm sàng',
+  'paraclinical_result.printed': 'In phiếu kết quả cận lâm sàng',
+  'paraclinical_result.image_added': 'Thêm ảnh đính kèm kết quả cận lâm sàng',
+  'paraclinical_result.image_removed': 'Gỡ ảnh đính kèm kết quả cận lâm sàng',
 
   // Bổ sung rà soát log (2026-10-07): các action dưới đây đã ghi audit từ trước nhưng thiếu nhãn tiếng Việt
   // (hiện nguyên văn dạng kỹ thuật ở màn Nhật ký). Test `audit-labels-coverage.spec.ts` chặn tái diễn.

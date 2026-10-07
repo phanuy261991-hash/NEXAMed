@@ -86,7 +86,7 @@ export function Combobox({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-  const [anchor, setAnchor] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [anchor, setAnchor] = useState<{ left: number; width: number; rectTop: number; rectBottom: number } | null>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   const selected = options.find((o) => o.value === value) ?? null;
@@ -128,7 +128,7 @@ export function Combobox({
     if (!open || !floating) return;
     function measure() {
       const rect = containerRef.current?.getBoundingClientRect();
-      if (rect) setAnchor({ left: rect.left, top: rect.bottom + 4, width: rect.width });
+      if (rect) setAnchor({ left: rect.left, width: rect.width, rectTop: rect.top, rectBottom: rect.bottom });
     }
     measure();
     window.addEventListener('scroll', measure, true);
@@ -205,9 +205,22 @@ export function Combobox({
   // thô, gắn icon đè lên sẽ đè cả lên ký tự đầu người dùng đang gõ.
   const showLeadingIcon = !open && Boolean(selected?.icon);
 
-  const panelStyle: CSSProperties = floating
-    ? { position: 'fixed', left: anchor?.left, top: anchor?.top, width: anchor?.width, maxHeight: ROW_HEIGHT_PX * VISIBLE_ROWS + 8, zIndex: 60 }
-    : { maxHeight: ROW_HEIGHT_PX * VISIBLE_ROWS + 8 };
+  /**
+   * Panel nổi (`floating`): mặc định mở BÊN DƯỚI ô; chỉ khi phía dưới không đủ chỗ (ô gần mép dưới màn hình ngắn, hoặc sát thanh nút cuối trang) mà phía trên rộng hơn thì LẬT
+   * LÊN TRÊN, và luôn giới hạn chiều cao theo khoảng trống còn lại — không để danh sách bị cắt khỏi màn hình (bug thật: ô "Bác sĩ duyệt kết quả"/"Chèn mẫu" ở màn nhập kết quả).
+   */
+  const fullHeight = Math.min(Math.max(filtered.length + (showCreateRow ? 1 : 0), 1), VISIBLE_ROWS) * ROW_HEIGHT_PX + 8;
+  let panelStyle: CSSProperties = { maxHeight: ROW_HEIGHT_PX * VISIBLE_ROWS + 8 };
+  if (floating && anchor) {
+    const margin = 12;
+    const spaceBelow = window.innerHeight - anchor.rectBottom - margin;
+    const spaceAbove = anchor.rectTop - margin;
+    const openUp = spaceBelow < fullHeight && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(96, Math.min(ROW_HEIGHT_PX * VISIBLE_ROWS + 8, openUp ? spaceAbove : spaceBelow));
+    panelStyle = openUp
+      ? { position: 'fixed', left: anchor.left, bottom: window.innerHeight - anchor.rectTop + 4, width: anchor.width, maxHeight, zIndex: 60 }
+      : { position: 'fixed', left: anchor.left, top: anchor.rectBottom + 4, width: anchor.width, maxHeight, zIndex: 60 };
+  }
 
   const panel = (
     <ul

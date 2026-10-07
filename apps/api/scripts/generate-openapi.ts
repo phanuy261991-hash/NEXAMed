@@ -4955,6 +4955,55 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/paraclinical/items/{itemId}/result/print',
+  tags: ['paraclinical-result'],
+  summary: 'Cận lâm sàng GĐ4 — ghi audit mỗi lần in phiếu kết quả (web tự dựng bản in từ dữ liệu đã tải)',
+  security: [{ bearerAuth: [] }],
+  request: { params: paraclinicalItemParams },
+  responses: {
+    200: jsonResponse('Đã ghi audit', envelope(z.object({ ok: z.boolean() }))),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền paraclinical_result.read'),
+    404: errorResponse('Không tìm thấy kết quả'),
+    409: errorResponse('Chưa lấy mẫu / gọi vào phòng'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/paraclinical/items/{itemId}/images',
+  tags: ['paraclinical-result'],
+  summary: 'Cận lâm sàng GĐ4 — thêm ảnh đính kèm (multipart "file", JPG/PNG ≤ 5MB, tối đa 8 ảnh) vào kết quả đang thực hiện; trả lại form kết quả',
+  security: [{ bearerAuth: [] }],
+  request: { params: paraclinicalItemParams },
+  responses: {
+    200: jsonResponse('Đã thêm ảnh', envelope(getParaclinicalResultResponseSchema)),
+    400: errorResponse('Thiếu file hoặc ảnh không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền paraclinical_result.enter'),
+    404: errorResponse('Không tìm thấy dòng chỉ định'),
+    409: errorResponse('Đã duyệt/chưa lấy mẫu, xét nghiệm không có ảnh hoặc quá 8 ảnh'),
+  },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/paraclinical/images/{imageId}',
+  tags: ['paraclinical-result'],
+  summary: 'Cận lâm sàng GĐ4 — gỡ ảnh đính kèm (soft-delete) khỏi kết quả chưa duyệt; trả lại form kết quả',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ imageId: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Đã gỡ ảnh', envelope(getParaclinicalResultResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền paraclinical_result.enter'),
+    404: errorResponse('Không tìm thấy ảnh'),
+    409: errorResponse('Kết quả đã duyệt (bản ký)'),
+  },
+});
+
 // Thêm hàng loạt vào bảng giá: theo nhóm + nhập Excel (docs/DECISIONS.md #212, yêu cầu chủ dự án 07/10/2026)
 registry.registerPath({
   method: 'get',

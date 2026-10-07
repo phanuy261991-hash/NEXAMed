@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ListParaclinicalQueueQuery, SaveParaclinicalResultRequest, StartParaclinicalItemsRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { approveParaclinicalResult, getParaclinicalResult, listParaclinicalQueue, saveParaclinicalResult, startParaclinicalItems } from './paraclinical-result.api';
+import { approveParaclinicalResult, deleteParaclinicalImage, getParaclinicalResult, listParaclinicalQueue, recordParaclinicalResultPrint, saveParaclinicalResult, startParaclinicalItems, uploadParaclinicalImage } from './paraclinical-result.api';
 
 /** Cận lâm sàng GĐ4 đợt 1 — Hàng đợi & kết quả (docs/DECISIONS.md #212). */
 
@@ -61,4 +61,18 @@ export function useApproveParaclinicalResultMutation(itemId: string) {
       invalidateQueue();
     },
   });
+}
+
+export function usePrintParaclinicalResultMutation(itemId: string) {
+  return useMutation({ mutationFn: () => recordParaclinicalResultPrint(itemId) });
+}
+
+/** Thêm / gỡ ảnh đính kèm của màn nhập đang mở (`pageItemId`); form trả về thay luôn dữ liệu màn hình. */
+export function useParaclinicalImageMutations(pageItemId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  const apply = (data: Awaited<ReturnType<typeof uploadParaclinicalImage>>) => queryClient.setQueryData(queryKey(tenantId, 'paraclinical', 'result', pageItemId), data);
+  const upload = useMutation({ mutationFn: ({ itemId, file }: { itemId: string; file: File }) => uploadParaclinicalImage(itemId, file), onSuccess: apply });
+  const remove = useMutation({ mutationFn: (imageId: string) => deleteParaclinicalImage(imageId), onSuccess: apply });
+  return { upload, remove };
 }

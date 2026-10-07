@@ -5,6 +5,8 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
   /** Form nhiều ô ngắn trong cùng 1 khung (ví dụ "Thông tin khám lâm sàng") — chữ/khoảng đệm nhỏ hơn ~50%. */
   dense?: boolean;
+  /** Ẩn nhãn trên màn hình (vẫn đọc được bằng screen reader) — dùng khi nơi gọi tự dựng dòng nhãn kèm điều khiển phụ bên phải. */
+  hideLabel?: boolean;
 }
 
 /**
@@ -13,10 +15,10 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
  * hình khám — đúng ngưỡng trích xuất theo CLAUDE.md. Token giá trị đậm/nhãn nhạt theo
  * .claude/docs/ui-guidelines.md mục 4.1c.
  */
-export function Textarea({ id, label, required, dense = false, className = '', ...rest }: TextareaProps) {
+export function Textarea({ id, label, required, dense = false, hideLabel = false, className = '', ...rest }: TextareaProps) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-semibold text-slate-800">
+      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'mb-1 block text-sm font-semibold text-slate-800'}>
         {label}
         {required && <span className="text-rose-500"> *</span>}
       </label>

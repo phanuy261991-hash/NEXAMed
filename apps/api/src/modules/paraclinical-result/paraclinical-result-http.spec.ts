@@ -209,6 +209,61 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       expect((await http().post(`${resultUrl(itemId)}/approve`).set(authed(doctorToken)).send(body)).status).toBe(200);
     });
 
+    it('phân quyền theo phòng: vai trò scope "department" chỉ thấy/xử lý dịch vụ do ĐÚNG Khoa/Phòng của mình thực hiện (xét nghiệm và CĐHA không thấy việc của nhau); chưa gán phòng → rỗng; global thấy hết', async () => {
+      const tenantId = fixture.tenantA.id;
+      const makeDept = async (name: string) => (await privileged.department.create({ data: { tenantId, name, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } })).id;
+      const labDept = await makeDept('Phòng xét nghiệm (test)');
+      const imgDept = await makeDept('Phòng CĐHA (test)');
+
+      // Vai trò tuỳ biến: paraclinical_result.read/enter ở scope "department".
+      const created = await http().post('/api/v1/roles').set(authed(adminToken)).send({ name: `KTV theo phòng ${randomUUID().slice(0, 6)}` });
+      expect(created.status, JSON.stringify(created.body)).toBe(200);
+      const roleId = created.body.data.id as string;
+      const matrix = await http().get(`/api/v1/roles/${roleId}/permissions`).set(authed(adminToken));
+      const perm = (key: string) => (matrix.body.data.permissions as { permissionId: string; module: string; action: string }[]).find((x) => `${x.module}.${x.action}` === key)!.permissionId;
+      const saved = await http()
+        .put(`/api/v1/roles/${roleId}/permissions`)
+        .set(authed(adminToken))
+        .send({ version: matrix.body.data.role.version, entries: ['paraclinical_result.read', 'paraclinical_result.enter'].map((k) => ({ permissionId: perm(k), dataScope: 'department' })) });
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+
+      const makeUser = async (departmentId: string | null) => {
+        const username = `e2e-dept-${randomUUID()}`;
+        const user = await privileged.userAccount.create({
+          data: { tenantId, username, passwordHash: await argon2.hash(password, { type: argon2.argon2id }), fullName: 'KTV phòng', departmentId, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+        });
+        await privileged.userRole.create({ data: { tenantId, userId: user.id, roleId, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+        const login = await http().post('/api/v1/auth/login').send({ tenantId, username, password });
+        return login.body.data.accessToken as string;
+      };
+      const labToken = await makeUser(labDept);
+      const imgToken = await makeUser(imgDept);
+      const noDeptToken = await makeUser(null);
+
+      const labSvc = await createService({ name: `XN phòng riêng ${randomUUID().slice(0, 4)}`, serviceKind: 'LAB', departmentId: labDept, indicators: [{ indicatorId: glucoseIndicatorId }] });
+      const imgSvc = await createService({ name: `SA phòng riêng ${randomUUID().slice(0, 4)}`, serviceKind: 'IMAGING', departmentId: imgDept });
+      const { encounterId } = await prepareEncounterInConsultation();
+      const placed = await order(encounterId, [labSvc, imgSvc]);
+      await payAll(encounterId);
+      const labItem = placed.items.find((i) => i.name.startsWith('XN phòng riêng'))!;
+      const imgItem = placed.items.find((i) => i.name.startsWith('SA phòng riêng'))!;
+
+      const kinds = async (token: string) => (await queue(token)).items.filter((r) => r.orderNo === placed.orderNo).map((r) => r.serviceKind).sort();
+      expect(await kinds(labToken)).toEqual(['LAB']);
+      expect(await kinds(imgToken)).toEqual(['IMAGING']);
+      expect(await kinds(noDeptToken)).toEqual([]);
+      expect(await kinds(adminToken)).toEqual(['IMAGING', 'LAB']);
+
+      // Việc của phòng khác: 404 (không phải 403) ở mọi thao tác.
+      expect((await start(labToken, [imgItem.id])).status).toBe(404);
+      expect((await http().get(resultUrl(imgItem.id)).set(authed(labToken))).status).toBe(404);
+      expect((await start(noDeptToken, [labItem.id])).status).toBe(404);
+      // Việc của phòng mình: làm được.
+      expect((await start(labToken, [labItem.id])).status).toBe(200);
+      expect((await http().get(resultUrl(labItem.id)).set(authed(labToken))).status).toBe(200);
+      expect((await http().get(resultUrl(labItem.id)).set(authed(imgToken))).status).toBe(404);
+    });
+
     it('cách ly tenant: tenant B không mở được kết quả của tenant A (404) và không thấy trong hàng đợi', async () => {
       const { encounterId } = await prepareEncounterInConsultation();
       const placed = await order(encounterId, [glucoseId]);
@@ -416,6 +471,66 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
 
       const actions = (await privileged.auditLog.findMany({ where: { tenantId: fixture.tenantA.id, entityType: 'paraclinical_result' }, select: { action: true } })).map((a) => a.action);
       expect(actions).toEqual(expect.arrayContaining(['paraclinical_result.saved', 'paraclinical_result.approved']));
+
+      // In phiếu kết quả: chỉ có sau khi đã có kết quả; ghi audit; form trả đủ thông tin cho bản in (ngày sinh, mốc đăng ký, nhóm).
+      const printed = await http().post(`${resultUrl(row.key)}/print`).set(authed(nurseToken)).send({});
+      expect(printed.status, JSON.stringify(printed.body)).toBe(200);
+      const audit = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, action: 'paraclinical_result.printed' } });
+      expect(audit).not.toBeNull();
+      const full = (await form(row.key)) as unknown as { patientDob: string; registeredAt: string; sections: { categoryName: string | null }[] };
+      expect(full.patientDob).toBe('1985-01-01');
+      expect(full.registeredAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(full.sections[0]).toHaveProperty('categoryName');
+      expect((await http().post(`${resultUrl(randomUUID())}/print`).set(authed(nurseToken)).send({})).status).toBe(404);
+    });
+
+    it('ảnh đính kèm: thêm (magic-byte JPG/PNG) → có đường dẫn ký xem được; gỡ; sai định dạng → 4xx; xét nghiệm không có ảnh; đã duyệt → 409 và DB chặn', async () => {
+      const { encounterId } = await prepareEncounterInConsultation();
+      const placed = await order(encounterId, [ultrasoundId, glucoseId]);
+      await payAll(encounterId);
+      const imgItem = placed.items.find((i) => i.name.startsWith('Siêu âm'))!;
+      const labItem = placed.items.find((i) => i.name.startsWith('Glucose'))!;
+      await start(nurseToken, [imgItem.id]);
+      await start(nurseToken, [labItem.id]);
+
+      const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 1)]);
+      const upload = (itemId: string, buffer: Buffer, name = 'sieu-am.png', token = nurseToken) => http().post(`/api/v1/paraclinical/items/${itemId}/images`).set(authed(token)).attach('file', buffer, name);
+
+      const ok = await upload(imgItem.id, png);
+      expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+      const images = ok.body.data.form.sections[0].images as { id: string; fileName: string; url: string }[];
+      expect(images).toHaveLength(1);
+      expect(images[0]!.url).toMatch(/^\/api\/v1\/files\//);
+      const served = await http().get(images[0]!.url);
+      expect(served.status).toBe(200);
+      expect(served.headers['content-type']).toContain('image/png');
+
+      // Sai định dạng / không có file / quyền / xét nghiệm không có ảnh.
+      expect((await upload(imgItem.id, Buffer.from('không phải ảnh'), 'x.png')).status).toBeGreaterThanOrEqual(400);
+      expect((await http().post(`/api/v1/paraclinical/items/${imgItem.id}/images`).set(authed(nurseToken))).status).toBe(400);
+      expect((await upload(imgItem.id, png, 'a.png', receptionistToken)).status).toBe(403);
+      expect((await upload(labItem.id, png)).status).toBe(409);
+
+      // Gỡ ảnh.
+      const removed = await http().delete(`/api/v1/paraclinical/images/${images[0]!.id}`).set(authed(nurseToken));
+      expect(removed.status, JSON.stringify(removed.body)).toBe(200);
+      expect(removed.body.data.form.sections[0].images).toHaveLength(0);
+
+      // Thêm lại rồi duyệt → bản ký: không thêm/gỡ được nữa (service 409 + trigger DB).
+      const again = await upload(imgItem.id, png);
+      const keptId = (again.body.data.form.sections[0].images as { id: string }[])[0]!.id;
+      const approved = await http()
+        .post(`${resultUrl(imgItem.id)}/approve`)
+        .set(authed(doctorToken))
+        .send({ sections: [{ itemId: imgItem.id, values: [], descriptionText: 'Gan bình thường.', conclusionText: 'Không bất thường.' }] });
+      expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+      expect(approved.body.data.form.sections[0].images).toHaveLength(1);
+      expect((await upload(imgItem.id, png)).status).toBe(409);
+      expect((await http().delete(`/api/v1/paraclinical/images/${keptId}`).set(authed(nurseToken))).status).toBe(409);
+      await expect(privileged.paraclinicalResultImage.updateMany({ where: { tenantId: fixture.tenantA.id, id: keptId }, data: { deletedAt: new Date() } })).rejects.toThrow(/đã ký/);
+
+      const audit = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, action: 'paraclinical_result.image_added' } });
+      expect(audit).not.toBeNull();
     });
 
     it('GET kết quả ghi audit "xem"; chưa lấy mẫu mở màn nhập → 409', async () => {

@@ -1,5 +1,6 @@
 import type {
   ClinicalOrderDetail,
+  ParaclinicalResultForm,
   CashierShiftDetail,
   CashVoucher,
   ClinicPrintHeader,
@@ -344,6 +345,71 @@ export const SAMPLE_STOCK_TRANSFER: StockTransferDetail = {
   rejectionReason: null,
   version: 1,
   lines: [{ id: ID(910), drugId: ID(101), drugCode: 'THUOC-0012', drugName: 'Paracetamol 500mg', isBatchManaged: true, batchId: ID(811), batchNo: 'L2610A', expiryDate: '2028-09-30', quantityShipped: 50, quantityReceived: 50, varianceNote: null }],
+};
+
+/** Kết quả cận lâm sàng mẫu (Cận lâm sàng GĐ4 đợt 2, #214) — dữ liệu minh hoạ cho bản xem trước ở Quản lý mẫu in. */
+const SAMPLE_REFERENCE = { sex: 'ANY', ageFromYears: 0, ageToYears: null, lowInclusive: true, highInclusive: true, normalText: null } as const;
+export const SAMPLE_PARACLINICAL_RESULT: ParaclinicalResultForm = {
+  orderNo: 'CLS2610000309',
+  encounterId: '00000000-0000-4000-8000-0000000000e1',
+  encounterNo: 'LK2609000921',
+  patientName: 'Nguyễn Thị Bảy',
+  patientCode: 'BN2609000884',
+  patientGender: 'female',
+  patientDob: '1959-04-12',
+  patientPhone: '0903 123 456',
+  ageYears: 67,
+  registeredAt: '2026-10-06T01:41:00.000Z',
+  doctorName: 'BS. Đặng Quốc Hưng',
+  collectedAt: '2026-10-06T02:02:00.000Z',
+  bucket: 'COMPLETED',
+  performedById: null,
+  performedByName: 'KTV. Hoàng Thị Mai',
+  resultedAt: '2026-10-06T03:46:00.000Z',
+  approverId: null,
+  approvers: [],
+  signedAt: '2026-10-06T03:50:00.000Z',
+  signedByName: 'BS. Lê Thanh Tùng',
+  sections: [
+    {
+      itemId: 'r1',
+      technicalServiceId: 'r1',
+      code: 'XN0001',
+      name: 'Tổng phân tích tế bào máu ngoại vi bằng hệ thống tự động',
+      serviceKind: 'LAB',
+      resultType: 'INDICATORS',
+      specimenTypeName: 'Máu EDTA',
+      departmentName: 'P. Xét nghiệm',
+      categoryName: 'Huyết học',
+      images: [],
+      status: 'COMPLETED',
+      descriptionText: null,
+      conclusionText: 'Hình ảnh hồng cầu nhỏ, nhược sắc. Đề nghị định lượng Ferritin huyết thanh.',
+      indicators: [
+        { indicatorId: 'a1', code: 'CS0002', name: 'Bạch Cầu', abbreviation: 'WBC', unit: '10³/µL', valueType: 'NUMBER', decimals: 2, choiceOptions: [], reference: { ...SAMPLE_REFERENCE, lowValue: 4, highValue: 10, displayText: null }, referenceText: '4 - 10', valueText: '7.90', note: null, interpretationText: null, flag: 'NORMAL' },
+        { indicatorId: 'a2', code: 'CS0007', name: 'Huyết Sắc Tố', abbreviation: 'HGB', unit: 'g/L', valueType: 'NUMBER', decimals: 0, choiceOptions: [], reference: { ...SAMPLE_REFERENCE, lowValue: 120, highValue: 160, displayText: null }, referenceText: '120 - 160', valueText: '104', note: null, interpretationText: 'Thiếu máu nếu thấp.', flag: 'LOW' },
+        { indicatorId: 'a3', code: 'CS0011', name: 'Tiểu Cầu', abbreviation: 'PLT', unit: '10³/µL', valueType: 'NUMBER', decimals: 0, choiceOptions: [], reference: { ...SAMPLE_REFERENCE, lowValue: 150, highValue: 419, displayText: null }, referenceText: '150 - 419', valueText: '438', note: null, interpretationText: null, flag: 'HIGH' },
+      ],
+    },
+    {
+      itemId: 'r2',
+      technicalServiceId: 'r2',
+      code: 'XN0014',
+      name: 'Định lượng Glucose lúc đói [Huyết tương]',
+      serviceKind: 'LAB',
+      resultType: 'INDICATORS',
+      specimenTypeName: 'Huyết tương NaF',
+      departmentName: 'P. Xét nghiệm',
+      categoryName: 'Sinh hoá',
+      images: [],
+      status: 'COMPLETED',
+      descriptionText: null,
+      conclusionText: null,
+      indicators: [
+        { indicatorId: 'b1', code: 'CS0031', name: 'Glucose', abbreviation: null, unit: 'mmol/L', valueType: 'NUMBER', decimals: 2, choiceOptions: [], reference: { ...SAMPLE_REFERENCE, lowValue: 3.9, highValue: 5.5, displayText: 'Bình thường: 3.9 - 5.5\nTiền tiểu đường: 5.6 - 6.9\nTiểu đường: ≥ 7' }, referenceText: 'Bình thường: 3.9 - 5.5\nTiền tiểu đường: 5.6 - 6.9\nTiểu đường: ≥ 7', valueText: '4.66', note: null, interpretationText: null, flag: 'NORMAL' },
+      ],
+    },
+  ],
 };
 
 /** Phiếu chỉ định cận lâm sàng mẫu (Cận lâm sàng GĐ3, #212) — dữ liệu minh hoạ cho bản xem trước ở Quản lý mẫu in. */
