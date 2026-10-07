@@ -4,7 +4,7 @@ import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { RequireAnyPermissionRoute, RequireDoctorQueueRoute, RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS } from '../features/auth/admin-permissions';
+import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS, PRICE_LIST_ADMIN_PERMISSIONS } from '../features/auth/admin-permissions';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { AppShell } from '../shared/layout/AppShell';
 import { NotFoundPage } from './NotFoundPage';
@@ -101,6 +101,9 @@ const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage
 const CatalogParaclinicalPage = lazy(() =>
   import('../features/paraclinical/CatalogParaclinicalPage').then((m) => ({ default: m.CatalogParaclinicalPage })),
 );
+// Cận lâm sàng GĐ2 (docs/DECISIONS.md #212) — "Bảng giá" có thời hạn: danh sách + Tra thử giá, và trang chi tiết/tạo.
+const PriceListPage = lazy(() => import('../features/pricing/PriceListPage').then((m) => ({ default: m.PriceListPage })));
+const PriceListDetailPage = lazy(() => import('../features/pricing/PriceListDetailPage').then((m) => ({ default: m.PriceListDetailPage })));
 const CatalogClinicalPage = lazy(() =>
   import('../features/catalog-clinical/CatalogClinicalPage').then((m) => ({ default: m.CatalogClinicalPage })),
 );
@@ -213,6 +216,22 @@ export const router = createBrowserRouter([
         element: (
           <RequireAnyPermissionRoute permissions={PARACLINICAL_CATALOG_PERMISSIONS}>
             <CatalogParaclinicalPage />
+          </RequireAnyPermissionRoute>
+        ),
+      },
+      {
+        path: 'admin/price-lists',
+        element: (
+          <RequireAnyPermissionRoute permissions={PRICE_LIST_ADMIN_PERMISSIONS}>
+            <PriceListPage />
+          </RequireAnyPermissionRoute>
+        ),
+      },
+      {
+        path: 'admin/price-lists/:priceListId',
+        element: (
+          <RequireAnyPermissionRoute permissions={PRICE_LIST_ADMIN_PERMISSIONS}>
+            <PriceListDetailPage />
           </RequireAnyPermissionRoute>
         ),
       },

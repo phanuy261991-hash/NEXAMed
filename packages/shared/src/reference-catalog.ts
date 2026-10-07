@@ -74,6 +74,8 @@ export const referenceCatalogCategorySchema = z.enum([
   // phẩm (Máu EDTA/Nước tiểu...). Không seed cứng, mã tự sinh.
   'TECH_SERVICE_CATEGORY',
   'SPECIMEN_TYPE',
+  // Cận lâm sàng GĐ2 (docs/DECISIONS.md #212) — Đơn vị kết quả xét nghiệm (g/L, mmol/L...), seed sẵn đơn vị phổ biến, mã tự sinh.
+  'LAB_RESULT_UNIT',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 

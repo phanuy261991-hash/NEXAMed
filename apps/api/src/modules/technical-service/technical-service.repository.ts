@@ -68,6 +68,12 @@ export class TechnicalServiceRepository {
     return tx.technicalService.findFirst({ where: { tenantId, id, deletedAt: null }, include: LIST_INCLUDE });
   }
 
+  /** Cận lâm sàng GĐ2 — gói dịch vụ/bảng giá hiển thị nhiều dịch vụ cùng lúc, không N+1. */
+  findRowsByIds(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<TechnicalServiceRow[]> {
+    if (ids.length === 0) return Promise.resolve([]);
+    return tx.technicalService.findMany({ where: { tenantId, id: { in: ids }, deletedAt: null }, include: LIST_INCLUDE });
+  }
+
   /** Không phân trang — danh mục vài trăm dịch vụ/phòng khám, cùng lý do `SupplierRepository.list()`. */
   list(tx: Prisma.TransactionClient, tenantId: string, filter: TechnicalServiceFilter): Promise<TechnicalServiceRow[]> {
     const where: Prisma.TechnicalServiceWhereInput = {

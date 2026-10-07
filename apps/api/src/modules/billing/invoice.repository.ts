@@ -46,6 +46,21 @@ export interface InvoiceRefundWithLines extends InvoiceRefund {
  * được — chỉ nhóm theo phiếu xuất, khác nhãn mockup ban đầu ("Đơn ... · Phiếu xuất ..."). */
 interface InvoiceLineWithIssue extends InvoiceLine {
   sourceStockIssueLine: { issue: { issueNo: string } } | null;
+  /** Cận lâm sàng GĐ3 (#212) — mã phiếu chỉ định nguồn (dòng chỉ định lẻ hoặc dòng gói), cho nhãn nhóm "Cận lâm sàng — Phiếu CLS...". */
+  sourceOrderItem: { order: { orderNo: string } } | null;
+  sourceOrderPackage: { order: { orderNo: string } } | null;
+}
+
+/** Dòng hoá đơn để TẠO MỚI — đúng-1-trong-3 nguồn (phiếu xuất kho / dòng chỉ định lẻ / dòng gói); dịch vụ khám đi đường `createFromServiceItems`. */
+export interface InvoiceLineToCreate {
+  sourceStockIssueLineId?: string;
+  sourceOrderItemId?: string;
+  sourceOrderPackageId?: string;
+  examTypeCode: string;
+  examTypeName: string;
+  unitPrice: bigint;
+  quantity: number;
+  lineTotal: bigint;
 }
 
 export interface InvoiceWithLines extends Invoice, PaymentSides {
@@ -113,7 +128,11 @@ const LINE_WITH_ISSUE_INCLUDE = {
   lines: {
     where: { deletedAt: null },
     orderBy: { createdAt: 'asc' as const },
-    include: { sourceStockIssueLine: { select: { issue: { select: { issueNo: true } } } } },
+    include: {
+      sourceStockIssueLine: { select: { issue: { select: { issueNo: true } } } },
+      sourceOrderItem: { select: { order: { select: { orderNo: true } } } },
+      sourceOrderPackage: { select: { order: { select: { orderNo: true } } } },
+    },
   },
 } satisfies Prisma.InvoiceInclude;
 
@@ -315,12 +334,18 @@ export class InvoiceRepository {
 
   /** Kho Thuốc GĐ3 (#163) — tạo hoá đơn `DRUG` mới (mirror `createFromServiceItems`, nhưng KHÔNG
    * cần `computeInvoiceFromServiceItems` — dòng đã tính sẵn ở `StockIssueService`). */
-  async createDrugInvoice(
+  createDrugInvoice(tx: Prisma.TransactionClient, tenantId: string, actorId: string, encounterId: string, lines: InvoiceLineToCreate[]): Promise<Invoice> {
+    return this.createInvoiceWithLines(tx, tenantId, actorId, encounterId, 'DRUG', lines);
+  }
+
+  /** Cận lâm sàng GĐ3 (#212) — tạo hoá đơn `DRUG`/`PARACLINICAL` mới (không phải SERVICE: hoá đơn SERVICE chỉ tạo lúc tiếp nhận). */
+  async createInvoiceWithLines(
     tx: Prisma.TransactionClient,
     tenantId: string,
     actorId: string,
     encounterId: string,
-    lines: { sourceStockIssueLineId: string; examTypeCode: string; examTypeName: string; unitPrice: bigint; quantity: number; lineTotal: bigint }[],
+    invoiceType: 'DRUG' | 'PARACLINICAL',
+    lines: InvoiceLineToCreate[],
   ): Promise<Invoice> {
     const totalAmount = lines.reduce((sum, l) => sum + l.lineTotal, 0n);
     const invoiceNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'INVOICE', new Date());
@@ -329,27 +354,72 @@ export class InvoiceRepository {
         tenantId,
         encounterId,
         invoiceNo,
-        invoiceType: 'DRUG',
+        invoiceType,
         totalAmount,
         createdBy: actorId,
         updatedBy: actorId,
       },
     });
-    await tx.invoiceLine.createMany({
-      data: lines.map((line) => ({
-        tenantId,
-        invoiceId: invoice.id,
-        sourceStockIssueLineId: line.sourceStockIssueLineId,
-        examTypeCode: line.examTypeCode,
-        examTypeName: line.examTypeName,
-        unitPrice: line.unitPrice,
-        quantity: line.quantity,
-        lineTotal: line.lineTotal,
-        createdBy: actorId,
-        updatedBy: actorId,
-      })),
-    });
+    await tx.invoiceLine.createMany({ data: lines.map((line) => this.toLineData(tenantId, invoice.id, actorId, line)) });
     return invoice;
+  }
+
+  private toLineData(tenantId: string, invoiceId: string, actorId: string, line: InvoiceLineToCreate): Prisma.InvoiceLineCreateManyInput {
+    return {
+      tenantId,
+      invoiceId,
+      sourceStockIssueLineId: line.sourceStockIssueLineId ?? null,
+      sourceOrderItemId: line.sourceOrderItemId ?? null,
+      sourceOrderPackageId: line.sourceOrderPackageId ?? null,
+      examTypeCode: line.examTypeCode,
+      examTypeName: line.examTypeName,
+      unitPrice: line.unitPrice,
+      quantity: line.quantity,
+      lineTotal: line.lineTotal,
+      createdBy: actorId,
+      updatedBy: actorId,
+    };
+  }
+
+  /** Cận lâm sàng GĐ3 (#212) — hoá đơn `PARACLINICAL` `UNPAID` GẦN NHẤT của lượt khám (chỉ định thêm trước khi thu thì cộng tiếp vào đó). */
+  findOpenParaclinicalInvoiceForEncounter(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<Invoice | null> {
+    return tx.invoice.findFirst({
+      where: { tenantId, encounterId, invoiceType: 'PARACLINICAL', status: 'UNPAID', deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Cận lâm sàng GĐ3 (#212) — các dòng hoá đơn do dòng chỉ định/gói nào đó sinh ra, kèm hoá đơn cha (trạng thái, version). Dùng để biết một dòng
+   * chỉ định còn gỡ/đổi được không (hoá đơn còn `UNPAID`) và để gỡ đúng dòng tiền.
+   */
+  findLinesByOrderSources(tx: Prisma.TransactionClient, tenantId: string, sources: { itemIds: string[]; packageIds: string[] }): Promise<(InvoiceLine & { invoice: Invoice })[]> {
+    const or: Prisma.InvoiceLineWhereInput[] = [];
+    if (sources.itemIds.length > 0) or.push({ sourceOrderItemId: { in: sources.itemIds } });
+    if (sources.packageIds.length > 0) or.push({ sourceOrderPackageId: { in: sources.packageIds } });
+    if (or.length === 0) return Promise.resolve([]);
+    return tx.invoiceLine.findMany({ where: { tenantId, deletedAt: null, OR: or, invoice: { deletedAt: null } }, include: { invoice: true } });
+  }
+
+  /** Gỡ (soft) các dòng hoá đơn của dòng chỉ định/gói bị bỏ + trừ lại `totalAmount` — gọi khi hoá đơn còn `UNPAID` (Service đã kiểm). */
+  async removeOrderLines(tx: Prisma.TransactionClient, tenantId: string, invoiceId: string, invoiceLineIds: string[], actorId: string, removedAmount: bigint): Promise<void> {
+    if (invoiceLineIds.length === 0) return;
+    await tx.invoiceLine.updateMany({
+      where: { tenantId, invoiceId, id: { in: invoiceLineIds }, deletedAt: null },
+      data: { deletedAt: new Date(), deletedReason: 'clinical_order_item_removed', updatedBy: actorId },
+    });
+    await tx.invoice.updateMany({
+      where: { tenantId, id: invoiceId, deletedAt: null },
+      data: { totalAmount: { decrement: removedAmount }, updatedBy: actorId, version: { increment: 1 } },
+    });
+    // Hoá đơn `PARACLINICAL` riêng mà gỡ hết dòng thì không còn gì để thu → đóng sổ (CANCELLED), không để phiếu 0 đồng treo ở Thu ngân.
+    const remaining = await tx.invoiceLine.count({ where: { tenantId, invoiceId, deletedAt: null } });
+    if (remaining === 0) {
+      await tx.invoice.updateMany({
+        where: { tenantId, id: invoiceId, invoiceType: 'PARACLINICAL', status: 'UNPAID', deletedAt: null },
+        data: { status: 'CANCELLED', updatedBy: actorId, version: { increment: 1 } },
+      });
+    }
   }
 
   /**
@@ -364,7 +434,7 @@ export class InvoiceRepository {
     invoiceId: string,
     expectedVersion: number,
     actorId: string,
-    lines: { sourceStockIssueLineId: string; examTypeCode: string; examTypeName: string; unitPrice: bigint; quantity: number; lineTotal: bigint }[],
+    lines: InvoiceLineToCreate[],
   ): Promise<number> {
     const additionalAmount = lines.reduce((sum, l) => sum + l.lineTotal, 0n);
     const result = await tx.invoice.updateMany({
@@ -374,20 +444,7 @@ export class InvoiceRepository {
     if (result.count === 0) {
       return 0;
     }
-    await tx.invoiceLine.createMany({
-      data: lines.map((line) => ({
-        tenantId,
-        invoiceId,
-        sourceStockIssueLineId: line.sourceStockIssueLineId,
-        examTypeCode: line.examTypeCode,
-        examTypeName: line.examTypeName,
-        unitPrice: line.unitPrice,
-        quantity: line.quantity,
-        lineTotal: line.lineTotal,
-        createdBy: actorId,
-        updatedBy: actorId,
-      })),
-    });
+    await tx.invoiceLine.createMany({ data: lines.map((line) => this.toLineData(tenantId, invoiceId, actorId, line)) });
     return result.count;
   }
 

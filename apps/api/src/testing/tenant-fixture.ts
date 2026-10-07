@@ -141,6 +141,11 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // encounter_service_item (docs/DECISIONS.md #080) — cùng lý do vital_sign, sub-resource của
       // encounter, không có self-reference nên xoá thẳng, không cần vòng lặp theo tầng.
       await prisma.encounterServiceItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Cận lâm sàng GĐ3 (#212) — dòng/gói/phiếu chỉ định tham chiếu encounter, technical_service, service_package (FK RESTRICT) nên xoá trước cả ba;
+      // invoice_line (đã xoá ở trên) tham chiếu dòng/gói chỉ định. Dòng con trước gói, gói trước phiếu.
+      await prisma.clinicalOrderItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.clinicalOrderPackage.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.clinicalOrder.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.diagnosis.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalNote.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // prescription_item (Sprint 4) tham chiếu prescription + drug (FK RESTRICT) — xoá trước cả
@@ -172,6 +177,12 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // dù test S2-01 hiện chưa seed dữ liệu gộp hồ sơ (PAT-04 chưa hiện thực).
       await prisma.patient.updateMany({ where: { tenantId: { in: tenantIds } }, data: { mergedIntoId: null } });
       await prisma.patient.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Cận lâm sàng GĐ2 (#212) — dòng bảng giá/dịch vụ con của gói tham chiếu drug, technical_service, service_package
+      // (FK RESTRICT) nên xoá trước cả ba; bảng cha (price_list/service_package) xoá sau dòng của nó.
+      await prisma.priceListItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.priceList.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.servicePackageItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.servicePackage.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // drug_unit/drug_ingredient (Kho Thuốc & Vật tư y tế GĐ1, #146) tham chiếu drug (FK RESTRICT)
       // — xoá trước drug.
       await prisma.drugUnit.deleteMany({ where: { tenantId: { in: tenantIds } } });

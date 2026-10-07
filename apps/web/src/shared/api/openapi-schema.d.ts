@@ -5977,7 +5977,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** Format: uuid */
                                     encounterId: string;
                                     encounterNo: string;
@@ -6086,7 +6086,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                invoiceType: "SERVICE" | "DRUG";
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
@@ -6105,8 +6105,9 @@ export interface paths {
                                     discountValue: number | null;
                                     discountAmount: number;
                                     /** @enum {string} */
-                                    lineSource: "SERVICE" | "DRUG";
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
                                     netAmount: number;
                                     refundedQuantity: number;
                                     refundedAmount: number;
@@ -6145,7 +6146,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
@@ -6257,7 +6258,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                invoiceType: "SERVICE" | "DRUG";
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
@@ -6276,8 +6277,9 @@ export interface paths {
                                     discountValue: number | null;
                                     discountAmount: number;
                                     /** @enum {string} */
-                                    lineSource: "SERVICE" | "DRUG";
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
                                     netAmount: number;
                                     refundedQuantity: number;
                                     refundedAmount: number;
@@ -6316,7 +6318,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
@@ -6456,7 +6458,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                invoiceType: "SERVICE" | "DRUG";
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
@@ -6475,8 +6477,9 @@ export interface paths {
                                     discountValue: number | null;
                                     discountAmount: number;
                                     /** @enum {string} */
-                                    lineSource: "SERVICE" | "DRUG";
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
                                     netAmount: number;
                                     refundedQuantity: number;
                                     refundedAmount: number;
@@ -6515,7 +6518,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
@@ -6670,7 +6673,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                invoiceType: "SERVICE" | "DRUG";
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
@@ -6689,8 +6692,9 @@ export interface paths {
                                     discountValue: number | null;
                                     discountAmount: number;
                                     /** @enum {string} */
-                                    lineSource: "SERVICE" | "DRUG";
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
                                     netAmount: number;
                                     refundedQuantity: number;
                                     refundedAmount: number;
@@ -6729,7 +6733,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
@@ -6890,7 +6894,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                invoiceType: "SERVICE" | "DRUG";
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
@@ -6909,8 +6913,9 @@ export interface paths {
                                     discountValue: number | null;
                                     discountAmount: number;
                                     /** @enum {string} */
-                                    lineSource: "SERVICE" | "DRUG";
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
                                     netAmount: number;
                                     refundedQuantity: number;
                                     refundedAmount: number;
@@ -6949,7 +6954,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
@@ -7120,7 +7125,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                invoiceType: "SERVICE" | "DRUG";
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
@@ -7139,8 +7144,9 @@ export interface paths {
                                     discountValue: number | null;
                                     discountAmount: number;
                                     /** @enum {string} */
-                                    lineSource: "SERVICE" | "DRUG";
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
                                     netAmount: number;
                                     refundedQuantity: number;
                                     refundedAmount: number;
@@ -7179,7 +7185,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
@@ -7317,7 +7323,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                invoiceType: "SERVICE" | "DRUG";
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
@@ -7336,8 +7342,9 @@ export interface paths {
                                     discountValue: number | null;
                                     discountAmount: number;
                                     /** @enum {string} */
-                                    lineSource: "SERVICE" | "DRUG";
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
                                     netAmount: number;
                                     refundedQuantity: number;
                                     refundedAmount: number;
@@ -7376,7 +7383,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
@@ -7493,7 +7500,7 @@ export interface paths {
                                     encounterId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     totalAmount: number;
@@ -7512,8 +7519,9 @@ export interface paths {
                                         discountValue: number | null;
                                         discountAmount: number;
                                         /** @enum {string} */
-                                        lineSource: "SERVICE" | "DRUG";
+                                        lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                         stockIssueNo: string | null;
+                                        clinicalOrderNo: string | null;
                                         netAmount: number;
                                         refundedQuantity: number;
                                         refundedAmount: number;
@@ -7552,7 +7560,7 @@ export interface paths {
                                         invoiceId: string;
                                         invoiceNo: string;
                                         /** @enum {string} */
-                                        invoiceType: "SERVICE" | "DRUG";
+                                        invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                         /** @enum {string} */
                                         status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                         dueAmount: number;
@@ -7686,7 +7694,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                invoiceType: "SERVICE" | "DRUG";
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
@@ -7705,8 +7713,9 @@ export interface paths {
                                     discountValue: number | null;
                                     discountAmount: number;
                                     /** @enum {string} */
-                                    lineSource: "SERVICE" | "DRUG";
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
                                     netAmount: number;
                                     refundedQuantity: number;
                                     refundedAmount: number;
@@ -7745,7 +7754,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
@@ -7904,7 +7913,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                invoiceType: "SERVICE" | "DRUG";
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
@@ -7923,8 +7932,9 @@ export interface paths {
                                     discountValue: number | null;
                                     discountAmount: number;
                                     /** @enum {string} */
-                                    lineSource: "SERVICE" | "DRUG";
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
                                     netAmount: number;
                                     refundedQuantity: number;
                                     refundedAmount: number;
@@ -7963,7 +7973,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
@@ -8144,7 +8154,7 @@ export interface paths {
                                 encounterId: string;
                                 invoiceNo: string;
                                 /** @enum {string} */
-                                invoiceType: "SERVICE" | "DRUG";
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 /** @enum {string} */
                                 status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                 totalAmount: number;
@@ -8163,8 +8173,9 @@ export interface paths {
                                     discountValue: number | null;
                                     discountAmount: number;
                                     /** @enum {string} */
-                                    lineSource: "SERVICE" | "DRUG";
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
                                     netAmount: number;
                                     refundedQuantity: number;
                                     refundedAmount: number;
@@ -8203,7 +8214,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                     /** @enum {string} */
                                     status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
                                     dueAmount: number;
@@ -14436,7 +14447,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -14509,7 +14520,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER";
                 };
                 cookie?: never;
             };
@@ -14532,7 +14543,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -15169,7 +15180,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
                 };
                 cookie?: never;
             };
@@ -15187,7 +15198,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
@@ -15294,7 +15305,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
                         code?: string;
                         name: string;
                         /** @default 0 */
@@ -15331,7 +15342,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -15449,7 +15460,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -15592,7 +15603,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -15720,7 +15731,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -18347,7 +18358,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string | null;
                                     /** @enum {string} */
-                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
                                     name: string;
                                     /** @enum {string} */
                                     paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
@@ -18386,7 +18397,7 @@ export interface paths {
                                 catalog: {
                                     documentTypes: {
                                         /** @enum {string} */
-                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
                                         label: string;
                                         group: string;
                                         allowedPapers: ("A4" | "A5" | "A5_LANDSCAPE" | "K80")[];
@@ -18567,7 +18578,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
                         name: string;
                         /** @enum {string} */
                         paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
@@ -18615,7 +18626,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string | null;
                                 /** @enum {string} */
-                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
                                 name: string;
                                 /** @enum {string} */
                                 paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
@@ -18765,7 +18776,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
                                     /** @enum {string} */
                                     paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
                                     widthMm: number;
@@ -18895,7 +18906,7 @@ export interface paths {
                             showTaxCode: boolean;
                             showDivider: boolean;
                         };
-                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER")[];
+                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER")[];
                     };
                 };
             };
@@ -19134,7 +19145,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string | null;
                                 /** @enum {string} */
-                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
                                 name: string;
                                 /** @enum {string} */
                                 paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
@@ -19313,7 +19324,7 @@ export interface paths {
                                 }[];
                                 newCatalogItems: {
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
                                     name: string;
                                 }[];
                                 exampleRowCount: number;
@@ -24934,7 +24945,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 } | null;
                             };
                             meta: Record<string, never>;
@@ -25096,7 +25107,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 } | null;
                             };
                             meta: Record<string, never>;
@@ -25254,7 +25265,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 } | null;
                             };
                             meta: Record<string, never>;
@@ -25441,7 +25452,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 } | null;
                             };
                             meta: Record<string, never>;
@@ -25635,7 +25646,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 } | null;
                             };
                             meta: Record<string, never>;
@@ -25801,7 +25812,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 } | null;
                             };
                             meta: Record<string, never>;
@@ -25987,7 +25998,7 @@ export interface paths {
                                     invoiceId: string;
                                     invoiceNo: string;
                                     /** @enum {string} */
-                                    invoiceType: "SERVICE" | "DRUG";
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
                                 } | null;
                             };
                             meta: Record<string, never>;
@@ -31362,6 +31373,1798 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/service-packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ2 — liệt kê gói dịch vụ kèm giá gói/tổng giá lẻ/khách lợi (orderableOnly = chỉ gói dùng được hôm nay) */
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    includeInactive?: "true" | "false";
+                    orderableOnly?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    pricingMode: "FIXED" | "SUM_MINUS_DISCOUNT";
+                                    fixedPrice: number | null;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    effectiveFrom: string;
+                                    effectiveTo: string | null;
+                                    isActive: boolean;
+                                    sortOrder: number;
+                                    version: number;
+                                    /** @enum {string} */
+                                    status: "ACTIVE" | "UPCOMING" | "EXPIRED" | "STOPPED";
+                                    itemCount: number;
+                                    retailTotal: number;
+                                    unpricedItemCount: number;
+                                    price: number | null;
+                                    saving: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_package.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Cận lâm sàng GĐ2 — tạo gói dịch vụ, mã tự sinh (GOI), giá cố định hoặc tổng trừ chiết khấu */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        /** @enum {string} */
+                        pricingMode: "FIXED" | "SUM_MINUS_DISCOUNT";
+                        fixedPrice?: number;
+                        /** @enum {string} */
+                        discountType?: "PERCENT" | "AMOUNT";
+                        discountValue?: number;
+                        effectiveFrom: string;
+                        effectiveTo?: string;
+                        /** @default true */
+                        isActive?: boolean;
+                        /** @default 0 */
+                        sortOrder?: number;
+                        items: {
+                            /** @enum {string} */
+                            itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                            examTypeCode?: string;
+                            /** Format: uuid */
+                            technicalServiceId?: string;
+                            /** @default 1 */
+                            quantity?: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                pricingMode: "FIXED" | "SUM_MINUS_DISCOUNT";
+                                fixedPrice: number | null;
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                effectiveFrom: string;
+                                effectiveTo: string | null;
+                                isActive: boolean;
+                                sortOrder: number;
+                                version: number;
+                                /** @enum {string} */
+                                status: "ACTIVE" | "UPCOMING" | "EXPIRED" | "STOPPED";
+                                itemCount: number;
+                                retailTotal: number;
+                                unpricedItemCount: number;
+                                price: number | null;
+                                saving: number | null;
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                                    code: string;
+                                    name: string;
+                                    groupName: string | null;
+                                    /** Format: uuid */
+                                    technicalServiceId: string | null;
+                                    examTypeCode: string | null;
+                                    quantity: number;
+                                    unitPrice: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai: thiếu giá cố định, dịch vụ con trùng/không tồn tại, chiết khấu không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_package.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/service-packages/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ2 — chi tiết gói dịch vụ kèm dịch vụ con và giá lẻ */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                pricingMode: "FIXED" | "SUM_MINUS_DISCOUNT";
+                                fixedPrice: number | null;
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                effectiveFrom: string;
+                                effectiveTo: string | null;
+                                isActive: boolean;
+                                sortOrder: number;
+                                version: number;
+                                /** @enum {string} */
+                                status: "ACTIVE" | "UPCOMING" | "EXPIRED" | "STOPPED";
+                                itemCount: number;
+                                retailTotal: number;
+                                unpricedItemCount: number;
+                                price: number | null;
+                                saving: number | null;
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                                    code: string;
+                                    name: string;
+                                    groupName: string | null;
+                                    /** Format: uuid */
+                                    technicalServiceId: string | null;
+                                    examTypeCode: string | null;
+                                    quantity: number;
+                                    unitPrice: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_package.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cận lâm sàng GĐ2 — sửa/ngừng gói dịch vụ, bắt buộc kèm version; gửi items = thay TOÀN BỘ dịch vụ con */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        name?: string;
+                        /** @enum {string} */
+                        pricingMode?: "FIXED" | "SUM_MINUS_DISCOUNT";
+                        fixedPrice?: number | null;
+                        /** @enum {string|null} */
+                        discountType?: "PERCENT" | "AMOUNT" | null;
+                        discountValue?: number | null;
+                        effectiveFrom?: string;
+                        effectiveTo?: string | null;
+                        isActive?: boolean;
+                        sortOrder?: number;
+                        items?: {
+                            /** @enum {string} */
+                            itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                            examTypeCode?: string;
+                            /** Format: uuid */
+                            technicalServiceId?: string;
+                            /** @default 1 */
+                            quantity?: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                pricingMode: "FIXED" | "SUM_MINUS_DISCOUNT";
+                                fixedPrice: number | null;
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                effectiveFrom: string;
+                                effectiveTo: string | null;
+                                isActive: boolean;
+                                sortOrder: number;
+                                version: number;
+                                /** @enum {string} */
+                                status: "ACTIVE" | "UPCOMING" | "EXPIRED" | "STOPPED";
+                                itemCount: number;
+                                retailTotal: number;
+                                unpricedItemCount: number;
+                                price: number | null;
+                                saving: number | null;
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                                    code: string;
+                                    name: string;
+                                    groupName: string | null;
+                                    /** Format: uuid */
+                                    technicalServiceId: string | null;
+                                    examTypeCode: string | null;
+                                    quantity: number;
+                                    unitPrice: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_package.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/price-lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ2 — liệt kê bảng giá có thời hạn kèm dòng "Bảng giá chung" ảo (BG0000, ưu tiên 0) và đếm theo trạng thái */
+        get: {
+            parameters: {
+                query?: {
+                    status?: "ACTIVE" | "UPCOMING" | "EXPIRED" | "STOPPED";
+                    search?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                general: {
+                                    code: string;
+                                    name: string;
+                                    /** @enum {number} */
+                                    priority: 0;
+                                    itemCount: number;
+                                };
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    description: string | null;
+                                    effectiveFrom: string;
+                                    effectiveTo: string;
+                                    priority: number;
+                                    isActive: boolean;
+                                    version: number;
+                                    /** @enum {string} */
+                                    status: "ACTIVE" | "UPCOMING" | "EXPIRED" | "STOPPED";
+                                    itemCount: number;
+                                }[];
+                                counts: {
+                                    all: number;
+                                    ACTIVE: number;
+                                    UPCOMING: number;
+                                    EXPIRED: number;
+                                    STOPPED: number;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền price_list.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Cận lâm sàng GĐ2 — tạo bảng giá có thời hạn (mã BG tự sinh, ưu tiên ≥ 1, cao thắng) kèm các dòng */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        description?: string;
+                        effectiveFrom: string;
+                        effectiveTo: string;
+                        priority: number;
+                        /** @default [] */
+                        lines?: {
+                            /** @enum {string} */
+                            itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                            examTypeCode?: string;
+                            /** Format: uuid */
+                            technicalServiceId?: string;
+                            /** Format: uuid */
+                            servicePackageId?: string;
+                            /** Format: uuid */
+                            drugId?: string;
+                            priceTypeCode?: string;
+                            unitCode?: string;
+                            /** @enum {string} */
+                            mode: "PERCENT_OFF" | "NEW_PRICE";
+                            value: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                description: string | null;
+                                effectiveFrom: string;
+                                effectiveTo: string;
+                                priority: number;
+                                isActive: boolean;
+                                version: number;
+                                /** @enum {string} */
+                                status: "ACTIVE" | "UPCOMING" | "EXPIRED" | "STOPPED";
+                                itemCount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                                    examTypeCode: string | null;
+                                    /** Format: uuid */
+                                    technicalServiceId: string | null;
+                                    /** Format: uuid */
+                                    servicePackageId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string | null;
+                                    code: string;
+                                    name: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    /** @enum {string} */
+                                    mode: "PERCENT_OFF" | "NEW_PRICE";
+                                    value: number;
+                                    baseAmount: number | null;
+                                    finalAmount: number | null;
+                                    scopes: {
+                                        priceTypeCode: string | null;
+                                        unitCode: string | null;
+                                        amount: number | null;
+                                    }[];
+                                    itemMissing: boolean;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai: ngày ngược, dòng trùng phạm vi, mặt hàng không tồn tại/sai loại, Giá mới thiếu Loại giá/Đơn vị */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền price_list.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/price-lists/items/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ2 — tìm mặt hàng (dịch vụ khám/kỹ thuật/gói/thuốc/vật tư, gõ không dấu) kèm giá mặc định từng Loại giá/Bậc đơn vị */
+        get: {
+            parameters: {
+                query: {
+                    q: string;
+                    kind?: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                    limit?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** @enum {string} */
+                                    itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                                    ref: string;
+                                    code: string;
+                                    name: string;
+                                    groupName: string | null;
+                                    scopes: {
+                                        priceTypeCode: string | null;
+                                        unitCode: string | null;
+                                        amount: number | null;
+                                    }[];
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền price_list.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/price-lists/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ2 — "Tra thử giá": mọi bảng giá chứa mặt hàng vào một ngày, bảng nào thắng/bị đè, Bảng giá chung ở cuối */
+        get: {
+            parameters: {
+                query: {
+                    itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                    ref: string;
+                    date: string;
+                    priceTypeCode?: string;
+                    unitCode?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                item: {
+                                    /** @enum {string} */
+                                    itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                                    ref: string;
+                                    code: string;
+                                    name: string;
+                                };
+                                date: string;
+                                scope: {
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    amount: number | null;
+                                };
+                                scopes: {
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    amount: number | null;
+                                }[];
+                                entries: {
+                                    /** Format: uuid */
+                                    priceListId: string | null;
+                                    code: string;
+                                    name: string;
+                                    priority: number;
+                                    /** @enum {string|null} */
+                                    mode: "PERCENT_OFF" | "NEW_PRICE" | null;
+                                    value: number | null;
+                                    amount: number | null;
+                                    inEffect: boolean;
+                                    isApplied: boolean;
+                                }[];
+                                result: {
+                                    baseAmount: number | null;
+                                    amount: number | null;
+                                    applied: {
+                                        /** Format: uuid */
+                                        priceListId: string;
+                                        code: string;
+                                        name: string;
+                                        priority: number;
+                                        /** @enum {string} */
+                                        mode: "PERCENT_OFF" | "NEW_PRICE";
+                                        value: number;
+                                    } | null;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền price_list.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Mặt hàng không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/price-lists/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cận lâm sàng GĐ2 — tính giá áp dụng hàng loạt theo ngày tiếp nhận/lập phiếu (không ghi gì; POST chỉ vì có body) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        date: string;
+                        items: {
+                            /** @enum {string} */
+                            itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                            ref: string;
+                            priceTypeCode?: string;
+                            unitCode?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    baseAmount: number | null;
+                                    amount: number | null;
+                                    applied: {
+                                        /** Format: uuid */
+                                        priceListId: string;
+                                        code: string;
+                                        name: string;
+                                        priority: number;
+                                        /** @enum {string} */
+                                        mode: "PERCENT_OFF" | "NEW_PRICE";
+                                        value: number;
+                                    } | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền price_list.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/price-lists/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ2 — chi tiết bảng giá kèm các dòng (giá mặc định + giá áp dụng) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                description: string | null;
+                                effectiveFrom: string;
+                                effectiveTo: string;
+                                priority: number;
+                                isActive: boolean;
+                                version: number;
+                                /** @enum {string} */
+                                status: "ACTIVE" | "UPCOMING" | "EXPIRED" | "STOPPED";
+                                itemCount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                                    examTypeCode: string | null;
+                                    /** Format: uuid */
+                                    technicalServiceId: string | null;
+                                    /** Format: uuid */
+                                    servicePackageId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string | null;
+                                    code: string;
+                                    name: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    /** @enum {string} */
+                                    mode: "PERCENT_OFF" | "NEW_PRICE";
+                                    value: number;
+                                    baseAmount: number | null;
+                                    finalAmount: number | null;
+                                    scopes: {
+                                        priceTypeCode: string | null;
+                                        unitCode: string | null;
+                                        amount: number | null;
+                                    }[];
+                                    itemMissing: boolean;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền price_list.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cận lâm sàng GĐ2 — sửa/ngừng bảng giá (isActive=false), bắt buộc kèm version; gửi lines = thay TOÀN BỘ dòng */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        name?: string;
+                        description?: string | null;
+                        effectiveFrom?: string;
+                        effectiveTo?: string;
+                        priority?: number;
+                        isActive?: boolean;
+                        lines?: {
+                            /** @enum {string} */
+                            itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                            examTypeCode?: string;
+                            /** Format: uuid */
+                            technicalServiceId?: string;
+                            /** Format: uuid */
+                            servicePackageId?: string;
+                            /** Format: uuid */
+                            drugId?: string;
+                            priceTypeCode?: string;
+                            unitCode?: string;
+                            /** @enum {string} */
+                            mode: "PERCENT_OFF" | "NEW_PRICE";
+                            value: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                description: string | null;
+                                effectiveFrom: string;
+                                effectiveTo: string;
+                                priority: number;
+                                isActive: boolean;
+                                version: number;
+                                /** @enum {string} */
+                                status: "ACTIVE" | "UPCOMING" | "EXPIRED" | "STOPPED";
+                                itemCount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    itemKind: "EXAM_TYPE" | "TECHNICAL_SERVICE" | "PACKAGE" | "DRUG" | "MEDICAL_SUPPLY";
+                                    examTypeCode: string | null;
+                                    /** Format: uuid */
+                                    technicalServiceId: string | null;
+                                    /** Format: uuid */
+                                    servicePackageId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string | null;
+                                    code: string;
+                                    name: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    /** @enum {string} */
+                                    mode: "PERCENT_OFF" | "NEW_PRICE";
+                                    value: number;
+                                    baseAmount: number | null;
+                                    finalAmount: number | null;
+                                    scopes: {
+                                        priceTypeCode: string | null;
+                                        unitCode: string | null;
+                                        amount: number | null;
+                                    }[];
+                                    itemMissing: boolean;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền price_list.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/encounters/{encounterId}/clinical-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ3 — phiếu chỉ định cận lâm sàng của lượt khám (order=null khi chưa chỉ định gì), kèm dòng/gói/hoá đơn chứa tiền */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                order: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    version: number;
+                                    createdAt: string;
+                                    items: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        /** @enum {string} */
+                                        itemKind: "TECHNICAL_SERVICE" | "EXAM_TYPE" | "FREE_TEXT";
+                                        /** Format: uuid */
+                                        technicalServiceId: string | null;
+                                        examTypeCode: string | null;
+                                        code: string | null;
+                                        name: string;
+                                        /** @enum {string} */
+                                        performance: "IN_HOUSE" | "EXTERNAL";
+                                        quantity: number;
+                                        unitPrice: number | null;
+                                        lineTotal: number | null;
+                                        /** Format: uuid */
+                                        packageId: string | null;
+                                        placeName: string | null;
+                                        note: string | null;
+                                        /** @enum {string} */
+                                        status: "ORDERED" | "CANCELLED";
+                                        editable: boolean;
+                                    }[];
+                                    packages: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        /** Format: uuid */
+                                        servicePackageId: string;
+                                        code: string;
+                                        name: string;
+                                        unitPrice: number;
+                                        editable: boolean;
+                                    }[];
+                                    inHouseTotal: number;
+                                    invoices: {
+                                        /** Format: uuid */
+                                        invoiceId: string;
+                                        invoiceNo: string;
+                                        /** @enum {string} */
+                                        invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
+                                        /** @enum {string} */
+                                        status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    }[];
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_order.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy lượt khám (không tồn tại, thuộc tenant khác hoặc ngoài phạm vi bác sĩ) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        /** Cận lâm sàng GĐ3 — "Lưu chỉ định": thay TOÀN BỘ danh sách (so khớp theo id). Dòng tại phòng khám lẻ ghi tiền vào hoá đơn khám đang chưa thu (không thì hoá đơn Cận lâm sàng riêng); gói = 1 dòng hoá đơn; dòng đã thu tiền không gỡ/đổi được */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id?: string;
+                            /** @enum {string} */
+                            performance: "IN_HOUSE" | "EXTERNAL";
+                            /** Format: uuid */
+                            technicalServiceId?: string;
+                            freeTextName?: string;
+                            /** @default 1 */
+                            quantity?: number;
+                            note?: string;
+                        }[];
+                        /** @default [] */
+                        packages?: {
+                            /** Format: uuid */
+                            id?: string;
+                            /** Format: uuid */
+                            servicePackageId: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Lưu thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                order: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    version: number;
+                                    createdAt: string;
+                                    items: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        /** @enum {string} */
+                                        itemKind: "TECHNICAL_SERVICE" | "EXAM_TYPE" | "FREE_TEXT";
+                                        /** Format: uuid */
+                                        technicalServiceId: string | null;
+                                        examTypeCode: string | null;
+                                        code: string | null;
+                                        name: string;
+                                        /** @enum {string} */
+                                        performance: "IN_HOUSE" | "EXTERNAL";
+                                        quantity: number;
+                                        unitPrice: number | null;
+                                        lineTotal: number | null;
+                                        /** Format: uuid */
+                                        packageId: string | null;
+                                        placeName: string | null;
+                                        note: string | null;
+                                        /** @enum {string} */
+                                        status: "ORDERED" | "CANCELLED";
+                                        editable: boolean;
+                                    }[];
+                                    packages: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        /** Format: uuid */
+                                        servicePackageId: string;
+                                        code: string;
+                                        name: string;
+                                        unitPrice: number;
+                                        editable: boolean;
+                                    }[];
+                                    inHouseTotal: number;
+                                    invoices: {
+                                        /** Format: uuid */
+                                        invoiceId: string;
+                                        invoiceNo: string;
+                                        /** @enum {string} */
+                                        invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
+                                        /** @enum {string} */
+                                        status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    }[];
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai: dịch vụ không tồn tại/đã ngừng, dòng/gói không thuộc phiếu hoặc bị trùng */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_order.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy lượt khám (hoặc không phải lượt khám của bác sĩ này) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám không ở IN_CONSULTATION (ENCOUNTER_NOT_IN_CONSULTATION) hoặc dòng đã thu tiền/đã thực hiện (CLINICAL_ORDER_ITEM_LOCKED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Dịch vụ không tự làm (CLINICAL_ORDER_SERVICE_NOT_IN_HOUSE), chưa có đơn giá (CLINICAL_ORDER_PRICE_MISSING) hoặc gói không dùng được (CLINICAL_ORDER_PACKAGE_NOT_ORDERABLE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{encounterId}/clinical-orders/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cận lâm sàng GĐ3 — ghi audit mỗi lần in phiếu chỉ định (web tự dựng bản in từ dữ liệu đã tải) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Đã ghi audit */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                ok: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_order.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám chưa có phiếu chỉ định (hoặc không tìm thấy) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }

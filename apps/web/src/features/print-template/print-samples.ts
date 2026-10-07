@@ -1,4 +1,5 @@
 import type {
+  ClinicalOrderDetail,
   CashierShiftDetail,
   CashVoucher,
   ClinicPrintHeader,
@@ -95,6 +96,7 @@ function invoiceLine(n: number, name: string, unitPrice: number, quantity: numbe
     discountValue: null,
     discountAmount: 0,
     lineSource: source,
+    clinicalOrderNo: null,
     stockIssueNo: null,
     netAmount: unitPrice * quantity,
     refundedQuantity: 0,
@@ -342,4 +344,23 @@ export const SAMPLE_STOCK_TRANSFER: StockTransferDetail = {
   rejectionReason: null,
   version: 1,
   lines: [{ id: ID(910), drugId: ID(101), drugCode: 'THUOC-0012', drugName: 'Paracetamol 500mg', isBatchManaged: true, batchId: ID(811), batchNo: 'L2610A', expiryDate: '2028-09-30', quantityShipped: 50, quantityReceived: 50, varianceNote: null }],
+};
+
+/** Phiếu chỉ định cận lâm sàng mẫu (Cận lâm sàng GĐ3, #212) — dữ liệu minh hoạ cho bản xem trước ở Quản lý mẫu in. */
+export const SAMPLE_CLINICAL_ORDER: ClinicalOrderDetail = {
+  id: '00000000-0000-4000-8000-0000000000c1',
+  orderNo: 'CLS2610000312',
+  encounterId: '00000000-0000-4000-8000-0000000000e1',
+  version: 1,
+  createdAt: '2026-10-06T02:30:00.000Z',
+  inHouseTotal: 680000,
+  invoices: [],
+  packages: [],
+  items: [
+    { id: 'i1', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'XN0014', name: 'Định lượng Glucose lúc đói [Huyết tương]', performance: 'IN_HOUSE', quantity: 1, unitPrice: 80000, lineTotal: 80000, packageId: null, placeName: 'P. Xét nghiệm', note: null, status: 'ORDERED', editable: true },
+    { id: 'i2', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'XN0027', name: 'Định lượng HbA1c [Máu toàn phần]', performance: 'IN_HOUSE', quantity: 1, unitPrice: 180000, lineTotal: 180000, packageId: null, placeName: 'P. Xét nghiệm', note: null, status: 'ORDERED', editable: true },
+    { id: 'i3', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'CD0008', name: 'Siêu âm ổ bụng tổng quát', performance: 'IN_HOUSE', quantity: 1, unitPrice: 420000, lineTotal: 420000, packageId: null, placeName: 'P. Siêu âm', note: null, status: 'ORDERED', editable: true },
+    { id: 'i4', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'CD0021', name: 'Chụp CT scan bụng có thuốc cản quang', performance: 'EXTERNAL', quantity: 1, unitPrice: null, lineTotal: null, packageId: null, placeName: null, note: 'Nhịn ăn 6 giờ trước khi chụp', status: 'ORDERED', editable: true },
+    { id: 'i5', itemKind: 'FREE_TEXT', technicalServiceId: null, examTypeCode: null, code: null, name: 'Đo mật độ xương DEXA cột sống thắt lưng', performance: 'EXTERNAL', quantity: 1, unitPrice: null, lineTotal: null, packageId: null, placeName: null, note: null, status: 'ORDERED', editable: true },
+  ],
 };

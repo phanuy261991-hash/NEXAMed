@@ -13,6 +13,7 @@ import { z } from 'zod';
 export const printDocumentTypeSchema = z.enum([
   'PRESCRIPTION',
   'MEDICAL_RECORD',
+  'CLINICAL_ORDER',
   'INVOICE',
   'INVOICE_COMBINED',
   'WALLET_TOPUP_RECEIPT',
@@ -52,6 +53,7 @@ export const PRINT_DOCUMENT_TYPE_REGISTRY: Record<
 > = {
   PRESCRIPTION: { label: 'Đơn thuốc', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Đơn thuốc' },
   MEDICAL_RECORD: { label: 'Bệnh án (xuất PDF)', group: 'Khám bệnh', allowedPapers: ['A4'], defaultPaper: 'A4', defaultTitle: 'Bệnh án' },
+  CLINICAL_ORDER: { label: 'Phiếu chỉ định cận lâm sàng', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu chỉ định cận lâm sàng' },
   INVOICE: { label: 'Phiếu thu', group: 'Thu ngân', allowedPapers: PAPERS_MONEY, defaultPaper: 'A5', defaultTitle: 'Phiếu thu' },
   INVOICE_COMBINED: { label: 'Phiếu thu tổng hợp', group: 'Thu ngân', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu thu tổng hợp' },
   WALLET_TOPUP_RECEIPT: { label: 'Phiếu nạp ví', group: 'Thu ngân', allowedPapers: PAPERS_MONEY, defaultPaper: 'A5', defaultTitle: 'Phiếu thu tạm ứng' },

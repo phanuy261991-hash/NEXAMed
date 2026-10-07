@@ -30,6 +30,9 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   technical_service: 'Dịch vụ kỹ thuật',
   lab_indicator: 'Chỉ số xét nghiệm',
   result_template: 'Mẫu kết quả',
+  service_package: 'Gói dịch vụ',
+  price_list: 'Bảng giá',
+  clinical_order: 'Phiếu chỉ định cận lâm sàng',
   doctor_room_session: 'Phòng làm việc',
   break_glass_session: 'Quyền khẩn cấp (break-glass)',
   // Bổ sung #109 — thiếu từ lúc thêm module work_shift/work_shift_assignment (#101/#102) và
@@ -45,6 +48,20 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   supplier: 'Nhà cung cấp',
   supplier_debt_account: 'Sổ công nợ nhà cung cấp',
   supplier_debt_entry: 'Bút toán công nợ nhà cung cấp',
+  supplier_debt_adjustment: 'Phiếu điều chỉnh công nợ NCC',
+  supplier_debt_reconciliation: 'Biên bản đối chiếu công nợ NCC',
+  warehouse: 'Kho',
+  stock_receipt: 'Phiếu nhập kho',
+  stock_issue: 'Phiếu xuất kho',
+  stock_count: 'Phiếu kiểm kê',
+  stock_transfer: 'Phiếu điều chuyển kho',
+  stock_ledger_report: 'Báo cáo Nhập-Xuất-Tồn',
+  cash_account: 'Quỹ',
+  cash_voucher: 'Phiếu thu/chi',
+  cash_book_export: 'Báo cáo dòng tiền',
+  patient_wallet: 'Ví tạm ứng',
+  prescription_template: 'Đơn thuốc mẫu',
+  reception_list_export: 'Danh sách tiếp nhận',
 };
 
 export function labelForEntityType(entityType: string): string {

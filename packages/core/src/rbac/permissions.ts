@@ -95,6 +95,19 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // (chèn mẫu lúc nhập kết quả), `manage` bác sĩ/clinic_admin.
   { module: 'result_template', action: 'read', description: 'Xem mẫu kết quả cận lâm sàng' },
   { module: 'result_template', action: 'manage', description: 'Thêm/sửa/ẩn mẫu kết quả cận lâm sàng' },
+  // Cận lâm sàng GĐ2 (docs/DECISIONS.md #212) — Gói dịch vụ + Bảng giá có thời hạn. `read` mở cho mọi vai trò cần
+  // tra giá lúc tiếp nhận/chỉ định/phát thuốc (cũng là quyền của endpoint "Tra thử giá"); `create`/`update`
+  // chỉ clinic_admin (đổi bảng giá là đổi tiền thật tại quầy), đúng khuôn `technical_service`.
+  { module: 'service_package', action: 'read', description: 'Xem gói dịch vụ' },
+  { module: 'service_package', action: 'create', description: 'Thêm gói dịch vụ' },
+  { module: 'service_package', action: 'update', description: 'Sửa/ngừng gói dịch vụ' },
+  { module: 'price_list', action: 'read', description: 'Xem bảng giá và tra giá áp dụng' },
+  { module: 'price_list', action: 'create', description: 'Tạo bảng giá có thời hạn' },
+  { module: 'price_list', action: 'update', description: 'Sửa/ngừng bảng giá có thời hạn' },
+  // Cận lâm sàng GĐ3 (docs/DECISIONS.md #212) — Chỉ định cận lâm sàng của bác sĩ. `create` gồm thêm/bớt dòng, đổi số lượng, chỉ định ra ngoài và
+  // in phiếu — bác sĩ chỉ với lượt khám của mình (personal); `read` mở cho lễ tân/điều dưỡng (thu tiền, theo dõi).
+  { module: 'clinical_order', action: 'read', description: 'Xem phiếu chỉ định cận lâm sàng' },
+  { module: 'clinical_order', action: 'create', description: 'Chỉ định/sửa/in phiếu chỉ định cận lâm sàng' },
   // Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — không có `invoice.create` riêng: phiếu thu luôn tạo
   // tự động kèm `encounter.create` (check-in/tiếp nhận trực tiếp), không có endpoint tạo riêng.
   { module: 'invoice', action: 'read', description: 'Xem phiếu thu' },
@@ -255,6 +268,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
     'technical_service.read': 'global',
+    'service_package.read': 'global',
+    'price_list.read': 'global',
+    'clinical_order.read': 'global',
     // Thu ngân cơ bản — lễ tân là người thu tiền chính (PRD mục 4.7 "Là lễ tân...").
     'invoice.read': 'global',
     'invoice.update': 'global',
@@ -300,6 +316,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
     'technical_service.read': 'global',
+    'service_package.read': 'global',
+    'price_list.read': 'global',
+    'clinical_order.read': 'global',
     'result_template.read': 'global',
     // Kho Thuốc GĐ5 — điều dưỡng chỉ xem đơn thuốc mẫu, không tự thêm/sửa (bác sĩ/clinic_admin quyết định phác đồ).
     'prescription_template.read': 'global',
@@ -349,6 +368,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
     'technical_service.read': 'global',
+    'service_package.read': 'global',
+    'price_list.read': 'global',
+    'clinical_order.read': 'global',
+    'clinical_order.create': 'personal',
     'result_template.read': 'global',
     'result_template.manage': 'global',
     // Kho Thuốc GĐ5 — bác sĩ tự lập/sửa/xoá đơn thuốc mẫu của mình lẫn của người khác (mẫu dùng
@@ -400,8 +423,16 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.manage': 'global',
     'drug.read': 'global',
     'technical_service.read': 'global',
+    'service_package.read': 'global',
+    'price_list.read': 'global',
+    'clinical_order.read': 'global',
+    'clinical_order.create': 'global',
     'technical_service.create': 'global',
     'technical_service.update': 'global',
+    'service_package.create': 'global',
+    'service_package.update': 'global',
+    'price_list.create': 'global',
+    'price_list.update': 'global',
     'result_template.read': 'global',
     'result_template.manage': 'global',
     'drug.create': 'global',

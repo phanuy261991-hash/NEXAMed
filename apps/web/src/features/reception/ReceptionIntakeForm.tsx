@@ -35,6 +35,8 @@ import { patientDetailToFormValues, toCreatePatientRequest, toUpdatePatientReque
 import { EMPTY_PATIENT_FORM, PatientFormFields, type PatientFormValues } from '../patient/PatientFormFields';
 import { PatientMatchDialog } from '../patient/PatientMatchDialog';
 import { PatientSearchDialog } from './PatientSearchDialog';
+import { resolvePrices } from '../pricing/pricing.api';
+import { useResolvedPriceQuery } from '../pricing/pricing.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useCheckInMutation, useReceptionListQuery, useRegisterReceptionMutation } from './reception.queries';
 
@@ -77,8 +79,11 @@ function toNumber(v: string): number | undefined {
 }
 
 /** "Chỉ định dịch vụ khám" (docs/DECISIONS.md #080) — 1 dòng đã thêm vào danh sách nháp. */
+/** `basePrice`/`priceListName` chỉ có khi một bảng giá có thời hạn (Cận lâm sàng GĐ2, #212) đang áp lên dòng này — để hiện "giảm từ ... theo bảng ...". */
 interface ServiceLineDraft extends EncounterServiceItemInput {
   draftId: string;
+  basePrice?: number;
+  priceListName?: string;
 }
 
 function VitalField({ id, label, value, onChange, step }: { id: string; label: string; value: string; onChange: (v: string) => void; step?: string }) {
@@ -150,6 +155,7 @@ export function ReceptionIntakeForm({
   const [isPriority, setIsPriority] = useState(false);
   const [priorityReasonCode, setPriorityReasonCode] = useState('');
   const [serviceLines, setServiceLines] = useState<ServiceLineDraft[]>([]);
+  const [addingService, setAddingService] = useState(false);
   const [draftExamTypeCode, setDraftExamTypeCode] = useState('');
   const [draftPriceTypeCode, setDraftPriceTypeCode] = useState('');
   const [draftQuantity, setDraftQuantity] = useState(1);
@@ -383,16 +389,45 @@ export function ReceptionIntakeForm({
   const draftPriceTypeOptions = draftActivePrices.map((p) => ({ value: p.priceTypeCode, label: priceTypeLabelByCode.get(p.priceTypeCode) ?? p.priceTypeCode }));
   const draftSelectedPrice = draftActivePrices.find((p) => p.priceTypeCode === draftPriceTypeCode) ?? null;
   const draftUnitLabel = draftSelectedPrice ? (unitLabelByCode.get(draftSelectedPrice.unitCode) ?? draftSelectedPrice.unitCode) : '—';
+  // "Bảng giá có thời hạn" (Cận lâm sàng GĐ2, #212) — giá áp dụng theo NGÀY TIẾP NHẬN (`date` của form), xem trước ngay khi chọn Loại giá.
+  const draftResolvedQuery = useResolvedPriceQuery(
+    draftExamType && draftSelectedPrice ? { itemKind: 'EXAM_TYPE', ref: draftExamType.code, priceTypeCode: draftSelectedPrice.priceTypeCode } : null,
+    date,
+  );
+  const draftResolved = draftResolvedQuery.data ?? null;
   const serviceLinesTotal = serviceLines.reduce((sum, l) => (l.examTypePrice !== undefined ? sum + l.examTypePrice * l.quantity : sum), 0);
   const serviceLinesHasUnpriced = serviceLines.some((l) => l.examTypePrice === undefined);
 
-  function addServiceLine() {
-    if (!draftExamType) return;
+  async function addServiceLine() {
+    if (!draftExamType || addingService) return;
     if (draftHasConfiguredPrice && !draftSelectedPrice) {
       setServiceError('Vui lòng chọn Loại giá dịch vụ.');
       return;
     }
     setServiceError(null);
+    // Chốt giá TẠI THỜI ĐIỂM bấm thêm (không dựa vào bản xem trước có thể đã cũ): giá áp dụng theo ngày tiếp nhận, sau bảng giá
+    // có thời hạn đang hiệu lực. Không tra được (không có quyền `price_list.read`/mất mạng) → dùng giá mặc định như trước GĐ2.
+    let amount = draftSelectedPrice?.amount;
+    let basePrice: number | undefined;
+    let priceListName: string | undefined;
+    if (draftSelectedPrice) {
+      setAddingService(true);
+      try {
+        const res = await resolvePrices({ date, items: [{ itemKind: 'EXAM_TYPE', ref: draftExamType.code, priceTypeCode: draftSelectedPrice.priceTypeCode }] });
+        const resolved = res.items[0];
+        if (resolved && resolved.amount !== null) {
+          amount = resolved.amount;
+          if (resolved.applied) {
+            basePrice = resolved.baseAmount ?? undefined;
+            priceListName = resolved.applied.name;
+          }
+        }
+      } catch {
+        // dùng giá mặc định — xem comment trên
+      } finally {
+        setAddingService(false);
+      }
+    }
     setServiceLines((prev) => [
       ...prev,
       {
@@ -401,8 +436,10 @@ export function ReceptionIntakeForm({
         examTypeName: draftExamType.name,
         priceTypeCode: draftSelectedPrice?.priceTypeCode,
         unitCode: draftSelectedPrice?.unitCode,
-        examTypePrice: draftSelectedPrice?.amount,
+        examTypePrice: amount,
         quantity: draftQuantity,
+        basePrice,
+        priceListName,
       },
     ]);
     setDraftExamTypeCode('');
@@ -1031,7 +1068,7 @@ export function ReceptionIntakeForm({
               </label>
             </div>
           )}
-          <Button id="intake-service-add" type="button" variant="add" onClick={addServiceLine} disabled={!draftExamTypeCode}>
+          <Button id="intake-service-add" type="button" variant="add" onClick={() => void addServiceLine()} disabled={!draftExamTypeCode} loading={addingService}>
             <Plus size={14} weight="bold" aria-hidden="true" />
             Thêm dịch vụ
           </Button>
@@ -1039,6 +1076,12 @@ export function ReceptionIntakeForm({
 
         {draftExamType && !draftHasConfiguredPrice && (
           <p className="mt-1.5 text-xs text-amber-600">Chưa cấu hình đơn giá hiệu lực cho dịch vụ này — vẫn thêm được, chỉ thiếu Đơn giá/Đơn vị.</p>
+        )}
+        {draftResolved && draftResolved.applied && draftResolved.amount !== null && (
+          <p className="mt-1.5 text-xs font-semibold text-emerald-700">
+            Giá áp dụng ngày {date.split('-').reverse().join('/')}: {formatVnd(draftResolved.amount)} theo bảng "{draftResolved.applied.name}"
+            {draftResolved.baseAmount !== null ? ` (giảm từ ${formatVnd(draftResolved.baseAmount)})` : ''}.
+          </p>
         )}
         {serviceError && (
           <p role="alert" className="mt-1.5 text-xs font-semibold text-rose-600">
@@ -1068,6 +1111,11 @@ export function ReceptionIntakeForm({
                     <td className="px-3 py-3 text-center font-medium text-slate-700">{line.quantity}</td>
                     <td className="px-3 py-3 text-center font-medium text-slate-700">
                       {line.examTypePrice !== undefined ? formatVnd(line.examTypePrice) : '—'}
+                      {line.priceListName && line.basePrice !== undefined && (
+                        <div className="text-[11px] font-semibold text-emerald-700" title={`Theo bảng giá "${line.priceListName}"`}>
+                          giảm từ {formatVnd(line.basePrice)} · {line.priceListName}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-3 text-center font-bold text-slate-800">
                       {line.examTypePrice !== undefined ? formatVnd(line.examTypePrice * line.quantity) : '—'}

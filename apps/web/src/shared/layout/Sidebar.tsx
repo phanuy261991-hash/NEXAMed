@@ -25,6 +25,7 @@ import {
   SlidersHorizontal,
   Stack,
   Stethoscope,
+  Tag,
   Truck,
   UserPlus,
   Users,
@@ -38,7 +39,13 @@ import {
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/auth.store';
 import { useHasAnyPermission, useDataScope, useHasPermission } from '../../features/auth/usePermission';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS } from '../../features/auth/admin-permissions';
+import {
+  ADMIN_ANY_PERMISSIONS,
+  ADMIN_ORG_PERMISSIONS,
+  DRUG_MANAGE_PERMISSIONS,
+  PARACLINICAL_CATALOG_PERMISSIONS,
+  PRICE_LIST_ADMIN_PERMISSIONS,
+} from '../../features/auth/admin-permissions';
 import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
 import { useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
 import { useSupplierDebtSummariesQuery } from '../../features/supplier-debt/supplier-debt.queries';
@@ -108,6 +115,8 @@ const ADMIN_GROUP_PATHS = [
   '/admin/catalog-organization',
   '/admin/catalog-clinical',
   '/admin/catalog-paraclinical',
+  // "Bảng giá" (Cận lâm sàng GĐ2, #212) — thêm cả trang chi tiết `/admin/price-lists/:id` ở chỗ khởi tạo `adminGroupOpen` (khớp tiền tố).
+  '/admin/price-lists',
   // "Danh mục kho" — chuyển từ nhóm "Quản lý kho" xuống đây theo yêu cầu chủ dự án (16/09/2026,
   // docs/DECISIONS.md #157), route/quyền giữ nguyên (`/admin/catalog-pharmacy` KHÔNG chuyển).
   '/admin/catalog-warehouse',
@@ -186,7 +195,7 @@ export function Sidebar() {
   );
   const [adminGroupOpen, setAdminGroupOpen] = useState(
     // So khớp CHÍNH XÁC (không phải tiền tố) — xem comment ở khai báo ADMIN_GROUP_PATHS.
-    ADMIN_GROUP_PATHS.includes(location.pathname),
+    ADMIN_GROUP_PATHS.includes(location.pathname) || location.pathname.startsWith('/admin/price-lists/'),
   );
   const [billingGroupOpen, setBillingGroupOpen] = useState(
     BILLING_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
@@ -215,6 +224,8 @@ export function Sidebar() {
   // "Danh mục cận lâm sàng" (#212) — gate theo ĐÚNG quyền của route guard (`PARACLINICAL_CATALOG_PERMISSIONS`).
   const canSeeCatalogParaclinical = useHasAnyPermission(PARACLINICAL_CATALOG_PERMISSIONS);
   const canSeeCatalogPharmacy = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
+  // "Bảng giá" (#212 GĐ2) — gate theo ĐÚNG quyền của route guard (`PRICE_LIST_ADMIN_PERMISSIONS`); `price_list.read` một mình không đủ.
+  const canSeePriceLists = useHasAnyPermission(PRICE_LIST_ADMIN_PERMISSIONS);
   // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — 2 mục "Công nợ nhà cung cấp"/
   // "Phiếu thanh toán NCC" trong nhóm "Quản lý nhà cung cấp", gate RIÊNG khỏi `canSeeCatalogPharmacy`
   // (mặc định CHỈ clinic_admin có `supplier_debt.read`, khác `drug.create`/`drug.update`).
@@ -703,6 +714,7 @@ export function Sidebar() {
                   {canSeeCatalogParaclinical && (
                     <NavItem to="/admin/catalog-paraclinical" label="Danh mục cận lâm sàng" icon={Flask} collapsed={false} indent />
                   )}
+                  {canSeePriceLists && <NavItem to="/admin/price-lists" label="Bảng giá" icon={Tag} collapsed={false} indent />}
                   {/* "Danh mục kho" — chuyển từ nhóm "Quản lý kho" xuống đây theo yêu cầu chủ dự án
                       (16/09/2026, docs/DECISIONS.md #157), route/quyền giữ nguyên. */}
                   {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-warehouse" label="Danh mục kho" icon={Warehouse} collapsed={false} indent />}

@@ -310,6 +310,10 @@ Bản mẫu in theo (chứng từ × khổ giấy). Cột đặc thù: `document
 
 6 bảng THEO TENANT, đủ 8 cột bắt buộc + RLS. `technical_service` (dịch vụ kỹ thuật, mã tự sinh theo loại) + `technical_service_price` (đơn giá đa mức, exclusion constraint chặn chồng lấn ngày cùng dịch vụ + Loại giá — khuôn `exam_type_price`); `lab_indicator` + `lab_indicator_reference` (khoảng tham chiếu theo giới tính × tuổi NĂM; ngưỡng `DOUBLE PRECISION` vì không phải cột tiền; `display_text` là chữ in); `technical_service_indicator` (nối dịch vụ ↔ chỉ số, kèm `interpretation_text`); `result_template` (mẫu Mô tả/Kết luận dùng chung, tối đa 1 mặc định/dịch vụ). Đơn giá/chỉ số/khoảng tham chiếu quản lý bằng **bulk-replace** (xoá mềm rồi tạo lại trong cùng transaction) — gửi mảng = thay TOÀN BỘ, bỏ trống = không đụng.
 
+### service_package / price_list (Cận lâm sàng GĐ2, `docs/DECISIONS.md` #212)
+
+4 bảng THEO TENANT, đủ 8 cột + RLS: `service_package` + `service_package_item` (gói gồm Dịch vụ khám + Dịch vụ kỹ thuật, KHÔNG thuốc/vật tư; giá FIXED hoặc tổng trừ chiết khấu — giá "tổng trừ chiết khấu" không lưu, tính lại lúc đọc) và `price_list` + `price_list_item` (bảng giá có thời hạn, `priority` số cao thắng, dòng "Giảm %"/"Giá mới"). "Bảng giá chung" = giá nhập trên từng mặt hàng (`exam_type_price`, `technical_service_price`, `drug.default_sell_price`/`drug_unit.sell_price`), KHÔNG lưu bản sao. Logic chọn giá thuần ở `packages/core/src/pricing`; ngày áp giá = ngày tiếp nhận/lập phiếu. Danh mục `reference_catalog` thêm `LAB_RESULT_UNIT` (đơn vị kết quả xét nghiệm).
+
 Sơ đồ quan hệ đầy đủ và ràng buộc DB xem `ERD.md` ở thư mục gốc.
 
 ## Chỗ để sẵn cho v2
@@ -319,3 +323,7 @@ Sơ đồ quan hệ đầy đủ và ràng buộc DB xem `ERD.md` ở thư mục
 ## Migration
 
 Forward-only. Migration đã merge vào `main` là bất biến. Đổi kiểu cột trên bảng lớn làm 3 bước: thêm cột mới → backfill theo batch → chuyển đọc/ghi → drop cột cũ ở migration sau.
+
+### clinical_order / clinical_order_package / clinical_order_item (Cận lâm sàng GĐ3, `docs/DECISIONS.md` #212)
+
+3 bảng THEO TENANT, đủ 8 cột + RLS. `clinical_order`: 1 phiếu/lượt khám (partial unique `(tenant_id, encounter_id) WHERE deleted_at IS NULL`), `order_no` mã `CD` sinh từ sequence DB theo tenant. `clinical_order_package`: gói đã chỉ định, snapshot `package_code/package_name/unit_price` (giá gói đã chốt, không đổi khi bảng giá đổi). `clinical_order_item`: `item_kind` TECHNICAL_SERVICE/EXAM_TYPE/FREE_TEXT, `performance` IN_HOUSE/EXTERNAL, snapshot `code/name`, `unit_price` (BIGINT, chỉ dịch vụ tại phòng khám LẺ có; thuộc gói/ra ngoài = NULL), `price_type_code/unit_code`, `quantity`, `note`, `status` ORDERED/CANCELLED (GĐ4 mở rộng), `clinical_order_package_id` null = dịch vụ lẻ. Dịch vụ khám trong gói lưu `exam_type_code` (không FK cứng — khuôn `exam_type_price`). Tiền vào hoá đơn qua dòng có `lineSource = PARACLINICAL`; `invoice_type` +`PARACLINICAL`.

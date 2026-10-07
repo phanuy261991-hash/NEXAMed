@@ -46,4 +46,6 @@ export const REFERENCE_CATALOG_SHORT_CODE_PREFIXES: Partial<Record<ReferenceCata
   // Cận lâm sàng GĐ1 (docs/DECISIONS.md #212) — Nhóm dịch vụ kỹ thuật / Mẫu bệnh phẩm.
   TECH_SERVICE_CATEGORY: 'NK',
   SPECIMEN_TYPE: 'MB',
+  // Cận lâm sàng GĐ2 — Đơn vị kết quả xét nghiệm (KQ). Không trùng tiền tố nào ở trên.
+  LAB_RESULT_UNIT: 'KQ',
 };

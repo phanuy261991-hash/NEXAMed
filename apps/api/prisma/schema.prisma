@@ -105,6 +105,13 @@ model Tenant {
   labIndicatorReferences      LabIndicatorReference[]
   technicalServiceIndicators  TechnicalServiceIndicator[]
   resultTemplates             ResultTemplate[]
+  servicePackages             ServicePackage[]
+  clinicalOrders              ClinicalOrder[]
+  clinicalOrderItems          ClinicalOrderItem[]
+  clinicalOrderPackages       ClinicalOrderPackage[]
+  servicePackageItems         ServicePackageItem[]
+  priceLists                  PriceList[]
+  priceListItems              PriceListItem[]
   icd10PhraseUsages           Icd10PhraseUsage[]
   prescriptionTemplateItems   PrescriptionTemplateItem[]
   patientAllergens            PatientAllergen[]
@@ -712,6 +719,9 @@ enum ReferenceCatalogCategory {
   // gom nhóm trên phiếu kết quả) và "Mẫu bệnh phẩm" (Máu EDTA/Nước tiểu...). Không seed cứng, mã tự sinh.
   TECH_SERVICE_CATEGORY
   SPECIMEN_TYPE
+  // Cận lâm sàng GĐ2 (docs/DECISIONS.md #212) — "Đơn vị kết quả xét nghiệm" (g/L, mmol/L, 10^9/L...). Chọn từ danh mục thay vì
+  // gõ tay (tránh "g/L"/"g/l"/"G/L" thành nhiều đơn vị); `lab_indicator.unit` vẫn lưu CHỮ (snapshot in lên phiếu). Có seed sẵn, mã tự sinh.
+  LAB_RESULT_UNIT
 
   @@map("reference_catalog_category")
 }
@@ -1361,6 +1371,7 @@ model Encounter {
   diagnoses     Diagnosis[]
   clinicalNotes ClinicalNote[]
   prescriptions Prescription[]
+  clinicalOrders ClinicalOrder[]
   // Thu ngân cơ bản — TỐI ĐA 1 hoá đơn `invoiceType=SERVICE`/lượt khám (BIL-01, PRD mục 4.7), ép
   // bằng partial unique index raw SQL trong migration (`WHERE invoice_type='SERVICE' AND
   // deleted_at IS NULL`, không khai @@unique ở Prisma — cùng lý do patient.nationalIdHash). Kho
@@ -1662,6 +1673,7 @@ model Drug {
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê + Điều chuyển kho.
   stockCountLines           StockCountLine[]
   stockTransferLines        StockTransferLine[]
+  priceListItems            PriceListItem[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -2656,6 +2668,8 @@ enum InvoiceStatus {
 enum InvoiceType {
   SERVICE
   DRUG
+  // Cận lâm sàng GĐ3 (#212) — hoá đơn tiền chỉ định cận lâm sàng RIÊNG (khi hoá đơn khám đã thu), N hoá đơn/lượt khám như DRUG.
+  PARACLINICAL
 
   @@map("invoice_type")
 }
@@ -2769,6 +2783,9 @@ model InvoiceLine {
   sourceServiceItemId    String? @map("source_service_item_id") @db.Uuid
   // Kho Thuốc GĐ3 (#163) — dòng nguồn từ Phiếu xuất kho (tiền thuốc), composite FK bên dưới.
   sourceStockIssueLineId String? @map("source_stock_issue_line_id") @db.Uuid
+  // Cận lâm sàng GĐ3 (#212) — dòng chỉ định lẻ / dòng gói; đúng-1-trong-4 nguồn (CHECK ở migration).
+  sourceOrderItemId      String? @map("source_order_item_id") @db.Uuid
+  sourceOrderPackageId   String? @map("source_order_package_id") @db.Uuid
   // examTypeCode/examTypeName GIỮ NGUYÊN bắt buộc cho MỌI dòng (kể cả nguồn tiền thuốc — snapshot
   // luôn mã/tên thuốc vào đúng 2 cột này lúc tạo dòng) để không phải sửa lại toàn bộ tầng hiển thị
   // hoá đơn hiện có (`InvoiceService.toInvoiceResponse()`/in phiếu) — chỉ khác Ý NGHĨA theo nguồn.
@@ -2805,6 +2822,8 @@ model InvoiceLine {
   // Composite FK (tenant_id, source_stock_issue_line_id) -> stock_issue_line(tenant_id, id) — Kho
   // Thuốc GĐ3 (#163), NULLABLE (dòng nguồn dịch vụ khám dùng sourceServiceItem ở trên thay vào đó).
   sourceStockIssueLine StockIssueLine?       @relation(fields: [tenantId, sourceStockIssueLineId], references: [tenantId, id])
+  sourceOrderItem      ClinicalOrderItem?    @relation(fields: [tenantId, sourceOrderItemId], references: [tenantId, id])
+  sourceOrderPackage   ClinicalOrderPackage? @relation(fields: [tenantId, sourceOrderPackageId], references: [tenantId, id])
   // Hoàn tiền MỘT PHẦN (#203) — các lần hoàn đã áp lên dòng này (tổng quantity = số đã hoàn).
   refundLines          InvoiceRefundLine[]
 
@@ -3627,6 +3646,7 @@ model AuditLog {
 enum PrintDocumentType {
   PRESCRIPTION
   MEDICAL_RECORD
+  CLINICAL_ORDER
   INVOICE
   INVOICE_COMBINED
   WALLET_TOPUP_RECEIPT
@@ -3747,6 +3767,9 @@ model TechnicalService {
   prices      TechnicalServicePrice[]
   indicators  TechnicalServiceIndicator[]
   templates   ResultTemplate[]
+  packageItems   ServicePackageItem[]
+  priceListItems PriceListItem[]
+  orderItems     ClinicalOrderItem[]
 
   @@unique([tenantId, id])
   @@map("technical_service")
@@ -3907,4 +3930,284 @@ model ResultTemplate {
 
   @@unique([tenantId, id])
   @@map("result_template")
+}
+
+enum ServicePackagePricingMode {
+  FIXED
+  SUM_MINUS_DISCOUNT
+
+  @@map("service_package_pricing_mode")
+}
+
+enum ServicePackageItemKind {
+  EXAM_TYPE
+  TECHNICAL_SERVICE
+
+  @@map("service_package_item_kind")
+}
+
+enum PriceListItemKind {
+  EXAM_TYPE
+  TECHNICAL_SERVICE
+  PACKAGE
+  DRUG
+  MEDICAL_SUPPLY
+
+  @@map("price_list_item_kind")
+}
+
+enum PriceListLineMode {
+  PERCENT_OFF
+  NEW_PRICE
+
+  @@map("price_list_line_mode")
+}
+
+/// Gói dịch vụ (Cận lâm sàng GĐ2, docs/DECISIONS.md #212) — gồm Dịch vụ khám + Dịch vụ kỹ thuật (KHÔNG thuốc/vật tư:
+/// trừ kho theo lô và cần y lệnh, #192/#164). `FIXED`: giá cố định cho cả gói (hoá đơn ghi 1 dòng "gói"). `SUM_MINUS_DISCOUNT`:
+/// tổng giá lẻ các dịch vụ con trừ chiết khấu, tự tính lại khi đơn giá con đổi (KHÔNG lưu số đã tính).
+model ServicePackage {
+  id            String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String                    @map("tenant_id") @db.Uuid
+  code          String
+  name          String
+  pricingMode   ServicePackagePricingMode @default(FIXED) @map("pricing_mode")
+  fixedPrice    BigInt?                   @map("fixed_price")
+  discountType  DiscountType?             @map("discount_type")
+  discountValue BigInt?                   @map("discount_value")
+  effectiveFrom DateTime                  @map("effective_from") @db.Date
+  effectiveTo   DateTime?                 @map("effective_to") @db.Date
+  isActive      Boolean                   @default(true) @map("is_active")
+  sortOrder     Int                       @default(0) @map("sort_order")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant         Tenant               @relation(fields: [tenantId], references: [id])
+  items          ServicePackageItem[]
+  priceListItems PriceListItem[]
+  orderPackages  ClinicalOrderPackage[]
+
+  @@unique([tenantId, id])
+  @@map("service_package")
+}
+
+/// Dịch vụ con của gói — đúng-1-trong-2 tham chiếu (CHECK ở migration): `examTypeCode` (reference_catalog EXAM_TYPE, lưu mã
+/// thẳng, không FK cứng) hoặc `technicalServiceId`.
+model ServicePackageItem {
+  id                 String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String                 @map("tenant_id") @db.Uuid
+  servicePackageId   String                 @map("service_package_id") @db.Uuid
+  itemKind           ServicePackageItemKind @map("item_kind")
+  examTypeCode       String?                @map("exam_type_code")
+  technicalServiceId String?                @map("technical_service_id") @db.Uuid
+  quantity           Int                    @default(1)
+  sortOrder          Int                    @default(0) @map("sort_order")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  servicePackage   ServicePackage    @relation(fields: [tenantId, servicePackageId], references: [tenantId, id])
+  technicalService TechnicalService? @relation(fields: [tenantId, technicalServiceId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("service_package_item")
+}
+
+/// Bảng giá có thời hạn (Cận lâm sàng GĐ2, #212): áp theo khoảng ngày cố định cho MỘT hoặc NHIỀU mặt hàng, độ ưu tiên số
+/// (CAO THẮNG), hết hạn tự quay về bảng thấp hơn rồi về giá mặc định. "Bảng giá chung" = giá nhập trực tiếp trên mặt hàng
+/// (ưu tiên 0) nên KHÔNG có bản ghi ở đây. `isActive=false` = "Ngừng bảng giá".
+model PriceList {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  code          String
+  name          String
+  description   String?
+  effectiveFrom DateTime  @map("effective_from") @db.Date
+  effectiveTo   DateTime  @map("effective_to") @db.Date
+  priority      Int
+  isActive      Boolean   @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id])
+  items  PriceListItem[]
+
+  @@unique([tenantId, id])
+  @@map("price_list")
+}
+
+/// Dòng của bảng giá — `itemKind` quyết định cột tham chiếu nào được điền (CHECK đúng-1-trong-4 ở migration). `priceTypeCode`
+/// null = mọi Loại giá, `unitCode` null = mọi bậc đơn vị (chỉ hợp lệ với PERCENT_OFF). Có partial unique index tính bằng
+/// COALESCE (raw SQL, Prisma không biểu diễn được — soát kỹ khi `migrate dev --create-only` đừng để nó DROP).
+model PriceListItem {
+  id                 String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String            @map("tenant_id") @db.Uuid
+  priceListId        String            @map("price_list_id") @db.Uuid
+  itemKind           PriceListItemKind @map("item_kind")
+  examTypeCode       String?           @map("exam_type_code")
+  technicalServiceId String?           @map("technical_service_id") @db.Uuid
+  servicePackageId   String?           @map("service_package_id") @db.Uuid
+  drugId             String?           @map("drug_id") @db.Uuid
+  priceTypeCode      String?           @map("price_type_code")
+  unitCode           String?           @map("unit_code")
+  mode               PriceListLineMode
+  value              BigInt
+  sortOrder          Int               @default(0) @map("sort_order")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  priceList        PriceList         @relation(fields: [tenantId, priceListId], references: [tenantId, id])
+  technicalService TechnicalService? @relation(fields: [tenantId, technicalServiceId], references: [tenantId, id])
+  servicePackage   ServicePackage?   @relation(fields: [tenantId, servicePackageId], references: [tenantId, id])
+  drug             Drug?             @relation(fields: [tenantId, drugId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("price_list_item")
+}
+
+enum ClinicalOrderItemKind {
+  TECHNICAL_SERVICE
+  EXAM_TYPE
+  FREE_TEXT
+
+  @@map("clinical_order_item_kind")
+}
+
+enum ClinicalOrderPerformance {
+  IN_HOUSE
+  EXTERNAL
+
+  @@map("clinical_order_performance")
+}
+
+enum ClinicalOrderItemStatus {
+  ORDERED
+  CANCELLED
+
+  @@map("clinical_order_item_status")
+}
+
+/// PHIẾU chỉ định cận lâm sàng (Cận lâm sàng GĐ3, docs/DECISIONS.md #212) — đúng 1 phiếu còn hiệu lực mỗi lượt khám (partial unique ở
+/// migration); bác sĩ thêm/bớt dòng trên cùng phiếu. Mã `order_no` (CLS...) in trên phiếu chỉ định và hàng đợi cận lâm sàng (GĐ4).
+model ClinicalOrder {
+  id          String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  orderNo     String @map("order_no")
+  encounterId String @map("encounter_id") @db.Uuid
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant                 @relation(fields: [tenantId], references: [id])
+  encounter Encounter              @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  items     ClinicalOrderItem[]
+  packages  ClinicalOrderPackage[]
+
+  @@unique([tenantId, id])
+  @@map("clinical_order")
+}
+
+/// Gói được chỉ định — hoá đơn ghi ĐÚNG 1 dòng gói với giá đã chốt lúc chỉ định (`unit_price`); dịch vụ con vẫn là `ClinicalOrderItem` (không tiền riêng).
+model ClinicalOrderPackage {
+  id               String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String @map("tenant_id") @db.Uuid
+  clinicalOrderId  String @map("clinical_order_id") @db.Uuid
+  servicePackageId String @map("service_package_id") @db.Uuid
+  packageCode      String @map("package_code")
+  packageName      String @map("package_name")
+  unitPrice        BigInt @map("unit_price")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id])
+  order          ClinicalOrder       @relation(fields: [tenantId, clinicalOrderId], references: [tenantId, id])
+  servicePackage ServicePackage      @relation(fields: [tenantId, servicePackageId], references: [tenantId, id])
+  items          ClinicalOrderItem[]
+  invoiceLines   InvoiceLine[]
+
+  @@unique([tenantId, id])
+  @@map("clinical_order_package")
+}
+
+/// Từng dịch vụ được chỉ định. `performance=IN_HOUSE` lẻ có `unit_price` (snapshot, sinh dòng hoá đơn); thuộc gói/ra ngoài thì không. Dòng tự
+/// do (`FREE_TEXT`) chỉ cho chỉ định RA NGOÀI — không giá, không hàng đợi, chỉ in phiếu (đúng khuôn "Kê thuốc tự do" #192).
+model ClinicalOrderItem {
+  id                    String                   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String                   @map("tenant_id") @db.Uuid
+  clinicalOrderId       String                   @map("clinical_order_id") @db.Uuid
+  itemKind              ClinicalOrderItemKind    @map("item_kind")
+  technicalServiceId    String?                  @map("technical_service_id") @db.Uuid
+  examTypeCode          String?                  @map("exam_type_code")
+  freeTextName          String?                  @map("free_text_name")
+  code                  String?
+  name                  String
+  performance           ClinicalOrderPerformance
+  quantity              Int                      @default(1)
+  unitPrice             BigInt?                  @map("unit_price")
+  priceTypeCode         String?                  @map("price_type_code")
+  unitCode              String?                  @map("unit_code")
+  clinicalOrderPackageId String?                 @map("clinical_order_package_id") @db.Uuid
+  note                  String?
+  status                ClinicalOrderItemStatus  @default(ORDERED)
+  sortOrder             Int                      @default(0) @map("sort_order")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant           Tenant                @relation(fields: [tenantId], references: [id])
+  order            ClinicalOrder         @relation(fields: [tenantId, clinicalOrderId], references: [tenantId, id])
+  technicalService TechnicalService?     @relation(fields: [tenantId, technicalServiceId], references: [tenantId, id])
+  package          ClinicalOrderPackage? @relation(fields: [tenantId, clinicalOrderPackageId], references: [tenantId, id])
+  invoiceLines     InvoiceLine[]
+
+  @@unique([tenantId, id])
+  @@map("clinical_order_item")
 }

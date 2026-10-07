@@ -103,6 +103,17 @@ export class DrugRepository {
     return tx.drug.findFirst({ where: { tenantId, id, deletedAt: null }, include: DETAIL_INCLUDE });
   }
 
+  /** Cận lâm sàng GĐ2 (#212) — số mặt hàng đang dùng, cho dòng "Bảng giá chung" ảo ở danh sách bảng giá. */
+  countActive(tx: Prisma.TransactionClient, tenantId: string): Promise<number> {
+    return tx.drug.count({ where: { tenantId, deletedAt: null, isActive: true } });
+  }
+
+  /** Cận lâm sàng GĐ2 (#212) — tính giá theo bảng giá có thời hạn cần chuỗi quy đổi đơn vị của nhiều thuốc cùng lúc, không N+1. */
+  findByIdsWithDetails(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<DrugWithDetails[]> {
+    if (ids.length === 0) return Promise.resolve([]);
+    return tx.drug.findMany({ where: { tenantId, id: { in: ids }, deletedAt: null }, include: DETAIL_INCLUDE });
+  }
+
   findByIds(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<Drug[]> {
     return tx.drug.findMany({ where: { tenantId, id: { in: ids }, deletedAt: null } });
   }

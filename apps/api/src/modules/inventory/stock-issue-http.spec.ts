@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
+import { getVietnamDateString } from '@nexamed/core';
 import { AppModule } from '../../app.module';
 import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
@@ -261,6 +262,58 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
     expect(invoiceRes.body.data.lines).toHaveLength(2);
     const drugLine = invoiceRes.body.data.lines.find((l: { examTypeName: string }) => l.examTypeName === 'Amoxicillin 500mg');
     expect(drugLine).toMatchObject({ quantity: 20, unitPrice: 3000, lineTotal: 60_000 });
+  });
+
+  it('Bảng giá có thời hạn (#212 GĐ2) — bảng đang hiệu lực làm ĐỔI giá bán ghi vào phiếu xuất + hoá đơn; hết hiệu lực/ngừng thì về giá mặc định', async () => {
+    const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc có bảng giá', defaultSellPrice: 3000 });
+    const batchId = await receiveStock(clinicAdminToken, drugId, 100, 1000);
+
+    // Bảng giá bao trọn hôm nay (từ hôm qua tới ngày mai) — giảm 50%.
+    const day = (offset: number) => new Date(Date.now() + offset * 86_400_000 + 7 * 3_600_000).toISOString().slice(0, 10);
+    const listRes = await request(app.getHttpServer())
+      .post('/api/v1/price-lists')
+      .set(authed(clinicAdminToken))
+      .send({
+        name: 'Giảm giá thuốc test',
+        effectiveFrom: day(-1),
+        effectiveTo: day(1),
+        priority: 10,
+        lines: [{ itemKind: 'DRUG', drugId, mode: 'PERCENT_OFF', value: 50 }],
+      });
+    expect(listRes.status, JSON.stringify(listRes.body)).toBe(200);
+    expect(getVietnamDateString() >= day(-1)).toBe(true);
+
+    const { encounterId } = await prepareEncounterInConsultation(5);
+    const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 20 }]);
+    // Hộp thoại "Phát thuốc" hiện đúng giá sau bảng giá TRƯỚC khi lập phiếu.
+    const status = await request(app.getHttpServer()).get(`/api/v1/inventory/prescriptions/${prescriptionId}/dispense-status`).set(authed(doctorToken)).query({ warehouseId });
+    expect(status.status, JSON.stringify(status.body)).toBe(200);
+    expect(status.body.data.lines[0].sellPrice).toBe(1500);
+
+    const issueRes = await request(app.getHttpServer())
+      .post('/api/v1/inventory/issues')
+      .set(authed(doctorToken))
+      .send({ prescriptionId, warehouseId, lines: [{ prescriptionItemId: items[0]!.id, drugId, batchId, quantity: 20 }] });
+    expect(issueRes.status).toBe(200);
+    expect(issueRes.body.data.totalAmount).toBe(30_000);
+    expect(issueRes.body.data.lines[0].sellPrice).toBe(1500);
+
+    const invoiceRes = await request(app.getHttpServer()).get(`/api/v1/billing/invoices/${encounterId}`).set(authed(receptionistToken));
+    const drugLine = invoiceRes.body.data.lines.find((l: { examTypeName: string }) => l.examTypeName === 'Thuốc có bảng giá');
+    expect(drugLine).toMatchObject({ quantity: 20, unitPrice: 1500, lineTotal: 30_000 });
+
+    // Ngừng bảng giá → phát thuốc tiếp theo trở về giá mặc định 3.000/đơn vị.
+    const stop = await request(app.getHttpServer()).patch(`/api/v1/price-lists/${listRes.body.data.id}`).set(authed(clinicAdminToken)).send({ version: listRes.body.data.version, isActive: false });
+    expect(stop.status).toBe(200);
+    const { encounterId: encounter2 } = await prepareEncounterInConsultation(4);
+    const second = await signPrescription(encounter2, [{ drugId, quantity: 10 }]);
+    const issue2 = await request(app.getHttpServer())
+      .post('/api/v1/inventory/issues')
+      .set(authed(doctorToken))
+      .send({ prescriptionId: second.prescriptionId, warehouseId, lines: [{ prescriptionItemId: second.items[0]!.id, drugId, batchId, quantity: 10 }] });
+    expect(issue2.status).toBe(200);
+    expect(issue2.body.data.totalAmount).toBe(30_000);
+    expect(issue2.body.data.lines[0].sellPrice).toBe(3000);
   });
 
   it('phát VƯỢT số lượng còn lại của đơn → 422 STOCK_ISSUE_EXCEEDS_PRESCRIBED_QUANTITY (chặn cứng)', async () => {

@@ -6,6 +6,7 @@ import {
   CaretRight,
   CheckCircle,
   ClipboardText,
+  Flask,
   ClockCounterClockwise,
   PencilSimple,
   Pill,
@@ -51,6 +52,10 @@ import { CLINICAL_SECTION_LABEL, DIAGNOSIS_TYPE_LABEL, VitalChip, classifyBmi, t
 import { EncounterHistoryDetailDialog } from './EncounterHistoryDetailDialog';
 import type { PatientFormValues } from '../patient/PatientFormFields';
 import { formatDobDisplay } from '../../shared/format/date';
+import { ClinicalOrderPanel } from '../clinical-order/ClinicalOrderPanel';
+import { useClinicalOrderQuery } from '../clinical-order/clinical-order.queries';
+import { useHasPermission } from '../auth/usePermission';
+import { useAuthStore } from '../auth/auth.store';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
 import { Icd10SearchPicker, type Icd10SearchPickerHandle } from '../../shared/ui/Icd10SearchPicker';
 import { useIcd10SuggestionEnabledQuery } from '../clinic/clinic.queries';
@@ -115,13 +120,14 @@ function formatRelativeTime(iso: string): string {
 }
 
 /**
- * Chỉ 2 tab THẬT (Phương án 1 — Tab thật, chốt qua AskUserQuestion khi redesign màn khám cùng lúc
- * Kho Thuốc GĐ5) — "Chỉ định cận lâm sàng"/"Lời dặn & hẹn tái khám" ẨN HẲN cho tới khi có nội dung
- * thật, không còn giữ chỗ "Sắp ra mắt" như bản trước.
+ * 3 tab THẬT (Phương án 1 — Tab thật, chốt qua AskUserQuestion khi redesign màn khám cùng lúc
+ * Kho Thuốc GĐ5) — "Lời dặn & hẹn tái khám" ẨN HẲN cho tới khi có nội dung thật, không giữ chỗ "Sắp ra mắt".
+ * "Chỉ định cận lâm sàng" thêm ở Cận lâm sàng GĐ3 (docs/DECISIONS.md #212), chỉ hiện với ai có quyền xem chỉ định.
  */
 const TABS = [
   { id: 'section-kham', label: 'Khám & Chẩn đoán', icon: ClipboardText },
   { id: 'section-donthuoc', label: 'Kê đơn thuốc', icon: Pill },
+  { id: 'section-chidinh', label: 'Chỉ định cận lâm sàng', icon: Flask },
 ] as const;
 
 /**
@@ -136,6 +142,10 @@ export function EncounterConsultationPage() {
   const encounterId = id!;
   const navigate = useNavigate();
   const query = useConsultationDetailQuery(encounterId);
+  const canSeeClinicalOrders = useHasPermission('clinical_order', 'read');
+  const clinicalOrderQuery = useClinicalOrderQuery(encounterId, canSeeClinicalOrders);
+  const clinicalOrderCount = (clinicalOrderQuery.data?.order?.items.filter((i) => i.packageId === null).length ?? 0) + (clinicalOrderQuery.data?.order?.packages.length ?? 0);
+  const doctorDisplayName = useAuthStore((s) => s.user?.displayName ?? s.user?.fullName) ?? '';
 
   useBreadcrumb([
     { label: 'Khám bệnh', to: '/reception/doctor-queue' },
@@ -962,7 +972,7 @@ export function EncounterConsultationPage() {
         {/* Panel phải — khu vực làm việc */}
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex h-11 flex-shrink-0 items-center gap-1.5 border-b border-slate-200 bg-white px-4">
-            {TABS.map((tab) => (
+            {TABS.filter((tab) => tab.id !== 'section-chidinh' || canSeeClinicalOrders).map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -974,6 +984,9 @@ export function EncounterConsultationPage() {
               >
                 <tab.icon size={15} weight={activeTabId === tab.id ? 'fill' : 'bold'} aria-hidden="true" />
                 {tab.label}
+                {tab.id === 'section-chidinh' && clinicalOrderCount > 0 && (
+                  <span className={`rounded-full px-1.5 text-[10.5px] font-bold ${activeTabId === tab.id ? 'bg-white text-blue-700' : 'bg-blue-600 text-white'}`}>{clinicalOrderCount}</span>
+                )}
                 {tab.id === 'section-kham' && diagnoses.some((d) => d.type === 'PRIMARY') && (
                   <CheckCircle size={13} weight="fill" className={activeTabId === tab.id ? 'text-white' : 'text-emerald-500'} aria-label="Đã có chẩn đoán chính" />
                 )}
@@ -1207,6 +1220,22 @@ export function EncounterConsultationPage() {
                 diagnosisLabel={diagnoses.map((d) => `${d.icd10Name} (${d.icd10Code})`).join(' / ')}
               />
             </div>
+            )}
+
+            {/* Tab "Chỉ định cận lâm sàng" (Cận lâm sàng GĐ3, #212) — chỉ định 2 đường + gói, tiền cộng vào hoá đơn khi lưu. */}
+            {activeTabId === 'section-chidinh' && canSeeClinicalOrders && (
+              <ClinicalOrderPanel
+                encounterId={encounterId}
+                isEditableEncounter={!isCompleted}
+                encounterNo={encounter.encounterNo}
+                patientFullName={patient.fullName}
+                patientCode={patient.patientCode}
+                patientDob={formatDobDisplay(patient.dob)}
+                patientGender={GENDER_LABEL[patient.gender] ?? patient.gender}
+                patientPhone={patient.phone}
+                diagnosisLabel={diagnoses.map((d) => `${d.icd10Name} (${d.icd10Code})`).join(' / ')}
+                doctorName={doctorDisplayName}
+              />
             )}
           </div>
         </main>

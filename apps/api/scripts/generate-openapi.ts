@@ -341,6 +341,24 @@ import {
   updateLabIndicatorRequestSchema,
   updateResultTemplateRequestSchema,
   updateTechnicalServiceRequestSchema,
+  createPriceListRequestSchema,
+  createServicePackageRequestSchema,
+  listPriceListsQuerySchema,
+  listPriceListsResponseSchema,
+  listServicePackagesQuerySchema,
+  listServicePackagesResponseSchema,
+  lookupPriceQuerySchema,
+  lookupPriceResponseSchema,
+  priceListDetailSchema,
+  resolvePricesRequestSchema,
+  resolvePricesResponseSchema,
+  searchPriceableItemsQuerySchema,
+  searchPriceableItemsResponseSchema,
+  servicePackageDetailSchema,
+  updatePriceListRequestSchema,
+  updateServicePackageRequestSchema,
+  getClinicalOrderResponseSchema,
+  saveClinicalOrderRequestSchema,
 } from '@nexamed/shared';
 
 /**
@@ -4611,6 +4629,231 @@ registry.registerPath({
     403: errorResponse('Không có quyền result_template.manage'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// Cận lâm sàng GĐ2 — Gói dịch vụ + Bảng giá có thời hạn (docs/DECISIONS.md #212)
+// ---------------------------------------------------------------------------------------------
+const pricingIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/service-packages',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — liệt kê gói dịch vụ kèm giá gói/tổng giá lẻ/khách lợi (orderableOnly = chỉ gói dùng được hôm nay)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listServicePackagesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listServicePackagesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_package.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/service-packages/{id}',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — chi tiết gói dịch vụ kèm dịch vụ con và giá lẻ',
+  security: [{ bearerAuth: [] }],
+  request: { params: pricingIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(servicePackageDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_package.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/service-packages',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — tạo gói dịch vụ, mã tự sinh (GOI), giá cố định hoặc tổng trừ chiết khấu',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createServicePackageRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(servicePackageDetailSchema)),
+    400: errorResponse('Dữ liệu sai: thiếu giá cố định, dịch vụ con trùng/không tồn tại, chiết khấu không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_package.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/service-packages/{id}',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — sửa/ngừng gói dịch vụ, bắt buộc kèm version; gửi items = thay TOÀN BỘ dịch vụ con',
+  security: [{ bearerAuth: [] }],
+  request: { params: pricingIdParams, body: { content: { 'application/json': { schema: updateServicePackageRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(servicePackageDetailSchema)),
+    400: errorResponse('Dữ liệu sai'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_package.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/price-lists',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — liệt kê bảng giá có thời hạn kèm dòng "Bảng giá chung" ảo (BG0000, ưu tiên 0) và đếm theo trạng thái',
+  security: [{ bearerAuth: [] }],
+  request: { query: listPriceListsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listPriceListsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/price-lists/items/search',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — tìm mặt hàng (dịch vụ khám/kỹ thuật/gói/thuốc/vật tư, gõ không dấu) kèm giá mặc định từng Loại giá/Bậc đơn vị',
+  security: [{ bearerAuth: [] }],
+  request: { query: searchPriceableItemsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(searchPriceableItemsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/price-lists/lookup',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — "Tra thử giá": mọi bảng giá chứa mặt hàng vào một ngày, bảng nào thắng/bị đè, Bảng giá chung ở cuối',
+  security: [{ bearerAuth: [] }],
+  request: { query: lookupPriceQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(lookupPriceResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+    404: errorResponse('Mặt hàng không tồn tại'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/price-lists/resolve',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — tính giá áp dụng hàng loạt theo ngày tiếp nhận/lập phiếu (không ghi gì; POST chỉ vì có body)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: resolvePricesRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(resolvePricesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/price-lists/{id}',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — chi tiết bảng giá kèm các dòng (giá mặc định + giá áp dụng)',
+  security: [{ bearerAuth: [] }],
+  request: { params: pricingIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(priceListDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/price-lists',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — tạo bảng giá có thời hạn (mã BG tự sinh, ưu tiên ≥ 1, cao thắng) kèm các dòng',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createPriceListRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(priceListDetailSchema)),
+    400: errorResponse('Dữ liệu sai: ngày ngược, dòng trùng phạm vi, mặt hàng không tồn tại/sai loại, Giá mới thiếu Loại giá/Đơn vị'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/price-lists/{id}',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — sửa/ngừng bảng giá (isActive=false), bắt buộc kèm version; gửi lines = thay TOÀN BỘ dòng',
+  security: [{ bearerAuth: [] }],
+  request: { params: pricingIdParams, body: { content: { 'application/json': { schema: updatePriceListRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(priceListDetailSchema)),
+    400: errorResponse('Dữ liệu sai'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+// ---------------------------------------------------------------------------------------------
+// Cận lâm sàng GĐ3 — Chỉ định của bác sĩ (docs/DECISIONS.md #212)
+// ---------------------------------------------------------------------------------------------
+const clinicalOrderParams = z.object({ encounterId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/encounters/{encounterId}/clinical-orders',
+  tags: ['clinical-order'],
+  summary: 'Cận lâm sàng GĐ3 — phiếu chỉ định cận lâm sàng của lượt khám (order=null khi chưa chỉ định gì), kèm dòng/gói/hoá đơn chứa tiền',
+  security: [{ bearerAuth: [] }],
+  request: { params: clinicalOrderParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(getClinicalOrderResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinical_order.read'),
+    404: errorResponse('Không tìm thấy lượt khám (không tồn tại, thuộc tenant khác hoặc ngoài phạm vi bác sĩ)'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/encounters/{encounterId}/clinical-orders',
+  tags: ['clinical-order'],
+  summary:
+    'Cận lâm sàng GĐ3 — "Lưu chỉ định": thay TOÀN BỘ danh sách (so khớp theo id). Dòng tại phòng khám lẻ ghi tiền vào hoá đơn khám đang chưa thu (không thì hoá đơn Cận lâm sàng riêng); gói = 1 dòng hoá đơn; dòng đã thu tiền không gỡ/đổi được',
+  security: [{ bearerAuth: [] }],
+  request: { params: clinicalOrderParams, body: { content: { 'application/json': { schema: saveClinicalOrderRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Lưu thành công', envelope(getClinicalOrderResponseSchema)),
+    400: errorResponse('Dữ liệu sai: dịch vụ không tồn tại/đã ngừng, dòng/gói không thuộc phiếu hoặc bị trùng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinical_order.create'),
+    404: errorResponse('Không tìm thấy lượt khám (hoặc không phải lượt khám của bác sĩ này)'),
+    409: errorResponse('Lượt khám không ở IN_CONSULTATION (ENCOUNTER_NOT_IN_CONSULTATION) hoặc dòng đã thu tiền/đã thực hiện (CLINICAL_ORDER_ITEM_LOCKED)'),
+    422: errorResponse('Dịch vụ không tự làm (CLINICAL_ORDER_SERVICE_NOT_IN_HOUSE), chưa có đơn giá (CLINICAL_ORDER_PRICE_MISSING) hoặc gói không dùng được (CLINICAL_ORDER_PACKAGE_NOT_ORDERABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{encounterId}/clinical-orders/print',
+  tags: ['clinical-order'],
+  summary: 'Cận lâm sàng GĐ3 — ghi audit mỗi lần in phiếu chỉ định (web tự dựng bản in từ dữ liệu đã tải)',
+  security: [{ bearerAuth: [] }],
+  request: { params: clinicalOrderParams },
+  responses: {
+    200: jsonResponse('Đã ghi audit', envelope(z.object({ ok: z.boolean() }))),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinical_order.read'),
+    404: errorResponse('Lượt khám chưa có phiếu chỉ định (hoặc không tìm thấy)'),
   },
 });
 

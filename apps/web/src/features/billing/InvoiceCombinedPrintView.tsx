@@ -16,6 +16,10 @@ function groupTitle(invoice: Invoice): string {
   if (invoice.invoiceType === 'SERVICE') {
     return `Dịch vụ khám · ${invoice.invoiceNo}`;
   }
+  if (invoice.invoiceType === 'PARACLINICAL') {
+    const orderNos = [...new Set(invoice.lines.map((l) => l.clinicalOrderNo).filter((n): n is string => n !== null))];
+    return `Cận lâm sàng${orderNos.length > 0 ? ` · Phiếu chỉ định ${orderNos.join(', ')}` : ''} · ${invoice.invoiceNo}`;
+  }
   const issueNos = [...new Set(invoice.lines.map((l) => l.stockIssueNo).filter((n): n is string => n !== null))];
   return `Tiền thuốc${issueNos.length > 0 ? ` · Phiếu xuất ${issueNos.join(', ')}` : ''} · ${invoice.invoiceNo}`;
 }

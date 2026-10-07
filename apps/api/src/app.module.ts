@@ -19,6 +19,9 @@ import { AllergenModule } from './modules/allergen/allergen.module';
 import { DrugModule } from './modules/drug/drug.module';
 import { PrintTemplateModule } from './modules/print-template/print-template.module';
 import { TechnicalServiceModule } from './modules/technical-service/technical-service.module';
+import { PricingModule } from './modules/pricing/pricing.module';
+import { ClinicalOrderModule } from './modules/clinical-order/clinical-order.module';
+import { PricingPortModule } from './modules/pricing/pricing-port.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { StockAvailabilityModule } from './modules/inventory/stock-availability.module';
 import { BillingModule } from './modules/billing/billing.module';
@@ -54,6 +57,10 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     DrugModule,
     PrintTemplateModule,
     TechnicalServiceModule,
+    PricingModule,
+    // Cận lâm sàng GĐ2 — `@Global()` bind `PRICING_PORT` cho `InventoryModule` (tính giá thuốc theo bảng giá có thời hạn).
+    // Đặt TRƯỚC `InventoryModule` (nơi tiêu thụ token qua @Inject), SAU `DrugModule`/`PricingModule` mà nó phụ thuộc.
+    PricingPortModule,
     InventoryModule,
     // Kho Thuốc GĐ5 — `@Global()`, tự `imports: [InventoryModule]` (đã import ở dòng trên nên
     // module thật sự đã load xong, tránh lặp lại vấn đề require()-cycle từng gặp ở `InventoryModule`).
@@ -61,6 +68,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     StockAvailabilityModule,
     EncounterModule,
     BillingModule,
+    ClinicalOrderModule,
     ReceptionModule,
     AuditModule,
     DoctorAvailabilityModule,

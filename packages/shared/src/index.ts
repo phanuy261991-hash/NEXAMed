@@ -35,3 +35,5 @@ export * from './inventory';
 export * from './supplier-debt';
 export * from './print-template';
 export * from './technical-service';
+export * from './pricing';
+export * from './clinical-order';

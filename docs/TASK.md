@@ -304,6 +304,7 @@ Mở rộng tiếp của Kho Thuốc GĐ2/GĐ3 — theo dõi công nợ phòng k
 Lộ trình 4 giai đoạn đã chốt qua mockup 14 màn.
 
 - [x] **GĐ1 — Danh mục** (06/10/2026): `technical_service`/`_price`, `lab_indicator`/`_reference`, `technical_service_indicator`, `result_template`; trang `/admin/catalog-paraclinical` 5 pill; `packages/core/src/lab/lab-reference.ts`. 30 test HTTP + 15 test core, Chrome thật xác nhận.
-- [ ] **GĐ2 — Gói dịch vụ + Bảng giá có thời hạn** (`service_package`, `price_list`, hàm `resolveEffectivePrice`) — chạm luồng hoá đơn đang chạy thật tại pilot.
-- [ ] **GĐ3 — Chỉ định của bác sĩ** (tab thứ 3 màn khám, 2 đường: tại phòng khám / ra ngoài; in phiếu chỉ định).
+- [x] **GĐ2 — Gói dịch vụ + Bảng giá có thời hạn** (07/10/2026): `service_package(_item)`, `price_list(_item)`, `resolveEffectivePrice` ở core, `PricingPort` áp giá phát thuốc, Tiếp nhận xem trước/chốt giá theo ngày tiếp nhận, trang `/admin/price-lists` + "Tra thử giá" + Excel; danh mục "Đơn vị kết quả xét nghiệm". 23 test core + 25 test HTTP, Chrome thật xác nhận.
+- [x] **GĐ3 — Chỉ định của bác sĩ** (07/10/2026, code + 12 test HTTP + typecheck/lint; **CHƯA verify Chrome thật** — việc đầu tiên của phiên sau): `clinical_order`/`_package`/`_item`, hoá đơn `PARACLINICAL`, tab 3 màn khám, in phiếu chỉ định (mẫu in #12). Chưa làm: huỷ lượt khám chưa tự huỷ dòng chỉ định/hoá đơn; chặn hàng đợi khi chưa thu (GĐ4). Chi tiết `docs/DECISIONS.md` #212 phần GĐ3.
+- [x] **Rà soát log kiểm toán** (07/10/2026, `docs/DECISIONS.md` #213): bù nhãn, view-audit chỉ định, test `audit-labels-coverage`. Còn chờ chủ dự án quyết: xếp `entityType` danh mục vào "System Log" 90 ngày hay giữ vĩnh viễn; bổ sung before/afterJson cho supplier/warehouse.
 - [ ] **GĐ4 — Thực hiện & kết quả** (hàng đợi, lấy mẫu/gọi vào phòng, nhập + duyệt kết quả, **in đậm chỉ số vượt mức**, in phiếu kết quả, vai trò Kỹ thuật viên).

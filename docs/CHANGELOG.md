@@ -2,6 +2,22 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-07
+
+### Cận lâm sàng — GĐ3: Chỉ định của bác sĩ (code + test HTTP, chưa verify Chrome)
+
+Tab thứ 3 "Chỉ định cận lâm sàng" ở màn khám: bác sĩ chỉ định dịch vụ kỹ thuật/dịch vụ khám **tại phòng khám** (có giá, vào hoá đơn) hoặc **ra ngoài** (không giá, chỉ in phiếu; cho gõ tên tự do), thêm theo **gói dịch vụ** (1 dòng hoá đơn, giá gói chốt lúc chỉ định). Lưu = tính tiền ngay: nối vào hoá đơn khám còn chưa thu, hoặc tạo hoá đơn "Cận lâm sàng" riêng (`invoice_type = PARACLINICAL`); đã thu rồi thì không gỡ/đổi được dòng đã thu (409 `CLINICAL_ORDER_ITEM_LOCKED`) nhưng vẫn thêm được. In "Phiếu chỉ định cận lâm sàng" (mẫu in thứ 12 `CLINICAL_ORDER`). 3 bảng mới `clinical_order`/`clinical_order_package`/`clinical_order_item`, 4 migration, mã `CD`. Quyền mới `clinical_order.*`.
+
+### Rà soát log kiểm toán (`docs/DECISIONS.md` #213)
+
+Bổ sung nhãn tiếng Việt cho 57 action + 18 entityType đã ghi audit nhưng thiếu nhãn (Kho, Nhà cung cấp, Công nợ NCC, Sổ quỹ, Ví...); `GET` chỉ định cận lâm sàng nay ghi audit "xem"; thêm test `audit-labels-coverage.spec.ts` chặn module mới quên nhãn.
+
+### Cận lâm sàng — GĐ2: Gói dịch vụ + Bảng giá có thời hạn; danh mục Đơn vị kết quả xét nghiệm
+
+**Gói dịch vụ** (pill mới ở "Danh mục cận lâm sàng"): gộp Dịch vụ khám + Dịch vụ kỹ thuật, giá cố định hoặc tổng trừ chiết khấu (% / số tiền), hiện tổng giá lẻ và "khách lợi". **Bảng giá** (menu mới Quản trị → "Bảng giá"): bảng giá có khoảng ngày + độ ưu tiên (cao thắng) cho dịch vụ khám/kỹ thuật/gói/thuốc/vật tư, mỗi dòng "Giảm %" hoặc "Giá mới", áp % hàng loạt, sao chép, ngừng/áp dụng lại, xuất Excel, khung **"Tra thử giá"** (bảng nào thắng/bị đè). Hết hạn tự quay về bảng thấp hơn rồi về giá nhập trên mặt hàng ("Bảng giá chung", không lưu bản sao). **Giá được áp thật** ở Tiếp nhận (xem trước + chốt lúc thêm dịch vụ, theo ngày tiếp nhận) và Phát thuốc (ghi vào phiếu xuất + hoá đơn, theo ngày lập phiếu); chưa tạo bảng giá nào thì mọi giá giữ nguyên. Gói chưa vào chỉ định/hoá đơn (GĐ3). Chi tiết `docs/DECISIONS.md` #212 (phần GĐ2).
+
+**Đơn vị kết quả xét nghiệm**: ô "Đơn vị" của Chỉ số xét nghiệm đổi từ gõ tay sang chọn từ danh mục mới (nạp sẵn 20 đơn vị: g/L, mmol/L, 10^9/L…), tránh "g/L"/"g/l"/"G/L" thành nhiều đơn vị; dữ liệu cũ giữ nguyên. Gỡ khung chú thích "Hai điều mẫu KHÔNG làm" ở form Mẫu kết quả. Migration `20261007090000` + `20261007100000` (môi trường khác: `db:deploy` + `db:seed` rồi khởi động lại API). Đã xác minh: 23 test core + 24 test HTTP bảng giá/gói + 1 test áp giá khi phát thuốc, Chrome thật.
+
 ## 2026-10-06 (tiếp)
 
 ### Cận lâm sàng — GĐ1: Danh mục dịch vụ kỹ thuật, chỉ số xét nghiệm, mẫu kết quả
