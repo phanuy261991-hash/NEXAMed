@@ -234,14 +234,16 @@ export function EncounterConsultationPage() {
   const updatePatientMutation = useUpdatePatientMutation(query.data?.patient.id ?? '');
 
   const isCompleted = query.data?.encounter.status === 'COMPLETED';
+  /** Lượt khám đã huỷ (#085) là trạng thái cuối — chỉ xem, không có đường sửa/đính chính (backend cũng chặn mọi thao tác ghi). Chỉ gặp khi mở thẳng URL, hàng đợi không liệt kê lượt đã huỷ. */
+  const isCancelled = query.data?.encounter.status === 'CANCELLED';
   /** Kê đơn (Sprint 4) vẫn giữ nguyên "mở khoá sửa tại chỗ" sau hoàn tất — module riêng, chưa ký tự động. */
-  const canEditNow = !isCompleted || editingCompleted;
+  const canEditNow = !isCancelled && (!isCompleted || editingCompleted);
   /**
    * Chẩn đoán/ghi chú khám (Sprint 5, S5-02/03) — "Hoàn tất khám" ký NGAY cả hai, nên KHÔNG còn sửa
    * tại chỗ được sau khi hoàn tất (khác `canEditNow` ở trên, dành cho Kê đơn). Sau khi hoàn tất, sửa
    * phải qua "Đính chính" (2 dialog riêng), không mở khoá input trực tiếp nữa.
    */
-  const canEditDraft = !isCompleted;
+  const canEditDraft = !isCompleted && !isCancelled;
 
   /**
    * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — chỉ chạy khi tenant bật công tắc, hồ sơ còn nháp và ô "Chẩn đoán"
@@ -865,7 +867,7 @@ export function EncounterConsultationPage() {
           )}
           {/* Nhập/đo lại sinh hiệu chỉ hợp lệ khi CHECKED_IN/IN_CONSULTATION (backend chặn cứng, REC-02/03)
               — ẩn hẳn khi đã "Hoàn tất khám" thay vì hiện nút rồi báo lỗi khi bấm. */}
-          {!isCompleted && (
+          {!isCompleted && !isCancelled && (
             <button
               type="button"
               onClick={() => setVitalsDialogOpen(true)}
@@ -1226,7 +1228,7 @@ export function EncounterConsultationPage() {
             {activeTabId === 'section-chidinh' && canSeeClinicalOrders && (
               <ClinicalOrderPanel
                 encounterId={encounterId}
-                isEditableEncounter={!isCompleted}
+                isEditableEncounter={!isCompleted && !isCancelled}
                 encounterNo={encounter.encounterNo}
                 patientFullName={patient.fullName}
                 patientCode={patient.patientCode}
@@ -1268,10 +1270,15 @@ export function EncounterConsultationPage() {
               <CheckCircle size={14} weight="fill" aria-hidden="true" /> Đã lưu
             </span>
           )}
+          {isCancelled && (
+            <span className="flex items-center gap-1.5 text-[13px] font-semibold text-rose-700">
+              <XCircle size={15} weight="fill" aria-hidden="true" /> Lượt khám đã huỷ — chỉ xem, không chỉnh sửa được.
+            </span>
+          )}
         </div>
         <div className="flex gap-3">
           {/* Đang khám (chưa hoàn tất) — luồng gốc, không đổi. */}
-          {!isCompleted && (
+          {!isCompleted && !isCancelled && (
             <>
               {/* Gộp "Trả về hàng chờ" + "Hủy khám" vào 1 nút "Xử lý" xổ menu (chốt 2026-08-29,
                   yêu cầu chủ dự án) — đúng khuôn `ActionMenu` mới trích xuất từ dropdown tài khoản
