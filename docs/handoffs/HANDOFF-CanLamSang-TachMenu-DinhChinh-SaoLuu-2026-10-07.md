@@ -1,0 +1,42 @@
+# HANDOFF — Cận lâm sàng tách 2 menu + đính chính + sao lưu ảnh/cấu hình sao lưu — 2026-10-07 (phiên 2)
+
+> Nhánh: `feat/paraclinical-gd2` (PR #3 draft, xếp chồng lên `feat/paraclinical` = PR #2 → PR #1 `feat/print-template`; PR #1/#2 chưa rõ đã merge).
+> Hội thoại luôn tiếng Việt. Chủ dự án dặn "tuyệt đối tuân thủ giao diện đã chốt, làm giống 95%" — mockup Artifact `https://claude.ai/artifact/BPXwUuXzxPYEgnebhQDuN7` (đã thêm mục F: 12a/12b/12c). Đọc cùng `docs/DECISIONS.md` **#215, #215b, #216, #217**.
+> Mọi việc dưới đây đã commit + push, trừ phần "Việc kế tiếp".
+
+## 1. Đã làm (tất cả đã commit)
+
+- **Tách 2 menu** (#215): quyền `paraclinical_result.*` → `lab_result.*` + `imaging_result.*` (xem/nhập/duyệt); 2 vai trò hệ thống mới `lab_technician`, `imaging_technician` (không có `approve`); API `/api/v1/paraclinical/lab/...` và `/imaging/...` (2 controller mỏng, chung `ParaclinicalResultService` qua `ResultAccessScope {dataScope, kinds, permissionModule}`); sidebar nhóm "Cận lâm sàng" xổ 2 mục (nhãn rút gọn "CĐHA & Thăm dò CN"); 2 hàng đợi (`ParaclinicalQueuePage group=`) khác cột/tab/bộ lọc. Tự chuyển quyền cũ → cả 2 nhóm + tạo 2 vai trò cho tenant cũ **lúc API khởi động** (`sync-role-permissions.ts`).
+- **Mẫu in tách đôi**: `LAB_RESULT` + `IMAGING_RESULT` (migration `20261008120000/120100`, giữ bản mẫu đã chỉnh); khối **Khuyến cáo khách hàng** là cấu hình mẫu in (`config.notice`, bật/tắt + sửa nội dung, chỉ xét nghiệm); mẫu CĐHA có 2 khung ảnh minh hoạ; ngày tháng trên ô ký căn giữa mọi mẫu in; phiếu chỉ định bỏ ô ký "Người bệnh / Người nhà".
+- **Đính chính kết quả đã duyệt** (#215b): quyền Nhập đề nghị + lý do bắt buộc, bác sĩ Duyệt lại, bản gốc giữ nguyên/khôi phục được (hoán đổi soft-delete nguyên tử vì chỉ mục duy nhất 1 kết quả hiệu lực/dịch vụ). `POST .../result/amend` và `.../amend/cancel`; `ParaclinicalAmendDialogs.tsx`; chip "Đính chính" ở hàng đợi; phiếu in ghi "Bản đính chính".
+- **Sao lưu thư mục ảnh** (#216): `deploy/on-prem/backup/backup.sh` đồng bộ `api_storage` → `<backup>/storage` (tăng dần, KHÔNG nén, không xoá theo nguồn, chép trước `pg_dump`); lỗi → status `lastRunOk=false`. Đã **diễn tập "máy hỏng → cài lại → `docker compose cp`"**, sha256 khớp 5/5; hướng dẫn ở `docs/Deploy.md` mục 2.3c (Bước 4b + mục diễn tập). Dockerfile backup tự đổi CRLF→LF.
+- **Cấu hình sao lưu — PHẦN NỀN** (#217): `GET/PUT /api/v1/backup-config`, `POST /backup-config/run-now`; quyền `system_backup.read/manage` (mặc định `system_admin` + `clinic_admin`); file `backup-config.json` + cờ `backup-run-now` trong volume trạng thái (API ghi, `backup.sh` đọc mỗi 10 giây); `GET /backup-config` kèm sẵn `status` (vì system_admin không có `clinic_config.read`). Đã kiểm bằng ảnh Docker thật.
+
+## 2. Kiểm thử đã chạy (cuối phiên)
+- core 336, shared 31, web 8; API: `paraclinical-result` 15, `print-template` 21, `backup-config` 5 + adapter 4, `sync-role-permissions`, `role-http`, `rbac`, `permission-matrix-enforcement`, `clinical-order`, `audit` đều pass; `pnpm -r exec tsc --noEmit` sạch; `pnpm lint` 0 lỗi. Chạy CẢ BỘ `apps/api` có race đã biết ở vài file (chạy riêng thì xanh).
+- Chrome thật (Playwright, scratchpad phiên — không commit): sidebar 3 vai trò, hàng đợi 2 giao diện, "Quản lý mẫu in" 2 mẫu + khuyến cáo, luồng đính chính (KTV → quản trị duyệt → huỷ).
+- Tài khoản dev (tenant test cố định `01a0cc3c-8626-746b-9d2a-5ea0268ec19f`): `dev.admin`, `dev.ktv.xn`, `dev.ktv.cdha` — mật khẩu `Dev@12345`.
+
+## 3. Việc kế tiếp (theo thứ tự)
+
+1. **Giao diện "Sao lưu dữ liệu" trong Cấu hình hệ thống — bố cục ĐÃ ĐƯỢC CHỦ DỰ ÁN DUYỆT, CHƯA CODE.** Làm trong `apps/web/src/features/clinic/` (khuôn `GeneralConfigPane.tsx`/`ExamConfigPane.tsx`: khung "boxed section" có badge xanh, hàng nhãn trái + điều khiển phải, Sửa/Lưu/Huỷ tường minh):
+   - Thêm **pill phẳng "Sao lưu dữ liệu"** vào `ClinicConfigPage.tsx` (`PILLS` hiện là hằng — đổi thành dựng động): CHỈ hiện khi `useHasPermission('system_backup','read')` VÀ `GET /backup-config` trả `available=true` (máy dev/cloud ẩn hẳn).
+   - Khối 1 "Trạng thái" (nguồn: `data.status`): badge (thành công/lỗi/chưa có lần nào — dùng `StatusBadge`, nền ĐẶC), "Thành công lúc …"/thông báo lỗi `lastError`, cảnh báo `needsAttention`; nút **"Sao lưu ngay"** (`POST run-now`, chỉ khi có `system_backup.manage`; sau khi bấm hiện "Đã gửi yêu cầu — chạy trong vài chục giây" và refetch mỗi ~5 giây khi `runRequestedAt != null`).
+   - Khối 2 "Cấu hình": công tắc "Tự động sao lưu hằng ngày"; "Giờ chạy (giờ Việt Nam)" (Combobox 00:00–23:00, `hourVn`); "Số ngày giữ bản sao lưu" (1–365, `retentionDays`); "Thư mục lưu bản sao" CHỈ ĐỌC (`destinationDir`) kèm ghi chú "muốn đổi thư mục: sửa `BACKUP_HOST_DIR` trong `.env` rồi `docker compose restart backup`"; ghi chú "ảnh đính kèm cũng được sao lưu cùng lịch này (không nén, không dọn theo số ngày giữ)". Có `system_backup.read` mà không `manage` → chỉ xem. Nút Sửa/Lưu/Huỷ (PUT cả 3 trường cùng lúc).
+   - Cần: `backup-config.api.ts` + hook TanStack Query (cache key có `tenantId`), `backup-config` trong `permission-grouping.ts` (nhãn module `system_backup`: "Sao lưu dữ liệu"), kiểm trình duyệt thật (admin thấy; doctor không; máy không có `BACKUP_STATUS_FILE` → pill ẩn — dev mặc định không có biến này nên **muốn thấy pill khi dev phải đặt `BACKUP_STATUS_FILE` trỏ 1 thư mục tạm** rồi khởi động lại API). Sau đó cập nhật `docs/Deploy.md` mục "Cấu hình sao lưu tự động" (chuyển phần giờ/số ngày sang giao diện; `.env` chỉ còn là giá trị khởi tạo + `BACKUP_HOST_DIR`).
+2. **Khối "Kết quả đã có của lượt khám này"** ở tab "Chỉ định cận lâm sàng" (mockup `ChiDinh`: bảng Mã | Dịch vụ | Trạng thái (badge "Đã có kết quả" xanh / "Đang thực hiện" hổ phách) | Trả lúc | Thao tác "Xem") + đưa kết quả vào **bệnh án PDF**. API đã có `resultReturnedAt` + `amendmentPending` ở từng dòng chỉ định (`ClinicalOrderItemView`); thêm trạng thái "Đang đính chính". Gợi ý: nút "Xem" mở hộp thoại hiển thị `ParaclinicalResultPrintView display="screen"` lấy qua `getParaclinicalResult(group, itemId)` (group theo loại dịch vụ, cần `lab_result.read`/`imaging_result.read` — bác sĩ có sẵn).
+3. Nhỏ: cảnh báo khi dịch vụ "tự thực hiện" chưa khai Khoa/Phòng + khi tài khoản scope Khoa/Phòng chưa gán phòng (hàng đợi đang rỗng im lặng); nút "Xem chi tiết phiếu" ở dòng hàng đợi (lệch mockup 12a/12b); huỷ lượt khám nên đổi dòng chỉ định sang `CANCELLED`; chạy lại `deploy/on-prem/build-and-export.ps1` để gói cài đặt có dịch vụ `backup` mới (`package/` không theo dõi git).
+4. Hỏi chủ dự án: PR #1/#2 đã merge chưa (nếu rồi: đổi base PR #3 sang `master`, bỏ draft); các việc treo ở `docs/CURRENT.md` mục "Đang chờ".
+
+## 4. Môi trường khác dev (khi triển khai)
+`pnpm --filter @nexamed/api run db:deploy` + `db:seed` **rồi khởi động lại API** (đồng bộ quyền/vai trò mới). Bản cài on-prem cũ: cập nhật `docker-compose.yml` mới + nạp ảnh `nexamed-backup` mới + `docker compose up -d backup` (xem `docs/Deploy.md`).
+
+## 5. Bẫy kỹ thuật phiên này (đừng lặp lại)
+- **Heredoc bash chứa `\n` trong chuỗi** (vd `'\\n'`) bị biến thành xuống dòng THẬT → lỗi cú pháp TS/Python. Viết script bằng công cụ **Write** (file `.py`) rồi chạy; cần ký tự `\n` thì dùng `chr(92)`/chuỗi raw.
+- **`str.index("**Bước 5.**")` đầu tiên có thể nằm ở mục khác** — sửa `docs/Deploy.md` phải cắt riêng đúng mục 2.3c (đã nhân đôi nhầm 1 lần, đã khôi phục bằng `git checkout` rồi áp lại).
+- **Máy dev Windows checkout `.sh` với CRLF** → container `bash\r: No such file or directory`; Dockerfile backup đã `sed -i 's/\r$//'`.
+- **Publish Artifact từ thư mục tạm bị chặn** ("blocked by a Read permission rule"): đã thêm quy tắc `Read(//c/Users/.../Temp/claude/**)` vào `.claude/settings.local.json` (không theo dõi git); phải truyền đường dẫn TUYỆT ĐỐI cho từng file trong `files` + `root`.
+- Dev API `nest start --watch` không tự chạy lại `sync` khi chỉ đổi file không liên quan — muốn khởi động lại thật: thêm/bỏ 1 dòng trống ở `apps/api/src/main.ts` (nhớ khôi phục).
+- `ModalHeader` phải nằm trong thẻ có `p-5` (dialog tự dựng); hộp thoại có `<form>` riêng KHÔNG đặt trong `<form>` của trang (dùng fragment, đặt cạnh).
+- `resolveApiUrl` giữ nguyên `data:`; `apps/web` KHÔNG import GIÁ TRỊ từ `@nexamed/shared`/`@nexamed/core` (#073) — dữ liệu cần ở web phải đi qua API hoặc có bản phản chiếu (`paraclinical-group.ts`).
+- Build lại `@nexamed/shared` + `@nexamed/core` trước khi chạy test/typecheck API; đổi contract phải `openapi:generate` + `api:codegen`.

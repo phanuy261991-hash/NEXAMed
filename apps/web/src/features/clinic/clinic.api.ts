@@ -1,7 +1,10 @@
 import type {
   AllowFreeTextPrescriptionStatus,
   AllowStaffSelfScheduleStatus,
+  BackupConfigResponse,
+  BackupRunRequestResponse,
   BackupStatusResponse,
+  UpdateBackupConfigRequest,
   SidebarAutoCollapseStatus,
   BusinessCodeTemplateItem,
   BusinessCodeType,
@@ -98,6 +101,19 @@ export async function getIcd10SuggestionStatus(): Promise<Icd10SuggestionStatus>
 /** S6-01 (ADM-04) — chỉ `clinic_admin` gọi được (`clinic_config.read`), dùng cho banner cảnh báo toàn cục. */
 export async function getBackupStatus(): Promise<BackupStatusResponse> {
   return unwrap(await getApiClient().GET('/api/v1/backup-status')) as BackupStatusResponse;
+}
+
+/** "Cấu hình hệ thống → Sao lưu dữ liệu" (docs/DECISIONS.md #217) — quyền `system_backup.read/manage`, kèm sẵn trạng thái lần sao lưu gần nhất. */
+export async function getBackupConfig(): Promise<BackupConfigResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/backup-config')) as BackupConfigResponse;
+}
+
+export async function updateBackupConfig(body: UpdateBackupConfigRequest): Promise<BackupConfigResponse> {
+  return unwrap(await getApiClient().PUT('/api/v1/backup-config', { body })) as BackupConfigResponse;
+}
+
+export async function runBackupNow(): Promise<BackupRunRequestResponse> {
+  return unwrap(await getApiClient().POST('/api/v1/backup-config/run-now')) as BackupRunRequestResponse;
 }
 
 /** Trang "Thông tin phòng khám" (2026-08-13) — GET/PATCH cùng contract `clinic-settings` phía trên. */

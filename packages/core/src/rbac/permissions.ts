@@ -95,6 +95,31 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // (chèn mẫu lúc nhập kết quả), `manage` bác sĩ/clinic_admin.
   { module: 'result_template', action: 'read', description: 'Xem mẫu kết quả cận lâm sàng' },
   { module: 'result_template', action: 'manage', description: 'Thêm/sửa/ẩn mẫu kết quả cận lâm sàng' },
+  // Cận lâm sàng GĐ2 (docs/DECISIONS.md #212) — Gói dịch vụ + Bảng giá có thời hạn. `read` mở cho mọi vai trò cần
+  // tra giá lúc tiếp nhận/chỉ định/phát thuốc (cũng là quyền của endpoint "Tra thử giá"); `create`/`update`
+  // chỉ clinic_admin (đổi bảng giá là đổi tiền thật tại quầy), đúng khuôn `technical_service`.
+  { module: 'service_package', action: 'read', description: 'Xem gói dịch vụ' },
+  { module: 'service_package', action: 'create', description: 'Thêm gói dịch vụ' },
+  { module: 'service_package', action: 'update', description: 'Sửa/ngừng gói dịch vụ' },
+  { module: 'price_list', action: 'read', description: 'Xem bảng giá và tra giá áp dụng' },
+  { module: 'price_list', action: 'create', description: 'Tạo bảng giá có thời hạn' },
+  { module: 'price_list', action: 'update', description: 'Sửa/ngừng bảng giá có thời hạn' },
+  // Cận lâm sàng GĐ3 (docs/DECISIONS.md #212) — Chỉ định cận lâm sàng của bác sĩ. `create` gồm thêm/bớt dòng, đổi số lượng, chỉ định ra ngoài và
+  // in phiếu — bác sĩ chỉ với lượt khám của mình (personal); `read` mở cho lễ tân/điều dưỡng (thu tiền, theo dõi).
+  { module: 'clinical_order', action: 'read', description: 'Xem phiếu chỉ định cận lâm sàng' },
+  { module: 'clinical_order', action: 'create', description: 'Chỉ định/sửa/in phiếu chỉ định cận lâm sàng' },
+  // Cận lâm sàng GĐ4 (#212, #215) — Hàng đợi & kết quả, TÁCH 2 NHÓM theo menu: `lab_result` (Xét nghiệm) và `imaging_result` (Chẩn đoán hình ảnh + Thăm dò chức năng).
+  // Có `read` của nhóm nào thì thấy menu của nhóm đó. `read` xem hàng đợi/kết quả; `enter` lấy mẫu/gọi vào phòng + nhập kết quả (kỹ thuật viên, điều dưỡng);
+  // `approve` duyệt & trả kết quả (bản ký) — chỉ bác sĩ/clinic_admin mặc định, tách khỏi `enter` để kỹ thuật viên không tự ký kết quả.
+  { module: 'lab_result', action: 'read', description: 'Xem hàng đợi và kết quả xét nghiệm' },
+  { module: 'lab_result', action: 'enter', description: 'Lấy mẫu, nhập và gửi duyệt kết quả xét nghiệm' },
+  { module: 'lab_result', action: 'approve', description: 'Duyệt và trả kết quả xét nghiệm (ký)' },
+  { module: 'imaging_result', action: 'read', description: 'Xem hàng đợi và kết quả chẩn đoán hình ảnh, thăm dò chức năng' },
+  { module: 'imaging_result', action: 'enter', description: 'Gọi vào phòng, nhập và gửi duyệt kết quả chẩn đoán hình ảnh, thăm dò chức năng' },
+  { module: 'imaging_result', action: 'approve', description: 'Duyệt và trả kết quả chẩn đoán hình ảnh, thăm dò chức năng (ký)' },
+  // Cấu hình sao lưu dữ liệu (#217) — cấu hình của CẢ MÁY CHỦ on-premise: chỉ quản trị hệ thống + quản lý phòng khám bản cài tại chỗ (máy không có container sao lưu thì mục này ẩn).
+  { module: 'system_backup', action: 'read', description: 'Xem cấu hình và trạng thái sao lưu dữ liệu' },
+  { module: 'system_backup', action: 'manage', description: 'Sửa cấu hình sao lưu dữ liệu và bấm "Sao lưu ngay"' },
   // Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — không có `invoice.create` riêng: phiếu thu luôn tạo
   // tự động kèm `encounter.create` (check-in/tiếp nhận trực tiếp), không có endpoint tạo riêng.
   { module: 'invoice', action: 'read', description: 'Xem phiếu thu' },
@@ -255,6 +280,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
     'technical_service.read': 'global',
+    'service_package.read': 'global',
+    'price_list.read': 'global',
+    'clinical_order.read': 'global',
+    'lab_result.read': 'global',
+    'imaging_result.read': 'global',
     // Thu ngân cơ bản — lễ tân là người thu tiền chính (PRD mục 4.7 "Là lễ tân...").
     'invoice.read': 'global',
     'invoice.update': 'global',
@@ -284,6 +314,17 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // Kho Thuốc GĐ3 — lễ tân CHỈ xem (biết đã phát gì để giải thích hoá đơn), không tự phát thuốc.
     'stock_issue.read': 'global',
   },
+  // Kỹ thuật viên (#215): chỉ làm việc ở đúng menu của mình, KHÔNG duyệt/ký kết quả. `result_template.read` để chèn mẫu lời nhận xét/kết luận.
+  lab_technician: {
+    'lab_result.read': 'global',
+    'lab_result.enter': 'global',
+    'result_template.read': 'global',
+  },
+  imaging_technician: {
+    'imaging_result.read': 'global',
+    'imaging_result.enter': 'global',
+    'result_template.read': 'global',
+  },
   nurse: {
     'patient.read': 'global',
     // Đổi personal→global (Sprint 3, Tiếp nhận): "personal" theo .claude/docs/security-audit.md
@@ -300,6 +341,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
     'technical_service.read': 'global',
+    'service_package.read': 'global',
+    'price_list.read': 'global',
+    'clinical_order.read': 'global',
+    'lab_result.read': 'global',
+    'imaging_result.read': 'global',
+    'lab_result.enter': 'global',
+    'imaging_result.enter': 'global',
     'result_template.read': 'global',
     // Kho Thuốc GĐ5 — điều dưỡng chỉ xem đơn thuốc mẫu, không tự thêm/sửa (bác sĩ/clinic_admin quyết định phác đồ).
     'prescription_template.read': 'global',
@@ -349,6 +397,16 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
     'technical_service.read': 'global',
+    'service_package.read': 'global',
+    'price_list.read': 'global',
+    'clinical_order.read': 'global',
+    'clinical_order.create': 'personal',
+    'lab_result.read': 'global',
+    'imaging_result.read': 'global',
+    'lab_result.enter': 'global',
+    'imaging_result.enter': 'global',
+    'lab_result.approve': 'global',
+    'imaging_result.approve': 'global',
     'result_template.read': 'global',
     'result_template.manage': 'global',
     // Kho Thuốc GĐ5 — bác sĩ tự lập/sửa/xoá đơn thuốc mẫu của mình lẫn của người khác (mẫu dùng
@@ -400,8 +458,24 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.manage': 'global',
     'drug.read': 'global',
     'technical_service.read': 'global',
+    'service_package.read': 'global',
+    'price_list.read': 'global',
+    'clinical_order.read': 'global',
+    'clinical_order.create': 'global',
+    'lab_result.read': 'global',
+    'imaging_result.read': 'global',
+    'lab_result.enter': 'global',
+    'imaging_result.enter': 'global',
+    'lab_result.approve': 'global',
+    'imaging_result.approve': 'global',
+    'system_backup.read': 'global',
+    'system_backup.manage': 'global',
     'technical_service.create': 'global',
     'technical_service.update': 'global',
+    'service_package.create': 'global',
+    'service_package.update': 'global',
+    'price_list.create': 'global',
+    'price_list.update': 'global',
     'result_template.read': 'global',
     'result_template.manage': 'global',
     'drug.create': 'global',
@@ -476,6 +550,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'patient_wallet.settle': 'global',
   },
   system_admin: {
+    'system_backup.read': 'global',
+    'system_backup.manage': 'global',
     'user_account.read': 'global',
     'user_account.manage': 'global',
     'audit_log.read': 'global',

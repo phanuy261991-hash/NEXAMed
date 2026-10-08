@@ -158,6 +158,12 @@ export interface ClinicConfigReaderPort {
   getAllowFreeTextPrescriptionEnabled(tenantId: string): Promise<boolean>;
 
   /**
+   * "Cho thực hiện cận lâm sàng trước khi thu tiền" (Cận lâm sàng GĐ4, #212) — `tenant_setting` key `paraclinical_before_payment_enabled`, mặc định TẮT.
+   * Module `paraclinical-result` đọc qua port này (không import thẳng module `clinic`) để quyết định dịch vụ chưa thu có vào "Chờ lấy mẫu / gọi vào phòng" hay không.
+   */
+  getParaclinicalBeforePaymentEnabled(tenantId: string): Promise<boolean>;
+
+  /**
    * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — tắt (mặc định, giữ nguyên hành vi pilot đang chạy); bật thì màn
    * khám hiện khối gợi ý mã ICD từ nội dung ô "Chẩn đoán" (`tenant_setting` key
    * `icd10_suggestion_enabled`). Module `encounter` đọc qua port này, cùng lý do các cấu hình khác.

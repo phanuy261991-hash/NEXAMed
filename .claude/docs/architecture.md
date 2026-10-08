@@ -32,6 +32,8 @@ Tên module trùng nhau giữa web và api.
 | `print-template` | Quản lý mẫu in (`docs/DECISIONS.md` #211): bản mẫu theo chứng từ × khổ giấy, "bản dựng sẵn" khi chưa cấu hình, thiết lập nhanh; `encounter` dùng mẫu `MEDICAL_RECORD` khi xuất bệnh án PDF (import một chiều `PrintTemplateModule`) |
 | `technical-service` | Cận lâm sàng — Danh mục (`docs/DECISIONS.md` #212): dịch vụ kỹ thuật + đơn giá, chỉ số xét nghiệm + khoảng tham chiếu, mẫu kết quả; import một chiều `ClinicModule` (`BusinessCodeService`). Các giai đoạn sau (Gói/Bảng giá/Chỉ định/Kết quả) mở rộng module này |
 
+| `pricing` | Gói dịch vụ + Bảng giá có thời hạn (`docs/DECISIONS.md` #212 GĐ2): CRUD gói/bảng giá, `PricingService` (resolve/lookup), đọc giá mặc định qua repository export từ `reference-catalog`/`technical-service`/`drug` (một chiều). `InventoryModule` lấy giá thuốc qua `PRICING_PORT` (`PricingPortModule` `@Global()`, đăng ký TRƯỚC `InventoryModule` ở `AppModule`) — không import trực tiếp |
+
 **Ngoài v1 (không tạo module, không viết code):** `insurance`, `report`.
 
 ## Tầng trong API (bắt buộc theo thứ tự)
@@ -65,3 +67,5 @@ Mọi thứ nằm ngoài tiến trình (file, tin nhắn, ký số, cổng BHYT,
 - Response bọc `{ data, meta }`; lỗi trả `{ error: { code, message, details } }`, `code` là hằng số khai báo trong `packages/shared`.
 - Truy cập bản ghi không thuộc tenant hiện tại trả `404`, không phải `403`.
 - Phân trang cursor cho danh sách bệnh nhân và lượt khám; không dùng offset.
+
+**Module `clinical-order` (Cận lâm sàng GĐ3, #212)**: `apps/api/src/modules/clinical-order/`. Không import module khác trực tiếp — lấy giá qua `PRICING_PORT` (`@Global()` `PricingPortModule`), đọc dịch vụ kỹ thuật/gói/hoá đơn qua repository mà module sở hữu export (`TechnicalServiceRepository`, `ServicePackageRepository`, `InvoiceRepository`/`InvoiceService`). `GET` chỉ định ghi audit "xem" qua `@AuditView('clinical_order', { paramName: 'encounterId' })`.

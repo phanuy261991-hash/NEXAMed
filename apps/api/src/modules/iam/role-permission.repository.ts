@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { Permission, Prisma, RolePermission } from '@prisma/client';
+import { PERMISSIONS, permissionKey } from '@nexamed/core';
 import type { DataScope } from '@nexamed/shared';
+
+const KNOWN_PERMISSION_KEYS: ReadonlySet<string> = new Set(PERMISSIONS.map((p) => permissionKey(p)));
 
 /**
  * Ma trận `role_permission` cho MỘT vai trò (ADM-07). Tách khỏi `RoleRepository` vì đọc/ghi bảng
@@ -9,9 +12,13 @@ import type { DataScope } from '@nexamed/shared';
  */
 @Injectable()
 export class RolePermissionRepository {
-  /** Toàn bộ danh mục `permission` — không `tenant_id` (toàn hệ thống, giống `icd10_catalog`). */
-  listCatalog(tx: Prisma.TransactionClient): Promise<Permission[]> {
-    return tx.permission.findMany({ orderBy: [{ module: 'asc' }, { action: 'asc' }] });
+  /**
+   * Danh mục `permission` — không `tenant_id` (toàn hệ thống, giống `icd10_catalog`). Chỉ trả quyền CÒN được khai báo trong code: quyền đã bỏ (vd. `paraclinical_result.*`
+   * sau khi tách 2 menu, #215) vẫn nằm lại trong bảng nhưng không còn hiện ở màn phân quyền.
+   */
+  async listCatalog(tx: Prisma.TransactionClient): Promise<Permission[]> {
+    const all = await tx.permission.findMany({ orderBy: [{ module: 'asc' }, { action: 'asc' }] });
+    return all.filter((p) => KNOWN_PERMISSION_KEYS.has(permissionKey(p)));
   }
 
   listForRole(tx: Prisma.TransactionClient, tenantId: string, roleId: string): Promise<RolePermission[]> {

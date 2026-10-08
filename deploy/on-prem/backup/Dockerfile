@@ -5,5 +5,7 @@ FROM postgres:18
 # backup.sh, tránh tự viết bằng sed/awk dễ sai escape.
 RUN apt-get update && apt-get install -y --no-install-recommends jq && rm -rf /var/lib/apt/lists/*
 COPY deploy/on-prem/backup/backup.sh /usr/local/bin/backup.sh
-RUN chmod +x /usr/local/bin/backup.sh
+# Máy dev Windows (git autocrlf) có thể checkout script với xuống dòng CRLF → Linux báo `bash\r: No such file or directory`. Chuyển về LF ngay khi dựng ảnh
+# để build trên mọi máy đều ra ảnh chạy được.
+RUN sed -i 's/\r$//' /usr/local/bin/backup.sh && chmod +x /usr/local/bin/backup.sh
 ENTRYPOINT ["/usr/local/bin/backup.sh"]

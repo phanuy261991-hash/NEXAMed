@@ -64,6 +64,7 @@ const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   // chính thức nên mã tự sinh.
   'TECH_SERVICE_CATEGORY',
   'SPECIMEN_TYPE',
+  'LAB_RESULT_UNIT',
 ];
 
 /**

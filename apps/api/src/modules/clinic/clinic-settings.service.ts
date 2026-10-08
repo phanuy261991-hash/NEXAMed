@@ -53,6 +53,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
         allowFreeTextPrescriptionEnabled,
+        paraclinicalBeforePaymentEnabled,
         icd10SuggestionEnabled,
         icd10SuggestionLearningEnabled,
       ] = await Promise.all([
@@ -80,6 +81,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getPharmacyStockTrackingEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId),
         this.clinicSettingsRepository.getAllowFreeTextPrescriptionEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getParaclinicalBeforePaymentEnabled(tx, tenantId),
         this.clinicSettingsRepository.getIcd10SuggestionEnabled(tx, tenantId),
         this.clinicSettingsRepository.getIcd10SuggestionLearningEnabled(tx, tenantId),
       ]);
@@ -108,6 +110,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
         allowFreeTextPrescriptionEnabled,
+        paraclinicalBeforePaymentEnabled,
         icd10SuggestionEnabled,
         icd10SuggestionLearningEnabled,
       };
@@ -315,6 +318,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.allowFreeTextPrescriptionEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertAllowFreeTextPrescriptionEnabled(tx, tenantId, actorId, dto.allowFreeTextPrescriptionEnabled);
       }
+      if (dto.paraclinicalBeforePaymentEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertParaclinicalBeforePaymentEnabled(tx, tenantId, actorId, dto.paraclinicalBeforePaymentEnabled);
+      }
       if (dto.icd10SuggestionEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertIcd10SuggestionEnabled(tx, tenantId, actorId, dto.icd10SuggestionEnabled);
       }
@@ -347,6 +353,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.pharmacyStockTrackingEnabled !== undefined ||
         dto.prescriptionStockBlockEnabled !== undefined ||
         dto.allowFreeTextPrescriptionEnabled !== undefined ||
+        dto.paraclinicalBeforePaymentEnabled !== undefined ||
         dto.icd10SuggestionEnabled !== undefined ||
         dto.icd10SuggestionLearningEnabled !== undefined;
       if (hasChanges) {
@@ -386,6 +393,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
         allowFreeTextPrescriptionEnabled,
+        paraclinicalBeforePaymentEnabled,
         icd10SuggestionEnabled,
         icd10SuggestionLearningEnabled,
       ] = await Promise.all([
@@ -413,6 +421,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getPharmacyStockTrackingEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId),
         this.clinicSettingsRepository.getAllowFreeTextPrescriptionEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getParaclinicalBeforePaymentEnabled(tx, tenantId),
         this.clinicSettingsRepository.getIcd10SuggestionEnabled(tx, tenantId),
         this.clinicSettingsRepository.getIcd10SuggestionLearningEnabled(tx, tenantId),
       ]);
@@ -441,6 +450,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
         allowFreeTextPrescriptionEnabled,
+        paraclinicalBeforePaymentEnabled,
         icd10SuggestionEnabled,
         icd10SuggestionLearningEnabled,
       };
@@ -465,6 +475,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `GET /clinic-settings/allow-free-text-prescription-enabled` — chiếu tối thiểu tự-phục vụ (mọi vai trò lâm sàng cần biết để hiện/ẩn "+ Thêm ... ngoài danh mục"), đúng khuôn `getPharmacyStockTrackingEnabled`. */
   getAllowFreeTextPrescriptionEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getAllowFreeTextPrescriptionEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getAllowFreeTextPrescriptionEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` — "Cho thực hiện cận lâm sàng trước khi thu tiền" (Cận lâm sàng GĐ4). */
+  getParaclinicalBeforePaymentEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getParaclinicalBeforePaymentEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getParaclinicalBeforePaymentEnabled(tx, tenantId));
   }
 
   /** `GET /clinic-settings/icd10-suggestion-enabled` + `ClinicConfigReaderPort` ("Gợi ý mã ICD-10") — bác sĩ cần biết để màn khám hiện/ẩn khối gợi ý; module `encounter` cũng đọc qua port này lúc tính gợi ý. */

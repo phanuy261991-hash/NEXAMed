@@ -394,6 +394,9 @@ function ServiceForm({
                 Khoa/Phòng thực hiện
               </label>
               <Combobox id="ts-dept" value={departmentId} onChange={setDepartmentId} options={departmentOptions} placeholder="Chọn khoa/phòng…" disabled={readOnly || !inHouse} />
+              {inHouse && departmentId === '' && !readOnly && (
+                <span className="text-xs font-semibold text-amber-700">Chưa chọn phòng — tài khoản giới hạn theo phòng sẽ không thấy dịch vụ này ở hàng đợi.</span>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="ts-specimen" className={labelClassName}>

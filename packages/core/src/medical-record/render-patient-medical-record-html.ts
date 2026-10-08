@@ -50,6 +50,29 @@ export interface MedicalRecordPrescriptionItem {
   instruction: string | null;
 }
 
+/** 1 chỉ số trong kết quả xét nghiệm đã duyệt — `abnormal` (vượt khoảng tham chiếu) in ĐẬM + GẠCH CHÂN, đúng quy ước phiếu kết quả (docs/DECISIONS.md #214). */
+export interface MedicalRecordParaclinicalIndicator {
+  name: string;
+  valueText: string | null;
+  referenceText: string;
+  unit: string | null;
+  abnormal: boolean;
+}
+
+/**
+ * 1 kết quả cận lâm sàng ĐÃ DUYỆT (bản ký còn hiệu lực — bản đính chính thay bản cũ) của lượt khám, để in vào bệnh án PDF. Kết quả chưa duyệt/đang đính chính không có mặt
+ * (chưa phải hồ sơ chính thức). Ảnh đính kèm không nhúng vào PDF — chỉ ghi số lượng, xem ảnh trong hệ thống.
+ */
+export interface MedicalRecordParaclinicalResult {
+  serviceName: string;
+  serviceKind: 'LAB' | 'IMAGING' | 'FUNCTIONAL';
+  signedAt: string;
+  indicators: MedicalRecordParaclinicalIndicator[];
+  descriptionText: string | null;
+  conclusionText: string | null;
+  imageCount: number;
+}
+
 export interface MedicalRecordEncounterEntry {
   encounterNo: string;
   checkedInAt: string;
@@ -58,6 +81,8 @@ export interface MedicalRecordEncounterEntry {
   vitalSigns: MedicalRecordVitalSigns | null;
   diagnoses: MedicalRecordDiagnosis[];
   clinicalNoteSections: MedicalRecordClinicalNoteSection[];
+  /** Kết quả cận lâm sàng đã duyệt của lượt khám (bỏ trống/rỗng = không in mục này). */
+  paraclinicalResults?: MedicalRecordParaclinicalResult[];
   prescriptionItems: MedicalRecordPrescriptionItem[];
   signedAt: string | null;
 }
@@ -156,6 +181,35 @@ function renderClinicalNote(sections: MedicalRecordClinicalNoteSection[]): strin
   return withContent.map((s) => `<p class="note-section"><strong>${escapeHtml(s.label)}:</strong> ${escapeHtml(s.content)}</p>`).join('');
 }
 
+const PARACLINICAL_KIND_LABEL: Record<MedicalRecordParaclinicalResult['serviceKind'], string> = {
+  LAB: 'Xét nghiệm',
+  IMAGING: 'Chẩn đoán hình ảnh',
+  FUNCTIONAL: 'Thăm dò chức năng',
+};
+
+function renderParaclinicalResult(r: MedicalRecordParaclinicalResult): string {
+  const indicators =
+    r.indicators.length > 0
+      ? `<table class="data-table"><thead><tr><th>Chỉ số</th><th>Kết quả</th><th>Khoảng tham chiếu</th><th>Đơn vị</th></tr></thead><tbody>${r.indicators
+          .map(
+            (i) =>
+              `<tr><td>${escapeHtml(i.name)}</td><td${i.abnormal ? ' class="abnormal"' : ''}>${i.valueText ? escapeHtml(i.valueText) : '—'}</td><td>${i.referenceText ? escapeHtml(i.referenceText) : '—'}</td><td>${i.unit ? escapeHtml(i.unit) : '—'}</td></tr>`,
+          )
+          .join('')}</tbody></table>`
+      : '';
+  const narrative = [
+    r.descriptionText ? `<p class="note-section"><strong>${r.indicators.length > 0 ? 'Mô tả' : 'Mô tả hình ảnh'}:</strong> ${escapeHtml(r.descriptionText)}</p>` : '',
+    r.conclusionText ? `<p class="note-section"><strong>${r.indicators.length > 0 ? 'Nhận xét' : 'Kết luận'}:</strong> ${escapeHtml(r.conclusionText)}</p>` : '',
+    r.imageCount > 0 ? `<p class="meta">Có ${r.imageCount} hình ảnh đính kèm — xem trong hệ thống.</p>` : '',
+  ].join('');
+  return `<div class="paraclinical-result"><p class="meta"><strong>${escapeHtml(r.serviceName)}</strong> (${PARACLINICAL_KIND_LABEL[r.serviceKind]}) · Duyệt lúc ${formatDateTime(r.signedAt)}</p>${indicators}${narrative}</div>`;
+}
+
+function renderParaclinicalResults(results: MedicalRecordParaclinicalResult[] | undefined): string {
+  if (!results || results.length === 0) return '';
+  return `<h3>Cận lâm sàng</h3>${results.map(renderParaclinicalResult).join('')}`;
+}
+
 function renderPrescription(items: MedicalRecordPrescriptionItem[]): string {
   if (items.length === 0) return '<p class="muted">Không kê đơn thuốc.</p>';
   return `<table class="data-table"><thead><tr><th>Thuốc</th><th>Liều dùng theo buổi</th><th>Số ngày</th><th>SL</th><th>Cách dùng</th></tr></thead><tbody>${items
@@ -180,6 +234,7 @@ function renderEncounter(entry: MedicalRecordEncounterEntry, index: number): str
       ${renderDiagnoses(entry.diagnoses)}
       <h3>Ghi chú khám</h3>
       ${renderClinicalNote(entry.clinicalNoteSections)}
+      ${renderParaclinicalResults(entry.paraclinicalResults)}
       <h3>Đơn thuốc</h3>
       ${renderPrescription(entry.prescriptionItems)}
     </section>`;
@@ -224,6 +279,8 @@ export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument
   table.data-table th { background: #eff6ff; text-align: left; }
   .vitals-label { font-weight: 600; background: #f8fafc; width: 90px; }
   .note-section { margin: 2px 0; }
+  .paraclinical-result { margin: 4px 0 8px; page-break-inside: avoid; }
+  td.abnormal { font-weight: 700; text-decoration: underline; }
   .meta { color: #475569; font-size: 11px; margin: 2px 0; }
   .muted { color: #94a3b8; font-style: italic; }
   .encounter { margin-top: 14px; }

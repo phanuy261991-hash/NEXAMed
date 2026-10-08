@@ -203,6 +203,7 @@ export function PrintTemplatePage() {
                   config={effective.config}
                   onConfigChange={(config) => setDraft({ key: effective.key, name: effective.name, config })}
                   defaultTitle={typeInfo.defaultTitle}
+                  notice={typeInfo.notice}
                   disabled={busy}
                   isDefault={current.isDefault}
                   onSetDefault={current.id !== null && !dirty ? () => void handleSetDefault() : null}

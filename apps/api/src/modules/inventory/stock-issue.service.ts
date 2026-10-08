@@ -5,6 +5,8 @@ import {
   computeUnitConversion,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
+  getVietnamDateString,
+  PRICING_PORT,
   sortBatchesByFefo,
   StockIssueExceedsPrescribedQuantityError,
   StockIssueInsufficientStockError,
@@ -14,6 +16,7 @@ import {
   stripVietnameseDiacritics,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
+  type PricingPort,
 } from '@nexamed/core';
 import { formatDoseSummary } from '@nexamed/shared';
 import type {
@@ -103,6 +106,8 @@ export class StockIssueService {
     private readonly businessCodeService: BusinessCodeService,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
+    // Cận lâm sàng GĐ2 (#212) — giá bán thuốc sau "Bảng giá có thời hạn", tính theo ngày LẬP PHIẾU.
+    @Inject(PRICING_PORT) private readonly pricing: PricingPort,
   ) {}
 
   async create(tenantId: string, actorId: string, dataScope: DataScope, dto: CreateStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
@@ -210,6 +215,10 @@ export class StockIssueService {
     const claimedByItem = new Map<string, number>();
     const claimedByStockKey = new Map<string, number>();
 
+    // Giá bán theo đơn vị cơ sở sau bảng giá có thời hạn (ngày lập phiếu = hôm nay, giờ Việt Nam) — 1 lượt cho mọi thuốc.
+    // Không có bảng giá nào → đúng bằng `drug.default_sell_price` (hành vi cũ).
+    const effectivePrices = await this.pricing.getDrugBaseUnitPrices(tenantId, getVietnamDateString(), [...new Set(lines.map((l) => l.drugId))]);
+
     const result: StockIssueLineData[] = [];
     for (const line of lines) {
       let drug = drugCache.get(line.drugId);
@@ -267,7 +276,8 @@ export class StockIssueService {
       // Giá bán LUÔN theo đơn vị NHỎ NHẤT (`drug.defaultSellPrice`) — quantity ở đây vốn đã là đơn
       // vị cơ sở (đúng khuôn `prescription_item.quantity`), KHÔNG cần tra `unitPricingEnabled`/
       // `DrugUnit.sellPrice` như lúc nhập kho (chỉ có ý nghĩa khi bán theo vỉ/hộp).
-      const sellPrice = drug.defaultSellPrice ?? 0n;
+      const effectivePrice = effectivePrices[line.drugId];
+      const sellPrice = effectivePrice === undefined || effectivePrice === null ? (drug.defaultSellPrice ?? 0n) : BigInt(effectivePrice);
       const lineAmount = sellPrice * BigInt(line.quantity);
       result.push({ prescriptionItemId: line.prescriptionItemId ?? null, drugId: line.drugId, batchId, quantity: line.quantity, unitCost, sellPrice, lineAmount, returnUnitPrice: null });
     }
@@ -911,6 +921,11 @@ export class StockIssueService {
       const dispensedMap = await this.stockIssueRepository.sumDispensedForItems(tx, tenantId, itemIds);
 
       const drugCache = new Map<string, DrugWithDetails>();
+      const effectivePrices = await this.pricing.getDrugBaseUnitPrices(
+        tenantId,
+        getVietnamDateString(),
+        prescription.items.map((i) => i.drugId).filter((id): id is string => id !== null),
+      );
       const lines: PrescriptionDispenseLine[] = [];
       // "Kê thuốc tự do" (mở rộng Kho Thuốc GĐ5) — dòng không có `drugId` KHÔNG dispensable (không
       // tồn kho/lô/giá), tách hẳn khỏi `lines` — hiện đọc-only kèm ghi chú ở `DispensePrescriptionDialog.tsx`.
@@ -965,7 +980,7 @@ export class StockIssueService {
           prescribedQuantity: item.quantity,
           dispensedQuantity,
           remainingQuantity: Math.max(0, item.quantity - dispensedQuantity),
-          sellPrice: drug.defaultSellPrice === null ? 0 : Number(drug.defaultSellPrice),
+          sellPrice: effectivePrices[item.drugId] ?? (drug.defaultSellPrice === null ? 0 : Number(drug.defaultSellPrice)),
           suggestedBatches,
           warehouseStockOnHand,
         });

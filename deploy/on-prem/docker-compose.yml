@@ -77,12 +77,15 @@ services:
       # S6-01 (docs/DECISIONS.md #141) — đọc trạng thái backup do container `backup` ghi ra, cùng
       # volume `backup_status_data` mount ở service đó (dưới), CHỈ ĐỌC ở đây.
       BACKUP_STATUS_FILE: /data/backup-status/backup-status.json
+      # Chỉ để HIỂN THỊ thư mục đích sao lưu ở "Cấu hình hệ thống → Sao lưu dữ liệu" (#217).
+      BACKUP_HOST_DIR_DISPLAY: ${BACKUP_HOST_DIR:-./backup-data}
       # S6-06 (ADM-05) — Chromium cài qua apt trong apps/api/Dockerfile, luôn đúng đường dẫn này
       # trong container, không cần người cài đặt tự sửa.
       CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium
     volumes:
       - api_storage:/data/storage
-      - backup_status_data:/data/backup-status:ro
+      # Ghi được (không còn :ro) vì API ghi cấu hình sao lưu + cờ "Sao lưu ngay" vào đây cho container `backup` đọc (#217).
+      - backup_status_data:/data/backup-status
     restart: unless-stopped
 
   web:
@@ -113,7 +116,10 @@ services:
       # S6-01 (docs/DECISIONS.md #141) — file trạng thái (JSON) ghi sau MỖI lần chạy, container
       # `api` đọc qua cùng volume `backup_status_data` (mount read-only ở service đó, trên).
       BACKUP_STATUS_FILE: /status/backup-status.json
+      # Thư mục ảnh đính kèm (docs/DECISIONS.md #216) — CHỈ ĐỌC, cùng volume `api_storage` của `api`; bản sao nằm ở `<BACKUP_HOST_DIR>/storage`.
+      STORAGE_DIR: /data/storage
     volumes:
+      - api_storage:/data/storage:ro
       # Mặc định ghi vào thư mục cạnh compose — ĐỔI sang ổ đĩa/ổ ngoài thật ở BACKUP_HOST_DIR
       # trong .env trước khi dùng thật cho pilot (một thư mục cùng ổ với postgres_data không bảo
       # vệ được khỏi hỏng ổ đĩa — xem docs/Deploy.md, diễn tập phục hồi đầy đủ ở S6-02).

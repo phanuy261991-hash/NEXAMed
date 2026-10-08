@@ -58,7 +58,7 @@ interface SuccessInfo {
   issueNo: string;
   totalAmount: number;
   encounterId: string;
-  attachedInvoice: { invoiceId: string; invoiceNo: string; invoiceType: 'SERVICE' | 'DRUG' } | null;
+  attachedInvoice: { invoiceId: string; invoiceNo: string; invoiceType: 'SERVICE' | 'DRUG' | 'PARACLINICAL' } | null;
 }
 
 /** Tự tách 1 số lượng cần phát qua nhiều lô theo thứ tự FEFO (đã sắp sẵn từ BE) — lấy hết lô đang

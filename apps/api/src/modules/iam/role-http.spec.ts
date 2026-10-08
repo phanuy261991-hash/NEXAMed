@@ -92,18 +92,18 @@ describe('HTTP e2e — /api/v1/roles', () => {
     expect(res.body.error.code).toBe('PERMISSION_DENIED');
   });
 
-  it('GET /roles → đủ 5 vai trò mặc định, isSystemDefault đúng', async () => {
+  it('GET /roles → đủ 7 vai trò mặc định, isSystemDefault đúng', async () => {
     const res = await request(app.getHttpServer()).get('/api/v1/roles').set(authed(clinicAdminToken));
     expect(res.status).toBe(200);
     const names = res.body.data.items.map((r: { name: string }) => r.name).sort();
-    expect(names).toEqual(['clinic_admin', 'doctor', 'nurse', 'receptionist', 'system_admin']);
+    expect(names).toEqual(['clinic_admin', 'doctor', 'imaging_technician', 'lab_technician', 'nurse', 'receptionist', 'system_admin']);
     expect(res.body.data.items.every((r: { isSystemDefault: boolean }) => r.isSystemDefault)).toBe(true);
   });
 
-  it('cách ly tenant: GET /roles tenant B không thấy vai trò của tenant A (không lẫn 5+5)', async () => {
+  it('cách ly tenant: GET /roles tenant B không thấy vai trò của tenant A (không lẫn 7+7)', async () => {
     const res = await request(app.getHttpServer()).get('/api/v1/roles').set(authed(tenantBAdminToken));
     expect(res.status).toBe(200);
-    expect(res.body.data.items).toHaveLength(5);
+    expect(res.body.data.items).toHaveLength(7);
   });
 
   it('đổi tên vai trò hệ thống → 422 ROLE_IMMUTABLE', async () => {

@@ -5,6 +5,8 @@ import { InvoiceCombinedPrintView } from '../billing/InvoiceCombinedPrintView';
 import { InvoicePrintView } from '../billing/InvoicePrintView';
 import { CashVoucherPrintView } from '../cash-book/CashVoucherPrintView';
 import { CashierShiftReceiptDocument } from '../cashier-shift/CashierShiftReceiptView';
+import { ClinicalOrderPrintView } from '../clinical-order/ClinicalOrderPrintView';
+import { ParaclinicalResultPrintView } from '../paraclinical-result/ParaclinicalResultPrintView';
 import { PrescriptionPrintView } from '../encounter/PrescriptionPrintView';
 import { StockCountPrintView } from '../inventory/StockCountPrintView';
 import { StockIssuePrintView } from '../inventory/StockIssuePrintView';
@@ -13,6 +15,9 @@ import { StockTransferPrintView } from '../inventory/StockTransferPrintView';
 import { WalletReceiptPrintView } from '../patient-wallet/WalletReceiptPrintView';
 import {
   SAMPLE_CASH_VOUCHER,
+  SAMPLE_CLINICAL_ORDER,
+  SAMPLE_IMAGING_RESULT,
+  SAMPLE_LAB_RESULT,
   SAMPLE_CASHIER_SHIFT,
   SAMPLE_COMBINED_INVOICES,
   SAMPLE_INVOICE,
@@ -44,6 +49,25 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
           signedAt="2026-10-01T07:30:00.000Z"
         />
       );
+    case 'CLINICAL_ORDER':
+      return (
+        <ClinicalOrderPrintView
+          order={SAMPLE_CLINICAL_ORDER}
+          patientFullName="Lý Thị Hoài Thương"
+          patientCode="BN2610000148"
+          patientDob="14/03/1987"
+          patientGender="Nữ"
+          patientPhone="0912 345 678"
+          encounterNo="LK2610000312"
+          diagnosisLabel="Đái tháo đường týp 2 không biến chứng (E11.9) / Tăng huyết áp vô căn (I10)"
+          doctorName="BS. Đặng Quốc Hưng"
+          printedAt="2026-10-06T02:30:00.000Z"
+        />
+      );
+    case 'LAB_RESULT':
+      return <ParaclinicalResultPrintView form={SAMPLE_LAB_RESULT} />;
+    case 'IMAGING_RESULT':
+      return <ParaclinicalResultPrintView form={SAMPLE_IMAGING_RESULT} />;
     case 'INVOICE':
       return <InvoicePrintView collectedByName="Nguyễn Thị Bích Ngọc" paymentMethodLabel="Tiền mặt" invoice={SAMPLE_INVOICE} />;
     case 'INVOICE_COMBINED':

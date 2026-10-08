@@ -51,7 +51,7 @@ export function ResultTemplatePane() {
   const selectedTemplate = selection.kind === 'existing' ? (serviceTemplates.find((t) => t.id === selection.id) ?? null) : null;
 
   return (
-    <div className="flex h-full min-h-0 gap-3.5 px-6 pb-5 pt-3.5">
+    <div className="flex h-full min-h-0 gap-3.5">
       <section className="flex w-[274px] flex-shrink-0 flex-col gap-2.5" aria-label="Dịch vụ kỹ thuật">
         <div className="relative">
           <MagnifyingGlass size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
@@ -284,16 +284,6 @@ function TemplateEditor({
           value={conclusion}
           onChange={(e) => setConclusion(e.target.value)}
         />
-
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-3">
-          <p className="mb-1.5 text-[12.5px] font-bold text-blue-900">Hai điều mẫu KHÔNG làm</p>
-          <p className="mb-1 text-[12.5px] text-blue-800">
-            <strong>Không khoá nội dung.</strong> Mẫu chỉ điền sẵn chữ vào ô để khỏi gõ lại; người thực hiện sửa thoải mái theo đúng tình trạng thật của người bệnh. Sửa trên phiếu không đụng tới mẫu gốc.
-          </p>
-          <p className="text-[12.5px] text-blue-800">
-            <strong>Không điền giá trị chỉ số.</strong> Với xét nghiệm, mẫu chỉ áp cho lời <em>Nhận xét / Kết luận</em>. Từng thông số (HGB, WBC, Glucose…) luôn nhập tay theo kết quả thật của từng người bệnh.
-          </p>
-        </div>
 
         {formError && (
           <div role="alert" className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">

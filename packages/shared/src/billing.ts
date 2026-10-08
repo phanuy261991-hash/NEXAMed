@@ -25,7 +25,8 @@ export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
  * `DRUG` (hoá đơn tiền thuốc, sinh khi hoá đơn SERVICE đã đóng hoặc tenant bật tách riêng — có thể
  * nhiều hoá đơn `DRUG`/lượt khám). Trước #165 field này chưa từng lộ ra ngoài DB.
  */
-export const invoiceTypeSchema = z.enum(['SERVICE', 'DRUG']);
+// `PARACLINICAL` (Cận lâm sàng GĐ3, #212) — hoá đơn tiền chỉ định cận lâm sàng RIÊNG; cũng là nguồn của dòng (`lineSource`).
+export const invoiceTypeSchema = z.enum(['SERVICE', 'DRUG', 'PARACLINICAL']);
 export type InvoiceType = z.infer<typeof invoiceTypeSchema>;
 
 /**
@@ -69,6 +70,8 @@ export const invoiceLineSchema = z.object({
   /** Mã Phiếu xuất kho nguồn — chỉ có giá trị khi `lineSource==='DRUG'`, dùng làm nhãn nhóm "Tiền
    * thuốc — Phiếu xuất {stockIssueNo}" (không có mã đơn thuốc hiển thị — `prescription` chỉ có `id`). */
   stockIssueNo: z.string().nullable(),
+  /** Mã phiếu chỉ định cận lâm sàng nguồn — chỉ có khi `lineSource==='PARACLINICAL'` (nhãn nhóm "Cận lâm sàng — Phiếu CLS..."). */
+  clinicalOrderNo: z.string().nullable(),
   /**
    * Hoàn tiền MỘT PHẦN theo dòng thuốc (#203) — số tiền THẬT của dòng sau khi chia chiết khấu (tổng
    * các dòng luôn khớp `dueAmount` từng đồng, `allocateInvoiceDueToLines()` ở `@nexamed/core`), số

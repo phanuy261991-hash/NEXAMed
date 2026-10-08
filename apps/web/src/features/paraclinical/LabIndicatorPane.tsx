@@ -3,7 +3,7 @@ import { MagnifyingGlass, Plus, Trash, Warning } from '@phosphor-icons/react';
 import type { CreateLabIndicatorRequest, LabIndicatorDetail, LabIndicatorValueType, LabReferenceSex, UpdateLabIndicatorRequest } from '@nexamed/shared';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Button } from '../../shared/ui/Button';
-import { Combobox } from '../../shared/ui/Combobox';
+import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
@@ -12,6 +12,7 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { makeDraftId } from '../../shared/make-draft-id';
 import { useHasPermission } from '../auth/usePermission';
+import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import {
   useCreateLabIndicatorMutation,
   useLabIndicatorQuery,
@@ -74,7 +75,7 @@ export function LabIndicatorPane() {
   const items = listQuery.data?.items ?? [];
 
   return (
-    <div className="flex h-full min-h-0 gap-3.5 px-6 pb-5 pt-3.5">
+    <div className="flex h-full min-h-0 gap-3.5">
       <section className="flex w-[306px] flex-shrink-0 flex-col gap-2.5" aria-label="Danh sách chỉ số xét nghiệm">
         <div className="relative">
           <MagnifyingGlass size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
@@ -192,6 +193,9 @@ function IndicatorForm({
   const [name, setName] = useState(detail?.name ?? '');
   const [abbreviation, setAbbreviation] = useState(detail?.abbreviation ?? '');
   const [unit, setUnit] = useState(detail?.unit ?? '');
+  // Đơn vị chọn từ danh mục "Đơn vị kết quả" (#212 GĐ2); `unit` vẫn lưu CHỮ nên dữ liệu cũ gõ tay (không có trong danh mục) giữ nguyên qua option cũ.
+  const unitCatalogQuery = useReferenceCatalogQuery('LAB_RESULT_UNIT');
+  const unitOptions = withLegacyValueOption((unitCatalogQuery.data?.items ?? []).map((i) => ({ value: i.name, label: i.name })), unit);
   const [valueType, setValueType] = useState<LabIndicatorValueType>(detail?.valueType ?? 'NUMBER');
   const [decimals, setDecimals] = useState(detail?.decimals === null || detail?.decimals === undefined ? '' : String(detail.decimals));
   const [sortOrder, setSortOrder] = useState(detail?.sortOrder ?? 0);
@@ -365,7 +369,14 @@ function IndicatorForm({
               <label htmlFor="li-unit" className={labelClassName}>
                 Đơn vị
               </label>
-              <input id="li-unit" value={unit} onChange={(e) => setUnit(e.target.value)} className={inputClassName} />
+              <Combobox
+                id="li-unit"
+                value={unit}
+                onChange={setUnit}
+                options={unitOptions}
+                placeholder="Chọn đơn vị…"
+                disabled={locked}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="li-type" className={labelClassName}>

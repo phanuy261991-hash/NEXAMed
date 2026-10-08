@@ -45,6 +45,8 @@ describe('syncRolePermissionsForTenant / ForAllTenants', () => {
   afterAll(async () => {
     await privileged.rolePermission.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.role.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    // Quyền cũ do test tách quyền cận lâm sàng (#215) tự tạo — gỡ để không lọt sang spec khác.
+    await privileged.permission.deleteMany({ where: { module: 'paraclinical_result' } });
     // "Hàng đợi ảo" (#064) — seedDefaultRolesForTenant() nay cũng seed Khoa mặc định ("Khoa
     // chung"), FK RESTRICT department→tenant nên phải xoá trước tenant.
     await privileged.department.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
@@ -120,6 +122,52 @@ describe('syncRolePermissionsForTenant / ForAllTenants', () => {
 
     const rolePermissions = await privileged.rolePermission.findMany({ where: { roleId: customRole.id } });
     expect(rolePermissions).toHaveLength(0);
+  });
+
+  it('tenant cũ thiếu 2 vai trò Kỹ thuật viên (#215): sync tạo vai trò hệ thống + cấp đúng ma trận; gọi lại không tạo trùng', async () => {
+    const technicianNames = ['lab_technician', 'imaging_technician'];
+    const existing = await privileged.role.findMany({ where: { tenantId: tenantAId, name: { in: technicianNames } } });
+    await privileged.rolePermission.deleteMany({ where: { tenantId: tenantAId, roleId: { in: existing.map((r) => r.id) } } });
+    await privileged.role.deleteMany({ where: { tenantId: tenantAId, name: { in: technicianNames } } });
+
+    await unitOfWork.runInTenantScope(tenantAId, (tx) => syncRolePermissionsForTenant(tx, tenantAId, SYSTEM_ACTOR));
+
+    for (const name of technicianNames) {
+      const role = await privileged.role.findFirstOrThrow({ where: { tenantId: tenantAId, name } });
+      expect(role.isSystemDefault).toBe(true);
+      const granted = await privileged.rolePermission.findMany({ where: { tenantId: tenantAId, roleId: role.id, deletedAt: null }, include: { permission: true } });
+      expect(granted.map((g) => `${g.permission.module}.${g.permission.action}`).sort()).toEqual(Object.keys(DEFAULT_ROLE_PERMISSIONS[name as 'lab_technician' | 'imaging_technician']).sort());
+    }
+    await unitOfWork.runInTenantScope(tenantAId, (tx) => syncRolePermissionsForTenant(tx, tenantAId, SYSTEM_ACTOR));
+    expect(await privileged.role.count({ where: { tenantId: tenantAId, name: { in: technicianNames } } })).toBe(2);
+  });
+
+  it('tách quyền cận lâm sàng (#215): vai trò tuỳ biến có paraclinical_result.<hành động> được cấp lại cho CẢ lab_result và imaging_result cùng phạm vi, dòng cũ bị thu hồi; gọi lại không đổi gì', async () => {
+    const legacyRead = await privileged.permission.upsert({ where: { module_action: { module: 'paraclinical_result', action: 'read' } }, create: { module: 'paraclinical_result', action: 'read', description: 'legacy' }, update: {} });
+    const legacyEnter = await privileged.permission.upsert({ where: { module_action: { module: 'paraclinical_result', action: 'enter' } }, create: { module: 'paraclinical_result', action: 'enter', description: 'legacy' }, update: {} });
+    const custom = await privileged.role.create({ data: { tenantId: tenantAId, name: `ktv-cu-${randomUUID().slice(0, 6)}`, isSystemDefault: false, createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR } });
+    await privileged.rolePermission.createMany({
+      data: [
+        { tenantId: tenantAId, roleId: custom.id, permissionId: legacyRead.id, dataScope: 'department', createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR },
+        { tenantId: tenantAId, roleId: custom.id, permissionId: legacyEnter.id, dataScope: 'global', createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR },
+      ],
+    });
+
+    await unitOfWork.runInTenantScope(tenantAId, (tx) => syncRolePermissionsForTenant(tx, tenantAId, SYSTEM_ACTOR));
+
+    const rows = await privileged.rolePermission.findMany({ where: { tenantId: tenantAId, roleId: custom.id }, include: { permission: true } });
+    const live = Object.fromEntries(rows.filter((r) => r.deletedAt === null).map((r) => [`${r.permission.module}.${r.permission.action}`, r.dataScope]));
+    expect(live).toEqual({
+      'lab_result.read': 'department',
+      'imaging_result.read': 'department',
+      'lab_result.enter': 'global',
+      'imaging_result.enter': 'global',
+    });
+    expect(rows.filter((r) => r.permission.module === 'paraclinical_result').every((r) => r.deletedAt !== null)).toBe(true);
+
+    await unitOfWork.runInTenantScope(tenantAId, (tx) => syncRolePermissionsForTenant(tx, tenantAId, SYSTEM_ACTOR));
+    const again = await privileged.rolePermission.count({ where: { tenantId: tenantAId, roleId: custom.id, deletedAt: null } });
+    expect(again).toBe(4);
   });
 
   it('ForAllTenants chỉ vá đúng tenant thiếu, cách ly tenant khác', async () => {

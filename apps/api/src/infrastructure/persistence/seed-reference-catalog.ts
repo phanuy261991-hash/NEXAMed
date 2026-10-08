@@ -184,6 +184,7 @@ export async function seedReferenceCatalog(prisma: PrismaClient): Promise<void> 
   }
 
   await seedUnits(prisma);
+  await seedLabResultUnits(prisma);
 }
 
 /**
@@ -212,6 +213,32 @@ async function seedUnits(prisma: PrismaClient): Promise<void> {
           sortOrder,
         },
       });
+    }
+    sortOrder += 1;
+  }
+}
+
+/**
+ * "Đơn vị kết quả xét nghiệm" (Cận lâm sàng GĐ2, docs/DECISIONS.md #212) — đơn vị phổ biến nạp sẵn để chọn thay vì gõ tay (tránh
+ * "g/L"/"g/l"/"G/L" thành nhiều đơn vị). Idempotent THEO TÊN, đúng khuôn `seedUnits()`: mục đã tồn tại (kể cả do clinic_admin tự thêm
+ * trùng tên) được BỎ QUA, không ghi đè — tôn trọng chỉnh sửa/ẩn qua UI.
+ */
+const LAB_RESULT_UNIT_SEED_NAMES = [
+  'g/L', 'g/dL', 'mg/dL', 'mg/L', 'ng/mL', 'pg/mL', 'µg/dL', 'mmol/L', 'µmol/L', 'mEq/L',
+  'U/L', 'IU/L', 'IU/mL', '%', '10^9/L', '10^12/L', 'fL', 'pg', 'mm/giờ', 'giây',
+];
+
+async function seedLabResultUnits(prisma: PrismaClient): Promise<void> {
+  const prefix = REFERENCE_CATALOG_SHORT_CODE_PREFIXES.LAB_RESULT_UNIT;
+  if (!prefix) {
+    throw new Error('REFERENCE_CATALOG_SHORT_CODE_PREFIXES.LAB_RESULT_UNIT không được cấu hình.');
+  }
+  let sortOrder = 1;
+  for (const name of LAB_RESULT_UNIT_SEED_NAMES) {
+    const existing = await prisma.referenceCatalog.findFirst({ where: { category: 'LAB_RESULT_UNIT', name } });
+    if (!existing) {
+      const seq = await globalCodeSequenceRepository.next(prisma, prefix);
+      await prisma.referenceCatalog.create({ data: { category: 'LAB_RESULT_UNIT', code: formatShortSequentialCode(prefix, seq), name, sortOrder } });
     }
     sortOrder += 1;
   }

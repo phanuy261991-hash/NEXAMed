@@ -10,6 +10,7 @@ import type {
   RoomSession,
   SetDoctorAvailabilityRequest,
   SetRoomSessionRequest,
+  UpdateBackupConfigRequest,
   UpdateBusinessCodeTemplateRequest,
   UpdateClinicProfileRequest,
   UpdateClinicSettingsRequest,
@@ -30,7 +31,10 @@ import {
   getAllowFreeTextPrescriptionStatus,
   getIcd10SuggestionStatus,
   getAllowStaffSelfScheduleStatus,
+  getBackupConfig,
   getBackupStatus,
+  runBackupNow,
+  updateBackupConfig,
   getSidebarAutoCollapseStatus,
   getSoloClinicWorkflowStatus,
   getCashierShiftRequiredStatus,
@@ -86,6 +90,45 @@ export function useBackupStatusQuery(enabled: boolean) {
     enabled,
     refetchInterval: 10 * 60 * 1000,
   });
+}
+
+/** Khoảng làm mới trạng thái khi có yêu cầu "Sao lưu ngay" đang chờ container nhận/chạy xong. */
+const BACKUP_RUN_POLL_MS = 5_000;
+
+/**
+ * "Cấu hình hệ thống → Sao lưu dữ liệu" (docs/DECISIONS.md #217) — `enabled` bắt buộc truyền vào (chỉ gọi
+ * khi actor có `system_backup.read`, tránh 403 cho vai trò khác). `available=false` ở máy dev/cloud nên
+ * `ClinicConfigPage.tsx` dựa vào đây để ẩn hẳn pill. Đang có yêu cầu "Sao lưu ngay" chưa được container
+ * nhận (`runRequestedAt != null`) thì tự làm mới ~5 giây/lần cho tới khi cờ được xoá.
+ */
+export function useBackupConfigQuery(enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'backup-config'),
+    queryFn: getBackupConfig,
+    enabled,
+    refetchInterval: (query) => (query.state.data?.runRequestedAt ? BACKUP_RUN_POLL_MS : false),
+  });
+}
+
+function useInvalidateBackup() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'backup-config') });
+    // Banner cảnh báo toàn cục (`BackupStatusBanner.tsx`) đọc cùng nguồn trạng thái.
+    void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'backup-status') });
+  };
+}
+
+export function useUpdateBackupConfigMutation() {
+  const invalidate = useInvalidateBackup();
+  return useMutation({ mutationFn: (body: UpdateBackupConfigRequest) => updateBackupConfig(body), onSuccess: invalidate });
+}
+
+export function useRunBackupNowMutation() {
+  const invalidate = useInvalidateBackup();
+  return useMutation({ mutationFn: () => runBackupNow(), onSuccess: invalidate });
 }
 
 /**

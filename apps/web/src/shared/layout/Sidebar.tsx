@@ -11,6 +11,7 @@ import {
   Export,
   FileText,
   Flask,
+  Scan,
   FolderSimple,
   GearSix,
   GraduationCap,
@@ -25,6 +26,7 @@ import {
   SlidersHorizontal,
   Stack,
   Stethoscope,
+  Tag,
   Truck,
   UserPlus,
   Users,
@@ -38,7 +40,14 @@ import {
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/auth.store';
 import { useHasAnyPermission, useDataScope, useHasPermission } from '../../features/auth/usePermission';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS } from '../../features/auth/admin-permissions';
+import {
+  ADMIN_ANY_PERMISSIONS,
+  SYSTEM_CONFIG_PERMISSIONS,
+  ADMIN_ORG_PERMISSIONS,
+  DRUG_MANAGE_PERMISSIONS,
+  PARACLINICAL_CATALOG_PERMISSIONS,
+  PRICE_LIST_ADMIN_PERMISSIONS,
+} from '../../features/auth/admin-permissions';
 import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
 import { useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
 import { useSupplierDebtSummariesQuery } from '../../features/supplier-debt/supplier-debt.queries';
@@ -58,6 +67,8 @@ import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context'
 /** Route của "Hàng đợi khám" — giữ nguyên dưới `features/reception/` (chưa có module `encounter`/
  * `examination` thật ở web), chỉ đổi vị trí hiển thị sang nhóm "Khám bệnh" trong sidebar. */
 const EXAMINATION_GROUP_PATH = '/reception/doctor-queue';
+/** Nhóm "Cận lâm sàng" (#215): 2 mục con Xét nghiệm / CĐHA & Thăm dò chức năng, mục nào hiện tuỳ quyền `lab_result.read` / `imaging_result.read`. */
+const PARACLINICAL_GROUP_PATH = '/paraclinical';
 /** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong
  * đó. Loại trừ `EXAMINATION_GROUP_PATH` vì cùng tiền tố `/reception` nhưng nay thuộc nhóm khác.
  * KHÔNG còn `/patients` (2026-09-08) — "Danh sách bệnh nhân" đã chuyển sang nhóm "Hồ sơ Bệnh nhân"
@@ -181,6 +192,7 @@ export function Sidebar() {
   const [examinationGroupOpen, setExaminationGroupOpen] = useState(
     location.pathname.startsWith(EXAMINATION_GROUP_PATH),
   );
+  const [paraclinicalGroupOpen, setParaclinicalGroupOpen] = useState(location.pathname.startsWith(PARACLINICAL_GROUP_PATH));
   const [patientRecordsGroupOpen, setPatientRecordsGroupOpen] = useState(
     PATIENT_RECORDS_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
@@ -215,6 +227,12 @@ export function Sidebar() {
   // "Danh mục cận lâm sàng" (#212) — gate theo ĐÚNG quyền của route guard (`PARACLINICAL_CATALOG_PERMISSIONS`).
   const canSeeCatalogParaclinical = useHasAnyPermission(PARACLINICAL_CATALOG_PERMISSIONS);
   const canSeeCatalogPharmacy = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
+  // "Bảng giá" (#212 GĐ2) — gate theo ĐÚNG quyền của route guard (`PRICE_LIST_ADMIN_PERMISSIONS`); `price_list.read` một mình không đủ.
+  const canSeePriceLists = useHasAnyPermission(PRICE_LIST_ADMIN_PERMISSIONS);
+  // "Cận lâm sàng" (GĐ4, tách 2 menu #215) — mỗi mục con gate theo ĐÚNG quyền của route của nó; không có quyền nhóm nào thì cả nhóm ẩn.
+  const canSeeLabQueue = useHasPermission('lab_result', 'read');
+  const canSeeImagingQueue = useHasPermission('imaging_result', 'read');
+  const canSeeParaclinical = canSeeLabQueue || canSeeImagingQueue;
   // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — 2 mục "Công nợ nhà cung cấp"/
   // "Phiếu thanh toán NCC" trong nhóm "Quản lý nhà cung cấp", gate RIÊNG khỏi `canSeeCatalogPharmacy`
   // (mặc định CHỈ clinic_admin có `supplier_debt.read`, khác `drug.create`/`drug.update`).
@@ -239,7 +257,9 @@ export function Sidebar() {
   // Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170) — quyền RIÊNG `stock_receipt.report`
   // (chỉ `clinic_admin` mặc định), KHÁC `canSeeInventory` (`stock_receipt.read`, mọi vai trò kho).
   const canSeeStockLedgerReport = useHasPermission('stock_receipt', 'report');
-  const canSeeSystemConfig = useHasPermission('clinic_config', 'update');
+  // "Mẫu in" gác bằng `clinic_config.update`; "Cấu hình hệ thống" còn mở cho `system_backup.read` (pill "Sao lưu dữ liệu", #217).
+  const canSeePrintTemplates = useHasPermission('clinic_config', 'update');
+  const canSeeSystemConfig = useHasAnyPermission(SYSTEM_CONFIG_PERMISSIONS);
   const canSeeActivityLog = useHasPermission('audit_log', 'read');
   // "Đơn thuốc mẫu" (docs/DECISIONS.md #196) — `.read` mở cho mọi vai trò lâm sàng, đúng khuôn popup
   // chọn mẫu lúc kê đơn; nút Thêm/Sửa/Ẩn tự ẩn trong `PrescriptionTemplatePane.tsx` nếu thiếu `.manage`.
@@ -267,6 +287,7 @@ export function Sidebar() {
   const canSeeStaffSchedule = useDataScope('work_shift_assignment', 'read') === 'global';
   const receptionGroupExpanded = receptionGroupOpen && !collapsed;
   const examinationGroupExpanded = examinationGroupOpen && !collapsed;
+  const paraclinicalGroupExpanded = paraclinicalGroupOpen && !collapsed;
   const patientRecordsGroupExpanded = patientRecordsGroupOpen && !collapsed;
   const adminGroupExpanded = adminGroupOpen && !collapsed;
   const billingGroupExpanded = billingGroupOpen && !collapsed;
@@ -371,6 +392,48 @@ export function Sidebar() {
               {examinationGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   <NavItem to={EXAMINATION_GROUP_PATH} label="Hàng đợi khám" icon={ListChecks} collapsed={false} indent />
+                </ul>
+              )}
+            </li>
+          )}
+
+          {/* "Cận lâm sàng" (GĐ4, #212; tách 2 menu #215) — nhóm xổ xuống ngay dưới "Khám bệnh": "Xét nghiệm" và "CĐHA & Thăm dò chức năng", mục nào hiện tuỳ quyền. */}
+          {canSeeParaclinical && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Cận lâm sàng' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    // Cùng quy tắc bắt buộc ở các nhóm khác (ui-guidelines.md mục 8.1/8.3): bấm icon lúc thu gọn phải mở lại sidebar.
+                    setCollapsed(false);
+                    setParaclinicalGroupOpen(true);
+                  } else {
+                    setParaclinicalGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={paraclinicalGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <Flask size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Cận lâm sàng</span>
+                    <CaretRight
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                      className={`ml-auto flex-shrink-0 transition-transform ${paraclinicalGroupExpanded ? 'rotate-90' : ''}`}
+                    />
+                  </>
+                )}
+              </button>
+              {paraclinicalGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  {canSeeLabQueue && <NavItem to="/paraclinical/lab" label="Xét nghiệm" icon={Flask} collapsed={false} indent />}
+                  {canSeeImagingQueue && <NavItem to="/paraclinical/imaging" label="CĐHA & Thăm dò CN" icon={Scan} collapsed={false} indent />}
                 </ul>
               )}
             </li>
@@ -659,7 +722,10 @@ export function Sidebar() {
             </li>
           )}
 
-          {isAdmin && (
+          {/* "Bảng giá" — mục cấp 1 ngang hàng "Lịch làm việc" (chủ dự án yêu cầu 07/10/2026), không còn nằm trong nhóm Quản trị. Route vẫn `/admin/price-lists`. */}
+          {canSeePriceLists && <NavItem to="/admin/price-lists" label="Bảng giá" icon={Tag} collapsed={collapsed} />}
+
+          {(isAdmin || canSeeSystemConfig) && (
             <li>
               <button
                 type="button"
@@ -707,7 +773,7 @@ export function Sidebar() {
                       (16/09/2026, docs/DECISIONS.md #157), route/quyền giữ nguyên. */}
                   {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-warehouse" label="Danh mục kho" icon={Warehouse} collapsed={false} indent />}
                   {canSeePrescriptionTemplates && <NavItem to="/admin/prescription-templates" label="Đơn thuốc mẫu" icon={Stack} collapsed={false} indent />}
-                  {canSeeSystemConfig && <NavItem to="/admin/print-templates" label="Mẫu in" icon={Printer} collapsed={false} indent />}
+                  {canSeePrintTemplates && <NavItem to="/admin/print-templates" label="Mẫu in" icon={Printer} collapsed={false} indent />}
                   {canSeeSystemConfig && <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />}
                   {canSeeActivityLog && <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />}
                 </ul>

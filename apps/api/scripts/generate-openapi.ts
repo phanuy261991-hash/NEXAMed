@@ -100,6 +100,9 @@ import {
   listBusinessCodeTemplatesResponseSchema,
   updateBusinessCodeTemplateRequestSchema,
   backupStatusResponseSchema,
+  backupConfigResponseSchema,
+  backupRunRequestResponseSchema,
+  updateBackupConfigRequestSchema,
   clinicProfileSchema,
   clinicSettingsSchema,
   clinicalNoteResponseSchema,
@@ -341,6 +344,33 @@ import {
   updateLabIndicatorRequestSchema,
   updateResultTemplateRequestSchema,
   updateTechnicalServiceRequestSchema,
+  createPriceListRequestSchema,
+  createServicePackageRequestSchema,
+  listPriceListsQuerySchema,
+  listPriceListsResponseSchema,
+  listServicePackagesQuerySchema,
+  listServicePackagesResponseSchema,
+  lookupPriceQuerySchema,
+  lookupPriceResponseSchema,
+  priceListDetailSchema,
+  resolvePricesRequestSchema,
+  resolvePricesResponseSchema,
+  searchPriceableItemsQuerySchema,
+  searchPriceableItemsResponseSchema,
+  servicePackageDetailSchema,
+  updatePriceListRequestSchema,
+  updateServicePackageRequestSchema,
+  getClinicalOrderResponseSchema,
+  saveClinicalOrderRequestSchema,
+  getParaclinicalResultResponseSchema,
+  itemsByGroupsRequestSchema,
+  listPriceableGroupsResponseSchema,
+  amendParaclinicalResultRequestSchema,
+  listParaclinicalQueueQuerySchema,
+  listParaclinicalQueueResponseSchema,
+  saveParaclinicalResultRequestSchema,
+  startParaclinicalItemsRequestSchema,
+  startParaclinicalItemsResponseSchema,
 } from '@nexamed/shared';
 
 /**
@@ -2208,6 +2238,49 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(backupStatusResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/backup-config',
+  tags: ['clinic'],
+  summary: 'Cấu hình sao lưu dữ liệu (#217) — bật/tắt, giờ chạy (giờ VN), số ngày giữ, thư mục đích (chỉ hiển thị), yêu cầu "Sao lưu ngay" đang chờ. `available=false` ở máy không có container sao lưu',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(backupConfigResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền system_backup.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/backup-config',
+  tags: ['clinic'],
+  summary: 'Sửa cấu hình sao lưu dữ liệu — ghi file cấu hình cho container sao lưu đọc lại (không cần khởi động lại); ghi audit trước/sau',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: updateBackupConfigRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(backupConfigResponseSchema)),
+    400: errorResponse('Giờ ngoài 0-23 hoặc số ngày giữ ngoài 1-365'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền system_backup.manage'),
+    409: errorResponse('Máy này không chạy dịch vụ sao lưu (BACKUP_NOT_AVAILABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/backup-config/run-now',
+  tags: ['clinic'],
+  summary: '"Sao lưu ngay" — gửi yêu cầu cho container sao lưu (nhận trong vài chục giây); ghi audit',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Đã gửi yêu cầu', envelope(backupRunRequestResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền system_backup.manage'),
+    409: errorResponse('Máy này không chạy dịch vụ sao lưu (BACKUP_NOT_AVAILABLE)'),
   },
 });
 
@@ -4611,6 +4684,442 @@ registry.registerPath({
     403: errorResponse('Không có quyền result_template.manage'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// Cận lâm sàng GĐ2 — Gói dịch vụ + Bảng giá có thời hạn (docs/DECISIONS.md #212)
+// ---------------------------------------------------------------------------------------------
+const pricingIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/service-packages',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — liệt kê gói dịch vụ kèm giá gói/tổng giá lẻ/khách lợi (orderableOnly = chỉ gói dùng được hôm nay)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listServicePackagesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listServicePackagesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_package.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/service-packages/{id}',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — chi tiết gói dịch vụ kèm dịch vụ con và giá lẻ',
+  security: [{ bearerAuth: [] }],
+  request: { params: pricingIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(servicePackageDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_package.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/service-packages',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — tạo gói dịch vụ, mã tự sinh (GOI), giá cố định hoặc tổng trừ chiết khấu',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createServicePackageRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(servicePackageDetailSchema)),
+    400: errorResponse('Dữ liệu sai: thiếu giá cố định, dịch vụ con trùng/không tồn tại, chiết khấu không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_package.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/service-packages/{id}',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — sửa/ngừng gói dịch vụ, bắt buộc kèm version; gửi items = thay TOÀN BỘ dịch vụ con',
+  security: [{ bearerAuth: [] }],
+  request: { params: pricingIdParams, body: { content: { 'application/json': { schema: updateServicePackageRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(servicePackageDetailSchema)),
+    400: errorResponse('Dữ liệu sai'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_package.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/price-lists',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — liệt kê bảng giá có thời hạn kèm dòng "Bảng giá chung" ảo (BG0000, ưu tiên 0) và đếm theo trạng thái',
+  security: [{ bearerAuth: [] }],
+  request: { query: listPriceListsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listPriceListsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/price-lists/items/search',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — tìm mặt hàng (dịch vụ khám/kỹ thuật/gói/thuốc/vật tư, gõ không dấu) kèm giá mặc định từng Loại giá/Bậc đơn vị',
+  security: [{ bearerAuth: [] }],
+  request: { query: searchPriceableItemsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(searchPriceableItemsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/price-lists/lookup',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — "Tra thử giá": mọi bảng giá chứa mặt hàng vào một ngày, bảng nào thắng/bị đè, Bảng giá chung ở cuối',
+  security: [{ bearerAuth: [] }],
+  request: { query: lookupPriceQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(lookupPriceResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+    404: errorResponse('Mặt hàng không tồn tại'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/price-lists/resolve',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — tính giá áp dụng hàng loạt theo ngày tiếp nhận/lập phiếu (không ghi gì; POST chỉ vì có body)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: resolvePricesRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(resolvePricesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/price-lists/{id}',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — chi tiết bảng giá kèm các dòng (giá mặc định + giá áp dụng)',
+  security: [{ bearerAuth: [] }],
+  request: { params: pricingIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(priceListDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/price-lists',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — tạo bảng giá có thời hạn (mã BG tự sinh, ưu tiên ≥ 1, cao thắng) kèm các dòng',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createPriceListRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(priceListDetailSchema)),
+    400: errorResponse('Dữ liệu sai: ngày ngược, dòng trùng phạm vi, mặt hàng không tồn tại/sai loại, Giá mới thiếu Loại giá/Đơn vị'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/price-lists/{id}',
+  tags: ['pricing'],
+  summary: 'Cận lâm sàng GĐ2 — sửa/ngừng bảng giá (isActive=false), bắt buộc kèm version; gửi lines = thay TOÀN BỘ dòng',
+  security: [{ bearerAuth: [] }],
+  request: { params: pricingIdParams, body: { content: { 'application/json': { schema: updatePriceListRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(priceListDetailSchema)),
+    400: errorResponse('Dữ liệu sai'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+// ---------------------------------------------------------------------------------------------
+// Cận lâm sàng GĐ3 — Chỉ định của bác sĩ (docs/DECISIONS.md #212)
+// ---------------------------------------------------------------------------------------------
+const clinicalOrderParams = z.object({ encounterId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/encounters/{encounterId}/clinical-orders',
+  tags: ['clinical-order'],
+  summary: 'Cận lâm sàng GĐ3 — phiếu chỉ định cận lâm sàng của lượt khám (order=null khi chưa chỉ định gì), kèm dòng/gói/hoá đơn chứa tiền',
+  security: [{ bearerAuth: [] }],
+  request: { params: clinicalOrderParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(getClinicalOrderResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinical_order.read'),
+    404: errorResponse('Không tìm thấy lượt khám (không tồn tại, thuộc tenant khác hoặc ngoài phạm vi bác sĩ)'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/encounters/{encounterId}/clinical-orders',
+  tags: ['clinical-order'],
+  summary:
+    'Cận lâm sàng GĐ3 — "Lưu chỉ định": thay TOÀN BỘ danh sách (so khớp theo id). Dòng tại phòng khám lẻ ghi tiền vào hoá đơn khám đang chưa thu (không thì hoá đơn Cận lâm sàng riêng); gói = 1 dòng hoá đơn; dòng đã thu tiền không gỡ/đổi được',
+  security: [{ bearerAuth: [] }],
+  request: { params: clinicalOrderParams, body: { content: { 'application/json': { schema: saveClinicalOrderRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Lưu thành công', envelope(getClinicalOrderResponseSchema)),
+    400: errorResponse('Dữ liệu sai: dịch vụ không tồn tại/đã ngừng, dòng/gói không thuộc phiếu hoặc bị trùng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinical_order.create'),
+    404: errorResponse('Không tìm thấy lượt khám (hoặc không phải lượt khám của bác sĩ này)'),
+    409: errorResponse('Lượt khám không ở IN_CONSULTATION (ENCOUNTER_NOT_IN_CONSULTATION) hoặc dòng đã thu tiền/đã thực hiện (CLINICAL_ORDER_ITEM_LOCKED)'),
+    422: errorResponse('Dịch vụ không tự làm (CLINICAL_ORDER_SERVICE_NOT_IN_HOUSE), chưa có đơn giá (CLINICAL_ORDER_PRICE_MISSING) hoặc gói không dùng được (CLINICAL_ORDER_PACKAGE_NOT_ORDERABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{encounterId}/clinical-orders/print',
+  tags: ['clinical-order'],
+  summary: 'Cận lâm sàng GĐ3 — ghi audit mỗi lần in phiếu chỉ định (web tự dựng bản in từ dữ liệu đã tải)',
+  security: [{ bearerAuth: [] }],
+  request: { params: clinicalOrderParams },
+  responses: {
+    200: jsonResponse('Đã ghi audit', envelope(z.object({ ok: z.boolean() }))),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinical_order.read'),
+    404: errorResponse('Lượt khám chưa có phiếu chỉ định (hoặc không tìm thấy)'),
+  },
+});
+
+// ---------------------------------------------------------------------------------------------
+// Cận lâm sàng GĐ4 đợt 1 — Hàng đợi, lấy mẫu / gọi vào phòng, nhập + duyệt kết quả (docs/DECISIONS.md #212)
+// ---------------------------------------------------------------------------------------------
+const paraclinicalItemParams = z.object({ itemId: z.string().uuid() });
+
+// Tách 2 menu (docs/DECISIONS.md #215): mỗi nhóm có đường dẫn + quyền riêng — Xét nghiệm `lab_result.*`, CĐHA & Thăm dò chức năng `imaging_result.*`.
+const paraclinicalOpenApiGroups = [
+  { key: 'lab', module: 'lab_result' },
+  { key: 'imaging', module: 'imaging_result' },
+] as const;
+
+for (const g of paraclinicalOpenApiGroups) {
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/paraclinical/${g.key}/queue`,
+    tags: ['paraclinical-result'],
+    summary:
+      'Cận lâm sàng GĐ4 — hàng đợi (xét nghiệm cùng phiếu + cùng trạng thái gộp 1 dòng; mỗi CĐHA/thăm dò 1 dòng) kèm số dòng từng tab. Việc chưa xong lấy mọi ngày; "Đã trả kết quả" chỉ lấy ngày đang xem',
+    security: [{ bearerAuth: [] }],
+    request: { query: listParaclinicalQueueQuerySchema },
+    responses: {
+      200: jsonResponse('Thành công', envelope(listParaclinicalQueueResponseSchema)),
+      400: errorResponse('Tham số sai định dạng'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.read`),
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/start`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng GĐ4 — "Lấy mẫu" / "Gọi vào phòng": các dòng cùng phiếu chuyển ORDERED → IN_PROGRESS. Chưa thu tiền thì chặn trừ khi phòng khám bật "thực hiện trước khi thu tiền"',
+    security: [{ bearerAuth: [] }],
+    request: { body: { content: { 'application/json': { schema: startParaclinicalItemsRequestSchema } } } },
+    responses: {
+      200: jsonResponse('Thành công', envelope(startParaclinicalItemsResponseSchema)),
+      400: errorResponse('Dữ liệu sai'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.enter`),
+      404: errorResponse('Dòng chỉ định không tồn tại hoặc thuộc tenant khác'),
+      409: errorResponse('Dòng không ở trạng thái chờ lấy mẫu (PARACLINICAL_ITEM_INVALID_STATE), lượt khám đã huỷ hoặc chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED)'),
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng GĐ4 — màn nhập/xem kết quả của một dòng chỉ định (xét nghiệm cùng nhóm hiện chung 1 màn): chỉ số + khoảng tham chiếu theo giới tính/tuổi + cờ Cao/Thấp. Ghi audit "xem"',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams },
+    responses: {
+      200: jsonResponse('Thành công', envelope(getParaclinicalResultResponseSchema)),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.read`),
+      404: errorResponse('Không tìm thấy dòng chỉ định'),
+      409: errorResponse('Chưa lấy mẫu / gọi vào phòng'),
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng GĐ4 — lưu nháp kết quả, hoặc gửi duyệt khi submit=true (phải đủ chỉ số / mô tả + kết luận). Kết quả đã duyệt không sửa trực tiếp',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams, body: { content: { 'application/json': { schema: saveParaclinicalResultRequestSchema } } } },
+    responses: {
+      200: jsonResponse('Lưu thành công', envelope(getParaclinicalResultResponseSchema)),
+      400: errorResponse('Dữ liệu sai'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.enter`),
+      404: errorResponse('Không tìm thấy dòng chỉ định'),
+      409: errorResponse('Chưa lấy mẫu, đã duyệt (bản ký) hoặc lượt khám đã huỷ (PARACLINICAL_ITEM_INVALID_STATE)'),
+      422: errorResponse('Kết quả chưa đủ hoặc giá trị không hợp lệ (PARACLINICAL_RESULT_INCOMPLETE)'),
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result/approve`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng GĐ4 — "Duyệt & trả kết quả" (ký): lưu nội dung gửi kèm, kiểm đủ rồi ký mọi kết quả của nhóm trong cùng transaction; sau đó là bản ký bất biến',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams, body: { content: { 'application/json': { schema: saveParaclinicalResultRequestSchema } } } },
+    responses: {
+      200: jsonResponse('Duyệt thành công', envelope(getParaclinicalResultResponseSchema)),
+      400: errorResponse('Dữ liệu sai'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.approve`),
+      404: errorResponse('Không tìm thấy dòng chỉ định'),
+      409: errorResponse('Đã duyệt trước đó, chưa lấy mẫu hoặc lượt khám đã huỷ (PARACLINICAL_ITEM_INVALID_STATE)'),
+      422: errorResponse('Kết quả chưa đủ hoặc giá trị không hợp lệ (PARACLINICAL_RESULT_INCOMPLETE)'),
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result/amend`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng — "Đính chính" kết quả ĐÃ DUYỆT: đề nghị kèm lý do bắt buộc; bản đã ký được giữ nguyên (soft-delete) và thay bằng bản nháp sao chép nội dung, dịch vụ quay lại "Đang thực hiện"; bác sĩ có quyền Duyệt ký lại',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams, body: { content: { 'application/json': { schema: amendParaclinicalResultRequestSchema } } } },
+    responses: {
+      200: jsonResponse('Đã mở bản đính chính', envelope(getParaclinicalResultResponseSchema)),
+      400: errorResponse('Thiếu lý do đính chính'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.enter`),
+      404: errorResponse('Không tìm thấy dòng chỉ định'),
+      409: errorResponse('Kết quả chưa duyệt hoặc vừa được người khác đính chính (PARACLINICAL_ITEM_INVALID_STATE)'),
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result/amend/cancel`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng — huỷ đính chính đang soạn/chờ duyệt: bỏ bản nháp, khôi phục bản đã duyệt cũ',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams },
+    responses: {
+      200: jsonResponse('Đã huỷ đính chính', envelope(getParaclinicalResultResponseSchema)),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.enter`),
+      404: errorResponse('Không tìm thấy dòng chỉ định'),
+      409: errorResponse('Không có đính chính đang soạn (PARACLINICAL_ITEM_INVALID_STATE)'),
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/items/{itemId}/result/print`,
+    tags: ['paraclinical-result'],
+    summary: 'Cận lâm sàng GĐ4 — ghi audit mỗi lần in phiếu kết quả (web tự dựng bản in từ dữ liệu đã tải)',
+    security: [{ bearerAuth: [] }],
+    request: { params: paraclinicalItemParams },
+    responses: {
+      200: jsonResponse('Đã ghi audit', envelope(z.object({ ok: z.boolean() }))),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.read`),
+      404: errorResponse('Không tìm thấy kết quả'),
+      409: errorResponse('Chưa lấy mẫu / gọi vào phòng'),
+    },
+  });
+
+  if (g.key === 'imaging') {
+    registry.registerPath({
+      method: 'post',
+      path: `/api/v1/paraclinical/${g.key}/items/{itemId}/images`,
+      tags: ['paraclinical-result'],
+      summary: 'Cận lâm sàng GĐ4 — thêm ảnh đính kèm (multipart "file", JPG/PNG ≤ 5MB, tối đa 8 ảnh) vào kết quả đang thực hiện; trả lại form kết quả',
+      security: [{ bearerAuth: [] }],
+      request: { params: paraclinicalItemParams },
+      responses: {
+        200: jsonResponse('Đã thêm ảnh', envelope(getParaclinicalResultResponseSchema)),
+        400: errorResponse('Thiếu file hoặc ảnh không hợp lệ'),
+        401: errorResponse('Thiếu hoặc sai access token'),
+        403: errorResponse(`Không có quyền ${g.module}.enter`),
+        404: errorResponse('Không tìm thấy dòng chỉ định'),
+        409: errorResponse('Đã duyệt/chưa lấy mẫu, xét nghiệm không có ảnh hoặc quá 8 ảnh'),
+      },
+    });
+
+    registry.registerPath({
+      method: 'delete',
+      path: `/api/v1/paraclinical/${g.key}/images/{imageId}`,
+      tags: ['paraclinical-result'],
+      summary: 'Cận lâm sàng GĐ4 — gỡ ảnh đính kèm (soft-delete) khỏi kết quả chưa duyệt; trả lại form kết quả',
+      security: [{ bearerAuth: [] }],
+      request: { params: z.object({ imageId: z.string().uuid() }) },
+      responses: {
+        200: jsonResponse('Đã gỡ ảnh', envelope(getParaclinicalResultResponseSchema)),
+        401: errorResponse('Thiếu hoặc sai access token'),
+        403: errorResponse(`Không có quyền ${g.module}.enter`),
+        404: errorResponse('Không tìm thấy ảnh'),
+        409: errorResponse('Kết quả đã duyệt (bản ký)'),
+      },
+    });
+  }
+}
+
+// Thêm hàng loạt vào bảng giá: theo nhóm + nhập Excel (docs/DECISIONS.md #212, yêu cầu chủ dự án 07/10/2026)
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/price-lists/items/groups',
+  tags: ['price-list'],
+  summary: 'Bảng giá — các nhóm mặt hàng chọn được ở hộp thoại "Thêm theo nhóm" (dịch vụ kỹ thuật theo Nhóm dịch vụ, thuốc/vật tư theo Nhóm thuốc...) kèm số mặt hàng',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listPriceableGroupsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/price-lists/items/by-groups',
+  tags: ['price-list'],
+  summary: 'Bảng giá — mặt hàng thuộc các nhóm đã chọn kèm giá mặc định hôm nay (POST chỉ vì có body, không ghi gì)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: itemsByGroupsRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(searchPriceableItemsResponseSchema)),
+    400: errorResponse('Dữ liệu sai'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền price_list.read'),
   },
 });
 

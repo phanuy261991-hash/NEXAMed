@@ -53,6 +53,11 @@ const MODULE_LABELS: Record<string, string> = {
   // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — thêm nhãn NGAY từ đầu, tránh lặp lại lỗ
   // hổng đã ghi chú nhiều lần ở trên.
   supplier_debt: 'Công nợ nhà cung cấp',
+  // Cận lâm sàng tách 2 menu (docs/DECISIONS.md #215) — thêm nhãn NGAY từ đầu: có quyền Xem của nhóm nào thì thấy menu của nhóm đó.
+  lab_result: 'Kết quả xét nghiệm',
+  imaging_result: 'Kết quả CĐHA & Thăm dò chức năng',
+  // Cấu hình sao lưu dữ liệu (docs/DECISIONS.md #217) — thêm nhãn NGAY từ đầu.
+  system_backup: 'Sao lưu dữ liệu',
 };
 
 export function moduleLabel(module: string): string {
@@ -71,8 +76,9 @@ const SECTIONS: { label: string; modules: string[] }[] = [
   { label: 'Đặt lịch hẹn', modules: ['appointment'] },
   { label: 'Tiếp nhận & Lượt khám', modules: ['encounter', 'vital_sign', 'diagnosis'] },
   { label: 'Khám bệnh & Kê đơn', modules: ['clinical_note', 'prescription', 'prescription_template'] },
-  { label: 'Cấu hình & Quản trị', modules: ['clinic_config', 'user_account', 'role_permission', 'audit_log'] },
+  { label: 'Cấu hình & Quản trị', modules: ['clinic_config', 'user_account', 'role_permission', 'audit_log', 'system_backup'] },
   { label: 'Danh mục dùng chung', modules: ['reference_catalog'] },
+  { label: 'Cận lâm sàng', modules: ['lab_result', 'imaging_result'] },
 ];
 
 export interface ModuleGroup {

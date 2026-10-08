@@ -389,13 +389,19 @@ export function InvoiceDetailPage() {
   const lineGroups = useMemo(() => {
     const groups: { key: string; label: string; dotClassName: string; subtotal: number; lines: NonNullable<typeof invoice>['lines'] }[] = [];
     for (const line of invoice?.lines ?? []) {
-      const key = line.lineSource === 'SERVICE' ? 'SERVICE' : `DRUG:${line.stockIssueNo ?? ''}`;
+      // Cận lâm sàng GĐ3 (#212) — nhóm thứ 3 "Cận lâm sàng — Phiếu CLS...": dòng chỉ định lẻ + dòng gói cùng 1 phiếu chỉ định.
+      const key = line.lineSource === 'SERVICE' ? 'SERVICE' : line.lineSource === 'PARACLINICAL' ? `CLS:${line.clinicalOrderNo ?? ''}` : `DRUG:${line.stockIssueNo ?? ''}`;
       let group = groups.find((g) => g.key === key);
       if (!group) {
         group = {
           key,
-          label: line.lineSource === 'SERVICE' ? 'Dịch vụ khám' : `Tiền thuốc — Phiếu xuất ${line.stockIssueNo}`,
-          dotClassName: line.lineSource === 'SERVICE' ? 'bg-slate-400' : 'bg-violet-500',
+          label:
+            line.lineSource === 'SERVICE'
+              ? 'Dịch vụ khám'
+              : line.lineSource === 'PARACLINICAL'
+                ? `Cận lâm sàng — Phiếu chỉ định ${line.clinicalOrderNo ?? ''}`
+                : `Tiền thuốc — Phiếu xuất ${line.stockIssueNo}`,
+          dotClassName: line.lineSource === 'SERVICE' ? 'bg-slate-400' : line.lineSource === 'PARACLINICAL' ? 'bg-teal-500' : 'bg-violet-500',
           subtotal: 0,
           lines: [],
         };
@@ -452,7 +458,7 @@ export function InvoiceDetailPage() {
                   className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-left opacity-70 transition-opacity hover:opacity-100"
                 >
                   <span className="text-sm font-semibold text-slate-700">
-                    {sibling.invoiceType === 'DRUG' ? 'Hoá đơn thuốc' : 'Hoá đơn khám'} <span className="text-blue-600">{sibling.invoiceNo}</span>
+                    {sibling.invoiceType === 'DRUG' ? 'Hoá đơn thuốc' : sibling.invoiceType === 'PARACLINICAL' ? 'Hoá đơn cận lâm sàng' : 'Hoá đơn khám'} <span className="text-blue-600">{sibling.invoiceNo}</span>
                   </span>
                   <span className="flex items-center gap-2">
                     {sibling.status === 'PAID' && <StatusBadge tone="success">Đã thu</StatusBadge>}
@@ -468,9 +474,10 @@ export function InvoiceDetailPage() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             <h2 className="text-base font-bold text-slate-900">
-              {invoice.invoiceType === 'DRUG' ? 'Phiếu thu tiền thuốc' : 'Phiếu thu'} <span className="text-blue-600">{invoice.invoiceNo}</span>
+              {invoice.invoiceType === 'DRUG' ? 'Phiếu thu tiền thuốc' : invoice.invoiceType === 'PARACLINICAL' ? 'Phiếu thu cận lâm sàng' : 'Phiếu thu'} <span className="text-blue-600">{invoice.invoiceNo}</span>
             </h2>
             {invoice.invoiceType === 'DRUG' && <StatusBadge tone="accent">Hoá đơn thuốc riêng</StatusBadge>}
+            {invoice.invoiceType === 'PARACLINICAL' && <StatusBadge tone="accent">Hoá đơn cận lâm sàng riêng</StatusBadge>}
             {invoice.status === 'PAID' && (
               <StatusBadge tone="success">
                 <CheckCircle size={12} weight="bold" aria-hidden="true" /> Đã thu

@@ -134,7 +134,7 @@ Chọn theo phần cứng khách hàng thật đang có — không phải chọn
 | `migrate` | Chạy MỘT LẦN mỗi lúc `docker compose up` rồi thoát: `prisma migrate deploy` → đổi mật khẩu role `nexamed_app` → seed danh mục toàn cục. Idempotent — an toàn khi máy khởi động lại chạy lại từ đầu | `nexamed-api:${NEXAMED_VERSION}` — build sẵn ở máy dev/CI từ `apps/api/Dockerfile`, nạp bằng `docker load` (xem 2.1b) |
 | `api` | NestJS, healthcheck `GET /health` | `nexamed-api:${NEXAMED_VERSION}` (dùng chung ảnh với `migrate`, khác `command:`) |
 | `web` | Build tĩnh `apps/web`, phục vụ qua nginx + reverse-proxy `/api/*` sang `api` (cùng origin, không cần CORS/mở thêm cổng) | `nexamed-web:${NEXAMED_VERSION}` — build sẵn ở máy dev/CI từ `apps/web/Dockerfile` |
-| `backup` | `pg_dump -Fc` hằng ngày (giờ cấu hình được) ra thư mục ngoài container, tự dọn bản quá hạn giữ | `nexamed-backup:${NEXAMED_VERSION}` — build sẵn ở máy dev/CI từ `deploy/on-prem/backup/Dockerfile` |
+| `backup` | `pg_dump -Fc` hằng ngày (giờ cấu hình được) ra thư mục ngoài container, tự dọn bản quá hạn giữ; **kèm đồng bộ thư mục ảnh đính kèm** (volume `api_storage`, gắn chỉ-đọc) sang `<BACKUP_HOST_DIR>/storage` | `nexamed-backup:${NEXAMED_VERSION}` — build sẵn ở máy dev/CI từ `deploy/on-prem/backup/Dockerfile` |
 
 Máy chủ đặt tại phòng khám **KHÔNG BAO GIỜ cần internet, kể cả lần cài đầu tiên** — ảnh đã build sẵn ở máy khác, máy khách chỉ `docker load` (xem 2.1b). Đây cũng là cách duy nhất đảm bảo máy khách không bao giờ nhận được mã nguồn (`.ts`/`.git`/`docs` nội bộ) — chỉ nhận ảnh Docker đã build.
 
@@ -267,20 +267,34 @@ docker compose cp postgres:/tmp/truoc-cap-nhat.dump .\truoc-cap-nhat.dump
 
 #### Cấu hình sao lưu tự động
 
-Mở `.env`:
+**Đổi giờ chạy, số ngày giữ, bật/tắt và "Sao lưu ngay" trên giao diện** (docs/DECISIONS.md #217): đăng nhập tài khoản có quyền `system_backup` (mặc định **Quản trị hệ thống** và **Quản lý phòng khám**) → **Quản trị → Cấu hình hệ thống → Sao lưu dữ liệu**.
+
+- **Trạng thái**: lần sao lưu gần nhất thành công/lỗi (kèm lý do) và nút **Sao lưu ngay** (chạy trong vài chục giây, không cần khởi động lại).
+- **Cấu hình** (bấm bút chì để sửa, rồi **Lưu**): *Tự động sao lưu hằng ngày* (bật/tắt), *Giờ chạy* theo **giờ Việt Nam** (hệ thống tự quy đổi sang giờ máy chủ), *Số ngày giữ bản sao lưu*. Áp dụng ngay cho lần chạy kế tiếp.
+- Mục này **chỉ hiện ở bản cài tại chỗ có dịch vụ `backup`**; máy dev/bản cloud tự ẩn.
+
+Trong `.env` vẫn còn các biến sau, nhưng `BACKUP_HOUR`/`BACKUP_RETENTION_DAYS` **chỉ là giá trị khởi tạo lần đầu** (sau đó giao diện là nguồn đúng, sửa `.env` không còn tác dụng):
 ```
 BACKUP_HOUR=19
 BACKUP_RETENTION_DAYS=14
 BACKUP_HOST_DIR=./backup-data
 ```
-- `BACKUP_HOUR`: giờ chạy backup mỗi ngày (0-23) — **là giờ UTC, không phải giờ Việt Nam**. Muốn 2h sáng giờ VN thì đặt `19` (lùi 7 tiếng).
-- `BACKUP_RETENTION_DAYS`: giữ bao nhiêu ngày trước khi tự xoá bản cũ.
-- `BACKUP_HOST_DIR`: **quan trọng nhất** — mặc định lưu ngay trên ổ đĩa của PC đó, CÙNG ổ với dữ liệu thật. Nếu ổ đĩa hỏng thì mất cả 2. Nên đổi trỏ sang ổ khác/ổ ngoài/máy khác trong mạng nội bộ, ví dụ `D:\NEXAMed-backup` hoặc `\\192.168.1.100\backup-nexamed`. Sửa xong: `docker compose restart backup`.
-
-Sửa xong `.env`, chạy lại:
+- `BACKUP_HOUR`: giá trị khởi tạo giờ chạy — **giờ UTC, không phải giờ Việt Nam**. Muốn 2h sáng giờ VN thì đặt `19` (lùi 7 tiếng).
+- `BACKUP_RETENTION_DAYS`: giá trị khởi tạo số ngày giữ bản cũ.
+- `BACKUP_HOST_DIR`: **quan trọng nhất** và **không đổi được trên giao diện** (giao diện chỉ hiển thị) — mặc định lưu ngay trên ổ đĩa của PC đó, CÙNG ổ với dữ liệu thật. Nếu ổ đĩa hỏng thì mất cả 2. Nên đổi trỏ sang ổ khác/ổ ngoài/máy khác trong mạng nội bộ, ví dụ `D:\NEXAMed-backup` hoặc `\\192.168.1.100\backup-nexamed`. Sửa `.env` xong chạy:
 ```powershell
 docker compose restart backup
 ```
+
+#### Sao lưu thư mục ảnh (docs/DECISIONS.md #216)
+
+Ảnh đính kèm kết quả cận lâm sàng (siêu âm, X-quang...), ảnh đại diện bệnh nhân và logo phòng khám KHÔNG nằm trong database nên file `.dump` không giữ được chúng. Cùng lịch với sao lưu database, dịch vụ `backup` đồng bộ thư mục ảnh sang `<BACKUP_HOST_DIR>/storage` (cạnh các file `.dump`):
+
+- **Tăng dần, không nén, không đổi ảnh**: chỉ chép file mới (ảnh trong hệ thống không bao giờ bị sửa hay xoá), nên mỗi ngày chỉ tốn thêm đúng dung lượng ảnh mới. Ảnh giữ nguyên bản gốc.
+- **Không bị dọn theo `BACKUP_RETENTION_DAYS`** — đó là kho dữ liệu chứ không phải bản chụp theo ngày; thư mục này lớn dần theo số ảnh, nhớ để ý dung lượng ổ đích. Ước lượng thô để tham khảo (kiểm lại theo thực tế): 50 ca siêu âm/ngày, mỗi ca 2 ảnh ~1 MB ≈ 30 GB/năm.
+- Ảnh được chép **trước** database, nên mọi ảnh mà bản `.dump` nhắc tới đều đã có trong bản sao.
+- Nếu chép ảnh lỗi (hoặc quên gắn volume `api_storage` vào dịch vụ `backup`) thì lần chạy đó bị tính là THẤT BẠI: banner cảnh báo cho quản trị viên hiện lên dù database vẫn được lưu.
+- **Bản cài cũ (trước 07/10/2026)**: cập nhật `docker-compose.yml` mới (dịch vụ `backup` có thêm `api_storage:/data/storage:ro` và `STORAGE_DIR`) và nạp ảnh `nexamed-backup` mới, rồi `docker compose up -d backup`. Lần chạy đầu sẽ chép toàn bộ ảnh đang có.
 
 #### Khôi phục từ 1 file backup — đã test thật (giả lập "PC hỏng hoàn toàn")
 
@@ -305,11 +319,38 @@ docker compose exec postgres pg_restore -U nexamed -d nexamed --no-owner /tmp/re
 ```
 Chạy xong không có dòng nào bắt đầu bằng `pg_restore: error:` là thành công.
 
+**Bước 4b.** Khôi phục thư mục ảnh đính kèm — chép bản sao `storage` trong thư mục backup vào container `api` (làm SAU Bước 4, trước khi bật lại `api`/`web`; chép được cả khi `api` đang dừng từ Bước 2 — đã kiểm chứng):
+```powershell
+docker compose cp .\backup-data\storage\. api:/data/storage/
+```
+Thay `.\backup-data` bằng đúng đường dẫn `BACKUP_HOST_DIR` đang dùng (ví dụ `D:\NEXAMed-backup\storage\.`). **Nhớ giữ dấu `\.` ở cuối** — nó có nghĩa "chép NỘI DUNG thư mục"; thiếu thì ảnh bị chép thành một thư mục con `storage` thừa bên trong và hệ thống không tìm thấy ảnh.
+
+Kiểm tra sau khi chép — số file trong container phải bằng số file trong bản sao:
+```powershell
+docker compose exec api sh -c "find /data/storage -type f | wc -l"
+(Get-ChildItem .\backup-data\storage -Recurse -File).Count
+```
+Bỏ qua bước này thì kết quả (chữ) vẫn đủ nhưng các ảnh đính kèm sẽ hiện ảnh vỡ.
+
+> **Yên tâm khi cài lại**: ngay sau khi cài máy mới, dịch vụ `backup` tự chạy một lần trên thư mục ảnh còn TRỐNG. Việc đó KHÔNG làm mất bản sao cũ vì sao lưu chỉ chép thêm file mới, không bao giờ xoá file đã có ở thư mục đích. Chỉ cần đừng tự tay xoá `backup-data\storage`.
+
 **Bước 5.** Bật lại và kiểm tra:
 ```powershell
 docker compose start api web
 ```
 Đăng nhập lại bằng tài khoản/mật khẩu đã có TRƯỚC lúc backup (không phải tài khoản mới) — dữ liệu đúng như thời điểm tạo file backup đó.
+
+#### Diễn tập khôi phục ảnh — kịch bản "máy hỏng, cài lại" (đã chạy thật 07/10/2026, `docs/DECISIONS.md` #216)
+
+Chạy bằng ảnh Docker `nexamed-backup` thật + `docker compose` (Postgres tạm, volume `api_storage` tạm), thư mục backup ở ổ máy thật:
+
+1. Máy chạy bình thường có 5 ảnh (kết quả CĐHA, ảnh đại diện, logo) → dịch vụ `backup` chạy: `ảnh: xong (5 file, 936K)`, thư mục `backup-data\storage` có đủ 5 file cạnh file `.dump`.
+2. **Máy hỏng**: `docker compose down -v` (xoá container + mọi volume) — chỉ còn thư mục `backup-data`.
+3. **Cài lại**: `docker compose up -d` → volume ảnh mới TRỐNG (0 file); dịch vụ `backup` chạy ngay trên máy trống nhưng bản sao vẫn nguyên 5 file (không bị xoá theo).
+4. **Khôi phục** bằng đúng lệnh ở Bước 4b (`docker compose cp .\backup-data\storage\. api:/data/storage/`) → thoát mã 0.
+5. **Đối chiếu sha256 từng file** với trước khi hỏng: **giống hệt 5/5**. Khởi động lại `backup` sau đó vẫn bình thường (`ảnh: xong (5 file)`).
+
+Chưa diễn tập: máy khách thật (NAS), dung lượng ảnh lớn (hàng chục GB — thời gian chép), và phục hồi đồng thời DB + ảnh trên cùng một máy khách thật qua đủ Bước 1-5.
 
 **Nếu gặp lỗi `pg_restore: error: ... function unaccent(text) does not exist`** — chỉ xảy ra khi restore đúng 1 file backup được tạo TRƯỚC ngày 2026-09-01 (trước khi vá lỗi #099). Chạy thêm lệnh này 1 lần rồi thử lại Bước 4:
 ```powershell
@@ -326,7 +367,7 @@ docker compose exec postgres psql -U nexamed -d nexamed -c "CREATE OR REPLACE FU
 | `docker compose up -d` | Khởi động (hoặc khởi động lại nếu đã đổi cấu hình/ảnh) toàn bộ 5 service, chạy nền | Sau khi sửa `.env`/nạp ảnh mới, hoặc khởi động lần đầu trong ngày |
 | `docker compose down` | Dừng và XOÁ container (KHÔNG xoá dữ liệu — `postgres_data` là volume riêng, vẫn còn) | Muốn dừng hẳn hệ thống (bảo trì, chuyển máy) |
 | `docker compose down -v` | Như trên nhưng **XOÁ LUÔN CẢ DỮ LIỆU** (volume) | **CHỈ dùng khi cố ý xoá sạch để làm lại từ đầu** — không dùng nhầm, mất hết dữ liệu bệnh nhân |
-| `docker compose restart <service>` | Khởi động lại đúng 1 service (không đụng service khác) | Sau khi sửa `.env` chỉ ảnh hưởng 1 service — ví dụ sửa `BACKUP_HOUR` thì `docker compose restart backup` |
+| `docker compose restart <service>` | Khởi động lại đúng 1 service (không đụng service khác) | Sau khi sửa `.env` chỉ ảnh hưởng 1 service — ví dụ sửa `BACKUP_HOST_DIR` thì `docker compose restart backup` |
 | `docker compose stop <service>` / `start <service>` | Tắt/bật tạm 1 service, giữ nguyên container (không xoá) | Tắt `api`/`web` tạm thời lúc khôi phục dữ liệu (mục 2.3c) |
 | `docker compose exec <service> <lệnh>` | Chạy 1 lệnh BÊN TRONG container đang chạy | Chạy `psql`, `pg_dump`, `pg_restore` trực tiếp trong container `postgres` |
 | `docker compose cp <nguồn> <đích>` | Copy file giữa máy thật và container (2 chiều) | Đưa file backup vào container để restore, hoặc lấy file backup ra |

@@ -1,4 +1,6 @@
 import type {
+  ClinicalOrderDetail,
+  ParaclinicalResultForm,
   CashierShiftDetail,
   CashVoucher,
   ClinicPrintHeader,
@@ -95,6 +97,7 @@ function invoiceLine(n: number, name: string, unitPrice: number, quantity: numbe
     discountValue: null,
     discountAmount: 0,
     lineSource: source,
+    clinicalOrderNo: null,
     stockIssueNo: null,
     netAmount: unitPrice * quantity,
     refundedQuantity: 0,
@@ -342,4 +345,130 @@ export const SAMPLE_STOCK_TRANSFER: StockTransferDetail = {
   rejectionReason: null,
   version: 1,
   lines: [{ id: ID(910), drugId: ID(101), drugCode: 'THUOC-0012', drugName: 'Paracetamol 500mg', isBatchManaged: true, batchId: ID(811), batchNo: 'L2610A', expiryDate: '2028-09-30', quantityShipped: 50, quantityReceived: 50, varianceNote: null }],
+};
+
+/** Kết quả cận lâm sàng mẫu (Cận lâm sàng GĐ4 đợt 2, #214) — dữ liệu minh hoạ cho bản xem trước ở Quản lý mẫu in. */
+const SAMPLE_REFERENCE = { sex: 'ANY', ageFromYears: 0, ageToYears: null, lowInclusive: true, highInclusive: true, normalText: null } as const;
+export const SAMPLE_LAB_RESULT: ParaclinicalResultForm = {
+  orderNo: 'CLS2610000309',
+  encounterId: '00000000-0000-4000-8000-0000000000e1',
+  encounterNo: 'LK2609000921',
+  patientName: 'Nguyễn Thị Bảy',
+  patientCode: 'BN2609000884',
+  patientGender: 'female',
+  patientDob: '1959-04-12',
+  patientPhone: '0903 123 456',
+  ageYears: 67,
+  registeredAt: '2026-10-06T01:41:00.000Z',
+  doctorName: 'BS. Đặng Quốc Hưng',
+  collectedAt: '2026-10-06T02:02:00.000Z',
+  bucket: 'COMPLETED',
+  performedById: null,
+  performedByName: 'KTV. Hoàng Thị Mai',
+  resultedAt: '2026-10-06T03:46:00.000Z',
+  approverId: null,
+  approvers: [],
+  signedAt: '2026-10-06T03:50:00.000Z',
+  signedByName: 'BS. Lê Thanh Tùng',
+  amendment: null,
+  sections: [
+    {
+      itemId: 'r1',
+      technicalServiceId: 'r1',
+      code: 'XN0001',
+      name: 'Tổng phân tích tế bào máu ngoại vi bằng hệ thống tự động',
+      serviceKind: 'LAB',
+      resultType: 'INDICATORS',
+      specimenTypeName: 'Máu EDTA',
+      departmentName: 'P. Xét nghiệm',
+      categoryName: 'Huyết học',
+      images: [],
+      status: 'COMPLETED',
+      descriptionText: null,
+      conclusionText: 'Hình ảnh hồng cầu nhỏ, nhược sắc. Đề nghị định lượng Ferritin huyết thanh.',
+      indicators: [
+        { indicatorId: 'a1', code: 'CS0002', name: 'Bạch Cầu', abbreviation: 'WBC', unit: '10³/µL', valueType: 'NUMBER', decimals: 2, choiceOptions: [], reference: { ...SAMPLE_REFERENCE, lowValue: 4, highValue: 10, displayText: null }, referenceText: '4 - 10', valueText: '7.90', note: null, interpretationText: null, flag: 'NORMAL' },
+        { indicatorId: 'a2', code: 'CS0007', name: 'Huyết Sắc Tố', abbreviation: 'HGB', unit: 'g/L', valueType: 'NUMBER', decimals: 0, choiceOptions: [], reference: { ...SAMPLE_REFERENCE, lowValue: 120, highValue: 160, displayText: null }, referenceText: '120 - 160', valueText: '104', note: null, interpretationText: 'Thiếu máu nếu thấp.', flag: 'LOW' },
+        { indicatorId: 'a3', code: 'CS0011', name: 'Tiểu Cầu', abbreviation: 'PLT', unit: '10³/µL', valueType: 'NUMBER', decimals: 0, choiceOptions: [], reference: { ...SAMPLE_REFERENCE, lowValue: 150, highValue: 419, displayText: null }, referenceText: '150 - 419', valueText: '438', note: null, interpretationText: null, flag: 'HIGH' },
+      ],
+    },
+    {
+      itemId: 'r2',
+      technicalServiceId: 'r2',
+      code: 'XN0014',
+      name: 'Định lượng Glucose lúc đói [Huyết tương]',
+      serviceKind: 'LAB',
+      resultType: 'INDICATORS',
+      specimenTypeName: 'Huyết tương NaF',
+      departmentName: 'P. Xét nghiệm',
+      categoryName: 'Sinh hoá',
+      images: [],
+      status: 'COMPLETED',
+      descriptionText: null,
+      conclusionText: null,
+      indicators: [
+        { indicatorId: 'b1', code: 'CS0031', name: 'Glucose', abbreviation: null, unit: 'mmol/L', valueType: 'NUMBER', decimals: 2, choiceOptions: [], reference: { ...SAMPLE_REFERENCE, lowValue: 3.9, highValue: 5.5, displayText: 'Bình thường: 3.9 - 5.5\nTiền tiểu đường: 5.6 - 6.9\nTiểu đường: ≥ 7' }, referenceText: 'Bình thường: 3.9 - 5.5\nTiền tiểu đường: 5.6 - 6.9\nTiểu đường: ≥ 7', valueText: '4.66', note: null, interpretationText: null, flag: 'NORMAL' },
+      ],
+    },
+  ],
+};
+
+/** Ảnh minh hoạ (khung xám có chữ) cho bản xem trước mẫu in CĐHA — ảnh thật do kỹ thuật viên tải lên ở màn nhập kết quả. */
+function sampleImage(id: string, label: string): { id: string; fileName: string; url: string } {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320"><rect width="480" height="320" fill="#1e293b"/><text x="240" y="165" font-family="sans-serif" font-size="22" fill="#94a3b8" text-anchor="middle">${label}</text></svg>`;
+  return { id, fileName: `${label}.svg`, url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` };
+}
+
+/** Kết quả siêu âm mẫu — bản xem trước của mẫu in "Kết quả CĐHA & Thăm dò chức năng" (bố cục dạng khối: mô tả → kết luận → hình ảnh, khác bảng chỉ số của xét nghiệm). */
+export const SAMPLE_IMAGING_RESULT: ParaclinicalResultForm = {
+  ...SAMPLE_LAB_RESULT,
+  orderNo: 'CLS2610000311',
+  patientName: 'Trần Minh Khoa',
+  patientCode: 'BN2610000131',
+  patientGender: 'male',
+  patientDob: '1974-02-20',
+  ageYears: 52,
+  collectedAt: '2026-10-06T02:21:00.000Z',
+  performedByName: 'BS. Phan Văn Lực',
+  resultedAt: '2026-10-06T02:38:00.000Z',
+  signedAt: '2026-10-06T02:41:00.000Z',
+  signedByName: 'BS. Phan Văn Lực',
+  sections: [
+    {
+      itemId: 'i1',
+      technicalServiceId: 'i1',
+      code: 'CD0008',
+      name: 'Siêu âm ổ bụng tổng quát',
+      serviceKind: 'IMAGING',
+      resultType: 'NARRATIVE',
+      specimenTypeName: null,
+      departmentName: 'P. Siêu âm',
+      categoryName: null,
+      images: [sampleImage('img1', 'Hình ảnh 1'), sampleImage('img2', 'Hình ảnh 2')],
+      status: 'COMPLETED',
+      descriptionText:
+        '- Gan: kích thước bình thường, nhu mô tăng âm lan toả, bờ đều, không thấy khối khu trú.\n- Đường mật trong và ngoài gan không giãn.\n- Túi mật: thành mỏng, lòng không có sỏi.\n- Thận phải, thận trái: kích thước bình thường, không sỏi, không ứ nước.\n- Không có dịch tự do ổ bụng.',
+      conclusionText: 'Gan nhiễm mỡ độ I. Chưa phát hiện bất thường khác trên siêu âm ổ bụng.',
+      indicators: [],
+    },
+  ],
+};
+
+/** Phiếu chỉ định cận lâm sàng mẫu (Cận lâm sàng GĐ3, #212) — dữ liệu minh hoạ cho bản xem trước ở Quản lý mẫu in. */
+export const SAMPLE_CLINICAL_ORDER: ClinicalOrderDetail = {
+  id: '00000000-0000-4000-8000-0000000000c1',
+  orderNo: 'CLS2610000312',
+  encounterId: '00000000-0000-4000-8000-0000000000e1',
+  version: 1,
+  createdAt: '2026-10-06T02:30:00.000Z',
+  inHouseTotal: 680000,
+  invoices: [],
+  packages: [],
+  items: [
+    { id: 'i1', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'XN0014', name: 'Định lượng Glucose lúc đói [Huyết tương]', performance: 'IN_HOUSE', quantity: 1, unitPrice: 80000, lineTotal: 80000, packageId: null, placeName: 'P. Xét nghiệm', serviceKind: 'LAB', note: null, status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true },
+    { id: 'i2', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'XN0027', name: 'Định lượng HbA1c [Máu toàn phần]', performance: 'IN_HOUSE', quantity: 1, unitPrice: 180000, lineTotal: 180000, packageId: null, placeName: 'P. Xét nghiệm', serviceKind: 'LAB', note: null, status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true },
+    { id: 'i3', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'CD0008', name: 'Siêu âm ổ bụng tổng quát', performance: 'IN_HOUSE', quantity: 1, unitPrice: 420000, lineTotal: 420000, packageId: null, placeName: 'P. Siêu âm', serviceKind: 'IMAGING', note: null, status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true },
+    { id: 'i4', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'CD0021', name: 'Chụp CT scan bụng có thuốc cản quang', performance: 'EXTERNAL', quantity: 1, unitPrice: null, lineTotal: null, packageId: null, placeName: null, serviceKind: 'IMAGING', note: 'Nhịn ăn 6 giờ trước khi chụp', status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true },
+    { id: 'i5', itemKind: 'FREE_TEXT', technicalServiceId: null, examTypeCode: null, code: null, name: 'Đo mật độ xương DEXA cột sống thắt lưng', performance: 'EXTERNAL', quantity: 1, unitPrice: null, lineTotal: null, packageId: null, placeName: null, serviceKind: null, note: null, status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true },
+  ],
 };

@@ -44,6 +44,7 @@ export function PaymentConfigPane() {
   const pharmacyStockTrackingEnabled = settingsQuery.data?.pharmacyStockTrackingEnabled ?? true;
   const prescriptionStockBlockEnabled = settingsQuery.data?.prescriptionStockBlockEnabled ?? false;
   const allowFreeTextPrescriptionEnabled = settingsQuery.data?.allowFreeTextPrescriptionEnabled ?? false;
+  const paraclinicalBeforePaymentEnabled = settingsQuery.data?.paraclinicalBeforePaymentEnabled ?? false;
 
   return (
     <div className="space-y-8">
@@ -371,6 +372,29 @@ export function PaymentConfigPane() {
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ allowFreeTextPrescriptionEnabled: e.target.checked })}
               aria-label="Cho phép kê thuốc ngoài danh mục"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Cho thực hiện cận lâm sàng trước khi thu tiền</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): dịch vụ cận lâm sàng phải thu tiền xong mới lấy mẫu / gọi vào phòng được; chưa thu nằm ở tab &quot;Chờ thu tiền&quot;.
+              <br />
+              Bật: chưa thu tiền vẫn lấy mẫu và thực hiện được, hàng đợi hiện nhãn &quot;Nợ phí&quot; để thu ngân nhắc thu sau.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={paraclinicalBeforePaymentEnabled}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ paraclinicalBeforePaymentEnabled: e.target.checked })}
+              aria-label="Cho thực hiện cận lâm sàng trước khi thu tiền"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

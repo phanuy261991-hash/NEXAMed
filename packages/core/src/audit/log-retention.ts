@@ -32,6 +32,18 @@ const SYSTEM_LOG_ENTITY_TYPES = new Set([
   'doctor_room_session',
   'doctor_availability',
   'tenant',
+  // Danh mục/cấu hình mới (chủ dự án chốt 07/10/2026, docs/DECISIONS.md #213): thuần cấu hình, không phải hồ sơ bệnh án.
+  'technical_service',
+  'lab_indicator',
+  'result_template',
+  'service_package',
+  'price_list',
+  'supplier',
+  'warehouse',
+  'cash_account',
+  'prescription_template',
+  'print_template',
+  'system_backup',
 ]);
 
 export function isSystemLogEntityType(entityType: string): boolean {

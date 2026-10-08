@@ -17,6 +17,24 @@ export const PARACLINICAL_CATALOG_PERMISSIONS: ReadonlyArray<readonly [string, s
   ['technical_service', 'create'],
   ['technical_service', 'update'],
   ['result_template', 'manage'],
+  // Cận lâm sàng GĐ2 — pill "Gói dịch vụ" nằm cùng trang này (quyền riêng `service_package`).
+  ['service_package', 'create'],
+  ['service_package', 'update'],
+];
+
+/** "Bảng giá" (`/admin/price-lists`, Cận lâm sàng GĐ2, docs/DECISIONS.md #212) — tạo/sửa/ngừng bảng giá có thời hạn. `price_list.read` KHÔNG đủ để hiện menu
+ * (lễ tân/bác sĩ có quyền đọc để tra giá nhưng không quản trị bảng giá). Dùng chung cho route guard và ẩn/hiện menu. */
+export const PRICE_LIST_ADMIN_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
+  ['price_list', 'create'],
+  ['price_list', 'update'],
+];
+
+/** "Cấu hình hệ thống" (`/admin/system-config`) — `clinic_config.update` cho các pill cấu hình phòng khám, hoặc `system_backup.read` cho pill "Sao lưu dữ liệu"
+ * (docs/DECISIONS.md #217: vai trò `system_admin` chỉ có quyền sao lưu, không có `clinic_config.*` — vẫn phải vào được trang để dùng pill của mình).
+ * Dùng chung cho route guard (`router.tsx`) và ẩn/hiện menu (`Sidebar.tsx`). */
+export const SYSTEM_CONFIG_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
+  ['clinic_config', 'update'],
+  ['system_backup', 'read'],
 ];
 
 /**
@@ -38,6 +56,10 @@ export const ADMIN_ANY_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
   ['technical_service', 'create'],
   ['technical_service', 'update'],
   ['result_template', 'manage'],
+  ['service_package', 'create'],
+  ['service_package', 'update'],
+  ['price_list', 'create'],
+  ['price_list', 'update'],
 ];
 
 /** "Danh mục Thuốc và Vật Tư"/"Quản lý nhà cung cấp"/"Kho" — trước gộp `drug.manage`, tách thành

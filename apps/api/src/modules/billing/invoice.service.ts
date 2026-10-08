@@ -130,8 +130,9 @@ export function toInvoiceResponse(row: InvoiceWithLines, otherInvoices: OtherInv
       discountValue: line.discountValue !== null ? Number(line.discountValue) : null,
       discountAmount: computeDiscountAmount(Number(line.lineTotal), line.discountType, line.discountValue !== null ? Number(line.discountValue) : null),
       // Kho Thuốc GĐ3 (#165) — nhóm hiển thị "Dịch vụ khám"/"Tiền thuốc" ở InvoiceDetailPage.tsx.
-      lineSource: line.sourceServiceItemId !== null ? 'SERVICE' : 'DRUG',
+      lineSource: line.sourceServiceItemId !== null ? 'SERVICE' : line.sourceStockIssueLineId !== null ? 'DRUG' : 'PARACLINICAL',
       stockIssueNo: line.sourceStockIssueLine?.issue.issueNo ?? null,
+      clinicalOrderNo: line.sourceOrderItem?.order.orderNo ?? line.sourceOrderPackage?.order.orderNo ?? null,
       netAmount: lineNets[index] ?? 0,
       refundedQuantity: refundedByLine.get(line.id)?.quantity ?? 0,
       refundedAmount: refundedByLine.get(line.id)?.amount ?? 0,

@@ -49,6 +49,9 @@ export const businessCodeTypeSchema = z.enum([
   'TECH_SERVICE_IMAGING',
   'TECH_SERVICE_FUNCTIONAL',
   'LAB_INDICATOR',
+  'SERVICE_PACKAGE',
+  'PRICE_LIST',
+  'CLINICAL_ORDER',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -104,6 +107,12 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, { label: stri
   TECH_SERVICE_IMAGING: { label: 'Mã dịch vụ chẩn đoán hình ảnh', internalPrefix: 'CD' },
   TECH_SERVICE_FUNCTIONAL: { label: 'Mã dịch vụ thăm dò chức năng', internalPrefix: 'TD' },
   LAB_INDICATOR: { label: 'Mã chỉ số xét nghiệm', internalPrefix: 'CS' },
+  // Cận lâm sàng GĐ2 (docs/DECISIONS.md #212) — gói dịch vụ (GOI) và bảng giá có thời hạn (BG). BG0000 dành riêng
+  // cho "Bảng giá chung" (không lưu bản ghi, chỉ hiện ở danh sách) nên bộ đếm không bao giờ sinh ra mã 0.
+  SERVICE_PACKAGE: { label: 'Mã gói dịch vụ', internalPrefix: 'GOI' },
+  PRICE_LIST: { label: 'Mã bảng giá', internalPrefix: 'BG' },
+  // Cận lâm sàng GĐ3 (#212) — phiếu chỉ định cận lâm sàng (CLS), in trên phiếu chỉ định + hàng đợi cận lâm sàng.
+  CLINICAL_ORDER: { label: 'Mã phiếu chỉ định cận lâm sàng', internalPrefix: 'CLS' },
 };
 
 export const DEFAULT_BUSINESS_CODE_COUNTER_DIGITS = 6;

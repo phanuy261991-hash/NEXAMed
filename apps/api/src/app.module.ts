@@ -19,6 +19,12 @@ import { AllergenModule } from './modules/allergen/allergen.module';
 import { DrugModule } from './modules/drug/drug.module';
 import { PrintTemplateModule } from './modules/print-template/print-template.module';
 import { TechnicalServiceModule } from './modules/technical-service/technical-service.module';
+import { PricingModule } from './modules/pricing/pricing.module';
+import { ClinicalOrderModule } from './modules/clinical-order/clinical-order.module';
+import { ClinicalOrderCancellationModule } from './modules/clinical-order/clinical-order-cancellation.module';
+import { ParaclinicalResultModule } from './modules/paraclinical-result/paraclinical-result.module';
+import { ParaclinicalResultsReaderModule } from './modules/paraclinical-result/paraclinical-results-reader.module';
+import { PricingPortModule } from './modules/pricing/pricing-port.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { StockAvailabilityModule } from './modules/inventory/stock-availability.module';
 import { BillingModule } from './modules/billing/billing.module';
@@ -32,6 +38,7 @@ import { PatientWalletModule } from './modules/patient-wallet/patient-wallet.mod
 import { SupplierDebtModule } from './modules/supplier-debt/supplier-debt.module';
 import { HealthModule } from './modules/health/health.module';
 import { BackupStatusModule } from './modules/backup-status/backup-status.module';
+import { BackupConfigModule } from './modules/backup-config/backup-config.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -54,13 +61,23 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     DrugModule,
     PrintTemplateModule,
     TechnicalServiceModule,
+    PricingModule,
+    // Cận lâm sàng GĐ2 — `@Global()` bind `PRICING_PORT` cho `InventoryModule` (tính giá thuốc theo bảng giá có thời hạn).
+    // Đặt TRƯỚC `InventoryModule` (nơi tiêu thụ token qua @Inject), SAU `DrugModule`/`PricingModule` mà nó phụ thuộc.
+    PricingPortModule,
     InventoryModule,
     // Kho Thuốc GĐ5 — `@Global()`, tự `imports: [InventoryModule]` (đã import ở dòng trên nên
     // module thật sự đã load xong, tránh lặp lại vấn đề require()-cycle từng gặp ở `InventoryModule`).
     // Đặt SAU `InventoryModule`, TRƯỚC `EncounterModule` (nơi tiêu thụ token qua @Inject).
     StockAvailabilityModule,
+    // Cận lâm sàng — `@Global()` bind `PARACLINICAL_RESULTS_READER_PORT` cho `EncounterModule` (kết quả đã duyệt vào bệnh án PDF); cùng khuôn `StockAvailabilityModule`.
+    ParaclinicalResultsReaderModule,
+    // Huỷ lượt khám → đóng dòng chỉ định chưa bắt đầu (#219) — `@Global()`, cùng khuôn trên.
+    ClinicalOrderCancellationModule,
     EncounterModule,
     BillingModule,
+    ClinicalOrderModule,
+    ParaclinicalResultModule,
     ReceptionModule,
     AuditModule,
     DoctorAvailabilityModule,
@@ -72,6 +89,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     SupplierDebtModule,
     HealthModule,
     BackupStatusModule,
+    BackupConfigModule,
   ],
 })
 export class AppModule implements NestModule {

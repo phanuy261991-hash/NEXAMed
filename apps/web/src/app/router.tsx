@@ -4,7 +4,7 @@ import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { RequireAnyPermissionRoute, RequireDoctorQueueRoute, RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS } from '../features/auth/admin-permissions';
+import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS, PRICE_LIST_ADMIN_PERMISSIONS, SYSTEM_CONFIG_PERMISSIONS } from '../features/auth/admin-permissions';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { AppShell } from '../shared/layout/AppShell';
 import { NotFoundPage } from './NotFoundPage';
@@ -64,6 +64,9 @@ const ReceptionDoctorQueuePage = lazy(() =>
 const EncounterConsultationPage = lazy(() =>
   import('../features/encounter/EncounterConsultationPage').then((m) => ({ default: m.EncounterConsultationPage })),
 );
+// Cận lâm sàng GĐ4 đợt 1 — Hàng đợi + nhập/duyệt kết quả (docs/DECISIONS.md #212).
+const ParaclinicalQueuePage = lazy(() => import('../features/paraclinical-result/ParaclinicalQueuePage').then((m) => ({ default: m.ParaclinicalQueuePage })));
+const ParaclinicalResultPage = lazy(() => import('../features/paraclinical-result/ParaclinicalResultPage').then((m) => ({ default: m.ParaclinicalResultPage })));
 // Thu ngân cơ bản (Sprint 5/6, BIL-01→04).
 const InvoiceListPage = lazy(() => import('../features/billing/InvoiceListPage').then((m) => ({ default: m.InvoiceListPage })));
 const InvoiceDetailPage = lazy(() => import('../features/billing/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })));
@@ -101,6 +104,9 @@ const CatalogAdminPage = lazy(() => import('../features/catalog/CatalogAdminPage
 const CatalogParaclinicalPage = lazy(() =>
   import('../features/paraclinical/CatalogParaclinicalPage').then((m) => ({ default: m.CatalogParaclinicalPage })),
 );
+// Cận lâm sàng GĐ2 (docs/DECISIONS.md #212) — "Bảng giá" có thời hạn: danh sách + Tra thử giá, và trang chi tiết/tạo.
+const PriceListPage = lazy(() => import('../features/pricing/PriceListPage').then((m) => ({ default: m.PriceListPage })));
+const PriceListDetailPage = lazy(() => import('../features/pricing/PriceListDetailPage').then((m) => ({ default: m.PriceListDetailPage })));
 const CatalogClinicalPage = lazy(() =>
   import('../features/catalog-clinical/CatalogClinicalPage').then((m) => ({ default: m.CatalogClinicalPage })),
 );
@@ -151,6 +157,13 @@ export const router = createBrowserRouter([
       // Màn hình khám bệnh (S3-06/07) — vào từ "Hàng đợi khám", không có mục sidebar riêng (cùng
       // cách patient/appointment detail không có mục sidebar riêng).
       { path: 'encounters/:id', element: <RequirePermissionRoute module="encounter" action="read"><EncounterConsultationPage /></RequirePermissionRoute> },
+      // Cận lâm sàng GĐ4, tách 2 menu (#215): mỗi nhóm có hàng đợi + màn nhập/duyệt kết quả riêng, gác bằng quyền của đúng nhóm (`lab_result` / `imaging_result`).
+      // Màn nhập vào từ hàng đợi, không có mục sidebar riêng. `key` buộc React dựng lại trang (và bỏ bộ lọc cũ) khi chuyển giữa 2 nhóm.
+      { path: 'paraclinical/queue', element: <Navigate to="/paraclinical/lab" replace /> },
+      { path: 'paraclinical/lab', element: <RequirePermissionRoute module="lab_result" action="read"><ParaclinicalQueuePage key="lab" group="lab" /></RequirePermissionRoute> },
+      { path: 'paraclinical/lab/items/:itemId', element: <RequirePermissionRoute module="lab_result" action="read"><ParaclinicalResultPage key="lab" group="lab" /></RequirePermissionRoute> },
+      { path: 'paraclinical/imaging', element: <RequirePermissionRoute module="imaging_result" action="read"><ParaclinicalQueuePage key="imaging" group="imaging" /></RequirePermissionRoute> },
+      { path: 'paraclinical/imaging/items/:itemId', element: <RequirePermissionRoute module="imaging_result" action="read"><ParaclinicalResultPage key="imaging" group="imaging" /></RequirePermissionRoute> },
       // Thu ngân cơ bản (Sprint 5/6) — không có mục sidebar riêng cho chi tiết (cùng cách
       // patient/appointment/encounter detail không có mục sidebar riêng).
       { path: 'billing', element: <RequirePermissionRoute module="invoice" action="read"><InvoiceListPage /></RequirePermissionRoute> },
@@ -216,6 +229,22 @@ export const router = createBrowserRouter([
           </RequireAnyPermissionRoute>
         ),
       },
+      {
+        path: 'admin/price-lists',
+        element: (
+          <RequireAnyPermissionRoute permissions={PRICE_LIST_ADMIN_PERMISSIONS}>
+            <PriceListPage />
+          </RequireAnyPermissionRoute>
+        ),
+      },
+      {
+        path: 'admin/price-lists/:priceListId',
+        element: (
+          <RequireAnyPermissionRoute permissions={PRICE_LIST_ADMIN_PERMISSIONS}>
+            <PriceListDetailPage />
+          </RequireAnyPermissionRoute>
+        ),
+      },
       // Sprint 4, S4-03 — trang "Danh mục thuốc" thật, thay ComingSoonPage cũ. Mở rộng thành "Danh
       // mục Thuốc và Vật Tư" (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — Thuốc/Vật tư y
       // tế/Kho, vẫn chưa có tồn kho/nhập-xuất (GĐ2-3, chưa xây). "Nhà cung cấp" tách sang route
@@ -278,7 +307,7 @@ export const router = createBrowserRouter([
           </RequirePermissionRoute>
         ),
       },
-      { path: 'admin/system-config', element: <RequirePermissionRoute module="clinic_config" action="update"><ClinicConfigPage /></RequirePermissionRoute> },
+      { path: 'admin/system-config', element: <RequireAnyPermissionRoute permissions={SYSTEM_CONFIG_PERMISSIONS}><ClinicConfigPage /></RequireAnyPermissionRoute> },
       // "Đơn thuốc mẫu" (docs/DECISIONS.md #196) — gác bằng `.read` (mọi vai trò lâm sàng đều xem
       // được, đúng khuôn popup chọn mẫu); nút Thêm/Sửa/Ẩn trong `PrescriptionTemplatePane.tsx` tự
       // ẩn nếu thiếu `.manage`.

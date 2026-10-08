@@ -2,6 +2,69 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-08
+
+### Huỷ lượt khám: đóng dòng chỉ định chưa bắt đầu (`docs/DECISIONS.md` #219)
+
+Huỷ lượt khám nay đổi các dịch vụ cận lâm sàng **chưa bắt đầu** sang "Đã huỷ"; dịch vụ đang làm dở hoặc đã có kết quả đã duyệt giữ nguyên; hoá đơn đã thu vẫn xử lý bằng hoàn tiền như cũ. Tạm tính ở tab Chỉ định không còn cộng dòng đã huỷ.
+
+### Cận lâm sàng: bác sĩ xem kết quả ở màn khám + kết quả vào bệnh án PDF (`docs/DECISIONS.md` #218)
+
+Tab "Chỉ định cận lâm sàng" ở màn khám có thêm khối **"Kết quả đã có của lượt khám này"**: mỗi dịch vụ làm tại phòng khám đã vào thực hiện hiện trạng thái (Đang thực hiện / Đã có kết quả / Đang đính chính), giờ trả kết quả và nút **Xem** mở đúng phiếu kết quả (chỉ xem; cần quyền xem của nhóm xét nghiệm/CĐHA, bác sĩ có sẵn). Tự làm mới 30 giây. **Bệnh án PDF** có thêm mục "Cận lâm sàng" cho từng lượt khám (chỉ kết quả đã duyệt: bảng chỉ số, chỉ số vượt mức in đậm + gạch chân; CĐHA gồm mô tả + kết luận, ảnh không nhúng vào PDF). Không migration/quyền mới — môi trường khác chỉ cần cập nhật bản chạy.
+
+### Hàng đợi cận lâm sàng: xem nhanh chi tiết phiếu + cảnh báo Khoa/Phòng
+
+Mỗi dòng hàng đợi có nút mắt **Xem chi tiết phiếu** (bệnh nhân, dịch vụ, mẫu/phòng, trạng thái, thu tiền, mốc chờ) dùng được ở mọi tab. Hàng đợi cảnh báo khi tài khoản giới hạn theo Khoa/Phòng mà chưa được gán phòng; danh mục dịch vụ kỹ thuật nhãn "Chưa khai phòng" cho dịch vụ tự thực hiện chưa chọn Khoa/Phòng.
+
+### Cấu hình sao lưu dữ liệu: có giao diện (`docs/DECISIONS.md` #217)
+
+**Quản trị → Cấu hình hệ thống → Sao lưu dữ liệu**: xem lần sao lưu gần nhất (thành công/lỗi + lý do), nút **Sao lưu ngay**, bật/tắt sao lưu tự động, **giờ chạy (giờ Việt Nam)**, **số ngày giữ bản sao lưu**, và thư mục lưu (chỉ xem). Chỉ hiện ở bản cài tại chỗ có dịch vụ sao lưu. Tài khoản **Quản trị hệ thống** (chỉ có quyền sao lưu) nay vào được trang này (chỉ thấy mục Sao lưu dữ liệu). `docs/Deploy.md` mục 2.3c đã chuyển hướng dẫn giờ/số ngày giữ sang giao diện — `.env` chỉ còn là giá trị khởi tạo lần đầu.
+
+## 2026-10-07
+
+### Cận lâm sàng: đính chính kết quả đã duyệt (`docs/DECISIONS.md` #215b)
+
+Kết quả đã duyệt (bản ký) nay sửa được qua luồng **Đính chính**: người có quyền Nhập của nhóm (kỹ thuật viên, điều dưỡng) bấm "Đính chính" kèm lý do bắt buộc, kết quả quay lại "Đang thực hiện" để sửa rồi gửi duyệt, bác sĩ có quyền Duyệt ký lại. Bản đã duyệt cũ được giữ lại (không xoá, xem được ở nhật ký hoạt động) và khôi phục nguyên vẹn nếu bấm "Huỷ đính chính". Hàng đợi hiện chip "Đính chính"; phiếu in của bản đính chính ghi rõ thay thế bản nào và lý do. Không cần migration mới.
+
+### Cấu hình sao lưu dữ liệu — phần nền (`docs/DECISIONS.md` #217)
+
+Giờ chạy (giờ VN), số ngày giữ, bật/tắt sao lưu tự động và nút "Sao lưu ngay" nay đổi được qua API mà không cần sửa `.env`/khởi động lại container; quyền mới `system_backup.read/manage` (mặc định quản trị hệ thống + quản lý phòng khám bản cài tại chỗ). Giao diện "Cấu hình hệ thống → Sao lưu dữ liệu" đang chờ duyệt mockup. Môi trường khác: `db:seed` rồi khởi động lại API.
+
+### Sao lưu thư mục ảnh đính kèm (`docs/DECISIONS.md` #216)
+
+Dịch vụ `backup` (bản cài tại chỗ) nay sao lưu cả thư mục ảnh đính kèm — ảnh kết quả cận lâm sàng, ảnh đại diện bệnh nhân, logo — sang `<thư mục backup>/storage`, tăng dần và giữ nguyên bản gốc (KHÔNG nén ảnh); trước đây chỉ sao lưu database nên phục hồi sẽ mất hết ảnh. Chép ảnh lỗi thì lần sao lưu tính là thất bại và banner cảnh báo hiện cho quản trị viên. Bản cài cũ: cập nhật `docker-compose.yml` + nạp ảnh `nexamed-backup` mới rồi `docker compose up -d backup`. Sửa kèm: ảnh Docker backup tự đổi script về xuống dòng LF (máy dev Windows checkout CRLF làm container không chạy). Hướng dẫn khôi phục ảnh ở `docs/Deploy.md`.
+
+### Cận lâm sàng: tách 2 menu Xét nghiệm / CĐHA & Thăm dò chức năng, 2 mẫu in riêng, khuyến cáo tuỳ chọn (`docs/DECISIONS.md` #215)
+
+Menu "Cận lâm sàng" thành nhóm xổ xuống 2 mục: **Xét nghiệm** (lấy mẫu, bảng chỉ số, cột Mẫu bệnh phẩm) và **CĐHA & Thăm dò CN** (gọi vào phòng, mô tả + kết luận + ảnh, cột Loại/Phòng); mỗi tài khoản chỉ thấy mục mình có quyền. Quyền `paraclinical_result.*` tách thành `lab_result.*` và `imaging_result.*` (xem/nhập/duyệt), thêm 2 vai trò hệ thống **Kỹ thuật viên xét nghiệm** và **Kỹ thuật viên CĐHA & Thăm dò CN** (không có quyền duyệt). Quyền cũ của mọi vai trò tự được chuyển sang cả hai nhóm khi API khởi động — môi trường khác: `db:deploy` + `db:seed` rồi **khởi động lại API**. Mẫu in "Kết quả cận lâm sàng" tách thành **Kết quả xét nghiệm** và **Kết quả CĐHA & Thăm dò chức năng** (bản mẫu đã chỉnh được giữ cho cả hai); khối **Khuyến cáo khách hàng** của phiếu xét nghiệm nay bật/tắt và sửa nội dung được ở "Quản lý mẫu in". Sửa chung: dòng "Ngày … tháng … năm …" ở mọi mẫu in căn giữa trên ô ký; phiếu chỉ định bỏ ô ký "Người bệnh / Người nhà"; chữ trong pill tab hàng đợi căn giữa. Migration `20261008120000`, `20261008120100`.
+
+
+### Cận lâm sàng — GĐ4 đợt 2: In phiếu kết quả, ảnh đính kèm CĐHA, tách hàng đợi theo phòng
+
+**In phiếu kết quả** (mẫu in thứ 13 `PARACLINICAL_RESULT`, nút "In phiếu kết quả" ở màn nhập): xét nghiệm in theo nhóm lĩnh vực → dịch vụ → chỉ số, **giá trị vượt khoảng tham chiếu in ĐẬM + gạch chân**, dòng "Diễn giải", nhận xét, 3 mốc thời gian (Đăng ký / Lấy mẫu hoặc Gọi vào phòng / Có kết quả), thông tin bệnh nhân + tiêu đề cột nằm trong `<thead>` nên lặp mọi trang, khuyến cáo khách hàng (xét nghiệm), chữ ký bác sĩ duyệt; phiếu **chẩn đoán hình ảnh/siêu âm** trình bày dạng khối (Mô tả hình ảnh → Kết luận → Hình ảnh), không đóng bảng 4 cột. Nút in khoá khi còn thay đổi chưa lưu; ghi audit `paraclinical_result.printed`. **Ảnh đính kèm** (siêu âm, X-quang...): khối "Hình ảnh đính kèm" ở màn nhập (JPG/PNG ≤ 5 MB, tối đa 8 ảnh, kiểm magic-byte, lưu qua StoragePort, phục vụ bằng signed URL; bảng mới `paraclinical_result_image`, trigger DB chặn thêm/gỡ khi đã duyệt) và in trên phiếu. **Hàng đợi tách theo phòng**: vai trò có `paraclinical_result.read/enter` ở scope **"department"** chỉ thấy/xử lý dịch vụ do ĐÚNG Khoa/Phòng của mình thực hiện (xét nghiệm và CĐHA không thấy việc của nhau; phòng khác → 404; chưa gán phòng → rỗng); scope global thấy tất cả. Màn nhập thêm "Thời gian nhận mẫu / gọi vào phòng" ở thanh trên cùng, ô "Chèn mẫu" nằm cùng dòng nhãn. `Combobox floating` tự lật lên trên khi dưới không đủ chỗ; sửa lỗi thẻ kết quả bị co/cắt ở màn thấp. Migration `20261008100000` (enum mẫu in) + `20261008110000` (bảng ảnh). Đã bỏ dòng "- KẾT THÚC -" khỏi phiếu theo yêu cầu.
+
+### Cận lâm sàng — GĐ4 đợt 1: Hàng đợi, lấy mẫu, nhập + duyệt kết quả
+
+Menu mới "Cận lâm sàng" → **Hàng đợi cận lâm sàng** (5 tab: Chờ thu tiền / Chờ lấy mẫu-gọi vào phòng / Đang thực hiện / Chờ duyệt / Đã trả kết quả; tự làm mới 30 giây). Xét nghiệm cùng phiếu + cùng trạng thái **gộp 1 dòng và 1 màn nhập** (không phải ra vào nhiều màn); mỗi chẩn đoán hình ảnh/thăm dò chức năng 1 dòng riêng. Màn nhập kết quả: bảng chỉ số kèm **khoảng tham chiếu tự chọn theo giới tính + tuổi**, badge ▲ Cao / ▼ Thấp / Bất thường ngay khi gõ, chèn mẫu kết quả (sửa lại được), lưu nháp → gửi duyệt → bác sĩ **Duyệt & trả kết quả** (bản ký bất biến, DB cưỡng chế bằng trigger; khoảng tham chiếu được chụp lại nên sửa danh mục sau đó không đổi phiếu đã duyệt). Quyền tách đôi: `paraclinical_result.enter` (điều dưỡng, bác sĩ) và `.approve` (bác sĩ, clinic_admin). Công tắc mới "Cho thực hiện cận lâm sàng trước khi thu tiền" ở Cấu hình thanh toán (mặc định tắt). Migration `20261008090000` + `20261008090100` (2 bảng `paraclinical_result`/`_value`) — môi trường khác: `db:deploy` + `db:seed` + khởi động lại API. **Chưa có**: in phiếu kết quả (đợt 2), bác sĩ xem kết quả ở màn khám + bệnh án PDF + đính chính + vai trò "Kỹ thuật viên" (đợt 3), ảnh đính kèm CĐHA. Chi tiết `docs/DECISIONS.md` #214.
+
+### Bảng giá: thêm hàng loạt + giao diện
+
+Trang chi tiết bảng giá dựng lại **2 cột**: trái là ô thêm mặt hàng (tìm từng cái, **"Thêm theo nhóm"** chọn 1 hoặc nhiều nhóm trong hộp thoại, **"Nhập từ Excel"** có file mẫu + hướng dẫn + danh mục mã, % giảm hàng loạt) trên danh sách; phải là thông tin bảng giá. Nhập Excel chỉ đọc + đối chiếu (không ghi DB), file thắng dòng đã có, vẫn phải "Lưu bảng giá". Menu "Bảng giá" chuyển ra cấp 1 ngang hàng "Lịch làm việc". `Combobox` thêm `dense` (cỡ gọn trong hàng bảng) và `floating` (panel nổi, không bị khung bảng cắt). Sửa lỗi phiếu in chỉ định đánh số nhảy (1, 3) và mã phiếu ghi nhầm `CD` (đúng là `CLS`); ô tìm dịch vụ ở tab Chỉ định hỗ trợ phím ↑↓.
+
+### Cận lâm sàng — GĐ3: Chỉ định của bác sĩ (code + test HTTP + verify Chrome thật)
+
+Tab thứ 3 "Chỉ định cận lâm sàng" ở màn khám: bác sĩ chỉ định dịch vụ kỹ thuật/dịch vụ khám **tại phòng khám** (có giá, vào hoá đơn) hoặc **ra ngoài** (không giá, chỉ in phiếu; cho gõ tên tự do), thêm theo **gói dịch vụ** (1 dòng hoá đơn, giá gói chốt lúc chỉ định). Lưu = tính tiền ngay: nối vào hoá đơn khám còn chưa thu, hoặc tạo hoá đơn "Cận lâm sàng" riêng (`invoice_type = PARACLINICAL`); đã thu rồi thì không gỡ/đổi được dòng đã thu (409 `CLINICAL_ORDER_ITEM_LOCKED`) nhưng vẫn thêm được. In "Phiếu chỉ định cận lâm sàng" (mẫu in thứ 12 `CLINICAL_ORDER`). 3 bảng mới `clinical_order`/`clinical_order_package`/`clinical_order_item`, 4 migration, mã `CLS`. Quyền mới `clinical_order.*`.
+
+### Rà soát log kiểm toán (`docs/DECISIONS.md` #213)
+
+Bổ sung nhãn tiếng Việt cho 57 action + 18 entityType đã ghi audit nhưng thiếu nhãn (Kho, Nhà cung cấp, Công nợ NCC, Sổ quỹ, Ví...); `GET` chỉ định cận lâm sàng nay ghi audit "xem"; thêm test `audit-labels-coverage.spec.ts` chặn module mới quên nhãn.
+
+### Cận lâm sàng — GĐ2: Gói dịch vụ + Bảng giá có thời hạn; danh mục Đơn vị kết quả xét nghiệm
+
+**Gói dịch vụ** (pill mới ở "Danh mục cận lâm sàng"): gộp Dịch vụ khám + Dịch vụ kỹ thuật, giá cố định hoặc tổng trừ chiết khấu (% / số tiền), hiện tổng giá lẻ và "khách lợi". **Bảng giá** (menu mới Quản trị → "Bảng giá"): bảng giá có khoảng ngày + độ ưu tiên (cao thắng) cho dịch vụ khám/kỹ thuật/gói/thuốc/vật tư, mỗi dòng "Giảm %" hoặc "Giá mới", áp % hàng loạt, sao chép, ngừng/áp dụng lại, xuất Excel, khung **"Tra thử giá"** (bảng nào thắng/bị đè). Hết hạn tự quay về bảng thấp hơn rồi về giá nhập trên mặt hàng ("Bảng giá chung", không lưu bản sao). **Giá được áp thật** ở Tiếp nhận (xem trước + chốt lúc thêm dịch vụ, theo ngày tiếp nhận) và Phát thuốc (ghi vào phiếu xuất + hoá đơn, theo ngày lập phiếu); chưa tạo bảng giá nào thì mọi giá giữ nguyên. Gói chưa vào chỉ định/hoá đơn (GĐ3). Chi tiết `docs/DECISIONS.md` #212 (phần GĐ2).
+
+**Đơn vị kết quả xét nghiệm**: ô "Đơn vị" của Chỉ số xét nghiệm đổi từ gõ tay sang chọn từ danh mục mới (nạp sẵn 20 đơn vị: g/L, mmol/L, 10^9/L…), tránh "g/L"/"g/l"/"G/L" thành nhiều đơn vị; dữ liệu cũ giữ nguyên. Gỡ khung chú thích "Hai điều mẫu KHÔNG làm" ở form Mẫu kết quả. Migration `20261007090000` + `20261007100000` (môi trường khác: `db:deploy` + `db:seed` rồi khởi động lại API). Đã xác minh: 23 test core + 24 test HTTP bảng giá/gói + 1 test áp giá khi phát thuốc, Chrome thật.
+
 ## 2026-10-06 (tiếp)
 
 ### Cận lâm sàng — GĐ1: Danh mục dịch vụ kỹ thuật, chỉ số xét nghiệm, mẫu kết quả

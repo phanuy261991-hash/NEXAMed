@@ -7,6 +7,7 @@ import {
   type BusinessCodeType,
   DEFAULT_ALLOW_EMERGENCY_END_SHIFT,
   DEFAULT_ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED,
+  DEFAULT_PARACLINICAL_BEFORE_PAYMENT_ENABLED,
   DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT,
   DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED,
   DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED,
@@ -118,6 +119,9 @@ const prescriptionStockBlockEnabledSchema = z.boolean();
 // từng cấu hình, giữ nguyên ràng buộc `drugId` bắt buộc.
 const ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED_KEY = 'allow_free_text_prescription_enabled';
 const allowFreeTextPrescriptionEnabledSchema = z.boolean();
+// Cận lâm sàng GĐ4 — tắt theo mặc định (thu tiền trước khi lấy mẫu/gọi vào phòng).
+const PARACLINICAL_BEFORE_PAYMENT_ENABLED_KEY = 'paraclinical_before_payment_enabled';
+const paraclinicalBeforePaymentEnabledSchema = z.boolean();
 // "Gợi ý mã ICD-10 từ ô Chẩn đoán" + "Học từ lịch sử chọn mã" — cả hai tắt theo mặc định cho tenant
 // chưa từng cấu hình, giữ nguyên hành vi hiện tại của pilot.
 const ICD10_SUGGESTION_ENABLED_KEY = 'icd10_suggestion_enabled';
@@ -427,6 +431,19 @@ export class ClinicSettingsRepository {
 
   upsertAllowFreeTextPrescriptionEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED_KEY, value);
+  }
+
+  async getParaclinicalBeforePaymentEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: PARACLINICAL_BEFORE_PAYMENT_ENABLED_KEY } });
+    if (!setting) {
+      return DEFAULT_PARACLINICAL_BEFORE_PAYMENT_ENABLED;
+    }
+    const parsed = paraclinicalBeforePaymentEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_PARACLINICAL_BEFORE_PAYMENT_ENABLED;
+  }
+
+  upsertParaclinicalBeforePaymentEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, PARACLINICAL_BEFORE_PAYMENT_ENABLED_KEY, value);
   }
 
   async getIcd10SuggestionEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
