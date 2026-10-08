@@ -267,17 +267,21 @@ docker compose cp postgres:/tmp/truoc-cap-nhat.dump .\truoc-cap-nhat.dump
 
 #### Cấu hình sao lưu tự động
 
-Mở `.env`:
+**Đổi giờ chạy, số ngày giữ, bật/tắt và "Sao lưu ngay" trên giao diện** (docs/DECISIONS.md #217): đăng nhập tài khoản có quyền `system_backup` (mặc định **Quản trị hệ thống** và **Quản lý phòng khám**) → **Quản trị → Cấu hình hệ thống → Sao lưu dữ liệu**.
+
+- **Trạng thái**: lần sao lưu gần nhất thành công/lỗi (kèm lý do) và nút **Sao lưu ngay** (chạy trong vài chục giây, không cần khởi động lại).
+- **Cấu hình** (bấm bút chì để sửa, rồi **Lưu**): *Tự động sao lưu hằng ngày* (bật/tắt), *Giờ chạy* theo **giờ Việt Nam** (hệ thống tự quy đổi sang giờ máy chủ), *Số ngày giữ bản sao lưu*. Áp dụng ngay cho lần chạy kế tiếp.
+- Mục này **chỉ hiện ở bản cài tại chỗ có dịch vụ `backup`**; máy dev/bản cloud tự ẩn.
+
+Trong `.env` vẫn còn các biến sau, nhưng `BACKUP_HOUR`/`BACKUP_RETENTION_DAYS` **chỉ là giá trị khởi tạo lần đầu** (sau đó giao diện là nguồn đúng, sửa `.env` không còn tác dụng):
 ```
 BACKUP_HOUR=19
 BACKUP_RETENTION_DAYS=14
 BACKUP_HOST_DIR=./backup-data
 ```
-- `BACKUP_HOUR`: giờ chạy backup mỗi ngày (0-23) — **là giờ UTC, không phải giờ Việt Nam**. Muốn 2h sáng giờ VN thì đặt `19` (lùi 7 tiếng).
-- `BACKUP_RETENTION_DAYS`: giữ bao nhiêu ngày trước khi tự xoá bản cũ.
-- `BACKUP_HOST_DIR`: **quan trọng nhất** — mặc định lưu ngay trên ổ đĩa của PC đó, CÙNG ổ với dữ liệu thật. Nếu ổ đĩa hỏng thì mất cả 2. Nên đổi trỏ sang ổ khác/ổ ngoài/máy khác trong mạng nội bộ, ví dụ `D:\NEXAMed-backup` hoặc `\\192.168.1.100\backup-nexamed`. Sửa xong: `docker compose restart backup`.
-
-Sửa xong `.env`, chạy lại:
+- `BACKUP_HOUR`: giá trị khởi tạo giờ chạy — **giờ UTC, không phải giờ Việt Nam**. Muốn 2h sáng giờ VN thì đặt `19` (lùi 7 tiếng).
+- `BACKUP_RETENTION_DAYS`: giá trị khởi tạo số ngày giữ bản cũ.
+- `BACKUP_HOST_DIR`: **quan trọng nhất** và **không đổi được trên giao diện** (giao diện chỉ hiển thị) — mặc định lưu ngay trên ổ đĩa của PC đó, CÙNG ổ với dữ liệu thật. Nếu ổ đĩa hỏng thì mất cả 2. Nên đổi trỏ sang ổ khác/ổ ngoài/máy khác trong mạng nội bộ, ví dụ `D:\NEXAMed-backup` hoặc `\\192.168.1.100\backup-nexamed`. Sửa `.env` xong chạy:
 ```powershell
 docker compose restart backup
 ```
@@ -363,7 +367,7 @@ docker compose exec postgres psql -U nexamed -d nexamed -c "CREATE OR REPLACE FU
 | `docker compose up -d` | Khởi động (hoặc khởi động lại nếu đã đổi cấu hình/ảnh) toàn bộ 5 service, chạy nền | Sau khi sửa `.env`/nạp ảnh mới, hoặc khởi động lần đầu trong ngày |
 | `docker compose down` | Dừng và XOÁ container (KHÔNG xoá dữ liệu — `postgres_data` là volume riêng, vẫn còn) | Muốn dừng hẳn hệ thống (bảo trì, chuyển máy) |
 | `docker compose down -v` | Như trên nhưng **XOÁ LUÔN CẢ DỮ LIỆU** (volume) | **CHỈ dùng khi cố ý xoá sạch để làm lại từ đầu** — không dùng nhầm, mất hết dữ liệu bệnh nhân |
-| `docker compose restart <service>` | Khởi động lại đúng 1 service (không đụng service khác) | Sau khi sửa `.env` chỉ ảnh hưởng 1 service — ví dụ sửa `BACKUP_HOUR` thì `docker compose restart backup` |
+| `docker compose restart <service>` | Khởi động lại đúng 1 service (không đụng service khác) | Sau khi sửa `.env` chỉ ảnh hưởng 1 service — ví dụ sửa `BACKUP_HOST_DIR` thì `docker compose restart backup` |
 | `docker compose stop <service>` / `start <service>` | Tắt/bật tạm 1 service, giữ nguyên container (không xoá) | Tắt `api`/`web` tạm thời lúc khôi phục dữ liệu (mục 2.3c) |
 | `docker compose exec <service> <lệnh>` | Chạy 1 lệnh BÊN TRONG container đang chạy | Chạy `psql`, `pg_dump`, `pg_restore` trực tiếp trong container `postgres` |
 | `docker compose cp <nguồn> <đích>` | Copy file giữa máy thật và container (2 chiều) | Đưa file backup vào container để restore, hoặc lấy file backup ra |

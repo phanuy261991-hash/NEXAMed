@@ -9,6 +9,8 @@ import {
   EncounterNotInConsultationError,
   EncounterNotReassignableError,
   EncounterPaymentRequiredError,
+  CLINICAL_ORDER_CANCELLATION_PORT,
+  PARACLINICAL_RESULTS_READER_PORT,
   PDF_RENDERER_PORT,
   PrescriptionAlreadySignedError,
   PrescriptionEmptyError,
@@ -29,6 +31,8 @@ import {
   type DoctorDirectoryPort,
   type MedicalRecordEncounterEntry,
   type PatientMedicalRecordDocument,
+  type ClinicalOrderCancellationPort,
+  type ParaclinicalResultsReaderPort,
   type PdfRendererPort,
   type PrescriptionDrugLine,
   type SignaturePort,
@@ -130,6 +134,8 @@ export class EncounterService {
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
     @Inject(PDF_RENDERER_PORT) private readonly pdfRenderer: PdfRendererPort,
     @Inject(STOCK_AVAILABILITY_PORT) private readonly stockAvailability: StockAvailabilityPort,
+    @Inject(PARACLINICAL_RESULTS_READER_PORT) private readonly paraclinicalResultsReader: ParaclinicalResultsReaderPort,
+    @Inject(CLINICAL_ORDER_CANCELLATION_PORT) private readonly clinicalOrderCancellation: ClinicalOrderCancellationPort,
     private readonly diagnosisSuggestionService: DiagnosisSuggestionService,
     private readonly printTemplateService: PrintTemplateService,
   ) {}
@@ -262,13 +268,15 @@ export class EncounterService {
       // #085 — đóng phiếu thu CHƯA thu (nếu có). `count=0` là bình thường (phiếu đã PAID chờ hoàn
       // tiền riêng, hoặc lượt khám không có phiếu thu), không phải lỗi.
       const cancelledInvoiceCount = await this.invoiceRepository.cancelUnpaidForEncounter(tx, tenantId, id, actorId);
+      // #219 — đóng dòng chỉ định cận lâm sàng CHƯA BẮT ĐẦU (cùng transaction). Dòng đang làm dở/đã duyệt giữ nguyên; hoá đơn đã thu đi theo luồng hoàn tiền.
+      const cancelledOrderItemCount = await this.clinicalOrderCancellation.cancelNotStartedItems(tx, tenantId, id, actorId);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
         action: 'encounter.cancelled',
         entityType: 'encounter',
         entityId: id,
-        afterJson: { cancelReason: dto.cancelReason, fromStatus },
+        afterJson: { cancelReason: dto.cancelReason, fromStatus, ...(cancelledOrderItemCount > 0 ? { cancelledOrderItemCount } : {}) },
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
@@ -543,6 +551,11 @@ export class EncounterService {
 
     const doctorIds = [...new Set(encounterRows.map((e) => e.doctorId).filter((v): v is string => v !== null))];
     const doctorNames = doctorIds.length > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, doctorIds) : new Map<string, string>();
+    // Kết quả cận lâm sàng ĐÃ DUYỆT của từng lượt khám — qua port (không import module `paraclinical-result`), mỗi lần tự mở transaction riêng như `doctorDirectory`.
+    const paraclinicalByEncounter = await this.paraclinicalResultsReader.listSignedForEncounters(
+      tenantId,
+      encounterRows.map((e) => e.id),
+    );
 
     const encounters: MedicalRecordEncounterEntry[] = encounterRows.map((e) => {
       const noteRows = notesByEncounter.get(e.id) ?? [];
@@ -569,6 +582,7 @@ export class EncounterService {
           : null,
         diagnoses: (diagnosesByEncounter.get(e.id) ?? []).map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10.nameVi, type: d.type, note: d.note })),
         clinicalNoteSections: CLINICAL_NOTE_SECTION_LABELS.map(([key, label]) => ({ label, content: noteResponse[key]?.content ?? '' })),
+        paraclinicalResults: paraclinicalByEncounter[e.id] ?? [],
         prescriptionItems: (prescriptionRow?.items ?? []).map((i) => ({
           drugName: i.drugName,
           doseSummary: formatDoseSummary(i),

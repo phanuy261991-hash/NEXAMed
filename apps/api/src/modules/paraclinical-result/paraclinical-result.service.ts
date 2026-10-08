@@ -102,7 +102,7 @@ function enrich(rows: QueueItemRow[]): EnrichedItem[] {
     }));
 }
 
-function toReferenceRow(r: { sex: LabReferenceRow['sex']; ageFromYears: number; ageToYears: number | null; lowValue: number | null; highValue: number | null; lowInclusive: boolean; highInclusive: boolean; normalText: string | null; displayText: string | null }): LabReferenceRow {
+export function toReferenceRow(r: { sex: LabReferenceRow['sex']; ageFromYears: number; ageToYears: number | null; lowValue: number | null; highValue: number | null; lowInclusive: boolean; highInclusive: boolean; normalText: string | null; displayText: string | null }): LabReferenceRow {
   return {
     sex: r.sex,
     ageFromYears: r.ageFromYears,

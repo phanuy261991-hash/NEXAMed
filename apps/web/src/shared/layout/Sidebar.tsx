@@ -42,6 +42,7 @@ import { useAuthStore } from '../../features/auth/auth.store';
 import { useHasAnyPermission, useDataScope, useHasPermission } from '../../features/auth/usePermission';
 import {
   ADMIN_ANY_PERMISSIONS,
+  SYSTEM_CONFIG_PERMISSIONS,
   ADMIN_ORG_PERMISSIONS,
   DRUG_MANAGE_PERMISSIONS,
   PARACLINICAL_CATALOG_PERMISSIONS,
@@ -256,7 +257,9 @@ export function Sidebar() {
   // Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170) — quyền RIÊNG `stock_receipt.report`
   // (chỉ `clinic_admin` mặc định), KHÁC `canSeeInventory` (`stock_receipt.read`, mọi vai trò kho).
   const canSeeStockLedgerReport = useHasPermission('stock_receipt', 'report');
-  const canSeeSystemConfig = useHasPermission('clinic_config', 'update');
+  // "Mẫu in" gác bằng `clinic_config.update`; "Cấu hình hệ thống" còn mở cho `system_backup.read` (pill "Sao lưu dữ liệu", #217).
+  const canSeePrintTemplates = useHasPermission('clinic_config', 'update');
+  const canSeeSystemConfig = useHasAnyPermission(SYSTEM_CONFIG_PERMISSIONS);
   const canSeeActivityLog = useHasPermission('audit_log', 'read');
   // "Đơn thuốc mẫu" (docs/DECISIONS.md #196) — `.read` mở cho mọi vai trò lâm sàng, đúng khuôn popup
   // chọn mẫu lúc kê đơn; nút Thêm/Sửa/Ẩn tự ẩn trong `PrescriptionTemplatePane.tsx` nếu thiếu `.manage`.
@@ -722,7 +725,7 @@ export function Sidebar() {
           {/* "Bảng giá" — mục cấp 1 ngang hàng "Lịch làm việc" (chủ dự án yêu cầu 07/10/2026), không còn nằm trong nhóm Quản trị. Route vẫn `/admin/price-lists`. */}
           {canSeePriceLists && <NavItem to="/admin/price-lists" label="Bảng giá" icon={Tag} collapsed={collapsed} />}
 
-          {isAdmin && (
+          {(isAdmin || canSeeSystemConfig) && (
             <li>
               <button
                 type="button"
@@ -770,7 +773,7 @@ export function Sidebar() {
                       (16/09/2026, docs/DECISIONS.md #157), route/quyền giữ nguyên. */}
                   {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-warehouse" label="Danh mục kho" icon={Warehouse} collapsed={false} indent />}
                   {canSeePrescriptionTemplates && <NavItem to="/admin/prescription-templates" label="Đơn thuốc mẫu" icon={Stack} collapsed={false} indent />}
-                  {canSeeSystemConfig && <NavItem to="/admin/print-templates" label="Mẫu in" icon={Printer} collapsed={false} indent />}
+                  {canSeePrintTemplates && <NavItem to="/admin/print-templates" label="Mẫu in" icon={Printer} collapsed={false} indent />}
                   {canSeeSystemConfig && <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />}
                   {canSeeActivityLog && <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />}
                 </ul>

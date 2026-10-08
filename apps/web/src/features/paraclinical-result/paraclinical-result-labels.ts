@@ -74,9 +74,5 @@ export function previewFlag(valueType: 'NUMBER' | 'TEXT' | 'CHOICE', raw: string
   return norm(raw) === norm(reference.normalText) ? 'NORMAL' : 'ABNORMAL';
 }
 
-/** "06/10/2026 08:41" theo giờ Việt Nam (UTC+7 cố định) — mốc thời gian trên màn nhập kết quả và phiếu in. */
-export function formatDateTimeVn(iso: string): string {
-  const vn = new Date(new Date(iso).getTime() + 7 * 3_600_000);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(vn.getUTCDate())}/${pad(vn.getUTCMonth() + 1)}/${vn.getUTCFullYear()} ${pad(vn.getUTCHours())}:${pad(vn.getUTCMinutes())}`;
-}
+// Đã chuyển sang `shared/format/time.ts` (dùng thêm ở màn sao lưu) — giữ re-export để nơi gọi cũ không phải đổi.
+export { formatDateTimeVn } from '../../shared/format/time';

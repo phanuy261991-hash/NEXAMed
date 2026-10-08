@@ -6,12 +6,16 @@ import { getClinicalOrder, recordClinicalOrderPrint, saveClinicalOrder } from '.
 
 /** Cận lâm sàng GĐ3 — Chỉ định của bác sĩ (docs/DECISIONS.md #212). */
 
+const RESULTS_REFRESH_MS = 30_000;
+
 export function useClinicalOrderQuery(encounterId: string, enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'clinical-order', 'detail', encounterId),
     queryFn: () => getClinicalOrder(encounterId),
     enabled,
+    // Khối "Kết quả đã có của lượt khám này" phải thấy kết quả vừa được duyệt mà bác sĩ không cần F5 (bản nháp đang soạn không bị ghi đè — xem `serverKey` ở panel).
+    refetchInterval: RESULTS_REFRESH_MS,
   });
 }
 

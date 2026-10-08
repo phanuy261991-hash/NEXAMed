@@ -43,6 +43,81 @@ describe('renderPatientMedicalRecordHtml', () => {
     expect(html).toContain('chưa có lượt khám nào đã hoàn tất');
   });
 
+  describe('kết quả cận lâm sàng đã duyệt', () => {
+    const encounterBase = {
+      encounterNo: 'KB-2610-000001',
+      checkedInAt: '2026-10-06T01:30:00.000Z',
+      doctorName: 'Trần Thị B',
+      chiefComplaint: null,
+      vitalSigns: null,
+      diagnoses: [],
+      clinicalNoteSections: [],
+      prescriptionItems: [],
+      signedAt: null,
+    };
+
+    it('không có kết quả → không in mục "Cận lâm sàng" (bệnh án cũ giữ nguyên)', () => {
+      const html = renderPatientMedicalRecordHtml(buildDoc({ encounters: [{ ...encounterBase }] }));
+      expect(html).not.toContain('<h3>Cận lâm sàng</h3>');
+      const withEmpty = renderPatientMedicalRecordHtml(buildDoc({ encounters: [{ ...encounterBase, paraclinicalResults: [] }] }));
+      expect(withEmpty).not.toContain('<h3>Cận lâm sàng</h3>');
+    });
+
+    it('xét nghiệm: bảng chỉ số, chỉ số vượt mức in đậm + gạch chân, in sau ghi chú khám và trước đơn thuốc', () => {
+      const html = renderPatientMedicalRecordHtml(
+        buildDoc({
+          encounters: [
+            {
+              ...encounterBase,
+              paraclinicalResults: [
+                {
+                  serviceName: 'Tổng phân tích tế bào máu',
+                  serviceKind: 'LAB',
+                  signedAt: '2026-10-06T03:12:00.000Z',
+                  indicators: [
+                    { name: 'Bạch cầu (WBC)', valueText: '12,5', referenceText: '4,0 - 10,0', unit: 'G/L', abnormal: true },
+                    { name: 'Hồng cầu (RBC)', valueText: '4,6', referenceText: '3,8 - 5,2', unit: 'T/L', abnormal: false },
+                  ],
+                  descriptionText: null,
+                  conclusionText: 'Bạch cầu tăng nhẹ',
+                  imageCount: 0,
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      expect(html).toContain('<h3>Cận lâm sàng</h3>');
+      expect(html).toContain('Tổng phân tích tế bào máu');
+      expect(html).toContain('Xét nghiệm');
+      expect(html).toContain('<td class="abnormal">12,5</td>');
+      expect(html).toContain('<td>4,6</td>');
+      expect(html).toContain('<strong>Nhận xét:</strong> Bạch cầu tăng nhẹ');
+      expect(html.indexOf('Cận lâm sàng')).toBeGreaterThan(html.indexOf('Ghi chú khám'));
+      expect(html.indexOf('Cận lâm sàng')).toBeLessThan(html.indexOf('<h3>Đơn thuốc</h3>'));
+    });
+
+    it('chẩn đoán hình ảnh: mô tả + kết luận + số ảnh, không bảng chỉ số; escape nội dung', () => {
+      const html = renderPatientMedicalRecordHtml(
+        buildDoc({
+          encounters: [
+            {
+              ...encounterBase,
+              paraclinicalResults: [
+                { serviceName: 'Siêu âm <ổ bụng>', serviceKind: 'IMAGING', signedAt: '2026-10-06T04:00:00.000Z', indicators: [], descriptionText: 'Gan sáng', conclusionText: 'Gan nhiễm mỡ độ I', imageCount: 2 },
+              ],
+            },
+          ],
+        }),
+      );
+      expect(html).toContain('Siêu âm &lt;ổ bụng&gt;');
+      expect(html).toContain('<strong>Mô tả hình ảnh:</strong> Gan sáng');
+      expect(html).toContain('<strong>Kết luận:</strong> Gan nhiễm mỡ độ I');
+      expect(html).toContain('Có 2 hình ảnh đính kèm');
+      expect(html).not.toContain('Khoảng tham chiếu');
+    });
+  });
+
   it('render đủ nội dung một lượt khám: sinh hiệu/chẩn đoán/ghi chú/đơn thuốc', () => {
     const html = renderPatientMedicalRecordHtml(
       buildDoc({

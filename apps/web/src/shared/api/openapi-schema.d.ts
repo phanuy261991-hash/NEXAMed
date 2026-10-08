@@ -33150,6 +33150,8 @@ export interface paths {
                                         /** Format: uuid */
                                         packageId: string | null;
                                         placeName: string | null;
+                                        /** @enum {string|null} */
+                                        serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL" | null;
                                         note: string | null;
                                         /** @enum {string} */
                                         status: "ORDERED" | "CANCELLED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED";
@@ -33300,6 +33302,8 @@ export interface paths {
                                         /** Format: uuid */
                                         packageId: string | null;
                                         placeName: string | null;
+                                        /** @enum {string|null} */
+                                        serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL" | null;
                                         note: string | null;
                                         /** @enum {string} */
                                         status: "ORDERED" | "CANCELLED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED";

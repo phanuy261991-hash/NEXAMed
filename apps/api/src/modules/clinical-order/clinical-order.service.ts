@@ -386,6 +386,7 @@ export class ClinicalOrderService {
       lineTotal: i.unitPrice === null ? null : Number(i.unitPrice) * i.quantity,
       packageId: i.clinicalOrderPackageId,
       placeName: i.technicalService?.department?.name ?? null,
+      serviceKind: i.technicalService?.serviceKind ?? null,
       note: i.note,
       status: i.status,
       resultReturnedAt: i.results[0]?.signedAt?.toISOString() ?? null,
@@ -400,7 +401,8 @@ export class ClinicalOrderService {
       unitPrice: Number(p.unitPrice),
       editable: unpaid(invoiceOfPackage.get(p.id)),
     }));
-    const inHouseTotal = items.reduce((sum, i) => sum + (i.lineTotal ?? 0), 0) + packages.reduce((sum, p) => sum + p.unitPrice, 0);
+    // Dòng đã huỷ (huỷ lượt khám, #219) không còn tính vào tạm tính.
+    const inHouseTotal = items.reduce((sum, i) => sum + (i.status === 'CANCELLED' ? 0 : (i.lineTotal ?? 0)), 0) + packages.reduce((sum, p) => sum + p.unitPrice, 0);
 
     const invoiceMap = new Map<string, Invoice>();
     for (const l of lines) invoiceMap.set(l.invoice.id, l.invoice);

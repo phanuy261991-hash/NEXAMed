@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { ClinicalOrder, ClinicalOrderItem, ClinicalOrderItemStatus, ClinicalOrderPackage, Prisma } from '@prisma/client';
+import type { ClinicalOrder, ClinicalOrderItem, ClinicalOrderItemStatus, ClinicalOrderPackage, Prisma, TechnicalServiceKind } from '@prisma/client';
 
 export interface CreateOrderItemData {
   itemKind: 'TECHNICAL_SERVICE' | 'EXAM_TYPE' | 'FREE_TEXT';
@@ -27,7 +27,10 @@ export interface CreateOrderPackageData {
 
 /** Phiếu kèm dòng/gói còn hiệu lực + Khoa/Phòng thực hiện của từng dịch vụ kỹ thuật (cột "Nơi thực hiện"). */
 export interface ClinicalOrderWithLines extends ClinicalOrder {
-  items: (ClinicalOrderItem & { technicalService: { department: { name: string } | null } | null; results: { signedAt: Date | null; supersedesId: string | null }[] })[];
+  items: (ClinicalOrderItem & {
+    technicalService: { serviceKind: TechnicalServiceKind; department: { name: string } | null } | null;
+    results: { signedAt: Date | null; supersedesId: string | null }[];
+  })[];
   packages: ClinicalOrderPackage[];
 }
 
@@ -36,7 +39,8 @@ const ORDER_INCLUDE = {
     where: { deletedAt: null },
     orderBy: [{ sortOrder: 'asc' as const }, { createdAt: 'asc' as const }],
     include: {
-      technicalService: { select: { department: { select: { name: true } } } },
+      // `serviceKind` để màn khám biết mở kết quả ở nhóm nào (xét nghiệm / CĐHA & thăm dò chức năng).
+      technicalService: { select: { serviceKind: true, department: { select: { name: true } } } },
       // Kết quả còn hiệu lực (đúng 1 bản/dịch vụ — bản đính chính thay bản cũ): mốc "Trả lúc" và cờ "đang đính chính" cho màn khám.
       results: { where: { deletedAt: null }, select: { signedAt: true, supersedesId: true }, take: 1 },
     },
@@ -168,6 +172,18 @@ export class ClinicalOrderRepository {
     const r = await tx.clinicalOrderItem.updateMany({
       where: { tenantId, id: { in: ids }, deletedAt: null, status: 'ORDERED' },
       data: { status: 'IN_PROGRESS', collectedAt: at, collectedBy: actorId, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return r.count;
+  }
+
+  /**
+   * Huỷ lượt khám: đóng các dòng chỉ định còn `ORDERED` (chưa bắt đầu) của lượt khám thành `CANCELLED`. Điều kiện `status = 'ORDERED'` nằm trong WHERE nên dòng đang làm dở/đã duyệt
+   * không bao giờ bị chạm (chống ghi chồng với người vừa lấy mẫu). Trả số dòng đã đóng.
+   */
+  async cancelNotStartedForEncounter(tx: Prisma.TransactionClient, tenantId: string, encounterId: string, actorId: string): Promise<number> {
+    const r = await tx.clinicalOrderItem.updateMany({
+      where: { tenantId, deletedAt: null, status: 'ORDERED', order: { encounterId, deletedAt: null } },
+      data: { status: 'CANCELLED', updatedBy: actorId, version: { increment: 1 } },
     });
     return r.count;
   }

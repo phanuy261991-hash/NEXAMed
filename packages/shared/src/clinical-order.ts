@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { invoiceStatusSchema, invoiceTypeSchema } from './billing';
+import { technicalServiceKindSchema } from './technical-service';
 
 /**
  * Cận lâm sàng GĐ3 — Chỉ định của bác sĩ (docs/DECISIONS.md #212). Mỗi lượt khám có đúng 1 PHIẾU chỉ định còn hiệu lực; bác sĩ
@@ -74,6 +75,8 @@ export const clinicalOrderItemViewSchema = z.object({
   packageId: z.string().uuid().nullable(),
   /** Tên Khoa/Phòng thực hiện (Nơi thực hiện) của dịch vụ; `null` nếu chưa khai/ra ngoài. */
   placeName: z.string().nullable(),
+  /** Loại dịch vụ kỹ thuật (xét nghiệm / CĐHA / thăm dò chức năng) — khối "Kết quả đã có" dùng để mở đúng nhóm kết quả; dòng tự do/dịch vụ khám = `null`. */
+  serviceKind: technicalServiceKindSchema.nullable(),
   note: z.string().nullable(),
   status: clinicalOrderItemStatusSchema,
   /** Lúc bác sĩ duyệt & trả kết quả (kết quả đã ký còn hiệu lực); `null` nếu chưa có kết quả được duyệt — khối "Kết quả đã có" ở màn khám. */

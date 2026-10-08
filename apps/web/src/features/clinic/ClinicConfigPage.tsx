@@ -1,9 +1,15 @@
-import { lazy, Suspense, useState } from 'react';
-import { Buildings, CalendarBlank, CalendarCheck, Clock, CreditCard, MapPinLine, SlidersHorizontal, Vault } from '@phosphor-icons/react';
+import { lazy, Suspense, useMemo, useState } from 'react';
+import { Buildings, CalendarBlank, CalendarCheck, Clock, CreditCard, Database as DatabaseIcon, MapPinLine, SlidersHorizontal, Vault } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
+import { EmptyState } from '../../shared/ui/EmptyState';
+import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { Skeleton } from '../../shared/ui/Skeleton';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
+import { useHasPermission } from '../auth/usePermission';
 import { CashAccountPane } from '../cash-book/CashAccountPane';
 import { AppointmentConfigPane } from './AppointmentConfigPane';
+import { BackupConfigPane } from './BackupConfigPane';
+import { useBackupConfigQuery } from './clinic.queries';
 import { ClinicHoursPane } from './ClinicHoursPane';
 import { ClinicInfoPane } from './ClinicInfoPane';
 import { ExamConfigPane } from './ExamConfigPane';
@@ -38,7 +44,7 @@ const BusinessCodeTemplatePane = lazy(() =>
  * pill phẳng mới, danh sách 7 loại mã nghiệp vụ + khuôn mẫu tự cấu hình được, lazy (form phân tích
  * cú pháp khuôn mẫu hiếm khi dùng tới, không đẩy vào chunk khởi động).
  */
-const PILLS: ConfigScreenPill[] = [
+const BASE_PILLS: ConfigScreenPill[] = [
   {
     key: 'clinic',
     label: 'Cấu hình phòng khám',
@@ -62,7 +68,10 @@ const PILLS: ConfigScreenPill[] = [
   { key: 'exam', label: 'Cấu hình khám' },
   { key: 'code-templates', label: 'Cấu hình mẫu mã phát sinh' },
 ];
-const FIRST_PILL = PILLS[0]!;
+const FIRST_PILL = BASE_PILLS[0]!;
+
+/** Pill "Sao lưu dữ liệu" (docs/DECISIONS.md #217) — dựng động: chỉ thêm vào khi actor có quyền xem VÀ máy có container sao lưu. */
+const BACKUP_PILL: ConfigScreenPill = { key: 'backup', label: 'Sao lưu dữ liệu' };
 
 /**
  * Trang "Cấu hình hệ thống" (`/admin/system-config`) — mục sidebar riêng trong nhóm "Quản trị",
@@ -72,8 +81,19 @@ const FIRST_PILL = PILLS[0]!;
  * khi ít lựa chọn (đã hỏi và chốt, tránh 2 trang cấu hình trông khác nhau).
  */
 export function ClinicConfigPage() {
-  const [activePillKey, setActivePillKey] = useState(FIRST_PILL.key);
-  const [activeItemKey, setActiveItemKey] = useState(FIRST_PILL.items![0]!.key);
+  // Vai trò chỉ có quyền sao lưu (`system_admin`) không có `clinic_config.update` → chỉ thấy pill "Sao lưu dữ liệu", các pill cấu hình phòng khám bị ẩn.
+  const canConfigureClinic = useHasPermission('clinic_config', 'update');
+  const [activePillKey, setActivePillKey] = useState(canConfigureClinic ? FIRST_PILL.key : BACKUP_PILL.key);
+  const [activeItemKey, setActiveItemKey] = useState(canConfigureClinic ? FIRST_PILL.items![0]!.key : '');
+
+  // Máy dev/cloud không có container sao lưu (`available=false`) → ẩn hẳn pill, không gọi API khi thiếu quyền (tránh 403).
+  const canReadBackup = useHasPermission('system_backup', 'read');
+  const backupConfigQuery = useBackupConfigQuery(canReadBackup);
+  const showBackupPill = canReadBackup && backupConfigQuery.data?.available === true;
+  const PILLS = useMemo(
+    () => [...(canConfigureClinic ? BASE_PILLS : []), ...(showBackupPill ? [BACKUP_PILL] : [])],
+    [canConfigureClinic, showBackupPill],
+  );
 
   const activePill = PILLS.find((p) => p.key === activePillKey);
   // Pill phẳng (không `items`, ví dụ "Cấu hình thanh toán") thì đoạn cuối lấy đúng nhãn của pill.
@@ -91,6 +111,18 @@ export function ClinicConfigPage() {
     if (!pill) return;
     setActivePillKey(pillKey);
     setActiveItemKey(pill.items?.[0]?.key ?? '');
+  }
+
+  // Chưa có pill nào để hiện (chỉ xảy ra với vai trò không có `clinic_config.update`): đang tải thì khung xương, tải xong mà máy không có dịch vụ sao lưu thì báo rõ.
+  if (PILLS.length === 0) {
+    if (backupConfigQuery.isPending) return <Skeleton className="m-6 h-40" />;
+    if (backupConfigQuery.isError) return <ErrorBanner message="Không tải được cấu hình sao lưu." onRetry={() => void backupConfigQuery.refetch()} />;
+    return (
+      <div className="p-6">
+        <h1 className="sr-only">Cấu hình hệ thống</h1>
+        <EmptyState icon={DatabaseIcon} title="Chưa có cấu hình nào để hiển thị" description="Máy chủ này không chạy dịch vụ sao lưu tự động (bản cài tại chỗ mới có), và tài khoản của bạn không có quyền cấu hình phòng khám." />
+      </div>
+    );
   }
 
   return (
@@ -111,6 +143,7 @@ export function ClinicConfigPage() {
       {activePillKey === 'payment' && activeItemKey === 'config' && <PaymentConfigPane />}
       {activePillKey === 'payment' && activeItemKey === 'cash-accounts' && <CashAccountPane />}
       {activePillKey === 'exam' && <ExamConfigPane />}
+      {activePillKey === 'backup' && showBackupPill && <BackupConfigPane />}
       {activePillKey === 'code-templates' && (
         <Suspense fallback={null}>
           <BusinessCodeTemplatePane />

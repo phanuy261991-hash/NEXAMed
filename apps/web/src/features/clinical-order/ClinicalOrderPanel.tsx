@@ -5,6 +5,7 @@ import { Button } from '../../shared/ui/Button';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
 import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
@@ -18,6 +19,7 @@ import { getServicePackage, resolvePrices } from '../pricing/pricing.api';
 import { useServicePackagesQuery } from '../pricing/pricing.queries';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { ClinicalOrderPrintView } from './ClinicalOrderPrintView';
+import { ClinicalOrderResultsBlock } from './ClinicalOrderResultsBlock';
 import { useClinicalOrderQuery, usePrintClinicalOrderMutation, useSaveClinicalOrderMutation } from './clinical-order.queries';
 
 /** 1 dịch vụ lẻ đang soạn. `id` có = đã lưu trên phiếu; `locked` = tiền đã thu/đã thực hiện nên không gỡ/đổi được. */
@@ -35,6 +37,8 @@ interface DraftItem {
   /** Đơn giá xem trước (dòng chưa lưu) hoặc đã chốt (đã lưu) — `null` = không tính tiền. */
   unitPrice: number | null;
   locked: boolean;
+  /** Dòng đã huỷ theo lượt khám bị huỷ (docs/DECISIONS.md #219) — hiện nhãn "Đã huỷ", không tính vào tạm tính. */
+  cancelled: boolean;
 }
 
 interface DraftChild {
@@ -78,6 +82,7 @@ function fromServer(order: ClinicalOrderDetail | null): Draft {
         note: i.note ?? '',
         unitPrice: i.unitPrice,
         locked: !i.editable,
+        cancelled: i.status === 'CANCELLED',
       })),
     packages: order.packages.map((p) => ({
       key: p.id,
@@ -176,7 +181,7 @@ export function ClinicalOrderPanel({
   const dirty = loadedFor === serverKey && signature(draft) !== signature(fromServer(serverOrder));
   const inHouseItems = draft.items.filter((i) => i.performance === 'IN_HOUSE');
   const externalItems = draft.items.filter((i) => i.performance === 'EXTERNAL');
-  const inHouseTotal = inHouseItems.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.quantity, 0) + draft.packages.reduce((sum, p) => sum + p.unitPrice, 0);
+  const inHouseTotal = inHouseItems.filter((i) => !i.cancelled).reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.quantity, 0) + draft.packages.reduce((sum, p) => sum + p.unitPrice, 0);
   const inHouseCount = inHouseItems.length + draft.packages.reduce((sum, p) => sum + Math.max(1, p.children.length), 0);
 
   async function addService(service: TechnicalServiceItem) {
@@ -204,7 +209,7 @@ export function ClinicalOrderPanel({
       ...prev,
       items: [
         ...prev.items,
-        { key: makeDraftId(), performance, technicalServiceId: service.id, code: service.code, name: service.name, placeName: performance === 'IN_HOUSE' ? service.departmentName : null, quantity: 1, note: '', unitPrice, locked: false },
+        { key: makeDraftId(), performance, technicalServiceId: service.id, code: service.code, name: service.name, placeName: performance === 'IN_HOUSE' ? service.departmentName : null, quantity: 1, note: '', unitPrice, locked: false, cancelled: false },
       ],
     }));
     setSearchText('');
@@ -215,7 +220,7 @@ export function ClinicalOrderPanel({
     if (name === '') return;
     setDraft((prev) => ({
       ...prev,
-      items: [...prev.items, { key: makeDraftId(), performance: 'EXTERNAL', freeTextName: name, code: null, name, placeName: null, quantity: 1, note: '', unitPrice: null, locked: false }],
+      items: [...prev.items, { key: makeDraftId(), performance: 'EXTERNAL', freeTextName: name, code: null, name, placeName: null, quantity: 1, note: '', unitPrice: null, locked: false, cancelled: false }],
     }));
     setSearchText('');
   }
@@ -427,7 +432,14 @@ export function ClinicalOrderPanel({
                 <tr key={item.key} className="border-b border-slate-100">
                   <td className="px-2 py-2.5 text-center font-medium text-slate-600">{index + 1}</td>
                   <td className="px-2 py-2.5 text-center font-semibold text-slate-800">{item.code}</td>
-                  <td className="px-2 py-2.5 text-left font-medium text-slate-900">{item.name}</td>
+                  <td className="px-2 py-2.5 text-left font-medium text-slate-900">
+                    {item.name}
+                    {item.cancelled && (
+                      <span className="ml-2 align-middle">
+                        <StatusBadge tone="neutral">Đã huỷ</StatusBadge>
+                      </span>
+                    )}
+                  </td>
                   <td className="px-2 py-2.5 text-center font-medium text-slate-600">{item.placeName ?? '—'}</td>
                   <td className="px-2 py-1.5 text-center">
                     {canEdit && !item.locked ? (
@@ -486,7 +498,14 @@ export function ClinicalOrderPanel({
                   <td className="px-2 py-2.5 text-center">
                     {item.code ? <span className="font-semibold text-slate-800">{item.code}</span> : <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[10.5px] font-bold text-slate-600">Tự do</span>}
                   </td>
-                  <td className="px-2 py-2.5 text-left font-medium text-slate-900">{item.name}</td>
+                  <td className="px-2 py-2.5 text-left font-medium text-slate-900">
+                    {item.name}
+                    {item.cancelled && (
+                      <span className="ml-2 align-middle">
+                        <StatusBadge tone="neutral">Đã huỷ</StatusBadge>
+                      </span>
+                    )}
+                  </td>
                   <td className="px-2 py-1.5">
                     <input
                       aria-label={`Ghi chú cho bệnh nhân — ${item.name}`}
@@ -507,6 +526,8 @@ export function ClinicalOrderPanel({
           </table>
         </section>
       )}
+
+      {serverOrder && <ClinicalOrderResultsBlock items={serverOrder.items} />}
 
       {localError && (
         <div role="alert" className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">

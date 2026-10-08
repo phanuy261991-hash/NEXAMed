@@ -4,7 +4,7 @@ import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { RequireAnyPermissionRoute, RequireDoctorQueueRoute, RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS, PRICE_LIST_ADMIN_PERMISSIONS } from '../features/auth/admin-permissions';
+import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS, PRICE_LIST_ADMIN_PERMISSIONS, SYSTEM_CONFIG_PERMISSIONS } from '../features/auth/admin-permissions';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { AppShell } from '../shared/layout/AppShell';
 import { NotFoundPage } from './NotFoundPage';
@@ -307,7 +307,7 @@ export const router = createBrowserRouter([
           </RequirePermissionRoute>
         ),
       },
-      { path: 'admin/system-config', element: <RequirePermissionRoute module="clinic_config" action="update"><ClinicConfigPage /></RequirePermissionRoute> },
+      { path: 'admin/system-config', element: <RequireAnyPermissionRoute permissions={SYSTEM_CONFIG_PERMISSIONS}><ClinicConfigPage /></RequireAnyPermissionRoute> },
       // "Đơn thuốc mẫu" (docs/DECISIONS.md #196) — gác bằng `.read` (mọi vai trò lâm sàng đều xem
       // được, đúng khuôn popup chọn mẫu); nút Thêm/Sửa/Ẩn trong `PrescriptionTemplatePane.tsx` tự
       // ẩn nếu thiếu `.manage`.

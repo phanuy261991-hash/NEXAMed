@@ -31,6 +31,29 @@ export class ParaclinicalResultRepository {
     });
   }
 
+  /**
+   * Kết quả ĐÃ KÝ còn hiệu lực của các lượt khám (cho "Xuất bệnh án PDF"): dòng chỉ định chưa gỡ/huỷ, có kèm giá trị chỉ số (bản chụp tên/đơn vị/khoảng tham chiếu), tên dịch vụ,
+   * loại dịch vụ, mã lượt khám của phiếu chỉ định và số ảnh đính kèm. Sắp theo thứ tự chỉ định.
+   */
+  listSignedByEncounterIds(tx: Prisma.TransactionClient, tenantId: string, encounterIds: string[]) {
+    if (encounterIds.length === 0) return Promise.resolve([]);
+    return tx.paraclinicalResult.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        signedAt: { not: null },
+        orderItem: { deletedAt: null, status: { not: 'CANCELLED' }, order: { encounterId: { in: encounterIds }, deletedAt: null } },
+      },
+      include: {
+        values: { where: { deletedAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+        orderItem: {
+          select: { name: true, sortOrder: true, createdAt: true, order: { select: { encounterId: true } }, technicalService: { select: { serviceKind: true } } },
+        },
+        _count: { select: { images: { where: { deletedAt: null } } } },
+      },
+    });
+  }
+
   createResult(
     tx: Prisma.TransactionClient,
     tenantId: string,

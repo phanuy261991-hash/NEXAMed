@@ -206,7 +206,15 @@ function ServiceRow({
         {categoryName}
       </div>
       <div role="cell" className="px-2 font-medium text-slate-600">
-        {item.isPerformedInHouse ? (item.departmentName ?? '—') : <StatusBadge tone="warning">Gửi ra ngoài</StatusBadge>}
+        {item.isPerformedInHouse ? (
+          (item.departmentName ?? (
+            <span title="Dịch vụ tự thực hiện nhưng chưa khai Khoa/Phòng — tài khoản giới hạn theo phòng sẽ không thấy dịch vụ này ở hàng đợi cận lâm sàng">
+              <StatusBadge tone="warning">Chưa khai phòng</StatusBadge>
+            </span>
+          ))
+        ) : (
+          <StatusBadge tone="warning">Gửi ra ngoài</StatusBadge>
+        )}
       </div>
       <div role="cell" className="px-2 font-medium text-slate-600">
         {specimenName}

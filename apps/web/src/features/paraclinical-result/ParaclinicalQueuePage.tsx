@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Flask, MagnifyingGlass, Scan } from '@phosphor-icons/react';
+import { Eye, Flask, MagnifyingGlass, Scan, Warning } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import type { ListParaclinicalQueueQuery, ParaclinicalQueueBucket, ParaclinicalQueueRow } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
@@ -13,9 +13,10 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
-import { useHasPermission } from '../auth/usePermission';
+import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
 import { formatWaitDuration, genderShort, isLongWait, QUEUE_BUCKET_ORDER, SERVICE_KIND_LABELS } from './paraclinical-result-labels';
 import { PARACLINICAL_GROUP_META, type ParaclinicalGroup } from './paraclinical-group';
+import { ParaclinicalOrderQuickViewDialog } from './ParaclinicalOrderQuickViewDialog';
 import { useParaclinicalQueueQuery, useStartParaclinicalMutation } from './paraclinical-result.queries';
 
 const ROW_HEIGHT_PX = 60;
@@ -23,13 +24,13 @@ const ROW_HEIGHT_PX = 60;
 /** Cột bảng theo nhóm menu (mockup 12a/12b): xét nghiệm có "Mẫu bệnh phẩm"; CĐHA & thăm dò có "Loại" + "Phòng thực hiện". */
 const COLUMNS: Record<ParaclinicalGroup, { grid: string; minWidth: number; headers: string[] }> = {
   lab: {
-    grid: '120px minmax(180px,210px) minmax(200px,1fr) 160px 96px 100px 150px',
-    minWidth: 1000,
+    grid: '120px minmax(180px,210px) minmax(200px,1fr) 160px 96px 100px 188px',
+    minWidth: 1038,
     headers: ['Mã phiếu', 'Bệnh nhân', 'Xét nghiệm chỉ định', 'Mẫu bệnh phẩm', 'Chờ', 'Thanh toán', 'Thao tác'],
   },
   imaging: {
-    grid: '120px minmax(180px,210px) minmax(150px,1fr) 108px 128px 92px 100px 150px',
-    minWidth: 1060,
+    grid: '120px minmax(180px,210px) minmax(150px,1fr) 108px 128px 92px 100px 188px',
+    minWidth: 1098,
     headers: ['Mã phiếu', 'Bệnh nhân', 'Dịch vụ chỉ định', 'Loại', 'Phòng thực hiện', 'Chờ', 'Thanh toán', 'Thao tác'],
   },
 };
@@ -54,6 +55,10 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
   const navigate = useNavigate();
   const canEnter = useHasPermission(meta.permissionModule, 'enter');
   const canApprove = useHasPermission(meta.permissionModule, 'approve');
+  // Quyền giới hạn theo Khoa/Phòng mà tài khoản chưa được gán phòng thì không khớp phòng nào → hàng đợi luôn trống; báo rõ thay vì để trống im lặng.
+  const scopedToDepartment = useDataScope(meta.permissionModule, 'read') === 'department';
+  const actorDepartmentId = useActorDepartmentId();
+  const missingDepartment = scopedToDepartment && actorDepartmentId === null;
   const [bucket, setBucket] = useState<ParaclinicalQueueBucket>('WAITING');
   const [date, setDate] = useState(todayVn);
   const [filterA, setFilterA] = useState(''); // xét nghiệm: nhóm xét nghiệm · CĐHA: loại dịch vụ
@@ -61,6 +66,7 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 250);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [quickViewRow, setQuickViewRow] = useState<ParaclinicalQueueRow | null>(null);
 
   const params: ListParaclinicalQueueQuery = useMemo(() => ({ date, ...(debouncedSearch ? { q: debouncedSearch } : {}) }), [date, debouncedSearch]);
   const query = useParaclinicalQueueQuery(group, params);
@@ -169,6 +175,12 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
         </div>
       </div>
 
+      {missingDepartment && (
+        <div role="alert" className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-800">
+          <Warning size={16} weight="fill" className="mt-0.5 flex-none" aria-hidden="true" />
+          Tài khoản của bạn chỉ được xem việc của Khoa/Phòng mình nhưng chưa được gán Khoa/Phòng nên hàng đợi sẽ luôn trống. Nhờ quản trị viên gán Khoa/Phòng ở "Quản lý tài khoản".
+        </div>
+      )}
       {query.isError && <ErrorBanner message={`Không tải được ${meta.queueTitle.toLowerCase()}.`} onRetry={() => query.refetch()} />}
       {actionError && <ErrorBanner message={actionError} />}
 
@@ -248,14 +260,17 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
                       )}
                     </div>
                     <div className="px-2">{row.paid ? <StatusBadge tone="success">Đã thu</StatusBadge> : <StatusBadge tone="warning">{row.bucket === 'AWAITING_PAYMENT' ? 'Chưa thu' : 'Nợ phí'}</StatusBadge>}</div>
-                    <div className="flex justify-center px-2">
+                    <div className="flex items-center justify-center gap-1.5 px-2">
                       {action ? (
-                        <Button type="button" onClick={action.run} loading={action.loading}>
+                        <Button type="button" className="whitespace-nowrap px-3" onClick={action.run} loading={action.loading}>
                           {action.label}
                         </Button>
                       ) : (
                         <span className="text-xs font-medium text-slate-400">Chờ thu tiền</span>
                       )}
+                      <Button type="button" variant="secondary" className="flex-shrink-0 px-2.5" aria-label={`Xem chi tiết phiếu ${row.orderNo}`} title="Xem chi tiết phiếu" onClick={() => setQuickViewRow(row)}>
+                        <Eye size={16} weight="regular" aria-hidden="true" />
+                      </Button>
                     </div>
                   </div>
                 );
@@ -268,6 +283,7 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
           {query.data && !query.data.allowBeforePayment && bucket === 'WAITING' ? ` · Chỉ phiếu đã thu tiền mới ${group === 'lab' ? 'lấy mẫu' : 'gọi vào phòng'} được` : ''}
         </div>
       </div>
+      {quickViewRow && <ParaclinicalOrderQuickViewDialog row={quickViewRow} group={group} onClose={() => setQuickViewRow(null)} />}
     </div>
   );
 }

@@ -84518,6 +84518,17 @@
                                       "null"
                                     ]
                                   },
+                                  "serviceKind": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "LAB",
+                                      "IMAGING",
+                                      "FUNCTIONAL"
+                                    ]
+                                  },
                                   "note": {
                                     "type": [
                                       "string",
@@ -84560,6 +84571,7 @@
                                   "lineTotal",
                                   "packageId",
                                   "placeName",
+                                  "serviceKind",
                                   "note",
                                   "status",
                                   "resultReturnedAt",
@@ -84981,6 +84993,17 @@
                                       "null"
                                     ]
                                   },
+                                  "serviceKind": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "LAB",
+                                      "IMAGING",
+                                      "FUNCTIONAL"
+                                    ]
+                                  },
                                   "note": {
                                     "type": [
                                       "string",
@@ -85023,6 +85046,7 @@
                                   "lineTotal",
                                   "packageId",
                                   "placeName",
+                                  "serviceKind",
                                   "note",
                                   "status",
                                   "resultReturnedAt",

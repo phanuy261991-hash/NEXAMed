@@ -2,6 +2,24 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-08
+
+### Huỷ lượt khám: đóng dòng chỉ định chưa bắt đầu (`docs/DECISIONS.md` #219)
+
+Huỷ lượt khám nay đổi các dịch vụ cận lâm sàng **chưa bắt đầu** sang "Đã huỷ"; dịch vụ đang làm dở hoặc đã có kết quả đã duyệt giữ nguyên; hoá đơn đã thu vẫn xử lý bằng hoàn tiền như cũ. Tạm tính ở tab Chỉ định không còn cộng dòng đã huỷ.
+
+### Cận lâm sàng: bác sĩ xem kết quả ở màn khám + kết quả vào bệnh án PDF (`docs/DECISIONS.md` #218)
+
+Tab "Chỉ định cận lâm sàng" ở màn khám có thêm khối **"Kết quả đã có của lượt khám này"**: mỗi dịch vụ làm tại phòng khám đã vào thực hiện hiện trạng thái (Đang thực hiện / Đã có kết quả / Đang đính chính), giờ trả kết quả và nút **Xem** mở đúng phiếu kết quả (chỉ xem; cần quyền xem của nhóm xét nghiệm/CĐHA, bác sĩ có sẵn). Tự làm mới 30 giây. **Bệnh án PDF** có thêm mục "Cận lâm sàng" cho từng lượt khám (chỉ kết quả đã duyệt: bảng chỉ số, chỉ số vượt mức in đậm + gạch chân; CĐHA gồm mô tả + kết luận, ảnh không nhúng vào PDF). Không migration/quyền mới — môi trường khác chỉ cần cập nhật bản chạy.
+
+### Hàng đợi cận lâm sàng: xem nhanh chi tiết phiếu + cảnh báo Khoa/Phòng
+
+Mỗi dòng hàng đợi có nút mắt **Xem chi tiết phiếu** (bệnh nhân, dịch vụ, mẫu/phòng, trạng thái, thu tiền, mốc chờ) dùng được ở mọi tab. Hàng đợi cảnh báo khi tài khoản giới hạn theo Khoa/Phòng mà chưa được gán phòng; danh mục dịch vụ kỹ thuật nhãn "Chưa khai phòng" cho dịch vụ tự thực hiện chưa chọn Khoa/Phòng.
+
+### Cấu hình sao lưu dữ liệu: có giao diện (`docs/DECISIONS.md` #217)
+
+**Quản trị → Cấu hình hệ thống → Sao lưu dữ liệu**: xem lần sao lưu gần nhất (thành công/lỗi + lý do), nút **Sao lưu ngay**, bật/tắt sao lưu tự động, **giờ chạy (giờ Việt Nam)**, **số ngày giữ bản sao lưu**, và thư mục lưu (chỉ xem). Chỉ hiện ở bản cài tại chỗ có dịch vụ sao lưu. Tài khoản **Quản trị hệ thống** (chỉ có quyền sao lưu) nay vào được trang này (chỉ thấy mục Sao lưu dữ liệu). `docs/Deploy.md` mục 2.3c đã chuyển hướng dẫn giờ/số ngày giữ sang giao diện — `.env` chỉ còn là giá trị khởi tạo lần đầu.
+
 ## 2026-10-07
 
 ### Cận lâm sàng: đính chính kết quả đã duyệt (`docs/DECISIONS.md` #215b)

@@ -29,6 +29,14 @@ export const PRICE_LIST_ADMIN_PERMISSIONS: ReadonlyArray<readonly [string, strin
   ['price_list', 'update'],
 ];
 
+/** "Cấu hình hệ thống" (`/admin/system-config`) — `clinic_config.update` cho các pill cấu hình phòng khám, hoặc `system_backup.read` cho pill "Sao lưu dữ liệu"
+ * (docs/DECISIONS.md #217: vai trò `system_admin` chỉ có quyền sao lưu, không có `clinic_config.*` — vẫn phải vào được trang để dùng pill của mình).
+ * Dùng chung cho route guard (`router.tsx`) và ẩn/hiện menu (`Sidebar.tsx`). */
+export const SYSTEM_CONFIG_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
+  ['clinic_config', 'update'],
+  ['system_backup', 'read'],
+];
+
 /**
  * "Quản trị" nói chung — hiện khi actor có BẤT KỲ quyền quản trị nào. Cũng là fallback cho 2 mục
  * con KHÔNG có permission "manage" riêng: ICD-10 (`/admin/catalog-clinical`) tái dùng
