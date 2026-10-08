@@ -29,6 +29,7 @@ Tên module trùng nhau giữa web và api.
 | `clinic` | Tenant, cấu hình phòng khám, phòng, danh mục nội bộ |
 | `reference-catalog` | Danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch — không tenant_id, khác "danh mục nội bộ" của `clinic`), quản lý được qua API bởi `clinic_admin` (`docs/DECISIONS.md` #037) |
 | `billing` | Thu ngân cơ bản (Sprint 5/6, BIL-01→04, `docs/DECISIONS.md` #072/#084) — phiếu thu (`invoice`/`invoice_line`/`payment`), tự động tạo lúc tiếp nhận, đánh dấu đã thu/chưa thu, tổng kết cuối ngày. KHÔNG phải "Price Book"/công nợ/BHYT — xem `CLAUDE.md` ranh giới v1 |
+| `print-template` | Quản lý mẫu in (`docs/DECISIONS.md` #211): bản mẫu theo chứng từ × khổ giấy, "bản dựng sẵn" khi chưa cấu hình, thiết lập nhanh; `encounter` dùng mẫu `MEDICAL_RECORD` khi xuất bệnh án PDF (import một chiều `PrintTemplateModule`) |
 
 **Ngoài v1 (không tạo module, không viết code):** `insurance`, `report`.
 

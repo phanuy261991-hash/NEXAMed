@@ -26,14 +26,15 @@ export class PuppeteerPdfRendererAdapter implements PdfRendererPort, OnModuleDes
 
   constructor(private readonly configService: ConfigService<Env, true>) {}
 
-  async renderHtmlToPdf(html: string): Promise<Buffer> {
+  async renderHtmlToPdf(html: string, options?: { marginsMm?: { top: number; right: number; bottom: number; left: number } }): Promise<Buffer> {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
     try {
       // HTML tự chứa toàn bộ CSS (không tải resource ngoài) — `load` là đủ, `setContent()` không hỗ
       // trợ `networkidle0`/`networkidle2` (khác `page.goto()`).
       await page.setContent(html, { waitUntil: 'load' });
-      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' } });
+      const m = options?.marginsMm ?? { top: 10, right: 10, bottom: 10, left: 10 };
+      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: `${m.top}mm`, bottom: `${m.bottom}mm`, left: `${m.left}mm`, right: `${m.right}mm` } });
       return Buffer.from(pdf);
     } finally {
       await page.close();

@@ -1,12 +1,8 @@
-import { useState } from 'react';
-import { Printer } from '@phosphor-icons/react';
-import type { CashierShiftDetail, ClinicPrintHeader } from '@nexamed/shared';
+import type { CashierShiftDetail } from '@nexamed/shared';
+import { formatPrintShortDateTime } from '../../shared/format/print-date';
 import { formatVnd } from '../../shared/format/currency';
-import { Button } from '../../shared/ui/Button';
-
-type ReceiptFormat = 'roll' | 'a5' | 'a4';
-
-const FORMAT_LABEL: Record<ReceiptFormat, string> = { roll: 'Cuộn nhỏ', a5: 'Khổ A5', a4: 'Khổ A4' };
+import { PrintButton } from '../../shared/print/PrintButton';
+import { PrintDocument } from '../../shared/print/PrintDocument';
 
 export function computeCashierShiftDiff(shift: CashierShiftDetail): number {
   return (shift.countedCashAmount ?? 0) - (shift.expectedCashAmount ?? 0);
@@ -19,124 +15,6 @@ export function computeCashierShiftTotalRevenue(shift: CashierShiftDetail): numb
   return cashNet + nonCashNet;
 }
 
-export function formatDateTimeVn(iso: string): string {
-  const d = new Date(iso);
-  const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  const hh = String(vn.getUTCHours()).padStart(2, '0');
-  const mm = String(vn.getUTCMinutes()).padStart(2, '0');
-  const dd = String(vn.getUTCDate()).padStart(2, '0');
-  const mo = String(vn.getUTCMonth() + 1).padStart(2, '0');
-  return `${hh}:${mm} ${dd}/${mo}`;
-}
-
-/**
- * "Phiếu bàn giao ca" — 3 khổ in (cuộn nhỏ/A5/A4, mockup duyệt 2026-09-03), dùng CHUNG cho lúc vừa
- * chốt ca lẫn "In lại phiếu" ở Danh sách phiếu chốt ca. Tái dùng đúng hạ tầng in sẵn có (`.print-
- * area`/`@media print`, `apps/web/src/app/index.css`, xem `InvoicePrintView.tsx`) — chỉ khổ đang
- * chọn mới mang class `print-area` nên chỉ đúng khổ đó được in, không cần kỹ thuật `hidden`/
- * `print:block` (khác InvoicePrintView vì view này vốn đã ẩn/hiện qua render có điều kiện của
- * React, không cần ẩn kép bằng CSS).
- */
-/**
- * `onAfterPrint` (tuỳ chọn) — gọi ngay sau khi trình duyệt đóng hộp thoại in (`window.print()` chặn
- * luồng JS tới khi người dùng in/huỷ) — dùng để tự thoát khỏi wizard "Chốt ca" ngay sau khi in, theo
- * yêu cầu chủ dự án (không dùng ở "In lại phiếu" từ Danh sách phiếu chốt ca — xem `CashierShiftDetailDialog.tsx`,
- * nơi đó không truyền prop này). Trình duyệt KHÔNG cho phép bỏ qua hộp thoại in bằng JS (giới hạn bảo
- * mật nền tảng web, không phải hạn chế của app) — đây chỉ rút ngắn bước SAU khi in xong.
- */
-export function CashierShiftReceiptView({
-  shift,
-  clinicHeader,
-  onAfterPrint,
-}: {
-  shift: CashierShiftDetail;
-  clinicHeader: ClinicPrintHeader;
-  onAfterPrint?: () => void;
-}) {
-  const [format, setFormat] = useState<ReceiptFormat>('roll');
-  const diff = computeCashierShiftDiff(shift);
-  const totalRevenue = computeCashierShiftTotalRevenue(shift);
-
-  function handlePrint() {
-    window.print();
-    onAfterPrint?.();
-  }
-
-  return (
-    <div>
-      <div className="flex justify-center mb-4">
-        <div className="inline-flex gap-1 rounded-md border border-slate-300 p-1">
-          {(['roll', 'a5', 'a4'] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFormat(f)}
-              className={`rounded px-3.5 py-1.5 text-xs font-semibold ${f === format ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}
-            >
-              {FORMAT_LABEL[f]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="scroll-hover flex justify-center overflow-x-auto rounded-lg bg-slate-100 py-6">
-        {format === 'roll' && <RollReceipt shift={shift} clinicHeader={clinicHeader} diff={diff} totalRevenue={totalRevenue} />}
-        {(format === 'a5' || format === 'a4') && (
-          <FormalReceipt shift={shift} clinicHeader={clinicHeader} diff={diff} totalRevenue={totalRevenue} width={format === 'a5' ? '128mm' : '190mm'} />
-        )}
-      </div>
-
-      <div className="mt-4 flex justify-center">
-        <Button type="button" onClick={handlePrint} className="inline-flex items-center gap-1.5">
-          <Printer size={16} weight="regular" aria-hidden="true" />
-          In phiếu
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function RollReceipt({
-  shift,
-  clinicHeader,
-  diff,
-  totalRevenue,
-}: {
-  shift: CashierShiftDetail;
-  clinicHeader: ClinicPrintHeader;
-  diff: number;
-  totalRevenue: number;
-}) {
-  return (
-    <div
-      className="print-area relative border border-slate-200 bg-white px-4 pt-5 pb-4"
-      style={{ width: 300, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontSize: 12, lineHeight: 1.55 }}
-    >
-      <div className="text-center font-bold">PHIẾU BÀN GIAO CA</div>
-      <div className="mb-2 text-center text-[11px] text-slate-500">{clinicHeader.name}</div>
-      <div className="my-2 border-t border-dashed border-slate-300" />
-      <Row label="Doanh thu ca" value={String(totalRevenue)} bold />
-      <div className="my-2 border-t border-dashed border-slate-300" />
-      <Row label="Ca" value={shift.shiftLabel} />
-      <Row label="Thu ngân" value={shift.cashierName} />
-      <Row label="Mở ca" value={formatDateTimeVn(shift.openedAt)} />
-      <Row label="Chốt ca" value={shift.closedAt ? formatDateTimeVn(shift.closedAt) : '—'} />
-      <div className="my-2 border-t border-dashed border-slate-300" />
-      <Row label="Vốn đầu ca" value={String(shift.openingFloatActual)} />
-      <Row label="Thu tiền mặt" value={String(shift.cashInAmount ?? 0)} />
-      <Row label="Hoàn tiền mặt" value={`-${shift.cashOutAmount ?? 0}`} />
-      <Row label="Thực đếm" value={String(shift.countedCashAmount ?? 0)} bold />
-      <Row label="Chênh lệch" value={diff === 0 ? '0' : `${diff > 0 ? '+' : ''}${diff}`} bold className={diff !== 0 ? 'text-rose-600' : undefined} />
-      <div className="my-2 border-t border-dashed border-slate-300" />
-      <Row label="Để lại vốn ca sau" value={String(shift.keepForNextAmount ?? 0)} />
-      <Row label="Nộp về" value={String(shift.submittedAmount ?? 0)} bold />
-      <div className="my-2 border-t border-dashed border-slate-300" />
-      <div className="mt-3 text-center text-[11px] text-slate-500">Chữ ký thu ngân</div>
-      <div className="mx-auto mt-6 w-2/3 border-b border-slate-300" />
-    </div>
-  );
-}
-
 function Row({ label, value, bold, className }: { label: string; value: string; bold?: boolean; className?: string }) {
   return (
     <div className={`flex justify-between ${bold ? 'font-bold' : ''} ${className ?? ''}`}>
@@ -146,108 +24,142 @@ function Row({ label, value, bold, className }: { label: string; value: string; 
   );
 }
 
-function FormalReceipt({
-  shift,
-  clinicHeader,
-  diff,
-  totalRevenue,
-  width,
-}: {
-  shift: CashierShiftDetail;
-  clinicHeader: ClinicPrintHeader;
-  diff: number;
-  totalRevenue: number;
-  width: string;
-}) {
+/**
+ * "Phiếu bàn giao ca" — khung/đầu trang/chữ ký/khổ giấy do `PrintDocument` lo theo bản mẫu `CASHIER_SHIFT_RECEIPT`
+ * ("Quản lý mẫu in", docs/DECISIONS.md #211): khổ do bản mẫu quyết định (K80 máy in nhiệt = bố cục cuộn nhỏ, A5/A4 =
+ * bố cục bảng đầy đủ), không còn bộ chọn khổ riêng ở đây. Dùng CHUNG cho lúc vừa chốt ca lẫn "In lại phiếu" ở Danh
+ * sách phiếu chốt ca; hiện sẵn bản xem trước trong hộp thoại rồi mới bấm "In phiếu".
+ *
+ * `onAfterPrint` (tuỳ chọn) — gọi ngay sau khi trình duyệt đóng hộp thoại in (`window.print()` chặn luồng JS tới khi
+ * người dùng in/huỷ) — dùng để tự thoát khỏi wizard "Chốt ca" ngay sau khi in (không dùng ở "In lại phiếu" từ Danh sách
+ * phiếu chốt ca). Trình duyệt KHÔNG cho phép bỏ qua hộp thoại in bằng JS (giới hạn bảo mật nền tảng web).
+ */
+export function CashierShiftReceiptView({ shift, onAfterPrint }: { shift: CashierShiftDetail; onAfterPrint?: () => void }) {
+  function handlePrint() {
+    window.print();
+    onAfterPrint?.();
+  }
+
   return (
-    <div className="print-area shrink-0 bg-white shadow-sm" style={{ width }}>
-      <div className="p-8">
-        <div className="mb-6 text-center">
-          <div className="text-base font-bold text-slate-900">{clinicHeader.name.toUpperCase()}</div>
-          {(clinicHeader.address ?? clinicHeader.phone) && (
-            <div className="mt-0.5 text-xs text-slate-500">
-              {clinicHeader.address}
-              {clinicHeader.address && clinicHeader.phone ? ' · ' : ''}
-              {clinicHeader.phone ? `ĐT: ${clinicHeader.phone}` : ''}
-            </div>
-          )}
-        </div>
-        <div className="mb-6 text-center">
-          <div className="text-lg font-bold uppercase tracking-wide text-slate-900">Phiếu bàn giao ca làm việc</div>
-          <div className="mt-1 text-xs text-slate-500">Số phiếu: {shift.shiftNo}</div>
-        </div>
-
-        <div className="mb-6 grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-slate-700">
-          <div>
-            <span className="text-slate-500">Ca làm việc:</span> <span className="font-semibold text-slate-900">{shift.shiftLabel}</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Thu ngân:</span> <span className="font-semibold text-slate-900">{shift.cashierName}</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Giờ mở ca:</span> <span className="font-semibold text-slate-900">{formatDateTimeVn(shift.openedAt)}</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Giờ chốt ca:</span> <span className="font-semibold text-slate-900">{shift.closedAt ? formatDateTimeVn(shift.closedAt) : '—'}</span>
-          </div>
-        </div>
-
-        <table className="mb-6 w-full text-sm">
-          <tbody>
-            <tr className="border-b-2 border-slate-300">
-              <td className="py-2 font-bold text-slate-900">Tổng doanh thu ca</td>
-              <td className="py-2 text-right text-base font-bold text-brand-teal-active">{formatVnd(totalRevenue)}</td>
-            </tr>
-            <tr className="border-b border-slate-100">
-              <td className="py-1.5 text-slate-600">Vốn đầu ca</td>
-              <td className="py-1.5 text-right font-semibold text-slate-900">{formatVnd(shift.openingFloatActual)}</td>
-            </tr>
-            <tr className="border-b border-slate-100">
-              <td className="py-1.5 text-slate-600">Thu tiền mặt trong ca</td>
-              <td className="py-1.5 text-right font-semibold text-slate-900">{formatVnd(shift.cashInAmount ?? 0)}</td>
-            </tr>
-            <tr className="border-b border-slate-100">
-              <td className="py-1.5 text-slate-600">Hoàn tiền mặt trong ca</td>
-              <td className="py-1.5 text-right font-semibold text-rose-600">−{formatVnd(shift.cashOutAmount ?? 0)}</td>
-            </tr>
-            <tr className="border-b border-slate-200">
-              <td className="py-1.5 font-semibold text-slate-900">Tổng tiền mặt thực đếm</td>
-              <td className="py-1.5 text-right font-bold text-slate-900">{formatVnd(shift.countedCashAmount ?? 0)}</td>
-            </tr>
-            <tr className="border-b border-slate-100">
-              <td className="py-1.5 text-slate-600">Chênh lệch</td>
-              <td className={`py-1.5 text-right font-semibold ${diff !== 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-                {diff === 0 ? '0 đ' : `${diff > 0 ? '+' : '−'}${formatVnd(Math.abs(diff))}`}
-              </td>
-            </tr>
-            <tr className="border-b border-slate-100">
-              <td className="py-1.5 text-slate-600">Để lại vốn ca sau</td>
-              <td className="py-1.5 text-right font-semibold text-slate-900">{formatVnd(shift.keepForNextAmount ?? 0)}</td>
-            </tr>
-            <tr>
-              <td className="py-2 font-bold text-slate-900">Tiền mặt nộp về</td>
-              <td className="py-2 text-right text-base font-bold text-blue-700">{formatVnd(shift.submittedAmount ?? 0)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        {shift.cashDiscrepancyReason && (
-          <div className="mb-8 text-xs text-slate-600">
-            <span className="font-semibold text-slate-800">Lý do chênh lệch:</span> {shift.cashDiscrepancyReason}
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-8 text-center text-xs text-slate-500">
-          <div>
-            <div className="mb-10 font-semibold text-slate-700">Thu ngân bàn giao</div>
-            <div className="border-t border-slate-300 pt-1">{shift.cashierName}</div>
-          </div>
-          <div>
-            <div className="mb-10 font-semibold text-slate-700">Người nhận bàn giao</div>
-            <div className="border-t border-slate-300 pt-1">(Ký, ghi rõ họ tên)</div>
-          </div>
+    <div>
+      <div className="scroll-hover flex justify-center overflow-x-auto rounded-lg bg-slate-100 py-6">
+        <div className="print-preview-shrink">
+          <CashierShiftReceiptDocument shift={shift} display="screen" />
         </div>
       </div>
+
+      <div className="mt-4 flex justify-center">
+        <PrintButton documentType="CASHIER_SHIFT_RECEIPT" variant="primary" onPrint={handlePrint}>
+          In phiếu
+        </PrintButton>
+      </div>
     </div>
+  );
+}
+
+/** Nội dung phiếu (không có nút in/khung cuộn) — dùng cả ở hộp thoại trên và ở xem trước của "Quản lý mẫu in". */
+export function CashierShiftReceiptDocument({ shift, display = 'print' }: { shift: CashierShiftDetail; display?: 'print' | 'screen' }) {
+  const diff = computeCashierShiftDiff(shift);
+  const totalRevenue = computeCashierShiftTotalRevenue(shift);
+  return (
+    <PrintDocument
+      documentType="CASHIER_SHIFT_RECEIPT"
+      title="Phiếu bàn giao ca"
+      display={display}
+      subtitle={<p>Số phiếu: {shift.shiftNo}</p>}
+      signatures={[{ label: 'Thu ngân bàn giao', name: shift.cashierName }, { label: 'Người nhận bàn giao' }]}
+    >
+      {({ compact }) => (compact ? <RollBody shift={shift} diff={diff} totalRevenue={totalRevenue} /> : <FormalBody shift={shift} diff={diff} totalRevenue={totalRevenue} />)}
+    </PrintDocument>
+  );
+}
+
+/** Thân phiếu cho giấy cuộn K80 — mỗi dòng 1 cặp nhãn/số, vạch đứt ngăn nhóm (hợp máy in nhiệt đơn sắc). */
+function RollBody({ shift, diff, totalRevenue }: { shift: CashierShiftDetail; diff: number; totalRevenue: number }) {
+  const rule = <div className="my-2 border-t border-dashed border-slate-500" />;
+  return (
+    <div className="mt-2 leading-snug">
+      <Row label="Doanh thu ca" value={formatVnd(totalRevenue)} bold />
+      {rule}
+      <Row label="Ca" value={shift.shiftLabel} />
+      <Row label="Thu ngân" value={shift.cashierName} />
+      <Row label="Mở ca" value={formatPrintShortDateTime(shift.openedAt)} />
+      <Row label="Chốt ca" value={shift.closedAt ? formatPrintShortDateTime(shift.closedAt) : '—'} />
+      {rule}
+      <Row label="Vốn đầu ca" value={formatVnd(shift.openingFloatActual)} />
+      <Row label="Thu tiền mặt" value={formatVnd(shift.cashInAmount ?? 0)} />
+      <Row label="Hoàn tiền mặt" value={`-${formatVnd(shift.cashOutAmount ?? 0)}`} />
+      <Row label="Thực đếm" value={formatVnd(shift.countedCashAmount ?? 0)} bold />
+      <Row label="Chênh lệch" value={diff === 0 ? '0 đ' : `${diff > 0 ? '+' : '-'}${formatVnd(Math.abs(diff))}`} bold />
+      {rule}
+      <Row label="Để lại vốn ca sau" value={formatVnd(shift.keepForNextAmount ?? 0)} />
+      <Row label="Nộp về" value={formatVnd(shift.submittedAmount ?? 0)} bold />
+      {shift.cashDiscrepancyReason && <p className="mt-2 text-xs">Lý do chênh lệch: {shift.cashDiscrepancyReason}</p>}
+    </div>
+  );
+}
+
+/** Thân phiếu cho A5/A4 — bảng đầy đủ. */
+function FormalBody({ shift, diff, totalRevenue }: { shift: CashierShiftDetail; diff: number; totalRevenue: number }) {
+  return (
+    <>
+      <div className="mb-6 mt-4 grid grid-cols-2 gap-x-6 gap-y-2">
+        <div>
+          <span className="text-slate-500">Ca làm việc:</span> <span className="font-semibold">{shift.shiftLabel}</span>
+        </div>
+        <div>
+          <span className="text-slate-500">Thu ngân:</span> <span className="font-semibold">{shift.cashierName}</span>
+        </div>
+        <div>
+          <span className="text-slate-500">Giờ mở ca:</span> <span className="font-semibold">{formatPrintShortDateTime(shift.openedAt)}</span>
+        </div>
+        <div>
+          <span className="text-slate-500">Giờ chốt ca:</span> <span className="font-semibold">{shift.closedAt ? formatPrintShortDateTime(shift.closedAt) : '—'}</span>
+        </div>
+      </div>
+
+      <table className="w-full">
+        <tbody>
+          <tr className="border-b-2 border-slate-300">
+            <td className="py-2 font-bold">Tổng doanh thu ca</td>
+            <td className="py-2 text-right text-base font-bold">{formatVnd(totalRevenue)}</td>
+          </tr>
+          <tr className="border-b border-slate-200">
+            <td className="py-1.5 text-slate-600">Vốn đầu ca</td>
+            <td className="py-1.5 text-right font-semibold">{formatVnd(shift.openingFloatActual)}</td>
+          </tr>
+          <tr className="border-b border-slate-200">
+            <td className="py-1.5 text-slate-600">Thu tiền mặt trong ca</td>
+            <td className="py-1.5 text-right font-semibold">{formatVnd(shift.cashInAmount ?? 0)}</td>
+          </tr>
+          <tr className="border-b border-slate-200">
+            <td className="py-1.5 text-slate-600">Hoàn tiền mặt trong ca</td>
+            <td className="py-1.5 text-right font-semibold">−{formatVnd(shift.cashOutAmount ?? 0)}</td>
+          </tr>
+          <tr className="border-b border-slate-300">
+            <td className="py-1.5 font-semibold">Tổng tiền mặt thực đếm</td>
+            <td className="py-1.5 text-right font-bold">{formatVnd(shift.countedCashAmount ?? 0)}</td>
+          </tr>
+          <tr className="border-b border-slate-200">
+            <td className="py-1.5 text-slate-600">Chênh lệch</td>
+            <td className="py-1.5 text-right font-semibold">{diff === 0 ? '0 đ' : `${diff > 0 ? '+' : '−'}${formatVnd(Math.abs(diff))}`}</td>
+          </tr>
+          <tr className="border-b border-slate-200">
+            <td className="py-1.5 text-slate-600">Để lại vốn ca sau</td>
+            <td className="py-1.5 text-right font-semibold">{formatVnd(shift.keepForNextAmount ?? 0)}</td>
+          </tr>
+          <tr>
+            <td className="py-2 font-bold">Tiền mặt nộp về</td>
+            <td className="py-2 text-right text-base font-bold">{formatVnd(shift.submittedAmount ?? 0)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {shift.cashDiscrepancyReason && (
+        <p className="mt-3 text-xs">
+          <span className="font-semibold">Lý do chênh lệch:</span> {shift.cashDiscrepancyReason}
+        </p>
+      )}
+    </>
   );
 }

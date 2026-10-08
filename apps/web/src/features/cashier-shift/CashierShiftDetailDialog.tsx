@@ -8,7 +8,6 @@ import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useHasPermission } from '../auth/usePermission';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { CashierShiftReceiptView } from './CashierShiftReceiptView';
 import {
   useApproveCashierShiftMutation,
@@ -34,7 +33,6 @@ export function CashierShiftDetailDialog({ id, onClose }: { id: string; onClose:
   const [error, setError] = useState<string | null>(null);
 
   const detailQuery = useCashierShiftDetailQuery(id);
-  const clinicHeaderQuery = useClinicPrintHeaderQuery();
   const resolveMutation = useResolveCashierShiftDiscrepancyMutation(id);
   const approveMutation = useApproveCashierShiftMutation(id);
 
@@ -163,7 +161,7 @@ export function CashierShiftDetailDialog({ id, onClose }: { id: string; onClose:
             </div>
           )}
 
-          {shift && showReceipt && clinicHeaderQuery.data && <CashierShiftReceiptView shift={shift} clinicHeader={clinicHeaderQuery.data} />}
+          {shift && showReceipt && <CashierShiftReceiptView shift={shift} />}
         </div>
 
         {shift && (

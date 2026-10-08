@@ -62,6 +62,9 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // nghiệp vụ, không phải xung đột trạng thái đồng thời).
   PRESCRIPTION_ALREADY_SIGNED: HttpStatus.CONFLICT,
   DRUG_DUPLICATE_CODE: HttpStatus.CONFLICT,
+  // "Quản lý mẫu in" (#211) — trùng khổ giấy / xoá bản mặc định là xung đột trạng thái hiện có (409); khổ giấy không được mở rơi về mặc định 422.
+  PRINT_TEMPLATE_DUPLICATE_PAPER: HttpStatus.CONFLICT,
+  PRINT_TEMPLATE_DEFAULT_CANNOT_DELETE: HttpStatus.CONFLICT,
   // Kho Thuốc GĐ5 — trùng gõ tắt tìm thuốc, cùng nhóm DRUG_DUPLICATE_CODE ở trên.
   DRUG_DUPLICATE_SHORTCUT_CODE: HttpStatus.CONFLICT,
   // Guard chặn đổi `isBatchManaged` khi còn tồn (21/09/2026) — xung đột với trạng thái tồn kho

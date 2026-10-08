@@ -35,7 +35,6 @@ import {
   getSoloClinicWorkflowStatus,
   getCashierShiftRequiredStatus,
   getWalletMixedPaymentStatus,
-  getClinicPrintHeader,
   getClinicProfile,
   getClinicSettings,
   getDeferredPaymentStatus,
@@ -245,20 +244,6 @@ export function useClinicProfileQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'profile'),
     queryFn: getClinicProfile,
-  });
-}
-
-/**
- * Tự-phục vụ (Thu ngân/Kê đơn) — `InvoiceDetailPage.tsx`/`PrescriptionPanel.tsx` dùng riêng hook
- * này (KHÔNG dùng `useClinicProfileQuery()`): lễ tân/bác sĩ không có `clinic_config.read` (chỉ
- * `clinic_admin`), phát hiện thật lúc kiểm bằng trình duyệt (403) cho màn Thu ngân — cùng lỗ hổng
- * đã có sẵn ở `PrescriptionPanel.tsx` (chưa từng lộ ra vì luôn kiểm bằng tài khoản admin), vá luôn.
- */
-export function useClinicPrintHeaderQuery() {
-  const { tenantId } = useAppConfig();
-  return useQuery({
-    queryKey: queryKey(tenantId, 'clinic', 'print-header'),
-    queryFn: getClinicPrintHeader,
   });
 }
 

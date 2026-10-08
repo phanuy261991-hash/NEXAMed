@@ -2,7 +2,21 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-06
+
+### Quản lý mẫu in (mỗi chứng từ nhiều bản mẫu theo khổ giấy, chọn khổ khi in)
+
+Trang mới Quản trị → "Mẫu in" quản lý 11 loại chứng từ: tên, khổ giấy (A4/A5 đứng/A5 ngang, K80 cho 4 chứng từ tiền), đầu trang, tiêu đề, lề, ghi chú, chữ ký, số liên; xem trước bằng view in thật; "Thiết lập nhanh" cho người mới. Chưa cấu hình gì vẫn in được (bản dựng sẵn). Mọi màn in được dựng lại trên khung chung `PrintDocument`; bấm "In phiếu" mở hộp thoại chọn khổ (khổ mặc định chọn sẵn), nút "Đặt làm khổ in mặc định" hiện ngay trong cấu hình. Bệnh án PDF dùng mẫu `MEDICAL_RECORD`. Migration `20261001150000_print_template`. Chi tiết `docs/DECISIONS.md` #211. Đã xác minh: 20 test HTTP, Chrome thật (PDF đúng khổ A4/A5/A5 ngang/K80, popup, đổi mặc định), chưa thử máy in nhiệt thật.
+
 ## 2026-10-01
+
+### Nhập/Xuất Excel Thuốc & Vật tư (giúp phòng khám mới đưa danh sách có sẵn vào hệ thống)
+
+Nút "Nhập Excel" và "Xuất Excel" cạnh "Thêm mặt hàng" ở Danh mục Thuốc & Vật tư. File Excel 3 sheet liên kết theo Mã thuốc (Thuốc & Vật tư / Hoạt chất / Quy đổi đơn vị); **file mẫu tải về có sẵn 3 mặt hàng ví dụ (Paracetamol, thuốc 2 hoạt chất có quy đổi Hộp-Vỉ-Viên, vật tư) + sheet Hướng dẫn từng cột + sheet Danh mục hiện có** — dòng ví dụ (mã `VD-`) tự bị bỏ qua nên quên xoá cũng không sao. Nhập theo 2 bước (xem trước 4 nhóm Hợp lệ / Đã có sẵn / Lỗi / Danh mục mới → Xác nhận): trong file điền TÊN Đơn vị/Hãng/Nhóm thuốc/Hoạt chất…, tên chưa có trong danh mục sẽ được tạo mới (cần quyền quản lý danh mục dùng chung); mã đã có thì bỏ qua, không ghi đè; cả lần nhập nằm trong một transaction. Tối đa 2.000 mặt hàng/lần. File xuất cùng định dạng nên nhập lại được. Chỉ nhập danh mục, không nhập tồn kho. Không migration. Chi tiết `docs/DECISIONS.md` #210. Đã xác minh: 18 test HTTP mới + kiểm đột biến, Chrome thật (tải mẫu, nhập, lỗi, xuất).
+
+### Điều dưỡng được quyền xem lịch hẹn (`appointment.read`) + verify Chrome nốt 2 form xung đột
+
+Chốt phương án từ danh sách khoảng trống quyền đọc phụ (#208): chỉ cấp cho điều dưỡng quyền ĐỌC lịch hẹn (global) để "Bệnh nhân trong ngày" có bộ lọc bác sĩ; 4 khoảng trống còn lại cố ý giữ nguyên vì cấp sẽ lộ dữ liệu nhân sự/quỹ. Điều dưỡng thấy thêm menu "Lịch hẹn", tenant cũ tự được vá lúc API khởi động. Đảo 2 test cũ "nurse → 403" thành 200. Chi tiết `docs/DECISIONS.md` #209. Đã verify Chrome thật nốt Đơn thuốc mẫu + Bàn khám/Ghế (xung đột nhiều máy) — không phát hiện bug.
 
 ### Gợi ý "quyền đi kèm" ở màn Vai trò & Phân quyền + sửa lỗi lễ tân không thấy tuỳ chọn "trả hỗn hợp ví"
 
@@ -14,7 +28,7 @@ Làm nốt 2 chỗ còn ghi đè âm thầm: `reference_catalog` (thêm cột `v
 
 ### Áp nốt mẫu xử lý xung đột nhiều máy cho Phòng/Tầng, Khoa/Phòng, Quỹ tiền mặt, Ca làm việc, Vai trò, Đơn thuốc mẫu
 
-Cùng mẫu `useSaveAttempt` + `RecordFormNotice` + `useEditedRecordGuard` đã dùng cho nhà cung cấp/thuốc/kho: form Sửa tự kiểm tra bản mới mỗi 15 giây và khoá nút Lưu, lỗi lưu (kể cả xung đột phiên bản) hiện ngay trong form với nút "Tải lại dữ liệu mới"; thao tác nhanh ở danh sách (Xoá/Ẩn/Kích hoạt lại) báo rõ xung đột và tự tải lại. Áp cho 9 form: Tầng, Phòng, Loại Khoa/Phòng, Khoa/Phòng, Quỹ, Ca làm việc, Đổi tên/Ẩn vai trò, Đơn thuốc mẫu, Bàn khám/Ghế. Các danh sách này nhỏ và không phân trang nên **không thêm `GET :id`** — dùng `shared/api/fetch-one-from-list.ts` lấy bản ghi từ endpoint danh sách sẵn có (không đổi API/OpenAPI). Ca làm việc bỏ `submitError` cũ để dùng banner thống nhất. **Đã làm nốt ngay sau đó**: ma trận quyền của vai trò và `reference_catalog` (xem mục kế trên). **Đã xác minh thật**: `typecheck`/`build` web sạch, lint 0 lỗi; Chrome thật 2 phiên với Tầng, Ca làm việc, Quỹ, Khoa/Phòng, Vai trò (tự phát hiện khi form đang mở → khoá Lưu → tải lại; bấm Lưu khi bản đã đổi → báo xung đột trong form → tải lại; Xoá nhanh khi bản đã đổi ở Ca làm việc). Đơn thuốc mẫu và Bàn khám/Ghế mới qua typecheck/build, chưa chạy Chrome. Toàn suite `apps/api` chạy lại: 1101 test pass, 2 file (`user-account-me-http`, `icd10-http`) fail ở bước seed vai trò do race `role_permission` đã biết, pass 16/16 khi chạy riêng.
+Cùng mẫu `useSaveAttempt` + `RecordFormNotice` + `useEditedRecordGuard` đã dùng cho nhà cung cấp/thuốc/kho: form Sửa tự kiểm tra bản mới mỗi 15 giây và khoá nút Lưu, lỗi lưu (kể cả xung đột phiên bản) hiện ngay trong form với nút "Tải lại dữ liệu mới"; thao tác nhanh ở danh sách (Xoá/Ẩn/Kích hoạt lại) báo rõ xung đột và tự tải lại. Áp cho 9 form: Tầng, Phòng, Loại Khoa/Phòng, Khoa/Phòng, Quỹ, Ca làm việc, Đổi tên/Ẩn vai trò, Đơn thuốc mẫu, Bàn khám/Ghế. Các danh sách này nhỏ và không phân trang nên **không thêm `GET :id`** — dùng `shared/api/fetch-one-from-list.ts` lấy bản ghi từ endpoint danh sách sẵn có (không đổi API/OpenAPI). Ca làm việc bỏ `submitError` cũ để dùng banner thống nhất. **Đã làm nốt ngay sau đó**: ma trận quyền của vai trò và `reference_catalog` (xem mục kế trên). **Đã xác minh thật**: `typecheck`/`build` web sạch, lint 0 lỗi; Chrome thật 2 phiên với Tầng, Ca làm việc, Quỹ, Khoa/Phòng, Vai trò (tự phát hiện khi form đang mở → khoá Lưu → tải lại; bấm Lưu khi bản đã đổi → báo xung đột trong form → tải lại; Xoá nhanh khi bản đã đổi ở Ca làm việc). Đơn thuốc mẫu và Bàn khám/Ghế đã verify Chrome thật 2 phiên sau đó (01/10/2026), không phát hiện bug. Toàn suite `apps/api` chạy lại: 1101 test pass, 2 file (`user-account-me-http`, `icd10-http`) fail ở bước seed vai trò do race `role_permission` đã biết, pass 16/16 khi chạy riêng.
 
 ### Xử lý xung đột khi nhiều máy cùng sửa một bản ghi (nhà cung cấp, thuốc, kho, tài khoản, hồ sơ bệnh nhân)
 

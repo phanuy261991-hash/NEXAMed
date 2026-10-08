@@ -105,6 +105,44 @@ export class ReferenceCatalogService {
     });
   }
 
+  /**
+   * Nhập Excel Thuốc & Vật tư (#210) — đọc MỘT lần mọi mục (kể cả đã ẩn) của nhiều category trong
+   * transaction của người gọi, để dựng chỉ mục "tên → mã" đối chiếu hàng loạt (không N+1).
+   */
+  async listAllForImport(
+    tx: Prisma.TransactionClient,
+    categories: ReferenceCatalogCategory[],
+  ): Promise<{ category: ReferenceCatalogCategory; code: string; name: string; isActive: boolean }[]> {
+    const rows = await this.referenceCatalogRepository.listByCategories(tx, categories);
+    return rows.map((r) => ({ category: r.category, code: r.code, name: r.name, isActive: r.isActive }));
+  }
+
+  /**
+   * Nhập Excel Thuốc & Vật tư (#210) — tạo MỘT mục theo TÊN (mã tự sinh, đúng như "Thêm nhanh" ở form
+   * thuốc) trong transaction của người gọi (không mở transaction riêng → nhập hỏng giữa chừng thì
+   * rollback cả danh mục vừa tạo). Quyền `reference_catalog.manage` do nơi gọi kiểm trước.
+   */
+  async createByNameInTx(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    category: ReferenceCatalogCategory,
+    name: string,
+    meta: RequestMeta,
+  ): Promise<string> {
+    const code = await this.generateCode(tx, category);
+    const created = await this.referenceCatalogRepository.create(tx, { category, code, name, sortOrder: 0 });
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'reference_catalog.created',
+      entityType: 'reference_catalog',
+      entityId: created.id,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+    return created.code;
+  }
+
   async create(
     tenantId: string,
     actorId: string,

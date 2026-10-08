@@ -9,7 +9,6 @@ import { DateInput } from '../../shared/ui/DateInput';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useCashAccountsQuery } from './cash-account.queries';
 import { CashVoucherPrintView } from './CashVoucherPrintView';
@@ -78,7 +77,6 @@ export function CashVoucherFormDialog({
   const [printTarget, setPrintTarget] = useState<CashVoucher | null>(null);
   const [printing, setPrinting] = useState(false);
   const printMutation = usePrintCashVoucherMutation();
-  const clinicHeaderQuery = useClinicPrintHeaderQuery();
 
   const incomeExpenseTypeQuery = useReferenceCatalogQuery('INCOME_EXPENSE_TYPE');
   const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD');
@@ -336,10 +334,9 @@ export function CashVoucherFormDialog({
             </div>
           </BoxedSection>
 
-          {printing && printTarget && clinicHeaderQuery.data && (
+          {printing && printTarget && (
             <CashVoucherPrintView
               voucher={printTarget}
-              clinicHeader={clinicHeaderQuery.data}
               incomeExpenseTypeLabel={labelFor(incomeExpenseTypeQuery.data?.items, printTarget.incomeExpenseTypeCode)}
               cashAccountName={cashAccounts.find((a) => a.id === printTarget.cashAccountId)?.name ?? '—'}
               paymentMethodLabel={labelFor(paymentMethodQuery.data?.items, printTarget.paymentMethodCode)}

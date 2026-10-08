@@ -98,6 +98,7 @@ model Tenant {
   prescriptions               Prescription[]
   prescriptionItems           PrescriptionItem[]
   prescriptionTemplates       PrescriptionTemplate[]
+  printTemplates              PrintTemplate[]
   icd10PhraseUsages           Icd10PhraseUsage[]
   prescriptionTemplateItems   PrescriptionTemplateItem[]
   patientAllergens            PatientAllergen[]
@@ -3609,4 +3610,55 @@ model AuditLog {
   @@index([tenantId, entityType, entityId, occurredAt(sort: Desc)])
   @@index([tenantId, actorId, occurredAt(sort: Desc)])
   @@map("audit_log")
+}
+
+/// Loại chứng từ in được quản lý ở "Quản lý mẫu in" (docs/DECISIONS.md #211). Khớp `printDocumentTypeSchema` (packages/shared).
+enum PrintDocumentType {
+  PRESCRIPTION
+  MEDICAL_RECORD
+  INVOICE
+  INVOICE_COMBINED
+  WALLET_TOPUP_RECEIPT
+  CASHIER_SHIFT_RECEIPT
+  CASH_VOUCHER
+  STOCK_RECEIPT
+  STOCK_ISSUE
+  STOCK_COUNT
+  STOCK_TRANSFER
+}
+
+/// Khổ giấy của một bản mẫu in. K80 = máy in nhiệt 80mm (chỉ 4 chứng từ tiền).
+enum PrintPaperSize {
+  A4
+  A5
+  A5_LANDSCAPE
+  K80
+}
+
+/// "Quản lý mẫu in" (docs/DECISIONS.md #211) — mỗi LOẠI chứng từ có nhiều bản mẫu theo khổ giấy: duy nhất
+/// (tenant, document_type, paper_size) và đúng 1 bản `is_default` mỗi loại (cả hai là partial unique index
+/// viết tay trong migration — Prisma không biểu diễn được). Chưa có dòng nào thì dùng bản dựng sẵn trong
+/// `packages/shared` (không seed). `config_json` validate bằng `printTemplateConfigSchema` ở tầng ứng dụng.
+model PrintTemplate {
+  id           String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String            @map("tenant_id") @db.Uuid
+  documentType PrintDocumentType @map("document_type")
+  paperSize    PrintPaperSize    @map("paper_size")
+  name         String
+  isDefault    Boolean           @default(false) @map("is_default")
+  configJson   Json              @map("config_json")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@map("print_template")
 }

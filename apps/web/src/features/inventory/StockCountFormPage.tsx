@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CaretDown, CaretRight, MagnifyingGlass, Plus, Printer, Trash, X } from '@phosphor-icons/react';
+import { CaretDown, CaretRight, MagnifyingGlass, Plus, Trash, X } from '@phosphor-icons/react';
 import type { CreateStockCountRequest, DrugSummary, StockCountLine } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { PrintButton } from '../../shared/print/PrintButton';
 import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -15,7 +16,6 @@ import { formatDobDisplay } from '../../shared/format/date';
 import { useCollapsedGroups } from '../../shared/hooks/useCollapsedGroups';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
@@ -85,7 +85,6 @@ export function StockCountFormPage() {
 
   const countQuery = useStockCountQuery(id ?? '', isEdit);
   const warehousesQuery = useWarehousesQuery();
-  const clinicQuery = useClinicPrintHeaderQuery();
   // Phân quyền theo Khoa/Phòng (docs/DECISIONS.md #170) — mặc định 5 vai trò hệ thống vẫn `global`
   // (không lọc gì); chỉ có tác dụng khi `clinic_admin` chủ động chọn scope `department` cho 1 vai
   // trò tuỳ biến ở "Vai trò & Phân quyền". Backend LUÔN enforce lại (404 nếu chọn sai kho) — lọc ở
@@ -740,14 +739,11 @@ export function StockCountFormPage() {
         {/* In phiếu — CHỈ phiếu ĐÃ DUYỆT (`difference`/lý do chênh lệch chỉ có giá trị thật sau khi
             Duyệt), bổ sung 22/09/2026 theo yêu cầu chủ dự án (`docs/DECISIONS.md` #171). */}
         {readOnly && countQuery.data?.status === 'POSTED' && (
-          <Button type="button" variant="secondary" onClick={handlePrint}>
-            <Printer size={15} weight="bold" aria-hidden="true" />
-            In phiếu
-          </Button>
+          <PrintButton documentType="STOCK_COUNT" onPrint={handlePrint}>In phiếu</PrintButton>
         )}
       </div>
 
-      {printing && countQuery.data && clinicQuery.data && <StockCountPrintView count={countQuery.data} clinicHeader={clinicQuery.data} />}
+      {printing && countQuery.data && <StockCountPrintView count={countQuery.data} />}
 
       {pendingApproval && (
         <StockCountApproveReasonDialog

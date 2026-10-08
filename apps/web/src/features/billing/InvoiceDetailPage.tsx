@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowCounterClockwise, ArrowLeft, Bank, CheckCircle, CreditCard, Money, Printer, Receipt, Wallet, Warning, XCircle } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ArrowLeft, Bank, CheckCircle, CreditCard, Money, Receipt, Wallet, Warning, XCircle } from '@phosphor-icons/react';
 import type { CombinedInvoicePrintResponse, DiscountType, PaymentMethod } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { PrintButton } from '../../shared/print/PrintButton';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { CashTenderPills } from '../../shared/ui/CashTenderPills';
 import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
@@ -16,7 +17,7 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useAuthStore } from '../auth/auth.store';
 import { useHasPermission } from '../auth/usePermission';
-import { useClinicPrintHeaderQuery, useWalletMixedPaymentEnabledQuery } from '../clinic/clinic.queries';
+import { useWalletMixedPaymentEnabledQuery } from '../clinic/clinic.queries';
 import { OpenShiftDialog } from '../cashier-shift/OpenShiftDialog';
 import { useCurrentCashierShiftQuery } from '../cashier-shift/cashier-shift.queries';
 import { useCashierShiftRequiredEnabledQuery } from '../clinic/clinic.queries';
@@ -97,7 +98,6 @@ export function InvoiceDetailPage() {
   const [combinedPrint, setCombinedPrint] = useState<CombinedInvoicePrintResponse | null>(null);
 
   const invoiceQuery = useBillingInvoiceQuery(encounterId, invoiceIdParam);
-  const clinicQuery = useClinicPrintHeaderQuery();
   const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD');
   // "Thu tiền" đòi có ca thu ngân đang mở (đối soát tiền mặt, #chốt-ca) — không chặn cả trang, chỉ
   // chặn đúng thao tác chạm tới tiền (chốt qua AskUserQuestion, đảo hướng 2026-09-03). Công tắc
@@ -498,10 +498,9 @@ export function InvoiceDetailPage() {
             {(showCombinedPrint || !invoice.encounterCancelled) && (
               <div className="ml-auto flex items-center gap-2">
                 {showCombinedPrint && (
-                  <Button type="button" onClick={() => void handlePrintCombined()} loading={printCombinedMutation.isPending}>
-                    <Printer size={16} weight="bold" aria-hidden="true" />
+                  <PrintButton documentType="INVOICE_COMBINED" variant="primary" onPrint={() => void handlePrintCombined()} loading={printCombinedMutation.isPending}>
                     In gộp {combinedInvoiceCount} phiếu
-                  </Button>
+                  </PrintButton>
                 )}
                 {!invoice.encounterCancelled && (
                   <Button type="button" variant="danger" className="px-2.5 py-1 text-xs" onClick={() => setCancelOpen(true)}>
@@ -953,10 +952,9 @@ export function InvoiceDetailPage() {
                       )}
                     </p>
                   )}
-                  <Button type="button" onClick={() => void handlePrintAgain()} loading={printMutation.isPending}>
-                    <Printer size={16} weight="bold" aria-hidden="true" />
+                  <PrintButton documentType="INVOICE" variant="primary" onPrint={() => void handlePrintAgain()} loading={printMutation.isPending}>
                     In lại phiếu thu
-                  </Button>
+                  </PrintButton>
                   {/* #085 — "Hoàn tiền" chỉ hiện khi ĐỦ điều kiện (PAID + lượt khám đã huỷ) VÀ vai
                       trò có quyền `invoice.refund` (mặc định chỉ clinic_admin). */}
                   {invoice.needsRefund && canRefund && (
@@ -985,20 +983,12 @@ export function InvoiceDetailPage() {
 
           {combinedPrint ? (
             <InvoiceCombinedPrintView
-              clinicName={clinicQuery.data?.name ?? ''}
-              clinicAddress={clinicQuery.data?.address ?? null}
-              clinicPhone={clinicQuery.data?.phone ?? null}
-              printLogoUrl={clinicQuery.data?.printLogoUrl ?? null}
               collectedByName={collectedByName}
               paymentMethodName={paymentMethodName}
               data={combinedPrint}
             />
           ) : (
             <InvoicePrintView
-              clinicName={clinicQuery.data?.name ?? ''}
-              clinicAddress={clinicQuery.data?.address ?? null}
-              clinicPhone={clinicQuery.data?.phone ?? null}
-              printLogoUrl={clinicQuery.data?.printLogoUrl ?? null}
               collectedByName={collectedByName}
               paymentMethodLabel={paymentMethodName(invoice.paymentMethod)}
               invoice={invoice}

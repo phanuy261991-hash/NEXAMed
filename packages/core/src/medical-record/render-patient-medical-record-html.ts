@@ -79,8 +79,26 @@ export interface MedicalRecordPatientInfo {
   familyHistoryLines: string[];
 }
 
+/**
+ * Tuỳ chọn trình bày lấy từ bản mẫu in `MEDICAL_RECORD` ("Quản lý mẫu in", docs/DECISIONS.md #211) — khai báo cục bộ
+ * (không import `@nexamed/shared`, đúng nguyên tắc ở đầu file). Bỏ trống = bố cục mặc định như trước khi có Quản lý mẫu in.
+ */
+export interface MedicalRecordPrintOptions {
+  header: { showClinicName: boolean; showAddress: boolean; showPhone: boolean; showTaxCode: boolean; showDivider: boolean };
+  /** Tiêu đề thay cho "Bệnh án bệnh nhân" — `null`/rỗng = giữ mặc định. */
+  title: string | null;
+  /** Dòng ghi chú cuối bệnh án — `null`/rỗng = không in. */
+  footerNote: string | null;
+}
+
+const DEFAULT_PRINT_OPTIONS: MedicalRecordPrintOptions = {
+  header: { showClinicName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
+  title: null,
+  footerNote: null,
+};
+
 export interface PatientMedicalRecordDocument {
-  clinic: { name: string; address: string | null; phone: string | null };
+  clinic: { name: string; address: string | null; phone: string | null; taxCode?: string | null };
   patient: MedicalRecordPatientInfo;
   encounters: MedicalRecordEncounterEntry[];
   generatedAt: string;
@@ -167,7 +185,13 @@ function renderEncounter(entry: MedicalRecordEncounterEntry, index: number): str
     </section>`;
 }
 
-export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument): string {
+export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument, options: MedicalRecordPrintOptions = DEFAULT_PRINT_OPTIONS): string {
+  const { header } = options;
+  const clinicMeta = [
+    header.showAddress ? doc.clinic.address : null,
+    header.showPhone ? doc.clinic.phone : null,
+    header.showTaxCode && doc.clinic.taxCode ? `MST: ${doc.clinic.taxCode}` : null,
+  ].filter((v): v is string => Boolean(v));
   const history: [string, string][] = [
     ['Tiền sử dị ứng', doc.patient.allergenNames.length > 0 ? doc.patient.allergenNames.join(', ') : 'Không ghi nhận'],
     ['Bệnh lý nền', doc.patient.conditionNames.length > 0 ? doc.patient.conditionNames.join(', ') : 'Không ghi nhận'],
@@ -204,15 +228,16 @@ export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument
   .muted { color: #94a3b8; font-style: italic; }
   .encounter { margin-top: 14px; }
   .page-break { page-break-before: always; }
+  .footer-note { margin-top: 18px; font-style: italic; border-left: 2px solid #94a3b8; padding-left: 8px; }
   .footer { margin-top: 24px; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 6px; }
 </style>
 </head>
 <body>
-  <div class="clinic-header">
-    <div class="clinic-name">${escapeHtml(doc.clinic.name)}</div>
-    <div class="clinic-meta">${[doc.clinic.address, doc.clinic.phone].filter((v): v is string => Boolean(v)).map(escapeHtml).join(' · ')}</div>
+  <div class="clinic-header"${header.showDivider ? '' : ' style="border-bottom: none;"'}>
+    ${header.showClinicName ? `<div class="clinic-name">${escapeHtml(doc.clinic.name)}</div>` : ''}
+    <div class="clinic-meta">${clinicMeta.map(escapeHtml).join(' · ')}</div>
   </div>
-  <div class="doc-title">Bệnh án bệnh nhân</div>
+  <div class="doc-title">${escapeHtml(options.title?.trim() || 'Bệnh án bệnh nhân')}</div>
 
   <table class="patient-info">
     <tbody>
@@ -235,6 +260,7 @@ export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument
       : '<p class="muted" style="margin-top:16px;">Bệnh nhân chưa có lượt khám nào đã hoàn tất.</p>'
   }
 
+  ${options.footerNote?.trim() ? `<p class="footer-note">${escapeHtml(options.footerNote.trim())}</p>` : ''}
   <div class="footer">Xuất lúc ${formatDateTime(doc.generatedAt)} · Lý do xuất: ${escapeHtml(doc.reason)}</div>
 </body>
 </html>`;

@@ -1,6 +1,9 @@
-import { Suspense, lazy, type ReactNode } from 'react';
+import { Suspense, lazy, useEffect, type ReactNode } from 'react';
 import { RoomSessionGate } from '../../features/clinic/RoomSessionGate';
 import { PageFallback } from '../ui/PageFallback';
+import { useClinicPrintHeaderQuery } from '../print/clinic-print-header.queries';
+import { usePrintPaperChoice } from '../print/print-paper-choice';
+import { useResolvedPrintTemplatesQuery } from '../print/print-template.queries';
 import { BreadcrumbProvider } from './breadcrumb.context';
 import { Sidebar } from './Sidebar';
 import { SidebarProvider } from './sidebar.context';
@@ -27,6 +30,19 @@ const BackupStatusBanner = lazy(() => import('./BackupStatusBanner').then((m) =>
  * chính nó (danh sách rộng gần hết chiều ngang; form/trang thường tự thêm `max-w` + `p-8`), tránh
  * một khung chung ép mọi loại màn hình vào cùng một bố cục.
  */
+/** Nạp sẵn bản mẫu in + đầu trang phòng khám vào cache lúc vào app — nhiều nơi gọi `window.print()` ngay sau khi dựng chứng từ, không kịp chờ mạng. */
+function PrintTemplatePrefetch() {
+  useResolvedPrintTemplatesQuery();
+  useClinicPrintHeaderQuery();
+  // Khổ giấy chọn ở nút "In ▾" chỉ áp cho MỘT lần in: hết hộp thoại in (kể cả khi huỷ) thì quay về khổ mặc định.
+  useEffect(() => {
+    const reset = () => usePrintPaperChoice.getState().clear();
+    window.addEventListener('afterprint', reset);
+    return () => window.removeEventListener('afterprint', reset);
+  }, []);
+  return null;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <BreadcrumbProvider>
@@ -49,6 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <RoomSessionGate />
+        <PrintTemplatePrefetch />
       </SidebarProvider>
     </BreadcrumbProvider>
   );

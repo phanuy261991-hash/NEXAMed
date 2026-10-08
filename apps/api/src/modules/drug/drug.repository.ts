@@ -142,6 +142,11 @@ export class DrugRepository {
     return tx.drug.findMany({ where, include: DETAIL_INCLUDE, orderBy: { name: 'asc' } });
   }
 
+  /** Nhập/Xuất Excel Thuốc & Vật tư (#210) — mã + gõ tắt của MỌI mặt hàng (kể cả đã ẩn) để đối chiếu trùng hàng loạt, không N+1. */
+  listCodesAndShortcuts(tx: Prisma.TransactionClient, tenantId: string): Promise<{ code: string; shortcutCode: string | null }[]> {
+    return tx.drug.findMany({ where: { tenantId, deletedAt: null }, select: { code: true, shortcutCode: true } });
+  }
+
   /** Kho Thuốc GĐ5 — tra 1 thuốc theo `shortcutCode` CHÍNH XÁC (đã chuẩn hoá thường), dùng cho ô
    * tìm thuốc gõ tắt (Enter ngay khi khớp đúng 1 gõ tắt, không cần chọn từ danh sách). */
   findByShortcutCode(tx: Prisma.TransactionClient, tenantId: string, shortcutCode: string): Promise<Drug | null> {

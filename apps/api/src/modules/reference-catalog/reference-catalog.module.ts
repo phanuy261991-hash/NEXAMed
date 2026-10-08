@@ -20,6 +20,7 @@ import { ReferenceCatalogReaderAdapter } from '../../infrastructure/reference-ca
     ExamTypePriceRepository,
     { provide: REFERENCE_CATALOG_READER_PORT, useClass: ReferenceCatalogReaderAdapter },
   ],
-  exports: [REFERENCE_CATALOG_READER_PORT],
+  // `ReferenceCatalogService` export cho "Nhập Excel Thuốc & Vật tư" (#210, `DrugModule`) — tra tên → mã hàng loạt + tạo mục theo tên trong transaction của người gọi.
+  exports: [REFERENCE_CATALOG_READER_PORT, ReferenceCatalogService],
 })
 export class ReferenceCatalogModule {}

@@ -18,6 +18,7 @@ import {
   HandCoins,
   ListChecks,
   Pill,
+  Printer,
   Receipt,
   Scales,
   SidebarSimple,
@@ -111,6 +112,8 @@ const ADMIN_GROUP_PATHS = [
   // docs/DECISIONS.md #157), route/quyền giữ nguyên (`/admin/catalog-pharmacy` KHÔNG chuyển).
   '/admin/catalog-warehouse',
   '/admin/prescription-templates',
+  // "Quản lý mẫu in" (docs/DECISIONS.md #211).
+  '/admin/print-templates',
   '/admin/system-config',
   '/admin/activity-log',
 ];
@@ -704,6 +707,7 @@ export function Sidebar() {
                       (16/09/2026, docs/DECISIONS.md #157), route/quyền giữ nguyên. */}
                   {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-warehouse" label="Danh mục kho" icon={Warehouse} collapsed={false} indent />}
                   {canSeePrescriptionTemplates && <NavItem to="/admin/prescription-templates" label="Đơn thuốc mẫu" icon={Stack} collapsed={false} indent />}
+                  {canSeeSystemConfig && <NavItem to="/admin/print-templates" label="Mẫu in" icon={Printer} collapsed={false} indent />}
                   {canSeeSystemConfig && <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />}
                   {canSeeActivityLog && <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />}
                 </ul>

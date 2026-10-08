@@ -75,6 +75,8 @@ const LOGIN_ONLY_ROUTES = new Set<string>([
   'GET /api/v1/clinic-settings/allow-staff-self-schedule-enabled',
   'GET /api/v1/clinic-settings/cashier-shift-required-enabled',
   'GET /api/v1/clinic-settings/wallet-mixed-payment-enabled',
+  // Bản mẫu in MẶC ĐỊNH của từng chứng từ (#211) — mọi nhân viên cần để in; chỉ chứa cấu hình bố cục, không dữ liệu nhạy cảm.
+  'GET /api/v1/print-templates/resolved',
   'GET /api/v1/clinic-settings/sidebar-auto-collapse-enabled',
   'GET /api/v1/clinic-settings/solo-clinic-workflow-enabled',
   'GET /api/v1/clinic-settings/pharmacy-stock-tracking-enabled',

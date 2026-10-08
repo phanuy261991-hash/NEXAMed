@@ -149,6 +149,28 @@ html {
   outline-offset: 2px;
 }
 
+/* Thu nhỏ tờ giấy trong hộp thoại xem phiếu (A4 rộng hơn hộp thoại) — CHỈ trên màn hình, khi in thì bỏ. */
+@media screen {
+  .print-preview-shrink {
+    zoom: 0.72;
+  }
+}
+
+/* Tờ giấy trên màn hình (hộp thoại xem phiếu, xem trước ở Quản lý mẫu in): rộng đúng khổ giấy, lề giả lập bằng padding. */
+.print-sheet {
+  box-sizing: border-box;
+  background: #fff;
+  color: #0f172a;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.print-sheet-screen {
+  width: var(--sheet-width);
+  min-height: var(--sheet-min-height);
+  padding: var(--sheet-pad);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.14);
+}
+
 /**
  * Hạ tầng in ấn dùng chung (Sprint 4, S4-04 — PRE-04 in đơn thuốc) — kỹ thuật ẩn toàn bộ trang
  * bằng `visibility:hidden` (giữ nguyên layout, không gây reflow/nhấp nháy) rồi CHỈ hiện lại phần tử
@@ -169,6 +191,23 @@ html {
     left: 0;
     top: 0;
     width: 100%;
+  }
+
+  /* Khung in dùng chung `PrintDocument` (docs/DECISIONS.md #211): lề + khổ giấy do `@page` lo, nên khi in thì bỏ
+     khung giả lập tờ giấy trên màn hình; mỗi liên bắt đầu một trang mới. */
+  .print-sheet-screen {
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  .print-sheet + .print-sheet {
+    break-before: page;
+  }
+  /* Vùng xem trước ở trang Quản lý mẫu in được thu nhỏ bằng transform — phải bỏ khi in thử. */
+  .print-no-transform {
+    transform: none !important;
+    zoom: 1 !important;
   }
 }
 

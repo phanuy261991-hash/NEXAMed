@@ -302,6 +302,10 @@ Quyền: `supplier`/`warehouse` dùng lại `drug.read`/`drug.manage` (không pe
 
 **Còn treo (GĐ1 xong, chưa làm)**: GĐ2 (Nhập kho & tồn theo lô — `inventory_batch`/`stock_balance`/`stock_ledger`/`stock_receipt`) → GĐ3 (Xuất kho theo đơn + FEFO + tiền thuốc — duy nhất chạm bảng `invoice` đang chạy thật, khuyến nghị thử tại 1 pilot trước khi GA rộng) → GĐ4 (Kiểm kê/điều chuyển/báo cáo) → GĐ5 (trải nghiệm kê đơn: tìm không dấu, macro, điều hướng bàn phím). Xem `docs/DECISIONS.md` #146 để biết lộ trình đầy đủ.
 
+### print_template (Quản lý mẫu in, `docs/DECISIONS.md` #211)
+
+Bản mẫu in theo (chứng từ × khổ giấy). Cột đặc thù: `document_type`, `paper_size`, `name`, `is_default`, `config jsonb` (validate bằng `printTemplateConfigSchema` ở `packages/shared`; hỏng thì rơi về mặc định theo khổ). Partial unique `(tenant_id, document_type, paper_size)` và đúng một `is_default` mỗi `(tenant_id, document_type)`, đều `WHERE deleted_at IS NULL`. Chưa có dòng → API trả "bản dựng sẵn" (không lưu DB). Xoá = soft delete, không xoá được bản mặc định khi còn bản khác.
+
 Sơ đồ quan hệ đầy đủ và ràng buộc DB xem `ERD.md` ở thư mục gốc.
 
 ## Chỗ để sẵn cho v2

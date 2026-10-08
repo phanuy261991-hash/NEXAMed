@@ -227,6 +227,16 @@ import {
   workShiftAssignmentBulkResultSchema,
   workShiftAssignmentItemSchema,
   importWorkShiftAssignmentsPreviewResponseSchema,
+  drugImportPreviewResponseSchema,
+  listPrintTemplatesResponseSchema,
+  listResolvedPrintTemplatesResponseSchema,
+  createPrintTemplateRequestSchema,
+  updatePrintTemplateRequestSchema,
+  deletePrintTemplateRequestSchema,
+  printQuickSetupRequestSchema,
+  printQuickSetupResponseSchema,
+  printTemplateSchema,
+  drugImportCommitResponseSchema,
   importWorkShiftAssignmentsCommitResponseSchema,
   workShiftAssignmentMonthSchema,
   workShiftAssignmentMonthLockStatusQuerySchema,
@@ -2939,6 +2949,130 @@ registry.registerPath({
     400: errorResponse('Thiếu file Excel'),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền work_shift_assignment.create, hoặc không phải scope global'),
+  },
+});
+
+// "Quản lý mẫu in" (docs/DECISIONS.md #211).
+const printTemplateIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/print-templates',
+  tags: ['print-template'],
+  summary: 'Quản lý mẫu in — mọi bản mẫu của phòng khám (chứng từ chưa lưu gì trả bản dựng sẵn id=null)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listPrintTemplatesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/print-templates/resolved',
+  tags: ['print-template'],
+  summary: 'Bản mẫu in MẶC ĐỊNH đang áp dụng của từng chứng từ — tự-phục vụ, mọi nhân viên đã đăng nhập đọc được',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listResolvedPrintTemplatesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/print-templates',
+  tags: ['print-template'],
+  summary: 'Thêm bản mẫu in cho 1 chứng từ + khổ giấy (mỗi chứng từ chỉ 1 bản/khổ)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createPrintTemplateRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(printTemplateSchema)),
+    400: errorResponse('Dữ liệu không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    409: errorResponse('Đã có bản mẫu cho khổ giấy này (PRINT_TEMPLATE_DUPLICATE_PAPER)'),
+    422: errorResponse('Khổ giấy không dùng được cho chứng từ này (PRINT_TEMPLATE_PAPER_NOT_ALLOWED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/print-templates/quick-setup',
+  tags: ['print-template'],
+  summary: '"Thiết lập nhanh" — khai khổ giấy + đầu trang một lần, áp cho nhiều chứng từ và đặt làm mặc định',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: printQuickSetupRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Áp dụng thành công', envelope(printQuickSetupResponseSchema)),
+    400: errorResponse('Dữ liệu không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/print-templates/{id}',
+  tags: ['print-template'],
+  summary: 'Sửa bản mẫu in (tên/cấu hình/đặt làm mặc định), bắt buộc kèm version',
+  security: [{ bearerAuth: [] }],
+  request: { params: printTemplateIdParams, body: { content: { 'application/json': { schema: updatePrintTemplateRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(printTemplateSchema)),
+    400: errorResponse('Dữ liệu không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/print-templates/{id}',
+  tags: ['print-template'],
+  summary: 'Xoá bản mẫu in (không xoá được bản mặc định khi còn bản khác)',
+  security: [{ bearerAuth: [] }],
+  request: { params: printTemplateIdParams, body: { content: { 'application/json': { schema: deletePrintTemplateRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Xoá thành công', envelope(z.object({ id: z.string().uuid() }))),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Không tìm thấy'),
+    409: errorResponse('version không khớp hoặc đang là bản mặc định'),
+  },
+});
+
+// Nhập Excel "Thuốc & Vật tư" (#210) — `import-template`/`export` (binary qua @Res()) KHÔNG đăng ký, web tải bằng `downloadFile()`.
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/drugs/import/preview',
+  tags: ['drug'],
+  summary: 'Nhập Excel "Thuốc & Vật tư" — bước 1: đọc + đối chiếu file, KHÔNG ghi gì (hợp lệ/đã có sẵn/lỗi/danh mục sẽ tạo mới)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'multipart/form-data': { schema: z.object({ file: z.string().openapi({ format: 'binary' }) }) } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(drugImportPreviewResponseSchema)),
+    400: errorResponse('Thiếu file / file không đúng mẫu / quá 2.000 mặt hàng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/drugs/import/commit',
+  tags: ['drug'],
+  summary: 'Nhập Excel "Thuốc & Vật tư" — bước 2: đọc lại đúng file đã xem trước rồi ghi mặt hàng hợp lệ + danh mục mới trong MỘT transaction',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'multipart/form-data': { schema: z.object({ file: z.string().openapi({ format: 'binary' }) }) } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(drugImportCommitResponseSchema)),
+    400: errorResponse('Thiếu file / file không đúng mẫu / quá 2.000 mặt hàng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền drug.create'),
   },
 });
 

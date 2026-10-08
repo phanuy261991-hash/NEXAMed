@@ -3,7 +3,7 @@ import { CalendarBlank, CheckCircle, Printer, Warning, X } from '@phosphor-icons
 import type { CashierShiftDetail } from '@nexamed/shared';
 import { getVietnamTodayDateString } from '../../features/appointment/schedule-grid.utils';
 import { useReceptionListQuery } from '../../features/reception/reception.queries';
-import { useClinicPrintHeaderQuery, useDoctorShiftSummaryQuery, useSetDoctorAvailabilityMutation } from '../../features/clinic/clinic.queries';
+import { useDoctorShiftSummaryQuery, useSetDoctorAvailabilityMutation } from '../../features/clinic/clinic.queries';
 import { useHasPermission } from '../../features/auth/usePermission';
 import {
   useApproveCashierShiftMutation,
@@ -146,7 +146,6 @@ function EndOfDayWizard({
   const blindQuery = useCashierShiftBlindCloseEnabledQuery();
   const summaryQuery = useCashierShiftSummaryQuery(openShift.id);
   const doctorSummaryQuery = useDoctorShiftSummaryQuery(doctorId);
-  const clinicHeaderQuery = useClinicPrintHeaderQuery();
 
   const setAvailability = useSetDoctorAvailabilityMutation();
   const closeMutation = useCloseCashierShiftMutation(openShift.id);
@@ -350,7 +349,7 @@ function EndOfDayWizard({
       </div>
     </div>
 
-    {receiptOpen && closedShift && clinicHeaderQuery.data && (
+    {receiptOpen && closedShift && (
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="eod-receipt-title">
         <div className="flex max-h-[92vh] w-full max-w-[620px] flex-col rounded-xl bg-white shadow-xl">
           <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-6 pt-6 pb-4">
@@ -362,7 +361,7 @@ function EndOfDayWizard({
             </button>
           </div>
           <div className="scroll-hover flex-1 overflow-y-auto px-6 py-5">
-            <CashierShiftReceiptView shift={closedShift} clinicHeader={clinicHeaderQuery.data} onAfterPrint={() => setReceiptOpen(false)} />
+            <CashierShiftReceiptView shift={closedShift} onAfterPrint={() => setReceiptOpen(false)} />
           </div>
         </div>
       </div>

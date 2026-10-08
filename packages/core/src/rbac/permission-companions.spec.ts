@@ -35,8 +35,6 @@ describe('PERMISSION_COMPANIONS (quyền đi kèm, docs/DECISIONS.md #208)', () 
     'receptionist: cashier_shift.read cần user_account.read',
     // Form phiếu xuất kho thủ công tra tồn theo kho; lễ tân chỉ xem "Phát thuốc"/danh sách.
     'receptionist: stock_issue.read cần stock_receipt.read',
-    // "Bệnh nhân trong ngày" lấy danh sách bác sĩ/ngưỡng chờ lâu từ API lịch hẹn (điều dưỡng không có appointment.read — bộ lọc bác sĩ trống).
-    'nurse: encounter.read cần appointment.read',
     // Khối "Thanh toán" của phiếu nhập kho cần danh sách quỹ; điều dưỡng/bác sĩ chỉ xem tồn kho.
     'nurse: stock_receipt.read cần cash_account.read',
     'doctor: stock_receipt.read cần cash_account.read',

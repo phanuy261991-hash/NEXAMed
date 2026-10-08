@@ -117,6 +117,12 @@ const ACTION_LABELS: Record<string, string> = {
   // drug
   'drug.created': 'Thêm thuốc',
   'drug.updated': 'Sửa thuốc',
+  'drug.imported': 'Nhập thuốc & vật tư từ Excel',
+  'drug.exported': 'Xuất thuốc & vật tư ra Excel',
+  'print_template.created': 'Thêm bản mẫu in',
+  'print_template.updated': 'Sửa bản mẫu in',
+  'print_template.deleted': 'Xoá bản mẫu in',
+  'print_template.quick_setup': 'Thiết lập nhanh mẫu in',
 
   // doctor-room-session / break-glass
   'doctor_room_session.set': 'Chọn phòng làm việc',

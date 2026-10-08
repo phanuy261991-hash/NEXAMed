@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { CaretDown, CaretRight, Copy, MagnifyingGlass, PencilSimple, Plus, Printer, Trash, Warning } from '@phosphor-icons/react';
+import { CaretDown, CaretRight, Copy, MagnifyingGlass, PencilSimple, Plus, Trash, Warning } from '@phosphor-icons/react';
 import type { CreateStockReceiptRequest, DiscountType, DrugSummary, StockReceiptDetail, StockReceiptLine, StockReceiptType } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Button } from '../../shared/ui/Button';
+import { PrintButton } from '../../shared/print/PrintButton';
 import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -21,7 +22,6 @@ import { useCollapsedGroups } from '../../shared/hooks/useCollapsedGroups';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
 import { useCashAccountsQuery } from '../cash-book/cash-account.queries';
-import { useClinicPrintHeaderQuery } from '../clinic/clinic.queries';
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useSuppliersQuery } from '../drug/supplier.queries';
 import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
@@ -134,7 +134,6 @@ export function StockReceiptFormPage() {
   const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD');
   const cashAccountsQuery = useCashAccountsQuery();
   const unitNameByCode = useUnitNameByCode();
-  const clinicQuery = useClinicPrintHeaderQuery();
   const createMutation = useCreateStockReceiptMutation();
   const updateMutation = useUpdateStockReceiptMutation();
   const approveMutation = useApproveStockReceiptMutation();
@@ -985,15 +984,12 @@ export function StockReceiptFormPage() {
         {/* In phiếu — CHỈ phiếu ĐÃ DUYỆT chưa huỷ, bổ sung 22/09/2026 theo yêu cầu chủ dự án
             (`docs/DECISIONS.md` #171). */}
         {readOnly && receiptQuery.data?.status === 'POSTED' && !receiptQuery.data.voided && (
-          <Button type="button" variant="secondary" onClick={handlePrint}>
-            <Printer size={15} weight="bold" aria-hidden="true" />
-            In phiếu
-          </Button>
+          <PrintButton documentType="STOCK_RECEIPT" onPrint={handlePrint}>In phiếu</PrintButton>
         )}
       </div>
 
-      {printing && receiptQuery.data && clinicQuery.data && (
-        <StockReceiptPrintView receipt={receiptQuery.data} clinicHeader={clinicQuery.data} unitNameByCode={unitNameByCode} />
+      {printing && receiptQuery.data && (
+        <StockReceiptPrintView receipt={receiptQuery.data} unitNameByCode={unitNameByCode} />
       )}
 
       {headerDialogOpen && (

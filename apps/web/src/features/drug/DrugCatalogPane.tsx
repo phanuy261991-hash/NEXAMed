@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, Eye, FirstAidKit, X } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, DownloadSimple, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, Eye, FirstAidKit, UploadSimple, X } from '@phosphor-icons/react';
 import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory, StockLedgerEntry } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
@@ -28,6 +28,8 @@ import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { appendSentence } from '../../shared/format/append-sentence';
+import { DrugImportDialog } from './DrugImportDialog';
+import { exportDrugs } from './drug.api';
 import { formatDobDisplay } from '../../shared/format/date';
 import { useCreateDrugMutation, useDrugsQuery, useUpdateDrugMutation } from './drug.queries';
 import { getDrug } from './drug.api';
@@ -154,6 +156,10 @@ export function DrugCatalogPane() {
   const [includeInactive, setIncludeInactive] = useState(false);
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; itemType: DrugItemType; item?: DrugSummary } | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  // Nhập/Xuất Excel (#210): Nhập cần `drug.create`, Xuất chỉ cần xem được danh mục.
+  const canImport = useHasPermission('drug', 'create');
+  const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<DrugSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -250,6 +256,19 @@ export function DrugCatalogPane() {
     );
   }
 
+  /** "Xuất Excel" — tải toàn bộ danh mục (cả mặt hàng đã ẩn), cùng định dạng file mẫu nên nhập lại được. */
+  async function handleExport() {
+    setActionError(null);
+    setExporting(true);
+    try {
+      await exportDrugs();
+    } catch (err) {
+      setActionError(describeSaveError(err));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   /** "Kích hoạt lại" — trực tiếp không cần xác nhận (cùng cách `ReferenceCatalogPane`/`UserAccountPane` xử lý). */
   function handleReactivate(item: DrugSummary) {
     setActionError(null);
@@ -290,37 +309,49 @@ export function DrugCatalogPane() {
           )}
         </div>
 
-        {canManage && (
-          <div className="relative">
-            <Button type="button" onClick={() => setAddMenuOpen((v) => !v)} aria-haspopup="menu" aria-expanded={addMenuOpen}>
-              <Plus size={16} weight="bold" aria-hidden="true" />
-              Thêm mặt hàng
-              <CaretDown size={12} weight="bold" className={`transition-transform ${addMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="secondary" loading={exporting} onClick={() => void handleExport()}>
+            <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
+          {canImport && (
+            <Button type="button" variant="secondary" onClick={() => setImportOpen(true)}>
+              <UploadSimple size={16} weight="bold" aria-hidden="true" />
+              Nhập Excel
             </Button>
-            {addMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setAddMenuOpen(false)} aria-hidden="true" />
-                <div role="menu" className="absolute right-0 top-full z-20 mt-2 w-48 rounded-md border border-slate-200 bg-white py-1 shadow-md">
-                  {(['MEDICINE', 'SUPPLY'] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setAddMenuOpen(false);
-                        setModal({ mode: 'create', itemType: t });
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      {t === 'MEDICINE' ? <Pill size={15} weight="regular" aria-hidden="true" /> : <FirstAidKit size={15} weight="regular" aria-hidden="true" />}
-                      Thêm {ITEM_TYPE_LABEL[t].toLowerCase()}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+          )}
+          {canManage && (
+            <div className="relative">
+              <Button type="button" onClick={() => setAddMenuOpen((v) => !v)} aria-haspopup="menu" aria-expanded={addMenuOpen}>
+                <Plus size={16} weight="bold" aria-hidden="true" />
+                Thêm mặt hàng
+                <CaretDown size={12} weight="bold" className={`transition-transform ${addMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+              </Button>
+              {addMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setAddMenuOpen(false)} aria-hidden="true" />
+                  <div role="menu" className="absolute right-0 top-full z-20 mt-2 w-48 rounded-md border border-slate-200 bg-white py-1 shadow-md">
+                    {(['MEDICINE', 'SUPPLY'] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setAddMenuOpen(false);
+                          setModal({ mode: 'create', itemType: t });
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        {t === 'MEDICINE' ? <Pill size={15} weight="regular" aria-hidden="true" /> : <FirstAidKit size={15} weight="regular" aria-hidden="true" />}
+                        Thêm {ITEM_TYPE_LABEL[t].toLowerCase()}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {actionError && <ErrorBanner message={actionError} />}
@@ -426,6 +457,8 @@ export function DrugCatalogPane() {
       )}
 
       <SelectionToolbar count={rowSelection.selectedCount} onClear={rowSelection.clear} />
+
+      {importOpen && <DrugImportDialog onClose={() => setImportOpen(false)} />}
 
       {/* Panel chi tiết — trượt phải, khuôn AppointmentDetailPanel.tsx. */}
       <div

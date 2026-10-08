@@ -1,57 +1,36 @@
 import type { PrescriptionItem } from '@nexamed/shared';
+import { formatPrintDate } from '../../shared/format/print-date';
+import { PrintDocument } from '../../shared/print/PrintDocument';
 import { formatDoseSummaryPreview as formatDoseSummary } from './prescription-dose-preview';
 import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
 
-function formatPrintDate(iso: string): string {
-  const d = new Date(iso);
-  return `Ngày ${String(d.getDate()).padStart(2, '0')} tháng ${String(d.getMonth() + 1).padStart(2, '0')} năm ${d.getFullYear()}`;
-}
-
 /**
- * Bố cục in đơn thuốc (PRE-04) — CHƯA CÓ mẫu chính thức (plan.md T5 còn treo lúc viết), dựng bố
- * cục chuẩn tạm theo thông tin bắt buộc thường thấy trên đơn thuốc VN, điều chỉnh lại khi có mẫu
- * thật (xem `docs/DECISIONS.md`). Nhận dữ liệu qua props (không tự gọi API/tự lấy dữ liệu) để dùng
- * lại được cho BIL-02 sau này chỉ cần đổi component nội dung — chỉ phần khung `.print-area`/kỹ
- * thuật `@media print` (`apps/web/src/app/index.css`) là dùng chung thật sự.
+ * Bản in đơn thuốc (PRE-04) — khung/đầu trang/chữ ký/khổ giấy do `PrintDocument` lo theo bản mẫu `PRESCRIPTION`
+ * ("Quản lý mẫu in", docs/DECISIONS.md #211), file này chỉ giữ phần THÂN (thông tin bệnh nhân + bảng thuốc). Nhận dữ
+ * liệu qua props, không tự gọi API nghiệp vụ.
  */
 export function PrescriptionPrintView({
-  clinicName,
-  clinicAddress,
-  clinicPhone,
-  printLogoUrl,
   doctorName,
   patientFullName,
   patientDob,
   patientGender,
+  diagnosisLabel,
   items,
   signedAt,
 }: {
-  clinicName: string;
-  clinicAddress: string | null;
-  clinicPhone: string | null;
-  printLogoUrl: string | null;
   doctorName: string;
   patientFullName: string;
   patientDob: string;
   patientGender: string;
+  /** Chẩn đoán của lượt khám (ví dụ "Viêm họng cấp (J02.9) / Sốt (R50.9)"); rỗng thì không in dòng này. */
+  diagnosisLabel?: string;
   items: PrescriptionItem[];
   signedAt: string;
 }) {
   const unitNameByCode = useUnitNameByCode();
   return (
-    <div className="print-area hidden bg-white p-10 text-slate-900 print:block">
-      <div className="flex items-center gap-4 border-b-2 border-slate-800 pb-3">
-        {printLogoUrl && <img src={printLogoUrl} alt="" className="h-16 w-16 object-contain" />}
-        <div>
-          <p className="text-lg font-bold uppercase">{clinicName}</p>
-          {clinicAddress && <p className="text-sm">Địa chỉ: {clinicAddress}</p>}
-          {clinicPhone && <p className="text-sm">Điện thoại: {clinicPhone}</p>}
-        </div>
-      </div>
-
-      <h1 className="mt-6 text-center text-2xl font-bold uppercase tracking-wide">Đơn thuốc</h1>
-
-      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+    <PrintDocument documentType="PRESCRIPTION" title="Đơn thuốc" signatureDateText={formatPrintDate(signedAt)} signatures={[{ label: 'Bác sĩ kê đơn', name: doctorName }]}>
+      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
         <p>
           Họ tên bệnh nhân: <strong>{patientFullName}</strong>
         </p>
@@ -64,9 +43,14 @@ export function PrescriptionPrintView({
         <p>
           Bác sĩ khám: <strong>{doctorName}</strong>
         </p>
+        {diagnosisLabel && (
+          <p className="col-span-2">
+            Chẩn đoán: <strong>{diagnosisLabel}</strong>
+          </p>
+        )}
       </div>
 
-      <table className="mt-6 w-full border-collapse text-sm">
+      <table className="mt-6 w-full border-collapse">
         <thead>
           <tr className="border-b-2 border-slate-800 text-left">
             <th className="w-8 py-1.5">#</th>
@@ -92,14 +76,6 @@ export function PrescriptionPrintView({
           ))}
         </tbody>
       </table>
-
-      <div className="mt-10 flex justify-end">
-        <div className="text-center text-sm">
-          <p>{formatPrintDate(signedAt)}</p>
-          <p className="mt-1 font-semibold">Bác sĩ kê đơn</p>
-          <p className="mt-16 font-semibold">{doctorName}</p>
-        </div>
-      </div>
-    </div>
+    </PrintDocument>
   );
 }

@@ -1,12 +1,8 @@
-import type { ClinicPrintHeader, StockReceiptDetail, StockReceiptType } from '@nexamed/shared';
+import type { StockReceiptDetail, StockReceiptType } from '@nexamed/shared';
+import { formatPrintDate } from '../../shared/format/print-date';
 import { formatVnd } from '../../shared/format/currency';
+import { PrintDocument } from '../../shared/print/PrintDocument';
 import { unitLabel } from '../drug/useUnitNameByCode';
-
-function formatPrintDate(iso: string): string {
-  const d = new Date(iso);
-  const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  return `Ngày ${String(vn.getUTCDate()).padStart(2, '0')} tháng ${String(vn.getUTCMonth() + 1).padStart(2, '0')} năm ${vn.getUTCFullYear()}`;
-}
 
 const TYPE_LABEL: Record<StockReceiptType, string> = {
   PURCHASE: 'Nhập nhà cung cấp',
@@ -17,38 +13,31 @@ const TYPE_LABEL: Record<StockReceiptType, string> = {
 };
 
 /**
- * Bố cục in "Phiếu nhập kho" (Kho Thuốc GĐ2, bổ sung 22/09/2026, `docs/DECISIONS.md` #171) — đúng
- * khuôn `InvoicePrintView.tsx`. CHỈ in phiếu ĐÃ DUYỆT (nơi gọi tự gate). Nhận dữ liệu qua props,
- * không tự gọi API.
+ * Bản in "Phiếu nhập kho" (Kho Thuốc GĐ2, `docs/DECISIONS.md` #171) — khung/đầu trang/chữ ký/khổ giấy do `PrintDocument`
+ * lo theo bản mẫu `STOCK_RECEIPT` (#211), file này chỉ giữ phần THÂN. CHỈ in phiếu ĐÃ DUYỆT (nơi gọi tự gate). Nhận dữ
+ * liệu qua props, không tự gọi API.
  */
 export function StockReceiptPrintView({
   receipt,
-  clinicHeader,
   unitNameByCode,
 }: {
   receipt: StockReceiptDetail;
-  clinicHeader: ClinicPrintHeader;
   /** Mã đơn vị (UNIT) -> tên hiển thị (`useUnitNameByCode()`) — bắt buộc truyền vào, `unitCode` thô
    * (ví dụ "DV00001") không có ý nghĩa với người đọc phiếu in (chủ dự án phát hiện 22/09/2026). */
   unitNameByCode: Map<string, string>;
 }) {
   return (
-    <div className="print-area hidden bg-white p-10 text-slate-900 print:block">
-      <div className="flex items-center gap-4 border-b-2 border-slate-800 pb-3">
-        {clinicHeader.printLogoUrl && <img src={clinicHeader.printLogoUrl} alt="" className="h-16 w-16 object-contain" />}
-        <div>
-          <p className="text-lg font-bold uppercase">{clinicHeader.name}</p>
-          {clinicHeader.address && <p className="text-sm">Địa chỉ: {clinicHeader.address}</p>}
-          {clinicHeader.phone && <p className="text-sm">Điện thoại: {clinicHeader.phone}</p>}
-        </div>
-      </div>
-
-      <h1 className="mt-6 text-center text-2xl font-bold uppercase tracking-wide">Phiếu nhập kho</h1>
-      <p className="text-center text-sm">
-        Số: <strong>{receipt.receiptNo}</strong>
-      </p>
-
-      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+    <PrintDocument
+      documentType="STOCK_RECEIPT"
+      title="Phiếu nhập kho"
+      subtitle={
+        <p>
+          Số: <strong>{receipt.receiptNo}</strong>
+        </p>
+      }
+      signatures={[{ label: 'Người lập phiếu', name: receipt.createdByName }, { label: 'Người giao hàng' }, { label: 'Thủ kho', name: receipt.approvedByName }]}
+    >
+      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
         <p>
           Loại phiếu: <strong>{TYPE_LABEL[receipt.receiptType]}</strong>
         </p>
@@ -76,7 +65,7 @@ export function StockReceiptPrintView({
         </p>
       </div>
 
-      <table className="mt-6 w-full border-collapse text-sm">
+      <table className="mt-6 w-full border-collapse">
         <thead>
           <tr className="border-b-2 border-slate-800 text-left">
             <th className="w-8 py-1.5">#</th>
@@ -110,25 +99,10 @@ export function StockReceiptPrintView({
       </div>
 
       {receipt.note && (
-        <p className="mt-2 text-sm">
+        <p className="mt-2">
           <span className="font-semibold">Ghi chú:</span> {receipt.note}
         </p>
       )}
-
-      <div className="mt-12 flex justify-between text-center text-sm">
-        <div>
-          <p className="font-semibold">Người lập phiếu</p>
-          <p className="mt-14 font-semibold">{receipt.createdByName}</p>
-        </div>
-        <div>
-          <p className="font-semibold">Người giao hàng</p>
-          <p className="mt-14 text-xs text-slate-500">(Ký, ghi rõ họ tên)</p>
-        </div>
-        <div>
-          <p className="font-semibold">Thủ kho</p>
-          <p className="mt-14 font-semibold">{receipt.approvedByName ?? ''}</p>
-        </div>
-      </div>
-    </div>
+    </PrintDocument>
   );
 }

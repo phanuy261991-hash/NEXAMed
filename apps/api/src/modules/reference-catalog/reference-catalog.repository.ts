@@ -80,6 +80,11 @@ export class ReferenceCatalogRepository {
     });
   }
 
+  /** Nhập Excel Thuốc & Vật tư (#210) — đọc MỘT lần mọi mục (kể cả đã ẩn) của nhiều category để dựng chỉ mục tên → mã. */
+  listByCategories(tx: Prisma.TransactionClient, categories: ReferenceCatalogCategory[]): Promise<ReferenceCatalog[]> {
+    return tx.referenceCatalog.findMany({ where: { category: { in: categories } }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+  }
+
   /** `data` có thể rỗng (PATCH chỉ đổi đơn giá bảng con) — vẫn tăng `version` để khoá lạc quan có hiệu lực. */
   async update(tx: Prisma.TransactionClient, id: string, expectedVersion: number, data: UpdateReferenceCatalogData): Promise<number> {
     const result = await tx.referenceCatalog.updateMany({ where: { id, version: expectedVersion }, data: { ...data, version: { increment: 1 } } });

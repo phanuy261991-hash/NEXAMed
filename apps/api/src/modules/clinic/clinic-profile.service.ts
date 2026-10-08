@@ -48,7 +48,7 @@ export class ClinicProfileService {
   /** Tự-phục vụ (Thu ngân/Kê đơn) — xem comment `clinicPrintHeaderSchema` (`packages/shared`). */
   async getPrintHeader(tenantId: string): Promise<ClinicPrintHeader> {
     const profile = await this.getProfile(tenantId);
-    return { name: profile.name, address: profile.address, phone: profile.phone, printLogoUrl: profile.printLogoUrl };
+    return { name: profile.name, address: profile.address, phone: profile.phone, taxCode: profile.taxCode, printLogoUrl: profile.printLogoUrl };
   }
 
   async updateProfile(

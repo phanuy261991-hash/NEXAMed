@@ -7,7 +7,8 @@
  * nghiệp vụ, chỉ làm đúng một việc "HTML string → PDF buffer".
  */
 export interface PdfRendererPort {
-  renderHtmlToPdf(html: string): Promise<Buffer>;
+  /** `marginsMm` (tuỳ chọn) — lề trang theo bản mẫu in ("Quản lý mẫu in", #211); bỏ trống = 10mm mỗi cạnh như trước. */
+  renderHtmlToPdf(html: string, options?: { marginsMm?: { top: number; right: number; bottom: number; left: number } }): Promise<Buffer>;
 }
 
 export const PDF_RENDERER_PORT = Symbol('PDF_RENDERER_PORT');

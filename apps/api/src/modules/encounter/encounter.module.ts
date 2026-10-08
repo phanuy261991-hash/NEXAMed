@@ -3,6 +3,7 @@ import { ENCOUNTER_READER_PORT } from '@nexamed/core';
 import { PatientModule } from '../patient/patient.module';
 import { ClinicModule } from '../clinic/clinic.module';
 import { BillingModule } from '../billing/billing.module';
+import { PrintTemplateModule } from '../print-template/print-template.module';
 import { GeoModule } from '../geo/geo.module';
 import { EncounterController } from './encounter.controller';
 import { EncounterService } from './encounter.service';
@@ -44,7 +45,7 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
  * `inventory`) đăng ký token này dạng `@Global()`, tự `imports: [InventoryModule]` phía nó.
  */
 @Module({
-  imports: [PatientModule, ClinicModule, BillingModule, GeoModule],
+  imports: [PatientModule, ClinicModule, BillingModule, GeoModule, PrintTemplateModule],
   controllers: [EncounterController],
   providers: [
     EncounterService,

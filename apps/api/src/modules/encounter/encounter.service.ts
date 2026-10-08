@@ -16,6 +16,7 @@ import {
   PrescriptionRequiresDiagnosisError,
   PrescriptionStockInsufficientError,
   renderPatientMedicalRecordHtml,
+  type MedicalRecordPrintOptions,
   SIGNATURE_PORT,
   STOCK_AVAILABILITY_PORT,
   assertEncounterTransition,
@@ -64,6 +65,7 @@ import type {
   VitalSignResponse,
 } from '@nexamed/shared';
 import type { ClinicalNote, Prisma, VitalSign } from '@prisma/client';
+import { PrintTemplateService } from '../print-template/print-template.service';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
@@ -129,6 +131,7 @@ export class EncounterService {
     @Inject(PDF_RENDERER_PORT) private readonly pdfRenderer: PdfRendererPort,
     @Inject(STOCK_AVAILABILITY_PORT) private readonly stockAvailability: StockAvailabilityPort,
     private readonly diagnosisSuggestionService: DiagnosisSuggestionService,
+    private readonly printTemplateService: PrintTemplateService,
   ) {}
 
   /**
@@ -579,7 +582,7 @@ export class EncounterService {
     });
 
     const document: PatientMedicalRecordDocument = {
-      clinic: { name: clinicHeader.name, address: clinicHeader.address, phone: clinicHeader.phone },
+      clinic: { name: clinicHeader.name, address: clinicHeader.address, phone: clinicHeader.phone, taxCode: clinicHeader.taxCode },
       patient: {
         patientCode: patient.patientCode,
         fullName: patient.fullName,
@@ -603,8 +606,17 @@ export class EncounterService {
       reason,
     };
 
-    const html = renderPatientMedicalRecordHtml(document);
-    const pdf = await this.pdfRenderer.renderHtmlToPdf(html);
+    // Bản mẫu in `MEDICAL_RECORD` ("Quản lý mẫu in", #211): đầu trang/tiêu đề/ghi chú cuối/lề do phòng khám cấu hình;
+    // chưa cấu hình thì dùng bản dựng sẵn (cùng bố cục cũ).
+    const template = await this.printTemplateService.resolveOne(tenantId, 'MEDICAL_RECORD');
+    const { header, margins } = template.config;
+    const printOptions: MedicalRecordPrintOptions = {
+      header: { showClinicName: header.showClinicName, showAddress: header.showAddress, showPhone: header.showPhone, showTaxCode: header.showTaxCode, showDivider: header.showDivider },
+      title: template.config.title.text.trim() || null,
+      footerNote: template.config.footer.note.trim() || null,
+    };
+    const html = renderPatientMedicalRecordHtml(document, printOptions);
+    const pdf = await this.pdfRenderer.renderHtmlToPdf(html, { marginsMm: { top: margins.topMm, right: margins.rightMm, bottom: margins.bottomMm, left: margins.leftMm } });
     return { pdf, patientCode: patient.patientCode, encounterCount: encounters.length };
   }
 

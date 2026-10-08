@@ -26,6 +26,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   exam_station: 'Bàn khám',
   appointment: 'Lịch hẹn',
   drug: 'Thuốc',
+  print_template: 'Mẫu in',
   doctor_room_session: 'Phòng làm việc',
   break_glass_session: 'Quyền khẩn cấp (break-glass)',
   // Bổ sung #109 — thiếu từ lúc thêm module work_shift/work_shift_assignment (#101/#102) và

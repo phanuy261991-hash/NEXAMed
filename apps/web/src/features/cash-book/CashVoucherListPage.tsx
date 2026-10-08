@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowCircleDown, ArrowCircleUp, ArrowsLeftRight, DownloadSimple, Plus, Receipt, Scales } from '@phosphor-icons/react';
+import { ArrowCircleDown, ArrowCircleUp, ArrowsLeftRight, DownloadSimple, Eye, Plus, Receipt, Scales } from '@phosphor-icons/react';
 import type { CashVoucherStatus, ReferenceCatalogDirection } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -8,6 +8,7 @@ import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -288,14 +289,8 @@ export function CashVoucherListPage() {
                       <StatusBadge tone={STATUS_META[item.status].tone}>{STATUS_META[item.status].label}</StatusBadge>
                       {item.voided && <StatusBadge tone="neutral">Đã huỷ</StatusBadge>}
                     </div>
-                    <div role="cell" className="text-center">
-                      <button
-                        type="button"
-                        onClick={() => setDetailId(item.id)}
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      >
-                        Xem
-                      </button>
+                    <div role="cell" className="flex items-center justify-center">
+                      <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => setDetailId(item.id)} />
                     </div>
                   </div>
                 ))}
