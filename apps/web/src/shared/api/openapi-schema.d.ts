@@ -14436,7 +14436,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -14509,7 +14509,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR";
                 };
                 cookie?: never;
             };
@@ -14532,7 +14532,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -15169,7 +15169,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
                 };
                 cookie?: never;
             };
@@ -15187,7 +15187,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
@@ -15294,7 +15294,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
                         code?: string;
                         name: string;
                         /** @default 0 */
@@ -15331,7 +15331,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -15449,7 +15449,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -15592,7 +15592,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -15720,7 +15720,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -19313,7 +19313,7 @@ export interface paths {
                                 }[];
                                 newCatalogItems: {
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE";
                                     name: string;
                                 }[];
                                 exampleRowCount: number;
@@ -29975,6 +29975,1393 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/technical-services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ1 — liệt kê dịch vụ kỹ thuật (lọc loại/nhóm/tự làm-ra ngoài, tìm tên-mã-viết tắt) kèm đếm theo loại */
+        get: {
+            parameters: {
+                query?: {
+                    kind?: "LAB" | "IMAGING" | "FUNCTIONAL";
+                    search?: string;
+                    categoryCode?: string;
+                    inHouse?: "true" | "false";
+                    includeInactive?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    shortName: string | null;
+                                    nationalCode: string | null;
+                                    /** @enum {string} */
+                                    serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                                    categoryCode: string | null;
+                                    specimenTypeCode: string | null;
+                                    isPerformedInHouse: boolean;
+                                    /** Format: uuid */
+                                    departmentId: string | null;
+                                    departmentName: string | null;
+                                    turnaroundMinutes: number | null;
+                                    /** @enum {string} */
+                                    resultType: "INDICATORS" | "NARRATIVE" | "BOTH";
+                                    isActive: boolean;
+                                    sortOrder: number;
+                                    version: number;
+                                    currentPrices: {
+                                        priceTypeCode: string;
+                                        unitCode: string;
+                                        amount: number;
+                                    }[];
+                                    indicatorCount: number;
+                                }[];
+                                counts: {
+                                    LAB: number;
+                                    IMAGING: number;
+                                    FUNCTIONAL: number;
+                                    total: number;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền technical_service.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Cận lâm sàng GĐ1 — tạo dịch vụ kỹ thuật, mã tự sinh theo loại (XN/CD/TD), kèm đơn giá + chỉ số */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        shortName?: string;
+                        nationalCode?: string;
+                        categoryCode?: string;
+                        specimenTypeCode?: string;
+                        /** @default true */
+                        isPerformedInHouse?: boolean;
+                        /** Format: uuid */
+                        departmentId?: string;
+                        turnaroundMinutes?: number;
+                        /** @enum {string} */
+                        resultType?: "INDICATORS" | "NARRATIVE" | "BOTH";
+                        /** @default true */
+                        isActive?: boolean;
+                        /** @default 0 */
+                        sortOrder?: number;
+                        /** @enum {string} */
+                        serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                        prices?: {
+                            priceTypeCode: string;
+                            amount: number;
+                            unitCode: string;
+                            effectiveFrom: string;
+                            effectiveTo?: string;
+                        }[];
+                        indicators?: {
+                            /** Format: uuid */
+                            indicatorId: string;
+                            interpretationText?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                shortName: string | null;
+                                nationalCode: string | null;
+                                /** @enum {string} */
+                                serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                                categoryCode: string | null;
+                                specimenTypeCode: string | null;
+                                isPerformedInHouse: boolean;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
+                                turnaroundMinutes: number | null;
+                                /** @enum {string} */
+                                resultType: "INDICATORS" | "NARRATIVE" | "BOTH";
+                                isActive: boolean;
+                                sortOrder: number;
+                                version: number;
+                                currentPrices: {
+                                    priceTypeCode: string;
+                                    unitCode: string;
+                                    amount: number;
+                                }[];
+                                indicatorCount: number;
+                                prices: ({
+                                    priceTypeCode: string;
+                                    amount: number;
+                                    unitCode: string;
+                                    effectiveFrom: string;
+                                    effectiveTo?: string;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
+                                indicators: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    indicatorId: string;
+                                    code: string;
+                                    name: string;
+                                    abbreviation: string | null;
+                                    unit: string | null;
+                                    sortOrder: number;
+                                    interpretationText: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Khoa/Phòng hoặc chỉ số không tồn tại / chỉ số trùng */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền technical_service.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đơn giá cùng Loại giá chồng lấn ngày hiệu lực (TECHNICAL_SERVICE_PRICE_OVERLAP) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/technical-services/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ1 — chi tiết dịch vụ kỹ thuật kèm đơn giá đa mức và chỉ số */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                shortName: string | null;
+                                nationalCode: string | null;
+                                /** @enum {string} */
+                                serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                                categoryCode: string | null;
+                                specimenTypeCode: string | null;
+                                isPerformedInHouse: boolean;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
+                                turnaroundMinutes: number | null;
+                                /** @enum {string} */
+                                resultType: "INDICATORS" | "NARRATIVE" | "BOTH";
+                                isActive: boolean;
+                                sortOrder: number;
+                                version: number;
+                                currentPrices: {
+                                    priceTypeCode: string;
+                                    unitCode: string;
+                                    amount: number;
+                                }[];
+                                indicatorCount: number;
+                                prices: ({
+                                    priceTypeCode: string;
+                                    amount: number;
+                                    unitCode: string;
+                                    effectiveFrom: string;
+                                    effectiveTo?: string;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
+                                indicators: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    indicatorId: string;
+                                    code: string;
+                                    name: string;
+                                    abbreviation: string | null;
+                                    unit: string | null;
+                                    sortOrder: number;
+                                    interpretationText: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền technical_service.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cận lâm sàng GĐ1 — sửa/ẩn dịch vụ kỹ thuật, bắt buộc kèm version; gửi prices/indicators = thay TOÀN BỘ */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        name?: string;
+                        shortName?: string | null;
+                        nationalCode?: string | null;
+                        categoryCode?: string | null;
+                        specimenTypeCode?: string | null;
+                        isPerformedInHouse?: boolean;
+                        /** Format: uuid */
+                        departmentId?: string | null;
+                        turnaroundMinutes?: number | null;
+                        /** @enum {string} */
+                        resultType?: "INDICATORS" | "NARRATIVE" | "BOTH";
+                        isActive?: boolean;
+                        sortOrder?: number;
+                        prices?: {
+                            priceTypeCode: string;
+                            amount: number;
+                            unitCode: string;
+                            effectiveFrom: string;
+                            effectiveTo?: string;
+                        }[];
+                        indicators?: {
+                            /** Format: uuid */
+                            indicatorId: string;
+                            interpretationText?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                shortName: string | null;
+                                nationalCode: string | null;
+                                /** @enum {string} */
+                                serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                                categoryCode: string | null;
+                                specimenTypeCode: string | null;
+                                isPerformedInHouse: boolean;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                departmentName: string | null;
+                                turnaroundMinutes: number | null;
+                                /** @enum {string} */
+                                resultType: "INDICATORS" | "NARRATIVE" | "BOTH";
+                                isActive: boolean;
+                                sortOrder: number;
+                                version: number;
+                                currentPrices: {
+                                    priceTypeCode: string;
+                                    unitCode: string;
+                                    amount: number;
+                                }[];
+                                indicatorCount: number;
+                                prices: ({
+                                    priceTypeCode: string;
+                                    amount: number;
+                                    unitCode: string;
+                                    effectiveFrom: string;
+                                    effectiveTo?: string;
+                                } & {
+                                    /** Format: uuid */
+                                    id: string;
+                                })[];
+                                indicators: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    indicatorId: string;
+                                    code: string;
+                                    name: string;
+                                    abbreviation: string | null;
+                                    unit: string | null;
+                                    sortOrder: number;
+                                    interpretationText: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Khoa/Phòng hoặc chỉ số không tồn tại / chỉ số trùng */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền technical_service.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) hoặc đơn giá chồng lấn */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/lab-indicators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ1 — liệt kê chỉ số xét nghiệm (tìm tên/mã/ký hiệu) */
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    includeInactive?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    abbreviation: string | null;
+                                    unit: string | null;
+                                    /** @enum {string} */
+                                    valueType: "NUMBER" | "TEXT" | "CHOICE";
+                                    decimals: number | null;
+                                    choiceOptions: string[] | null;
+                                    isActive: boolean;
+                                    sortOrder: number;
+                                    version: number;
+                                    referenceCount: number;
+                                    serviceCount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền technical_service.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Cận lâm sàng GĐ1 — tạo chỉ số xét nghiệm, mã tự sinh (CS), kèm khoảng tham chiếu */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        abbreviation?: string;
+                        unit?: string;
+                        /**
+                         * @default NUMBER
+                         * @enum {string}
+                         */
+                        valueType?: "NUMBER" | "TEXT" | "CHOICE";
+                        decimals?: number;
+                        choiceOptions?: string[];
+                        /** @default true */
+                        isActive?: boolean;
+                        /** @default 0 */
+                        sortOrder?: number;
+                        references?: {
+                            /**
+                             * @default ANY
+                             * @enum {string}
+                             */
+                            sex?: "ANY" | "MALE" | "FEMALE";
+                            /** @default 0 */
+                            ageFromYears?: number;
+                            ageToYears?: number;
+                            lowValue?: number;
+                            highValue?: number;
+                            /** @default true */
+                            lowInclusive?: boolean;
+                            /** @default true */
+                            highInclusive?: boolean;
+                            normalText?: string;
+                            displayText?: string;
+                            note?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                abbreviation: string | null;
+                                unit: string | null;
+                                /** @enum {string} */
+                                valueType: "NUMBER" | "TEXT" | "CHOICE";
+                                decimals: number | null;
+                                choiceOptions: string[] | null;
+                                isActive: boolean;
+                                sortOrder: number;
+                                version: number;
+                                referenceCount: number;
+                                serviceCount: number;
+                                references: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    sex: "ANY" | "MALE" | "FEMALE";
+                                    ageFromYears: number;
+                                    ageToYears: number | null;
+                                    lowValue: number | null;
+                                    highValue: number | null;
+                                    lowInclusive: boolean;
+                                    highInclusive: boolean;
+                                    normalText: string | null;
+                                    displayText: string | null;
+                                    note: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền technical_service.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab-indicators/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ1 — chi tiết chỉ số xét nghiệm kèm khoảng tham chiếu theo giới tính × tuổi */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                abbreviation: string | null;
+                                unit: string | null;
+                                /** @enum {string} */
+                                valueType: "NUMBER" | "TEXT" | "CHOICE";
+                                decimals: number | null;
+                                choiceOptions: string[] | null;
+                                isActive: boolean;
+                                sortOrder: number;
+                                version: number;
+                                referenceCount: number;
+                                serviceCount: number;
+                                references: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    sex: "ANY" | "MALE" | "FEMALE";
+                                    ageFromYears: number;
+                                    ageToYears: number | null;
+                                    lowValue: number | null;
+                                    highValue: number | null;
+                                    lowInclusive: boolean;
+                                    highInclusive: boolean;
+                                    normalText: string | null;
+                                    displayText: string | null;
+                                    note: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền technical_service.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cận lâm sàng GĐ1 — sửa/ẩn chỉ số xét nghiệm, bắt buộc kèm version; gửi references = thay TOÀN BỘ */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        name?: string;
+                        abbreviation?: string | null;
+                        unit?: string | null;
+                        /** @enum {string} */
+                        valueType?: "NUMBER" | "TEXT" | "CHOICE";
+                        decimals?: number | null;
+                        choiceOptions?: string[] | null;
+                        isActive?: boolean;
+                        sortOrder?: number;
+                        references?: {
+                            /**
+                             * @default ANY
+                             * @enum {string}
+                             */
+                            sex?: "ANY" | "MALE" | "FEMALE";
+                            /** @default 0 */
+                            ageFromYears?: number;
+                            ageToYears?: number;
+                            lowValue?: number;
+                            highValue?: number;
+                            /** @default true */
+                            lowInclusive?: boolean;
+                            /** @default true */
+                            highInclusive?: boolean;
+                            normalText?: string;
+                            displayText?: string;
+                            note?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                abbreviation: string | null;
+                                unit: string | null;
+                                /** @enum {string} */
+                                valueType: "NUMBER" | "TEXT" | "CHOICE";
+                                decimals: number | null;
+                                choiceOptions: string[] | null;
+                                isActive: boolean;
+                                sortOrder: number;
+                                version: number;
+                                referenceCount: number;
+                                serviceCount: number;
+                                references: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    sex: "ANY" | "MALE" | "FEMALE";
+                                    ageFromYears: number;
+                                    ageToYears: number | null;
+                                    lowValue: number | null;
+                                    highValue: number | null;
+                                    lowInclusive: boolean;
+                                    highInclusive: boolean;
+                                    normalText: string | null;
+                                    displayText: string | null;
+                                    note: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền technical_service.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc đổi Kiểu giá trị khi chỉ số đang dùng trong dịch vụ (LAB_INDICATOR_VALUE_TYPE_LOCKED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/result-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng GĐ1 — liệt kê mẫu kết quả (lọc theo dịch vụ), dùng chung toàn tenant */
+        get: {
+            parameters: {
+                query?: {
+                    technicalServiceId?: string;
+                    includeInactive?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    technicalServiceId: string;
+                                    name: string;
+                                    descriptionText: string | null;
+                                    conclusionText: string | null;
+                                    isDefault: boolean;
+                                    isActive: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền result_template.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Cận lâm sàng GĐ1 — tạo mẫu kết quả cho 1 dịch vụ (chỉ lời Mô tả/Kết luận, không giá trị chỉ số) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        technicalServiceId: string;
+                        name: string;
+                        descriptionText?: string;
+                        conclusionText?: string;
+                        /** @default false */
+                        isDefault?: boolean;
+                        /** @default true */
+                        isActive?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                technicalServiceId: string;
+                                name: string;
+                                descriptionText: string | null;
+                                conclusionText: string | null;
+                                isDefault: boolean;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dịch vụ không tồn tại / mẫu rỗng */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền result_template.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/result-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cận lâm sàng GĐ1 — sửa/ẩn/đặt mặc định mẫu kết quả, bắt buộc kèm version */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        name?: string;
+                        descriptionText?: string | null;
+                        conclusionText?: string | null;
+                        isDefault?: boolean;
+                        isActive?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                technicalServiceId: string;
+                                name: string;
+                                descriptionText: string | null;
+                                conclusionText: string | null;
+                                isDefault: boolean;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Mẫu rỗng sau khi sửa */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền result_template.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
 }

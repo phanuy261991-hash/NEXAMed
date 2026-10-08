@@ -2,6 +2,12 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-06 (tiếp)
+
+### Cận lâm sàng — GĐ1: Danh mục dịch vụ kỹ thuật, chỉ số xét nghiệm, mẫu kết quả
+
+Mở rộng phạm vi v1 (`docs/DECISIONS.md` #212): trang "Danh mục cận lâm sàng" thật thay `ComingSoonPage`. Thêm/sửa/ẩn **dịch vụ kỹ thuật** (xét nghiệm / chẩn đoán hình ảnh / thăm dò chức năng; mã tự sinh XN/CD/TD; cờ "phòng khám tự thực hiện" hoặc "chỉ định ra ngoài"; đơn giá đa mức theo Loại giá × Đơn vị × khoảng ngày, chặn chồng lấn ở DB), **chỉ số xét nghiệm** kèm **khoảng tham chiếu theo giới tính × khoảng tuổi** (số, chữ, nhiều dòng kiểu HbA1c, ngưỡng gồm/không gồm đầu mút), **mẫu kết quả** dùng chung toàn phòng khám (chỉ lời Mô tả/Kết luận, không điền giá trị chỉ số, chèn xong vẫn sửa được) và 2 danh mục Nhóm dịch vụ / Mẫu bệnh phẩm. Logic chọn khoảng tham chiếu + gắn cờ Cao/Thấp đã viết sẵn ở `packages/core` (dùng ở GĐ4 để in đậm chỉ số vượt mức). 6 bảng mới, 5 quyền mới. Đã xác minh: 30 test HTTP mới + 15 test core, Chrome thật tạo chỉ số → dịch vụ → mẫu.
+
 ## 2026-10-06
 
 ### Quản lý mẫu in (mỗi chứng từ nhiều bản mẫu theo khổ giấy, chọn khổ khi in)

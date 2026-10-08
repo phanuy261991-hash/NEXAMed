@@ -38,7 +38,7 @@ import {
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/auth.store';
 import { useHasAnyPermission, useDataScope, useHasPermission } from '../../features/auth/usePermission';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS } from '../../features/auth/admin-permissions';
+import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS } from '../../features/auth/admin-permissions';
 import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
 import { useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
 import { useSupplierDebtSummariesQuery } from '../../features/supplier-debt/supplier-debt.queries';
@@ -212,8 +212,8 @@ export function Sidebar() {
   // patient.read (họ đều có), sai tinh thần "chỉ Quản trị" của cả nhóm — theo BẤT KỲ quyền quản
   // trị nào thay vì permission route thật sự dùng, xem comment ADMIN_ANY_PERMISSIONS phía trên.
   const canSeeCatalogClinical = isAdmin;
-  // "Danh mục cận lâm sàng" còn là ComingSoonPage, chưa có permission route thật — cùng lý do trên.
-  const canSeeCatalogParaclinical = isAdmin;
+  // "Danh mục cận lâm sàng" (#212) — gate theo ĐÚNG quyền của route guard (`PARACLINICAL_CATALOG_PERMISSIONS`).
+  const canSeeCatalogParaclinical = useHasAnyPermission(PARACLINICAL_CATALOG_PERMISSIONS);
   const canSeeCatalogPharmacy = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
   // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — 2 mục "Công nợ nhà cung cấp"/
   // "Phiếu thanh toán NCC" trong nhóm "Quản lý nhà cung cấp", gate RIÊNG khỏi `canSeeCatalogPharmacy`

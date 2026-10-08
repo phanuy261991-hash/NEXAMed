@@ -70,6 +70,10 @@ export const referenceCatalogCategorySchema = z.enum([
   // (MỘT từ, chữ/số, server chuẩn hoá chữ thường), `name` = cách viết đầy đủ. CHỈ đổi chữ thành
   // chữ, không map ra mã ICD. Nhập tay `code` (không tự sinh), seed sẵn 11 mục bằng migration.
   'ICD10_ABBREVIATION',
+  // Cận lâm sàng GĐ1 (docs/DECISIONS.md #212) — Nhóm dịch vụ kỹ thuật (Huyết học/X-quang...) và Mẫu bệnh
+  // phẩm (Máu EDTA/Nước tiểu...). Không seed cứng, mã tự sinh.
+  'TECH_SERVICE_CATEGORY',
+  'SPECIMEN_TYPE',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 

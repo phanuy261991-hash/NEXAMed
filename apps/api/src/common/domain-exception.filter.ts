@@ -33,6 +33,9 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // "Đơn giá dịch vụ" (docs/DECISIONS.md #079) — C20 chặn chồng lấn ngày hiệu lực, cùng nhóm
   // APPOINTMENT_SLOT_CONFLICT ở trên (exclusion constraint DB, không phải lỗi input).
   EXAM_TYPE_PRICE_OVERLAP: HttpStatus.CONFLICT,
+  // Cận lâm sàng GĐ1 (docs/DECISIONS.md #212) — cùng nhóm exclusion constraint / xung đột trạng thái ở trên.
+  TECHNICAL_SERVICE_PRICE_OVERLAP: HttpStatus.CONFLICT,
+  LAB_INDICATOR_VALUE_TYPE_LOCKED: HttpStatus.CONFLICT,
   // Sprint 3, Tiếp nhận — chuyển trạng thái/tạo encounter xung đột trạng thái hiện có, không phải
   // lỗi input (422 mặc định không phù hợp), cùng nhóm APPOINTMENT_* ở trên.
   ENCOUNTER_INVALID_TRANSITION: HttpStatus.CONFLICT,

@@ -60,6 +60,10 @@ const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — cùng lý do không có nguồn dữ liệu chính thức
   // cho mã tự sinh khi admin thêm mục tuỳ biến ngoài 9 mục đã seed.
   'DRUG_USAGE_TIMING',
+  // Cận lâm sàng GĐ1 (docs/DECISIONS.md #212) — Nhóm dịch vụ kỹ thuật / Mẫu bệnh phẩm, không có nguồn dữ liệu
+  // chính thức nên mã tự sinh.
+  'TECH_SERVICE_CATEGORY',
+  'SPECIMEN_TYPE',
 ];
 
 /**

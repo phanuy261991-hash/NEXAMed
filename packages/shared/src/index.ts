@@ -34,3 +34,4 @@ export * from './backup-status';
 export * from './inventory';
 export * from './supplier-debt';
 export * from './print-template';
+export * from './technical-service';

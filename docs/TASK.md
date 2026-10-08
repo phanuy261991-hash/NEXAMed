@@ -298,3 +298,12 @@ Mở rộng tiếp của Kho Thuốc GĐ2/GĐ3 — theo dõi công nợ phòng k
 - [x] **Nhập/Xuất Excel Thuốc & Vật tư** (ngoài kế hoạch, mở rộng Kho Thuốc GĐ1, 01/10/2026, `docs/DECISIONS.md` #210). 3 sheet liên kết theo Mã thuốc; file mẫu có dữ liệu ví dụ (`VD-`, tự bỏ qua) + sheet Hướng dẫn + Danh mục hiện có; xem trước 4 nhóm rồi xác nhận; tên danh mục chưa có tự tạo mới (cần `reference_catalog.manage`); mã trùng bỏ qua; 1 transaction; ≤2.000 mặt hàng. `drug-import-http.spec.ts` 18/18 (+ kiểm đột biến), `packages/core` +4, Chrome thật xác nhận. Không migration/permission mới.
 
 - [x] **Quản lý mẫu in** (ngoài kế hoạch, 06/10/2026, `docs/DECISIONS.md` #211). Bảng `print_template`, trang `/admin/print-templates`, 11 chứng từ × khổ A4/A5/A5 ngang/K80, popup chọn khổ lúc in, đặt khổ mặc định, bệnh án PDF theo mẫu. `print-template-http.spec.ts` 20/20, Chrome thật xác nhận. Còn: thử máy in nhiệt K80 thật.
+
+## Ngoài kế hoạch — Cận lâm sàng (mở rộng phạm vi v1, 06/10/2026, `docs/DECISIONS.md` #212)
+
+Lộ trình 4 giai đoạn đã chốt qua mockup 14 màn.
+
+- [x] **GĐ1 — Danh mục** (06/10/2026): `technical_service`/`_price`, `lab_indicator`/`_reference`, `technical_service_indicator`, `result_template`; trang `/admin/catalog-paraclinical` 5 pill; `packages/core/src/lab/lab-reference.ts`. 30 test HTTP + 15 test core, Chrome thật xác nhận.
+- [ ] **GĐ2 — Gói dịch vụ + Bảng giá có thời hạn** (`service_package`, `price_list`, hàm `resolveEffectivePrice`) — chạm luồng hoá đơn đang chạy thật tại pilot.
+- [ ] **GĐ3 — Chỉ định của bác sĩ** (tab thứ 3 màn khám, 2 đường: tại phòng khám / ra ngoài; in phiếu chỉ định).
+- [ ] **GĐ4 — Thực hiện & kết quả** (hàng đợi, lấy mẫu/gọi vào phòng, nhập + duyệt kết quả, **in đậm chỉ số vượt mức**, in phiếu kết quả, vai trò Kỹ thuật viên).
