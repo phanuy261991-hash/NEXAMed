@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Eye, Flask, MagnifyingGlass, Scan, Warning } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Barcode, Eye, Flask, MagnifyingGlass, Printer, Scan, Warning } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import type { ListParaclinicalQueueQuery, ParaclinicalQueueBucket, ParaclinicalQueueRow } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
@@ -11,6 +11,7 @@ import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { RowActionMenu } from '../../shared/ui/RowActionMenu';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
@@ -18,12 +19,31 @@ import { formatWaitDuration, genderShort, isLongWait, QUEUE_BUCKET_ORDER, SERVIC
 import { PARACLINICAL_GROUP_META, type ParaclinicalGroup } from './paraclinical-group';
 import { ParaclinicalOrderQuickViewDialog } from './ParaclinicalOrderQuickViewDialog';
 import { useParaclinicalQueueQuery, useStartParaclinicalMutation } from './paraclinical-result.queries';
+import { CapColorDot } from '../../shared/ui/SpecimenCapColor';
+import { normalizeScan } from './specimen-scan';
+import { useSpecimenCollection } from './specimen-tube.queries';
+import { SpecimenCollectionDialog } from './SpecimenCollectionDialog';
+import { SpecimenUncollectDialog } from './SpecimenUncollectDialog';
 
 const ROW_HEIGHT_PX = 60;
 
-/** Cột bảng theo nhóm menu (mockup 12a/12b): xét nghiệm có "Mẫu bệnh phẩm"; CĐHA & thăm dò có "Loại" + "Phòng thực hiện". */
-const COLUMNS: Record<ParaclinicalGroup, { grid: string; minWidth: number; headers: string[] }> = {
-  lab: {
+/**
+ * Cột bảng theo nhóm menu và tab (mockup 12a/12b, 13a/13d). Xét nghiệm: tab "Chờ lấy mẫu" có cột "Ống cần lấy", tab "Đã lấy mẫu" có "Ống mẫu (SID)" + "Lấy mẫu" + "Kết quả"
+ * (docs/DECISIONS.md #220); các tab còn lại giữ cột "Mẫu bệnh phẩm". CĐHA & thăm dò có "Loại" + "Phòng thực hiện".
+ */
+type ColumnKind = 'lab-waiting' | 'lab-collected' | 'lab-default' | 'imaging';
+const COLUMN_SETS: Record<ColumnKind, { grid: string; minWidth: number; headers: string[] }> = {
+  'lab-waiting': {
+    grid: '120px minmax(180px,210px) minmax(200px,1fr) 270px 96px 100px 188px',
+    minWidth: 1148,
+    headers: ['Mã phiếu', 'Bệnh nhân', 'Xét nghiệm chỉ định', 'Ống cần lấy', 'Chờ', 'Thanh toán', 'Thao tác'],
+  },
+  'lab-collected': {
+    grid: '120px minmax(170px,200px) minmax(180px,1fr) 170px 120px 104px 236px',
+    minWidth: 1100,
+    headers: ['Mã phiếu', 'Bệnh nhân', 'Xét nghiệm', 'Ống mẫu (SID)', 'Lấy mẫu', 'Kết quả', 'Thao tác'],
+  },
+  'lab-default': {
     grid: '120px minmax(180px,210px) minmax(200px,1fr) 160px 96px 100px 188px',
     minWidth: 1038,
     headers: ['Mã phiếu', 'Bệnh nhân', 'Xét nghiệm chỉ định', 'Mẫu bệnh phẩm', 'Chờ', 'Thanh toán', 'Thao tác'],
@@ -34,6 +54,13 @@ const COLUMNS: Record<ParaclinicalGroup, { grid: string; minWidth: number; heade
     headers: ['Mã phiếu', 'Bệnh nhân', 'Dịch vụ chỉ định', 'Loại', 'Phòng thực hiện', 'Chờ', 'Thanh toán', 'Thao tác'],
   },
 };
+
+function columnKindOf(group: ParaclinicalGroup, bucket: ParaclinicalQueueBucket): ColumnKind {
+  if (group === 'imaging') return 'imaging';
+  if (bucket === 'WAITING') return 'lab-waiting';
+  if (bucket === 'IN_PROGRESS') return 'lab-collected';
+  return 'lab-default';
+}
 
 /** Hôm nay theo giờ Việt Nam, dạng YYYY-MM-DD (định dạng `sv-SE` chính là ISO). */
 function todayVn(): string {
@@ -50,7 +77,6 @@ const distinct = (values: string[]): string[] => [...new Set(values)].sort((a, b
  */
 export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
   const meta = PARACLINICAL_GROUP_META[group];
-  const columns = COLUMNS[group];
   useBreadcrumb([{ label: 'Cận lâm sàng' }, { label: meta.label }]);
   const navigate = useNavigate();
   const canEnter = useHasPermission(meta.permissionModule, 'enter');
@@ -67,10 +93,18 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
   const debouncedSearch = useDebouncedValue(search.trim(), 250);
   const [actionError, setActionError] = useState<string | null>(null);
   const [quickViewRow, setQuickViewRow] = useState<ParaclinicalQueueRow | null>(null);
+  // Lấy mẫu xét nghiệm có ống mẫu/tem mã vạch (docs/DECISIONS.md #220): hộp thoại lấy mẫu của một phiếu, hộp thoại huỷ xác nhận, ô quét mã ống.
+  const [collection, setCollection] = useState<{ orderId: string; initialSid: string | null } | null>(null);
+  const [uncollectRow, setUncollectRow] = useState<ParaclinicalQueueRow | null>(null);
+  const [scanText, setScanText] = useState('');
+  const [scanError, setScanError] = useState<string | null>(null);
+  const specimen = useSpecimenCollection();
+  const columns = COLUMN_SETS[columnKindOf(group, bucket)];
+  const columnKind = columnKindOf(group, bucket);
 
   const params: ListParaclinicalQueueQuery = useMemo(() => ({ date, ...(debouncedSearch ? { q: debouncedSearch } : {}) }), [date, debouncedSearch]);
   const query = useParaclinicalQueueQuery(group, params);
-  const startMutation = useStartParaclinicalMutation(group);
+  const startMutation = useStartParaclinicalMutation();
 
   const allRows = useMemo(() => query.data?.items ?? [], [query.data]);
   const counts = query.data?.counts;
@@ -101,6 +135,7 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
     };
   }, [group, allRows]);
 
+  /** "Gọi vào phòng" — chỉ CĐHA & Thăm dò chức năng. Xét nghiệm mở hộp thoại lấy mẫu (`setCollection`). */
   async function handleStart(row: ParaclinicalQueueRow) {
     setActionError(null);
     try {
@@ -111,11 +146,32 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
     }
   }
 
+  /** Ô "Quét mã ống" (súng quét USB gõ mã + Enter): ống chưa lấy → mở hộp thoại với ống đó đã tích; ống đã lấy → mở thẳng màn nhập kết quả; ống huỷ/lạ → báo lỗi tại chỗ. */
+  async function handleScan() {
+    const sid = normalizeScan(scanText);
+    setScanText('');
+    if (sid === '') return;
+    setScanError(null);
+    setActionError(null);
+    try {
+      const found = await specimen.lookup.mutateAsync(sid);
+      if (found.encounterCancelled) setScanError(`Ống ${sid} thuộc lượt khám đã huỷ — không còn dùng được.`);
+      else if (found.status === 'CANCELLED') setScanError(`Ống ${sid} đã huỷ${found.replacedBySid ? ` — dùng ống thay thế ${found.replacedBySid}` : ''}.`);
+      else if (found.status === 'PENDING') {
+        if (canEnter) setCollection({ orderId: found.orderId, initialSid: sid });
+        else setScanError('Tài khoản không có quyền lấy mẫu xét nghiệm.');
+      } else if (found.itemId) navigate(`${meta.basePath}/items/${found.itemId}`);
+    } catch (err) {
+      setScanError(err instanceof ApiError && err.code === 'NOT_FOUND' ? `Không tìm thấy ống mang mã ${sid}.` : err instanceof ApiError ? err.message : 'Không tra được mã ống. Thử lại sau.');
+    }
+  }
+
   function actionOf(row: ParaclinicalQueueRow): { label: string; run: () => void; loading?: boolean } | null {
     const open = () => navigate(`${meta.basePath}/items/${row.key}`);
     switch (row.bucket) {
       case 'WAITING':
-        return canEnter ? { label: meta.startLabel, run: () => void handleStart(row), loading: startMutation.isPending } : null;
+        if (!canEnter) return null;
+        return group === 'lab' ? { label: meta.startLabel, run: () => setCollection({ orderId: row.orderId, initialSid: null }) } : { label: meta.startLabel, run: () => void handleStart(row), loading: startMutation.isPending };
       case 'IN_PROGRESS':
         return { label: canEnter ? 'Nhập kết quả' : 'Xem', run: open };
       case 'PENDING_APPROVAL':
@@ -152,6 +208,28 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
           })}
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          {group === 'lab' && canEnter && (
+            <div className="relative">
+              <label htmlFor="pq-scan" className="sr-only">
+                Quét mã ống
+              </label>
+              <Barcode size={16} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-600" aria-hidden="true" />
+              <input
+                id="pq-scan"
+                value={scanText}
+                onChange={(e) => setScanText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleScan();
+                  }
+                }}
+                autoComplete="off"
+                placeholder="Quét mã ống…"
+                className="w-52 rounded-md border-2 border-blue-500 py-1.5 pl-8 pr-2.5 text-[13px] font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
+              />
+            </div>
+          )}
           <div className="w-52">
             <Combobox id="pq-filter-a" value={filterA} onChange={setFilterA} options={filterOptions.a} dense floating />
           </div>
@@ -183,6 +261,12 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
       )}
       {query.isError && <ErrorBanner message={`Không tải được ${meta.queueTitle.toLowerCase()}.`} onRetry={() => query.refetch()} />}
       {actionError && <ErrorBanner message={actionError} />}
+      {scanError && (
+        <div role="alert" className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">
+          <Warning size={16} weight="fill" className="flex-none" aria-hidden="true" />
+          {scanError}
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="scroll-hover min-h-0 flex-1 overflow-auto">
@@ -240,7 +324,46 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
                     <div className="min-w-0 px-2.5 text-left font-medium text-slate-900" title={row.serviceNames.join(', ')}>
                       <span className="line-clamp-2">{row.serviceNames.join(', ')}</span>
                     </div>
-                    {group === 'lab' ? (
+                    {columnKind === 'lab-waiting' ? (
+                      <div className="flex min-w-0 flex-col items-start gap-1 px-3 py-1.5 text-left">
+                        {row.tubes.length === 0 && <span className="text-slate-400">—</span>}
+                        {row.tubes.map((tube, index) => (
+                          <div key={tube.id ?? `${index}-${tube.specimenName ?? ''}`} className="flex max-w-full items-center gap-1.5 text-[12.5px] font-medium text-slate-700">
+                            <CapColorDot color={tube.capColor} />
+                            <span className="truncate">
+                              {tube.capLabel ?? 'Ống'}
+                              {!tube.sid && tube.specimenName ? ` · ${tube.specimenName}` : ''}
+                            </span>
+                            {tube.sid && <span className="flex-none font-bold tabular-nums text-slate-900">{tube.sid}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : columnKind === 'lab-collected' ? (
+                      <>
+                        <div className="flex min-w-0 flex-col items-start gap-1 px-3 py-1.5 text-left">
+                          {row.tubes.length === 0 && <span className="text-slate-400">—</span>}
+                          {row.tubes.map((tube, index) => (
+                            <div key={tube.id ?? index} className="flex items-center gap-1.5 text-[12.5px] font-bold tabular-nums text-slate-900">
+                              <CapColorDot color={tube.capColor} size={12} />
+                              {tube.sid}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="px-2">
+                          {row.collectedAt ? (
+                            <>
+                              <div className="font-semibold text-slate-900">{formatClockTime(row.collectedAt)}</div>
+                              <div className="truncate text-[11.5px] text-slate-500" title={row.collectedByName ?? undefined}>
+                                {row.collectedByName ?? ''}
+                              </div>
+                            </>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </div>
+                        <div className="px-2">{row.hasDraft ? <StatusBadge tone="warning">Đang nhập</StatusBadge> : <StatusBadge tone="neutral">Chưa nhập</StatusBadge>}</div>
+                      </>
+                    ) : group === 'lab' ? (
                       <div className="px-2 font-medium text-slate-600">{row.specimenNames.length > 0 ? row.specimenNames.join(', ') : '—'}</div>
                     ) : (
                       <>
@@ -250,6 +373,8 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
                         <div className="px-2 font-medium text-slate-600">{row.departmentName ?? '—'}</div>
                       </>
                     )}
+                    {columnKind !== 'lab-collected' && (
+                      <>
                     <div className="px-2 font-semibold">
                       {row.bucket === 'COMPLETED' ? (
                         <span className="text-slate-600">{formatClockTime(row.waitingSince)}</span>
@@ -260,17 +385,45 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
                       )}
                     </div>
                     <div className="px-2">{row.paid ? <StatusBadge tone="success">Đã thu</StatusBadge> : <StatusBadge tone="warning">{row.bucket === 'AWAITING_PAYMENT' ? 'Chưa thu' : 'Nợ phí'}</StatusBadge>}</div>
+                      </>
+                    )}
                     <div className="flex items-center justify-center gap-1.5 px-2">
-                      {action ? (
+                      {/* Dòng chưa thu tiền không có nút chính — trạng thái đã hiện ở cột "Thanh toán" nên không lặp lại chữ ở đây. */}
+                      {action && (
                         <Button type="button" className="whitespace-nowrap px-3" onClick={action.run} loading={action.loading}>
                           {action.label}
                         </Button>
-                      ) : (
-                        <span className="text-xs font-medium text-slate-400">Chờ thu tiền</span>
                       )}
                       <Button type="button" variant="secondary" className="flex-shrink-0 px-2.5" aria-label={`Xem chi tiết phiếu ${row.orderNo}`} title="Xem chi tiết phiếu" onClick={() => setQuickViewRow(row)}>
                         <Eye size={16} weight="regular" aria-hidden="true" />
                       </Button>
+                      {columnKind === 'lab-collected' && canEnter && (
+                        <RowActionMenu
+                          label={`Thao tác khác của phiếu ${row.orderNo}`}
+                          items={[
+                            {
+                              key: 'reprint',
+                              label: 'In lại tem ống mẫu',
+                              description: 'Mở hộp thoại ống mẫu để in lại tem (giữ nguyên mã ống)',
+                              icon: <Printer size={15} weight="bold" aria-hidden="true" />,
+                              onClick: () => setCollection({ orderId: row.orderId, initialSid: null }),
+                            },
+                            {
+                              key: 'uncollect',
+                              label: 'Huỷ xác nhận đã lấy mẫu',
+                              description: row.hasDraft
+                                ? 'Đã có bản nháp kết quả — không huỷ được'
+                                : row.tubes.some((t) => t.id !== null)
+                                  ? 'Trả phiếu về “Chờ lấy mẫu”, bắt buộc nhập lý do'
+                                  : 'Phiếu lấy mẫu trước khi có ống mẫu — không huỷ được',
+                              icon: <ArrowCounterClockwise size={15} weight="bold" aria-hidden="true" />,
+                              danger: true,
+                              disabled: row.hasDraft || !row.tubes.some((t) => t.id !== null),
+                              onClick: () => setUncollectRow(row),
+                            },
+                          ]}
+                        />
+                      )}
                     </div>
                   </div>
                 );
@@ -284,6 +437,15 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
         </div>
       </div>
       {quickViewRow && <ParaclinicalOrderQuickViewDialog row={quickViewRow} group={group} onClose={() => setQuickViewRow(null)} />}
+      {collection && <SpecimenCollectionDialog orderId={collection.orderId} initialSid={collection.initialSid} onClose={() => setCollection(null)} />}
+      {uncollectRow && (
+        <SpecimenUncollectDialog
+          orderNo={uncollectRow.orderNo}
+          tubeIds={uncollectRow.tubes.flatMap((t) => (t.id ? [t.id] : []))}
+          onClose={() => setUncollectRow(null)}
+          onDone={() => setUncollectRow(null)}
+        />
+      )}
     </div>
   );
 }

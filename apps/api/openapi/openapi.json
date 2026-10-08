@@ -4868,6 +4868,9 @@
                         "paraclinicalBeforePaymentEnabled": {
                           "type": "boolean"
                         },
+                        "specimenScanRequired": {
+                          "type": "boolean"
+                        },
                         "icd10SuggestionEnabled": {
                           "type": "boolean"
                         },
@@ -4901,6 +4904,7 @@
                         "prescriptionStockBlockEnabled",
                         "allowFreeTextPrescriptionEnabled",
                         "paraclinicalBeforePaymentEnabled",
+                        "specimenScanRequired",
                         "icd10SuggestionEnabled",
                         "icd10SuggestionLearningEnabled"
                       ]
@@ -34955,6 +34959,9 @@
                         "paraclinicalBeforePaymentEnabled": {
                           "type": "boolean"
                         },
+                        "specimenScanRequired": {
+                          "type": "boolean"
+                        },
                         "icd10SuggestionEnabled": {
                           "type": "boolean"
                         },
@@ -34988,6 +34995,7 @@
                         "prescriptionStockBlockEnabled",
                         "allowFreeTextPrescriptionEnabled",
                         "paraclinicalBeforePaymentEnabled",
+                        "specimenScanRequired",
                         "icd10SuggestionEnabled",
                         "icd10SuggestionLearningEnabled"
                       ]
@@ -35321,6 +35329,9 @@
                   "paraclinicalBeforePaymentEnabled": {
                     "type": "boolean"
                   },
+                  "specimenScanRequired": {
+                    "type": "boolean"
+                  },
                   "icd10SuggestionEnabled": {
                     "type": "boolean"
                   },
@@ -35582,6 +35593,9 @@
                         "paraclinicalBeforePaymentEnabled": {
                           "type": "boolean"
                         },
+                        "specimenScanRequired": {
+                          "type": "boolean"
+                        },
                         "icd10SuggestionEnabled": {
                           "type": "boolean"
                         },
@@ -35615,6 +35629,7 @@
                         "prescriptionStockBlockEnabled",
                         "allowFreeTextPrescriptionEnabled",
                         "paraclinicalBeforePaymentEnabled",
+                        "specimenScanRequired",
                         "icd10SuggestionEnabled",
                         "icd10SuggestionLearningEnabled"
                       ]
@@ -37322,7 +37337,8 @@
                                   "LAB_INDICATOR",
                                   "SERVICE_PACKAGE",
                                   "PRICE_LIST",
-                                  "CLINICAL_ORDER"
+                                  "CLINICAL_ORDER",
+                                  "SPECIMEN_TUBE"
                                 ]
                               },
                               "label": {
@@ -37487,7 +37503,8 @@
                 "LAB_INDICATOR",
                 "SERVICE_PACKAGE",
                 "PRICE_LIST",
-                "CLINICAL_ORDER"
+                "CLINICAL_ORDER",
+                "SPECIMEN_TUBE"
               ]
             },
             "required": true,
@@ -37563,7 +37580,8 @@
                             "LAB_INDICATOR",
                             "SERVICE_PACKAGE",
                             "PRICE_LIST",
-                            "CLINICAL_ORDER"
+                            "CLINICAL_ORDER",
+                            "SPECIMEN_TUBE"
                           ]
                         },
                         "label": {
@@ -39473,6 +39491,28 @@
                                   "null"
                                 ]
                               },
+                              "capColor": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "RED",
+                                  "YELLOW",
+                                  "PURPLE",
+                                  "BLUE",
+                                  "GREEN",
+                                  "GRAY",
+                                  "BLACK",
+                                  "URINE"
+                                ]
+                              },
+                              "abbreviation": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "version": {
                                 "type": "integer",
                                 "exclusiveMinimum": 0
@@ -39493,6 +39533,8 @@
                               "direction",
                               "bytCode",
                               "fullName",
+                              "capColor",
+                              "abbreviation",
                               "version"
                             ]
                           }
@@ -39699,6 +39741,24 @@
                   "fullName": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "capColor": {
+                    "type": "string",
+                    "enum": [
+                      "RED",
+                      "YELLOW",
+                      "PURPLE",
+                      "BLUE",
+                      "GREEN",
+                      "GRAY",
+                      "BLACK",
+                      "URINE"
+                    ]
+                  },
+                  "abbreviation": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4
                   },
                   "direction": {
                     "type": "string",
@@ -39911,6 +39971,28 @@
                             "null"
                           ]
                         },
+                        "capColor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "RED",
+                            "YELLOW",
+                            "PURPLE",
+                            "BLUE",
+                            "GREEN",
+                            "GRAY",
+                            "BLACK",
+                            "URINE"
+                          ]
+                        },
+                        "abbreviation": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -39931,6 +40013,8 @@
                         "direction",
                         "bytCode",
                         "fullName",
+                        "capColor",
+                        "abbreviation",
                         "version"
                       ]
                     },
@@ -40111,6 +40195,30 @@
                   "fullName": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "capColor": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "RED",
+                      "YELLOW",
+                      "PURPLE",
+                      "BLUE",
+                      "GREEN",
+                      "GRAY",
+                      "BLACK",
+                      "URINE"
+                    ]
+                  },
+                  "abbreviation": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 4
                   },
                   "direction": {
                     "type": "string",
@@ -40322,6 +40430,28 @@
                             "null"
                           ]
                         },
+                        "capColor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "RED",
+                            "YELLOW",
+                            "PURPLE",
+                            "BLUE",
+                            "GREEN",
+                            "GRAY",
+                            "BLACK",
+                            "URINE"
+                          ]
+                        },
+                        "abbreviation": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -40342,6 +40472,8 @@
                         "direction",
                         "bytCode",
                         "fullName",
+                        "capColor",
+                        "abbreviation",
                         "version"
                       ]
                     },
@@ -40672,6 +40804,28 @@
                             "null"
                           ]
                         },
+                        "capColor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "RED",
+                            "YELLOW",
+                            "PURPLE",
+                            "BLUE",
+                            "GREEN",
+                            "GRAY",
+                            "BLACK",
+                            "URINE"
+                          ]
+                        },
+                        "abbreviation": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -40692,6 +40846,8 @@
                         "direction",
                         "bytCode",
                         "fullName",
+                        "capColor",
+                        "abbreviation",
                         "version"
                       ]
                     },
@@ -41024,6 +41180,28 @@
                             "null"
                           ]
                         },
+                        "capColor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "RED",
+                            "YELLOW",
+                            "PURPLE",
+                            "BLUE",
+                            "GREEN",
+                            "GRAY",
+                            "BLACK",
+                            "URINE"
+                          ]
+                        },
+                        "abbreviation": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "version": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -41044,6 +41222,8 @@
                         "direction",
                         "bytCode",
                         "fullName",
+                        "capColor",
+                        "abbreviation",
                         "version"
                       ]
                     },
@@ -46226,7 +46406,8 @@
                                   "STOCK_RECEIPT",
                                   "STOCK_ISSUE",
                                   "STOCK_COUNT",
-                                  "STOCK_TRANSFER"
+                                  "STOCK_TRANSFER",
+                                  "SPECIMEN_LABEL"
                                 ]
                               },
                               "name": {
@@ -46238,7 +46419,9 @@
                                   "A4",
                                   "A5",
                                   "A5_LANDSCAPE",
-                                  "K80"
+                                  "K80",
+                                  "LABEL_35X22",
+                                  "LABEL_50X30"
                                 ]
                               },
                               "isDefault": {
@@ -46365,6 +46548,29 @@
                                       "text"
                                     ]
                                   },
+                                  "label": {
+                                    "type": "object",
+                                    "properties": {
+                                      "showPatientCode": {
+                                        "type": "boolean"
+                                      },
+                                      "showGroup": {
+                                        "type": "boolean"
+                                      },
+                                      "showCapColor": {
+                                        "type": "boolean"
+                                      },
+                                      "showDate": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "showPatientCode",
+                                      "showGroup",
+                                      "showCapColor",
+                                      "showDate"
+                                    ]
+                                  },
                                   "copies": {
                                     "type": "object",
                                     "properties": {
@@ -46439,7 +46645,8 @@
                                       "STOCK_RECEIPT",
                                       "STOCK_ISSUE",
                                       "STOCK_COUNT",
-                                      "STOCK_TRANSFER"
+                                      "STOCK_TRANSFER",
+                                      "SPECIMEN_LABEL"
                                     ]
                                   },
                                   "label": {
@@ -46456,7 +46663,9 @@
                                         "A4",
                                         "A5",
                                         "A5_LANDSCAPE",
-                                        "K80"
+                                        "K80",
+                                        "LABEL_35X22",
+                                        "LABEL_50X30"
                                       ]
                                     }
                                   },
@@ -46466,7 +46675,9 @@
                                       "A4",
                                       "A5",
                                       "A5_LANDSCAPE",
-                                      "K80"
+                                      "K80",
+                                      "LABEL_35X22",
+                                      "LABEL_50X30"
                                     ]
                                   },
                                   "defaultTitle": {
@@ -46513,7 +46724,9 @@
                                       "A4",
                                       "A5",
                                       "A5_LANDSCAPE",
-                                      "K80"
+                                      "K80",
+                                      "LABEL_35X22",
+                                      "LABEL_50X30"
                                     ]
                                   },
                                   "label": {
@@ -46660,6 +46873,29 @@
                                         "show",
                                         "title",
                                         "text"
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showGroup": {
+                                          "type": "boolean"
+                                        },
+                                        "showCapColor": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showGroup",
+                                        "showCapColor",
+                                        "showDate"
                                       ]
                                     },
                                     "copies": {
@@ -46811,6 +47047,29 @@
                                         "text"
                                       ]
                                     },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showGroup": {
+                                          "type": "boolean"
+                                        },
+                                        "showCapColor": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showGroup",
+                                        "showCapColor",
+                                        "showDate"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -46960,6 +47219,29 @@
                                         "text"
                                       ]
                                     },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showGroup": {
+                                          "type": "boolean"
+                                        },
+                                        "showCapColor": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showGroup",
+                                        "showCapColor",
+                                        "showDate"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -47107,6 +47389,373 @@
                                         "show",
                                         "title",
                                         "text"
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showGroup": {
+                                          "type": "boolean"
+                                        },
+                                        "showCapColor": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showGroup",
+                                        "showCapColor",
+                                        "showDate"
+                                      ]
+                                    },
+                                    "copies": {
+                                      "type": "object",
+                                      "properties": {
+                                        "count": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 3
+                                        },
+                                        "labels": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "maxLength": 40
+                                          },
+                                          "maxItems": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "count",
+                                        "labels"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "margins",
+                                    "header",
+                                    "title",
+                                    "footer",
+                                    "copies"
+                                  ]
+                                },
+                                "LABEL_35X22": {
+                                  "type": "object",
+                                  "properties": {
+                                    "margins": {
+                                      "type": "object",
+                                      "properties": {
+                                        "topMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "rightMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "bottomMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "leftMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        }
+                                      },
+                                      "required": [
+                                        "topMm",
+                                        "rightMm",
+                                        "bottomMm",
+                                        "leftMm"
+                                      ]
+                                    },
+                                    "header": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showLogo": {
+                                          "type": "boolean"
+                                        },
+                                        "showClinicName": {
+                                          "type": "boolean"
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showTaxCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showDivider": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showLogo",
+                                        "showClinicName",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showTaxCode",
+                                        "showDivider"
+                                      ]
+                                    },
+                                    "title": {
+                                      "type": "object",
+                                      "properties": {
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        }
+                                      },
+                                      "required": [
+                                        "text"
+                                      ]
+                                    },
+                                    "footer": {
+                                      "type": "object",
+                                      "properties": {
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "showSignature": {
+                                          "type": "boolean"
+                                        },
+                                        "showSignatureHint": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "note",
+                                        "showSignature",
+                                        "showSignatureHint"
+                                      ]
+                                    },
+                                    "notice": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "title": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        },
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 1000
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "title",
+                                        "text"
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showGroup": {
+                                          "type": "boolean"
+                                        },
+                                        "showCapColor": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showGroup",
+                                        "showCapColor",
+                                        "showDate"
+                                      ]
+                                    },
+                                    "copies": {
+                                      "type": "object",
+                                      "properties": {
+                                        "count": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 3
+                                        },
+                                        "labels": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "maxLength": 40
+                                          },
+                                          "maxItems": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "count",
+                                        "labels"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "margins",
+                                    "header",
+                                    "title",
+                                    "footer",
+                                    "copies"
+                                  ]
+                                },
+                                "LABEL_50X30": {
+                                  "type": "object",
+                                  "properties": {
+                                    "margins": {
+                                      "type": "object",
+                                      "properties": {
+                                        "topMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "rightMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "bottomMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "leftMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        }
+                                      },
+                                      "required": [
+                                        "topMm",
+                                        "rightMm",
+                                        "bottomMm",
+                                        "leftMm"
+                                      ]
+                                    },
+                                    "header": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showLogo": {
+                                          "type": "boolean"
+                                        },
+                                        "showClinicName": {
+                                          "type": "boolean"
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showTaxCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showDivider": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showLogo",
+                                        "showClinicName",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showTaxCode",
+                                        "showDivider"
+                                      ]
+                                    },
+                                    "title": {
+                                      "type": "object",
+                                      "properties": {
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        }
+                                      },
+                                      "required": [
+                                        "text"
+                                      ]
+                                    },
+                                    "footer": {
+                                      "type": "object",
+                                      "properties": {
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "showSignature": {
+                                          "type": "boolean"
+                                        },
+                                        "showSignatureHint": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "note",
+                                        "showSignature",
+                                        "showSignatureHint"
+                                      ]
+                                    },
+                                    "notice": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "title": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        },
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 1000
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "title",
+                                        "text"
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showGroup": {
+                                          "type": "boolean"
+                                        },
+                                        "showCapColor": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showGroup",
+                                        "showCapColor",
+                                        "showDate"
                                       ]
                                     },
                                     "copies": {
@@ -47264,7 +47913,8 @@
                       "STOCK_RECEIPT",
                       "STOCK_ISSUE",
                       "STOCK_COUNT",
-                      "STOCK_TRANSFER"
+                      "STOCK_TRANSFER",
+                      "SPECIMEN_LABEL"
                     ]
                   },
                   "name": {
@@ -47278,7 +47928,9 @@
                       "A4",
                       "A5",
                       "A5_LANDSCAPE",
-                      "K80"
+                      "K80",
+                      "LABEL_35X22",
+                      "LABEL_50X30"
                     ]
                   },
                   "config": {
@@ -47399,6 +48051,29 @@
                           "text"
                         ]
                       },
+                      "label": {
+                        "type": "object",
+                        "properties": {
+                          "showPatientCode": {
+                            "type": "boolean"
+                          },
+                          "showGroup": {
+                            "type": "boolean"
+                          },
+                          "showCapColor": {
+                            "type": "boolean"
+                          },
+                          "showDate": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "showPatientCode",
+                          "showGroup",
+                          "showCapColor",
+                          "showDate"
+                        ]
+                      },
                       "copies": {
                         "type": "object",
                         "properties": {
@@ -47477,7 +48152,8 @@
                             "STOCK_RECEIPT",
                             "STOCK_ISSUE",
                             "STOCK_COUNT",
-                            "STOCK_TRANSFER"
+                            "STOCK_TRANSFER",
+                            "SPECIMEN_LABEL"
                           ]
                         },
                         "name": {
@@ -47489,7 +48165,9 @@
                             "A4",
                             "A5",
                             "A5_LANDSCAPE",
-                            "K80"
+                            "K80",
+                            "LABEL_35X22",
+                            "LABEL_50X30"
                           ]
                         },
                         "isDefault": {
@@ -47614,6 +48292,29 @@
                                 "show",
                                 "title",
                                 "text"
+                              ]
+                            },
+                            "label": {
+                              "type": "object",
+                              "properties": {
+                                "showPatientCode": {
+                                  "type": "boolean"
+                                },
+                                "showGroup": {
+                                  "type": "boolean"
+                                },
+                                "showCapColor": {
+                                  "type": "boolean"
+                                },
+                                "showDate": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "showPatientCode",
+                                "showGroup",
+                                "showCapColor",
+                                "showDate"
                               ]
                             },
                             "copies": {
@@ -47879,7 +48580,8 @@
                                   "STOCK_RECEIPT",
                                   "STOCK_ISSUE",
                                   "STOCK_COUNT",
-                                  "STOCK_TRANSFER"
+                                  "STOCK_TRANSFER",
+                                  "SPECIMEN_LABEL"
                                 ]
                               },
                               "paperSize": {
@@ -47888,7 +48590,9 @@
                                   "A4",
                                   "A5",
                                   "A5_LANDSCAPE",
-                                  "K80"
+                                  "K80",
+                                  "LABEL_35X22",
+                                  "LABEL_50X30"
                                 ]
                               },
                               "widthMm": {
@@ -48018,6 +48722,29 @@
                                       "text"
                                     ]
                                   },
+                                  "label": {
+                                    "type": "object",
+                                    "properties": {
+                                      "showPatientCode": {
+                                        "type": "boolean"
+                                      },
+                                      "showGroup": {
+                                        "type": "boolean"
+                                      },
+                                      "showCapColor": {
+                                        "type": "boolean"
+                                      },
+                                      "showDate": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "showPatientCode",
+                                      "showGroup",
+                                      "showCapColor",
+                                      "showDate"
+                                    ]
+                                  },
                                   "copies": {
                                     "type": "object",
                                     "properties": {
@@ -48060,7 +48787,9 @@
                                         "A4",
                                         "A5",
                                         "A5_LANDSCAPE",
-                                        "K80"
+                                        "K80",
+                                        "LABEL_35X22",
+                                        "LABEL_50X30"
                                       ]
                                     },
                                     "label": {
@@ -48194,6 +48923,29 @@
                                             "show",
                                             "title",
                                             "text"
+                                          ]
+                                        },
+                                        "label": {
+                                          "type": "object",
+                                          "properties": {
+                                            "showPatientCode": {
+                                              "type": "boolean"
+                                            },
+                                            "showGroup": {
+                                              "type": "boolean"
+                                            },
+                                            "showCapColor": {
+                                              "type": "boolean"
+                                            },
+                                            "showDate": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "showPatientCode",
+                                            "showGroup",
+                                            "showCapColor",
+                                            "showDate"
                                           ]
                                         },
                                         "copies": {
@@ -48375,7 +49127,8 @@
                         "STOCK_RECEIPT",
                         "STOCK_ISSUE",
                         "STOCK_COUNT",
-                        "STOCK_TRANSFER"
+                        "STOCK_TRANSFER",
+                        "SPECIMEN_LABEL"
                       ]
                     },
                     "minItems": 1
@@ -48669,6 +49422,29 @@
                           "text"
                         ]
                       },
+                      "label": {
+                        "type": "object",
+                        "properties": {
+                          "showPatientCode": {
+                            "type": "boolean"
+                          },
+                          "showGroup": {
+                            "type": "boolean"
+                          },
+                          "showCapColor": {
+                            "type": "boolean"
+                          },
+                          "showDate": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "showPatientCode",
+                          "showGroup",
+                          "showCapColor",
+                          "showDate"
+                        ]
+                      },
                       "copies": {
                         "type": "object",
                         "properties": {
@@ -48752,7 +49528,8 @@
                             "STOCK_RECEIPT",
                             "STOCK_ISSUE",
                             "STOCK_COUNT",
-                            "STOCK_TRANSFER"
+                            "STOCK_TRANSFER",
+                            "SPECIMEN_LABEL"
                           ]
                         },
                         "name": {
@@ -48764,7 +49541,9 @@
                             "A4",
                             "A5",
                             "A5_LANDSCAPE",
-                            "K80"
+                            "K80",
+                            "LABEL_35X22",
+                            "LABEL_50X30"
                           ]
                         },
                         "isDefault": {
@@ -48889,6 +49668,29 @@
                                 "show",
                                 "title",
                                 "text"
+                              ]
+                            },
+                            "label": {
+                              "type": "object",
+                              "properties": {
+                                "showPatientCode": {
+                                  "type": "boolean"
+                                },
+                                "showGroup": {
+                                  "type": "boolean"
+                                },
+                                "showCapColor": {
+                                  "type": "boolean"
+                                },
+                                "showDate": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "showPatientCode",
+                                "showGroup",
+                                "showCapColor",
+                                "showDate"
                               ]
                             },
                             "copies": {
@@ -85675,6 +86477,90 @@
                               "paid": {
                                 "type": "boolean"
                               },
+                              "orderId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tubes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "format": "uuid"
+                                    },
+                                    "sid": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "PLANNED",
+                                        "PENDING",
+                                        "COLLECTED"
+                                      ]
+                                    },
+                                    "specimenName": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "capColor": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "enum": [
+                                        "RED",
+                                        "YELLOW",
+                                        "PURPLE",
+                                        "BLUE",
+                                        "GREEN",
+                                        "GRAY",
+                                        "BLACK",
+                                        "URINE"
+                                      ]
+                                    },
+                                    "capLabel": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "sid",
+                                    "status",
+                                    "specimenName",
+                                    "capColor",
+                                    "capLabel"
+                                  ]
+                                }
+                              },
+                              "collectedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "collectedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "hasDraft": {
+                                "type": "boolean"
+                              },
                               "waitingSince": {
                                 "type": "string"
                               }
@@ -85698,6 +86584,11 @@
                               "departmentName",
                               "bucket",
                               "paid",
+                              "orderId",
+                              "tubes",
+                              "collectedAt",
+                              "collectedByName",
+                              "hasDraft",
                               "waitingSince"
                             ]
                           }
@@ -85814,231 +86705,6 @@
           },
           "403": {
             "description": "Không có quyền lab_result.read",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {}
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/paraclinical/lab/start": {
-      "post": {
-        "tags": [
-          "paraclinical-result"
-        ],
-        "summary": "Cận lâm sàng GĐ4 — \"Lấy mẫu\" / \"Gọi vào phòng\": các dòng cùng phiếu chuyển ORDERED → IN_PROGRESS. Chưa thu tiền thì chặn trừ khi phòng khám bật \"thực hiện trước khi thu tiền\"",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "itemIds": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "minItems": 1,
-                    "maxItems": 50
-                  }
-                },
-                "required": [
-                  "itemIds"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Thành công",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "itemId": {
-                          "type": "string",
-                          "format": "uuid"
-                        }
-                      },
-                      "required": [
-                        "itemId"
-                      ]
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {}
-                    }
-                  },
-                  "required": [
-                    "data",
-                    "meta"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Dữ liệu sai",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {}
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Thiếu hoặc sai access token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {}
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Không có quyền lab_result.enter",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {}
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Dòng chỉ định không tồn tại hoặc thuộc tenant khác",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {}
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Dòng không ở trạng thái chờ lấy mẫu (PARACLINICAL_ITEM_INVALID_STATE), lượt khám đã huỷ hoặc chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -90012,6 +90678,90 @@
                               "paid": {
                                 "type": "boolean"
                               },
+                              "orderId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tubes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "format": "uuid"
+                                    },
+                                    "sid": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "PLANNED",
+                                        "PENDING",
+                                        "COLLECTED"
+                                      ]
+                                    },
+                                    "specimenName": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "capColor": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ],
+                                      "enum": [
+                                        "RED",
+                                        "YELLOW",
+                                        "PURPLE",
+                                        "BLUE",
+                                        "GREEN",
+                                        "GRAY",
+                                        "BLACK",
+                                        "URINE"
+                                      ]
+                                    },
+                                    "capLabel": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "sid",
+                                    "status",
+                                    "specimenName",
+                                    "capColor",
+                                    "capLabel"
+                                  ]
+                                }
+                              },
+                              "collectedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "collectedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "hasDraft": {
+                                "type": "boolean"
+                              },
                               "waitingSince": {
                                 "type": "string"
                               }
@@ -90035,6 +90785,11 @@
                               "departmentName",
                               "bucket",
                               "paid",
+                              "orderId",
+                              "tubes",
+                              "collectedAt",
+                              "collectedByName",
+                              "hasDraft",
                               "waitingSince"
                             ]
                           }
@@ -95471,6 +96226,3113 @@
           },
           "409": {
             "description": "Kết quả đã duyệt (bản ký)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/orders/{orderId}/specimen-collection/open": {
+      "post": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Lấy mẫu xét nghiệm — mở hộp thoại lấy mẫu của phiếu: sinh ống (kèm mã ống SID) cho xét nghiệm chưa có ống, gộp theo loại mẫu bệnh phẩm. Idempotent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "orderId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "object",
+                          "properties": {
+                            "orderId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "orderNo": {
+                              "type": "string"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "patientName": {
+                              "type": "string"
+                            },
+                            "patientCode": {
+                              "type": "string"
+                            },
+                            "patientBirthYear": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientAgeYears": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientGender": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "male",
+                                "female",
+                                "other"
+                              ]
+                            },
+                            "patientPhone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "doctorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "orderedAt": {
+                              "type": "string"
+                            },
+                            "paid": {
+                              "type": "boolean"
+                            },
+                            "scanRequired": {
+                              "type": "boolean"
+                            },
+                            "tubes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "sid": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "PENDING",
+                                      "COLLECTED",
+                                      "CANCELLED"
+                                    ]
+                                  },
+                                  "specimenName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "capColor": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "RED",
+                                      "YELLOW",
+                                      "PURPLE",
+                                      "BLUE",
+                                      "GREEN",
+                                      "GRAY",
+                                      "BLACK",
+                                      "URINE"
+                                    ]
+                                  },
+                                  "capLabel": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "groupAbbreviation": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "printCount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "lastPrintedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedVia": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "SCAN",
+                                      "MANUAL"
+                                    ]
+                                  },
+                                  "cancelReason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "cancelledAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacesSid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacedBySid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "items": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "canSplit": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "itemId",
+                                        "name",
+                                        "canSplit"
+                                      ]
+                                    }
+                                  },
+                                  "canRecollect": {
+                                    "type": "boolean"
+                                  },
+                                  "canUncollect": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "sid",
+                                  "status",
+                                  "specimenName",
+                                  "capColor",
+                                  "capLabel",
+                                  "groupAbbreviation",
+                                  "printCount",
+                                  "lastPrintedAt",
+                                  "collectedAt",
+                                  "collectedByName",
+                                  "collectedVia",
+                                  "cancelReason",
+                                  "cancelledAt",
+                                  "replacesSid",
+                                  "replacedBySid",
+                                  "items",
+                                  "canRecollect",
+                                  "canUncollect"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "orderId",
+                            "orderNo",
+                            "encounterId",
+                            "encounterNo",
+                            "patientName",
+                            "patientCode",
+                            "patientBirthYear",
+                            "patientAgeYears",
+                            "patientGender",
+                            "patientPhone",
+                            "doctorName",
+                            "orderedAt",
+                            "paid",
+                            "scanRequired",
+                            "tubes"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu sai",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.enter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/specimen-tubes/lookup": {
+      "get": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Lấy mẫu xét nghiệm — tra mã ống (ô \"Quét mã ống\": súng quét USB gõ mã + Enter): trả phiếu, bệnh nhân, trạng thái ống và tab hàng đợi hiện tại",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "required": true,
+            "name": "sid",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tubeId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "sid": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "COLLECTED",
+                            "CANCELLED"
+                          ]
+                        },
+                        "orderId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "orderNo": {
+                          "type": "string"
+                        },
+                        "patientName": {
+                          "type": "string"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "bucket": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "AWAITING_PAYMENT",
+                            "WAITING",
+                            "IN_PROGRESS",
+                            "PENDING_APPROVAL",
+                            "COMPLETED"
+                          ]
+                        },
+                        "itemId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "replacedBySid": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "tubeId",
+                        "sid",
+                        "status",
+                        "orderId",
+                        "orderNo",
+                        "patientName",
+                        "patientCode",
+                        "bucket",
+                        "itemId",
+                        "replacedBySid",
+                        "encounterCancelled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu mã ống",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không có ống mang mã này hoặc ngoài phạm vi Khoa/Phòng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/specimen-tubes/print": {
+      "post": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Lấy mẫu xét nghiệm — ghi nhận in tem các ống (tăng số lần in; web tự dựng tem rồi mở hộp thoại in của trình duyệt)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tubeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1,
+                    "maxItems": 30
+                  }
+                },
+                "required": [
+                  "tubeIds"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "object",
+                          "properties": {
+                            "orderId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "orderNo": {
+                              "type": "string"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "patientName": {
+                              "type": "string"
+                            },
+                            "patientCode": {
+                              "type": "string"
+                            },
+                            "patientBirthYear": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientAgeYears": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientGender": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "male",
+                                "female",
+                                "other"
+                              ]
+                            },
+                            "patientPhone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "doctorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "orderedAt": {
+                              "type": "string"
+                            },
+                            "paid": {
+                              "type": "boolean"
+                            },
+                            "scanRequired": {
+                              "type": "boolean"
+                            },
+                            "tubes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "sid": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "PENDING",
+                                      "COLLECTED",
+                                      "CANCELLED"
+                                    ]
+                                  },
+                                  "specimenName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "capColor": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "RED",
+                                      "YELLOW",
+                                      "PURPLE",
+                                      "BLUE",
+                                      "GREEN",
+                                      "GRAY",
+                                      "BLACK",
+                                      "URINE"
+                                    ]
+                                  },
+                                  "capLabel": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "groupAbbreviation": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "printCount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "lastPrintedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedVia": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "SCAN",
+                                      "MANUAL"
+                                    ]
+                                  },
+                                  "cancelReason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "cancelledAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacesSid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacedBySid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "items": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "canSplit": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "itemId",
+                                        "name",
+                                        "canSplit"
+                                      ]
+                                    }
+                                  },
+                                  "canRecollect": {
+                                    "type": "boolean"
+                                  },
+                                  "canUncollect": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "sid",
+                                  "status",
+                                  "specimenName",
+                                  "capColor",
+                                  "capLabel",
+                                  "groupAbbreviation",
+                                  "printCount",
+                                  "lastPrintedAt",
+                                  "collectedAt",
+                                  "collectedByName",
+                                  "collectedVia",
+                                  "cancelReason",
+                                  "cancelledAt",
+                                  "replacesSid",
+                                  "replacedBySid",
+                                  "items",
+                                  "canRecollect",
+                                  "canUncollect"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "orderId",
+                            "orderNo",
+                            "encounterId",
+                            "encounterNo",
+                            "patientName",
+                            "patientCode",
+                            "patientBirthYear",
+                            "patientAgeYears",
+                            "patientGender",
+                            "patientPhone",
+                            "doctorName",
+                            "orderedAt",
+                            "paid",
+                            "scanRequired",
+                            "tubes"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu sai",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.enter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/specimen-tubes/collect": {
+      "post": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Lấy mẫu xét nghiệm — xác nhận đã lấy mẫu THEO TỪNG ỐNG (tay hoặc quét tem): ống PENDING → COLLECTED, các xét nghiệm trong ống ORDERED → IN_PROGRESS (\"Đã lấy mẫu\"). Ống chưa chọn ở lại \"Chờ lấy mẫu\"",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tubes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "tubeId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "via": {
+                          "type": "string",
+                          "enum": [
+                            "SCAN",
+                            "MANUAL"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tubeId",
+                        "via"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 30
+                  }
+                },
+                "required": [
+                  "tubes"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "object",
+                          "properties": {
+                            "orderId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "orderNo": {
+                              "type": "string"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "patientName": {
+                              "type": "string"
+                            },
+                            "patientCode": {
+                              "type": "string"
+                            },
+                            "patientBirthYear": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientAgeYears": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientGender": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "male",
+                                "female",
+                                "other"
+                              ]
+                            },
+                            "patientPhone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "doctorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "orderedAt": {
+                              "type": "string"
+                            },
+                            "paid": {
+                              "type": "boolean"
+                            },
+                            "scanRequired": {
+                              "type": "boolean"
+                            },
+                            "tubes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "sid": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "PENDING",
+                                      "COLLECTED",
+                                      "CANCELLED"
+                                    ]
+                                  },
+                                  "specimenName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "capColor": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "RED",
+                                      "YELLOW",
+                                      "PURPLE",
+                                      "BLUE",
+                                      "GREEN",
+                                      "GRAY",
+                                      "BLACK",
+                                      "URINE"
+                                    ]
+                                  },
+                                  "capLabel": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "groupAbbreviation": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "printCount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "lastPrintedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedVia": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "SCAN",
+                                      "MANUAL"
+                                    ]
+                                  },
+                                  "cancelReason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "cancelledAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacesSid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacedBySid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "items": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "canSplit": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "itemId",
+                                        "name",
+                                        "canSplit"
+                                      ]
+                                    }
+                                  },
+                                  "canRecollect": {
+                                    "type": "boolean"
+                                  },
+                                  "canUncollect": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "sid",
+                                  "status",
+                                  "specimenName",
+                                  "capColor",
+                                  "capLabel",
+                                  "groupAbbreviation",
+                                  "printCount",
+                                  "lastPrintedAt",
+                                  "collectedAt",
+                                  "collectedByName",
+                                  "collectedVia",
+                                  "cancelReason",
+                                  "cancelledAt",
+                                  "replacesSid",
+                                  "replacedBySid",
+                                  "items",
+                                  "canRecollect",
+                                  "canUncollect"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "orderId",
+                            "orderNo",
+                            "encounterId",
+                            "encounterNo",
+                            "patientName",
+                            "patientCode",
+                            "patientBirthYear",
+                            "patientAgeYears",
+                            "patientGender",
+                            "patientPhone",
+                            "doctorName",
+                            "orderedAt",
+                            "paid",
+                            "scanRequired",
+                            "tubes"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu sai",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.enter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/specimen-tubes/uncollect": {
+      "post": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Lấy mẫu xét nghiệm — huỷ xác nhận đã lấy mẫu (kèm lý do): trả ống về \"Chờ lấy mẫu\". Chỉ khi chưa có kết quả nào (kể cả nháp)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tubeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1,
+                    "maxItems": 30
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "tubeIds",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "object",
+                          "properties": {
+                            "orderId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "orderNo": {
+                              "type": "string"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "patientName": {
+                              "type": "string"
+                            },
+                            "patientCode": {
+                              "type": "string"
+                            },
+                            "patientBirthYear": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientAgeYears": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientGender": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "male",
+                                "female",
+                                "other"
+                              ]
+                            },
+                            "patientPhone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "doctorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "orderedAt": {
+                              "type": "string"
+                            },
+                            "paid": {
+                              "type": "boolean"
+                            },
+                            "scanRequired": {
+                              "type": "boolean"
+                            },
+                            "tubes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "sid": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "PENDING",
+                                      "COLLECTED",
+                                      "CANCELLED"
+                                    ]
+                                  },
+                                  "specimenName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "capColor": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "RED",
+                                      "YELLOW",
+                                      "PURPLE",
+                                      "BLUE",
+                                      "GREEN",
+                                      "GRAY",
+                                      "BLACK",
+                                      "URINE"
+                                    ]
+                                  },
+                                  "capLabel": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "groupAbbreviation": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "printCount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "lastPrintedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedVia": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "SCAN",
+                                      "MANUAL"
+                                    ]
+                                  },
+                                  "cancelReason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "cancelledAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacesSid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacedBySid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "items": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "canSplit": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "itemId",
+                                        "name",
+                                        "canSplit"
+                                      ]
+                                    }
+                                  },
+                                  "canRecollect": {
+                                    "type": "boolean"
+                                  },
+                                  "canUncollect": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "sid",
+                                  "status",
+                                  "specimenName",
+                                  "capColor",
+                                  "capLabel",
+                                  "groupAbbreviation",
+                                  "printCount",
+                                  "lastPrintedAt",
+                                  "collectedAt",
+                                  "collectedByName",
+                                  "collectedVia",
+                                  "cancelReason",
+                                  "cancelledAt",
+                                  "replacesSid",
+                                  "replacedBySid",
+                                  "items",
+                                  "canRecollect",
+                                  "canUncollect"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "orderId",
+                            "orderNo",
+                            "encounterId",
+                            "encounterNo",
+                            "patientName",
+                            "patientCode",
+                            "patientBirthYear",
+                            "patientAgeYears",
+                            "patientGender",
+                            "patientPhone",
+                            "doctorName",
+                            "orderedAt",
+                            "paid",
+                            "scanRequired",
+                            "tubes"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu sai",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.enter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/specimen-tubes/{tubeId}/split": {
+      "post": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Lấy mẫu xét nghiệm — \"Tách\" 1 xét nghiệm sang ống riêng (SID mới). Chỉ khi ống chưa in tem, chưa lấy và còn > 1 xét nghiệm",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tubeId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "itemId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "itemId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "object",
+                          "properties": {
+                            "orderId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "orderNo": {
+                              "type": "string"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "patientName": {
+                              "type": "string"
+                            },
+                            "patientCode": {
+                              "type": "string"
+                            },
+                            "patientBirthYear": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientAgeYears": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientGender": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "male",
+                                "female",
+                                "other"
+                              ]
+                            },
+                            "patientPhone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "doctorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "orderedAt": {
+                              "type": "string"
+                            },
+                            "paid": {
+                              "type": "boolean"
+                            },
+                            "scanRequired": {
+                              "type": "boolean"
+                            },
+                            "tubes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "sid": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "PENDING",
+                                      "COLLECTED",
+                                      "CANCELLED"
+                                    ]
+                                  },
+                                  "specimenName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "capColor": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "RED",
+                                      "YELLOW",
+                                      "PURPLE",
+                                      "BLUE",
+                                      "GREEN",
+                                      "GRAY",
+                                      "BLACK",
+                                      "URINE"
+                                    ]
+                                  },
+                                  "capLabel": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "groupAbbreviation": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "printCount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "lastPrintedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedVia": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "SCAN",
+                                      "MANUAL"
+                                    ]
+                                  },
+                                  "cancelReason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "cancelledAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacesSid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacedBySid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "items": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "canSplit": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "itemId",
+                                        "name",
+                                        "canSplit"
+                                      ]
+                                    }
+                                  },
+                                  "canRecollect": {
+                                    "type": "boolean"
+                                  },
+                                  "canUncollect": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "sid",
+                                  "status",
+                                  "specimenName",
+                                  "capColor",
+                                  "capLabel",
+                                  "groupAbbreviation",
+                                  "printCount",
+                                  "lastPrintedAt",
+                                  "collectedAt",
+                                  "collectedByName",
+                                  "collectedVia",
+                                  "cancelReason",
+                                  "cancelledAt",
+                                  "replacesSid",
+                                  "replacedBySid",
+                                  "items",
+                                  "canRecollect",
+                                  "canUncollect"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "orderId",
+                            "orderNo",
+                            "encounterId",
+                            "encounterNo",
+                            "patientName",
+                            "patientCode",
+                            "patientBirthYear",
+                            "patientAgeYears",
+                            "patientGender",
+                            "patientPhone",
+                            "doctorName",
+                            "orderedAt",
+                            "paid",
+                            "scanRequired",
+                            "tubes"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu sai",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.enter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/specimen-tubes/{tubeId}/recollect": {
+      "post": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Lấy mẫu xét nghiệm — huỷ ống & lấy lại mẫu (kèm lý do): ống cũ giữ ở CANCELLED, sinh ống mới (SID mới). Chỉ khi chưa có kết quả nào",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tubeId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "object",
+                          "properties": {
+                            "orderId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "orderNo": {
+                              "type": "string"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "patientName": {
+                              "type": "string"
+                            },
+                            "patientCode": {
+                              "type": "string"
+                            },
+                            "patientBirthYear": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientAgeYears": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "patientGender": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "male",
+                                "female",
+                                "other"
+                              ]
+                            },
+                            "patientPhone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "doctorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "orderedAt": {
+                              "type": "string"
+                            },
+                            "paid": {
+                              "type": "boolean"
+                            },
+                            "scanRequired": {
+                              "type": "boolean"
+                            },
+                            "tubes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "sid": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "PENDING",
+                                      "COLLECTED",
+                                      "CANCELLED"
+                                    ]
+                                  },
+                                  "specimenName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "capColor": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "RED",
+                                      "YELLOW",
+                                      "PURPLE",
+                                      "BLUE",
+                                      "GREEN",
+                                      "GRAY",
+                                      "BLACK",
+                                      "URINE"
+                                    ]
+                                  },
+                                  "capLabel": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "groupAbbreviation": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "printCount": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "lastPrintedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "collectedVia": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "SCAN",
+                                      "MANUAL"
+                                    ]
+                                  },
+                                  "cancelReason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "cancelledAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacesSid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "replacedBySid": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "items": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "canSplit": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "itemId",
+                                        "name",
+                                        "canSplit"
+                                      ]
+                                    }
+                                  },
+                                  "canRecollect": {
+                                    "type": "boolean"
+                                  },
+                                  "canUncollect": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "sid",
+                                  "status",
+                                  "specimenName",
+                                  "capColor",
+                                  "capLabel",
+                                  "groupAbbreviation",
+                                  "printCount",
+                                  "lastPrintedAt",
+                                  "collectedAt",
+                                  "collectedByName",
+                                  "collectedVia",
+                                  "cancelReason",
+                                  "cancelledAt",
+                                  "replacesSid",
+                                  "replacedBySid",
+                                  "items",
+                                  "canRecollect",
+                                  "canUncollect"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "orderId",
+                            "orderNo",
+                            "encounterId",
+                            "encounterNo",
+                            "patientName",
+                            "patientCode",
+                            "patientBirthYear",
+                            "patientAgeYears",
+                            "patientGender",
+                            "patientPhone",
+                            "doctorName",
+                            "orderedAt",
+                            "paid",
+                            "scanRequired",
+                            "tubes"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu sai",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.enter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED)",
             "content": {
               "application/json": {
                 "schema": {

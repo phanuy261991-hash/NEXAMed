@@ -74,6 +74,8 @@ const QUEUE_ITEM_INCLUDE = {
   invoiceLines: INVOICE_STATUS_SELECT,
   results: { where: { deletedAt: null }, select: { supersedesId: true, signedAt: true } },
   package: { select: { invoiceLines: INVOICE_STATUS_SELECT } },
+  // Ống mẫu đang chứa xét nghiệm này (docs/DECISIONS.md #220) — hàng đợi hiện mã ống / màu nắp.
+  specimenTube: { select: { id: true, sid: true, status: true, specimenName: true, capColor: true } },
 } satisfies Prisma.ClinicalOrderItemInclude;
 
 export type QueueItemRow = Prisma.ClinicalOrderItemGetPayload<{ include: typeof QUEUE_ITEM_INCLUDE }>;
@@ -172,6 +174,26 @@ export class ClinicalOrderRepository {
     const r = await tx.clinicalOrderItem.updateMany({
       where: { tenantId, id: { in: ids }, deletedAt: null, status: 'ORDERED' },
       data: { status: 'IN_PROGRESS', collectedAt: at, collectedBy: actorId, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return r.count;
+  }
+
+  /** Gán (hoặc gỡ, `tubeId = null`) ống mẫu cho các dòng xét nghiệm (docs/DECISIONS.md #220). */
+  async setSpecimenTube(tx: Prisma.TransactionClient, tenantId: string, ids: string[], tubeId: string | null, actorId: string): Promise<number> {
+    if (ids.length === 0) return 0;
+    const r = await tx.clinicalOrderItem.updateMany({
+      where: { tenantId, id: { in: ids }, deletedAt: null },
+      data: { specimenTubeId: tubeId, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return r.count;
+  }
+
+  /** IN_PROGRESS → ORDERED (huỷ xác nhận đã lấy mẫu / huỷ ống & lấy lại): xoá giờ + người lấy mẫu. `WHERE status='IN_PROGRESS'` chống ghi chồng; trả số dòng thật sự chuyển. */
+  async revertToOrdered(tx: Prisma.TransactionClient, tenantId: string, ids: string[], actorId: string): Promise<number> {
+    if (ids.length === 0) return 0;
+    const r = await tx.clinicalOrderItem.updateMany({
+      where: { tenantId, id: { in: ids }, deletedAt: null, status: 'IN_PROGRESS' },
+      data: { status: 'ORDERED', collectedAt: null, collectedBy: null, updatedBy: actorId, version: { increment: 1 } },
     });
     return r.count;
   }

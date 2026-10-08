@@ -32,6 +32,8 @@ import {
   type DataScope,
   PARACLINICAL_IMAGE_MAX_BYTES,
   PARACLINICAL_IMAGE_MAX_COUNT,
+  specimenCapLabel,
+  type QueueTube,
   type ListParaclinicalQueueQuery,
   type AmendParaclinicalResultRequest,
   type ListParaclinicalQueueResponse,
@@ -52,9 +54,8 @@ import { ClinicalOrderRepository, type QueueItemRow } from '../clinical-order/cl
 import { UserAccountRepository } from '../iam/user-account.repository';
 import { ReferenceCatalogRepository } from '../reference-catalog/reference-catalog.repository';
 import { TechnicalServiceRepository, type IndicatorLinkFullRow } from '../technical-service/technical-service.repository';
+import { asCapColor, enrich, toGender, type EnrichedItem, type Gender } from './paraclinical-item.helpers';
 import { ParaclinicalResultRepository, type ResultValueData, type ResultWithValues } from './paraclinical-result.repository';
-
-type Gender = 'male' | 'female' | 'other';
 
 /**
  * Phạm vi của MỘT lần gọi (docs/DECISIONS.md #215): `dataScope` của quyền thuộc nhóm menu (`lab_result.*` hoặc `imaging_result.*`) + các loại dịch vụ mà nhóm đó phục vụ.
@@ -67,40 +68,8 @@ export interface ResultAccessScope {
   permissionModule: string;
 }
 
-interface EnrichedItem {
-  row: QueueItemRow;
-  id: string;
-  clinicalOrderId: string;
-  serviceKind: 'LAB' | 'IMAGING' | 'FUNCTIONAL';
-  status: ParaclinicalItemStatus;
-  paid: boolean;
-}
-
 const blank = (v: string | null | undefined): boolean => v === null || v === undefined || v.trim() === '';
 const normalizeText = (v: string | null | undefined): string | null => (blank(v) ? null : (v as string).trim());
-
-function toGender(raw: string): Gender | null {
-  return raw === 'male' || raw === 'female' || raw === 'other' ? raw : null;
-}
-
-/** Dòng chỉ định đã thu tiền: dòng hoá đơn của chính nó (lẻ) hoặc của gói chứa nó, và MỌI dòng đó nằm trên hoá đơn `PAID`. */
-function isPaid(row: QueueItemRow): boolean {
-  const lines = row.clinicalOrderPackageId === null ? row.invoiceLines : (row.package?.invoiceLines ?? []);
-  return lines.length > 0 && lines.every((l) => l.invoice.status === 'PAID');
-}
-
-function enrich(rows: QueueItemRow[]): EnrichedItem[] {
-  return rows
-    .filter((r) => r.technicalService !== null)
-    .map((row) => ({
-      row,
-      id: row.id,
-      clinicalOrderId: row.clinicalOrderId,
-      serviceKind: row.technicalService!.serviceKind,
-      status: row.status as ParaclinicalItemStatus,
-      paid: isPaid(row),
-    }));
-}
 
 export function toReferenceRow(r: { sex: LabReferenceRow['sex']; ageFromYears: number; ageToYears: number | null; lowValue: number | null; highValue: number | null; lowInclusive: boolean; highInclusive: boolean; normalText: string | null; displayText: string | null }): LabReferenceRow {
   return {
@@ -159,6 +128,20 @@ export class ParaclinicalResultService {
       const counts = Object.fromEntries(PARACLINICAL_QUEUE_BUCKETS.map((b) => [b, 0])) as Record<ParaclinicalQueueBucket, number>;
       const needle = query.q ? stripVietnameseDiacritics(query.q).toLowerCase() : null;
       const rows: ListParaclinicalQueueResponse['items'] = [];
+      const collectorIds = new Set<string>();
+      const collectorOfRow = new Map<string, string>();
+      // Tên + màu nắp của loại Mẫu bệnh phẩm (cho ống dự kiến) — tra 1 lần mỗi mã.
+      const specimenInfoCache = new Map<string, Promise<{ name: string | null; capColor: string | null }>>();
+      const specimenInfoOf = (code: string | null): Promise<{ name: string | null; capColor: string | null }> => {
+        const key = code ?? '';
+        if (!specimenInfoCache.has(key)) {
+          specimenInfoCache.set(
+            key,
+            code ? this.referenceCatalogRepository.findByCategoryAndCode(tx, 'SPECIMEN_TYPE', code).then((r) => ({ name: r?.name ?? null, capColor: r?.capColor ?? null })) : Promise.resolve({ name: null, capColor: null }),
+          );
+        }
+        return specimenInfoCache.get(key)!;
+      };
       // Tên Mẫu bệnh phẩm / Nhóm dịch vụ theo mã — tra 1 lần mỗi mã trong lượt gọi này.
       const catalogNames = new Map<string, Promise<string | null>>();
       const nameOf = (category: 'SPECIMEN_TYPE' | 'TECH_SERVICE_CATEGORY', code: string | null | undefined): Promise<string | null> => {
@@ -188,8 +171,42 @@ export class ParaclinicalResultService {
         const specimenNames = [...new Set((await Promise.all(group.map((g) => nameOf('SPECIMEN_TYPE', g.row.technicalService!.specimenTypeCode)))).filter((n): n is string => n !== null))];
         const categoryNames = [...new Set((await Promise.all(group.map((g) => nameOf('TECH_SERVICE_CATEGORY', g.row.technicalService!.categoryCode)))).filter((n): n is string => n !== null))];
         const waitingSince = first.status === 'IN_PROGRESS' && first.row.collectedAt ? first.row.collectedAt : first.row.order.createdAt;
+
+        // Ống mẫu của dòng (chỉ xét nghiệm): ống đã sinh SID, và ống DỰ KIẾN gộp theo loại mẫu cho dòng chưa mở hộp thoại lấy mẫu (docs/DECISIONS.md #220).
+        const tubes: QueueTube[] = [];
+        if (first.serviceKind === 'LAB') {
+          const seenTubes = new Set<string>();
+          const plannedSpecimens = new Map<string, string | null>();
+          for (const g of group) {
+            const tube = g.row.specimenTube;
+            if (tube && tube.status !== 'CANCELLED') {
+              if (seenTubes.has(tube.id)) continue;
+              seenTubes.add(tube.id);
+              const capColor = asCapColor(tube.capColor);
+              tubes.push({ id: tube.id, sid: tube.sid, status: tube.status, specimenName: tube.specimenName, capColor, capLabel: specimenCapLabel(capColor) });
+            } else if (!tube && g.status === 'ORDERED') {
+              const code = g.row.technicalService!.specimenTypeCode;
+              plannedSpecimens.set(code ?? '', code);
+            }
+          }
+          for (const code of plannedSpecimens.values()) {
+            const info = await specimenInfoOf(code);
+            const capColor = asCapColor(info.capColor);
+            tubes.push({ id: null, sid: null, status: 'PLANNED', specimenName: info.name, capColor, capLabel: specimenCapLabel(capColor) });
+          }
+        }
+        // Lúc + người lấy mẫu: lần lấy MỚI NHẤT trong nhóm (lấy nhiều ống ở các thời điểm khác nhau).
+        const collectedItem = group.reduce<EnrichedItem | null>((best, g) => (g.row.collectedAt && (!best || g.row.collectedAt > best.row.collectedAt!) ? g : best), null);
+        if (collectedItem?.row.collectedBy) collectorIds.add(collectedItem.row.collectedBy);
+        const rowKey = first.id;
+        if (collectedItem?.row.collectedBy) collectorOfRow.set(rowKey, collectedItem.row.collectedBy);
         rows.push({
           key: first.id,
+          orderId: first.row.order.id,
+          tubes,
+          collectedAt: collectedItem?.row.collectedAt?.toISOString() ?? null,
+          collectedByName: null,
+          hasDraft: group.some((g) => g.row.results.some((r) => r.signedAt === null)),
           itemIds: group.map((g) => g.id),
           orderNo: first.row.order.orderNo,
           encounterId: first.row.order.encounter.id,
@@ -209,6 +226,15 @@ export class ParaclinicalResultService {
           paid: group.every((g) => g.paid),
           waitingSince: waitingSince.toISOString(),
         });
+      }
+
+      // Tên người lấy mẫu: tra 1 lần cho cả danh sách.
+      if (collectorIds.size > 0) {
+        const collectorNames = new Map((await this.userRepository.findFullNamesByIds(tx, tenantId, [...collectorIds])).map((u) => [u.id, u.fullName]));
+        for (const row of rows) {
+          const collectorId = collectorOfRow.get(row.key);
+          if (collectorId) row.collectedByName = collectorNames.get(collectorId) ?? null;
+        }
       }
 
       // Tab "Đã trả kết quả": mới nhất lên đầu; các tab còn lại: chờ lâu nhất lên đầu.

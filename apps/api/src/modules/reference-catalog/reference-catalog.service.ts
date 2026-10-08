@@ -13,7 +13,9 @@ import { GlobalCodeSequenceRepository } from '../../infrastructure/persistence/g
 import {
   ICD10_ABBREVIATION_CODE_PATTERN,
   normalizeIcd10AbbreviationCode,
+  specimenCapColorSchema,
   type CreateReferenceCatalogRequest,
+  type SpecimenCapColor,
   type ExamTypePriceInput,
   type ExamTypePriceItem,
   type ListReferenceCatalogResponse,
@@ -173,6 +175,8 @@ export class ReferenceCatalogService {
           description: dto.description ?? null,
           bytCode: dto.bytCode ?? null,
           fullName: dto.fullName ?? null,
+          capColor: dto.capColor ?? null,
+          abbreviation: dto.abbreviation ?? null,
           direction: dto.direction ?? null,
           isActive: dto.isActive ?? true,
         });
@@ -279,6 +283,8 @@ export class ReferenceCatalogService {
           description: dto.description,
           bytCode: dto.bytCode,
           fullName: dto.fullName,
+          capColor: dto.capColor,
+          abbreviation: dto.abbreviation,
           direction: dto.direction,
           isActive: dto.isActive,
         });
@@ -373,6 +379,8 @@ export class ReferenceCatalogService {
       direction: row.direction,
       bytCode: row.bytCode,
       fullName: row.fullName,
+      capColor: specimenCapColorSchema.safeParse(row.capColor).success ? (row.capColor as SpecimenCapColor) : null,
+      abbreviation: row.abbreviation,
       version: row.version,
       // Category khác luôn `undefined` (field không áp dụng). EXAM_TYPE luôn là MẢNG thật (kể cả
       // rỗng — ví dụ tenant khác chưa tạo đơn giá cho mục dùng chung này) chứ không phải

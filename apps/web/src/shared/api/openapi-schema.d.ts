@@ -1964,6 +1964,7 @@ export interface paths {
                                 prescriptionStockBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
                                 paraclinicalBeforePaymentEnabled: boolean;
+                                specimenScanRequired: boolean;
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
                             };
@@ -13567,6 +13568,7 @@ export interface paths {
                                 prescriptionStockBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
                                 paraclinicalBeforePaymentEnabled: boolean;
+                                specimenScanRequired: boolean;
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
                             };
@@ -13676,6 +13678,7 @@ export interface paths {
                         prescriptionStockBlockEnabled?: boolean;
                         allowFreeTextPrescriptionEnabled?: boolean;
                         paraclinicalBeforePaymentEnabled?: boolean;
+                        specimenScanRequired?: boolean;
                         icd10SuggestionEnabled?: boolean;
                         icd10SuggestionLearningEnabled?: boolean;
                     };
@@ -13744,6 +13747,7 @@ export interface paths {
                                 prescriptionStockBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
                                 paraclinicalBeforePaymentEnabled: boolean;
+                                specimenScanRequired: boolean;
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
                             };
@@ -14737,7 +14741,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -14810,7 +14814,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE";
                 };
                 cookie?: never;
             };
@@ -14833,7 +14837,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE";
                                 label: string;
                                 prefix: string;
                                 template: string;
@@ -15512,6 +15516,9 @@ export interface paths {
                                     direction: "EXPENSE" | "INCOME" | null;
                                     bytCode: string | null;
                                     fullName: string | null;
+                                    /** @enum {string|null} */
+                                    capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                    abbreviation: string | null;
                                     version: number;
                                 }[];
                             };
@@ -15608,6 +15615,9 @@ export interface paths {
                         bytCode?: string;
                         fullName?: string;
                         /** @enum {string} */
+                        capColor?: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE";
+                        abbreviation?: string;
+                        /** @enum {string} */
                         direction?: "EXPENSE" | "INCOME";
                         isActive?: boolean;
                         examTypePrices?: {
@@ -15656,6 +15666,9 @@ export interface paths {
                                 direction: "EXPENSE" | "INCOME" | null;
                                 bytCode: string | null;
                                 fullName: string | null;
+                                /** @enum {string|null} */
+                                capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                abbreviation: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -15774,6 +15787,9 @@ export interface paths {
                                 direction: "EXPENSE" | "INCOME" | null;
                                 bytCode: string | null;
                                 fullName: string | null;
+                                /** @enum {string|null} */
+                                capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                abbreviation: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -15868,6 +15884,9 @@ export interface paths {
                         description?: string;
                         bytCode?: string;
                         fullName?: string;
+                        /** @enum {string|null} */
+                        capColor?: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                        abbreviation?: string | null;
                         /** @enum {string} */
                         direction?: "EXPENSE" | "INCOME";
                         isActive?: boolean;
@@ -15917,6 +15936,9 @@ export interface paths {
                                 direction: "EXPENSE" | "INCOME" | null;
                                 bytCode: string | null;
                                 fullName: string | null;
+                                /** @enum {string|null} */
+                                capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                abbreviation: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -16045,6 +16067,9 @@ export interface paths {
                                 direction: "EXPENSE" | "INCOME" | null;
                                 bytCode: string | null;
                                 fullName: string | null;
+                                /** @enum {string|null} */
+                                capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                abbreviation: string | null;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -18648,10 +18673,10 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string | null;
                                     /** @enum {string} */
-                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
                                     name: string;
                                     /** @enum {string} */
-                                    paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                    paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
                                     isDefault: boolean;
                                     isBuiltin: boolean;
                                     config: {
@@ -18682,6 +18707,12 @@ export interface paths {
                                             title: string;
                                             text: string;
                                         };
+                                        label?: {
+                                            showPatientCode: boolean;
+                                            showGroup: boolean;
+                                            showCapColor: boolean;
+                                            showDate: boolean;
+                                        };
                                         copies: {
                                             count: number;
                                             labels: string[];
@@ -18692,12 +18723,12 @@ export interface paths {
                                 catalog: {
                                     documentTypes: {
                                         /** @enum {string} */
-                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
                                         label: string;
                                         group: string;
-                                        allowedPapers: ("A4" | "A5" | "A5_LANDSCAPE" | "K80")[];
+                                        allowedPapers: ("A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30")[];
                                         /** @enum {string} */
-                                        defaultPaper: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                        defaultPaper: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
                                         defaultTitle: string;
                                         notice: {
                                             title: string;
@@ -18706,7 +18737,7 @@ export interface paths {
                                     }[];
                                     papers: {
                                         /** @enum {string} */
-                                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
                                         label: string;
                                         description: string;
                                         widthMm: number;
@@ -18741,6 +18772,12 @@ export interface paths {
                                                 title: string;
                                                 text: string;
                                             };
+                                            label?: {
+                                                showPatientCode: boolean;
+                                                showGroup: boolean;
+                                                showCapColor: boolean;
+                                                showDate: boolean;
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -18773,6 +18810,12 @@ export interface paths {
                                                 show: boolean;
                                                 title: string;
                                                 text: string;
+                                            };
+                                            label?: {
+                                                showPatientCode: boolean;
+                                                showGroup: boolean;
+                                                showCapColor: boolean;
+                                                showDate: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -18807,6 +18850,12 @@ export interface paths {
                                                 title: string;
                                                 text: string;
                                             };
+                                            label?: {
+                                                showPatientCode: boolean;
+                                                showGroup: boolean;
+                                                showCapColor: boolean;
+                                                showDate: boolean;
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -18839,6 +18888,90 @@ export interface paths {
                                                 show: boolean;
                                                 title: string;
                                                 text: string;
+                                            };
+                                            label?: {
+                                                showPatientCode: boolean;
+                                                showGroup: boolean;
+                                                showCapColor: boolean;
+                                                showDate: boolean;
+                                            };
+                                            copies: {
+                                                count: number;
+                                                labels: string[];
+                                            };
+                                        };
+                                        LABEL_35X22?: {
+                                            margins: {
+                                                topMm: number;
+                                                rightMm: number;
+                                                bottomMm: number;
+                                                leftMm: number;
+                                            };
+                                            header: {
+                                                showLogo: boolean;
+                                                showClinicName: boolean;
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showTaxCode: boolean;
+                                                showDivider: boolean;
+                                            };
+                                            title: {
+                                                text: string;
+                                            };
+                                            footer: {
+                                                note: string;
+                                                showSignature: boolean;
+                                                showSignatureHint: boolean;
+                                            };
+                                            notice?: {
+                                                show: boolean;
+                                                title: string;
+                                                text: string;
+                                            };
+                                            label?: {
+                                                showPatientCode: boolean;
+                                                showGroup: boolean;
+                                                showCapColor: boolean;
+                                                showDate: boolean;
+                                            };
+                                            copies: {
+                                                count: number;
+                                                labels: string[];
+                                            };
+                                        };
+                                        LABEL_50X30?: {
+                                            margins: {
+                                                topMm: number;
+                                                rightMm: number;
+                                                bottomMm: number;
+                                                leftMm: number;
+                                            };
+                                            header: {
+                                                showLogo: boolean;
+                                                showClinicName: boolean;
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showTaxCode: boolean;
+                                                showDivider: boolean;
+                                            };
+                                            title: {
+                                                text: string;
+                                            };
+                                            footer: {
+                                                note: string;
+                                                showSignature: boolean;
+                                                showSignatureHint: boolean;
+                                            };
+                                            notice?: {
+                                                show: boolean;
+                                                title: string;
+                                                text: string;
+                                            };
+                                            label?: {
+                                                showPatientCode: boolean;
+                                                showGroup: boolean;
+                                                showCapColor: boolean;
+                                                showDate: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -18897,10 +19030,10 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
                         name: string;
                         /** @enum {string} */
-                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
                         config?: {
                             margins: {
                                 topMm: number;
@@ -18929,6 +19062,12 @@ export interface paths {
                                 title: string;
                                 text: string;
                             };
+                            label?: {
+                                showPatientCode: boolean;
+                                showGroup: boolean;
+                                showCapColor: boolean;
+                                showDate: boolean;
+                            };
                             copies: {
                                 count: number;
                                 labels: string[];
@@ -18950,10 +19089,10 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string | null;
                                 /** @enum {string} */
-                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
                                 name: string;
                                 /** @enum {string} */
-                                paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
                                 isDefault: boolean;
                                 isBuiltin: boolean;
                                 config: {
@@ -18983,6 +19122,12 @@ export interface paths {
                                         show: boolean;
                                         title: string;
                                         text: string;
+                                    };
+                                    label?: {
+                                        showPatientCode: boolean;
+                                        showGroup: boolean;
+                                        showCapColor: boolean;
+                                        showDate: boolean;
                                     };
                                     copies: {
                                         count: number;
@@ -19105,9 +19250,9 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
                                     /** @enum {string} */
-                                    paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                    paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
                                     widthMm: number;
                                     heightMm: number | null;
                                     config: {
@@ -19138,6 +19283,12 @@ export interface paths {
                                             title: string;
                                             text: string;
                                         };
+                                        label?: {
+                                            showPatientCode: boolean;
+                                            showGroup: boolean;
+                                            showCapColor: boolean;
+                                            showDate: boolean;
+                                        };
                                         copies: {
                                             count: number;
                                             labels: string[];
@@ -19145,7 +19296,7 @@ export interface paths {
                                     };
                                     options: {
                                         /** @enum {string} */
-                                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
                                         label: string;
                                         widthMm: number;
                                         heightMm: number | null;
@@ -19177,6 +19328,12 @@ export interface paths {
                                                 show: boolean;
                                                 title: string;
                                                 text: string;
+                                            };
+                                            label?: {
+                                                showPatientCode: boolean;
+                                                showGroup: boolean;
+                                                showCapColor: boolean;
+                                                showDate: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -19245,7 +19402,7 @@ export interface paths {
                             showTaxCode: boolean;
                             showDivider: boolean;
                         };
-                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER")[];
+                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL")[];
                     };
                 };
             };
@@ -19466,6 +19623,12 @@ export interface paths {
                                 title: string;
                                 text: string;
                             };
+                            label?: {
+                                showPatientCode: boolean;
+                                showGroup: boolean;
+                                showCapColor: boolean;
+                                showDate: boolean;
+                            };
                             copies: {
                                 count: number;
                                 labels: string[];
@@ -19489,10 +19652,10 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string | null;
                                 /** @enum {string} */
-                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER";
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
                                 name: string;
                                 /** @enum {string} */
-                                paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80";
+                                paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
                                 isDefault: boolean;
                                 isBuiltin: boolean;
                                 config: {
@@ -19522,6 +19685,12 @@ export interface paths {
                                         show: boolean;
                                         title: string;
                                         text: string;
+                                    };
+                                    label?: {
+                                        showPatientCode: boolean;
+                                        showGroup: boolean;
+                                        showCapColor: boolean;
+                                        showDate: boolean;
                                     };
                                     copies: {
                                         count: number;
@@ -33580,6 +33749,22 @@ export interface paths {
                                     /** @enum {string} */
                                     bucket: "AWAITING_PAYMENT" | "WAITING" | "IN_PROGRESS" | "PENDING_APPROVAL" | "COMPLETED";
                                     paid: boolean;
+                                    /** Format: uuid */
+                                    orderId: string;
+                                    tubes: {
+                                        /** Format: uuid */
+                                        id: string | null;
+                                        sid: string | null;
+                                        /** @enum {string} */
+                                        status: "PLANNED" | "PENDING" | "COLLECTED";
+                                        specimenName: string | null;
+                                        /** @enum {string|null} */
+                                        capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                        capLabel: string | null;
+                                    }[];
+                                    collectedAt: string | null;
+                                    collectedByName: string | null;
+                                    hasDraft: boolean;
                                     waitingSince: string;
                                 }[];
                                 counts: {
@@ -33644,129 +33829,6 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/paraclinical/lab/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Cận lâm sàng GĐ4 — "Lấy mẫu" / "Gọi vào phòng": các dòng cùng phiếu chuyển ORDERED → IN_PROGRESS. Chưa thu tiền thì chặn trừ khi phòng khám bật "thực hiện trước khi thu tiền" */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        itemIds: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Thành công */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data: {
-                                /** Format: uuid */
-                                itemId: string;
-                            };
-                            meta: Record<string, never>;
-                        };
-                    };
-                };
-                /** @description Dữ liệu sai */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: {
-                                code: string;
-                                message: string;
-                                details?: unknown;
-                            };
-                        };
-                    };
-                };
-                /** @description Thiếu hoặc sai access token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: {
-                                code: string;
-                                message: string;
-                                details?: unknown;
-                            };
-                        };
-                    };
-                };
-                /** @description Không có quyền lab_result.enter */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: {
-                                code: string;
-                                message: string;
-                                details?: unknown;
-                            };
-                        };
-                    };
-                };
-                /** @description Dòng chỉ định không tồn tại hoặc thuộc tenant khác */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: {
-                                code: string;
-                                message: string;
-                                details?: unknown;
-                            };
-                        };
-                    };
-                };
-                /** @description Dòng không ở trạng thái chờ lấy mẫu (PARACLINICAL_ITEM_INVALID_STATE), lượt khám đã huỷ hoặc chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: {
-                                code: string;
-                                message: string;
-                                details?: unknown;
-                            };
-                        };
-                    };
-                };
-            };
-        };
         delete?: never;
         options?: never;
         head?: never;
@@ -35010,6 +35072,22 @@ export interface paths {
                                     /** @enum {string} */
                                     bucket: "AWAITING_PAYMENT" | "WAITING" | "IN_PROGRESS" | "PENDING_APPROVAL" | "COMPLETED";
                                     paid: boolean;
+                                    /** Format: uuid */
+                                    orderId: string;
+                                    tubes: {
+                                        /** Format: uuid */
+                                        id: string | null;
+                                        sid: string | null;
+                                        /** @enum {string} */
+                                        status: "PLANNED" | "PENDING" | "COLLECTED";
+                                        specimenName: string | null;
+                                        /** @enum {string|null} */
+                                        capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                        capLabel: string | null;
+                                    }[];
+                                    collectedAt: string | null;
+                                    collectedByName: string | null;
+                                    hasDraft: boolean;
                                     waitingSince: string;
                                 }[];
                                 counts: {
@@ -36780,6 +36858,1151 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/lab/orders/{orderId}/specimen-collection/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lấy mẫu xét nghiệm — mở hộp thoại lấy mẫu của phiếu: sinh ống (kèm mã ống SID) cho xét nghiệm chưa có ống, gộp theo loại mẫu bệnh phẩm. Idempotent */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    orderId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                state: {
+                                    /** Format: uuid */
+                                    orderId: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    patientBirthYear: number | null;
+                                    patientAgeYears: number | null;
+                                    /** @enum {string|null} */
+                                    patientGender: "male" | "female" | "other" | null;
+                                    patientPhone: string | null;
+                                    doctorName: string | null;
+                                    orderedAt: string;
+                                    paid: boolean;
+                                    scanRequired: boolean;
+                                    tubes: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        sid: string;
+                                        /** @enum {string} */
+                                        status: "PENDING" | "COLLECTED" | "CANCELLED";
+                                        specimenName: string | null;
+                                        /** @enum {string|null} */
+                                        capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                        capLabel: string | null;
+                                        groupAbbreviation: string | null;
+                                        printCount: number;
+                                        lastPrintedAt: string | null;
+                                        collectedAt: string | null;
+                                        collectedByName: string | null;
+                                        /** @enum {string|null} */
+                                        collectedVia: "SCAN" | "MANUAL" | null;
+                                        cancelReason: string | null;
+                                        cancelledAt: string | null;
+                                        replacesSid: string | null;
+                                        replacedBySid: string | null;
+                                        items: {
+                                            /** Format: uuid */
+                                            itemId: string;
+                                            name: string;
+                                            canSplit: boolean;
+                                        }[];
+                                        canRecollect: boolean;
+                                        canUncollect: boolean;
+                                    }[];
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_result.enter */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/lab/specimen-tubes/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lấy mẫu xét nghiệm — tra mã ống (ô "Quét mã ống": súng quét USB gõ mã + Enter): trả phiếu, bệnh nhân, trạng thái ống và tab hàng đợi hiện tại */
+        get: {
+            parameters: {
+                query: {
+                    sid: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                tubeId: string;
+                                sid: string;
+                                /** @enum {string} */
+                                status: "PENDING" | "COLLECTED" | "CANCELLED";
+                                /** Format: uuid */
+                                orderId: string;
+                                orderNo: string;
+                                patientName: string;
+                                patientCode: string;
+                                /** @enum {string|null} */
+                                bucket: "AWAITING_PAYMENT" | "WAITING" | "IN_PROGRESS" | "PENDING_APPROVAL" | "COMPLETED" | null;
+                                /** Format: uuid */
+                                itemId: string | null;
+                                replacedBySid: string | null;
+                                encounterCancelled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu mã ống */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_result.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có ống mang mã này hoặc ngoài phạm vi Khoa/Phòng */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/lab/specimen-tubes/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lấy mẫu xét nghiệm — ghi nhận in tem các ống (tăng số lần in; web tự dựng tem rồi mở hộp thoại in của trình duyệt) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        tubeIds: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                state: {
+                                    /** Format: uuid */
+                                    orderId: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    patientBirthYear: number | null;
+                                    patientAgeYears: number | null;
+                                    /** @enum {string|null} */
+                                    patientGender: "male" | "female" | "other" | null;
+                                    patientPhone: string | null;
+                                    doctorName: string | null;
+                                    orderedAt: string;
+                                    paid: boolean;
+                                    scanRequired: boolean;
+                                    tubes: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        sid: string;
+                                        /** @enum {string} */
+                                        status: "PENDING" | "COLLECTED" | "CANCELLED";
+                                        specimenName: string | null;
+                                        /** @enum {string|null} */
+                                        capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                        capLabel: string | null;
+                                        groupAbbreviation: string | null;
+                                        printCount: number;
+                                        lastPrintedAt: string | null;
+                                        collectedAt: string | null;
+                                        collectedByName: string | null;
+                                        /** @enum {string|null} */
+                                        collectedVia: "SCAN" | "MANUAL" | null;
+                                        cancelReason: string | null;
+                                        cancelledAt: string | null;
+                                        replacesSid: string | null;
+                                        replacedBySid: string | null;
+                                        items: {
+                                            /** Format: uuid */
+                                            itemId: string;
+                                            name: string;
+                                            canSplit: boolean;
+                                        }[];
+                                        canRecollect: boolean;
+                                        canUncollect: boolean;
+                                    }[];
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_result.enter */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/lab/specimen-tubes/collect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lấy mẫu xét nghiệm — xác nhận đã lấy mẫu THEO TỪNG ỐNG (tay hoặc quét tem): ống PENDING → COLLECTED, các xét nghiệm trong ống ORDERED → IN_PROGRESS ("Đã lấy mẫu"). Ống chưa chọn ở lại "Chờ lấy mẫu" */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        tubes: {
+                            /** Format: uuid */
+                            tubeId: string;
+                            /** @enum {string} */
+                            via: "SCAN" | "MANUAL";
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                state: {
+                                    /** Format: uuid */
+                                    orderId: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    patientBirthYear: number | null;
+                                    patientAgeYears: number | null;
+                                    /** @enum {string|null} */
+                                    patientGender: "male" | "female" | "other" | null;
+                                    patientPhone: string | null;
+                                    doctorName: string | null;
+                                    orderedAt: string;
+                                    paid: boolean;
+                                    scanRequired: boolean;
+                                    tubes: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        sid: string;
+                                        /** @enum {string} */
+                                        status: "PENDING" | "COLLECTED" | "CANCELLED";
+                                        specimenName: string | null;
+                                        /** @enum {string|null} */
+                                        capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                        capLabel: string | null;
+                                        groupAbbreviation: string | null;
+                                        printCount: number;
+                                        lastPrintedAt: string | null;
+                                        collectedAt: string | null;
+                                        collectedByName: string | null;
+                                        /** @enum {string|null} */
+                                        collectedVia: "SCAN" | "MANUAL" | null;
+                                        cancelReason: string | null;
+                                        cancelledAt: string | null;
+                                        replacesSid: string | null;
+                                        replacedBySid: string | null;
+                                        items: {
+                                            /** Format: uuid */
+                                            itemId: string;
+                                            name: string;
+                                            canSplit: boolean;
+                                        }[];
+                                        canRecollect: boolean;
+                                        canUncollect: boolean;
+                                    }[];
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_result.enter */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/lab/specimen-tubes/uncollect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lấy mẫu xét nghiệm — huỷ xác nhận đã lấy mẫu (kèm lý do): trả ống về "Chờ lấy mẫu". Chỉ khi chưa có kết quả nào (kể cả nháp) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        tubeIds: string[];
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                state: {
+                                    /** Format: uuid */
+                                    orderId: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    patientBirthYear: number | null;
+                                    patientAgeYears: number | null;
+                                    /** @enum {string|null} */
+                                    patientGender: "male" | "female" | "other" | null;
+                                    patientPhone: string | null;
+                                    doctorName: string | null;
+                                    orderedAt: string;
+                                    paid: boolean;
+                                    scanRequired: boolean;
+                                    tubes: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        sid: string;
+                                        /** @enum {string} */
+                                        status: "PENDING" | "COLLECTED" | "CANCELLED";
+                                        specimenName: string | null;
+                                        /** @enum {string|null} */
+                                        capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                        capLabel: string | null;
+                                        groupAbbreviation: string | null;
+                                        printCount: number;
+                                        lastPrintedAt: string | null;
+                                        collectedAt: string | null;
+                                        collectedByName: string | null;
+                                        /** @enum {string|null} */
+                                        collectedVia: "SCAN" | "MANUAL" | null;
+                                        cancelReason: string | null;
+                                        cancelledAt: string | null;
+                                        replacesSid: string | null;
+                                        replacedBySid: string | null;
+                                        items: {
+                                            /** Format: uuid */
+                                            itemId: string;
+                                            name: string;
+                                            canSplit: boolean;
+                                        }[];
+                                        canRecollect: boolean;
+                                        canUncollect: boolean;
+                                    }[];
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_result.enter */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/lab/specimen-tubes/{tubeId}/split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lấy mẫu xét nghiệm — "Tách" 1 xét nghiệm sang ống riêng (SID mới). Chỉ khi ống chưa in tem, chưa lấy và còn > 1 xét nghiệm */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tubeId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        itemId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                state: {
+                                    /** Format: uuid */
+                                    orderId: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    patientBirthYear: number | null;
+                                    patientAgeYears: number | null;
+                                    /** @enum {string|null} */
+                                    patientGender: "male" | "female" | "other" | null;
+                                    patientPhone: string | null;
+                                    doctorName: string | null;
+                                    orderedAt: string;
+                                    paid: boolean;
+                                    scanRequired: boolean;
+                                    tubes: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        sid: string;
+                                        /** @enum {string} */
+                                        status: "PENDING" | "COLLECTED" | "CANCELLED";
+                                        specimenName: string | null;
+                                        /** @enum {string|null} */
+                                        capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                        capLabel: string | null;
+                                        groupAbbreviation: string | null;
+                                        printCount: number;
+                                        lastPrintedAt: string | null;
+                                        collectedAt: string | null;
+                                        collectedByName: string | null;
+                                        /** @enum {string|null} */
+                                        collectedVia: "SCAN" | "MANUAL" | null;
+                                        cancelReason: string | null;
+                                        cancelledAt: string | null;
+                                        replacesSid: string | null;
+                                        replacedBySid: string | null;
+                                        items: {
+                                            /** Format: uuid */
+                                            itemId: string;
+                                            name: string;
+                                            canSplit: boolean;
+                                        }[];
+                                        canRecollect: boolean;
+                                        canUncollect: boolean;
+                                    }[];
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_result.enter */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/lab/specimen-tubes/{tubeId}/recollect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lấy mẫu xét nghiệm — huỷ ống & lấy lại mẫu (kèm lý do): ống cũ giữ ở CANCELLED, sinh ống mới (SID mới). Chỉ khi chưa có kết quả nào */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tubeId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                state: {
+                                    /** Format: uuid */
+                                    orderId: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    patientBirthYear: number | null;
+                                    patientAgeYears: number | null;
+                                    /** @enum {string|null} */
+                                    patientGender: "male" | "female" | "other" | null;
+                                    patientPhone: string | null;
+                                    doctorName: string | null;
+                                    orderedAt: string;
+                                    paid: boolean;
+                                    scanRequired: boolean;
+                                    tubes: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        sid: string;
+                                        /** @enum {string} */
+                                        status: "PENDING" | "COLLECTED" | "CANCELLED";
+                                        specimenName: string | null;
+                                        /** @enum {string|null} */
+                                        capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
+                                        capLabel: string | null;
+                                        groupAbbreviation: string | null;
+                                        printCount: number;
+                                        lastPrintedAt: string | null;
+                                        collectedAt: string | null;
+                                        collectedByName: string | null;
+                                        /** @enum {string|null} */
+                                        collectedVia: "SCAN" | "MANUAL" | null;
+                                        cancelReason: string | null;
+                                        cancelledAt: string | null;
+                                        replacesSid: string | null;
+                                        replacedBySid: string | null;
+                                        items: {
+                                            /** Format: uuid */
+                                            itemId: string;
+                                            name: string;
+                                            canSplit: boolean;
+                                        }[];
+                                        canRecollect: boolean;
+                                        canUncollect: boolean;
+                                    }[];
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_result.enter */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;

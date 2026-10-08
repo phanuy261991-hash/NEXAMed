@@ -25,10 +25,11 @@ export const printDocumentTypeSchema = z.enum([
   'STOCK_ISSUE',
   'STOCK_COUNT',
   'STOCK_TRANSFER',
+  'SPECIMEN_LABEL',
 ]);
 export type PrintDocumentType = z.infer<typeof printDocumentTypeSchema>;
 
-export const printPaperSizeSchema = z.enum(['A4', 'A5', 'A5_LANDSCAPE', 'K80']);
+export const printPaperSizeSchema = z.enum(['A4', 'A5', 'A5_LANDSCAPE', 'K80', 'LABEL_35X22', 'LABEL_50X30']);
 export type PrintPaperSize = z.infer<typeof printPaperSizeSchema>;
 
 /** `heightMm = null` — giấy cuộn (K80), chiều dài theo nội dung. */
@@ -37,6 +38,9 @@ export const PRINT_PAPER_SPECS: Record<PrintPaperSize, { label: string; widthMm:
   A5: { label: 'A5 — đứng', widthMm: 148, heightMm: 210, description: '148 × 210 mm' },
   A5_LANDSCAPE: { label: 'A5 — ngang', widthMm: 210, heightMm: 148, description: '210 × 148 mm' },
   K80: { label: 'K80 — máy in nhiệt', widthMm: 80, heightMm: null, description: '80 mm, giấy cuộn' },
+  // Tem ống nghiệm (docs/DECISIONS.md #220) — chỉ chứng từ SPECIMEN_LABEL.
+  LABEL_35X22: { label: '35 × 22 mm', widthMm: 35, heightMm: 22, description: 'Tem ống nghiệm nhỏ' },
+  LABEL_50X30: { label: '50 × 30 mm', widthMm: 50, heightMm: 30, description: 'Tem lớn, đủ chỗ thêm thông tin' },
 };
 
 export const PRINT_DOCUMENT_GROUPS = ['Khám bệnh', 'Thu ngân', 'Sổ quỹ', 'Kho'] as const;
@@ -44,6 +48,12 @@ export type PrintDocumentGroup = (typeof PRINT_DOCUMENT_GROUPS)[number];
 
 const PAPERS_A: PrintPaperSize[] = ['A4', 'A5', 'A5_LANDSCAPE'];
 const PAPERS_MONEY: PrintPaperSize[] = ['A4', 'A5', 'A5_LANDSCAPE', 'K80'];
+const PAPERS_LABEL: PrintPaperSize[] = ['LABEL_35X22', 'LABEL_50X30'];
+
+/** Khổ tem ống nghiệm (không phải khổ giấy văn bản): không có đầu trang/tiêu đề/chữ ký, có bộ tuỳ chọn riêng `config.label`. */
+export function isLabelPaper(paperSize: PrintPaperSize): boolean {
+  return paperSize === 'LABEL_35X22' || paperSize === 'LABEL_50X30';
+}
 
 /**
  * K80 chỉ mở cho 4 chứng từ TIỀN (chốt 01/10/2026): đơn thuốc cần ô ký bác
@@ -86,6 +96,7 @@ export const PRINT_DOCUMENT_TYPE_REGISTRY: Record<
   STOCK_ISSUE: { label: 'Phiếu xuất kho', group: 'Kho', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu xuất kho' },
   STOCK_COUNT: { label: 'Phiếu kiểm kê', group: 'Kho', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu kiểm kê' },
   STOCK_TRANSFER: { label: 'Phiếu điều chuyển kho', group: 'Kho', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu điều chuyển kho' },
+  SPECIMEN_LABEL: { label: 'Tem mẫu xét nghiệm', group: 'Khám bệnh', allowedPapers: PAPERS_LABEL, defaultPaper: 'LABEL_35X22', defaultTitle: '' },
 };
 
 /** Chứng từ TIỀN — "Thiết lập nhanh" preset "A5 cho phiếu thu" áp A5 cho nhóm này, phần còn lại giữ A4. */
@@ -113,6 +124,8 @@ export const printTemplateConfigSchema = z.object({
   }),
   /** Khối khuyến cáo/lưu ý sau thân chứng từ — chỉ chứng từ có `notice` ở registry. Vắng = dùng mặc định của registry (xem `withDefaultPrintNotice`). */
   notice: z.object({ show: z.boolean(), title: z.string().max(60), text: z.string().max(1000) }).optional(),
+  /** Thông tin in THÊM trên tem ống nghiệm (chỉ chứng từ SPECIMEN_LABEL, #220). Mã vạch, SID, họ tên, năm sinh, giới tính luôn in nên không có công tắc. */
+  label: z.object({ showPatientCode: z.boolean(), showGroup: z.boolean(), showCapColor: z.boolean(), showDate: z.boolean() }).optional(),
   /** Số liên in mỗi lần bấm In (1-3) + nhãn từng liên ("Liên 1 — Lưu"...). */
   copies: z.object({ count: z.number().int().min(1).max(3), labels: z.array(z.string().max(40)).max(3) }),
 });
@@ -143,6 +156,17 @@ export const DEFAULT_PRINT_COPY_LABELS = ['Liên 1 — Lưu', 'Liên 2 — Khác
 
 /** Mặc định theo khổ giấy — K80 không logo/chữ ký, lề hẹp; A4/A5 đủ đầu trang + chữ ký. */
 export function buildDefaultPrintTemplateConfig(paperSize: PrintPaperSize): PrintTemplateConfig {
+  if (isLabelPaper(paperSize)) {
+    const large = paperSize === 'LABEL_50X30';
+    return {
+      margins: { topMm: 1, rightMm: 1, bottomMm: 1, leftMm: 1 },
+      header: { showLogo: false, showClinicName: false, showAddress: false, showPhone: false, showTaxCode: false, showDivider: false },
+      title: { text: '' },
+      footer: { note: '', showSignature: false, showSignatureHint: false },
+      label: { showPatientCode: large, showGroup: true, showCapColor: large, showDate: true },
+      copies: { count: 1, labels: [...DEFAULT_PRINT_COPY_LABELS] },
+    };
+  }
   const roll = paperSize === 'K80';
   const margin = roll ? 3 : paperSize === 'A4' ? 12 : 10;
   return {
@@ -154,7 +178,7 @@ export function buildDefaultPrintTemplateConfig(paperSize: PrintPaperSize): Prin
   };
 }
 
-const PAPER_ORDER: PrintPaperSize[] = ['A4', 'A5', 'A5_LANDSCAPE', 'K80'];
+const PAPER_ORDER: PrintPaperSize[] = ['A4', 'A5', 'A5_LANDSCAPE', 'K80', 'LABEL_35X22', 'LABEL_50X30'];
 
 /** Sắp khổ giấy theo thứ tự cố định để mọi nơi (chip, danh sách) hiện giống nhau. */
 export function sortPrintPapers(papers: PrintPaperSize[]): PrintPaperSize[] {
@@ -287,7 +311,8 @@ export function paperForQuickSetupPreset(preset: PrintQuickSetupPreset, document
 
 /** Tên bản mẫu tự đặt khi tạo qua "Thiết lập nhanh"/lần lưu đầu từ bản dựng sẵn. */
 export function defaultPrintTemplateName(documentType: PrintDocumentType, paperSize: PrintPaperSize): string {
-  return `${PRINT_DOCUMENT_TYPE_REGISTRY[documentType].label} ${paperSize === 'A5_LANDSCAPE' ? 'A5 ngang' : paperSize}`;
+  const paperName = paperSize === 'A5_LANDSCAPE' ? 'A5 ngang' : isLabelPaper(paperSize) ? PRINT_PAPER_SPECS[paperSize].label : paperSize;
+  return `${PRINT_DOCUMENT_TYPE_REGISTRY[documentType].label} ${paperName}`;
 }
 
 /** Bản dựng sẵn của 1 chứng từ (chưa lưu DB) — nguồn duy nhất cho API (`GET`) lẫn web (fallback khi chưa nạp). */

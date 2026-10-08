@@ -20,6 +20,9 @@ export interface CreateReferenceCatalogData {
    * 17/09/2026) — mục `clinic_admin` tự thêm ngoài file nguồn BYT. */
   bytCode?: string | null;
   fullName?: string | null;
+  /** Màu nắp ống (SPECIMEN_TYPE) và viết tắt in trên tem (TECH_SERVICE_CATEGORY) — docs/DECISIONS.md #220. */
+  capColor?: string | null;
+  abbreviation?: string | null;
   /** Chỉ có ý nghĩa với category INCOME_EXPENSE_TYPE ("Loại thu chi", 2026-09-05) — xem schema.prisma. */
   direction?: ReferenceCatalogDirection | null;
   /** Chỉ ItemFormModal category UNIT gửi — category khác luôn tạo mới ở trạng thái hoạt động
@@ -40,6 +43,8 @@ export interface UpdateReferenceCatalogData {
    * xem chú thích ở `updateReferenceCatalogRequestSchema` (packages/shared). */
   bytCode?: string | null;
   fullName?: string | null;
+  capColor?: string | null;
+  abbreviation?: string | null;
   direction?: ReferenceCatalogDirection | null;
   isActive?: boolean;
 }

@@ -5,7 +5,8 @@ import {
   BUSINESS_CODE_TYPE_REGISTRY,
   businessCodeTypeSchema,
   computeBusinessCodePeriodKey,
-  DEFAULT_BUSINESS_CODE_COUNTER_DIGITS,
+  businessCodeResetsByDefault,
+  defaultBusinessCodeCounterDigits,
   DEFAULT_BUSINESS_CODE_STARTING_VALUE,
   DEFAULT_BUSINESS_CODE_TEMPLATE,
   formatBusinessCode,
@@ -63,7 +64,7 @@ export class BusinessCodeService {
     // cấp dưới bộ đếm liên tục (`period_key=''`). Chỉ tính periodKey thật khi tenant ĐÃ chủ động
     // lưu khuôn riêng (`explicitConfig` tồn tại) — đúng lời hứa "tương thích ngược tuyệt đối,
     // CHO TỚI KHI tenant chủ động cấu hình" đã chốt ở docs/DECISIONS.md #114.
-    const periodKey = explicitConfig ? computeBusinessCodePeriodKey(parseResult.parsed, dateParts) : '';
+    const periodKey = explicitConfig || businessCodeResetsByDefault(codeType) ? computeBusinessCodePeriodKey(parseResult.parsed, dateParts) : '';
     const prefix = BUSINESS_CODE_TYPE_REGISTRY[codeType].internalPrefix;
 
     const seq = await this.codeSequenceRepository.next(tx, tenantId, prefix, actorId, {
@@ -142,7 +143,7 @@ export class BusinessCodeService {
   private defaultConfig(codeType: BusinessCodeType): BusinessCodeTemplateEntry {
     return {
       template: DEFAULT_BUSINESS_CODE_TEMPLATE[codeType],
-      counterDigits: DEFAULT_BUSINESS_CODE_COUNTER_DIGITS,
+      counterDigits: defaultBusinessCodeCounterDigits(codeType),
       startingValue: DEFAULT_BUSINESS_CODE_STARTING_VALUE,
     };
   }
@@ -163,7 +164,7 @@ export class BusinessCodeService {
     const parseResult = parseBusinessCodeTemplate(config.template);
     let exampleNextCode = '(khuôn mẫu lỗi)';
     if (parseResult.ok) {
-      const periodKey = isExplicit ? computeBusinessCodePeriodKey(parseResult.parsed, now) : '';
+      const periodKey = isExplicit || businessCodeResetsByDefault(codeType) ? computeBusinessCodePeriodKey(parseResult.parsed, now) : '';
       const current = await this.codeSequenceRepository.peekCurrentValue(tx, tenantId, prefix, periodKey);
       const nextSeq = current !== null ? current + 1n : BigInt(config.startingValue);
       exampleNextCode = formatBusinessCode(config.template, config.counterDigits, now, nextSeq);

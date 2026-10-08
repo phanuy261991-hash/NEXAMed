@@ -148,6 +148,9 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.paraclinicalResultValue.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.paraclinicalResult.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalOrderItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Ống mẫu xét nghiệm (#220): trỏ vào phiếu chỉ định, và tự tham chiếu `replaces_tube_id` (RESTRICT tức thì) → gỡ liên kết thay thế trước khi xoá.
+      await prisma.specimenTube.updateMany({ where: { tenantId: { in: tenantIds } }, data: { replacesTubeId: null } });
+      await prisma.specimenTube.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalOrderPackage.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalOrder.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.diagnosis.deleteMany({ where: { tenantId: { in: tenantIds } } });

@@ -33,9 +33,10 @@ function useInvalidateQueue() {
   return () => void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'paraclinical', 'queue') });
 }
 
-export function useStartParaclinicalMutation(group: ParaclinicalGroup) {
+/** "Gọi vào phòng" của CĐHA & Thăm dò chức năng (xét nghiệm lấy mẫu qua `useSpecimenCollection`, #220). */
+export function useStartParaclinicalMutation() {
   const invalidateQueue = useInvalidateQueue();
-  return useMutation({ mutationFn: (body: StartParaclinicalItemsRequest) => startParaclinicalItems(group, body), onSuccess: invalidateQueue });
+  return useMutation({ mutationFn: (body: StartParaclinicalItemsRequest) => startParaclinicalItems(body), onSuccess: invalidateQueue });
 }
 
 export function useSaveParaclinicalResultMutation(group: ParaclinicalGroup, itemId: string) {

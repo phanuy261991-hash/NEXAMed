@@ -112,6 +112,7 @@ model Tenant {
   paraclinicalResults         ParaclinicalResult[]
   paraclinicalResultValues    ParaclinicalResultValue[]
   paraclinicalResultImages    ParaclinicalResultImage[]
+  specimenTubes               SpecimenTube[]
   servicePackageItems         ServicePackageItem[]
   priceLists                  PriceList[]
   priceListItems              PriceListItem[]
@@ -784,6 +785,10 @@ model ReferenceCatalog {
   // DRUG_ROUTE/DOSAGE_FORM, cùng bản chất bytCode. `name` (cột chính, hiện ở Combobox/danh sách)
   // giữ "Tên ngắn UI" gọn cho UI; cột này lưu tên đầy đủ theo chuẩn ngành để không mất dữ liệu.
   fullName           String?                    @map("full_name")
+  // Màu nắp ống (docs/DECISIONS.md #220) — CHỈ có ý nghĩa với category SPECIMEN_TYPE (RED/YELLOW/PURPLE/BLUE/GREEN/GRAY/BLACK/URINE), NULL với category khác. Giá trị hợp lệ khai ở `packages/shared` (`SPECIMEN_CAP_COLORS`).
+  capColor           String?                    @map("cap_color")
+  // Viết tắt in trên tem ống mẫu (≤ 4 ký tự, ví dụ "HH"/"SH") — CHỈ có ý nghĩa với category TECH_SERVICE_CATEGORY, NULL với category khác (docs/DECISIONS.md #220).
+  abbreviation       String?
   // Khoá lạc quan (docs/DECISIONS.md #207) — sửa/ẩn/khôi phục kèm `WHERE version = ?`, tăng 1 mỗi lần.
   // Chỉ thêm `version` (bảng toàn hệ thống vẫn không có tenant_id/updated_at... như ghi ở trên).
   version            Int                        @default(1)
@@ -3663,6 +3668,8 @@ enum PrintDocumentType {
   STOCK_ISSUE
   STOCK_COUNT
   STOCK_TRANSFER
+  /// Tem dán ống nghiệm xét nghiệm (docs/DECISIONS.md #220) — khổ LABEL_35X22 / LABEL_50X30.
+  SPECIMEN_LABEL
 }
 
 /// Khổ giấy của một bản mẫu in. K80 = máy in nhiệt 80mm (chỉ 4 chứng từ tiền).
@@ -3671,6 +3678,10 @@ enum PrintPaperSize {
   A5
   A5_LANDSCAPE
   K80
+  /// Tem ống nghiệm 35 × 22 mm (docs/DECISIONS.md #220).
+  LABEL_35X22
+  /// Tem ống nghiệm 50 × 30 mm.
+  LABEL_50X30
 }
 
 /// "Quản lý mẫu in" (docs/DECISIONS.md #211) — mỗi LOẠI chứng từ có nhiều bản mẫu theo khổ giấy: duy nhất
@@ -4146,10 +4157,11 @@ model ClinicalOrder {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant    Tenant                 @relation(fields: [tenantId], references: [id])
-  encounter Encounter              @relation(fields: [tenantId, encounterId], references: [tenantId, id])
-  items     ClinicalOrderItem[]
-  packages  ClinicalOrderPackage[]
+  tenant        Tenant                 @relation(fields: [tenantId], references: [id])
+  encounter     Encounter              @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  items         ClinicalOrderItem[]
+  packages      ClinicalOrderPackage[]
+  specimenTubes SpecimenTube[]
 
   @@unique([tenantId, id])
   @@map("clinical_order")
@@ -4208,6 +4220,8 @@ model ClinicalOrderItem {
   /// GĐ4 — lúc lấy mẫu / gọi vào phòng (chuyển ORDERED → IN_PROGRESS) và người thực hiện bước đó.
   collectedAt            DateTime?                @map("collected_at") @db.Timestamptz(6)
   collectedBy            String?                  @map("collected_by") @db.Uuid
+  /// Ống mẫu đang hiệu lực chứa xét nghiệm này (docs/DECISIONS.md #220) — chỉ dòng xét nghiệm LAB, NULL với dòng chưa mở hộp thoại lấy mẫu / CĐHA / thăm dò.
+  specimenTubeId         String?                  @map("specimen_tube_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -4222,11 +4236,74 @@ model ClinicalOrderItem {
   order            ClinicalOrder         @relation(fields: [tenantId, clinicalOrderId], references: [tenantId, id])
   technicalService TechnicalService?     @relation(fields: [tenantId, technicalServiceId], references: [tenantId, id])
   package          ClinicalOrderPackage? @relation(fields: [tenantId, clinicalOrderPackageId], references: [tenantId, id])
+  specimenTube     SpecimenTube?         @relation(fields: [tenantId, specimenTubeId], references: [tenantId, id])
   invoiceLines     InvoiceLine[]
   results          ParaclinicalResult[]
 
   @@unique([tenantId, id])
   @@map("clinical_order_item")
+}
+
+/// Trạng thái ống mẫu xét nghiệm (docs/DECISIONS.md #220).
+enum SpecimenTubeStatus {
+  /// Đã sinh mã, chưa xác nhận đã lấy mẫu (có thể đã in tem).
+  PENDING
+  /// Đã lấy mẫu — các dòng chỉ định của ống đã sang IN_PROGRESS.
+  COLLECTED
+  /// Huỷ (vỡ ống, mẫu đông...) — giữ lại để truy vết, ống thay thế trỏ về qua `replaces_tube_id`.
+  CANCELLED
+
+  @@map("specimen_tube_status")
+}
+
+/// Cách xác nhận đã lấy mẫu: quét tem hay tích tay.
+enum SpecimenCollectVia {
+  SCAN
+  MANUAL
+
+  @@map("specimen_collect_via")
+}
+
+/// Ống mẫu xét nghiệm (Cận lâm sàng — Lấy mẫu có tem mã vạch, docs/DECISIONS.md #220). Một ống chứa nhiều xét nghiệm cùng loại mẫu bệnh phẩm của MỘT phiếu chỉ định;
+/// `clinical_order_item.specimen_tube_id` trỏ về ống đang hiệu lực. `sid` (mã ống, in thành mã vạch Code 128) sinh qua `BusinessCodeService` (SPECIMEN_TUBE), duy nhất theo tenant.
+/// Tên/màu nắp chụp lại lúc tạo ống để sửa danh mục không làm lệch tem đã in.
+model SpecimenTube {
+  id               String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String              @map("tenant_id") @db.Uuid
+  clinicalOrderId  String              @map("clinical_order_id") @db.Uuid
+  sid              String
+  status           SpecimenTubeStatus  @default(PENDING)
+  specimenTypeCode String?             @map("specimen_type_code")
+  specimenName     String?             @map("specimen_name")
+  capColor         String?             @map("cap_color")
+  printCount       Int                 @default(0) @map("print_count")
+  lastPrintedAt    DateTime?           @map("last_printed_at") @db.Timestamptz(6)
+  lastPrintedBy    String?             @map("last_printed_by") @db.Uuid
+  collectedAt      DateTime?           @map("collected_at") @db.Timestamptz(6)
+  collectedBy      String?             @map("collected_by") @db.Uuid
+  collectedVia     SpecimenCollectVia? @map("collected_via")
+  cancelReason     String?             @map("cancel_reason")
+  replacesTubeId   String?             @map("replaces_tube_id") @db.Uuid
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id])
+  order      ClinicalOrder       @relation(fields: [tenantId, clinicalOrderId], references: [tenantId, id])
+  replaces   SpecimenTube?       @relation("SpecimenTubeReplaces", fields: [tenantId, replacesTubeId], references: [tenantId, id])
+  replacedBy SpecimenTube[]      @relation("SpecimenTubeReplaces")
+  items      ClinicalOrderItem[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, sid])
+  @@index([tenantId, clinicalOrderId])
+  @@map("specimen_tube")
 }
 
 /// Kết quả cận lâm sàng của MỘT dịch vụ được chỉ định (Cận lâm sàng GĐ4, docs/DECISIONS.md #212) — dùng chung cho xét nghiệm (các dòng

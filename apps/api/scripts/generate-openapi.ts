@@ -371,6 +371,14 @@ import {
   saveParaclinicalResultRequestSchema,
   startParaclinicalItemsRequestSchema,
   startParaclinicalItemsResponseSchema,
+  collectSpecimenTubesRequestSchema,
+  lookupSpecimenTubeQuerySchema,
+  lookupSpecimenTubeResponseSchema,
+  printSpecimenTubesRequestSchema,
+  recollectSpecimenTubeRequestSchema,
+  specimenCollectionResponseSchema,
+  splitSpecimenTubeRequestSchema,
+  uncollectSpecimenTubesRequestSchema,
 } from '@nexamed/shared';
 
 /**
@@ -4940,7 +4948,8 @@ for (const g of paraclinicalOpenApiGroups) {
     },
   });
 
-  registry.registerPath({
+  // Xét nghiệm không còn `POST start`: lấy mẫu đi qua ống mẫu (docs/DECISIONS.md #220) — xem các đường dẫn `specimen-tubes` bên dưới.
+  if (g.key === 'imaging') registry.registerPath({
     method: 'post',
     path: `/api/v1/paraclinical/${g.key}/start`,
     tags: ['paraclinical-result'],
@@ -5093,6 +5102,86 @@ for (const g of paraclinicalOpenApiGroups) {
     });
   }
 }
+
+// Lấy mẫu xét nghiệm có ống mẫu, mã ống (SID) và tem mã vạch (docs/DECISIONS.md #220)
+const specimenOrderParams = z.object({ orderId: z.string().uuid() });
+const specimenTubeParams = z.object({ tubeId: z.string().uuid() });
+const specimenCommonErrors = {
+  400: errorResponse('Dữ liệu sai'),
+  401: errorResponse('Thiếu hoặc sai access token'),
+  403: errorResponse('Không có quyền lab_result.enter'),
+  404: errorResponse('Phiếu/ống không tồn tại, thuộc tenant khác hoặc ngoài phạm vi Khoa/Phòng'),
+  409: errorResponse('Ống/dòng không ở trạng thái cho phép (SPECIMEN_TUBE_INVALID_STATE, PARACLINICAL_ITEM_INVALID_STATE), chưa thu tiền (PARACLINICAL_PAYMENT_REQUIRED) hoặc bắt buộc quét tem (SPECIMEN_SCAN_REQUIRED)'),
+};
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/paraclinical/lab/orders/{orderId}/specimen-collection/open',
+  tags: ['paraclinical-result'],
+  summary: 'Lấy mẫu xét nghiệm — mở hộp thoại lấy mẫu của phiếu: sinh ống (kèm mã ống SID) cho xét nghiệm chưa có ống, gộp theo loại mẫu bệnh phẩm. Idempotent',
+  security: [{ bearerAuth: [] }],
+  request: { params: specimenOrderParams },
+  responses: { 200: jsonResponse('Thành công', envelope(specimenCollectionResponseSchema)), ...specimenCommonErrors },
+});
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/paraclinical/lab/specimen-tubes/lookup',
+  tags: ['paraclinical-result'],
+  summary: 'Lấy mẫu xét nghiệm — tra mã ống (ô "Quét mã ống": súng quét USB gõ mã + Enter): trả phiếu, bệnh nhân, trạng thái ống và tab hàng đợi hiện tại',
+  security: [{ bearerAuth: [] }],
+  request: { query: lookupSpecimenTubeQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(lookupSpecimenTubeResponseSchema)),
+    400: errorResponse('Thiếu mã ống'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_result.read'),
+    404: errorResponse('Không có ống mang mã này hoặc ngoài phạm vi Khoa/Phòng'),
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/paraclinical/lab/specimen-tubes/print',
+  tags: ['paraclinical-result'],
+  summary: 'Lấy mẫu xét nghiệm — ghi nhận in tem các ống (tăng số lần in; web tự dựng tem rồi mở hộp thoại in của trình duyệt)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: printSpecimenTubesRequestSchema } } } },
+  responses: { 200: jsonResponse('Thành công', envelope(specimenCollectionResponseSchema)), ...specimenCommonErrors },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/paraclinical/lab/specimen-tubes/collect',
+  tags: ['paraclinical-result'],
+  summary: 'Lấy mẫu xét nghiệm — xác nhận đã lấy mẫu THEO TỪNG ỐNG (tay hoặc quét tem): ống PENDING → COLLECTED, các xét nghiệm trong ống ORDERED → IN_PROGRESS ("Đã lấy mẫu"). Ống chưa chọn ở lại "Chờ lấy mẫu"',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: collectSpecimenTubesRequestSchema } } } },
+  responses: { 200: jsonResponse('Thành công', envelope(specimenCollectionResponseSchema)), ...specimenCommonErrors },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/paraclinical/lab/specimen-tubes/uncollect',
+  tags: ['paraclinical-result'],
+  summary: 'Lấy mẫu xét nghiệm — huỷ xác nhận đã lấy mẫu (kèm lý do): trả ống về "Chờ lấy mẫu". Chỉ khi chưa có kết quả nào (kể cả nháp)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: uncollectSpecimenTubesRequestSchema } } } },
+  responses: { 200: jsonResponse('Thành công', envelope(specimenCollectionResponseSchema)), ...specimenCommonErrors },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/paraclinical/lab/specimen-tubes/{tubeId}/split',
+  tags: ['paraclinical-result'],
+  summary: 'Lấy mẫu xét nghiệm — "Tách" 1 xét nghiệm sang ống riêng (SID mới). Chỉ khi ống chưa in tem, chưa lấy và còn > 1 xét nghiệm',
+  security: [{ bearerAuth: [] }],
+  request: { params: specimenTubeParams, body: { content: { 'application/json': { schema: splitSpecimenTubeRequestSchema } } } },
+  responses: { 200: jsonResponse('Thành công', envelope(specimenCollectionResponseSchema)), ...specimenCommonErrors },
+});
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/paraclinical/lab/specimen-tubes/{tubeId}/recollect',
+  tags: ['paraclinical-result'],
+  summary: 'Lấy mẫu xét nghiệm — huỷ ống & lấy lại mẫu (kèm lý do): ống cũ giữ ở CANCELLED, sinh ống mới (SID mới). Chỉ khi chưa có kết quả nào',
+  security: [{ bearerAuth: [] }],
+  request: { params: specimenTubeParams, body: { content: { 'application/json': { schema: recollectSpecimenTubeRequestSchema } } } },
+  responses: { 200: jsonResponse('Thành công', envelope(specimenCollectionResponseSchema)), ...specimenCommonErrors },
+});
 
 // Thêm hàng loạt vào bảng giá: theo nhóm + nhập Excel (docs/DECISIONS.md #212, yêu cầu chủ dự án 07/10/2026)
 registry.registerPath({

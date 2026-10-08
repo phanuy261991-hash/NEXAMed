@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ArrowCounterClockwise, ListBullets, MagnifyingGlass, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
-import type { ReferenceCatalogCategory, ReferenceCatalogDirection, ReferenceCatalogItem } from '@nexamed/shared';
+import type { ReferenceCatalogCategory, ReferenceCatalogDirection, ReferenceCatalogItem, SpecimenCapColor } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
@@ -12,6 +12,7 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
+import { CAP_COLOR_META, CAP_COLOR_ORDER, CapColorDot } from '../../shared/ui/SpecimenCapColor';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
@@ -272,6 +273,8 @@ export function ReferenceCatalogPane({
                   <th className="px-4 py-2.5 text-left">{isAbbreviation ? 'Viết đầy đủ' : 'Tên hiển thị'}</th>
                   {showBytColumns && <th className="px-4 py-2.5 text-left">Tên đầy đủ chuẩn</th>}
                   {category === 'EXAM_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Đơn giá</th>}
+                  {category === 'SPECIMEN_TYPE' && <th className="w-40 px-4 py-2.5 text-center">Màu nắp ống</th>}
+                  {category === 'TECH_SERVICE_CATEGORY' && <th className="w-28 px-4 py-2.5 text-center">Viết tắt</th>}
                   {category === 'INCOME_EXPENSE_TYPE' && <th className="w-28 px-4 py-2.5 text-center">Loại</th>}
                   {showDescriptionColumn && <th className="px-4 py-2.5 text-left">Mô tả</th>}
                   {DESCRIPTION_STATUS_CATEGORIES.includes(category) && <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>}
@@ -301,6 +304,19 @@ export function ReferenceCatalogPane({
                         {item.fullName ?? '—'}
                       </td>
                     )}
+                    {category === 'SPECIMEN_TYPE' && (
+                      <td className="px-4 py-2 text-center">
+                        {item.capColor ? (
+                          <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-700">
+                            <CapColorDot color={item.capColor} size={14} />
+                            {CAP_COLOR_META[item.capColor].label}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">Chưa khai</span>
+                        )}
+                      </td>
+                    )}
+                    {category === 'TECH_SERVICE_CATEGORY' && <td className="px-4 py-2 text-center font-bold text-slate-800">{item.abbreviation ?? <span className="font-medium text-slate-400">—</span>}</td>}
                     {category === 'EXAM_TYPE' && (
                       <td className="px-4 py-2 text-center font-medium text-slate-600">
                         {item.prices && item.prices.length > 0 ? (
@@ -392,7 +408,7 @@ export function ReferenceCatalogPane({
           onCancel={() => setModal(null)}
           onSubmit={async (dto) => {
             if (modal.mode === 'create') {
-              await createMutation.mutateAsync({ category, ...dto });
+              await createMutation.mutateAsync({ category, ...dto, capColor: dto.capColor ?? undefined, abbreviation: dto.abbreviation ?? undefined });
             } else if (modal.item) {
               await updateMutation.mutateAsync({ id: modal.item.id, body: { ...dto, version: modal.item.version } });
             }
@@ -474,6 +490,9 @@ function ItemFormModal({
     description?: string;
     bytCode?: string;
     fullName?: string;
+    /** Màu nắp ống (SPECIMEN_TYPE) / viết tắt in trên tem (TECH_SERVICE_CATEGORY) — `null` khi SỬA để xoá giá trị đã đặt (docs/DECISIONS.md #220). */
+    capColor?: SpecimenCapColor | null;
+    abbreviation?: string | null;
     direction?: ReferenceCatalogDirection;
     isActive?: boolean;
   }) => Promise<void>;
@@ -487,6 +506,8 @@ function ItemFormModal({
   const [description, setDescription] = useState(item?.description ?? '');
   const [bytCode, setBytCode] = useState(item?.bytCode ?? '');
   const [fullName, setFullName] = useState(item?.fullName ?? '');
+  const [capColor, setCapColor] = useState<SpecimenCapColor | ''>(item?.capColor ?? '');
+  const [abbreviation, setAbbreviation] = useState(item?.abbreviation ?? '');
   const [direction, setDirection] = useState<ReferenceCatalogDirection>(item?.direction ?? 'EXPENSE');
   const [isActive, setIsActive] = useState(item?.isActive ?? true);
   const { flashVisible, triggerFlash } = useSaveFlash();
@@ -500,6 +521,9 @@ function ItemFormModal({
   const isUnit = category === 'UNIT';
   // "Loại thu chi" (2026-09-05) — chỉ category này có "Loại" (Chi tiền/Thu tiền).
   const isIncomeExpenseType = category === 'INCOME_EXPENSE_TYPE';
+  // Lấy mẫu xét nghiệm có tem mã vạch (docs/DECISIONS.md #220): Mẫu bệnh phẩm có "Màu nắp ống", Nhóm dịch vụ có "Viết tắt" in trên tem.
+  const isSpecimenType = category === 'SPECIMEN_TYPE';
+  const isTechCategory = category === 'TECH_SERVICE_CATEGORY';
   // Mô tả + Trạng thái ngay trong form — UNIT (#078) + "Chức danh"/"Học hàm học vị" (2026-08-27).
   const hasDescriptionAndStatus = DESCRIPTION_STATUS_CATEGORIES.includes(category);
   // "Mã BYT"/"Tên đầy đủ chuẩn"/"Mô tả" CHỈ nhập được lúc TẠO MỚI cho 5 category "chuẩn BYT" (mục
@@ -530,6 +554,8 @@ function ItemFormModal({
       description: (hasDescriptionAndStatus || showBytFields) && description.trim() !== '' ? description.trim() : undefined,
       bytCode: showBytFields && bytCode.trim() !== '' ? bytCode.trim() : undefined,
       fullName: showBytFields && fullName.trim() !== '' ? fullName.trim() : undefined,
+      capColor: isSpecimenType ? (capColor !== '' ? capColor : mode === 'edit' ? null : undefined) : undefined,
+      abbreviation: isTechCategory ? (abbreviation.trim() !== '' ? abbreviation.trim() : mode === 'edit' ? null : undefined) : undefined,
       direction: isIncomeExpenseType ? direction : undefined,
       isActive: hasDescriptionAndStatus ? isActive : undefined,
     };
@@ -546,6 +572,8 @@ function ItemFormModal({
     setDescription('');
     setBytCode('');
     setFullName('');
+    setCapColor('');
+    setAbbreviation('');
     setDirection('EXPENSE');
     setIsActive(true);
     nameInputRef.current?.focus();
@@ -619,6 +647,50 @@ function ItemFormModal({
               className={inputClassName}
             />
           </div>
+
+          {isSpecimenType && (
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <span id="rc-cap-color-label" className="text-sm font-semibold text-slate-800">
+                Màu nắp ống <span className="font-normal text-slate-500">(hiện ở màn lấy mẫu và trên tem khổ lớn)</span>
+              </span>
+              {/* Danh sách ngắn → thẻ chọn hiện sẵn, không dùng dropdown (ui-guidelines mục 12). */}
+              <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="rc-cap-color-label">
+                {CAP_COLOR_ORDER.map((color) => {
+                  const selected = capColor === color;
+                  return (
+                    <button
+                      key={color}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setCapColor(selected ? '' : color)}
+                      className={`flex items-center gap-2.5 rounded-md border px-3 py-2 text-left text-sm font-semibold ${selected ? 'border-brand-teal bg-brand-teal text-white' : 'border-slate-300 bg-white text-slate-900 hover:border-blue-400 hover:bg-brand-teal-tint'}`}
+                    >
+                      <CapColorDot color={color} size={16} />
+                      {CAP_COLOR_META[color].name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[13px] text-slate-500">Xét nghiệm cùng phiếu và cùng mẫu bệnh phẩm được gộp vào 1 ống. Màu chỉ để nhận biết, không ảnh hưởng cách gộp. Bấm lại màu đang chọn để bỏ.</p>
+            </div>
+          )}
+
+          {isTechCategory && (
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <label htmlFor="rc-abbreviation" className="text-sm font-semibold text-slate-800">
+                Viết tắt (in trên tem ống mẫu)
+              </label>
+              <input
+                id="rc-abbreviation"
+                value={abbreviation}
+                maxLength={4}
+                onChange={(e) => setAbbreviation(e.target.value)}
+                placeholder="VD: HH, SH"
+                className={inputClassName}
+              />
+              <p className="text-[13px] text-slate-500">Tối đa 4 ký tự. Ống có xét nghiệm của nhiều nhóm in nối nhau, ví dụ &quot;HH/SH&quot;.</p>
+            </div>
+          )}
 
           {isIncomeExpenseType && (
             <div className="flex flex-col gap-1.5">

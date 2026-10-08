@@ -283,6 +283,38 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     expect(otherCategory.body.data.deactivatesAccount).toBe(false);
   });
 
+  it('Lấy mẫu xét nghiệm (#220): Mẫu bệnh phẩm lưu "Màu nắp ống", Nhóm dịch vụ lưu "Viết tắt" (≤ 4 ký tự); sửa được, null = xoá; màu/viết tắt sai → 400; category khác mặc định null', async () => {
+    const post = (body: Record<string, unknown>) => request(app.getHttpServer()).post('/api/v1/reference-catalog').set(authed(clinicAdminToken)).send(body);
+
+    const specimen = await post({ category: 'SPECIMEN_TYPE', name: 'Huyết thanh test màu nắp', capColor: 'RED' });
+    expect(specimen.status, JSON.stringify(specimen.body)).toBe(200);
+    expect(specimen.body.data).toMatchObject({ capColor: 'RED', abbreviation: null });
+
+    const patched = await request(app.getHttpServer())
+      .patch(`/api/v1/reference-catalog/${specimen.body.data.id}`)
+      .set(authed(clinicAdminToken))
+      .send({ capColor: 'PURPLE', version: specimen.body.data.version });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data.capColor).toBe('PURPLE');
+
+    const cleared = await request(app.getHttpServer())
+      .patch(`/api/v1/reference-catalog/${specimen.body.data.id}`)
+      .set(authed(clinicAdminToken))
+      .send({ capColor: null, version: patched.body.data.version });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.data.capColor).toBeNull();
+
+    const category = await post({ category: 'TECH_SERVICE_CATEGORY', name: 'Huyết học test viết tắt', abbreviation: 'HH' });
+    expect(category.status, JSON.stringify(category.body)).toBe(200);
+    expect(category.body.data).toMatchObject({ abbreviation: 'HH', capColor: null });
+
+    expect((await post({ category: 'SPECIMEN_TYPE', name: 'Màu lạ', capColor: 'PINK' })).status).toBe(400);
+    expect((await post({ category: 'TECH_SERVICE_CATEGORY', name: 'Viết tắt dài', abbreviation: 'QUADAI' })).status).toBe(400);
+
+    const other = await post({ category: 'ETHNICITY', name: 'Không liên quan màu nắp' });
+    expect(other.body.data).toMatchObject({ capColor: null, abbreviation: null });
+  });
+
   it('UNIT (Đơn vị tính, 2026-08-26) — mã tự sinh (bỏ qua code client gửi), lưu description, isActive lúc tạo mặc định true còn tuỳ chọn gửi false', async () => {
     const created = await request(app.getHttpServer())
       .post('/api/v1/reference-catalog')

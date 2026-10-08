@@ -7,6 +7,7 @@ import { CashVoucherPrintView } from '../cash-book/CashVoucherPrintView';
 import { CashierShiftReceiptDocument } from '../cashier-shift/CashierShiftReceiptView';
 import { ClinicalOrderPrintView } from '../clinical-order/ClinicalOrderPrintView';
 import { ParaclinicalResultPrintView } from '../paraclinical-result/ParaclinicalResultPrintView';
+import { SpecimenLabelSheet } from '../paraclinical-result/SpecimenLabelSheet';
 import { PrescriptionPrintView } from '../encounter/PrescriptionPrintView';
 import { StockCountPrintView } from '../inventory/StockCountPrintView';
 import { StockIssuePrintView } from '../inventory/StockIssuePrintView';
@@ -96,6 +97,24 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
       return <StockTransferPrintView transfer={SAMPLE_STOCK_TRANSFER} />;
     case 'MEDICAL_RECORD':
       return <MedicalRecordPreview />;
+    case 'SPECIMEN_LABEL':
+      return (
+        <SpecimenLabelSheet
+          printedAt="2026-10-08T01:56:00.000Z"
+          labels={[
+            {
+              sid: '2610080014',
+              patientName: 'Lý Thị Hoài Thương',
+              patientCode: 'BN2610000148',
+              patientBirthYear: 1987,
+              patientAgeYears: 39,
+              patientGender: 'female',
+              groupAbbreviation: 'HH',
+              capLabel: 'Nắp tím',
+            },
+          ]}
+        />
+      );
   }
 }
 

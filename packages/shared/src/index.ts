@@ -39,3 +39,4 @@ export * from './technical-service';
 export * from './pricing';
 export * from './clinical-order';
 export * from './paraclinical-result';
+export * from './specimen-tube';

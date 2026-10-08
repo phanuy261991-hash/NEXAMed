@@ -122,6 +122,10 @@ const allowFreeTextPrescriptionEnabledSchema = z.boolean();
 // Cận lâm sàng GĐ4 — tắt theo mặc định (thu tiền trước khi lấy mẫu/gọi vào phòng).
 const PARACLINICAL_BEFORE_PAYMENT_ENABLED_KEY = 'paraclinical_before_payment_enabled';
 const paraclinicalBeforePaymentEnabledSchema = z.boolean();
+// Lấy mẫu xét nghiệm có tem mã vạch (docs/DECISIONS.md #220) — tắt theo mặc định (tích tay hoặc quét đều xác nhận được).
+const SPECIMEN_SCAN_REQUIRED_KEY = 'specimen_scan_required';
+const specimenScanRequiredSchema = z.boolean();
+const DEFAULT_SPECIMEN_SCAN_REQUIRED = false;
 // "Gợi ý mã ICD-10 từ ô Chẩn đoán" + "Học từ lịch sử chọn mã" — cả hai tắt theo mặc định cho tenant
 // chưa từng cấu hình, giữ nguyên hành vi hiện tại của pilot.
 const ICD10_SUGGESTION_ENABLED_KEY = 'icd10_suggestion_enabled';
@@ -444,6 +448,19 @@ export class ClinicSettingsRepository {
 
   upsertParaclinicalBeforePaymentEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, PARACLINICAL_BEFORE_PAYMENT_ENABLED_KEY, value);
+  }
+
+  async getSpecimenScanRequired(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: SPECIMEN_SCAN_REQUIRED_KEY } });
+    if (!setting) {
+      return DEFAULT_SPECIMEN_SCAN_REQUIRED;
+    }
+    const parsed = specimenScanRequiredSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_SPECIMEN_SCAN_REQUIRED;
+  }
+
+  upsertSpecimenScanRequired(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, SPECIMEN_SCAN_REQUIRED_KEY, value);
   }
 
   async getIcd10SuggestionEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {

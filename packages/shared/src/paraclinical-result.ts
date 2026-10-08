@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { queueTubeSchema } from './specimen-tube';
 import { labIndicatorValueTypeSchema, technicalServiceKindSchema, technicalServiceResultTypeSchema } from './technical-service';
 
 /**
@@ -49,6 +50,15 @@ export const paraclinicalQueueRowSchema = z.object({
   bucket: paraclinicalQueueBucketSchema,
   /** Mọi dòng của nhóm đã được thu tiền. */
   paid: z.boolean(),
+  /** Id phiếu chỉ định — mở hộp thoại "Lấy mẫu" (xét nghiệm). */
+  orderId: z.string().uuid(),
+  /** Ống mẫu của dòng (chỉ xét nghiệm): ống đã sinh SID hoặc ống DỰ KIẾN gộp theo loại mẫu (docs/DECISIONS.md #220). Rỗng với CĐHA/thăm dò và dòng lấy mẫu trước khi có tính năng ống. */
+  tubes: z.array(queueTubeSchema),
+  /** Lúc lấy mẫu / gọi vào (mới nhất của nhóm) và người thực hiện — `null` nếu chưa lấy. */
+  collectedAt: z.string().nullable(),
+  collectedByName: z.string().nullable(),
+  /** Đã có bản NHÁP kết quả (đã lưu nhưng chưa gửi duyệt) — hàng đợi hiện nhãn "Đang nhập". */
+  hasDraft: z.boolean(),
   /** Mốc tính "Chờ": lúc chỉ định (đang chờ) hoặc lúc lấy mẫu/gọi vào (đang thực hiện). */
   waitingSince: z.string(),
 });

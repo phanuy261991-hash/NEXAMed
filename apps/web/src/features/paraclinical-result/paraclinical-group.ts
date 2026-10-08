@@ -30,7 +30,7 @@ export const PARACLINICAL_GROUP_META: Record<ParaclinicalGroup, GroupMeta> = {
     bucketLabels: {
       AWAITING_PAYMENT: 'Chờ thu tiền',
       WAITING: 'Chờ lấy mẫu',
-      IN_PROGRESS: 'Đã lấy mẫu, đang thực hiện',
+      IN_PROGRESS: 'Đã lấy mẫu',
       PENDING_APPROVAL: 'Chờ duyệt kết quả',
       COMPLETED: 'Đã trả kết quả',
     },

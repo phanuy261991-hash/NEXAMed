@@ -21,10 +21,9 @@ export async function listParaclinicalQueue(group: ParaclinicalGroup, query: Lis
   return unwrap(res) as ListParaclinicalQueueResponse;
 }
 
-export async function startParaclinicalItems(group: ParaclinicalGroup, body: StartParaclinicalItemsRequest): Promise<StartParaclinicalItemsResponse> {
-  const client = getApiClient();
-  const res = group === 'lab' ? await client.POST('/api/v1/paraclinical/lab/start', { body }) : await client.POST('/api/v1/paraclinical/imaging/start', { body });
-  return unwrap(res) as StartParaclinicalItemsResponse;
+/** "Gọi vào phòng" — CHỈ CĐHA & Thăm dò chức năng. Xét nghiệm không còn `start`: lấy mẫu đi qua ống mẫu (`specimen-tube.api.ts`, docs/DECISIONS.md #220). */
+export async function startParaclinicalItems(body: StartParaclinicalItemsRequest): Promise<StartParaclinicalItemsResponse> {
+  return unwrap(await getApiClient().POST('/api/v1/paraclinical/imaging/start', { body })) as StartParaclinicalItemsResponse;
 }
 
 export async function getParaclinicalResult(group: ParaclinicalGroup, itemId: string): Promise<GetParaclinicalResultResponse> {

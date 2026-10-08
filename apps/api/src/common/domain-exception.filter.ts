@@ -41,6 +41,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   PARACLINICAL_ITEM_INVALID_STATE: HttpStatus.CONFLICT,
   BACKUP_NOT_AVAILABLE: HttpStatus.CONFLICT,
   PARACLINICAL_PAYMENT_REQUIRED: HttpStatus.CONFLICT,
+  SPECIMEN_TUBE_INVALID_STATE: HttpStatus.CONFLICT,
+  SPECIMEN_SCAN_REQUIRED: HttpStatus.CONFLICT,
   PARACLINICAL_RESULT_INCOMPLETE: HttpStatus.UNPROCESSABLE_ENTITY,
   // Sprint 3, Tiếp nhận — chuyển trạng thái/tạo encounter xung đột trạng thái hiện có, không phải
   // lỗi input (422 mặc định không phù hợp), cùng nhóm APPOINTMENT_* ở trên.

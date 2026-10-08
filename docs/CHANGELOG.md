@@ -4,6 +4,14 @@
 
 ## 2026-10-08
 
+### Xét nghiệm: lấy mẫu có ống mẫu, mã ống (SID) và tem mã vạch (`docs/DECISIONS.md` #220)
+
+Luồng mới ở hàng đợi **Xét nghiệm**: thanh toán xong → tab "Chờ lấy mẫu" → bấm **Lấy mẫu** mở hộp thoại (họ tên IN HOA, năm sinh, giới để đối chiếu người bệnh; các xét nghiệm tự gộp thành **ống** theo loại mẫu bệnh phẩm, mỗi ống có **mã ống** và màu nắp) → **In tem** mã vạch Code 128 (tuỳ chọn, khổ 35×22 hoặc 50×30 chọn ở "Mẫu in") → tích **"Đã lấy"** từng ống (tay, hoặc quét tem vào ô "Quét mã ống" bằng súng quét USB) → **Xác nhận**. Ống đã lấy sang tab **"Đã lấy mẫu"** (thay "Đang thực hiện"), lúc đó mới bấm **Nhập kết quả**; ống chưa lấy ở lại "Chờ lấy mẫu" (lấy mẫu một phần). Có sẵn: tách 1 xét nghiệm sang ống riêng, in lại tem, huỷ ống & lấy lại (SID mới, bắt buộc lý do), huỷ xác nhận đã lấy (chỉ khi chưa nhập kết quả), quét nhầm tem bệnh nhân khác bị chặn kèm tên người đó, công tắc "Bắt buộc quét đủ ống" (Cấu hình thanh toán, mặc định tắt). Mã ống cấu hình ở "Mẫu mã phát sinh" (mặc định `yyMMdd` + 4 số, đánh số lại mỗi ngày). Danh mục: Mẫu bệnh phẩm có "Màu nắp ống", Nhóm dịch vụ có "Viết tắt" (in "HH/SH" lên tem). CĐHA & Thăm dò chức năng không đổi. Hàng đợi bỏ chữ "Chờ thu tiền" thừa ở cột Thao tác. Môi trường khác: `db:deploy` rồi khởi động lại API (2 migration mới, không quyền mới).
+
+### Màn khám của lượt đã huỷ: chỉ xem
+
+Mở thẳng `/encounters/<id>` của lượt khám `CANCELLED` không còn hiện "Hoàn tất khám", "Lưu", "Xử lý", nút sinh hiệu, ô thêm/Lưu chỉ định; chân trang có dòng "Lượt khám đã huỷ — chỉ xem". Chỉ đổi giao diện (backend vốn đã chặn ghi). Lượt đã hoàn tất không đổi hành vi.
+
 ### Huỷ lượt khám: đóng dòng chỉ định chưa bắt đầu (`docs/DECISIONS.md` #219)
 
 Huỷ lượt khám nay đổi các dịch vụ cận lâm sàng **chưa bắt đầu** sang "Đã huỷ"; dịch vụ đang làm dở hoặc đã có kết quả đã duyệt giữ nguyên; hoá đơn đã thu vẫn xử lý bằng hoàn tiền như cũ. Tạm tính ở tab Chỉ định không còn cộng dòng đã huỷ.
