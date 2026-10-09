@@ -184,7 +184,7 @@ export function ScheduleSubmissionsPane() {
                 const badge = statusBadge(item);
                 return (
                   <tr key={item.id}>
-                    <td className="px-3 py-2.5 font-medium">
+                    <td className="px-3 py-2.5 text-center font-medium">
                       {item.userFullName}
                       {item.departmentName && <div className="text-xs text-slate-500">{item.departmentName}</div>}
                     </td>

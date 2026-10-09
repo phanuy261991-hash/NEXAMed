@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { ArrowsLeftRight, CalendarX, CaretLeft, CaretRight, CheckCircle, CheckSquare, Clock, Lock, Plus, Trash, WarningCircle } from '@phosphor-icons/react';
 import type { BusinessHours, LeaveRequestItem } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
@@ -20,7 +20,7 @@ import { useAllowStaffSelfScheduleEnabledQuery, useWorkShiftsQuery } from '../cl
 import { WORK_SHIFT_COLOR_HEX } from '../clinic/WorkShiftFormModal';
 import { WorkShiftPickerModal } from './WorkShiftPickerModal';
 import { SCHEDULE_CHIP_TONE } from './ScheduleMonthGrid';
-import { formatMinutesAsHours, isMonthOpenForSelfRegistration } from './schedule-month';
+import { formatMinutesAsHours, isMonthOpenForSelfRegistration, resolveMonthBanner } from './schedule-month';
 import { useScheduleSubmissionsQuery, useSubmitScheduleSubmissionMutation } from './schedule-submission.queries';
 import {
   useBulkCreateWorkShiftAssignmentsMutation,
@@ -198,6 +198,8 @@ export function MyWorkSchedulePage() {
   const statusMonth = view === 'month' ? monthAnchor : days[3]!.slice(0, 7);
   const statusRow = submissionByMonth.get(statusMonth);
   const showStatusBanner = isStaffScope && selfScheduleEnabled && (isMonthOpenForSelfRegistration(statusMonth, today) || statusRow !== undefined);
+  const monthBanner = resolveMonthBanner(monthStatus(statusMonth), statusRow?.returnReason, isMonthOpenForSelfRegistration(statusMonth, today));
+  const MONTH_BADGE_BG = { emerald: 'bg-emerald-500', amber: 'bg-amber-500', rose: 'bg-rose-600', slate: 'bg-slate-500' } as const;
 
   // "Đổi ca" (#225): yêu cầu đang chờ (của mình gửi hoặc gửi cho mình) + số yêu cầu chờ MÌNH xác nhận.
   const canCreateSwap = useHasPermission('shift_swap', 'create');
@@ -205,7 +207,20 @@ export function MyWorkSchedulePage() {
   const pendingSwapByAssignment = new Map(
     (swapsQuery.data?.items ?? []).filter((sw) => sw.requesterId === ownUserId).map((sw) => [sw.requesterAssignment.assignmentId, sw]),
   );
-  const incomingSwapCount = useShiftSwapIncomingCountQuery(canCreateSwap).data?.count ?? 0;
+  const incomingSwapCountQuery = useShiftSwapIncomingCountQuery(canCreateSwap);
+  const incomingSwapCount = incomingSwapCountQuery.data?.count ?? 0;
+  // Toast khi có yêu cầu đổi ca MỚI gửi tới lúc đang mở trang (nhịp 30 giây của query) — lần nạp đầu chỉ ghi nhận mốc,
+  // không báo (banner "Có N yêu cầu..." bên dưới đã đủ cho yêu cầu có từ trước).
+  const seenIncomingCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (incomingSwapCountQuery.data === undefined) return;
+    const count = incomingSwapCountQuery.data.count;
+    if (seenIncomingCountRef.current !== null && count > seenIncomingCountRef.current) {
+      setToast('Bạn có yêu cầu đổi ca mới đang chờ xác nhận.');
+      setTimeout(() => setToast(null), 6000);
+    }
+    seenIncomingCountRef.current = count;
+  }, [incomingSwapCountQuery.data]);
   const cancelSwapMutation = useCancelShiftSwapMutation();
   const createMutation = useCreateWorkShiftAssignmentMutation();
   const bulkMutation = useBulkCreateWorkShiftAssignmentsMutation();
@@ -473,15 +488,9 @@ export function MyWorkSchedulePage() {
         <div className="flex flex-shrink-0 flex-col gap-2">
           <div className="flex items-center gap-2 px-1">
             <span className="text-[13px] font-semibold text-slate-700">{formatMonthLabel(statusMonth)}</span>
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white ${
-                monthStatus(statusMonth) === 'APPROVED' ? 'bg-emerald-500' : monthStatus(statusMonth) === 'SUBMITTED' ? 'bg-amber-500' : statusRow?.returnReason ? 'bg-rose-600' : 'bg-slate-500'
-              }`}
-            >
-              {monthStatus(statusMonth) === 'APPROVED' ? 'Đã duyệt' : monthStatus(statusMonth) === 'SUBMITTED' ? 'Chờ duyệt' : statusRow?.returnReason ? 'Bị trả lại' : 'Nháp'}
-            </span>
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white ${MONTH_BADGE_BG[monthBanner.tone]}`}>{monthBanner.label}</span>
           </div>
-          {monthStatus(statusMonth) === 'DRAFT' && isMonthOpenForSelfRegistration(statusMonth, today) && statusRow?.returnReason && (
+          {monthBanner.banner === 'RETURNED' && statusRow?.returnReason && (
             <div className="flex items-center gap-2.5 rounded-md bg-rose-600 px-3.5 py-2.5 text-white shadow-sm">
               <span className="flex-1 text-[13px] font-semibold">
                 {formatMonthLabel(statusMonth)} bị trả lại: &quot;{statusRow.returnReason}&quot; Bạn sửa lại rồi gửi duyệt lần nữa.
@@ -497,7 +506,7 @@ export function MyWorkSchedulePage() {
               </Button>
             </div>
           )}
-          {monthStatus(statusMonth) === 'DRAFT' && isMonthOpenForSelfRegistration(statusMonth, today) && !statusRow?.returnReason && (
+          {monthBanner.banner === 'DRAFT_OPEN' && (
             <div className="flex flex-wrap items-center gap-2.5 rounded-md border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-sm text-blue-900">
               <span className="min-w-0 flex-1">
                 <span className="font-bold">Đăng ký {formatMonthLabel(statusMonth).toLowerCase()}.</span> Bạn chỉ đăng ký được cho tháng chưa tới. Đăng ký xong bấm <strong>Gửi duyệt cả tháng</strong>; sau khi gửi bạn không tự sửa hoặc xoá ca được nữa.
@@ -507,14 +516,14 @@ export function MyWorkSchedulePage() {
               </Button>
             </div>
           )}
-          {monthStatus(statusMonth) === 'SUBMITTED' && statusRow && (
+          {monthBanner.banner === 'SUBMITTED' && statusRow && (
             <div className="flex items-center gap-2.5 rounded-md bg-amber-500 px-3.5 py-2.5 text-white shadow-sm">
               <span className="flex-1 text-[13px] font-semibold">
                 Đã gửi duyệt — {statusRow.shiftCount} ca, {formatMinutesAsHours(statusRow.totalMinutes)} giờ. Đang chờ Quản lý phòng khám duyệt, trong lúc này không sửa hoặc xoá ca được.
               </span>
             </div>
           )}
-          {monthStatus(statusMonth) === 'APPROVED' && (
+          {monthBanner.banner === 'APPROVED' && (
             <p className="px-1 text-xs text-slate-500">Lịch đã duyệt không sửa hoặc xoá trực tiếp. Chỉ xin nghỉ hoặc đổi ca.</p>
           )}
           {submitError && <p className="px-1 text-xs font-medium text-rose-600">{submitError}</p>}

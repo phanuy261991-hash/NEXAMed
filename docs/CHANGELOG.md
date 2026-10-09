@@ -4,6 +4,10 @@
 
 ## 2026-10-09
 
+### Đổi ca / Đăng ký ca: hoàn thiện nhỏ
+
+Danh sách đồng nghiệp để đổi ca không còn nhân viên đã nghỉ việc (tài khoản vô hiệu hoá). Đang mở "Lịch làm việc của tôi" mà có yêu cầu đổi ca mới gửi tới thì hiện thông báo "Bạn có yêu cầu đổi ca mới đang chờ xác nhận". Ba bảng ở "Lịch làm việc nhân viên" (Đăng ký ca, Đơn xin nghỉ, Đổi ca) căn giữa dữ liệu cho khớp tiêu đề cột. Không migration.
+
 ### Duyệt đăng ký ca theo tháng + Đổi ca (`docs/DECISIONS.md` #225)
 
 Khi công tắc "Cho phép nhân viên tự đăng ký ca" BẬT: nhân viên chỉ đăng ký ca cho **tháng sau**, ở trạng thái **Nháp**, rồi bấm **Gửi duyệt cả tháng**; Quản lý duyệt hoặc **Trả lại** (kèm lý do) ở tab **Đăng ký ca** của "Lịch làm việc nhân viên". Gửi rồi/đã duyệt thì không tự thêm/xoá/sửa ca; chỉ **Xin nghỉ** (Quản lý duyệt) hoặc **Đổi ca**. **Đổi ca** = đổi 2 ca cho nhau với đồng nghiệp: người nhận xác nhận là hai ca đổi ngay (Quản lý chỉ xem lịch sử ở tab **Đổi ca**, có nhãn "Mới" và chấm số); ca có lịch hẹn, có đơn nghỉ, đã qua hoặc chưa được duyệt thì không đổi được. Nhân viên không tự xoá ca do Quản lý xếp; ngày đã qua và tháng hiện tại không tự đăng ký được. Công tắc TẮT: Quản lý tự xếp ca, tab "Đăng ký ca" ẩn. Quyền mới "Duyệt đăng ký ca" (mặc định Quản lý), nhóm "Đổi ca" (xem/gửi). Môi trường khác: `db:deploy` + `db:seed` rồi khởi động lại API.

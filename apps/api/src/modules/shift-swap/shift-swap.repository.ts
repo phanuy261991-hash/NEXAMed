@@ -90,7 +90,8 @@ export class ShiftSwapRepository {
   /** Ca sắp tới (từ `fromDate`) của mọi nhân viên trừ `excludeUserId` — nguồn danh sách đồng nghiệp. */
   listUpcomingAssignments(tx: Prisma.TransactionClient, tenantId: string, fromDate: string, excludeUserId: string, userId?: string): Promise<AssignmentWithShift[]> {
     return tx.workShiftAssignment.findMany({
-      where: { tenantId, deletedAt: null, workDate: { gte: new Date(fromDate) }, userId: userId ? userId : { not: excludeUserId } },
+      // Chỉ đồng nghiệp còn hoạt động — nhân viên đã nghỉ việc/vô hiệu hoá không nhận ca đổi được.
+      where: { tenantId, deletedAt: null, workDate: { gte: new Date(fromDate) }, userId: userId ? userId : { not: excludeUserId }, user: { isActive: true } },
       include: { workShift: true },
       orderBy: [{ workDate: 'asc' }],
       take: 400,

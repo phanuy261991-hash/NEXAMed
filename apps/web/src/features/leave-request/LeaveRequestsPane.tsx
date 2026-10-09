@@ -144,7 +144,7 @@ export function LeaveRequestsPane() {
                 const own = item.userId === ownUserId;
                 return (
                   <tr key={item.id}>
-                    <td className="px-3 py-2.5 font-medium">
+                    <td className="px-3 py-2.5 text-center font-medium">
                       {item.userFullName}
                       {item.departmentName && <div className="text-xs text-slate-500">{item.departmentName}</div>}
                     </td>
@@ -156,7 +156,7 @@ export function LeaveRequestsPane() {
                       {item.workShiftName ?? 'Cả ngày'}
                       {!item.isWholeDay && <div className="text-xs text-slate-500">{formatLeaveWindow(item)}</div>}
                     </td>
-                    <td className="max-w-[260px] px-3 py-2.5 font-medium text-slate-700">
+                    <td className="max-w-[260px] px-3 py-2.5 text-center font-medium text-slate-700">
                       <div className="truncate" title={item.reason}>
                         {item.reason}
                       </div>

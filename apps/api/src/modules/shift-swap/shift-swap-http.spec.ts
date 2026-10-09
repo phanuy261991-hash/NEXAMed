@@ -158,6 +158,19 @@ describe('HTTP e2e — đổi ca', () => {
     expect(denied.status).toBe(403);
   });
 
+  it('nhân viên đã nghỉ việc (tài khoản vô hiệu hoá) không còn trong danh sách đồng nghiệp đổi ca', async () => {
+    const leaver = await createUserWithRole(fixture.tenantA.id, 'doctor');
+    await assign(leaver.userId, morningId, '2026-09-14');
+    const before = await api().get('/api/v1/shift-swaps/colleagues').set(authed(docAToken));
+    expect(before.body.data.items.some((c: { userId: string }) => c.userId === leaver.userId)).toBe(true);
+
+    await privileged.userAccount.update({ where: { id: leaver.userId }, data: { isActive: false } });
+    const after = await api().get('/api/v1/shift-swaps/colleagues').set(authed(docAToken));
+    expect(after.body.data.items.some((c: { userId: string }) => c.userId === leaver.userId)).toBe(false);
+    const candidates = await api().get(`/api/v1/shift-swaps/colleagues/${leaver.userId}/assignments`).set(authed(docAToken));
+    expect(candidates.body.data.items).toHaveLength(0);
+  });
+
   it('trùng yêu cầu cùng ca → 409; chỉ người nhận xác nhận/từ chối, chỉ người gửi huỷ (403)', async () => {
     const dup = await swap(docAToken, ids.aMorning10!, ids.bMorning12!);
     expect(dup.status).toBe(409);

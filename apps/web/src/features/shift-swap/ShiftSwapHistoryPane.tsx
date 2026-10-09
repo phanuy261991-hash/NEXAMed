@@ -81,11 +81,11 @@ export function ShiftSwapHistoryPane() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2.5 font-medium">{item.requesterName}</td>
+                      <td className="px-3 py-2.5 text-center font-medium">{item.requesterName}</td>
                       <td className="px-3 py-2.5 text-center">
                         <span className="font-bold tabular-nums text-brand-teal">{ddmm(item.requesterAssignment.workDate)}</span> · {item.requesterAssignment.workShiftName}
                       </td>
-                      <td className="px-3 py-2.5 font-medium">{item.counterpartName}</td>
+                      <td className="px-3 py-2.5 text-center font-medium">{item.counterpartName}</td>
                       <td className="px-3 py-2.5 text-center">
                         <span className="font-bold tabular-nums text-brand-teal">{ddmm(item.counterpartAssignment.workDate)}</span> · {item.counterpartAssignment.workShiftName}
                       </td>
