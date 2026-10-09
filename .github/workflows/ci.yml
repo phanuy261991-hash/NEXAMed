@@ -50,6 +50,9 @@ jobs:
       - name: Prisma generate
         run: pnpm --filter @nexamed/api run db:generate
 
+      - name: Build packages dùng chung (seed/test cần dist của @nexamed/shared và @nexamed/core)
+        run: pnpm --filter @nexamed/shared --filter @nexamed/core run build
+
       - name: Seed danh mục permission (migrate deploy không tự seed như migrate dev)
         run: pnpm --filter @nexamed/api run db:seed
 
