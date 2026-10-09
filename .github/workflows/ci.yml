@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 jobs:
@@ -30,9 +30,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Phiên bản pnpm lấy từ `packageManager` trong package.json — KHÔNG khai báo `version` ở đây (khai 2 nơi → ERR_PNPM_BAD_PM_VERSION).
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
