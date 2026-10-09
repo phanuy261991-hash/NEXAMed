@@ -223,4 +223,37 @@ describe('HTTP e2e — duyệt đăng ký ca theo tháng', () => {
       .send({ version: 1 });
     expect(approveB.status).toBe(404);
   });
+
+  it('quota "nghỉ tối thiểu N ngày/tuần": tuần trọn trong tháng làm kín 7 ngày → gửi duyệt 409 SCHEDULE_SUBMISSION_MIN_DAYS_OFF kèm tuần cụ thể; bớt 1 ngày thì gửi được; N=0 thì không kiểm', async () => {
+    const doctorC = await createUserWithRole(fixture.tenantA.id, 'doctor');
+    const setMin = async (value: number) => {
+      const res = await api().patch('/api/v1/clinic-settings').set(authed(adminToken)).send({ minWeeklyDaysOff: value });
+      expect(res.status).toBe(200);
+      expect(res.body.data.minWeeklyDaysOff).toBe(value);
+    };
+    // 2026-10: 5/10 là Thứ Hai → tuần 5–11 trọn trong tháng. Đăng ký kín cả 7 ngày của tuần đó.
+    const ids: string[] = [];
+    for (let day = 5; day <= 11; day++) {
+      const res = await register(doctorC.token, morningId, `2026-10-${String(day).padStart(2, '0')}`);
+      expect(res.status).toBe(200);
+      ids.push(res.body.data.id as string);
+    }
+    const bad = await api().patch('/api/v1/clinic-settings').set(authed(adminToken)).send({ minWeeklyDaysOff: 7 });
+    expect(bad.status).toBe(400);
+    try {
+      await setMin(1);
+      const blocked = await api().post('/api/v1/work-shift-assignments/submissions/submit').set(authed(doctorC.token)).send({ month: '2026-10' });
+      expect(blocked.status).toBe(409);
+      expect(blocked.body.error.code).toBe('SCHEDULE_SUBMISSION_MIN_DAYS_OFF');
+      expect(blocked.body.error.message).toContain('05/10–11/10');
+
+      const del = await api().delete(`/api/v1/work-shift-assignments/${ids[6]}`).set(authed(doctorC.token)).send({ version: 1 });
+      expect(del.status).toBe(200);
+      const ok = await api().post('/api/v1/work-shift-assignments/submissions/submit').set(authed(doctorC.token)).send({ month: '2026-10' });
+      expect(ok.status).toBe(200);
+      expect(ok.body.data.status).toBe('SUBMITTED');
+    } finally {
+      await setMin(0);
+    }
+  });
 });

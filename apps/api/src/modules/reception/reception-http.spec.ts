@@ -1145,4 +1145,43 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('công tắc con "chặn cả khi bác sĩ không có ca nào trong ngày" — Tiếp nhận (chặn cứng)', () => {
+    it('bác sĩ không có ca trong ngày đã có bác sĩ khác đăng ký ca → 409 DOCTOR_NO_SHIFT_ON_DATE; bác sĩ có ca và ngày không ai đăng ký ca → 200', async () => {
+      const admin = await createUserWithRole(fixture.tenantA.id, 'clinic_admin');
+      const shift = await request(app.getHttpServer())
+        .post('/api/v1/work-shifts')
+        .set(authed(admin.token))
+        .send({ name: 'Ca Sáng', startTime: '07:00', endTime: '11:00', color: 'blue' });
+      await request(app.getHttpServer())
+        .post('/api/v1/work-shift-assignments')
+        .set(authed(admin.token))
+        .send({ userId: doctorAUserId, workShiftId: shift.body.data.id, workDate: '2026-08-20' });
+      const setSettings = async (body: Record<string, unknown>) => {
+        const res = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(admin.token)).send(body);
+        expect(res.status).toBe(200);
+      };
+      const direct = async (doctorId: string, day: number) => {
+        const patient = await createPatient(receptionistToken);
+        return request(app.getHttpServer())
+          .post('/api/v1/reception/direct')
+          .set(authed(receptionistToken))
+          .send({ patientId: patient.id, doctorId, checkedInAt: isoAt(8, 0, day), services: defaultServices(), receptionTypeCode: 'RT_NEW', examFormCode: 'EF_NORMAL' });
+      };
+      try {
+        await setSettings({ blockBookingOutsideWorkShiftEnabled: true, blockBookingWhenNoShiftEnabled: true });
+        const blocked = await direct(doctorBUserId, 20);
+        expect(blocked.status).toBe(409);
+        expect(blocked.body.error.code).toBe('DOCTOR_NO_SHIFT_ON_DATE');
+        expect((await direct(doctorAUserId, 20)).status).toBe(200);
+        // Ngày 21/8 không bác sĩ nào đăng ký ca → không chặn.
+        expect((await direct(doctorBUserId, 21)).status).toBe(200);
+        // Tắt công tắc con → bác sĩ không có ca tiếp nhận được lại.
+        await setSettings({ blockBookingWhenNoShiftEnabled: false });
+        expect((await direct(doctorBUserId, 20)).status).toBe(200);
+      } finally {
+        await setSettings({ blockBookingOutsideWorkShiftEnabled: false, blockBookingWhenNoShiftEnabled: false });
+      }
+    });
+  });
 });

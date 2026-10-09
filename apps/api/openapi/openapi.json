@@ -4822,6 +4822,14 @@
                         "blockBookingOutsideWorkShiftEnabled": {
                           "type": "boolean"
                         },
+                        "blockBookingWhenNoShiftEnabled": {
+                          "type": "boolean"
+                        },
+                        "minWeeklyDaysOff": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 6
+                        },
                         "allowStaffSelfScheduleEnabled": {
                           "type": "boolean"
                         },
@@ -4894,6 +4902,8 @@
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
+                        "blockBookingWhenNoShiftEnabled",
+                        "minWeeklyDaysOff",
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
@@ -36558,6 +36568,14 @@
                         "blockBookingOutsideWorkShiftEnabled": {
                           "type": "boolean"
                         },
+                        "blockBookingWhenNoShiftEnabled": {
+                          "type": "boolean"
+                        },
+                        "minWeeklyDaysOff": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 6
+                        },
                         "allowStaffSelfScheduleEnabled": {
                           "type": "boolean"
                         },
@@ -36630,6 +36648,8 @@
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
+                        "blockBookingWhenNoShiftEnabled",
+                        "minWeeklyDaysOff",
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
@@ -36928,6 +36948,14 @@
                   "blockBookingOutsideWorkShiftEnabled": {
                     "type": "boolean"
                   },
+                  "blockBookingWhenNoShiftEnabled": {
+                    "type": "boolean"
+                  },
+                  "minWeeklyDaysOff": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 6
+                  },
                   "allowStaffSelfScheduleEnabled": {
                     "type": "boolean"
                   },
@@ -37192,6 +37220,14 @@
                         "blockBookingOutsideWorkShiftEnabled": {
                           "type": "boolean"
                         },
+                        "blockBookingWhenNoShiftEnabled": {
+                          "type": "boolean"
+                        },
+                        "minWeeklyDaysOff": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 6
+                        },
                         "allowStaffSelfScheduleEnabled": {
                           "type": "boolean"
                         },
@@ -37264,6 +37300,8 @@
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
+                        "blockBookingWhenNoShiftEnabled",
+                        "minWeeklyDaysOff",
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",

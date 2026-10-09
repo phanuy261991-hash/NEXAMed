@@ -97,3 +97,12 @@ export class ScheduleSubmissionEmptyError extends DomainError {
     super('Tháng này chưa đăng ký ca nào nên chưa gửi duyệt được.');
   }
 }
+
+/** Gửi duyệt tháng mà có tuần ít ngày nghỉ hơn quota "nghỉ tối thiểu N ngày/tuần" (09/10/2026). */
+export class ScheduleSubmissionMinDaysOffError extends DomainError {
+  readonly code = 'SCHEDULE_SUBMISSION_MIN_DAYS_OFF';
+
+  constructor(message: string) {
+    super(message);
+  }
+}

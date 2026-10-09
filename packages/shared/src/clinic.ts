@@ -173,6 +173,19 @@ export const clinicSettingsSchema = z.object({
    */
   blockBookingOutsideWorkShiftEnabled: z.boolean(),
   /**
+   * Công tắc con của "Chặn đặt lịch ngoài ca" (chốt 09/10/2026, đảo ngược một phần #102 điểm 5/#103): bật
+   * (và công tắc cha cũng bật) thì ngày phòng khám đã có ít nhất 1 bác sĩ đăng ký ca, bác sĩ KHÔNG có ca
+   * nào hôm đó cũng KHÔNG đặt được lịch hẹn và KHÔNG tiếp nhận được (chặn cứng cả Lịch hẹn lẫn Tiếp nhận).
+   * Ngày không bác sĩ nào đăng ký ca thì không chặn (phòng khám chưa dùng ca không bị khoá).
+   */
+  blockBookingWhenNoShiftEnabled: z.boolean(),
+  /**
+   * Quota "nghỉ tối thiểu N ngày/tuần" khi đăng ký ca tháng (chốt 09/10/2026). `0` = tắt (mặc định). Nhân
+   * viên Gửi duyệt cả tháng mà có tuần (Thứ Hai–Chủ nhật, trọn trong tháng) ít ngày nghỉ hơn N thì bị chặn
+   * và báo rõ tuần nào. Ngày không có ca = ngày nghỉ.
+   */
+  minWeeklyDaysOff: z.number().int().min(0).max(6),
+  /**
    * "Cấu hình chung" — pill "Cấu hình phòng khám" → mục con mới, dưới "Ca làm việc" (chủ dự án yêu
    * cầu trực tiếp, 02/09/2026, tiếp sau #104). Bật (mặc định — giữ đúng hành vi hiện tại): mọi
    * nhân viên tự đăng ký/xoá ca trên "Lịch làm việc của tôi" như đang có. Tắt: ẩn hết chức năng tự
@@ -341,6 +354,8 @@ export const updateClinicSettingsRequestSchema = z.object({
   allowEmergencyEndShift: z.boolean().optional(),
   allowReceptionistEndShift: z.boolean().optional(),
   blockBookingOutsideWorkShiftEnabled: z.boolean().optional(),
+  blockBookingWhenNoShiftEnabled: z.boolean().optional(),
+  minWeeklyDaysOff: z.number().int().min(0).max(6).optional(),
   allowStaffSelfScheduleEnabled: z.boolean().optional(),
   workShiftAssignmentLockGraceDays: z.number().int().min(0).max(27).optional(),
   cashierShiftBlindCloseEnabled: z.boolean().optional(),
@@ -376,6 +391,10 @@ export const DEFAULT_ALLOW_EMERGENCY_END_SHIFT = true;
 export const DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT = false;
 /** Tắt theo mặc định (an toàn — giữ nguyên hành vi hiện tại tới khi chủ động bật). */
 export const DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED = false;
+/** Tắt theo mặc định — chỉ chặn ngày bác sĩ không có ca khi chủ động bật (kèm công tắc cha). */
+export const DEFAULT_BLOCK_BOOKING_WHEN_NO_SHIFT_ENABLED = false;
+/** 0 = không áp quota ngày nghỉ tối thiểu mỗi tuần. */
+export const DEFAULT_MIN_WEEKLY_DAYS_OFF = 0;
 /** Bật theo mặc định — giữ đúng hành vi hiện tại (mọi nhân viên tự đăng ký ca) tới khi chủ động tắt. */
 export const DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED = true;
 /** 0 ngày ân hạn — khoá ngay khi sang tháng mới, cho tenant chưa từng cấu hình. */

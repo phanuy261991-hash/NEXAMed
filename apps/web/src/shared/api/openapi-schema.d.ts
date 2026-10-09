@@ -1950,6 +1950,8 @@ export interface paths {
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
+                                blockBookingWhenNoShiftEnabled: boolean;
+                                minWeeklyDaysOff: number;
                                 allowStaffSelfScheduleEnabled: boolean;
                                 workShiftAssignmentLockGraceDays: number;
                                 cashierShiftBlindCloseEnabled: boolean;
@@ -14122,6 +14124,8 @@ export interface paths {
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
+                                blockBookingWhenNoShiftEnabled: boolean;
+                                minWeeklyDaysOff: number;
                                 allowStaffSelfScheduleEnabled: boolean;
                                 workShiftAssignmentLockGraceDays: number;
                                 cashierShiftBlindCloseEnabled: boolean;
@@ -14232,6 +14236,8 @@ export interface paths {
                         allowEmergencyEndShift?: boolean;
                         allowReceptionistEndShift?: boolean;
                         blockBookingOutsideWorkShiftEnabled?: boolean;
+                        blockBookingWhenNoShiftEnabled?: boolean;
+                        minWeeklyDaysOff?: number;
                         allowStaffSelfScheduleEnabled?: boolean;
                         workShiftAssignmentLockGraceDays?: number;
                         cashierShiftBlindCloseEnabled?: boolean;
@@ -14301,6 +14307,8 @@ export interface paths {
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
+                                blockBookingWhenNoShiftEnabled: boolean;
+                                minWeeklyDaysOff: number;
                                 allowStaffSelfScheduleEnabled: boolean;
                                 workShiftAssignmentLockGraceDays: number;
                                 cashierShiftBlindCloseEnabled: boolean;

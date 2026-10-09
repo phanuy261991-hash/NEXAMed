@@ -4,6 +4,10 @@
 
 ## 2026-10-09
 
+### Chặn đặt lịch/tiếp nhận ngày bác sĩ không có ca + quota nghỉ tối thiểu mỗi tuần (`docs/DECISIONS.md` #226)
+
+Hai cài đặt mới, mặc định TẮT (phòng khám cũ không đổi). (1) **"Chặn cả khi bác sĩ không có ca nào trong ngày"** ở Cấu hình phòng khám → Lịch hẹn (dưới "Chặn đặt lịch ngoài ca đã đăng ký", chỉ dùng được khi công tắc đó bật): ngày phòng khám đã có bác sĩ đăng ký ca thì bác sĩ không có ca hôm đó không đặt được lịch hẹn và không tiếp nhận được; thẻ bác sĩ ở Tiếp nhận có nhãn "Không có ca hôm nay". Ngày không bác sĩ nào đăng ký ca thì không chặn. (2) **"Số ngày nghỉ tối thiểu mỗi tuần"** ở Cấu hình chung → Lịch làm việc: khi nhân viên Gửi duyệt đăng ký ca cả tháng, tuần (Thứ Hai–Chủ nhật, trọn trong tháng) nào ít ngày nghỉ hơn mức này thì bị chặn và báo rõ tuần nào; ngày không có ca được tính là ngày nghỉ. Không migration; khởi động lại API.
+
 ### Đổi ca / Đăng ký ca: hoàn thiện nhỏ
 
 Danh sách đồng nghiệp để đổi ca không còn nhân viên đã nghỉ việc (tài khoản vô hiệu hoá). Đang mở "Lịch làm việc của tôi" mà có yêu cầu đổi ca mới gửi tới thì hiện thông báo "Bạn có yêu cầu đổi ca mới đang chờ xác nhận". Ba bảng ở "Lịch làm việc nhân viên" (Đăng ký ca, Đơn xin nghỉ, Đổi ca) căn giữa dữ liệu cho khớp tiêu đề cột. Không migration.

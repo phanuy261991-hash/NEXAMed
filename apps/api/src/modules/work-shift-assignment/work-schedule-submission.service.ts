@@ -6,8 +6,10 @@ import {
   DOCTOR_DIRECTORY_PORT,
   ScheduleSubmissionEmptyError,
   ScheduleSubmissionInvalidStatusError,
+  ScheduleSubmissionMinDaysOffError,
   WorkShiftAssignmentMonthNotOpenError,
   WorkShiftAssignmentSelfScheduleDisabledError,
+  findWeeksBelowMinDaysOff,
   getVietnamDateString,
   isMonthOpenForSelfRegistration,
   shiftDurationMinutes,
@@ -71,6 +73,8 @@ export class WorkScheduleSubmissionService {
       throw new WorkShiftAssignmentMonthNotOpenError();
     }
 
+    const minDaysOff = await this.clinicConfigReader.getMinWeeklyDaysOff(tenantId);
+
     const saved = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.repository.findByUserMonth(tx, tenantId, actorId, dto.month);
       if (existing && existing.status !== 'DRAFT') {
@@ -80,6 +84,23 @@ export class WorkScheduleSubmissionService {
       const assignments = await this.assignmentRepository.listForUserInRange(tx, tenantId, actorId, from, to);
       if (assignments.length === 0) {
         throw new ScheduleSubmissionEmptyError();
+      }
+      // Quota "nghỉ tối thiểu N ngày/tuần" (09/10/2026): ngày không có ca = ngày nghỉ, chỉ kiểm tuần trọn trong tháng.
+      const shortWeeks = findWeeksBelowMinDaysOff(
+        dto.month,
+        assignments.map((a) => a.workDate.toISOString().slice(0, 10)),
+        minDaysOff,
+      );
+      if (shortWeeks.length > 0) {
+        const ddmm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+        const list = shortWeeks
+          .slice(0, 4)
+          .map((w) => `${ddmm(w.weekStart)}–${ddmm(w.weekEnd)} (nghỉ ${w.daysOff} ngày)`)
+          .join('; ');
+        const more = shortWeeks.length > 4 ? ` và ${shortWeeks.length - 4} tuần khác` : '';
+        throw new ScheduleSubmissionMinDaysOffError(
+          `Mỗi tuần cần nghỉ ít nhất ${minDaysOff} ngày. Tuần chưa đủ: ${list}${more}. Sửa lịch rồi gửi duyệt lại.`,
+        );
       }
 
       let row: WorkScheduleSubmission | null;

@@ -2,6 +2,7 @@ import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nest
 import { Prisma, type Appointment } from '@prisma/client';
 import {
   AppointmentDoctorOnLeaveError,
+  DoctorNoShiftOnDateError,
   AppointmentInvalidReferenceError,
   AppointmentNotCancellableError,
   AppointmentOutsideWorkShiftError,
@@ -521,7 +522,13 @@ export class AppointmentService {
     const date = getVietnamDateString(scheduledAt);
     const byDoctorId = await this.workShiftAssignmentReader.getWorkShiftsForUsersOnDate(tenantId, [doctorId], date);
     const shifts = byDoctorId[doctorId];
-    if (!shifts || shifts.length === 0) return;
+    if (!shifts || shifts.length === 0) {
+      // Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (09/10/2026).
+      if (await this.workShiftAssignmentReader.isDoctorBookingBlockedForNoShift(tenantId, doctorId, date)) {
+        throw new DoctorNoShiftOnDateError();
+      }
+      return;
+    }
 
     const toMinutes = (hhmm: string) => {
       const [h, m] = hhmm.split(':').map(Number);

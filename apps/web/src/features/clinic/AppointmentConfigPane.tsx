@@ -172,6 +172,29 @@ export function AppointmentConfigPane() {
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
           </label>
         </div>
+
+        <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Chặn cả khi bác sĩ không có ca nào trong ngày</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Bật: ngày phòng khám đã có bác sĩ đăng ký ca thì bác sĩ KHÔNG có ca nào hôm đó không đặt lịch hẹn và
+              không tiếp nhận được (chặn cứng cả Lịch hẹn lẫn Tiếp nhận). Ngày không bác sĩ nào đăng ký ca thì
+              không chặn. Chỉ có tác dụng khi công tắc &quot;Chặn đặt lịch ngoài ca đã đăng ký&quot; ở trên đang bật.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={query.data.blockBookingWhenNoShiftEnabled}
+              disabled={mutation.isPending || !query.data.blockBookingOutsideWorkShiftEnabled}
+              onChange={(e) => mutation.mutate({ blockBookingWhenNoShiftEnabled: e.target.checked })}
+              aria-label="Bật chặn cả khi bác sĩ không có ca nào trong ngày"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
       </div>
 
       {mutation.isError && <ErrorBanner message="Không lưu được cấu hình. Thử lại." />}

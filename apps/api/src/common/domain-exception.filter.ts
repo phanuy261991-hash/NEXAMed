@@ -124,6 +124,9 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   APPOINTMENT_OUTSIDE_WORK_SHIFT: HttpStatus.CONFLICT,
   // "Đơn xin nghỉ" (#224) — xung đột với trạng thái hiện có (bác sĩ đã nghỉ/đơn trùng/sai trạng thái).
   APPOINTMENT_DOCTOR_ON_LEAVE: HttpStatus.CONFLICT,
+  // Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" + quota nghỉ tối thiểu/tuần (09/10/2026).
+  DOCTOR_NO_SHIFT_ON_DATE: HttpStatus.CONFLICT,
+  SCHEDULE_SUBMISSION_MIN_DAYS_OFF: HttpStatus.CONFLICT,
   LEAVE_REQUEST_OVERLAP: HttpStatus.CONFLICT,
   LEAVE_REQUEST_INVALID_STATUS: HttpStatus.CONFLICT,
   LEAVE_REQUEST_SELF_APPROVE: HttpStatus.FORBIDDEN,

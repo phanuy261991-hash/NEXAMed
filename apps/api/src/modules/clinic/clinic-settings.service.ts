@@ -38,6 +38,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowEmergencyEndShift,
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
+        blockBookingWhenNoShiftEnabled,
+        minWeeklyDaysOff,
         allowStaffSelfScheduleEnabled,
         workShiftAssignmentLockGraceDays,
         cashierShiftBlindCloseEnabled,
@@ -67,6 +69,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getAllowEmergencyEndShift(tx, tenantId),
         this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
         this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getBlockBookingWhenNoShiftEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getMinWeeklyDaysOff(tx, tenantId),
         this.clinicSettingsRepository.getAllowStaffSelfScheduleEnabled(tx, tenantId),
         this.clinicSettingsRepository.getWorkShiftAssignmentLockGraceDays(tx, tenantId),
         this.clinicSettingsRepository.getCashierShiftBlindCloseEnabled(tx, tenantId),
@@ -97,6 +101,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowEmergencyEndShift,
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
+        blockBookingWhenNoShiftEnabled,
+        minWeeklyDaysOff,
         allowStaffSelfScheduleEnabled,
         workShiftAssignmentLockGraceDays,
         cashierShiftBlindCloseEnabled,
@@ -217,6 +223,16 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId));
   }
 
+  /** `ClinicConfigReaderPort` (09/10/2026) — công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày". */
+  getBlockBookingWhenNoShiftEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getBlockBookingWhenNoShiftEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getBlockBookingWhenNoShiftEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` (09/10/2026) — quota "nghỉ tối thiểu N ngày/tuần" khi Gửi duyệt đăng ký ca tháng. */
+  getMinWeeklyDaysOff(tenantId: string): ReturnType<ClinicConfigReaderPort['getMinWeeklyDaysOff']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getMinWeeklyDaysOff(tx, tenantId));
+  }
+
   /** `ClinicConfigReaderPort` ("Ví tạm ứng") — module `billing` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh lúc trừ ví thiếu tiền). */
   getWalletMixedPaymentEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getWalletMixedPaymentEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getWalletMixedPaymentEnabled(tx, tenantId));
@@ -275,6 +291,12 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       }
       if (dto.blockBookingOutsideWorkShiftEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertBlockBookingOutsideWorkShiftEnabled(tx, tenantId, actorId, dto.blockBookingOutsideWorkShiftEnabled);
+      }
+      if (dto.blockBookingWhenNoShiftEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertBlockBookingWhenNoShiftEnabled(tx, tenantId, actorId, dto.blockBookingWhenNoShiftEnabled);
+      }
+      if (dto.minWeeklyDaysOff !== undefined) {
+        await this.clinicSettingsRepository.upsertMinWeeklyDaysOff(tx, tenantId, actorId, dto.minWeeklyDaysOff);
       }
       if (dto.allowStaffSelfScheduleEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertAllowStaffSelfScheduleEnabled(tx, tenantId, actorId, dto.allowStaffSelfScheduleEnabled);
@@ -344,6 +366,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.allowEmergencyEndShift !== undefined ||
         dto.allowReceptionistEndShift !== undefined ||
         dto.blockBookingOutsideWorkShiftEnabled !== undefined ||
+        dto.blockBookingWhenNoShiftEnabled !== undefined ||
+        dto.minWeeklyDaysOff !== undefined ||
         dto.allowStaffSelfScheduleEnabled !== undefined ||
         dto.workShiftAssignmentLockGraceDays !== undefined ||
         dto.cashierShiftBlindCloseEnabled !== undefined ||
@@ -385,6 +409,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowEmergencyEndShift,
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
+        blockBookingWhenNoShiftEnabled,
+        minWeeklyDaysOff,
         allowStaffSelfScheduleEnabled,
         workShiftAssignmentLockGraceDays,
         cashierShiftBlindCloseEnabled,
@@ -414,6 +440,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getAllowEmergencyEndShift(tx, tenantId),
         this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
         this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getBlockBookingWhenNoShiftEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getMinWeeklyDaysOff(tx, tenantId),
         this.clinicSettingsRepository.getAllowStaffSelfScheduleEnabled(tx, tenantId),
         this.clinicSettingsRepository.getWorkShiftAssignmentLockGraceDays(tx, tenantId),
         this.clinicSettingsRepository.getCashierShiftBlindCloseEnabled(tx, tenantId),
@@ -444,6 +472,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         allowEmergencyEndShift,
         allowReceptionistEndShift,
         blockBookingOutsideWorkShiftEnabled,
+        blockBookingWhenNoShiftEnabled,
+        minWeeklyDaysOff,
         allowStaffSelfScheduleEnabled,
         workShiftAssignmentLockGraceDays,
         cashierShiftBlindCloseEnabled,

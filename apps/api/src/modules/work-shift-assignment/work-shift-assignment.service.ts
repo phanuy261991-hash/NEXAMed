@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import {
   CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
+  DOCTOR_DIRECTORY_PORT,
   WorkShiftAssignmentDuplicateError,
   WorkShiftAssignmentLockedError,
   WorkShiftAssignmentMonthLockedError,
@@ -14,6 +15,7 @@ import {
   getVietnamDateString,
   isMonthLocked,
   type ClinicConfigReaderPort,
+  type DoctorDirectoryPort,
   type PortWorkShiftColor,
   type WorkShiftAssignmentReaderPort,
 } from '@nexamed/core';
@@ -94,6 +96,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     private readonly repository: WorkShiftAssignmentRepository,
     private readonly submissionRepository: WorkScheduleSubmissionRepository,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
+    @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
   /** "Cấu hình chung" — chặn `create`/`bulkCreate`/`copy`/`remove` khi actor tự thao tác cho chính
@@ -441,6 +444,23 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
       }
       return result;
     });
+  }
+
+  /**
+   * `WorkShiftAssignmentReaderPort` — công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (09/10/2026).
+   * Chỉ chặn khi cả 2 công tắc bật, ngày đó đã có ÍT NHẤT 1 bác sĩ đăng ký ca và bác sĩ này không có ca nào.
+   */
+  async isDoctorBookingBlockedForNoShift(tenantId: string, doctorId: string, date: string): Promise<boolean> {
+    const [blockOutside, blockNoShift] = await Promise.all([
+      this.clinicConfigReader.getBlockBookingOutsideWorkShiftEnabled(tenantId),
+      this.clinicConfigReader.getBlockBookingWhenNoShiftEnabled(tenantId),
+    ]);
+    if (!blockOutside || !blockNoShift) return false;
+    const doctors = await this.doctorDirectory.listActiveDoctors(tenantId);
+    const ids = [...new Set([...doctors.map((d) => d.id), doctorId])];
+    const byDoctor = await this.getWorkShiftsForUsersOnDate(tenantId, ids, date);
+    const dayUsesShifts = Object.values(byDoctor).some((shifts) => shifts.length > 0);
+    return dayUsesShifts && (byDoctor[doctorId]?.length ?? 0) === 0;
   }
 
   /** `WorkShiftAssignmentReaderPort` — "Đơn xin nghỉ" (#224), module `leave-request` đọc qua port. */
