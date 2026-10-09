@@ -227,7 +227,7 @@ export function PrintTemplatePage() {
 
       {quickOpen && catalog && (
         <QuickSetupDialog
-          documentTypes={typesInfo}
+          documentTypes={typesInfo.filter((d) => d.documentType !== 'SPECIMEN_LABEL')}
           initialHeader={catalog.defaultConfigs.A4?.header ?? items[0]!.config.header}
           submitting={quickSetupMutation.isPending}
           error={dialogError}

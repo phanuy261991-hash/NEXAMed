@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMatch, useNavigate } from 'react-router-dom';
-import { ArrowCounterClockwise, ArrowRight, ClipboardText, Clock, ClockCounterClockwise, MagnifyingGlass, User, UsersThree, X } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ArrowRight, ClipboardText, Clock, ClockCounterClockwise, MagnifyingGlass, Microscope, User, UsersThree, X } from '@phosphor-icons/react';
 import type { ReceptionListItem } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -11,7 +11,7 @@ import { useAuthStore } from '../auth/auth.store';
 import { useScheduleConfigQuery } from '../appointment/appointment.queries';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
-import { ColumnEmpty, GroupLabel, WaitingCard, formatTime, matchesQueueSearch, waitMinutes } from './queue-card';
+import { ColumnEmpty, GroupLabel, ParaclinicalProgressChips, WaitingCard, formatTime, matchesQueueSearch, waitMinutes } from './queue-card';
 import { useReceptionListQuery, useStartConsultationMutation } from './reception.queries';
 
 /** Fallback trước khi `useScheduleConfigQuery()` tải xong — cùng lý do khai riêng (không import
@@ -59,18 +59,22 @@ export function DoctorQueueButton() {
   const pool = waiting.filter((i) => i.doctorId === null);
   // Loại trừ đúng lượt khám đang xem hiện tại (nếu có) — không tự liệt kê chính mình vào "đang khám dở".
   const others = items.filter((i) => i.status === 'IN_CONSULTATION' && i.doctorId === user?.id && i.encounterId !== currentEncounterId);
+  // Ca khác có kết quả cận lâm sàng mới chưa xem (#221) — chấm xanh ở nút "Hàng chờ" + xếp lên đầu nhóm "Đang khám dở".
+  const unseenResultPatients = others.filter((i) => i.paraclinicalUnseenResultCount > 0).length;
 
   const totalCount = mine.length + pool.length + others.length;
   const poolDepartmentName = pool.length > 0 ? (departmentsQuery.data?.items.find((d) => d.id === pool[0]!.departmentId)?.name ?? null) : null;
 
   const mineFiltered = mine.filter((i) => matchesQueueSearch(i, search));
   const poolFiltered = pool.filter((i) => matchesQueueSearch(i, search));
-  const othersFiltered = others.filter((i) => matchesQueueSearch(i, search));
+  const othersFiltered = others
+    .filter((i) => matchesQueueSearch(i, search))
+    .sort((a, b) => Number(b.paraclinicalUnseenResultCount > 0) - Number(a.paraclinicalUnseenResultCount > 0));
 
-  function closeAndGoTo(encounterId: string) {
+  function closeAndGoTo(encounterId: string, tab?: 'ket-qua') {
     setOpen(false);
     setSearch('');
-    navigate(`/encounters/${encounterId}`);
+    navigate(tab ? `/encounters/${encounterId}?tab=${tab}` : `/encounters/${encounterId}`);
   }
 
   async function handleStart(item: ReceptionListItem) {
@@ -93,6 +97,16 @@ export function DoctorQueueButton() {
         {totalCount > 0 && (
           <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] font-bold text-white">
             {totalCount > 99 ? '99+' : totalCount}
+          </span>
+        )}
+        {unseenResultPatients > 0 && (
+          <span
+            className="inline-flex h-[18px] items-center justify-center gap-0.5 rounded-full bg-emerald-500 px-1.5 text-[11px] font-bold text-white"
+            title={`${unseenResultPatients} bệnh nhân có kết quả cận lâm sàng mới`}
+            aria-label={`${unseenResultPatients} bệnh nhân có kết quả cận lâm sàng mới`}
+          >
+            <Microscope size={11} weight="fill" aria-hidden="true" />
+            {unseenResultPatients}
           </span>
         )}
       </Button>
@@ -162,7 +176,7 @@ export function DoctorQueueButton() {
                         <InProgressCard
                           key={item.encounterId}
                           item={item}
-                          onContinue={() => closeAndGoTo(item.encounterId)}
+                          onContinue={(tab) => closeAndGoTo(item.encounterId, tab)}
                           onRelease={() => setReleasingItem(item)}
                         />
                       ))}
@@ -231,9 +245,10 @@ export function DoctorQueueButton() {
 /** Thẻ "đang khám dở" (ca khác của chính bác sĩ này) — "Tiếp tục khám" + "Trả về hàng chờ" (không
  * cần quay ra "Hàng đợi khám" mới trả được, yêu cầu chủ dự án). Không có "Hủy khám" ở đây — hành
  * động đóng ca hẳn vẫn chỉ làm ở trang Hàng đợi khám đầy đủ hoặc ngay tại màn khám của ca đó. */
-function InProgressCard({ item, onContinue, onRelease }: { item: ReceptionListItem; onContinue: () => void; onRelease: () => void }) {
+function InProgressCard({ item, onContinue, onRelease }: { item: ReceptionListItem; onContinue: (tab?: 'ket-qua') => void; onRelease: () => void }) {
+  const hasNewResult = item.paraclinicalUnseenResultCount > 0;
   return (
-    <article className="rounded-lg border-2 border-l-4 border-slate-200 border-l-amber-500 bg-amber-50/50 p-3 shadow-sm">
+    <article className={`rounded-lg border-2 border-l-4 border-slate-200 p-3 shadow-sm ${hasNewResult ? 'border-l-emerald-500 bg-emerald-50/40' : 'border-l-amber-500 bg-amber-50/50'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 truncate">
           <span className="text-[15px] font-bold text-slate-900">{item.fullName}</span>
@@ -253,8 +268,9 @@ function InProgressCard({ item, onContinue, onRelease }: { item: ReceptionListIt
         </p>
       )}
       {item.startedAt && <p className="mt-1 text-[11px] font-semibold text-slate-500">Bắt đầu lúc {formatTime(item.startedAt)}</p>}
+      <ParaclinicalProgressChips item={item} onOpen={() => onContinue('ket-qua')} />
       <div className="mt-2.5 flex items-center gap-1.5">
-        <Button type="button" variant="amber" className="flex-1" onClick={onContinue}>
+        <Button type="button" variant="amber" className="flex-1" onClick={() => onContinue(hasNewResult ? 'ket-qua' : undefined)}>
           Tiếp tục khám
           <ArrowRight size={13} weight="bold" aria-hidden="true" />
         </Button>

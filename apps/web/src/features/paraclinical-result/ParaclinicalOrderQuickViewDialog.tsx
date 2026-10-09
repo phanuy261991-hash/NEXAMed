@@ -37,29 +37,29 @@ export function ParaclinicalOrderQuickViewDialog({ row, group, onClose }: { row:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-label="Chi tiết phiếu cận lâm sàng">
-      <div className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-lg bg-white p-5 shadow-xl">
+      <div className="flex max-h-[92vh] w-full max-w-[960px] flex-col rounded-lg bg-white p-5 shadow-xl">
         <ModalHeader icon={ClipboardText} title="Chi tiết phiếu" subtitle={`Số: ${row.orderNo}`} onClose={onClose} />
-        <div className="scroll-hover min-h-0 flex-1 space-y-4 overflow-y-auto">
+        <div className="scroll-hover min-h-0 flex-1 space-y-3.5 overflow-y-auto">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge tone="info">{meta.bucketLabels[row.bucket]}</StatusBadge>
             {row.paid ? <StatusBadge tone="success">Đã thu</StatusBadge> : <StatusBadge tone="warning">{row.bucket === 'AWAITING_PAYMENT' ? 'Chưa thu' : 'Nợ phí'}</StatusBadge>}
             {row.isAmendment && <StatusBadge tone="accent">Đính chính</StatusBadge>}
           </div>
 
-          <dl className="grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-2">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
             {fields.map((f) => (
               <div key={f.label} className="min-w-0">
-                <dt className="text-sm font-medium text-slate-500">{f.label}</dt>
-                <dd className="break-words text-base font-semibold text-slate-900">{f.value}</dd>
+                <dt className="text-xs font-medium text-slate-500">{f.label}</dt>
+                <dd className="mt-0.5 break-words text-[15px] font-semibold leading-snug text-slate-900">{f.value}</dd>
               </div>
             ))}
           </dl>
 
           <section aria-label="Dịch vụ trong phiếu" className="overflow-hidden rounded-lg border border-slate-200">
-            <div className="border-b-2 border-blue-600 bg-slate-100 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-800">Dịch vụ chỉ định ({row.serviceNames.length})</div>
+            <div className="border-b-2 border-blue-600 bg-slate-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-800">Dịch vụ chỉ định ({row.serviceNames.length})</div>
             <ol className="divide-y divide-slate-100">
               {row.serviceNames.map((name, index) => (
-                <li key={`${index}-${name}`} className="flex gap-3 px-3 py-2 text-sm">
+                <li key={`${index}-${name}`} className="flex gap-3 px-3 py-1.5 text-sm">
                   <span className="w-5 flex-none text-center font-medium text-slate-500">{index + 1}</span>
                   <span className="min-w-0 font-medium text-slate-900">{name}</span>
                 </li>

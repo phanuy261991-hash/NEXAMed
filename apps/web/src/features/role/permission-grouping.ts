@@ -17,6 +17,7 @@ const MODULE_LABELS: Record<string, string> = {
   // mẫu") thêm permission nhưng quên thêm nhãn ở đây, đúng lỗ hổng lặp lại nhiều lần đã ghi chú ở
   // dưới (#105/#122/#136/#158) — chủ dự án phát hiện lúc xem trang Vai trò & Phân quyền.
   prescription_template: 'Đơn thuốc mẫu',
+  advice_template: 'Mẫu lời dặn',
   clinic_config: 'Cấu hình phòng khám',
   user_account: 'Tài khoản người dùng',
   role_permission: 'Phân quyền',
@@ -75,7 +76,7 @@ const SECTIONS: { label: string; modules: string[] }[] = [
   { label: 'Quản lý bệnh nhân', modules: ['patient'] },
   { label: 'Đặt lịch hẹn', modules: ['appointment'] },
   { label: 'Tiếp nhận & Lượt khám', modules: ['encounter', 'vital_sign', 'diagnosis'] },
-  { label: 'Khám bệnh & Kê đơn', modules: ['clinical_note', 'prescription', 'prescription_template'] },
+  { label: 'Khám bệnh & Kê đơn', modules: ['clinical_note', 'prescription', 'prescription_template', 'advice_template'] },
   { label: 'Cấu hình & Quản trị', modules: ['clinic_config', 'user_account', 'role_permission', 'audit_log', 'system_backup'] },
   { label: 'Danh mục dùng chung', modules: ['reference_catalog'] },
   { label: 'Cận lâm sàng', modules: ['lab_result', 'imaging_result'] },

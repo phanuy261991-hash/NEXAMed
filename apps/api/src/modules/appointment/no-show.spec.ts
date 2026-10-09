@@ -114,6 +114,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getIcd10SuggestionEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getIcd10SuggestionLearningEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getParaclinicalBeforePaymentEnabled: () => Promise.reject(new Error('không dùng trong test này')),
+      getSpecimenScanRequired: () => Promise.reject(new Error('không dùng trong test này')),
     };
   }
 

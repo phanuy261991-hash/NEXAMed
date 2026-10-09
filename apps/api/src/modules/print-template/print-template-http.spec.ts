@@ -93,27 +93,47 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
   it('danh sách kèm DANH MỤC TĨNH (loại chứng từ, khổ giấy, cấu hình mặc định từng khổ) — web không import giá trị từ shared nên lấy qua API', async () => {
     const res = await request(app.getHttpServer()).get(API).set(authed(adminToken));
     const { catalog } = res.body.data;
-    expect(catalog.documentTypes).toHaveLength(14);
-    expect(catalog.papers.map((p: { paperSize: string }) => p.paperSize)).toEqual(['A4', 'A5', 'A5_LANDSCAPE', 'K80']);
+    expect(catalog.documentTypes).toHaveLength(15);
+    expect(catalog.papers.map((p: { paperSize: string }) => p.paperSize)).toEqual(['A4', 'A5', 'A5_LANDSCAPE', 'K80', 'LABEL_35X22', 'LABEL_50X30']);
     expect(catalog.papers.find((p: { paperSize: string }) => p.paperSize === 'K80')).toMatchObject({ widthMm: 80, heightMm: null });
     expect(catalog.defaultConfigs.A4).toEqual(buildDefaultPrintTemplateConfig('A4'));
     const k80Types = catalog.documentTypes.filter((d: { allowedPapers: string[] }) => d.allowedPapers.includes('K80')).map((d: { documentType: string }) => d.documentType).sort();
     expect(k80Types).toEqual(['CASHIER_SHIFT_RECEIPT', 'CASH_VOUCHER', 'INVOICE', 'WALLET_TOPUP_RECEIPT']);
   });
 
-  it('chưa lưu gì → danh sách có đủ 14 chứng từ dùng bản DỰNG SẴN (id null, isBuiltin, mặc định), in được ngay', async () => {
+  it('"Tem mẫu xét nghiệm" (#220): chỉ 2 khổ tem, mặc định 35×22, có bộ tuỳ chọn nội dung tem riêng; khổ giấy văn bản bị từ chối', async () => {
+    const res = await request(app.getHttpServer()).get(API).set(authed(adminToken));
+    const label = res.body.data.catalog.documentTypes.find((d: { documentType: string }) => d.documentType === 'SPECIMEN_LABEL');
+    expect(label).toMatchObject({ allowedPapers: ['LABEL_35X22', 'LABEL_50X30'], defaultPaper: 'LABEL_35X22' });
+    const small = buildDefaultPrintTemplateConfig('LABEL_35X22');
+    const large = buildDefaultPrintTemplateConfig('LABEL_50X30');
+    expect(res.body.data.catalog.defaultConfigs.LABEL_35X22).toEqual(small);
+    expect(small.label).toEqual({ showPatientCode: false, showGroup: true, showCapColor: false, showDate: true });
+    expect(large.label).toEqual({ showPatientCode: true, showGroup: true, showCapColor: true, showDate: true });
+    const labelItems = (res.body.data.items as { documentType: string; paperSize: string; isDefault: boolean }[]).filter((i) => i.documentType === 'SPECIMEN_LABEL');
+    expect(labelItems).toEqual([expect.objectContaining({ paperSize: 'LABEL_35X22', isDefault: true })]);
+
+    // Khổ giấy văn bản không hợp lệ với tem.
+    const bad = await request(app.getHttpServer()).post(API).set(authed(adminToken)).send({ documentType: 'SPECIMEN_LABEL', name: 'Tem A4', paperSize: 'A4' });
+    expect(bad.status).toBeGreaterThanOrEqual(400);
+    // Khổ tem không hợp lệ với chứng từ văn bản.
+    const bad2 = await request(app.getHttpServer()).post(API).set(authed(adminToken)).send({ documentType: 'INVOICE', name: 'Phiếu thu tem', paperSize: 'LABEL_35X22' });
+    expect(bad2.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it('chưa lưu gì → danh sách có đủ 15 chứng từ dùng bản DỰNG SẴN (id null, isBuiltin, mặc định), in được ngay', async () => {
     const items = await list(adminToken);
-    expect(items).toHaveLength(14);
+    expect(items).toHaveLength(15);
     expect(items.every((i) => i.id === null && i.isBuiltin && i.isDefault && i.version === null)).toBe(true);
     expect(ofType(items, 'PRESCRIPTION')[0]).toMatchObject({ paperSize: 'A4', name: 'Đơn thuốc A4' });
     expect(ofType(items, 'INVOICE')[0]!.paperSize).toBe('A5');
     expect(ofType(items, 'INVOICE')[0]!.config).toEqual(buildDefaultPrintTemplateConfig('A5'));
   });
 
-  it('GET resolved: MỌI nhân viên đăng nhập đọc được (bác sĩ, lễ tân) → 14 mục; không token → 401', async () => {
+  it('GET resolved: MỌI nhân viên đăng nhập đọc được (bác sĩ, lễ tân) → 15 mục; không token → 401', async () => {
     for (const token of [doctorToken, receptionistToken, adminToken]) {
       const items = await resolved(token);
-      expect(items).toHaveLength(14);
+      expect(items).toHaveLength(15);
       expect(items.find((i) => i.documentType === 'INVOICE')).toMatchObject({ paperSize: 'A5', widthMm: 148, heightMm: 210 });
     }
     expect((await request(app.getHttpServer()).get(`${API}/resolved`)).status).toBe(401);

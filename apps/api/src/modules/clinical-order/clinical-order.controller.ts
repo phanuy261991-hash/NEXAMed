@@ -36,6 +36,15 @@ export class ClinicalOrderController {
     return this.service.save(tenantId, userId, req.dataScope!, encounterId, dto, extractRequestMeta(req));
   }
 
+  /** Bác sĩ phụ trách đã mở tab kết quả: đánh dấu kết quả đã duyệt là đã xem (#221). Không phải dữ liệu lâm sàng thay đổi nên không ghi audit riêng. */
+  @Post('results-seen')
+  @RequirePermission('clinical_order', 'read', { entityIdParam: 'encounterId' })
+  @HttpCode(200)
+  async markResultsSeen(@Param('encounterId', ParseUUIDPipe) encounterId: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.service.markResultsSeen(tenantId, userId, req.dataScope!, encounterId);
+  }
+
   /** Ghi audit in phiếu chỉ định (web tự dựng bản in từ dữ liệu đã tải). */
   @Post('print')
   @RequirePermission('clinical_order', 'read', { entityIdParam: 'encounterId' })

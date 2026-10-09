@@ -17,6 +17,8 @@ export function PrescriptionPrintView({
   diagnosisLabel,
   items,
   signedAt,
+  advice,
+  followUpLabel,
 }: {
   doctorName: string;
   patientFullName: string;
@@ -26,6 +28,10 @@ export function PrescriptionPrintView({
   diagnosisLabel?: string;
   items: PrescriptionItem[];
   signedAt: string;
+  /** Lời dặn bác sĩ của lượt khám (docs/DECISIONS.md #222) — rỗng thì không in. */
+  advice?: string;
+  /** "Thứ Năm, 15/10/2026" — chỉ có khi bác sĩ chọn hướng "Hẹn tái khám"; rỗng thì không in. */
+  followUpLabel?: string;
 }) {
   const unitNameByCode = useUnitNameByCode();
   return (
@@ -76,6 +82,21 @@ export function PrescriptionPrintView({
           ))}
         </tbody>
       </table>
+
+      {(advice?.trim() || followUpLabel) && (
+        <div className="mt-5 space-y-1">
+          {advice?.trim() && (
+            <p className="whitespace-pre-line">
+              Lời dặn: <strong>{advice.trim()}</strong>
+            </p>
+          )}
+          {followUpLabel && (
+            <p>
+              Hẹn tái khám: <strong>{followUpLabel}</strong>
+            </p>
+          )}
+        </div>
+      )}
     </PrintDocument>
   );
 }

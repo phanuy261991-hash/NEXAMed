@@ -18,6 +18,24 @@ export class ParaclinicalPaymentRequiredError extends DomainError {
   }
 }
 
+/** Ống mẫu không ở trạng thái cho phép thao tác (ví dụ in/lấy ống đã huỷ, tách ống đã in tem, huỷ ống đã có kết quả). */
+export class SpecimenTubeInvalidStateError extends DomainError {
+  readonly code = 'SPECIMEN_TUBE_INVALID_STATE';
+
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/** Phòng khám bật "Bắt buộc quét đủ ống" mà yêu cầu xác nhận lấy mẫu bằng tích tay. */
+export class SpecimenScanRequiredError extends DomainError {
+  readonly code = 'SPECIMEN_SCAN_REQUIRED';
+
+  constructor() {
+    super('Phòng khám đang bắt buộc quét tem ống — hãy quét mã trên tem để xác nhận đã lấy mẫu.');
+  }
+}
+
 /** Gửi duyệt / duyệt khi kết quả còn thiếu (chưa nhập chỉ số, thiếu mô tả hoặc kết luận) hoặc giá trị không hợp lệ. */
 export class ParaclinicalResultIncompleteError extends DomainError {
   readonly code = 'PARACLINICAL_RESULT_INCOMPLETE';

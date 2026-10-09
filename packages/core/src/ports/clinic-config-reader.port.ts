@@ -164,6 +164,12 @@ export interface ClinicConfigReaderPort {
   getParaclinicalBeforePaymentEnabled(tenantId: string): Promise<boolean>;
 
   /**
+   * "Bắt buộc quét đủ ống trước khi xác nhận lấy mẫu" (Lấy mẫu xét nghiệm có tem mã vạch, #220) — `tenant_setting` key `specimen_scan_required`, mặc định TẮT.
+   * Module `paraclinical-result` đọc qua port này; bật thì chặn xác nhận lấy mẫu bằng tích tay.
+   */
+  getSpecimenScanRequired(tenantId: string): Promise<boolean>;
+
+  /**
    * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — tắt (mặc định, giữ nguyên hành vi pilot đang chạy); bật thì màn
    * khám hiện khối gợi ý mã ICD từ nội dung ô "Chẩn đoán" (`tenant_setting` key
    * `icd10_suggestion_enabled`). Module `encounter` đọc qua port này, cùng lý do các cấu hình khác.

@@ -73,6 +73,17 @@ export interface MedicalRecordParaclinicalResult {
   imageCount: number;
 }
 
+/**
+ * Điều trị & Hẹn tái khám của lượt khám (docs/DECISIONS.md #222) — in thành mục "Điều trị" sau ghi chú khám; chỉ in dòng nào có nội dung, không có dòng nào thì bỏ cả mục.
+ * `followUpDateLabel` đã định dạng sẵn ("Thứ Năm, 15/10/2026").
+ */
+export interface MedicalRecordTreatment {
+  directionLabels: string[];
+  content: string;
+  advice: string;
+  followUpDateLabel: string | null;
+}
+
 export interface MedicalRecordEncounterEntry {
   encounterNo: string;
   checkedInAt: string;
@@ -81,6 +92,8 @@ export interface MedicalRecordEncounterEntry {
   vitalSigns: MedicalRecordVitalSigns | null;
   diagnoses: MedicalRecordDiagnosis[];
   clinicalNoteSections: MedicalRecordClinicalNoteSection[];
+  /** Hướng điều trị, nội dung điều trị, lời dặn, hẹn tái khám (bỏ trống = không in mục này). */
+  treatment?: MedicalRecordTreatment;
   /** Kết quả cận lâm sàng đã duyệt của lượt khám (bỏ trống/rỗng = không in mục này). */
   paraclinicalResults?: MedicalRecordParaclinicalResult[];
   prescriptionItems: MedicalRecordPrescriptionItem[];
@@ -187,6 +200,17 @@ const PARACLINICAL_KIND_LABEL: Record<MedicalRecordParaclinicalResult['serviceKi
   FUNCTIONAL: 'Thăm dò chức năng',
 };
 
+function renderTreatment(t: MedicalRecordTreatment | undefined): string {
+  if (!t) return '';
+  const lines = [
+    t.directionLabels.length > 0 ? `<p class="note-section"><strong>Hướng điều trị:</strong> ${t.directionLabels.map(escapeHtml).join('; ')}</p>` : '',
+    t.content.trim() ? `<p class="note-section"><strong>Nội dung điều trị:</strong> ${escapeHtml(t.content)}</p>` : '',
+    t.advice.trim() ? `<p class="note-section"><strong>Lời dặn bác sĩ:</strong> ${escapeHtml(t.advice)}</p>` : '',
+    t.followUpDateLabel ? `<p class="note-section"><strong>Hẹn tái khám:</strong> ${escapeHtml(t.followUpDateLabel)}</p>` : '',
+  ].join('');
+  return lines ? `<h3>Điều trị</h3>${lines}` : '';
+}
+
 function renderParaclinicalResult(r: MedicalRecordParaclinicalResult): string {
   const indicators =
     r.indicators.length > 0
@@ -235,6 +259,7 @@ function renderEncounter(entry: MedicalRecordEncounterEntry, index: number): str
       <h3>Ghi chú khám</h3>
       ${renderClinicalNote(entry.clinicalNoteSections)}
       ${renderParaclinicalResults(entry.paraclinicalResults)}
+      ${renderTreatment(entry.treatment)}
       <h3>Đơn thuốc</h3>
       ${renderPrescription(entry.prescriptionItems)}
     </section>`;

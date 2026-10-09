@@ -106,6 +106,8 @@ export function PrescriptionPanel({
   patientDob,
   patientGender,
   diagnosisLabel,
+  adviceText,
+  followUpLabel,
 }: {
   encounterId: string;
   prescription: PrescriptionResponse;
@@ -120,6 +122,9 @@ export function PrescriptionPanel({
    * `EncounterConsultationPage.tsx` (đã có `diagnoses` trong state, không cần gọi API riêng) — cùng
    * định dạng khối "Chẩn đoán lâm sàng" ở màn "Phát thuốc" (docs/DECISIONS.md #169). */
   diagnosisLabel: string;
+  /** Lời dặn bác sĩ + ngày hẹn tái khám đã định dạng (docs/DECISIONS.md #222) — in cuối đơn thuốc; bỏ trống thì không in. */
+  adviceText?: string;
+  followUpLabel?: string;
 }) {
   const doctorName = useAuthStore((s) => s.user?.displayName ?? s.user?.fullName) ?? '';
   // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — chỉ gợi ý ghép câu vào ô "Hướng dẫn dùng"
@@ -541,6 +546,8 @@ export function PrescriptionPanel({
           diagnosisLabel={diagnosisLabel}
           items={prescription.items}
           signedAt={prescription.signedAt!}
+          advice={adviceText}
+          followUpLabel={followUpLabel}
         />
       )}
 

@@ -52,6 +52,7 @@ export const businessCodeTypeSchema = z.enum([
   'SERVICE_PACKAGE',
   'PRICE_LIST',
   'CLINICAL_ORDER',
+  'SPECIMEN_TUBE',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -61,7 +62,17 @@ export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
  * (`defaultTemplate`) phải tái tạo ĐÚNG hành vi `formatDisplayCode` đang chạy (`<prefix><yy><mm>
  * <seq6>`) để tenant chưa từng cấu hình không thấy khác biệt gì.
  */
-export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, { label: string; internalPrefix: string }> = {
+/**
+ * `defaults` (tuỳ chọn) — chỉ cho loại mã MỚI cần khuôn mặc định KHÁC `<prefix><yy><mm><seq6>` và/hoặc tự đánh số lại theo chu kỳ ngay cả khi tenant chưa lưu khuôn riêng
+ * (loại mã cũ KHÔNG khai, để giữ tương thích ngược tuyệt đối — xem `BusinessCodeService.generate`).
+ */
+export interface BusinessCodeTypeInfo {
+  label: string;
+  internalPrefix: string;
+  defaults?: { template: string; counterDigits: number; resetsByDefault: boolean };
+}
+
+export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, BusinessCodeTypeInfo> = {
   PATIENT: { label: 'Mã bệnh nhân', internalPrefix: 'BN' },
   DEPARTMENT: { label: 'Mã Khoa/Phòng', internalPrefix: 'KP' },
   EMPLOYEE: { label: 'Mã nhân viên', internalPrefix: 'NV' },
@@ -113,17 +124,36 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, { label: stri
   PRICE_LIST: { label: 'Mã bảng giá', internalPrefix: 'BG' },
   // Cận lâm sàng GĐ3 (#212) — phiếu chỉ định cận lâm sàng (CLS), in trên phiếu chỉ định + hàng đợi cận lâm sàng.
   CLINICAL_ORDER: { label: 'Mã phiếu chỉ định cận lâm sàng', internalPrefix: 'CLS' },
+  // Lấy mẫu xét nghiệm có tem mã vạch (docs/DECISIONS.md #220) — mã ống mẫu (SID), in thành mã vạch Code 128 trên tem ống nghiệm. Mặc định TOÀN SỐ (yyMMdd + 4 số, đánh số lại mỗi ngày)
+  // để vạch dày, quét chắc trên tem 35 mm; tenant tự đổi khuôn ở "Cấu hình mẫu mã phát sinh".
+  SPECIMEN_TUBE: {
+    label: 'Mã ống mẫu xét nghiệm',
+    internalPrefix: 'ONG',
+    defaults: { template: '[Năm 2 số][Tháng][Ngày][Số đếm]', counterDigits: 4, resetsByDefault: true },
+  },
 };
 
 export const DEFAULT_BUSINESS_CODE_COUNTER_DIGITS = 6;
 export const DEFAULT_BUSINESS_CODE_STARTING_VALUE = 1;
 
 function defaultTemplateFor(codeType: BusinessCodeType): string {
+  const custom = BUSINESS_CODE_TYPE_REGISTRY[codeType].defaults;
+  if (custom) return custom.template;
   return `${BUSINESS_CODE_TYPE_REGISTRY[codeType].internalPrefix}${BUSINESS_CODE_TOKEN.YEAR_2}${BUSINESS_CODE_TOKEN.MONTH}${BUSINESS_CODE_TOKEN.COUNTER}`;
 }
 export const DEFAULT_BUSINESS_CODE_TEMPLATE: Record<BusinessCodeType, string> = Object.fromEntries(
   businessCodeTypeSchema.options.map((t) => [t, defaultTemplateFor(t)]),
 ) as Record<BusinessCodeType, string>;
+
+/** Số chữ số đệm mặc định của loại mã (khuôn mặc định riêng nếu có, không thì 6). */
+export function defaultBusinessCodeCounterDigits(codeType: BusinessCodeType): number {
+  return BUSINESS_CODE_TYPE_REGISTRY[codeType].defaults?.counterDigits ?? DEFAULT_BUSINESS_CODE_COUNTER_DIGITS;
+}
+
+/** Loại mã tự đánh số lại theo chu kỳ trong khuôn ngay cả khi tenant CHƯA lưu khuôn riêng (chỉ loại mã mới khai `defaults.resetsByDefault`). */
+export function businessCodeResetsByDefault(codeType: BusinessCodeType): boolean {
+  return BUSINESS_CODE_TYPE_REGISTRY[codeType].defaults?.resetsByDefault ?? false;
+}
 
 export interface ParsedBusinessCodeTemplate {
   hasYear: boolean;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowCounterClockwise,
   CalendarBlank,
@@ -8,6 +8,8 @@ import {
   ClipboardText,
   Flask,
   ClockCounterClockwise,
+  FirstAidKit,
+  Microscope,
   PencilSimple,
   Pill,
   Plus,
@@ -53,7 +55,8 @@ import { EncounterHistoryDetailDialog } from './EncounterHistoryDetailDialog';
 import type { PatientFormValues } from '../patient/PatientFormFields';
 import { formatDobDisplay } from '../../shared/format/date';
 import { ClinicalOrderPanel } from '../clinical-order/ClinicalOrderPanel';
-import { useClinicalOrderQuery } from '../clinical-order/clinical-order.queries';
+import { ClinicalOrderResultsTab } from '../clinical-order/ClinicalOrderResultsBlock';
+import { useClinicalOrderQuery, useMarkResultsSeenMutation } from '../clinical-order/clinical-order.queries';
 import { useHasPermission } from '../auth/usePermission';
 import { useAuthStore } from '../auth/auth.store';
 import { useUpdatePatientMutation } from '../patient/patient.queries';
@@ -63,6 +66,10 @@ import { DiagnosisAmendDialog } from './DiagnosisAmendDialog';
 import { DiagnosisSuggestionPanel, type DiagnosisSuggestionPanelHandle } from './DiagnosisSuggestionPanel';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { PrescriptionPanel } from './PrescriptionPanel';
+import { TreatmentAmendDialog, type TreatmentAmendValues } from './TreatmentAmendDialog';
+import { TreatmentPlanPanel } from './TreatmentPlanPanel';
+import { formatDateStringVi, toVietnamDateString, vietnameseWeekdayLabel } from './follow-up-date';
+import { EMPTY_TREATMENT_PLAN, sameTreatmentPlan, toTreatmentPlanPayload, treatmentPlanError, treatmentPlanFromServer, type TreatmentPlanDraft } from './treatment-plan';
 import { VitalSignsDialog } from './VitalSignsDialog';
 import { saveClinicalNote as saveClinicalNoteRaw } from './encounter.api';
 import {
@@ -83,9 +90,16 @@ const CLINICAL_SECTION_CODE: Record<ClinicalKey, ClinicalNoteSection> = {
   generalExam: 'GENERAL_EXAM',
   regionalExam: 'REGIONAL_EXAM',
   plan: 'PLAN',
+  conclusion: 'CONCLUSION',
+  doctorAdvice: 'DOCTOR_ADVICE',
 };
 
-type ClinicalDraft = Record<ClinicalKey, string>;
+/** Các mục thuộc tab "Khám & Chẩn đoán" (hộp thoại "Đính chính ghi chú khám"); `plan`/`doctorAdvice` thuộc tab "Điều trị & Hẹn tái khám" (hộp thoại "Đính chính điều trị"). */
+const CLINICAL_AMEND_KEYS: ClinicalKey[] = ['reasonForVisit', 'illnessProgress', 'preliminaryDiagnosis', 'generalExam', 'regionalExam', 'conclusion'];
+
+/** Mục ghi chú dạng chữ + hướng điều trị/ngày hẹn (#222) — cùng 1 state để autosave, nháp offline và lưu 1 lần bằng đúng 1 request. */
+type ClinicalDraft = Record<ClinicalKey, string> & { treatmentPlan: TreatmentPlanDraft };
+type ClinicalVersions = Partial<Record<ClinicalKey | 'treatmentPlan', number>>;
 const EMPTY_CLINICAL_DRAFT: ClinicalDraft = {
   reasonForVisit: '',
   illnessProgress: '',
@@ -93,6 +107,9 @@ const EMPTY_CLINICAL_DRAFT: ClinicalDraft = {
   generalExam: '',
   regionalExam: '',
   plan: '',
+  conclusion: '',
+  doctorAdvice: '',
+  treatmentPlan: EMPTY_TREATMENT_PLAN,
 };
 
 interface DiagnosisDraft {
@@ -126,8 +143,10 @@ function formatRelativeTime(iso: string): string {
  */
 const TABS = [
   { id: 'section-kham', label: 'Khám & Chẩn đoán', icon: ClipboardText },
+  { id: 'section-dieutri', label: 'Điều trị & Hẹn tái khám', icon: FirstAidKit },
   { id: 'section-donthuoc', label: 'Kê đơn thuốc', icon: Pill },
   { id: 'section-chidinh', label: 'Chỉ định cận lâm sàng', icon: Flask },
+  { id: 'section-ketqua', label: 'Kết quả cận lâm sàng', icon: Microscope },
 ] as const;
 
 /**
@@ -144,6 +163,9 @@ export function EncounterConsultationPage() {
   const query = useConsultationDetailQuery(encounterId);
   const canSeeClinicalOrders = useHasPermission('clinical_order', 'read');
   const clinicalOrderQuery = useClinicalOrderQuery(encounterId, canSeeClinicalOrders);
+  // Số dịch vụ làm tại phòng khám ĐÃ có kết quả được duyệt — chấm số xanh ở tab "Kết quả cận lâm sàng" (#221).
+  const resultReadyCount = clinicalOrderQuery.data?.order?.items.filter((i) => i.performance === 'IN_HOUSE' && i.resultReturnedAt !== null && !i.amendmentPending).length ?? 0;
+  const resultReturnedKey = (clinicalOrderQuery.data?.order?.items ?? []).filter((i) => i.resultReturnedAt !== null).map((i) => `${i.id}:${i.resultReturnedAt}`).join('|');
   const clinicalOrderCount = (clinicalOrderQuery.data?.order?.items.filter((i) => i.packageId === null).length ?? 0) + (clinicalOrderQuery.data?.order?.packages.length ?? 0);
   const doctorDisplayName = useAuthStore((s) => s.user?.displayName ?? s.user?.fullName) ?? '';
 
@@ -170,7 +192,7 @@ export function EncounterConsultationPage() {
    */
   const [historyPanelTab, setHistoryPanelTab] = useState<'personal' | 'visits'>('visits');
   const [clinical, setClinical] = useState<ClinicalDraft>(EMPTY_CLINICAL_DRAFT);
-  const [clinicalVersions, setClinicalVersions] = useState<Partial<Record<ClinicalKey, number>>>({});
+  const [clinicalVersions, setClinicalVersions] = useState<ClinicalVersions>({});
   const [diagnoses, setDiagnoses] = useState<DiagnosisDraft[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -208,6 +230,8 @@ export function EncounterConsultationPage() {
   const [clinicalAmendOpen, setClinicalAmendOpen] = useState(false);
   const [clinicalAmendDraft, setClinicalAmendDraft] = useState<ClinicalDraft>(EMPTY_CLINICAL_DRAFT);
   const [clinicalAmendReason, setClinicalAmendReason] = useState('');
+  /** "Đính chính điều trị" (#222) — hộp thoại riêng cho tab Điều trị & Hẹn tái khám. */
+  const [treatmentAmendOpen, setTreatmentAmendOpen] = useState(false);
 
   // Cho phép bấm Enter để xác nhận popup "Hoàn tất khám thành công" (yêu cầu chủ dự án) — nghe
   // phím ở `window` thay vì chỉ `autoFocus` nút, vì Enter cần hoạt động dù focus đang ở đâu (ví dụ
@@ -233,15 +257,27 @@ export function EncounterConsultationPage() {
   const completeMutation = useCompleteConsultationMutation(encounterId);
   const updatePatientMutation = useUpdatePatientMutation(query.data?.patient.id ?? '');
 
+  /** Ngày khám (ngày lịch giờ Việt Nam của lúc tiếp nhận) — mốc tính số ngày "Hẹn tái khám" (#222). */
+  const examDate = query.data ? toVietnamDateString(query.data.encounter.checkedInAt) : '';
+  /** "Thứ Năm, 15/10/2026" in cuối đơn thuốc — chỉ khi tích "Hẹn tái khám" và ngày hợp lệ. */
+  const followUpPrintLabel =
+    clinical.treatmentPlan.directions.includes('FOLLOW_UP') && clinical.treatmentPlan.followUpDate && treatmentPlanError(clinical.treatmentPlan, examDate) === null
+      ? `${vietnameseWeekdayLabel(clinical.treatmentPlan.followUpDate)}, ${formatDateStringVi(clinical.treatmentPlan.followUpDate)}`
+      : undefined;
+  const examDateRef = useRef(examDate);
+  examDateRef.current = examDate;
+
   const isCompleted = query.data?.encounter.status === 'COMPLETED';
+  /** Lượt khám đã huỷ (#085) là trạng thái cuối — chỉ xem, không có đường sửa/đính chính (backend cũng chặn mọi thao tác ghi). Chỉ gặp khi mở thẳng URL, hàng đợi không liệt kê lượt đã huỷ. */
+  const isCancelled = query.data?.encounter.status === 'CANCELLED';
   /** Kê đơn (Sprint 4) vẫn giữ nguyên "mở khoá sửa tại chỗ" sau hoàn tất — module riêng, chưa ký tự động. */
-  const canEditNow = !isCompleted || editingCompleted;
+  const canEditNow = !isCancelled && (!isCompleted || editingCompleted);
   /**
    * Chẩn đoán/ghi chú khám (Sprint 5, S5-02/03) — "Hoàn tất khám" ký NGAY cả hai, nên KHÔNG còn sửa
    * tại chỗ được sau khi hoàn tất (khác `canEditNow` ở trên, dành cho Kê đơn). Sau khi hoàn tất, sửa
    * phải qua "Đính chính" (2 dialog riêng), không mở khoá input trực tiếp nữa.
    */
-  const canEditDraft = !isCompleted;
+  const canEditDraft = !isCompleted && !isCancelled;
 
   /**
    * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — chỉ chạy khi tenant bật công tắc, hồ sơ còn nháp và ô "Chẩn đoán"
@@ -286,7 +322,15 @@ export function EncounterConsultationPage() {
 
   /** Phương án 1 — Tab thật: bấm tab đổi HẲN nội dung, không còn cuộn/scroll-spy qua nhiều section
    * trong cùng 1 cột (xem `TABS` — chỉ 2 giá trị hợp lệ). */
-  const [activeTabId, setActiveTabId] = useState<(typeof TABS)[number]['id']>('section-kham');
+  // Hàng đợi khám bấm vào nhãn "Có kết quả mới" → `?tab=ket-qua` mở thẳng tab kết quả (#221).
+  const [searchParams] = useSearchParams();
+  const [activeTabId, setActiveTabId] = useState<(typeof TABS)[number]['id']>(() => (searchParams.get('tab') === 'ket-qua' && canSeeClinicalOrders ? 'section-ketqua' : 'section-kham'));
+  // Mở tab kết quả = bác sĩ phụ trách đã xem → tắt nhãn "Có kết quả mới" ở Hàng đợi khám (server chỉ ghi nhận khi actor đúng là bác sĩ phụ trách). Chạy lại khi có kết quả mới về lúc đang mở tab.
+  const markResultsSeenMutation = useMarkResultsSeenMutation(encounterId);
+  const markResultsSeen = markResultsSeenMutation.mutate;
+  useEffect(() => {
+    if (activeTabId === 'section-ketqua' && canSeeClinicalOrders && resultReturnedKey !== '') markResultsSeen();
+  }, [activeTabId, canSeeClinicalOrders, resultReturnedKey, markResultsSeen]);
 
   /** Trích `version` từng mục ghi chú từ response server — dùng CHUNG cho `populateFromServer` lẫn
    * khôi phục nháp offline (ENC-06, `attemptResync` gọi ngay lúc mount cần versions THẬT của
@@ -294,7 +338,7 @@ export function EncounterConsultationPage() {
    * tại đúng thời điểm effect nạp dữ liệu chạy, vì `setClinicalVersions` chưa kịp áp dụng ở lần
    * render kế tiếp — bug thật phát hiện lúc test Playwright, gây `500` "UNIQUE constraint" do gửi
    * `version: undefined` cho một section ĐÃ tồn tại trên server). */
-  function extractClinicalVersions(note: ConsultationDetailResponse['clinicalNote']): Partial<Record<ClinicalKey, number>> {
+  function extractClinicalVersions(note: ConsultationDetailResponse['clinicalNote']): ClinicalVersions {
     return {
       reasonForVisit: note.reasonForVisit?.version,
       illnessProgress: note.illnessProgress?.version,
@@ -302,6 +346,9 @@ export function EncounterConsultationPage() {
       generalExam: note.generalExam?.version,
       regionalExam: note.regionalExam?.version,
       plan: note.plan?.version,
+      conclusion: note.conclusion?.version,
+      doctorAdvice: note.doctorAdvice?.version,
+      treatmentPlan: note.treatmentPlan?.version,
     };
   }
 
@@ -318,6 +365,9 @@ export function EncounterConsultationPage() {
       generalExam: note.generalExam?.content ?? '',
       regionalExam: note.regionalExam?.content ?? '',
       plan: note.plan?.content ?? '',
+      conclusion: note.conclusion?.content ?? '',
+      doctorAdvice: note.doctorAdvice?.content ?? '',
+      treatmentPlan: treatmentPlanFromServer(note.treatmentPlan),
     });
     setClinicalVersions(extractClinicalVersions(note));
     setDiagnoses(data.diagnoses.map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10Name, type: d.type, note: d.note ?? undefined, amendmentReason: d.amendmentReason })));
@@ -343,6 +393,8 @@ export function EncounterConsultationPage() {
       // hơn vì chưa từng lưu được), tự đồng bộ ngay lập tức thay vì đợi debounce/sự kiện online.
       const offlineDraft = readOfflineDraft<{ clinical: ClinicalDraft; diagnoses: DiagnosisDraft[] }>(offlineDraftKey);
       if (offlineDraft) {
+        // Nháp lưu từ bản cũ chưa có Kết luận/Lời dặn/hướng điều trị — bù mặc định để form không thiếu trường.
+        offlineDraft.payload.clinical = { ...EMPTY_CLINICAL_DRAFT, ...offlineDraft.payload.clinical };
         setClinical(offlineDraft.payload.clinical);
         setDiagnoses(offlineDraft.payload.diagnoses);
         dirtyRef.current = true;
@@ -355,7 +407,7 @@ export function EncounterConsultationPage() {
   }, [query.isSuccess, query.data, loadedForId, encounterId]);
 
   /** Khớp đúng payload `PUT .../clinical-note` từ state form — dùng chung cho "Lưu nháp"/"Lưu thay đổi", autosave định kỳ, và flush lúc rời trang. */
-  function buildClinicalNotePayload(c: ClinicalDraft, v: Partial<Record<ClinicalKey, number>>): SaveClinicalNoteRequest {
+  function buildClinicalNotePayload(c: ClinicalDraft, v: ClinicalVersions): SaveClinicalNoteRequest {
     return {
       reasonForVisit: { content: c.reasonForVisit, version: v.reasonForVisit },
       illnessProgress: { content: c.illnessProgress, version: v.illnessProgress },
@@ -363,12 +415,20 @@ export function EncounterConsultationPage() {
       generalExam: { content: c.generalExam, version: v.generalExam },
       regionalExam: { content: c.regionalExam, version: v.regionalExam },
       plan: { content: c.plan, version: v.plan },
+      conclusion: { content: c.conclusion, version: v.conclusion },
+      doctorAdvice: { content: c.doctorAdvice, version: v.doctorAdvice },
+      treatmentPlan: toTreatmentPlanPayload(c.treatmentPlan, v.treatmentPlan),
     };
   }
 
   /** "Lý do khám"/"Chẩn đoán" bắt buộc (Zod `saveClinicalNoteRequestSchema`) — autosave/flush im lặng bỏ qua tới khi đủ, tránh 400 giữa chừng lúc bác sĩ chưa gõ tới đó. */
   function hasRequiredClinicalFields(c: ClinicalDraft): boolean {
     return c.reasonForVisit.trim() !== '' && c.preliminaryDiagnosis.trim() !== '';
+  }
+
+  /** Tự lưu/lưu lúc rời trang chỉ chạy khi đủ trường bắt buộc VÀ hướng "Hẹn tái khám" (nếu tích) có ngày hợp lệ — nếu không server trả 400/422 giữa lúc bác sĩ đang gõ dở. */
+  function canSaveClinicalSilently(c: ClinicalDraft): boolean {
+    return hasRequiredClinicalFields(c) && treatmentPlanError(c.treatmentPlan, examDateRef.current) === null;
   }
 
   /**
@@ -395,7 +455,7 @@ export function EncounterConsultationPage() {
   async function attemptResync(
     overrideClinical?: ClinicalDraft,
     overrideDiagnoses?: DiagnosisDraft[],
-    overrideVersions?: Partial<Record<ClinicalKey, number>>,
+    overrideVersions?: ClinicalVersions,
   ) {
     if (!offlineDraftDirtyRef.current) return;
     const c = overrideClinical ?? clinicalRef.current;
@@ -408,7 +468,7 @@ export function EncounterConsultationPage() {
     let clinicalOk = true;
     let diagnosesOk = true;
 
-    if (dirtyRef.current && hasRequiredClinicalFields(c)) {
+    if (dirtyRef.current && canSaveClinicalSilently(c)) {
       try {
         const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(c, v));
         setClinicalVersions(extractClinicalVersions(result));
@@ -467,7 +527,7 @@ export function EncounterConsultationPage() {
   async function runAutosave() {
     if (!dirtyRef.current) return;
     const c = clinicalRef.current;
-    if (!hasRequiredClinicalFields(c)) return;
+    if (!canSaveClinicalSilently(c)) return;
     try {
       const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(c, clinicalVersionsRef.current));
       setClinicalVersions(extractClinicalVersions(result));
@@ -495,7 +555,7 @@ export function EncounterConsultationPage() {
     return () => {
       if (dirtyRef.current) {
         const c = clinicalRef.current;
-        if (hasRequiredClinicalFields(c)) {
+        if (canSaveClinicalSilently(c)) {
           // ENC-06 — mất mạng đúng lúc rời trang thì lưu nháp offline thay vì nuốt lỗi hoàn toàn;
           // `loadedForId`/mount-effect của lượt khám này (nếu quay lại) sẽ tự khôi phục + đồng bộ.
           void saveClinicalNoteRaw(encounterId, buildClinicalNotePayload(c, clinicalVersionsRef.current)).catch((err) => {
@@ -507,6 +567,7 @@ export function EncounterConsultationPage() {
         dirtyRef.current = false;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanup phải gắn đúng `encounterId` lúc effect được tạo; các hàm/giá trị khác đọc qua ref (như mọi effect lưu cuối ở trang này).
   }, [encounterId]);
 
   // ENC-06 — lưới an toàn cuối cùng cho trường hợp ĐÓNG HẲN TAB/trình duyệt lúc offline (React
@@ -627,7 +688,7 @@ export function EncounterConsultationPage() {
 
   async function handleClinicalAmendSubmit() {
     if (clinicalAmendReason.trim() === '') return;
-    const changedKeys = (Object.keys(clinicalAmendDraft) as ClinicalKey[]).filter((key) => clinicalAmendDraft[key] !== clinical[key]);
+    const changedKeys = CLINICAL_AMEND_KEYS.filter((key) => clinicalAmendDraft[key] !== clinical[key]);
     if (changedKeys.length === 0) return;
     try {
       const result = await amendClinicalNoteMutation.mutateAsync({
@@ -635,22 +696,36 @@ export function EncounterConsultationPage() {
         sections: changedKeys.map((key) => ({
           section: CLINICAL_SECTION_CODE[key],
           content: clinicalAmendDraft[key],
-          version: clinicalVersions[key]!,
+          version: clinicalVersions[key],
         })),
       });
       // Đồng bộ NGAY state cục bộ từ bản đính chính vừa lưu — cùng lý do `handleDiagnosisAmendSubmit()`.
-      setClinical(clinicalAmendDraft);
-      setClinicalVersions({
-        reasonForVisit: result.reasonForVisit?.version,
-        illnessProgress: result.illnessProgress?.version,
-        preliminaryDiagnosis: result.preliminaryDiagnosis?.version,
-        generalExam: result.generalExam?.version,
-        regionalExam: result.regionalExam?.version,
-        plan: result.plan?.version,
-      });
+      setClinical((prev) => ({ ...prev, ...Object.fromEntries(CLINICAL_AMEND_KEYS.map((key) => [key, clinicalAmendDraft[key]])) }));
+      setClinicalVersions(extractClinicalVersions(result));
       setClinicalAmendOpen(false);
     } catch (err) {
       handleSaveError(err, 'clinical_note', () => void handleClinicalAmendSubmit(), 'Không lưu được bản đính chính, vui lòng thử lại.');
+    }
+  }
+
+  /** "Đính chính điều trị" (#222) — gửi CHỈ phần thực sự đổi (Nội dung điều trị, Lời dặn, hướng điều trị/ngày hẹn) cùng 1 lý do, 1 transaction. */
+  async function handleTreatmentAmendSubmit(values: TreatmentAmendValues, reason: string) {
+    const sections: { section: ClinicalNoteSection; content: string; version: number | undefined }[] = [];
+    if (values.content !== clinical.plan) sections.push({ section: 'PLAN', content: values.content, version: clinicalVersions.plan });
+    if (values.advice !== clinical.doctorAdvice) sections.push({ section: 'DOCTOR_ADVICE', content: values.advice, version: clinicalVersions.doctorAdvice });
+    const planChanged = !sameTreatmentPlan(values.plan, clinical.treatmentPlan);
+    if (sections.length === 0 && !planChanged) return;
+    try {
+      const result = await amendClinicalNoteMutation.mutateAsync({
+        amendmentReason: reason,
+        sections,
+        ...(planChanged ? { treatmentPlan: toTreatmentPlanPayload(values.plan, clinicalVersions.treatmentPlan) } : {}),
+      });
+      setClinical((prev) => ({ ...prev, plan: result.plan?.content ?? '', doctorAdvice: result.doctorAdvice?.content ?? '', treatmentPlan: treatmentPlanFromServer(result.treatmentPlan) }));
+      setClinicalVersions(extractClinicalVersions(result));
+      setTreatmentAmendOpen(false);
+    } catch (err) {
+      handleSaveError(err, 'clinical_note', () => void handleTreatmentAmendSubmit(values, reason), 'Không lưu được bản đính chính, vui lòng thử lại.');
     }
   }
 
@@ -662,16 +737,15 @@ export function EncounterConsultationPage() {
       setFormError('"Lý do khám" và "Chẩn đoán" là bắt buộc.');
       return;
     }
+    const planError = treatmentPlanError(clinical.treatmentPlan, examDate);
+    if (planError) {
+      setFormError(planError);
+      setActiveTabId('section-dieutri');
+      return;
+    }
     try {
       const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(clinical, clinicalVersions));
-      setClinicalVersions({
-        reasonForVisit: result.reasonForVisit?.version,
-        illnessProgress: result.illnessProgress?.version,
-        preliminaryDiagnosis: result.preliminaryDiagnosis?.version,
-        generalExam: result.generalExam?.version,
-        regionalExam: result.regionalExam?.version,
-        plan: result.plan?.version,
-      });
+      setClinicalVersions(extractClinicalVersions(result));
       dirtyRef.current = false;
       setDraftSaved(true);
       if (editingCompleted) setEditingCompleted(false);
@@ -705,16 +779,15 @@ export function EncounterConsultationPage() {
         setFormError('"Lý do khám" và "Chẩn đoán" là bắt buộc trước khi hoàn tất khám.');
         return;
       }
+      const planError = treatmentPlanError(c.treatmentPlan, examDate);
+      if (planError) {
+        setFormError(planError);
+        setActiveTabId('section-dieutri');
+        return;
+      }
       try {
         const result = await saveClinicalNoteMutation.mutateAsync(buildClinicalNotePayload(c, clinicalVersionsRef.current));
-        setClinicalVersions({
-          reasonForVisit: result.reasonForVisit?.version,
-          illnessProgress: result.illnessProgress?.version,
-          preliminaryDiagnosis: result.preliminaryDiagnosis?.version,
-          generalExam: result.generalExam?.version,
-          regionalExam: result.regionalExam?.version,
-          plan: result.plan?.version,
-        });
+        setClinicalVersions(extractClinicalVersions(result));
         dirtyRef.current = false;
       } catch (err) {
         handleSaveError(err, 'clinical_note', () => void handleComplete(), 'Không lưu được ghi chú trước khi hoàn tất, vui lòng thử lại.');
@@ -865,7 +938,7 @@ export function EncounterConsultationPage() {
           )}
           {/* Nhập/đo lại sinh hiệu chỉ hợp lệ khi CHECKED_IN/IN_CONSULTATION (backend chặn cứng, REC-02/03)
               — ẩn hẳn khi đã "Hoàn tất khám" thay vì hiện nút rồi báo lỗi khi bấm. */}
-          {!isCompleted && (
+          {!isCompleted && !isCancelled && (
             <button
               type="button"
               onClick={() => setVitalsDialogOpen(true)}
@@ -972,7 +1045,7 @@ export function EncounterConsultationPage() {
         {/* Panel phải — khu vực làm việc */}
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex h-11 flex-shrink-0 items-center gap-1.5 border-b border-slate-200 bg-white px-4">
-            {TABS.filter((tab) => tab.id !== 'section-chidinh' || canSeeClinicalOrders).map((tab) => (
+            {TABS.filter((tab) => (tab.id !== 'section-chidinh' && tab.id !== 'section-ketqua') || canSeeClinicalOrders).map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -986,6 +1059,9 @@ export function EncounterConsultationPage() {
                 {tab.label}
                 {tab.id === 'section-chidinh' && clinicalOrderCount > 0 && (
                   <span className={`rounded-full px-1.5 text-[10.5px] font-bold ${activeTabId === tab.id ? 'bg-white text-blue-700' : 'bg-blue-600 text-white'}`}>{clinicalOrderCount}</span>
+                )}
+                {tab.id === 'section-ketqua' && resultReadyCount > 0 && (
+                  <span className={`rounded-full px-1.5 text-[10.5px] font-bold ${activeTabId === tab.id ? 'bg-white text-emerald-700' : 'bg-emerald-500 text-white'}`}>{resultReadyCount}</span>
                 )}
                 {tab.id === 'section-kham' && diagnoses.some((d) => d.type === 'PRIMARY') && (
                   <CheckCircle size={13} weight="fill" className={activeTabId === tab.id ? 'text-white' : 'text-emerald-500'} aria-label="Đã có chẩn đoán chính" />
@@ -1183,8 +1259,55 @@ export function EncounterConsultationPage() {
                 </div>
                 </div>
                 </div>
+
+                {/* "Kết luận" (#222) — kết luận bệnh cuối cùng của bác sĩ, thuộc nhóm thông tin khám lâm sàng, ký cùng lúc khi Hoàn tất khám; KHÔNG bắt buộc. */}
+                <div className="mt-4">
+                  <Textarea
+                    id="clinical-conclusion"
+                    label="Kết luận"
+                    rows={3}
+                    value={clinical.conclusion}
+                    onChange={(e) => setField('conclusion', e.target.value)}
+                    readOnly={!canEditDraft}
+                    placeholder={canEditDraft ? 'Kết luận bệnh cuối cùng của lượt khám…' : undefined}
+                  />
+                </div>
               </div>
             </div>
+            )}
+
+            {/* Tab "Điều trị & Hẹn tái khám" (#222) — hướng điều trị (chọn nhiều), nội dung điều trị, lời dặn (có mẫu), hẹn tái khám. Đã ký thì chỉ xem, sửa qua "Đính chính điều trị". */}
+            {activeTabId === 'section-dieutri' && (
+              <div className="flex flex-col gap-4">
+                {isCompleted && query.data!.clinicalNote.treatmentPlan?.signedAt ? (
+                  <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-emerald-700">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle size={13} weight="fill" aria-hidden="true" />
+                      Đã ký lúc {new Date(query.data!.clinicalNote.treatmentPlan.signedAt).toLocaleString('vi-VN')}
+                      {query.data!.clinicalNote.treatmentPlan.amendmentReason && ' (bản đính chính)'}
+                    </span>
+                  </div>
+                ) : null}
+                {isCompleted && !isCancelled && (
+                  <div className="flex justify-end">
+                    <Button type="button" variant="secondary" className="px-3 py-1 text-xs" onClick={() => setTreatmentAmendOpen(true)}>
+                      <PencilSimple size={13} weight="bold" aria-hidden="true" />
+                      Đính chính điều trị
+                    </Button>
+                  </div>
+                )}
+                <TreatmentPlanPanel
+                  idPrefix="plan"
+                  plan={clinical.treatmentPlan}
+                  onPlanChange={(treatmentPlan) => setClinical((c) => ({ ...c, treatmentPlan }))}
+                  content={clinical.plan}
+                  onContentChange={(value) => setField('plan', value)}
+                  advice={clinical.doctorAdvice}
+                  onAdviceChange={(value) => setField('doctorAdvice', value)}
+                  examDate={examDate}
+                  readOnly={!canEditDraft}
+                />
+              </div>
             )}
 
             {/* Tab "Kê đơn thuốc" (Sprint 4, S4-01/02/04; Kho Thuốc GĐ5) — thanh chẩn đoán dính
@@ -1218,6 +1341,8 @@ export function EncounterConsultationPage() {
                 patientDob={formatDobDisplay(patient.dob)}
                 patientGender={GENDER_LABEL[patient.gender] ?? patient.gender}
                 diagnosisLabel={diagnoses.map((d) => `${d.icd10Name} (${d.icd10Code})`).join(' / ')}
+                adviceText={clinical.doctorAdvice}
+                followUpLabel={followUpPrintLabel}
               />
             </div>
             )}
@@ -1226,7 +1351,7 @@ export function EncounterConsultationPage() {
             {activeTabId === 'section-chidinh' && canSeeClinicalOrders && (
               <ClinicalOrderPanel
                 encounterId={encounterId}
-                isEditableEncounter={!isCompleted}
+                isEditableEncounter={!isCompleted && !isCancelled}
                 encounterNo={encounter.encounterNo}
                 patientFullName={patient.fullName}
                 patientCode={patient.patientCode}
@@ -1237,6 +1362,9 @@ export function EncounterConsultationPage() {
                 doctorName={doctorDisplayName}
               />
             )}
+
+            {/* Tab "Kết quả cận lâm sàng" (#221) — tách khỏi tab Chỉ định: danh sách dịch vụ làm tại phòng khám + trạng thái + nút Xem. */}
+            {activeTabId === 'section-ketqua' && canSeeClinicalOrders && <ClinicalOrderResultsTab encounterId={encounterId} />}
           </div>
         </main>
       </div>
@@ -1268,10 +1396,15 @@ export function EncounterConsultationPage() {
               <CheckCircle size={14} weight="fill" aria-hidden="true" /> Đã lưu
             </span>
           )}
+          {isCancelled && (
+            <span className="flex items-center gap-1.5 text-[13px] font-semibold text-rose-700">
+              <XCircle size={15} weight="fill" aria-hidden="true" /> Lượt khám đã huỷ — chỉ xem, không chỉnh sửa được.
+            </span>
+          )}
         </div>
         <div className="flex gap-3">
           {/* Đang khám (chưa hoàn tất) — luồng gốc, không đổi. */}
-          {!isCompleted && (
+          {!isCompleted && !isCancelled && (
             <>
               {/* Gộp "Trả về hàng chờ" + "Hủy khám" vào 1 nút "Xử lý" xổ menu (chốt 2026-08-29,
                   yêu cầu chủ dự án) — đúng khuôn `ActionMenu` mới trích xuất từ dropdown tài khoản
@@ -1396,7 +1529,17 @@ export function EncounterConsultationPage() {
         />
       )}
 
-      {/* "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — 1 dialog gộp cả 6 mục, chỉ mục THỰC SỰ đổi nội dung mới gửi lên (`handleClinicalAmendSubmit`). */}
+      {treatmentAmendOpen && (
+        <TreatmentAmendDialog
+          initial={{ plan: clinical.treatmentPlan, content: clinical.plan, advice: clinical.doctorAdvice }}
+          examDate={examDate}
+          submitting={amendClinicalNoteMutation.isPending}
+          onSubmit={(values, reason) => void handleTreatmentAmendSubmit(values, reason)}
+          onClose={() => setTreatmentAmendOpen(false)}
+        />
+      )}
+
+      {/* "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — 1 dialog gộp các mục của tab Khám & Chẩn đoán (kể cả Kết luận), chỉ mục THỰC SỰ đổi nội dung mới gửi lên (`handleClinicalAmendSubmit`). */}
       {clinicalAmendOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
           <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg bg-white p-5 shadow-xl">
@@ -1404,7 +1547,7 @@ export function EncounterConsultationPage() {
             <p className="mt-1 text-xs text-slate-500">Chỉ mục nào sửa nội dung mới tạo bản đính chính — mục không đổi giữ nguyên bản đã ký.</p>
 
             <div className="scroll-hover mt-3 flex-1 space-y-2 overflow-y-auto">
-              {(Object.keys(CLINICAL_SECTION_CODE) as ClinicalKey[]).map((key) => (
+              {CLINICAL_AMEND_KEYS.map((key) => (
                 <Textarea
                   key={key}
                   id={`clinical-amend-${key}`}
@@ -1438,7 +1581,7 @@ export function EncounterConsultationPage() {
                 type="button"
                 onClick={() => void handleClinicalAmendSubmit()}
                 loading={amendClinicalNoteMutation.isPending}
-                disabled={clinicalAmendReason.trim() === '' || (Object.keys(CLINICAL_SECTION_CODE) as ClinicalKey[]).every((key) => clinicalAmendDraft[key] === clinical[key])}
+                disabled={clinicalAmendReason.trim() === '' || CLINICAL_AMEND_KEYS.every((key) => clinicalAmendDraft[key] === clinical[key])}
               >
                 Lưu bản đính chính
               </Button>

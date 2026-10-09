@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SPECIMEN_GROUP_ABBREVIATION_MAX, specimenCapColorSchema } from './specimen-tube';
 
 /**
  * Danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch — đảo ngược docs/DECISIONS.md #034 phần
@@ -163,6 +164,10 @@ export const referenceCatalogItemSchema = z.object({
    * với category khác. `name` giữ "Tên ngắn UI" gọn cho Combobox, cột này lưu tên đầy đủ theo
    * chuẩn ngành để không mất dữ liệu nguồn. */
   fullName: z.string().nullable(),
+  /** Màu nắp ống — CHỈ có ý nghĩa với category SPECIMEN_TYPE (Mẫu bệnh phẩm, docs/DECISIONS.md #220), `null` với category khác. */
+  capColor: specimenCapColorSchema.nullable(),
+  /** Viết tắt in trên tem ống mẫu (≤ 4 ký tự) — CHỈ có ý nghĩa với category TECH_SERVICE_CATEGORY (Nhóm dịch vụ), `null` với category khác. */
+  abbreviation: z.string().nullable(),
   /** Khoá lạc quan (docs/DECISIONS.md #207) — gửi lại khi sửa/ẩn/khôi phục để server phát hiện người khác vừa lưu bản mới. */
   version: z.number().int().positive(),
 });
@@ -200,6 +205,10 @@ export const createReferenceCatalogRequestSchema = z.object({
    */
   bytCode: z.string().min(1).optional(),
   fullName: z.string().min(1).optional(),
+  /** Chỉ category SPECIMEN_TYPE gửi field này (màu nắp ống, #220). */
+  capColor: specimenCapColorSchema.optional(),
+  /** Chỉ category TECH_SERVICE_CATEGORY gửi field này (viết tắt in trên tem, #220). */
+  abbreviation: z.string().trim().min(1).max(SPECIMEN_GROUP_ABBREVIATION_MAX).optional(),
   /** Chỉ category INCOME_EXPENSE_TYPE gửi field này (Loại thu chi, 2026-09-05). */
   direction: referenceCatalogDirectionSchema.optional(),
   /** Chỉ ItemFormModal của category UNIT/ACADEMIC_TITLE/STAFF_POSITION gửi field này (select "Đang
@@ -236,6 +245,9 @@ export const updateReferenceCatalogRequestSchema = z.object({
    */
   bytCode: z.string().min(1).optional(),
   fullName: z.string().min(1).optional(),
+  /** `null` = xoá màu nắp / viết tắt đã đặt (khác `undefined` = không đụng tới). */
+  capColor: specimenCapColorSchema.nullable().optional(),
+  abbreviation: z.string().trim().min(1).max(SPECIMEN_GROUP_ABBREVIATION_MAX).nullable().optional(),
   direction: referenceCatalogDirectionSchema.optional(),
   isActive: z.boolean().optional(),
   /** Bulk-replace đơn giá, đúng ngữ nghĩa như `createReferenceCatalogRequestSchema` — `undefined`

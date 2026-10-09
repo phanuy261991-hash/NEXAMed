@@ -10,6 +10,7 @@ import { EncounterService } from './encounter.service';
 import { EncounterRepository } from './encounter.repository';
 import { DiagnosisRepository } from './diagnosis.repository';
 import { ClinicalNoteRepository } from './clinical-note.repository';
+import { TreatmentPlanRepository } from './treatment-plan.repository';
 import { PrescriptionRepository } from './prescription.repository';
 import { DiagnosisSuggestionService } from './diagnosis-suggestion.service';
 import { Icd10SuggestionRepository } from './icd10-suggestion.repository';
@@ -52,6 +53,7 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
     EncounterRepository,
     DiagnosisRepository,
     ClinicalNoteRepository,
+    TreatmentPlanRepository,
     PrescriptionRepository,
     DiagnosisSuggestionService,
     Icd10SuggestionRepository,

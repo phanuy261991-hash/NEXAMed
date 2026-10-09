@@ -2,7 +2,29 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-09
+
+### Điều trị & Hẹn tái khám + Kết luận + Mẫu lời dặn (`docs/DECISIONS.md` #222)
+
+Màn khám có thêm: ô **Kết luận** (kết luận bệnh cuối cùng, không bắt buộc) dưới khối ICD-10 ở tab Khám & Chẩn đoán; tab mới **Điều trị & Hẹn tái khám** ngay sau đó với **Hướng điều trị** (tích nhiều: Kê đơn thuốc, Chuyển viện, Hẹn tái khám, Cấp cứu), **Nội dung điều trị**, **Lời dặn bác sĩ** và khung **Hẹn tái khám** (nhập số ngày 1–365 hoặc chọn ngày, ô còn lại tự đổi theo, tính từ ngày khám). Nút **Mẫu lời dặn** mở hộp thoại chọn một hoặc nhiều mẫu có sẵn rồi nối vào cuối ô Lời dặn (vẫn sửa tay được); bác sĩ và quản lý phòng khám thêm/sửa/ẩn mẫu ngay trong hộp thoại. Tất cả được ký khi Hoàn tất khám; sau đó sửa bằng **Đính chính điều trị** (bắt buộc lý do, bản cũ giữ lại). Lời dặn và ngày hẹn in cuối đơn thuốc; bệnh án PDF có thêm mục "Điều trị" và dòng "Kết luận". Hẹn tái khám chỉ ghi nhận, không tự tạo lịch hẹn; ngày hẹn rơi vào ngày phòng khám nghỉ (theo giờ làm việc đã cấu hình) có dòng nhắc nhẹ, không chặn. Mẫu lời dặn quản lý đầy đủ ở pill **"Mẫu lời dặn"** trong "Danh mục Chuyên môn" (thêm/sửa/ẩn/kích hoạt lại). Môi trường khác: `db:deploy` (2 migration) + `db:seed` (quyền mới `advice_template.*`) rồi khởi động lại API.
+
 ## 2026-10-08
+
+### Hàng đợi khám: "Chờ kết quả" / "Có kết quả mới" + tab riêng "Kết quả cận lâm sàng" (`docs/DECISIONS.md` #221)
+
+Màn khám có thêm tab thứ 4 **"Kết quả cận lâm sàng"** (tách khỏi tab Chỉ định): liệt kê mọi dịch vụ làm tại phòng khám kèm trạng thái (Chờ thực hiện / Đang thực hiện / Đang đính chính / Đã có kết quả) và nút Xem; chấm số xanh = số dịch vụ đã có kết quả. Ở **Hàng đợi khám**, thẻ "Đang khám" có nhãn hổ phách **"Chờ kết quả · N dịch vụ"** và nhãn xanh **"Có N kết quả mới"** (bấm là mở thẳng tab kết quả; thẻ có kết quả mới nổi lên đầu cột), menu "Hàng đợi khám" có chấm số xanh; nút "Hàng chờ" ở thanh trên cùng cũng có chấm xanh và nhãn tương tự trên thẻ "Đang khám dở". Nhãn xanh tắt khi bác sĩ phụ trách mở tab kết quả; kết quả được đính chính rồi duyệt lại hiện lại là "mới". Môi trường khác: `db:deploy` (1 migration: cột `clinical_order_item.doctor_seen_at`) rồi khởi động lại API.
+
+### Sửa giao diện nhỏ: hộp "Chi tiết phiếu" và hộp "Lấy mẫu xét nghiệm"
+
+Hộp xem nhanh "Chi tiết phiếu" ở hàng đợi cận lâm sàng rộng hơn (tối đa 960px), thông tin xếp 3 cột, chữ nhỏ lại cho cân đối. Hộp "Lấy mẫu xét nghiệm": nới cột "Thao tác" (2 nút không còn bị che) và cột "Loại mẫu".
+
+### Xét nghiệm: lấy mẫu có ống mẫu, mã ống (SID) và tem mã vạch (`docs/DECISIONS.md` #220)
+
+Luồng mới ở hàng đợi **Xét nghiệm**: thanh toán xong → tab "Chờ lấy mẫu" → bấm **Lấy mẫu** mở hộp thoại (họ tên IN HOA, năm sinh, giới để đối chiếu người bệnh; các xét nghiệm tự gộp thành **ống** theo loại mẫu bệnh phẩm, mỗi ống có **mã ống** và màu nắp) → **In tem** mã vạch Code 128 (tuỳ chọn, khổ 35×22 hoặc 50×30 chọn ở "Mẫu in") → tích **"Đã lấy"** từng ống (tay, hoặc quét tem vào ô "Quét mã ống" bằng súng quét USB) → **Xác nhận**. Ống đã lấy sang tab **"Đã lấy mẫu"** (thay "Đang thực hiện"), lúc đó mới bấm **Nhập kết quả**; ống chưa lấy ở lại "Chờ lấy mẫu" (lấy mẫu một phần). Có sẵn: tách 1 xét nghiệm sang ống riêng, in lại tem, huỷ ống & lấy lại (SID mới, bắt buộc lý do), huỷ xác nhận đã lấy (chỉ khi chưa nhập kết quả), quét nhầm tem bệnh nhân khác bị chặn kèm tên người đó, công tắc "Bắt buộc quét đủ ống" (Cấu hình thanh toán, mặc định tắt). Mã ống cấu hình ở "Mẫu mã phát sinh" (mặc định `yyMMdd` + 4 số, đánh số lại mỗi ngày). Danh mục: Mẫu bệnh phẩm có "Màu nắp ống", Nhóm dịch vụ có "Viết tắt" (in "HH/SH" lên tem). CĐHA & Thăm dò chức năng không đổi. Hàng đợi bỏ chữ "Chờ thu tiền" thừa ở cột Thao tác. Môi trường khác: `db:deploy` rồi khởi động lại API (2 migration mới, không quyền mới).
+
+### Màn khám của lượt đã huỷ: chỉ xem
+
+Mở thẳng `/encounters/<id>` của lượt khám `CANCELLED` không còn hiện "Hoàn tất khám", "Lưu", "Xử lý", nút sinh hiệu, ô thêm/Lưu chỉ định; chân trang có dòng "Lượt khám đã huỷ — chỉ xem". Chỉ đổi giao diện (backend vốn đã chặn ghi). Lượt đã hoàn tất không đổi hành vi.
 
 ### Huỷ lượt khám: đóng dòng chỉ định chưa bắt đầu (`docs/DECISIONS.md` #219)
 

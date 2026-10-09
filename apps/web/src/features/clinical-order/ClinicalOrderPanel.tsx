@@ -19,7 +19,6 @@ import { getServicePackage, resolvePrices } from '../pricing/pricing.api';
 import { useServicePackagesQuery } from '../pricing/pricing.queries';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { ClinicalOrderPrintView } from './ClinicalOrderPrintView';
-import { ClinicalOrderResultsBlock } from './ClinicalOrderResultsBlock';
 import { useClinicalOrderQuery, usePrintClinicalOrderMutation, useSaveClinicalOrderMutation } from './clinical-order.queries';
 
 /** 1 dịch vụ lẻ đang soạn. `id` có = đã lưu trên phiếu; `locked` = tiền đã thu/đã thực hiện nên không gỡ/đổi được. */
@@ -526,8 +525,6 @@ export function ClinicalOrderPanel({
           </table>
         </section>
       )}
-
-      {serverOrder && <ClinicalOrderResultsBlock items={serverOrder.items} />}
 
       {localError && (
         <div role="alert" className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">

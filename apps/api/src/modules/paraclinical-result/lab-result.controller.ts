@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
 import { PARACLINICAL_GROUP_KINDS, PARACLINICAL_GROUP_PERMISSION_MODULE } from '@nexamed/core';
-import { amendParaclinicalResultRequestSchema, listParaclinicalQueueQuerySchema, saveParaclinicalResultRequestSchema, startParaclinicalItemsRequestSchema } from '@nexamed/shared';
+import { amendParaclinicalResultRequestSchema, listParaclinicalQueueQuerySchema, saveParaclinicalResultRequestSchema } from '@nexamed/shared';
 import { AuditView } from '../../common/audit-view.decorator';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -28,15 +28,7 @@ export class LabResultController {
     return this.service.listQueue(req.user!.tenantId, req.user!.userId, scopeOf(req), listParaclinicalQueueQuerySchema.parse(query));
   }
 
-  /** "Lấy mẫu" — các dòng cùng phiếu chuyển sang "Đang thực hiện". */
-  @Post('start')
-  @RequirePermission('lab_result', 'enter')
-  @HttpCode(200)
-  async start(@Body() body: unknown, @Req() req: Request) {
-    const dto = startParaclinicalItemsRequestSchema.parse(body);
-    const { userId, tenantId } = req.user!;
-    return this.service.startItems(tenantId, userId, scopeOf(req), dto, extractRequestMeta(req));
-  }
+  // Không còn `POST start` cho xét nghiệm: lấy mẫu đi qua ống mẫu (`SpecimenTubeController`, docs/DECISIONS.md #220) — xác nhận từng ống mới chuyển dòng sang "Đã lấy mẫu".
 
   // Kết quả cận lâm sàng là dữ liệu lâm sàng → ghi audit "xem" (security-audit.md). entityId = id dòng chỉ định mở màn.
   @Get('items/:itemId/result')

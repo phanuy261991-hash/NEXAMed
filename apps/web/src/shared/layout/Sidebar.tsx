@@ -50,6 +50,7 @@ import {
 } from '../../features/auth/admin-permissions';
 import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
 import { useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
+import { useDoctorUnseenResultsQuery } from '../../features/reception/reception.queries';
 import { useSupplierDebtSummariesQuery } from '../../features/supplier-debt/supplier-debt.queries';
 import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context';
 
@@ -139,9 +140,11 @@ interface NavItemProps {
   /** Số phiếu/việc đang chờ xử lý — pill nhỏ cuối dòng (đúng khuôn "Công nợ nhà cung cấp" #180/#182).
    * Chỉ hiện khi > 0 VÀ sidebar chưa thu gọn (tránh chật khi `collapsed`). */
   badge?: number;
+  /** Màu pill `badge` — mặc định hổ phách (việc chờ xử lý); `emerald` cho tin tốt cần bác sĩ xem (kết quả cận lâm sàng mới, #221). */
+  badgeTone?: 'amber' | 'emerald';
 }
 
-function NavItem({ to, label, icon: IconComponent, end, collapsed, indent, badge }: NavItemProps) {
+function NavItem({ to, label, icon: IconComponent, end, collapsed, indent, badge, badgeTone = 'amber' }: NavItemProps) {
   return (
     <li>
       <NavLink
@@ -159,7 +162,7 @@ function NavItem({ to, label, icon: IconComponent, end, collapsed, indent, badge
             <IconComponent size={collapsed ? 20 : 18} weight={isActive ? 'fill' : 'regular'} aria-hidden="true" className="flex-shrink-0" />
             {!collapsed && <span className="truncate">{label}</span>}
             {!collapsed && Boolean(badge) && (
-              <span className="ml-auto flex-shrink-0 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{badge}</span>
+              <span className={`ml-auto flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ${badgeTone === 'emerald' ? 'bg-emerald-500' : 'bg-amber-500'}`}>{badge}</span>
             )}
           </>
         )}
@@ -273,6 +276,9 @@ export function Sidebar() {
   const canSeeCashierShifts = useHasPermission('cashier_shift', 'read');
   // "Hàng đợi khám" — quyết định workflow (không phải quyền), giữ theo tên vai trò, xem DOCTOR_QUEUE_ROLES.
   const canSeeDoctorQueue = user?.roles.some((role) => DOCTOR_QUEUE_ROLES.includes(role)) ?? false;
+  // Chấm số bệnh nhân có kết quả cận lâm sàng mới chưa xem ở "Hàng đợi khám" (#221).
+  const doctorUnseenResultsQuery = useDoctorUnseenResultsQuery(canSeeDoctorQueue);
+  const doctorUnseenResultCount = doctorUnseenResultsQuery.data?.patientCount ?? 0;
   const canSeeBilling = useHasPermission('invoice', 'read');
   const canSeeCashBook = useHasPermission('cash_voucher', 'read');
   // "Báo cáo dòng tiền" (Sổ quỹ & Thu chi GĐ2) — báo cáo quản trị tổng hợp toàn phòng khám, CHỈ
@@ -391,7 +397,7 @@ export function Sidebar() {
               </button>
               {examinationGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
-                  <NavItem to={EXAMINATION_GROUP_PATH} label="Hàng đợi khám" icon={ListChecks} collapsed={false} indent />
+                  <NavItem to={EXAMINATION_GROUP_PATH} label="Hàng đợi khám" icon={ListChecks} collapsed={false} indent badge={doctorUnseenResultCount} badgeTone="emerald" />
                 </ul>
               )}
             </li>

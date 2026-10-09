@@ -9,6 +9,7 @@ import {
   EncounterNotInConsultationError,
   EncounterNotReassignableError,
   EncounterPaymentRequiredError,
+  FollowUpDateInvalidError,
   CLINICAL_ORDER_CANCELLATION_PORT,
   PARACLINICAL_RESULTS_READER_PORT,
   PDF_RENDERER_PORT,
@@ -26,6 +27,10 @@ import {
   findAllergyMatches,
   findDuplicateActiveIngredients,
   findInsufficientStock,
+  formatDateStringVi,
+  getVietnamDateString,
+  resolveFollowUpFromDate,
+  vietnameseWeekdayLabel,
   resolveDoctorDepartmentRouting,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
@@ -38,7 +43,7 @@ import {
   type SignaturePort,
   type StockAvailabilityPort,
 } from '@nexamed/core';
-import { FAMILY_RELATION_LABELS, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary } from '@nexamed/shared';
+import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary } from '@nexamed/shared';
 import type {
   AmendClinicalNoteRequest,
   AmendDiagnosesRequest,
@@ -66,9 +71,10 @@ import type {
   SavePrescriptionItemsRequest,
   SignPrescriptionRequest,
   StartConsultationRequest,
+  TreatmentPlanInput,
   VitalSignResponse,
 } from '@nexamed/shared';
-import type { ClinicalNote, Prisma, VitalSign } from '@prisma/client';
+import type { ClinicalNote, EncounterTreatmentPlan, Prisma, VitalSign } from '@prisma/client';
 import { PrintTemplateService } from '../print-template/print-template.service';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -77,6 +83,7 @@ import { DiagnosisSuggestionService } from './diagnosis-suggestion.service';
 import { EncounterRepository } from './encounter.repository';
 import { DiagnosisRepository, type DiagnosisWithIcd10Name } from './diagnosis.repository';
 import { ClinicalNoteRepository } from './clinical-note.repository';
+import { TreatmentPlanRepository, dbDateToDateString } from './treatment-plan.repository';
 import { PrescriptionRepository, type PrescriptionWithItems } from './prescription.repository';
 import { toEncounterSummary } from './encounter.mapper';
 import { PatientAllergenRepository } from '../patient/patient-allergen.repository';
@@ -96,13 +103,13 @@ const PATIENT_VITALS_HISTORY_LIMIT = 5;
 /** "Xuất bệnh án PDF" (S6-06) — nhãn tiếng Việt 6 mục SOAP theo đúng thứ tự hiển thị màn khám. Lặp
  * lại nhỏ so với `CLINICAL_SECTION_LABEL` (`apps/web/.../clinical-display.tsx`) — không trích xuất
  * dùng chung, xem comment đầu `render-patient-medical-record-html.ts`. */
-const CLINICAL_NOTE_SECTION_LABELS: [keyof ClinicalNoteResponse, string][] = [
+const CLINICAL_NOTE_SECTION_LABELS: [Exclude<keyof ClinicalNoteResponse, 'treatmentPlan'>, string][] = [
   ['reasonForVisit', 'Lý do khám'],
   ['illnessProgress', 'Quá trình bệnh lý'],
   ['preliminaryDiagnosis', 'Chẩn đoán'],
   ['generalExam', 'Kết quả khám toàn thân'],
   ['regionalExam', 'Kết quả khám bộ phận'],
-  ['plan', 'Kế hoạch'],
+  ['conclusion', 'Kết luận'],
 ];
 /** Nhãn giới tính — lặp lại nhỏ so với `GENDER_LABEL` (`apps/web/.../patient-form.utils.ts`), cùng lý do trên. */
 const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
@@ -120,6 +127,7 @@ export class EncounterService {
     private readonly encounterRepository: EncounterRepository,
     private readonly diagnosisRepository: DiagnosisRepository,
     private readonly clinicalNoteRepository: ClinicalNoteRepository,
+    private readonly treatmentPlanRepository: TreatmentPlanRepository,
     private readonly prescriptionRepository: PrescriptionRepository,
     private readonly patientAllergenRepository: PatientAllergenRepository,
     private readonly patientConditionRepository: PatientConditionRepository,
@@ -446,6 +454,7 @@ export class EncounterService {
       const diagnoses = diagnosisRows.map((row) => this.toDiagnosisItem(row));
 
       const noteRows = await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id);
+      const treatmentPlanRow = await this.treatmentPlanRepository.findActive(tx, tenantId, id);
 
       // Kê đơn (Sprint 4) — dị nguyên đã biết của bệnh nhân (PRE-03) + đơn thuốc đang hiệu lực.
       const allergenRows = await this.patientAllergenRepository.listForPatient(tx, tenantId, encounter.patientId);
@@ -482,7 +491,7 @@ export class EncounterService {
         vitalSigns,
         history,
         diagnoses,
-        clinicalNote: this.toClinicalNoteResponse(noteRows),
+        clinicalNote: this.toClinicalNoteResponse(noteRows, treatmentPlanRow),
         prescription: prescriptionRow ? this.toPrescriptionResponse(prescriptionRow, allergenRows.map((a) => a.allergenName), onHandByDrugId) : null,
       };
     });
@@ -530,7 +539,7 @@ export class EncounterService {
 
     const provinceCode = patient.address?.province;
     const wardCode = patient.address?.ward;
-    const { provinces, wards, encounterRows, diagnosesByEncounter, notesByEncounter, prescriptionByEncounter, vitalsByEncounter } =
+    const { provinces, wards, encounterRows, diagnosesByEncounter, notesByEncounter, treatmentPlanByEncounter, prescriptionByEncounter, vitalsByEncounter } =
       await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
         const [provinces, wards, encounterRows] = await Promise.all([
           this.geoRepository.findProvincesByCodes(tx, provinceCode ? [provinceCode] : []),
@@ -538,13 +547,14 @@ export class EncounterService {
           this.encounterRepository.listAllCompletedForPatient(tx, tenantId, patientId),
         ]);
         const encounterIds = encounterRows.map((e) => e.id);
-        const [diagnosesByEncounter, notesByEncounter, prescriptionByEncounter, vitalsByEncounter] = await Promise.all([
+        const [diagnosesByEncounter, notesByEncounter, treatmentPlanByEncounter, prescriptionByEncounter, vitalsByEncounter] = await Promise.all([
           this.diagnosisRepository.listForEncounters(tx, tenantId, encounterIds),
           this.clinicalNoteRepository.listForEncounters(tx, tenantId, encounterIds),
+          this.treatmentPlanRepository.findActiveForEncounters(tx, tenantId, encounterIds),
           this.prescriptionRepository.findActiveForEncounters(tx, tenantId, encounterIds),
           this.encounterRepository.listLatestVitalSignsForEncounters(tx, tenantId, encounterIds),
         ]);
-        return { provinces, wards, encounterRows, diagnosesByEncounter, notesByEncounter, prescriptionByEncounter, vitalsByEncounter };
+        return { provinces, wards, encounterRows, diagnosesByEncounter, notesByEncounter, treatmentPlanByEncounter, prescriptionByEncounter, vitalsByEncounter };
       });
     const addressLine =
       [patient.address?.street, patient.address?.neighborhood, wards[0]?.name ?? wardCode, provinces[0]?.name ?? provinceCode].filter(Boolean).join(', ') || null;
@@ -559,7 +569,8 @@ export class EncounterService {
 
     const encounters: MedicalRecordEncounterEntry[] = encounterRows.map((e) => {
       const noteRows = notesByEncounter.get(e.id) ?? [];
-      const noteResponse = this.toClinicalNoteResponse(noteRows);
+      const planRow = treatmentPlanByEncounter.get(e.id) ?? null;
+      const noteResponse = this.toClinicalNoteResponse(noteRows, planRow);
       const prescriptionRow = prescriptionByEncounter.get(e.id);
       const vitalSign = vitalsByEncounter.get(e.id);
       return {
@@ -582,6 +593,7 @@ export class EncounterService {
           : null,
         diagnoses: (diagnosesByEncounter.get(e.id) ?? []).map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10.nameVi, type: d.type, note: d.note })),
         clinicalNoteSections: CLINICAL_NOTE_SECTION_LABELS.map(([key, label]) => ({ label, content: noteResponse[key]?.content ?? '' })),
+        treatment: this.toMedicalRecordTreatment(noteResponse),
         paraclinicalResults: paraclinicalByEncounter[e.id] ?? [],
         prescriptionItems: (prescriptionRow?.items ?? []).map((i) => ({
           drugName: i.drugName,
@@ -815,6 +827,9 @@ export class EncounterService {
         { section: 'REGIONAL_EXAM', input: dto.regionalExam },
         { section: 'PLAN', input: dto.plan },
       ];
+      // #222 — Kết luận + Lời dặn: tuỳ chọn trong request (client cũ không gửi thì giữ nguyên).
+      if (dto.conclusion) sections.push({ section: 'CONCLUSION', input: dto.conclusion });
+      if (dto.doctorAdvice) sections.push({ section: 'DOCTOR_ADVICE', input: dto.doctorAdvice });
       for (const { section, input } of sections) {
         const result = await this.clinicalNoteRepository.upsertSection(tx, tenantId, id, section, input.content, input.version, actorId);
         if (result === 0) {
@@ -822,7 +837,23 @@ export class EncounterService {
         }
       }
 
+      if (dto.treatmentPlan) {
+        this.assertFollowUpValid(existing.checkedInAt, dto.treatmentPlan);
+        const result = await this.treatmentPlanRepository.upsert(
+          tx,
+          tenantId,
+          id,
+          { directions: dto.treatmentPlan.directions, followUpDate: dto.treatmentPlan.followUpDate },
+          dto.treatmentPlan.version,
+          actorId,
+        );
+        if (result === 0) {
+          throw new ConcurrentModificationError();
+        }
+      }
+
       const rows = await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id);
+      const planRow = await this.treatmentPlanRepository.findActive(tx, tenantId, id);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -833,7 +864,7 @@ export class EncounterService {
         userAgent: meta.userAgent,
       });
 
-      return this.toClinicalNoteResponse(rows);
+      return this.toClinicalNoteResponse(rows, planRow);
     });
   }
 
@@ -857,6 +888,7 @@ export class EncounterService {
       }
 
       const beforeRows = await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id);
+      const beforePlan = await this.treatmentPlanRepository.findActive(tx, tenantId, id);
       const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'clinical_note', entityId: id });
       for (const item of dto.sections) {
         const result = await this.clinicalNoteRepository.amendSection(
@@ -875,20 +907,49 @@ export class EncounterService {
           throw new ConcurrentModificationError();
         }
       }
+      if (dto.treatmentPlan) {
+        this.assertFollowUpValid(existing.checkedInAt, dto.treatmentPlan);
+        const unchanged =
+          beforePlan !== null &&
+          beforePlan.directions.length === dto.treatmentPlan.directions.length &&
+          beforePlan.directions.every((d) => dto.treatmentPlan!.directions.includes(d)) &&
+          dbDateToDateString(beforePlan.followUpDate) === dto.treatmentPlan.followUpDate;
+        // Không đổi gì thì giữ nguyên bản đã ký (không tạo lịch sử vô ích) — đúng khuôn từng mục ghi chú.
+        if (!unchanged) {
+          const amended = await this.treatmentPlanRepository.amend(
+            tx,
+            tenantId,
+            id,
+            { directions: dto.treatmentPlan.directions, followUpDate: dto.treatmentPlan.followUpDate },
+            dto.treatmentPlan.version,
+            actorId,
+            signature.signedAt,
+            signature.signedBy,
+            dto.amendmentReason,
+          );
+          if (amended === null) {
+            throw new ConcurrentModificationError();
+          }
+        }
+      }
       const rows = await this.clinicalNoteRepository.listForEncounter(tx, tenantId, id);
+      const planRow = await this.treatmentPlanRepository.findActive(tx, tenantId, id);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
         action: 'clinical_note.amended',
         entityType: 'encounter',
         entityId: id,
-        beforeJson: Object.fromEntries(beforeRows.map((r) => [r.section, r.content])) as Prisma.InputJsonValue,
-        afterJson: { amendmentReason: dto.amendmentReason, sections: dto.sections } as unknown as Prisma.InputJsonValue,
+        beforeJson: {
+          ...Object.fromEntries(beforeRows.map((r) => [r.section, r.content])),
+          ...(beforePlan ? { treatmentPlan: { directions: beforePlan.directions, followUpDate: dbDateToDateString(beforePlan.followUpDate) } } : {}),
+        } as Prisma.InputJsonValue,
+        afterJson: { amendmentReason: dto.amendmentReason, sections: dto.sections, treatmentPlan: dto.treatmentPlan ?? null } as unknown as Prisma.InputJsonValue,
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
 
-      return this.toClinicalNoteResponse(rows);
+      return this.toClinicalNoteResponse(rows, planRow);
     });
   }
 
@@ -938,6 +999,7 @@ export class EncounterService {
       const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'clinical_record', entityId: id });
       await this.diagnosisRepository.signAllForEncounter(tx, tenantId, id, actorId, signature.signedAt, signature.signedBy);
       await this.clinicalNoteRepository.signAllForEncounter(tx, tenantId, id, actorId, signature.signedAt, signature.signedBy);
+      await this.treatmentPlanRepository.signAllForEncounter(tx, tenantId, id, actorId, signature.signedAt, signature.signedBy);
 
       if (learningEnabled) {
         const finalDiagnoses = await this.diagnosisRepository.listForEncounter(tx, tenantId, id);
@@ -1429,7 +1491,30 @@ export class EncounterService {
     };
   }
 
-  private toClinicalNoteResponse(rows: ClinicalNote[]): ClinicalNoteResponse {
+  /**
+   * Hẹn tái khám (#222) — ngày hẹn phải SAU ngày khám (ngày lịch giờ Việt Nam của `checkedInAt`) và không quá 365 ngày; có hướng "Hẹn tái khám" ⇔ có ngày (Zod đã kiểm, kiểm lại ở đây
+   * vì cần ngày khám). Ném `FollowUpDateInvalidError` (422).
+   */
+  private assertFollowUpValid(checkedInAt: Date, plan: TreatmentPlanInput): void {
+    if (plan.followUpDate === null) return;
+    const resolved = resolveFollowUpFromDate(getVietnamDateString(checkedInAt), plan.followUpDate);
+    if (!resolved.ok) {
+      throw new FollowUpDateInvalidError(resolved.message);
+    }
+  }
+
+  /** Mục "Điều trị" của bệnh án PDF (#222): hướng điều trị + nội dung điều trị + lời dặn + hẹn tái khám. */
+  private toMedicalRecordTreatment(note: ClinicalNoteResponse): NonNullable<MedicalRecordEncounterEntry['treatment']> {
+    const followUp = note.treatmentPlan?.followUpDate ?? null;
+    return {
+      directionLabels: (note.treatmentPlan?.directions ?? []).map((d) => TREATMENT_DIRECTION_LABELS[d]),
+      content: note.plan?.content ?? '',
+      advice: note.doctorAdvice?.content ?? '',
+      followUpDateLabel: followUp ? `${vietnameseWeekdayLabel(followUp)}, ${formatDateStringVi(followUp)}` : null,
+    };
+  }
+
+  private toClinicalNoteResponse(rows: ClinicalNote[], plan: EncounterTreatmentPlan | null = null): ClinicalNoteResponse {
     const bySection = new Map(
       rows.map((row) => [
         row.section,
@@ -1450,6 +1535,19 @@ export class EncounterService {
       generalExam: bySection.get('GENERAL_EXAM') ?? null,
       regionalExam: bySection.get('REGIONAL_EXAM') ?? null,
       plan: bySection.get('PLAN') ?? null,
+      conclusion: bySection.get('CONCLUSION') ?? null,
+      doctorAdvice: bySection.get('DOCTOR_ADVICE') ?? null,
+      treatmentPlan: plan
+        ? {
+            directions: plan.directions,
+            followUpDate: dbDateToDateString(plan.followUpDate),
+            version: plan.version,
+            signedAt: plan.signedAt ? plan.signedAt.toISOString() : null,
+            signedBy: plan.signedBy,
+            supersedesId: plan.supersedesId,
+            amendmentReason: plan.amendmentReason,
+          }
+        : null,
     };
   }
 }

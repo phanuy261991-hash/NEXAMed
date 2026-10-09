@@ -22,7 +22,7 @@ export interface PrintRenderContext {
  * Hệ số thu/phóng nội dung theo khổ giấy (CSS `zoom`) — các thân chứng từ viết bằng cỡ chữ Tailwind cố định (px), thu
  * lại để vừa A5/K80 mà không phải viết bố cục riêng từng khổ cho thân bảng.
  */
-const PAPER_ZOOM: Record<PrintPaperSize, number> = { A4: 1, A5: 0.88, A5_LANDSCAPE: 0.88, K80: 0.82 };
+const PAPER_ZOOM: Record<PrintPaperSize, number> = { A4: 1, A5: 0.88, A5_LANDSCAPE: 0.88, K80: 0.82, LABEL_35X22: 1, LABEL_50X30: 1 };
 
 const EMPTY_HEADER: ClinicPrintHeader = { name: '', address: null, phone: null, taxCode: null, printLogoUrl: null };
 

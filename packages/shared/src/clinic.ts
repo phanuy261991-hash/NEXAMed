@@ -307,6 +307,11 @@ export const clinicSettingsSchema = z.object({
    */
   paraclinicalBeforePaymentEnabled: z.boolean(),
   /**
+   * "Bắt buộc quét đủ ống trước khi xác nhận lấy mẫu" (Lấy mẫu xét nghiệm có tem mã vạch, #220) — TẮT (mặc định): tích tay hoặc quét tem đều được. BẬT (phòng khám đã có máy quét USB): ô "Đã lấy" của từng ống
+   * không tích tay được, chỉ quét tem mới tích; server từ chối xác nhận `via=MANUAL`.
+   */
+  specimenScanRequired: z.boolean(),
+  /**
    * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — TẮT (mặc định, giữ nguyên hành vi pilot đang chạy). BẬT: màn
    * khám hiện khối gợi ý (tối đa 3 mã/cụm bệnh, từ danh mục BYT + lịch sử dùng mã của bác sĩ), bác sĩ
    * bấm từng mã mới thêm — hệ thống không bao giờ tự gán mã.
@@ -352,6 +357,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   prescriptionStockBlockEnabled: z.boolean().optional(),
   allowFreeTextPrescriptionEnabled: z.boolean().optional(),
   paraclinicalBeforePaymentEnabled: z.boolean().optional(),
+  specimenScanRequired: z.boolean().optional(),
   icd10SuggestionEnabled: z.boolean().optional(),
   icd10SuggestionLearningEnabled: z.boolean().optional(),
 });

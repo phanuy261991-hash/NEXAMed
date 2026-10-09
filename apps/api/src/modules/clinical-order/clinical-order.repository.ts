@@ -74,6 +74,8 @@ const QUEUE_ITEM_INCLUDE = {
   invoiceLines: INVOICE_STATUS_SELECT,
   results: { where: { deletedAt: null }, select: { supersedesId: true, signedAt: true } },
   package: { select: { invoiceLines: INVOICE_STATUS_SELECT } },
+  // Ống mẫu đang chứa xét nghiệm này (docs/DECISIONS.md #220) — hàng đợi hiện mã ống / màu nắp.
+  specimenTube: { select: { id: true, sid: true, status: true, specimenName: true, capColor: true } },
 } satisfies Prisma.ClinicalOrderItemInclude;
 
 export type QueueItemRow = Prisma.ClinicalOrderItemGetPayload<{ include: typeof QUEUE_ITEM_INCLUDE }>;
@@ -176,6 +178,26 @@ export class ClinicalOrderRepository {
     return r.count;
   }
 
+  /** Gán (hoặc gỡ, `tubeId = null`) ống mẫu cho các dòng xét nghiệm (docs/DECISIONS.md #220). */
+  async setSpecimenTube(tx: Prisma.TransactionClient, tenantId: string, ids: string[], tubeId: string | null, actorId: string): Promise<number> {
+    if (ids.length === 0) return 0;
+    const r = await tx.clinicalOrderItem.updateMany({
+      where: { tenantId, id: { in: ids }, deletedAt: null },
+      data: { specimenTubeId: tubeId, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return r.count;
+  }
+
+  /** IN_PROGRESS → ORDERED (huỷ xác nhận đã lấy mẫu / huỷ ống & lấy lại): xoá giờ + người lấy mẫu. `WHERE status='IN_PROGRESS'` chống ghi chồng; trả số dòng thật sự chuyển. */
+  async revertToOrdered(tx: Prisma.TransactionClient, tenantId: string, ids: string[], actorId: string): Promise<number> {
+    if (ids.length === 0) return 0;
+    const r = await tx.clinicalOrderItem.updateMany({
+      where: { tenantId, id: { in: ids }, deletedAt: null, status: 'IN_PROGRESS' },
+      data: { status: 'ORDERED', collectedAt: null, collectedBy: null, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return r.count;
+  }
+
   /**
    * Huỷ lượt khám: đóng các dòng chỉ định còn `ORDERED` (chưa bắt đầu) của lượt khám thành `CANCELLED`. Điều kiện `status = 'ORDERED'` nằm trong WHERE nên dòng đang làm dở/đã duyệt
    * không bao giờ bị chạm (chống ghi chồng với người vừa lấy mẫu). Trả số dòng đã đóng.
@@ -188,11 +210,67 @@ export class ClinicalOrderRepository {
     return r.count;
   }
 
-  /** Chuyển trạng thái có điều kiện `status = from` (chống ghi chồng); trả số dòng thật sự chuyển. */
+  /**
+   * Chuyển trạng thái có điều kiện `status = from` (chống ghi chồng); trả số dòng thật sự chuyển. Chuyển sang `COMPLETED` (duyệt lần đầu hoặc duyệt lại sau đính chính) đặt lại
+   * `doctor_seen_at` về NULL để kết quả hiện lại là "mới" ở Hàng đợi khám của bác sĩ (#221).
+   */
   async transitionStatus(tx: Prisma.TransactionClient, tenantId: string, ids: string[], from: ClinicalOrderItemStatus[], to: ClinicalOrderItemStatus, actorId: string): Promise<number> {
     const r = await tx.clinicalOrderItem.updateMany({
       where: { tenantId, id: { in: ids }, deletedAt: null, status: { in: from } },
-      data: { status: to, updatedBy: actorId, version: { increment: 1 } },
+      data: { status: to, updatedBy: actorId, version: { increment: 1 }, ...(to === 'COMPLETED' ? { doctorSeenAt: null } : {}) },
+    });
+    return r.count;
+  }
+
+  /** Mỗi lượt khám: số dịch vụ cận lâm sàng tại phòng khám chưa có kết quả được duyệt + số kết quả đã duyệt mà bác sĩ chưa xem. Lượt không có dịch vụ nào thì không có khoá (#221). */
+  async progressByEncounterIds(tx: Prisma.TransactionClient, tenantId: string, encounterIds: string[]): Promise<Map<string, { pendingCount: number; unseenResultCount: number }>> {
+    const result = new Map<string, { pendingCount: number; unseenResultCount: number }>();
+    if (encounterIds.length === 0) return result;
+    const rows = await tx.clinicalOrderItem.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        itemKind: 'TECHNICAL_SERVICE',
+        performance: 'IN_HOUSE',
+        status: { in: ['ORDERED', 'IN_PROGRESS', 'RESULTED', 'COMPLETED'] },
+        order: { encounterId: { in: encounterIds }, deletedAt: null },
+      },
+      select: { status: true, doctorSeenAt: true, order: { select: { encounterId: true } } },
+    });
+    for (const r of rows) {
+      const entry = result.get(r.order.encounterId) ?? { pendingCount: 0, unseenResultCount: 0 };
+      if (r.status === 'COMPLETED') {
+        if (r.doctorSeenAt === null) entry.unseenResultCount += 1;
+      } else {
+        entry.pendingCount += 1;
+      }
+      result.set(r.order.encounterId, entry);
+    }
+    return result;
+  }
+
+  /** Số lượt khám ĐANG KHÁM của bác sĩ có ít nhất 1 kết quả mới chưa xem. */
+  async countEncountersWithUnseenResults(tx: Prisma.TransactionClient, tenantId: string, doctorId: string): Promise<number> {
+    const rows = await tx.clinicalOrderItem.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        itemKind: 'TECHNICAL_SERVICE',
+        performance: 'IN_HOUSE',
+        status: 'COMPLETED',
+        doctorSeenAt: null,
+        order: { deletedAt: null, encounter: { doctorId, status: 'IN_CONSULTATION', deletedAt: null } },
+      },
+      select: { order: { select: { encounterId: true } } },
+    });
+    return new Set(rows.map((r) => r.order.encounterId)).size;
+  }
+
+  /** Bác sĩ phụ trách đã mở xem kết quả của lượt khám: đặt `doctor_seen_at` cho mọi kết quả đã duyệt chưa xem. Trả số dòng đã đánh dấu. */
+  async markResultsSeen(tx: Prisma.TransactionClient, tenantId: string, encounterId: string, actorId: string): Promise<number> {
+    const r = await tx.clinicalOrderItem.updateMany({
+      where: { tenantId, deletedAt: null, itemKind: 'TECHNICAL_SERVICE', performance: 'IN_HOUSE', status: 'COMPLETED', doctorSeenAt: null, order: { encounterId, deletedAt: null } },
+      data: { doctorSeenAt: new Date(), updatedBy: actorId, version: { increment: 1 } },
     });
     return r.count;
   }

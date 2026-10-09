@@ -359,9 +359,17 @@ export const receptionListItemSchema = z.object({
   checkedInAt: z.string(),
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
+  /** Hàng đợi khám (#221) — số dịch vụ cận lâm sàng tại phòng khám CHƯA có kết quả được duyệt (0 = không chờ gì). */
+  paraclinicalPendingCount: z.number().int().nonnegative(),
+  /** Hàng đợi khám (#221) — số kết quả cận lâm sàng đã duyệt mà bác sĩ phụ trách chưa mở xem ("Có kết quả mới"). */
+  paraclinicalUnseenResultCount: z.number().int().nonnegative(),
   version: z.number().int(),
 });
 export type ReceptionListItem = z.infer<typeof receptionListItemSchema>;
+
+/** Chấm số ở menu "Hàng đợi khám" (#221): số bệnh nhân đang khám của bác sĩ có kết quả cận lâm sàng mới chưa xem. */
+export const doctorUnseenResultsResponseSchema = z.object({ patientCount: z.number().int().nonnegative() });
+export type DoctorUnseenResultsResponse = z.infer<typeof doctorUnseenResultsResponseSchema>;
 
 export const receptionListResponseSchema = z.object({ items: z.array(receptionListItemSchema) });
 export type ReceptionListResponse = z.infer<typeof receptionListResponseSchema>;
@@ -519,9 +527,42 @@ export const CLINICAL_NOTE_SECTIONS = [
   'GENERAL_EXAM',
   'REGIONAL_EXAM',
   'PLAN',
+  // Điều trị & Hẹn tái khám (docs/DECISIONS.md #222): `PLAN` = "Nội dung điều trị", `CONCLUSION` = "Kết luận", `DOCTOR_ADVICE` = "Lời dặn bác sĩ".
+  'CONCLUSION',
+  'DOCTOR_ADVICE',
 ] as const;
 export const clinicalNoteSectionSchema = z.enum(CLINICAL_NOTE_SECTIONS);
 export type ClinicalNoteSection = z.infer<typeof clinicalNoteSectionSchema>;
+
+/**
+ * Hướng điều trị (docs/DECISIONS.md #222) — chọn được NHIỀU hướng cùng lúc; chỉ ghi nhận, không đổi trạng thái lượt khám và không tự tạo lịch hẹn.
+ */
+export const TREATMENT_DIRECTIONS = ['PRESCRIPTION', 'TRANSFER', 'FOLLOW_UP', 'EMERGENCY'] as const;
+export const treatmentDirectionSchema = z.enum(TREATMENT_DIRECTIONS);
+export type TreatmentDirection = z.infer<typeof treatmentDirectionSchema>;
+export const TREATMENT_DIRECTION_LABELS: Record<TreatmentDirection, string> = {
+  PRESCRIPTION: 'Kê đơn thuốc',
+  TRANSFER: 'Chuyển viện',
+  FOLLOW_UP: 'Hẹn tái khám',
+  EMERGENCY: 'Cấp cứu',
+};
+
+/**
+ * Hướng điều trị + ngày hẹn tái khám. Có hướng `FOLLOW_UP` ⇔ có `followUpDate` (`YYYY-MM-DD`, ngày lịch giờ Việt Nam) — khớp CHECK ở DB; ngày hẹn phải sau ngày khám và không quá
+ * 365 ngày (kiểm ở service vì cần ngày khám của lượt khám). `version` vắng = chưa có dòng nào (tạo mới), có = update kèm optimistic lock.
+ */
+export const treatmentPlanInputSchema = z
+  .object({
+    directions: z.array(treatmentDirectionSchema).max(TREATMENT_DIRECTIONS.length),
+    followUpDate: z.string().date().nullable(),
+    version: z.number().int().optional(),
+  })
+  .refine((v) => new Set(v.directions).size === v.directions.length, { message: 'Hướng điều trị bị trùng.', path: ['directions'] })
+  .refine((v) => v.directions.includes('FOLLOW_UP') === (v.followUpDate !== null), {
+    message: 'Hẹn tái khám phải có ngày hẹn; bỏ tích thì không có ngày hẹn.',
+    path: ['followUpDate'],
+  });
+export type TreatmentPlanInput = z.infer<typeof treatmentPlanInputSchema>;
 
 /** `version` vắng mặt = section đó chưa có dòng nào (tạo mới); có `version` = update, kiểm optimistic lock. */
 const clinicalNoteSectionInputSchema = z.object({
@@ -542,6 +583,10 @@ export const saveClinicalNoteRequestSchema = z.object({
   generalExam: clinicalNoteSectionInputSchema,
   regionalExam: clinicalNoteSectionInputSchema,
   plan: clinicalNoteSectionInputSchema,
+  // #222 — tuỳ chọn để client cũ vẫn gọi được; web mới luôn gửi (lưu cùng 1 transaction với các mục trên).
+  conclusion: clinicalNoteSectionInputSchema.optional(),
+  doctorAdvice: clinicalNoteSectionInputSchema.optional(),
+  treatmentPlan: treatmentPlanInputSchema.optional(),
 });
 export type SaveClinicalNoteRequest = z.infer<typeof saveClinicalNoteRequestSchema>;
 
@@ -564,19 +609,37 @@ const clinicalNoteSectionValueSchema = z
  * không cần thuật toán ghép cặp. `sections` chỉ gồm NHỮNG mục thực sự đổi nội dung (web tự tính
  * diff trước khi gửi) — mục không đổi giữ nguyên bản đã ký, không tạo thêm lịch sử vô ích.
  */
-export const amendClinicalNoteRequestSchema = z.object({
+export const amendClinicalNoteRequestSchema = z
+  .object({
   amendmentReason: z.string().min(1, 'Phải nhập lý do đính chính.'),
   sections: z
     .array(
       z.object({
         section: clinicalNoteSectionSchema,
         content: z.string(),
-        version: z.number().int(),
+        // Vắng = mục này chưa từng có dòng nào (ví dụ Kết luận/Lời dặn của lượt khám hoàn tất trước khi có tính năng) → tạo bản ký mới thay vì thay thế.
+        version: z.number().int().optional(),
       }),
     )
-    .min(1, 'Phải sửa ít nhất một mục.'),
-});
+    .default([]),
+  // #222 — đính chính hướng điều trị/ngày hẹn cùng lý do, cùng transaction với các mục ghi chú (`version` BẮT BUỘC khi đã có bản ký).
+  treatmentPlan: treatmentPlanInputSchema.optional(),
+})
+  .refine((v) => v.sections.length > 0 || v.treatmentPlan !== undefined, { message: 'Phải sửa ít nhất một mục.', path: ['sections'] });
 export type AmendClinicalNoteRequest = z.infer<typeof amendClinicalNoteRequestSchema>;
+
+export const treatmentPlanValueSchema = z
+  .object({
+    directions: z.array(treatmentDirectionSchema),
+    followUpDate: z.string().nullable(),
+    version: z.number().int(),
+    signedAt: z.string().nullable(),
+    signedBy: z.string().uuid().nullable(),
+    supersedesId: z.string().uuid().nullable(),
+    amendmentReason: z.string().nullable(),
+  })
+  .nullable();
+export type TreatmentPlanValue = NonNullable<z.infer<typeof treatmentPlanValueSchema>>;
 
 export const clinicalNoteResponseSchema = z.object({
   reasonForVisit: clinicalNoteSectionValueSchema,
@@ -585,6 +648,10 @@ export const clinicalNoteResponseSchema = z.object({
   generalExam: clinicalNoteSectionValueSchema,
   regionalExam: clinicalNoteSectionValueSchema,
   plan: clinicalNoteSectionValueSchema,
+  conclusion: clinicalNoteSectionValueSchema,
+  doctorAdvice: clinicalNoteSectionValueSchema,
+  /** Hướng điều trị + ngày hẹn tái khám (#222) — `null` nếu chưa lưu lần nào. */
+  treatmentPlan: treatmentPlanValueSchema,
 });
 export type ClinicalNoteResponse = z.infer<typeof clinicalNoteResponseSchema>;
 

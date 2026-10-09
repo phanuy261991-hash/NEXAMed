@@ -22,3 +22,4 @@ export * from './technical-service-errors';
 export * from './clinical-order-errors';
 export * from './paraclinical-result-errors';
 export * from './backup-errors';
+export * from './advice-template-errors';

@@ -45,6 +45,7 @@ export function PaymentConfigPane() {
   const prescriptionStockBlockEnabled = settingsQuery.data?.prescriptionStockBlockEnabled ?? false;
   const allowFreeTextPrescriptionEnabled = settingsQuery.data?.allowFreeTextPrescriptionEnabled ?? false;
   const paraclinicalBeforePaymentEnabled = settingsQuery.data?.paraclinicalBeforePaymentEnabled ?? false;
+  const specimenScanRequired = settingsQuery.data?.specimenScanRequired ?? false;
 
   return (
     <div className="space-y-8">
@@ -395,6 +396,29 @@ export function PaymentConfigPane() {
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ paraclinicalBeforePaymentEnabled: e.target.checked })}
               aria-label="Cho thực hiện cận lâm sàng trước khi thu tiền"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
+          <div>
+            <p className="text-[14.5px] font-bold text-slate-900">Bắt buộc quét đủ ống trước khi xác nhận lấy mẫu</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): ô &quot;Đã lấy&quot; của từng ống tích tay hoặc quét tem đều được.
+              <br />
+              Bật (khi phòng khám đã có máy quét mã vạch USB): chỉ quét tem mới tích được, không tích tay.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={specimenScanRequired}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ specimenScanRequired: e.target.checked })}
+              aria-label="Bắt buộc quét đủ ống trước khi xác nhận lấy mẫu"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

@@ -8,6 +8,16 @@ const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 type HeaderKey = keyof PrintTemplateConfig['header'];
+type LabelKey = keyof NonNullable<PrintTemplateConfig['label']>;
+
+/** Thông tin in THÊM trên tem ống nghiệm (docs/DECISIONS.md #220); mã vạch, mã ống, họ tên, năm sinh, giới tính luôn in nên không có công tắc. */
+const LABEL_TOGGLES: { key: LabelKey; label: string }[] = [
+  { key: 'showPatientCode', label: 'Mã bệnh nhân' },
+  { key: 'showGroup', label: 'Nhóm xét nghiệm (viết tắt)' },
+  { key: 'showCapColor', label: 'Loại ống / màu nắp' },
+  { key: 'showDate', label: 'Ngày lấy mẫu (DD/MM)' },
+];
+const DEFAULT_LABEL_OPTIONS: NonNullable<PrintTemplateConfig['label']> = { showPatientCode: false, showGroup: true, showCapColor: false, showDate: true };
 type MarginKey = keyof PrintTemplateConfig['margins'];
 
 const HEADER_TOGGLES: { key: HeaderKey; label: string }[] = [
@@ -108,6 +118,9 @@ export function PrintTemplateConfigPanel({
   const setNotice = (patch: Partial<NonNullable<PrintTemplateConfig['notice']>>) => {
     if (currentNotice) onConfigChange({ ...config, notice: { ...currentNotice, ...patch } });
   };
+  const isLabel = paper.paperSize === 'LABEL_35X22' || paper.paperSize === 'LABEL_50X30';
+  const labelOptions = config.label ?? DEFAULT_LABEL_OPTIONS;
+  const setLabelOption = (key: LabelKey, value: boolean) => onConfigChange({ ...config, label: { ...labelOptions, [key]: value } });
   const setHeader = (key: HeaderKey, value: boolean) => onConfigChange({ ...config, header: { ...config.header, [key]: value } });
   const setMargin = (key: MarginKey, value: number) => onConfigChange({ ...config, margins: { ...config.margins, [key]: value } });
   const setCopyCount = (count: number) => onConfigChange({ ...config, copies: { ...config.copies, count } });
@@ -156,6 +169,19 @@ export function PrintTemplateConfigPanel({
         <p className="mt-1 text-[11px] text-slate-400">Đơn vị: milimét</p>
       </Block>
 
+      {isLabel && (
+        <Block title={`Thông tin in thêm trên khổ ${paper.label}`}>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            {LABEL_TOGGLES.map((t) => (
+              <Check key={t.key} id={`pt-label-${t.key}`} label={t.label} checked={labelOptions[t.key]} onChange={(v) => setLabelOption(t.key, v)} />
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-slate-400">Mã vạch, mã ống, họ tên (IN HOA), năm sinh và giới tính luôn in, không tắt được. Mỗi khổ tem có bộ tuỳ chọn riêng.</p>
+        </Block>
+      )}
+
+      {!isLabel && (
+        <>
       <Block title="Đầu trang & tiêu đề">
         <div className="grid grid-cols-2 gap-x-3 gap-y-2">
           {HEADER_TOGGLES.map((t) => (
@@ -264,6 +290,8 @@ export function PrintTemplateConfigPanel({
           </div>
         )}
       </Block>
+        </>
+      )}
     </fieldset>
   );
 }

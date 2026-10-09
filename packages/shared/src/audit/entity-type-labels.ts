@@ -35,6 +35,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   price_list: 'Bảng giá',
   clinical_order: 'Phiếu chỉ định cận lâm sàng',
   paraclinical_result: 'Kết quả cận lâm sàng',
+  specimen_tube: 'Ống mẫu xét nghiệm',
   doctor_room_session: 'Phòng làm việc',
   break_glass_session: 'Quyền khẩn cấp (break-glass)',
   // Bổ sung #109 — thiếu từ lúc thêm module work_shift/work_shift_assignment (#101/#102) và
@@ -63,6 +64,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   cash_book_export: 'Báo cáo dòng tiền',
   patient_wallet: 'Ví tạm ứng',
   prescription_template: 'Đơn thuốc mẫu',
+  advice_template: 'Mẫu lời dặn',
   reception_list_export: 'Danh sách tiếp nhận',
 };
 

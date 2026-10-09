@@ -1,4 +1,4 @@
-import { CalendarCheck, Clock, PlusCircle, Play, Star, Warning, XCircle, type Icon } from '@phosphor-icons/react';
+import { CalendarCheck, Clock, Flask, Microscope, PlusCircle, Play, Star, Warning, XCircle, type Icon } from '@phosphor-icons/react';
 import type { DoctorAvailabilityStatus, ReceptionListItem } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
 
@@ -71,6 +71,30 @@ export function GroupLabel({
       <IconComponent size={13} weight="bold" aria-hidden="true" />
       {children}
       <span className="ml-auto rounded-full bg-white/25 px-1.5 py-0.5 text-[10px]">{count}</span>
+    </div>
+  );
+}
+
+/**
+ * Nhãn tiến độ cận lâm sàng tại phòng khám trên thẻ "đang khám" (#221) — dùng chung trang "Hàng đợi khám" và panel "Hàng chờ" ở Topbar (nơi dùng thứ hai). Xanh "Có N kết quả mới"
+ * (kết quả đã duyệt, bác sĩ chưa xem) và/hoặc hổ phách "Chờ kết quả · N dịch vụ"; bấm → `onOpen` (mở tab "Kết quả cận lâm sàng"). Không có gì để báo thì không render.
+ */
+export function ParaclinicalProgressChips({ item, onOpen }: { item: ReceptionListItem; onOpen: () => void }) {
+  if (item.paraclinicalUnseenResultCount === 0 && item.paraclinicalPendingCount === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      {item.paraclinicalUnseenResultCount > 0 && (
+        <Button type="button" variant="success" className="px-2.5 py-1 text-xs" onClick={onOpen} title="Mở tab Kết quả cận lâm sàng">
+          <Microscope size={13} weight="fill" aria-hidden="true" />
+          Có {item.paraclinicalUnseenResultCount} kết quả mới
+        </Button>
+      )}
+      {item.paraclinicalPendingCount > 0 && (
+        <Button type="button" variant="amber" className="px-2.5 py-1 text-xs" onClick={onOpen} title="Mở tab Kết quả cận lâm sàng">
+          <Flask size={13} weight="fill" aria-hidden="true" />
+          Chờ kết quả · {item.paraclinicalPendingCount} dịch vụ
+        </Button>
+      )}
     </div>
   );
 }
