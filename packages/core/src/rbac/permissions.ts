@@ -161,6 +161,19 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // cho vai trò tuỳ biến khác (ví dụ "Hành chính nhân sự") nếu cần đối chiếu/sửa lại sau khi chốt
   // tháng, phục vụ nghiệp vụ chấm công/tính lương (v2, chưa xây — đây chỉ chuẩn bị nền).
   { module: 'work_shift_assignment', action: 'unlock', description: 'Sửa/xoá lịch làm việc dù tháng đã khoá (chốt bảng ca)' },
+  // "Đơn xin nghỉ" (#224) — nghỉ là bản ghi RIÊNG trên ca đã đăng ký (ca giữ nguyên). `read`/`create`
+  // personal cho vai trò đăng ký ca được (xem/xin nghỉ cho CHÍNH MÌNH), global cho clinic_admin xem cả
+  // phòng khám. `approve` (duyệt/từ chối/huỷ đơn đã duyệt) và `file_on_behalf` (ghi nghỉ hộ, duyệt
+  // luôn) mặc định CHỈ clinic_admin, tenant cấp thêm cho vai trò tuỳ biến nếu cần.
+  // "Duyệt đăng ký ca theo tháng" (#225) — duyệt/trả lại bảng đăng ký tháng của từng nhân viên; mặc định CHỈ clinic_admin.
+  { module: 'work_shift_assignment', action: 'approve', description: 'Duyệt hoặc trả lại bảng đăng ký ca theo tháng của nhân viên' },
+  // "Đổi ca" (#225) — đổi 2 ca cho nhau giữa 2 nhân viên; chỉ người nhận xác nhận. `read` personal = yêu cầu liên quan mình, global = lịch sử cả phòng khám (quản lý chỉ xem).
+  { module: 'shift_swap', action: 'read', description: 'Xem yêu cầu đổi ca (của mình hoặc lịch sử cả phòng khám)' },
+  { module: 'shift_swap', action: 'create', description: 'Gửi, xác nhận, từ chối, huỷ yêu cầu đổi ca của chính mình' },
+  { module: 'leave_request', action: 'read', description: 'Xem đơn xin nghỉ (của mình hoặc toàn phòng khám)' },
+  { module: 'leave_request', action: 'create', description: 'Xin nghỉ trên ca đã đăng ký (cho chính mình), rút đơn chưa duyệt' },
+  { module: 'leave_request', action: 'approve', description: 'Duyệt/từ chối đơn xin nghỉ, huỷ đơn nghỉ đã duyệt' },
+  { module: 'leave_request', action: 'file_on_behalf', description: 'Ghi nghỉ hộ nhân viên (duyệt luôn)' },
   // Vá lỗ hổng thật (cùng dạng #030/#064 "lễ tân không có quyền đọc module khác"): `GET
   // /work-shifts` (danh mục MẪU ca) trước đây chỉ gắn `clinic_config.read` — MỌI nhân viên tự
   // đăng ký ca (`work_shift_assignment.create=personal` ở trên) nhưng KHÔNG xem được chính danh
@@ -305,6 +318,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift_assignment.create': 'personal',
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
+    'leave_request.read': 'personal',
+    'leave_request.create': 'personal',
+    'shift_swap.read': 'personal',
+    'shift_swap.create': 'personal',
     'work_shift.read': 'global',
     // Chốt ca — lễ tân là thu ngân chính, chỉ mở/chốt/xem CA CỦA MÌNH (personal — hệ thống chỉ
     // 1 két dùng chung nên "của mình" nghĩa là ca đang OPEN do chính actor mở, xem
@@ -370,6 +387,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift_assignment.create': 'personal',
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
+    'leave_request.read': 'personal',
+    'leave_request.create': 'personal',
+    'shift_swap.read': 'personal',
+    'shift_swap.create': 'personal',
     'work_shift.read': 'global',
   },
   doctor: {
@@ -438,6 +459,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift_assignment.create': 'personal',
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
+    'leave_request.read': 'personal',
+    'leave_request.create': 'personal',
+    'shift_swap.read': 'personal',
+    'shift_swap.create': 'personal',
     'work_shift.read': 'global',
   },
   clinic_admin: {
@@ -543,6 +568,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift_assignment.create': 'global',
     'work_shift_assignment.read': 'global',
     'work_shift_assignment.delete': 'global',
+    'leave_request.read': 'global',
+    'leave_request.create': 'personal',
+    'shift_swap.read': 'global',
+    'shift_swap.create': 'personal',
+    'leave_request.approve': 'global',
+    'leave_request.file_on_behalf': 'global',
+    'work_shift_assignment.approve': 'global',
     // Mặc định clinic_admin mở khoá được lịch tháng đã chốt (đúng yêu cầu chủ dự án).
     'work_shift_assignment.unlock': 'global',
     'work_shift.read': 'global',

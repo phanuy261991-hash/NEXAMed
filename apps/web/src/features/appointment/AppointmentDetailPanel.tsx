@@ -35,12 +35,15 @@ export function AppointmentDetailPanel({
   doctors,
   noShowThresholdMinutes,
   noShowAutoEnabled,
+  initialMode = 'view',
 }: {
   appointment: AppointmentSummary | null;
   onClose: () => void;
   doctors: DoctorOption[];
   noShowThresholdMinutes: number;
   noShowAutoEnabled: boolean;
+  /** Chế độ mở sẵn — "Cần xử lý" (#224) mở thẳng "Sửa lịch" (đổi bác sĩ) hoặc "Dời lịch". */
+  initialMode?: 'view' | 'edit' | 'reschedule';
 }) {
   const [mode, setMode] = useState<'view' | 'edit' | 'reschedule'>('view');
   const [cancelReason, setCancelReason] = useState('');
@@ -70,7 +73,7 @@ export function AppointmentDetailPanel({
 
   useEffect(() => {
     if (!appointment) return;
-    setMode('view');
+    setMode(initialMode);
     setCancelReason('');
     setConfirmingNoShow(false);
     setError(null);
@@ -81,6 +84,7 @@ export function AppointmentDetailPanel({
     setRescheduleTime(minutesToLabel(vnTimeOfDayMinutes(appointment.scheduledAt)));
     setRescheduleDoctorId(appointment.doctorId);
     setRescheduleResult(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointment]);
 
   if (!appointment) return null;
@@ -189,6 +193,15 @@ export function AppointmentDetailPanel({
         <div className="flex-1 overflow-y-auto p-4">
           {mode === 'view' && (
             <div className="flex flex-col gap-4">
+              {/* "Đơn xin nghỉ" (#224) — lịch nằm trong khung nghỉ ĐÃ DUYỆT của bác sĩ. */}
+              {appointment.doctorOnLeave && editable && (
+                <div className="flex items-start gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
+                  <Warning size={16} weight="fill" className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                  <span>
+                    <strong>Cần xử lý:</strong> bác sĩ đã được duyệt nghỉ trong khung giờ này. Gọi bệnh nhân rồi chọn Sửa lịch (đổi bác sĩ), Dời lịch hoặc Huỷ lịch hẹn.
+                  </span>
+                </div>
+              )}
               <div className="divide-y divide-slate-100 text-sm">
                 <Row label="Mã đặt lịch" value={<span className="font-semibold">{appointment.bookingCode}</span>} />
                 <Row label="Họ tên" value={appointment.fullName} />
@@ -284,6 +297,7 @@ export function AppointmentDetailPanel({
                   doctors={doctors}
                   selectedDoctorId={editDoctorId}
                   onSelect={setEditDoctorId}
+                  date={appointmentDate}
                   time={editTime}
                   durationMinutes={editDuration}
                   dayAppointments={editDayQuery.data?.items ?? []}
@@ -327,6 +341,7 @@ export function AppointmentDetailPanel({
                   doctors={doctors}
                   selectedDoctorId={rescheduleDoctorId}
                   onSelect={setRescheduleDoctorId}
+                  date={rescheduleDate}
                   time={rescheduleTime}
                   durationMinutes={appointment.durationMinutes}
                   dayAppointments={rescheduleDayQuery.data?.items ?? []}

@@ -10,6 +10,8 @@ import {
   DEFAULT_PARACLINICAL_BEFORE_PAYMENT_ENABLED,
   DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT,
   DEFAULT_ALLOW_STAFF_SELF_SCHEDULE_ENABLED,
+  DEFAULT_BLOCK_BOOKING_WHEN_NO_SHIFT_ENABLED,
+  DEFAULT_MIN_WEEKLY_DAYS_OFF,
   DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED,
   DEFAULT_CASHIER_DRAWER_SEPARATE_ENABLED,
   DEFAULT_CASHIER_SHIFT_BLIND_CLOSE_ENABLED,
@@ -61,6 +63,11 @@ const allowReceptionistEndShiftSchema = z.boolean();
 // khi chủ động bật).
 const BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_KEY = 'block_booking_outside_work_shift_enabled';
 const blockBookingOutsideWorkShiftSchema = z.boolean();
+// Công tắc con + quota ngày nghỉ (09/10/2026) — cùng nhóm "Đăng ký ca làm việc".
+const BLOCK_BOOKING_WHEN_NO_SHIFT_KEY = 'block_booking_when_no_shift_enabled';
+const blockBookingWhenNoShiftSchema = z.boolean();
+const MIN_WEEKLY_DAYS_OFF_KEY = 'min_weekly_days_off';
+const minWeeklyDaysOffSchema = z.number().int().min(0).max(6);
 // "Cấu hình chung" (02/09/2026, tiếp sau #104) — bật theo mặc định (giữ nguyên hành vi hiện tại:
 // mọi nhân viên tự đăng ký ca) tới khi chủ động tắt.
 const ALLOW_STAFF_SELF_SCHEDULE_KEY = 'allow_staff_self_schedule_enabled';
@@ -240,6 +247,32 @@ export class ClinicSettingsRepository {
 
   upsertBlockBookingOutsideWorkShiftEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_KEY, value);
+  }
+
+  async getBlockBookingWhenNoShiftEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: BLOCK_BOOKING_WHEN_NO_SHIFT_KEY } });
+    if (!setting) {
+      return DEFAULT_BLOCK_BOOKING_WHEN_NO_SHIFT_ENABLED;
+    }
+    const parsed = blockBookingWhenNoShiftSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_BLOCK_BOOKING_WHEN_NO_SHIFT_ENABLED;
+  }
+
+  upsertBlockBookingWhenNoShiftEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, BLOCK_BOOKING_WHEN_NO_SHIFT_KEY, value);
+  }
+
+  async getMinWeeklyDaysOff(tx: Prisma.TransactionClient, tenantId: string): Promise<number> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: MIN_WEEKLY_DAYS_OFF_KEY } });
+    if (!setting) {
+      return DEFAULT_MIN_WEEKLY_DAYS_OFF;
+    }
+    const parsed = minWeeklyDaysOffSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_MIN_WEEKLY_DAYS_OFF;
+  }
+
+  upsertMinWeeklyDaysOff(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: number) {
+    return this.upsert(tx, tenantId, actorId, MIN_WEEKLY_DAYS_OFF_KEY, value);
   }
 
   async getAllowStaffSelfScheduleEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {

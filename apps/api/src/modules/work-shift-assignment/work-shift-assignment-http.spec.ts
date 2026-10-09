@@ -56,9 +56,11 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
   }
 
   beforeAll(async () => {
-    // Ghim đồng hồ (chỉ `Date`) về cuối tháng 9/2026: mọi test dùng ngày cố định trong tháng 9 và 'Khoá bảng ca' (#110)
-    // so ngày hôm nay với tháng của ca — không ghim thì sang tháng 10 là toàn bộ tháng 9 bị khoá (WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED).
-    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-09-26T03:00:00Z') });
+    // Ghim đồng hồ (chỉ `Date`) về GIỮA THÁNG 8/2026: mọi test dùng ngày cố định trong tháng 9 = "tháng sau" — nhân
+    // viên chỉ tự đăng ký tháng sau (#225); 'Khoá bảng ca' (#110) so ngày hôm nay với tháng của ca (không ghim thì sang
+    // tháng 10 là cả tháng 9 bị khoá); 'ngày đã qua không sửa được' (#224) cần mọi ngày test >= hôm nay. Riêng describe
+    // "ngày đã qua" ở cuối file đẩy đồng hồ lên giữa tháng 9.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-08-15T03:00:00Z') });
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');
@@ -216,18 +218,19 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
     expect(again.status).toBe(404);
   });
 
-  it('tự xoá ca đăng ký từ HÔM QUA (khoá) → 409 WORK_SHIFT_ASSIGNMENT_LOCKED; clinic_admin (global) vẫn xoá được', async () => {
+  it('ca do QUẢN LÝ xếp: nhân viên không tự xoá được → 409 WORK_SHIFT_ASSIGNMENT_LOCKED; clinic_admin (global) xoá được', async () => {
     const created = await request(app.getHttpServer())
       .post('/api/v1/work-shift-assignments')
-      .set(authed(doctorAToken))
-      .send({ workShiftId: shiftMorningId, workDate: '2026-09-21' });
+      .set(authed(clinicAdminToken))
+      .send({ workShiftId: shiftMorningId, workDate: '2026-09-21', userId: doctorAUserId });
+    expect(created.status).toBe(200);
     const id = created.body.data.id as string;
 
-    // Không có API nào set `createdAt` giả lập ngày cũ — set thẳng qua Prisma client đặc quyền
-    // (đúng ngoại lệ đã ghi trong plan: chỉ cột hệ thống không có đường API nào set được).
-    const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    await privileged.workShiftAssignment.update({ where: { id }, data: { createdAt: yesterday } });
+    const list = await request(app.getHttpServer())
+      .get('/api/v1/work-shift-assignments')
+      .query({ from: '2026-09-01', to: '2026-09-30' })
+      .set(authed(doctorAToken));
+    expect((list.body.data.items as { id: string; canEdit: boolean }[]).find((i) => i.id === id)?.canEdit).toBe(false);
 
     const selfDelete = await request(app.getHttpServer())
       .delete(`/api/v1/work-shift-assignments/${id}`)
@@ -392,6 +395,84 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
       const res = await request(app.getHttpServer()).get('/api/v1/work-shift-assignments/business-hours').set(authed(tenantBAdminToken));
       expect(res.status).toBe(200);
       expect(res.body.data.businessHours).toBeNull();
+    });
+  });
+
+  describe('ngày đã qua không đăng ký/sửa/xoá được (chốt 2026-10-09, #224)', () => {
+    let pastAdminToken: string;
+    let staffToken: string;
+    let staffUserId: string;
+
+    beforeAll(async () => {
+      // Giữa tháng 9: ngày 8–12/9 là "đã qua" nhưng tháng CHƯA khoá. Đẩy đồng hồ xong mới tạo người dùng/đăng nhập
+      // (access token sống 15 phút theo đồng hồ giả — token tạo trước đó sẽ hết hạn).
+      vi.setSystemTime(new Date('2026-09-15T03:00:00Z'));
+      pastAdminToken = (await createUserWithRole(fixture.tenantA.id, 'clinic_admin')).token;
+      const staff = await createUserWithRole(fixture.tenantA.id, 'doctor');
+      staffToken = staff.token;
+      staffUserId = staff.userId;
+    });
+    afterAll(() => {
+      vi.setSystemTime(new Date('2026-08-15T03:00:00Z'));
+    });
+
+    const api = () => request(app.getHttpServer());
+
+    it('nhân viên (personal) đăng ký ngày đã qua → 409 PAST_DATE; bulk có 1 ngày đã qua → 409; tháng hiện tại → 409 MONTH_NOT_OPEN', async () => {
+      const create = await api().post('/api/v1/work-shift-assignments').set(authed(staffToken)).send({ workShiftId: shiftAfternoonId, workDate: '2026-09-10' });
+      expect(create.status).toBe(409);
+      expect(create.body.error.code).toBe('WORK_SHIFT_ASSIGNMENT_PAST_DATE');
+
+      const bulk = await api()
+        .post('/api/v1/work-shift-assignments/bulk')
+        .set(authed(staffToken))
+        .send({ workShiftId: shiftAfternoonId, workDates: ['2026-09-14', '2026-09-16'] });
+      expect(bulk.status).toBe(409);
+      expect(bulk.body.error.code).toBe('WORK_SHIFT_ASSIGNMENT_PAST_DATE');
+
+      // Hôm nay (15/9) thuộc THÁNG HIỆN TẠI → nhân viên không tự đăng ký (tháng này do quản lý xếp).
+      const thisMonth = await api().post('/api/v1/work-shift-assignments').set(authed(staffToken)).send({ workShiftId: shiftAfternoonId, workDate: '2026-09-15' });
+      expect(thisMonth.status).toBe(409);
+      expect(thisMonth.body.error.code).toBe('WORK_SHIFT_ASSIGNMENT_MONTH_NOT_OPEN');
+    });
+
+    it('người có quyền mở khoá (clinic_admin) đăng ký được ngày đã qua; nhân viên không xoá được dù đăng ký trong hôm nay, canEdit=false; admin xoá được', async () => {
+      const adminCreate = await api()
+        .post('/api/v1/work-shift-assignments')
+        .set(authed(pastAdminToken))
+        .send({ workShiftId: shiftMorningId, workDate: '2026-09-10', userId: staffUserId });
+      expect(adminCreate.status).toBe(200);
+      const id = adminCreate.body.data.id as string;
+      await alignCreatedAtToPinnedToday(id);
+
+      const list = await api()
+        .get('/api/v1/work-shift-assignments')
+        .query({ from: '2026-09-01', to: '2026-09-30' })
+        .set(authed(staffToken));
+      expect((list.body.data.items as { id: string; canEdit: boolean }[]).find((i) => i.id === id)?.canEdit).toBe(false);
+
+      const selfDelete = await api().delete(`/api/v1/work-shift-assignments/${id}`).set(authed(staffToken)).send({ version: 1 });
+      expect(selfDelete.status).toBe(409);
+      expect(selfDelete.body.error.code).toBe('WORK_SHIFT_ASSIGNMENT_PAST_DATE');
+
+      const adminDelete = await api().delete(`/api/v1/work-shift-assignments/${id}`).set(authed(pastAdminToken)).send({ version: 1 });
+      expect(adminDelete.status).toBe(200);
+    });
+
+    it('sao chép vào tuần đã qua → bỏ qua (không lỗi) với nhân viên, chỉ người có quyền mở khoá ghi được', async () => {
+      // Quản lý xếp cho nhân viên ca 15/9 (tuần 14–20/9) → nhân viên sao chép NGƯỢC về tuần 7–13/9 (đã qua).
+      const seeded = await api()
+        .post('/api/v1/work-shift-assignments')
+        .set(authed(pastAdminToken))
+        .send({ workShiftId: shiftMorningId, workDate: '2026-09-15', userId: staffUserId });
+      expect(seeded.status).toBe(200);
+      const copy = await api()
+        .post('/api/v1/work-shift-assignments/copy')
+        .set(authed(staffToken))
+        .send({ mode: 'week', fromWeekStart: '2026-09-14', toWeekStart: '2026-09-07' });
+      expect(copy.status).toBe(200);
+      expect(copy.body.data.createdCount).toBe(0);
+      expect(copy.body.data.skippedCount).toBe(1);
     });
   });
 });

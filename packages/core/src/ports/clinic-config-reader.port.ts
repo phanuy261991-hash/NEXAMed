@@ -68,6 +68,19 @@ export interface ClinicConfigReaderPort {
   getBlockBookingOutsideWorkShiftEnabled(tenantId: string): Promise<boolean>;
 
   /**
+   * Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (`tenant_setting` key
+   * `block_booking_when_no_shift_enabled`, mặc định `false`) — chỉ có hiệu lực khi
+   * `getBlockBookingOutsideWorkShiftEnabled` cũng bật. Module `work-shift-assignment` đọc qua port này.
+   */
+  getBlockBookingWhenNoShiftEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * Quota "nghỉ tối thiểu N ngày/tuần" khi Gửi duyệt đăng ký ca tháng (`tenant_setting` key
+   * `min_weekly_days_off`, mặc định `0` = tắt).
+   */
+  getMinWeeklyDaysOff(tenantId: string): Promise<number>;
+
+  /**
    * "Cấu hình chung" — bật/tắt cho phép nhân viên tự đăng ký ca trên "Lịch làm việc của tôi"
    * (`tenant_setting` key `allow_staff_self_schedule_enabled`, mặc định `true`). Module
    * `work-shift-assignment` đọc qua port này (module `clinic` sở hữu `tenant_setting`), cùng lý do

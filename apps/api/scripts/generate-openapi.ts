@@ -387,6 +387,37 @@ import {
   specimenCollectionResponseSchema,
   splitSpecimenTubeRequestSchema,
   uncollectSpecimenTubesRequestSchema,
+  approveLeaveRequestRequestSchema,
+  cancelLeaveRequestRequestSchema,
+  createLeaveRequestOnBehalfRequestSchema,
+  createLeaveRequestRequestSchema,
+  leaveRequestAffectedAppointmentsResponseSchema,
+  leaveRequestItemSchema,
+  leaveRequestMyImpactQuerySchema,
+  leaveRequestMyImpactResponseSchema,
+  leaveRequestPendingCountResponseSchema,
+  listLeaveRequestsQuerySchema,
+  listLeaveRequestsResponseSchema,
+  rejectLeaveRequestRequestSchema,
+  withdrawLeaveRequestRequestSchema,
+  acceptShiftSwapRequestSchema,
+  approveScheduleSubmissionRequestSchema,
+  cancelShiftSwapRequestSchema,
+  createShiftSwapRequestSchema,
+  declineShiftSwapRequestSchema,
+  listScheduleSubmissionsQuerySchema,
+  listScheduleSubmissionsResponseSchema,
+  listShiftSwapCandidatesResponseSchema,
+  listShiftSwapColleaguesResponseSchema,
+  listShiftSwapsQuerySchema,
+  listShiftSwapsResponseSchema,
+  returnScheduleSubmissionRequestSchema,
+  scheduleSubmissionItemSchema,
+  scheduleSubmissionPendingCountResponseSchema,
+  shiftSwapCheckResponseSchema,
+  shiftSwapCountResponseSchema,
+  shiftSwapItemSchema,
+  submitScheduleSubmissionRequestSchema,
 } from '@nexamed/shared';
 
 /**
@@ -5313,6 +5344,387 @@ registry.registerPath({
     400: errorResponse('Dữ liệu sai'),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền price_list.read'),
+  },
+});
+
+const leaveRequestIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/leave-requests',
+  tags: ['leave-request'],
+  summary: '"Đơn xin nghỉ" (#224) — scope personal chỉ thấy đơn của mình, global thấy cả phòng khám (lọc status/ngày/userId)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listLeaveRequestsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listLeaveRequestsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền leave_request.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/leave-requests/pending-count',
+  tags: ['leave-request'],
+  summary: 'Số đơn xin nghỉ chờ duyệt (chấm số Sidebar)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(leaveRequestPendingCountResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền leave_request.approve'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/leave-requests/my-impact',
+  tags: ['leave-request'],
+  summary: 'Số lịch hẹn của chính mình nằm trong khung sắp xin nghỉ (dải cảnh báo hộp Xin nghỉ)',
+  security: [{ bearerAuth: [] }],
+  request: { query: leaveRequestMyImpactQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(leaveRequestMyImpactResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền leave_request.create'),
+    422: errorResponse('Quá khứ / chưa đăng ký ca (LEAVE_REQUEST_PAST_DATE, LEAVE_REQUEST_NO_SHIFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/leave-requests',
+  tags: ['leave-request'],
+  summary: 'Xin nghỉ MỘT NGÀY trên ca đã đăng ký (từng ca hoặc cả ngày) cho chính mình — đơn chờ duyệt',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createLeaveRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(leaveRequestItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền leave_request.create'),
+    409: errorResponse('Sai trạng thái đơn / trùng khung giờ / version cũ'),
+    422: errorResponse('Quá khứ / chưa đăng ký ca (LEAVE_REQUEST_PAST_DATE, LEAVE_REQUEST_NO_SHIFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/leave-requests/on-behalf',
+  tags: ['leave-request'],
+  summary: 'Ghi nghỉ hộ nhân viên — duyệt luôn',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createLeaveRequestOnBehalfRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(leaveRequestItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền leave_request.file_on_behalf'),
+    409: errorResponse('Sai trạng thái đơn / trùng khung giờ / version cũ'),
+    422: errorResponse('Quá khứ / chưa đăng ký ca (LEAVE_REQUEST_PAST_DATE, LEAVE_REQUEST_NO_SHIFT)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/leave-requests/{id}/affected-appointments',
+  tags: ['leave-request'],
+  summary: 'Lịch hẹn còn SCHEDULED nằm trong khung nghỉ của đơn (hộp thoại Duyệt)',
+  security: [{ bearerAuth: [] }],
+  request: { params: leaveRequestIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(leaveRequestAffectedAppointmentsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền leave_request.approve'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/leave-requests/{id}/approve',
+  tags: ['leave-request'],
+  summary: 'Duyệt đơn nghỉ (không tự duyệt đơn của mình)',
+  security: [{ bearerAuth: [] }],
+  request: { params: leaveRequestIdParams, body: { content: { 'application/json': { schema: approveLeaveRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(leaveRequestItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền leave_request.approve'),
+    409: errorResponse('Sai trạng thái đơn / trùng khung giờ / version cũ'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/leave-requests/{id}/reject',
+  tags: ['leave-request'],
+  summary: 'Từ chối đơn nghỉ — bắt buộc lý do',
+  security: [{ bearerAuth: [] }],
+  request: { params: leaveRequestIdParams, body: { content: { 'application/json': { schema: rejectLeaveRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(leaveRequestItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền leave_request.approve'),
+    409: errorResponse('Sai trạng thái đơn / trùng khung giờ / version cũ'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/leave-requests/{id}/withdraw',
+  tags: ['leave-request'],
+  summary: 'Người gửi rút đơn khi chưa duyệt',
+  security: [{ bearerAuth: [] }],
+  request: { params: leaveRequestIdParams, body: { content: { 'application/json': { schema: withdrawLeaveRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(leaveRequestItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền leave_request.create'),
+    409: errorResponse('Sai trạng thái đơn / trùng khung giờ / version cũ'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/leave-requests/{id}/cancel',
+  tags: ['leave-request'],
+  summary: 'Huỷ đơn nghỉ ĐÃ DUYỆT — bắt buộc lý do',
+  security: [{ bearerAuth: [] }],
+  request: { params: leaveRequestIdParams, body: { content: { 'application/json': { schema: cancelLeaveRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(leaveRequestItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền leave_request.approve'),
+    409: errorResponse('Sai trạng thái đơn / trùng khung giờ / version cũ'),
+  },
+});
+
+const submissionIdParams = z.object({ id: z.string().uuid() });
+const swapIdParams = z.object({ id: z.string().uuid() });
+const swapUserParams = z.object({ userId: z.string().uuid() });
+const swapAssignmentParams = z.object({ assignmentId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/work-shift-assignments/submissions',
+  tags: ['work-shift-assignment'],
+  summary: '"Duyệt đăng ký ca theo tháng" (#225) — bảng đăng ký tháng của từng nhân viên (personal: của mình; global: cả phòng khám)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listScheduleSubmissionsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listScheduleSubmissionsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/work-shift-assignments/submissions/pending-count',
+  tags: ['work-shift-assignment'],
+  summary: 'Số bảng đăng ký tháng chờ duyệt (chấm số)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(scheduleSubmissionPendingCountResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.approve'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/work-shift-assignments/submissions/submit',
+  tags: ['work-shift-assignment'],
+  summary: 'Nhân viên gửi duyệt CẢ THÁNG của mình (tháng sau tháng hiện tại, cần ≥1 ca)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: submitScheduleSubmissionRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(scheduleSubmissionItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.create'),
+    409: errorResponse('Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/work-shift-assignments/submissions/{id}/approve',
+  tags: ['work-shift-assignment'],
+  summary: 'Duyệt bảng đăng ký tháng',
+  security: [{ bearerAuth: [] }],
+  request: { params: submissionIdParams, body: { content: { 'application/json': { schema: approveScheduleSubmissionRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(scheduleSubmissionItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.approve'),
+    409: errorResponse('Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/work-shift-assignments/submissions/{id}/return',
+  tags: ['work-shift-assignment'],
+  summary: 'Trả lại bảng đăng ký tháng (về Nháp, bắt buộc lý do)',
+  security: [{ bearerAuth: [] }],
+  request: { params: submissionIdParams, body: { content: { 'application/json': { schema: returnScheduleSubmissionRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(scheduleSubmissionItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền work_shift_assignment.approve'),
+    409: errorResponse('Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/shift-swaps',
+  tags: ['shift-swap'],
+  summary: '"Đổi ca" (#225) — yêu cầu đổi ca (personal: liên quan mình; global: lịch sử cả phòng khám)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listShiftSwapsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listShiftSwapsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/shift-swaps/incoming-count',
+  tags: ['shift-swap'],
+  summary: 'Số yêu cầu đổi ca đang chờ MÌNH xác nhận',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(shiftSwapCountResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/shift-swaps/unseen-count',
+  tags: ['shift-swap'],
+  summary: 'Số yêu cầu đổi ca MỚI chưa xem (quản lý, scope global)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(shiftSwapCountResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/shift-swaps/mark-seen',
+  tags: ['shift-swap'],
+  summary: 'Đánh dấu đã xem mọi yêu cầu đổi ca (quản lý, scope global)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(shiftSwapCountResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/shift-swaps/colleagues',
+  tags: ['shift-swap'],
+  summary: 'Đồng nghiệp có ca sắp tới',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listShiftSwapColleaguesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/shift-swaps/colleagues/{userId}/assignments',
+  tags: ['shift-swap'],
+  summary: 'Ca sắp tới của một đồng nghiệp kèm cờ đổi được/lý do chặn',
+  security: [{ bearerAuth: [] }],
+  request: { params: swapUserParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listShiftSwapCandidatesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/shift-swaps/assignments/{assignmentId}/check',
+  tags: ['shift-swap'],
+  summary: 'Một ca CỦA MÌNH có đổi được không',
+  security: [{ bearerAuth: [] }],
+  request: { params: swapAssignmentParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(shiftSwapCheckResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.create'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/shift-swaps',
+  tags: ['shift-swap'],
+  summary: 'Gửi yêu cầu đổi 2 ca cho nhau',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createShiftSwapRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(shiftSwapItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.create'),
+    409: errorResponse('Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/shift-swaps/{id}/accept',
+  tags: ['shift-swap'],
+  summary: 'Người nhận xác nhận → đổi chủ 2 ca ngay',
+  security: [{ bearerAuth: [] }],
+  request: { params: swapIdParams, body: { content: { 'application/json': { schema: acceptShiftSwapRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(shiftSwapItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.create'),
+    409: errorResponse('Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/shift-swaps/{id}/decline',
+  tags: ['shift-swap'],
+  summary: 'Người nhận từ chối',
+  security: [{ bearerAuth: [] }],
+  request: { params: swapIdParams, body: { content: { 'application/json': { schema: declineShiftSwapRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(shiftSwapItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.create'),
+    409: errorResponse('Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/shift-swaps/{id}/cancel',
+  tags: ['shift-swap'],
+  summary: 'Người gửi huỷ khi chưa xác nhận',
+  security: [{ bearerAuth: [] }],
+  request: { params: swapIdParams, body: { content: { 'application/json': { schema: cancelShiftSwapRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(shiftSwapItemSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền shift_swap.create'),
+    409: errorResponse('Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ'),
   },
 });
 

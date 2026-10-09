@@ -66,6 +66,12 @@ export const appointmentSummarySchema = z.object({
    * luôn `false`. Web dùng để thêm nhãn "(tự động)" cạnh badge trạng thái.
    */
   noShowAutoMarked: z.boolean(),
+  /**
+   * "Đơn xin nghỉ" (#224) — tính LÚC ĐỌC (không lưu cột): lịch còn `SCHEDULED` nằm chồng lên khung
+   * nghỉ ĐÃ DUYỆT của bác sĩ → "Cần xử lý" (viền đỏ trên lưới, danh sách bên phải). Chỉ điền ở
+   * `GET /appointments`; các nơi khác bỏ trống.
+   */
+  doctorOnLeave: z.boolean().optional(),
   version: z.number().int(),
 });
 export type AppointmentSummary = z.infer<typeof appointmentSummarySchema>;

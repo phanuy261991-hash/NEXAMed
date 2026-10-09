@@ -290,6 +290,7 @@ export function AppointmentQuickCreatePanel({
                     doctors={doctors}
                     selectedDoctorId={doctorId}
                     onSelect={setDoctorId}
+                    date={date}
                     time={time}
                     durationMinutes={defaultDurationMinutes}
                     dayAppointments={dayAppointments}

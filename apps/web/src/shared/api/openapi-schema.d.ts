@@ -1633,6 +1633,7 @@ export interface paths {
                                     /** Format: uuid */
                                     rescheduledFromId: string | null;
                                     noShowAutoMarked: boolean;
+                                    doctorOnLeave?: boolean;
                                     version: number;
                                 }[];
                                 nextCursor: string | null;
@@ -1732,6 +1733,7 @@ export interface paths {
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
                                 noShowAutoMarked: boolean;
+                                doctorOnLeave?: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -1948,6 +1950,8 @@ export interface paths {
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
+                                blockBookingWhenNoShiftEnabled: boolean;
+                                minWeeklyDaysOff: number;
                                 allowStaffSelfScheduleEnabled: boolean;
                                 workShiftAssignmentLockGraceDays: number;
                                 cashierShiftBlindCloseEnabled: boolean;
@@ -2046,6 +2050,16 @@ export interface paths {
                                         color: "blue" | "teal" | "emerald" | "amber" | "rose" | "purple" | "cyan" | "slate";
                                         startTime: string;
                                         endTime: string;
+                                    }[];
+                                };
+                                leaveByDoctorId: {
+                                    [key: string]: {
+                                        /** @enum {string} */
+                                        status: "PENDING" | "APPROVED";
+                                        startMinute: number;
+                                        endMinute: number;
+                                        isWholeDay: boolean;
+                                        workShiftName: string | null;
                                     }[];
                                 };
                             };
@@ -2216,6 +2230,7 @@ export interface paths {
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
                                 noShowAutoMarked: boolean;
+                                doctorOnLeave?: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -2329,6 +2344,7 @@ export interface paths {
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
                                 noShowAutoMarked: boolean;
+                                doctorOnLeave?: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -2472,6 +2488,7 @@ export interface paths {
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
                                 noShowAutoMarked: boolean;
+                                doctorOnLeave?: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -2603,6 +2620,7 @@ export interface paths {
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
                                 noShowAutoMarked: boolean;
+                                doctorOnLeave?: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -2738,6 +2756,7 @@ export interface paths {
                                 /** Format: uuid */
                                 rescheduledFromId: string | null;
                                 noShowAutoMarked: boolean;
+                                doctorOnLeave?: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -14105,6 +14124,8 @@ export interface paths {
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
+                                blockBookingWhenNoShiftEnabled: boolean;
+                                minWeeklyDaysOff: number;
                                 allowStaffSelfScheduleEnabled: boolean;
                                 workShiftAssignmentLockGraceDays: number;
                                 cashierShiftBlindCloseEnabled: boolean;
@@ -14215,6 +14236,8 @@ export interface paths {
                         allowEmergencyEndShift?: boolean;
                         allowReceptionistEndShift?: boolean;
                         blockBookingOutsideWorkShiftEnabled?: boolean;
+                        blockBookingWhenNoShiftEnabled?: boolean;
+                        minWeeklyDaysOff?: number;
                         allowStaffSelfScheduleEnabled?: boolean;
                         workShiftAssignmentLockGraceDays?: number;
                         cashierShiftBlindCloseEnabled?: boolean;
@@ -14284,6 +14307,8 @@ export interface paths {
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
+                                blockBookingWhenNoShiftEnabled: boolean;
+                                minWeeklyDaysOff: number;
                                 allowStaffSelfScheduleEnabled: boolean;
                                 workShiftAssignmentLockGraceDays: number;
                                 cashierShiftBlindCloseEnabled: boolean;
@@ -38884,6 +38909,2629 @@ export interface paths {
                 };
                 /** @description Không có quyền price_list.read */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leave-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Đơn xin nghỉ" (#224) — scope personal chỉ thấy đơn của mình, global thấy cả phòng khám (lọc status/ngày/userId) */
+        get: {
+            parameters: {
+                query?: {
+                    status?: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "CANCELLED";
+                    from?: string;
+                    to?: string;
+                    userId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    userId: string;
+                                    userFullName: string;
+                                    departmentName: string | null;
+                                    leaveDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string | null;
+                                    workShiftName: string | null;
+                                    startMinute: number;
+                                    endMinute: number;
+                                    isWholeDay: boolean;
+                                    /** @enum {string} */
+                                    status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "CANCELLED";
+                                    reason: string;
+                                    filedOnBehalf: boolean;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    decisionReason: string | null;
+                                    createdAt: string;
+                                    affectedAppointmentCount: number;
+                                    canWithdraw: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền leave_request.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Xin nghỉ MỘT NGÀY trên ca đã đăng ký (từng ca hoặc cả ngày) cho chính mình — đơn chờ duyệt */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        leaveDate: string;
+                        /** Format: uuid */
+                        workShiftId: string | null;
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                userId: string;
+                                userFullName: string;
+                                departmentName: string | null;
+                                leaveDate: string;
+                                /** Format: uuid */
+                                workShiftId: string | null;
+                                workShiftName: string | null;
+                                startMinute: number;
+                                endMinute: number;
+                                isWholeDay: boolean;
+                                /** @enum {string} */
+                                status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "CANCELLED";
+                                reason: string;
+                                filedOnBehalf: boolean;
+                                decidedByName: string | null;
+                                decidedAt: string | null;
+                                decisionReason: string | null;
+                                createdAt: string;
+                                affectedAppointmentCount: number;
+                                canWithdraw: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền leave_request.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái đơn / trùng khung giờ / version cũ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Quá khứ / chưa đăng ký ca (LEAVE_REQUEST_PAST_DATE, LEAVE_REQUEST_NO_SHIFT) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leave-requests/pending-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Số đơn xin nghỉ chờ duyệt (chấm số Sidebar) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                count: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền leave_request.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leave-requests/my-impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Số lịch hẹn của chính mình nằm trong khung sắp xin nghỉ (dải cảnh báo hộp Xin nghỉ) */
+        get: {
+            parameters: {
+                query: {
+                    leaveDate: string;
+                    workShiftId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                affectedAppointmentCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền leave_request.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Quá khứ / chưa đăng ký ca (LEAVE_REQUEST_PAST_DATE, LEAVE_REQUEST_NO_SHIFT) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leave-requests/on-behalf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ghi nghỉ hộ nhân viên — duyệt luôn */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        leaveDate: string;
+                        /** Format: uuid */
+                        workShiftId: string | null;
+                        reason: string;
+                        /** Format: uuid */
+                        userId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                userId: string;
+                                userFullName: string;
+                                departmentName: string | null;
+                                leaveDate: string;
+                                /** Format: uuid */
+                                workShiftId: string | null;
+                                workShiftName: string | null;
+                                startMinute: number;
+                                endMinute: number;
+                                isWholeDay: boolean;
+                                /** @enum {string} */
+                                status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "CANCELLED";
+                                reason: string;
+                                filedOnBehalf: boolean;
+                                decidedByName: string | null;
+                                decidedAt: string | null;
+                                decisionReason: string | null;
+                                createdAt: string;
+                                affectedAppointmentCount: number;
+                                canWithdraw: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền leave_request.file_on_behalf */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái đơn / trùng khung giờ / version cũ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Quá khứ / chưa đăng ký ca (LEAVE_REQUEST_PAST_DATE, LEAVE_REQUEST_NO_SHIFT) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leave-requests/{id}/affected-appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lịch hẹn còn SCHEDULED nằm trong khung nghỉ của đơn (hộp thoại Duyệt) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    bookingCode: string;
+                                    fullName: string;
+                                    phone: string;
+                                    scheduledAt: string;
+                                    durationMinutes: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền leave_request.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leave-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duyệt đơn nghỉ (không tự duyệt đơn của mình) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                userId: string;
+                                userFullName: string;
+                                departmentName: string | null;
+                                leaveDate: string;
+                                /** Format: uuid */
+                                workShiftId: string | null;
+                                workShiftName: string | null;
+                                startMinute: number;
+                                endMinute: number;
+                                isWholeDay: boolean;
+                                /** @enum {string} */
+                                status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "CANCELLED";
+                                reason: string;
+                                filedOnBehalf: boolean;
+                                decidedByName: string | null;
+                                decidedAt: string | null;
+                                decisionReason: string | null;
+                                createdAt: string;
+                                affectedAppointmentCount: number;
+                                canWithdraw: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền leave_request.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái đơn / trùng khung giờ / version cũ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leave-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Từ chối đơn nghỉ — bắt buộc lý do */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                userId: string;
+                                userFullName: string;
+                                departmentName: string | null;
+                                leaveDate: string;
+                                /** Format: uuid */
+                                workShiftId: string | null;
+                                workShiftName: string | null;
+                                startMinute: number;
+                                endMinute: number;
+                                isWholeDay: boolean;
+                                /** @enum {string} */
+                                status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "CANCELLED";
+                                reason: string;
+                                filedOnBehalf: boolean;
+                                decidedByName: string | null;
+                                decidedAt: string | null;
+                                decisionReason: string | null;
+                                createdAt: string;
+                                affectedAppointmentCount: number;
+                                canWithdraw: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền leave_request.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái đơn / trùng khung giờ / version cũ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leave-requests/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Người gửi rút đơn khi chưa duyệt */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                userId: string;
+                                userFullName: string;
+                                departmentName: string | null;
+                                leaveDate: string;
+                                /** Format: uuid */
+                                workShiftId: string | null;
+                                workShiftName: string | null;
+                                startMinute: number;
+                                endMinute: number;
+                                isWholeDay: boolean;
+                                /** @enum {string} */
+                                status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "CANCELLED";
+                                reason: string;
+                                filedOnBehalf: boolean;
+                                decidedByName: string | null;
+                                decidedAt: string | null;
+                                decisionReason: string | null;
+                                createdAt: string;
+                                affectedAppointmentCount: number;
+                                canWithdraw: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền leave_request.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái đơn / trùng khung giờ / version cũ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/leave-requests/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Huỷ đơn nghỉ ĐÃ DUYỆT — bắt buộc lý do */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                userId: string;
+                                userFullName: string;
+                                departmentName: string | null;
+                                leaveDate: string;
+                                /** Format: uuid */
+                                workShiftId: string | null;
+                                workShiftName: string | null;
+                                startMinute: number;
+                                endMinute: number;
+                                isWholeDay: boolean;
+                                /** @enum {string} */
+                                status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "CANCELLED";
+                                reason: string;
+                                filedOnBehalf: boolean;
+                                decidedByName: string | null;
+                                decidedAt: string | null;
+                                decisionReason: string | null;
+                                createdAt: string;
+                                affectedAppointmentCount: number;
+                                canWithdraw: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền leave_request.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái đơn / trùng khung giờ / version cũ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shift-assignments/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Duyệt đăng ký ca theo tháng" (#225) — bảng đăng ký tháng của từng nhân viên (personal: của mình; global: cả phòng khám) */
+        get: {
+            parameters: {
+                query?: {
+                    month?: string;
+                    status?: "SUBMITTED" | "APPROVED" | "RETURNED";
+                    userId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    userId: string;
+                                    userFullName: string;
+                                    departmentName: string | null;
+                                    month: string;
+                                    /** @enum {string} */
+                                    status: "DRAFT" | "SUBMITTED" | "APPROVED";
+                                    shiftCount: number;
+                                    totalMinutes: number;
+                                    submittedAt: string | null;
+                                    decidedByName: string | null;
+                                    decidedAt: string | null;
+                                    returnReason: string | null;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền work_shift_assignment.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shift-assignments/submissions/pending-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Số bảng đăng ký tháng chờ duyệt (chấm số) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                count: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền work_shift_assignment.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shift-assignments/submissions/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nhân viên gửi duyệt CẢ THÁNG của mình (tháng sau tháng hiện tại, cần ≥1 ca) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        month: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                userId: string;
+                                userFullName: string;
+                                departmentName: string | null;
+                                month: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "SUBMITTED" | "APPROVED";
+                                shiftCount: number;
+                                totalMinutes: number;
+                                submittedAt: string | null;
+                                decidedByName: string | null;
+                                decidedAt: string | null;
+                                returnReason: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền work_shift_assignment.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shift-assignments/submissions/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duyệt bảng đăng ký tháng */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                userId: string;
+                                userFullName: string;
+                                departmentName: string | null;
+                                month: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "SUBMITTED" | "APPROVED";
+                                shiftCount: number;
+                                totalMinutes: number;
+                                submittedAt: string | null;
+                                decidedByName: string | null;
+                                decidedAt: string | null;
+                                returnReason: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền work_shift_assignment.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-shift-assignments/submissions/{id}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trả lại bảng đăng ký tháng (về Nháp, bắt buộc lý do) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                userId: string;
+                                userFullName: string;
+                                departmentName: string | null;
+                                month: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "SUBMITTED" | "APPROVED";
+                                shiftCount: number;
+                                totalMinutes: number;
+                                submittedAt: string | null;
+                                decidedByName: string | null;
+                                decidedAt: string | null;
+                                returnReason: string | null;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền work_shift_assignment.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shift-swaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Đổi ca" (#225) — yêu cầu đổi ca (personal: liên quan mình; global: lịch sử cả phòng khám) */
+        get: {
+            parameters: {
+                query?: {
+                    status?: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    requesterId: string;
+                                    requesterName: string;
+                                    requesterAssignment: {
+                                        /** Format: uuid */
+                                        assignmentId: string;
+                                        workDate: string;
+                                        /** Format: uuid */
+                                        workShiftId: string;
+                                        workShiftName: string;
+                                        startTime: string;
+                                        endTime: string;
+                                    };
+                                    /** Format: uuid */
+                                    counterpartId: string;
+                                    counterpartName: string;
+                                    counterpartAssignment: {
+                                        /** Format: uuid */
+                                        assignmentId: string;
+                                        workDate: string;
+                                        /** Format: uuid */
+                                        workShiftId: string;
+                                        workShiftName: string;
+                                        startTime: string;
+                                        endTime: string;
+                                    };
+                                    note: string | null;
+                                    /** @enum {string} */
+                                    status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
+                                    respondedAt: string | null;
+                                    declineReason: string | null;
+                                    createdAt: string;
+                                    isNewForManager: boolean;
+                                    canRespond: boolean;
+                                    canCancel: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Gửi yêu cầu đổi 2 ca cho nhau */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        requesterAssignmentId: string;
+                        /** Format: uuid */
+                        counterpartAssignmentId: string;
+                        note?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                requesterId: string;
+                                requesterName: string;
+                                requesterAssignment: {
+                                    /** Format: uuid */
+                                    assignmentId: string;
+                                    workDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string;
+                                    workShiftName: string;
+                                    startTime: string;
+                                    endTime: string;
+                                };
+                                /** Format: uuid */
+                                counterpartId: string;
+                                counterpartName: string;
+                                counterpartAssignment: {
+                                    /** Format: uuid */
+                                    assignmentId: string;
+                                    workDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string;
+                                    workShiftName: string;
+                                    startTime: string;
+                                    endTime: string;
+                                };
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
+                                respondedAt: string | null;
+                                declineReason: string | null;
+                                createdAt: string;
+                                isNewForManager: boolean;
+                                canRespond: boolean;
+                                canCancel: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shift-swaps/incoming-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Số yêu cầu đổi ca đang chờ MÌNH xác nhận */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                count: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shift-swaps/unseen-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Số yêu cầu đổi ca MỚI chưa xem (quản lý, scope global) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                count: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shift-swaps/mark-seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đánh dấu đã xem mọi yêu cầu đổi ca (quản lý, scope global) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                count: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shift-swaps/colleagues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Đồng nghiệp có ca sắp tới */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    userId: string;
+                                    fullName: string;
+                                    departmentName: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shift-swaps/colleagues/{userId}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ca sắp tới của một đồng nghiệp kèm cờ đổi được/lý do chặn */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    assignmentId: string;
+                                    workDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string;
+                                    workShiftName: string;
+                                    startTime: string;
+                                    endTime: string;
+                                    swappable: boolean;
+                                    blockedReason: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shift-swaps/assignments/{assignmentId}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Một ca CỦA MÌNH có đổi được không */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    assignmentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                swappable: boolean;
+                                blockedReason: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shift-swaps/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Người nhận xác nhận → đổi chủ 2 ca ngay */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                requesterId: string;
+                                requesterName: string;
+                                requesterAssignment: {
+                                    /** Format: uuid */
+                                    assignmentId: string;
+                                    workDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string;
+                                    workShiftName: string;
+                                    startTime: string;
+                                    endTime: string;
+                                };
+                                /** Format: uuid */
+                                counterpartId: string;
+                                counterpartName: string;
+                                counterpartAssignment: {
+                                    /** Format: uuid */
+                                    assignmentId: string;
+                                    workDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string;
+                                    workShiftName: string;
+                                    startTime: string;
+                                    endTime: string;
+                                };
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
+                                respondedAt: string | null;
+                                declineReason: string | null;
+                                createdAt: string;
+                                isNewForManager: boolean;
+                                canRespond: boolean;
+                                canCancel: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shift-swaps/{id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Người nhận từ chối */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        reason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                requesterId: string;
+                                requesterName: string;
+                                requesterAssignment: {
+                                    /** Format: uuid */
+                                    assignmentId: string;
+                                    workDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string;
+                                    workShiftName: string;
+                                    startTime: string;
+                                    endTime: string;
+                                };
+                                /** Format: uuid */
+                                counterpartId: string;
+                                counterpartName: string;
+                                counterpartAssignment: {
+                                    /** Format: uuid */
+                                    assignmentId: string;
+                                    workDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string;
+                                    workShiftName: string;
+                                    startTime: string;
+                                    endTime: string;
+                                };
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
+                                respondedAt: string | null;
+                                declineReason: string | null;
+                                createdAt: string;
+                                isNewForManager: boolean;
+                                canRespond: boolean;
+                                canCancel: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shift-swaps/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Người gửi huỷ khi chưa xác nhận */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                requesterId: string;
+                                requesterName: string;
+                                requesterAssignment: {
+                                    /** Format: uuid */
+                                    assignmentId: string;
+                                    workDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string;
+                                    workShiftName: string;
+                                    startTime: string;
+                                    endTime: string;
+                                };
+                                /** Format: uuid */
+                                counterpartId: string;
+                                counterpartName: string;
+                                counterpartAssignment: {
+                                    /** Format: uuid */
+                                    assignmentId: string;
+                                    workDate: string;
+                                    /** Format: uuid */
+                                    workShiftId: string;
+                                    workShiftName: string;
+                                    startTime: string;
+                                    endTime: string;
+                                };
+                                note: string | null;
+                                /** @enum {string} */
+                                status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
+                                respondedAt: string | null;
+                                declineReason: string | null;
+                                createdAt: string;
+                                isNewForManager: boolean;
+                                canRespond: boolean;
+                                canCancel: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền shift_swap.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };

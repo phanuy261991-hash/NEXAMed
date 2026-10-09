@@ -5,6 +5,7 @@ import { ClinicModule } from '../clinic/clinic.module';
 import { BillingModule } from '../billing/billing.module';
 import { PrintTemplateModule } from '../print-template/print-template.module';
 import { GeoModule } from '../geo/geo.module';
+import { WorkShiftAssignmentModule } from '../work-shift-assignment/work-shift-assignment.module';
 import { EncounterController } from './encounter.controller';
 import { EncounterService } from './encounter.service';
 import { EncounterRepository } from './encounter.repository';
@@ -46,7 +47,7 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
  * `inventory`) đăng ký token này dạng `@Global()`, tự `imports: [InventoryModule]` phía nó.
  */
 @Module({
-  imports: [PatientModule, ClinicModule, BillingModule, GeoModule, PrintTemplateModule],
+  imports: [PatientModule, ClinicModule, BillingModule, GeoModule, PrintTemplateModule, WorkShiftAssignmentModule],
   controllers: [EncounterController],
   providers: [
     EncounterService,

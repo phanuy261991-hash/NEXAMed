@@ -39,6 +39,10 @@ Seed cụ thể nằm trong `apps/api/prisma/seed/permissions.seed.ts` (nguồn 
 | `appointment.create/update/cancel` | global | none | personal | global | none |
 | `encounter.read` | global | global | global | global | none |
 | `encounter.read_clinical` (#223, xem NỘI DUNG lâm sàng: màn khám, chi tiết lượt khám, tab Lịch sử khám) | none | global | global | global | none |
+| `leave_request.read` / `.create` (#224, xem + xin nghỉ cho CHÍNH MÌNH, rút đơn) | personal (lễ tân/điều dưỡng/bác sĩ) | personal | personal | global (`read`) / personal (`create`) | none |
+| `leave_request.approve` / `.file_on_behalf` (#224, duyệt/từ chối/huỷ đơn đã duyệt, ghi nghỉ hộ) | none | none | none | global | none |
+| `work_shift_assignment.approve` (#225, duyệt/trả lại bảng đăng ký ca theo tháng) | none | none | none | global | none |
+| `shift_swap.read` / `.create` (#225, xem + gửi/xác nhận/từ chối/huỷ đổi ca) | personal | personal | personal | global (`read`) / personal (`create`) | none |
 | `encounter.create` | global | none | none | global | none |
 | `encounter.update` | none | none | personal | none | none |
 | `encounter.cancel` | global | none | personal | global | none |

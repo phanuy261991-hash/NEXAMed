@@ -97,6 +97,14 @@ Permission `work_shift_assignment.create/read/delete`: 4 vai trò thường (rec
 
 `ClinicSettings` thêm `blockBookingOutsideWorkShiftEnabled` (`tenant_setting` key `block_booking_outside_work_shift_enabled`, mặc định `false`, pill "Cấu hình phòng khám" → mục con "Lịch hẹn" — cùng khối "Tự động đánh dấu Không đến"). Bật thì `AppointmentService.createAppointment/editAppointment/rescheduleAppointment` chặn đặt/sửa/dời lịch ra ngoài ca bác sĩ đã đăng ký cho đúng ngày đó (lỗi `AppointmentOutsideWorkShiftError`, 409) — bác sĩ CHƯA đăng ký ca ngày đó thì không bị giới hạn gì thêm. Port mới `WorkShiftAssignmentReaderPort` (module `work-shift-assignment` mới) phục vụ cả việc chặn này lẫn `GET /appointments/doctor-work-shifts?date=` (tự-phục vụ qua `appointment.read`, cho lưới Lịch hẹn hiện dải màu ca + gạch chéo ngoài ca).
 
+### work_schedule_submission + shift_swap_request (`docs/DECISIONS.md` #225)
+
+`work_schedule_submission`: bảng đăng ký ca theo THÁNG của từng nhân viên (`month`, `status` DRAFT/SUBMITTED/APPROVED, `return_reason`); không có dòng = Nháp ảo, tạo lúc gửi duyệt đầu tiên. `shift_swap_request`: đổi 2 ca cho nhau, chỉ người nhận xác nhận; xác nhận → xoá mềm 2 ca + tạo 2 ca mới đứng tên `SYSTEM_ACTOR_ID`; `manager_seen_at` NULL = "mới" (reset NULL mỗi lần đổi trạng thái). Quyền: `work_shift_assignment.approve`, `shift_swap.read/create`.
+
+### leave_request (`docs/DECISIONS.md` #224) — "Đơn xin nghỉ"
+
+Bản ghi RIÊNG trên ca đã đăng ký (ca giữ nguyên, có lịch sử — nền cho chấm công): `user_id`, `leave_date` (DATE), `work_shift_id` (NULL = cả ngày), `start_minute`/`end_minute` (snapshot, phút từ 00:00 giờ VN, khoảng nửa mở), `status` (PENDING/APPROVED/REJECTED/WITHDRAWN/CANCELLED), `reason`, `filed_on_behalf`, `decided_by`/`decided_at`/`decision_reason`. Permission `leave_request.read/create` (personal, clinic_admin `read`=global), `approve`/`file_on_behalf` (global, chỉ clinic_admin). Lịch hẹn đọc qua `LeaveReaderPort` (chặn đặt/sửa/dời vào khung ĐÃ DUYỆT, tính `doctorOnLeave` lúc đọc).
+
 **Còn treo**: "Tháng" (month view) ở trang "Lịch làm việc của tôi" chưa xây (chỉ có Tuần, đầy đủ chức năng); chưa verify Playwright/trình duyệt thật.
 
 ### user_session (S1-04 — xem `security-audit.md` mục Xác thực, `docs/DECISIONS.md` #019)

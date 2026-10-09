@@ -56,3 +56,28 @@ export class AppointmentOutsideWorkShiftError extends DomainError {
     super('Ngoài ca làm việc bác sĩ đã đăng ký cho ngày này.');
   }
 }
+
+/**
+ * "Đơn xin nghỉ" (#224) — đặt/sửa/dời lịch hẹn vào khung giờ bác sĩ đã được DUYỆT nghỉ. Luôn bật
+ * (không phụ thuộc công tắc `blockBookingOutsideWorkShiftEnabled`); đơn mới CHỜ duyệt không chặn.
+ */
+export class AppointmentDoctorOnLeaveError extends DomainError {
+  readonly code = 'APPOINTMENT_DOCTOR_ON_LEAVE';
+
+  constructor() {
+    super('Bác sĩ đã được duyệt nghỉ trong khung giờ này.');
+  }
+}
+
+/**
+ * Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (09/10/2026) — đặt lịch hẹn hoặc tiếp nhận cho
+ * bác sĩ KHÔNG có ca nào ngày đó, trong ngày phòng khám đã có bác sĩ khác đăng ký ca. Dùng chung cho Lịch hẹn và
+ * Tiếp nhận.
+ */
+export class DoctorNoShiftOnDateError extends DomainError {
+  readonly code = 'DOCTOR_NO_SHIFT_ON_DATE';
+
+  constructor() {
+    super('Bác sĩ chưa đăng ký ca làm việc cho ngày này.');
+  }
+}

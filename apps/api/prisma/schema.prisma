@@ -72,6 +72,9 @@ model Tenant {
   examStations                ExamStation[]
   workShifts                  WorkShift[]
   workShiftAssignments        WorkShiftAssignment[]
+  leaveRequests               LeaveRequest[]
+  workScheduleSubmissions     WorkScheduleSubmission[]
+  shiftSwapRequests           ShiftSwapRequest[]
   departmentTypes             DepartmentType[]
   departments                 Department[]
   userAccounts                UserAccount[]
@@ -302,8 +305,9 @@ model WorkShift {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant      Tenant                @relation(fields: [tenantId], references: [id])
-  assignments WorkShiftAssignment[]
+  tenant        Tenant                @relation(fields: [tenantId], references: [id])
+  assignments   WorkShiftAssignment[]
+  leaveRequests LeaveRequest[]
 
   @@unique([tenantId, code])
   // Đích cho composite FK từ `work_shift_assignment` (Giai đoạn 2, đăng ký ca theo ngày) — thêm
@@ -336,11 +340,121 @@ model WorkShiftAssignment {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  user               UserAccount        @relation(fields: [tenantId, userId], references: [tenantId, id])
+  workShift          WorkShift          @relation(fields: [tenantId, workShiftId], references: [tenantId, id])
+  swapsAsRequester   ShiftSwapRequest[] @relation("SwapRequesterAssignment")
+  swapsAsCounterpart ShiftSwapRequest[] @relation("SwapCounterpartAssignment")
+
+  // Đích FK composite từ `shift_swap_request` (#225).
+  @@unique([tenantId, id])
+  @@map("work_shift_assignment")
+}
+
+// "Đơn xin nghỉ" (#224) — nhân viên xin nghỉ MỘT NGÀY trên ca đã đăng ký (từng ca hoặc cả ngày),
+// quản lý duyệt/từ chối. Ca đã đăng ký (`work_shift_assignment`) GIỮ NGUYÊN — nghỉ là bản ghi riêng
+// có lịch sử (nền cho chấm công sau này). `startMinute`/`endMinute` là SNAPSHOT khung nghỉ theo
+// phút giờ VN lúc gửi (cả ngày = 0–1440), nên sửa mẫu ca về sau không đổi đơn đã gửi. `workShiftId`
+// NULL = cả ngày. Partial unique chống trùng + CHECK viết ở migration (Prisma không biểu diễn được
+// expression/điều kiện WHERE).
+model LeaveRequest {
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  leaveDate      DateTime  @map("leave_date") @db.Date
+  workShiftId    String?   @map("work_shift_id") @db.Uuid
+  startMinute    Int       @map("start_minute")
+  endMinute      Int       @map("end_minute")
+  // PENDING | APPROVED | REJECTED | WITHDRAWN | CANCELLED — TEXT + CHECK ở migration (cùng khuôn
+  // các cột trạng thái khác dùng enum Zod ở tầng ứng dụng).
+  status         String
+  reason         String
+  filedOnBehalf  Boolean   @default(false) @map("filed_on_behalf")
+  decidedBy      String?   @map("decided_by") @db.Uuid
+  decidedAt      DateTime? @map("decided_at") @db.Timestamptz(6)
+  decisionReason String?   @map("decision_reason")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
   tenant    Tenant      @relation(fields: [tenantId], references: [id])
   user      UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
-  workShift WorkShift   @relation(fields: [tenantId, workShiftId], references: [tenantId, id])
+  workShift WorkShift?  @relation(fields: [tenantId, workShiftId], references: [tenantId, id])
 
-  @@map("work_shift_assignment")
+  @@map("leave_request")
+}
+
+// "Bảng đăng ký ca theo THÁNG của từng nhân viên" (#225) — nhân viên đăng ký tháng sau ở DRAFT, gửi duyệt
+// cả tháng (SUBMITTED), quản lý duyệt (APPROVED) hoặc trả lại (về DRAFT kèm `returnReason`). Không có
+// dòng = Nháp ảo; dòng chỉ được tạo lúc gửi duyệt lần đầu. Số ca/giờ tính lúc đọc từ `work_shift_assignment`.
+model WorkScheduleSubmission {
+  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  // `YYYY-MM` — CHECK regex ở migration.
+  month        String
+  // DRAFT | SUBMITTED | APPROVED — TEXT + CHECK ở migration.
+  status       String
+  submittedAt  DateTime? @map("submitted_at") @db.Timestamptz(6)
+  decidedBy    String?   @map("decided_by") @db.Uuid
+  decidedAt    DateTime? @map("decided_at") @db.Timestamptz(6)
+  returnReason String?   @map("return_reason")
+  returnedAt   DateTime? @map("returned_at") @db.Timestamptz(6)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id])
+  user   UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
+
+  @@map("work_schedule_submission")
+}
+
+// "Đổi ca" (#225) — A đưa ca X, nhận ca Y của B; chỉ B xác nhận, xác nhận xong hệ thống đổi chủ 2 ca
+// (xoá mềm + tạo mới). "Quá hạn" tính lúc đọc. `managerSeenAt` phục vụ chấm số "mới chưa xem" của quản lý
+// (`seen < updatedAt` hoặc NULL = mới), đúng khuôn `clinical_order_item.doctor_seen_at` (#221).
+model ShiftSwapRequest {
+  id                      String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                String    @map("tenant_id") @db.Uuid
+  requesterId             String    @map("requester_id") @db.Uuid
+  requesterAssignmentId   String    @map("requester_assignment_id") @db.Uuid
+  counterpartId           String    @map("counterpart_id") @db.Uuid
+  counterpartAssignmentId String    @map("counterpart_assignment_id") @db.Uuid
+  note                    String?
+  // PENDING | ACCEPTED | DECLINED | CANCELLED — TEXT + CHECK ở migration.
+  status                  String
+  respondedAt             DateTime? @map("responded_at") @db.Timestamptz(6)
+  declineReason           String?   @map("decline_reason")
+  managerSeenAt           DateTime? @map("manager_seen_at") @db.Timestamptz(6)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant                Tenant              @relation(fields: [tenantId], references: [id])
+  requester             UserAccount         @relation("SwapRequester", fields: [tenantId, requesterId], references: [tenantId, id])
+  counterpart           UserAccount         @relation("SwapCounterpart", fields: [tenantId, counterpartId], references: [tenantId, id])
+  requesterAssignment   WorkShiftAssignment @relation("SwapRequesterAssignment", fields: [tenantId, requesterAssignmentId], references: [tenantId, id])
+  counterpartAssignment WorkShiftAssignment @relation("SwapCounterpartAssignment", fields: [tenantId, counterpartAssignmentId], references: [tenantId, id])
+
+  @@map("shift_swap_request")
 }
 
 // "Phòng làm việc hôm nay" của bác sĩ — thuần vận hành/định tuyến UI (KHÔNG phải dữ liệu lâm
@@ -544,24 +658,28 @@ model UserAccount {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant                 Tenant                @relation(fields: [tenantId], references: [id])
+  tenant                  Tenant                   @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, department_id) -> department(tenant_id, id): department_id
   // nullable nên FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE — xem docs/DECISIONS.md).
-  department             Department?           @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  department              Department?              @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   // "Phòng khám mặc định" (redesign 3-tab #082) — cùng mẫu department ở trên, FK chỉ áp khi có
   // giá trị. Chỉ là gợi ý mặc định hiển thị, KHÔNG đổi cơ chế "Phòng làm việc hôm nay"
   // (doctor_room_session, #054) — hai khái niệm tách biệt.
-  defaultRoom            Room?                 @relation(fields: [tenantId, defaultRoomId], references: [tenantId, id])
-  userRoles              UserRole[]
-  sessions               UserSession[]
-  appointmentsAsDoctor   Appointment[]         @relation("AppointmentDoctor")
-  encountersAsDoctor     Encounter[]           @relation("EncounterDoctor")
-  roomSessionsAsDoctor   DoctorRoomSession[]
-  availabilityAsDoctor   DoctorAvailability[]
-  workShiftAssignments   WorkShiftAssignment[]
-  cashierShiftsAsCashier CashierShift[]
+  defaultRoom             Room?                    @relation(fields: [tenantId, defaultRoomId], references: [tenantId, id])
+  userRoles               UserRole[]
+  sessions                UserSession[]
+  appointmentsAsDoctor    Appointment[]            @relation("AppointmentDoctor")
+  encountersAsDoctor      Encounter[]              @relation("EncounterDoctor")
+  roomSessionsAsDoctor    DoctorRoomSession[]
+  availabilityAsDoctor    DoctorAvailability[]
+  workShiftAssignments    WorkShiftAssignment[]
+  leaveRequests           LeaveRequest[]
+  workScheduleSubmissions WorkScheduleSubmission[]
+  swapsRequested          ShiftSwapRequest[]       @relation("SwapRequester")
+  swapsReceived           ShiftSwapRequest[]       @relation("SwapCounterpart")
+  cashierShiftsAsCashier  CashierShift[]
   // "Thủ quỹ riêng" (Sổ quỹ & Thu chi GĐ2) — quỹ `DRAWER` (két riêng) mà user này sở hữu, nếu có.
-  ownedCashAccounts      CashAccount[]         @relation("CashAccountOwner")
+  ownedCashAccounts       CashAccount[]            @relation("CashAccountOwner")
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])
@@ -1372,14 +1490,14 @@ model Encounter {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant         Tenant                 @relation(fields: [tenantId], references: [id])
+  tenant         Tenant                   @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, patient_id/doctor_id/appointment_id) -> ...(tenant_id, id): chống trỏ
   // chéo tenant (C5, docs/ERD.md mục 4), appointment_id nullable nên FK chỉ áp khi có giá trị.
-  patient        Patient                @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  patient        Patient                  @relation(fields: [tenantId, patientId], references: [tenantId, id])
   // doctorId nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floorId).
-  doctor         UserAccount?           @relation("EncounterDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
-  department     Department             @relation(fields: [tenantId, departmentId], references: [tenantId, id])
-  appointment    Appointment?           @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
+  doctor         UserAccount?             @relation("EncounterDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
+  department     Department               @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  appointment    Appointment?             @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
   vitalSigns     VitalSign[]
   serviceItems   EncounterServiceItem[]
   diagnoses      Diagnosis[]

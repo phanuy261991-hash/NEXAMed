@@ -28,7 +28,7 @@ import {
   useStockReceiptsQuery,
   useUpdateManualStockIssueMutation,
 } from './inventory.queries';
-import { ReasonConfirmDialog } from './ReasonConfirmDialog';
+import { ReasonConfirmDialog } from '../../shared/ui/ReasonConfirmDialog';
 import { ISSUE_TYPE_OPTIONS, StockIssueHeaderDialog, type StockIssueHeaderValues } from './StockIssueHeaderDialog';
 import { StockIssuePrintView } from './StockIssuePrintView';
 

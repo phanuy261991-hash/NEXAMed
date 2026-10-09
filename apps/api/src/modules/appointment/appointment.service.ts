@@ -1,6 +1,8 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type Appointment } from '@prisma/client';
 import {
+  AppointmentDoctorOnLeaveError,
+  DoctorNoShiftOnDateError,
   AppointmentInvalidReferenceError,
   AppointmentNotCancellableError,
   AppointmentOutsideWorkShiftError,
@@ -8,12 +10,15 @@ import {
   CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
+  LEAVE_READER_PORT,
   SYSTEM_ACTOR_ID,
   WORK_SHIFT_ASSIGNMENT_READER_PORT,
+  appointmentOverlapsLeaveWindow,
   getVietnamDateString,
   vietnamDayRange,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
+  type LeaveReaderPort,
   type WorkShiftAssignmentReaderPort,
 } from '@nexamed/core';
 import {
@@ -73,6 +78,7 @@ export class AppointmentService {
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
     @Inject(WORK_SHIFT_ASSIGNMENT_READER_PORT) private readonly workShiftAssignmentReader: WorkShiftAssignmentReaderPort,
+    @Inject(LEAVE_READER_PORT) private readonly leaveReader: LeaveReaderPort,
   ) {}
 
   /**
@@ -105,12 +111,24 @@ export class AppointmentService {
    */
   async getDoctorWorkShifts(tenantId: string, date: string): Promise<DoctorWorkShiftsForDateResponse> {
     const doctors = await this.doctorDirectory.listActiveDoctors(tenantId);
-    const byDoctorId = await this.workShiftAssignmentReader.getWorkShiftsForUsersOnDate(
-      tenantId,
-      doctors.map((d) => d.id),
-      date,
-    );
-    return { byDoctorId };
+    const doctorIds = doctors.map((d) => d.id);
+    const [byDoctorId, leaves] = await Promise.all([
+      this.workShiftAssignmentReader.getWorkShiftsForUsersOnDate(tenantId, doctorIds, date),
+      // "Đơn xin nghỉ" (#224): khung nghỉ chờ duyệt + đã duyệt trong ngày, đi cùng response để lưới Lịch
+      // hẹn/picker Đặt lịch/Tiếp nhận dùng chung 1 request.
+      this.leaveReader.getLeaveInRange(tenantId, doctorIds, date, date),
+    ]);
+    const leaveByDoctorId: DoctorWorkShiftsForDateResponse['leaveByDoctorId'] = {};
+    for (const leave of leaves) {
+      (leaveByDoctorId[leave.userId] ??= []).push({
+        status: leave.status,
+        startMinute: leave.startMinute,
+        endMinute: leave.endMinute,
+        isWholeDay: leave.isWholeDay,
+        workShiftName: leave.workShiftName,
+      });
+    }
+    return { byDoctorId, leaveByDoctorId };
   }
 
   /**
@@ -139,6 +157,7 @@ export class AppointmentService {
       });
     }
     await this.assertWithinWorkShift(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
+    await this.assertDoctorNotOnLeave(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       // Mã đặt lịch cấp qua BusinessCodeService (docs/DECISIONS.md #114), loại mã
@@ -206,7 +225,7 @@ export class AppointmentService {
     dataScope: DataScope,
     query: ListAppointmentsQuery,
   ): Promise<ListAppointmentsResponse> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const page = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       // scope `personal`: ép lọc theo chính actor, bỏ qua `doctorId` client gửi lên nếu có —
       // không cho dò lịch của bác sĩ khác qua query param.
       const doctorId = dataScope === 'personal' ? actorId : query.doctorId;
@@ -224,8 +243,11 @@ export class AppointmentService {
       const items = hasMore ? rows.slice(0, query.limit) : rows;
       const lastItem = items[items.length - 1];
       const nextCursor = hasMore && lastItem ? lastItem.id : null;
-      return { items: items.map((a) => this.toSummary(a)), nextCursor };
+      return { items, nextCursor };
     });
+    // Đọc nghỉ NGOÀI transaction (adapter tự mở transaction riêng).
+    const onLeaveIds = await this.findAppointmentsOnLeave(tenantId, page.items);
+    return { items: page.items.map((a) => this.toSummary(a, onLeaveIds.has(a.id))), nextCursor: page.nextCursor };
   }
 
   /**
@@ -331,6 +353,7 @@ export class AppointmentService {
       });
     }
     await this.assertWithinWorkShift(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
+    await this.assertDoctorNotOnLeave(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.appointmentRepository.findById(tx, tenantId, id);
@@ -425,6 +448,7 @@ export class AppointmentService {
       throw new NotFoundException();
     }
     await this.assertWithinWorkShift(tenantId, dto.doctorId, dto.scheduledAt, preview.durationMinutes);
+    await this.assertDoctorNotOnLeave(tenantId, dto.doctorId, dto.scheduledAt, preview.durationMinutes);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.appointmentRepository.findById(tx, tenantId, id);
@@ -498,7 +522,13 @@ export class AppointmentService {
     const date = getVietnamDateString(scheduledAt);
     const byDoctorId = await this.workShiftAssignmentReader.getWorkShiftsForUsersOnDate(tenantId, [doctorId], date);
     const shifts = byDoctorId[doctorId];
-    if (!shifts || shifts.length === 0) return;
+    if (!shifts || shifts.length === 0) {
+      // Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (09/10/2026).
+      if (await this.workShiftAssignmentReader.isDoctorBookingBlockedForNoShift(tenantId, doctorId, date)) {
+        throw new DoctorNoShiftOnDateError();
+      }
+      return;
+    }
 
     const toMinutes = (hhmm: string) => {
       const [h, m] = hhmm.split(':').map(Number);
@@ -512,7 +542,53 @@ export class AppointmentService {
     }
   }
 
-  private toSummary(appointment: Appointment): AppointmentSummary {
+  /**
+   * "Đơn xin nghỉ" (#224) — chặn đặt/sửa/dời lịch vào khung bác sĩ đã được DUYỆT nghỉ. Khác
+   * `assertWithinWorkShift`: LUÔN bật (không phụ thuộc công tắc "Chặn đặt lịch ngoài ca"), chỉ đơn
+   * `APPROVED` chặn (đơn chờ duyệt chỉ hiện nhãn ở web). Gọi NGOÀI transaction, cùng lý do ở trên.
+   */
+  private async assertDoctorNotOnLeave(tenantId: string, doctorId: string, scheduledAtIso: string, durationMinutes: number): Promise<void> {
+    const scheduledAt = new Date(scheduledAtIso);
+    const date = getVietnamDateString(scheduledAt);
+    const leaves = await this.leaveReader.getLeaveInRange(tenantId, [doctorId], date, date);
+    const blocked = leaves.some(
+      (l) => l.status === 'APPROVED' && appointmentOverlapsLeaveWindow(scheduledAt, durationMinutes, { startMinute: l.startMinute, endMinute: l.endMinute }),
+    );
+    if (blocked) {
+      throw new AppointmentDoctorOnLeaveError();
+    }
+  }
+
+  /**
+   * Tập id lịch hẹn `SCHEDULED` đang nằm trong khung nghỉ ĐÃ DUYỆT của bác sĩ ("Cần xử lý", #224) —
+   * tính lúc đọc, không lưu cột. Một lần đọc cho cả trang (khoảng ngày nhỏ nhất bao hết các lịch).
+   */
+  private async findAppointmentsOnLeave(tenantId: string, rows: Appointment[]): Promise<Set<string>> {
+    const scheduled = rows.filter((a) => a.status === 'SCHEDULED');
+    if (scheduled.length === 0) return new Set();
+    const dates = scheduled.map((a) => getVietnamDateString(a.scheduledAt)).sort();
+    const doctorIds = [...new Set(scheduled.map((a) => a.doctorId))];
+    const leaves = await this.leaveReader.getLeaveInRange(tenantId, doctorIds, dates[0] as string, dates[dates.length - 1] as string);
+    const approved = leaves.filter((l) => l.status === 'APPROVED');
+    if (approved.length === 0) return new Set();
+    const result = new Set<string>();
+    for (const a of scheduled) {
+      const date = getVietnamDateString(a.scheduledAt);
+      if (
+        approved.some(
+          (l) =>
+            l.userId === a.doctorId &&
+            l.date === date &&
+            appointmentOverlapsLeaveWindow(a.scheduledAt, a.durationMinutes, { startMinute: l.startMinute, endMinute: l.endMinute }),
+        )
+      ) {
+        result.add(a.id);
+      }
+    }
+    return result;
+  }
+
+  private toSummary(appointment: Appointment, doctorOnLeave?: boolean): AppointmentSummary {
     return {
       id: appointment.id,
       bookingCode: appointment.bookingCode,
@@ -529,6 +605,7 @@ export class AppointmentService {
       cancelReason: appointment.cancelReason,
       rescheduledFromId: appointment.rescheduledFromId,
       noShowAutoMarked: appointment.status === 'NO_SHOW' && appointment.updatedBy === SYSTEM_ACTOR_ID,
+      ...(doctorOnLeave !== undefined ? { doctorOnLeave } : {}),
       version: appointment.version,
     };
   }

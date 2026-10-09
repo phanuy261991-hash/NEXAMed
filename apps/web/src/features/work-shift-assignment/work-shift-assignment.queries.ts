@@ -15,11 +15,12 @@ import {
 /** "Đăng ký ca làm việc" (Giai đoạn 2 của #101) — `userId` chỉ có ý nghĩa cho scope global ("Lịch
  * làm việc nhân viên"); scope personal ("Lịch làm việc của tôi") luôn để trống, backend tự ép về
  * chính actor. Cache key thêm `userId` để 2 trang không lẫn cache của nhau. */
-export function useWorkShiftAssignmentsQuery(from: string, to: string, userId?: string) {
+export function useWorkShiftAssignmentsQuery(from: string, to: string, userId?: string, enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'work-shift-assignment', 'list', from, to, userId),
     queryFn: () => listWorkShiftAssignments({ from, to, userId }),
+    enabled,
   });
 }
 

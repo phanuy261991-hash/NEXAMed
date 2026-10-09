@@ -4,6 +4,30 @@
 
 ## 2026-10-09
 
+### Chặn đặt lịch/tiếp nhận ngày bác sĩ không có ca + quota nghỉ tối thiểu mỗi tuần (`docs/DECISIONS.md` #226)
+
+Hai cài đặt mới, mặc định TẮT (phòng khám cũ không đổi). (1) **"Chặn cả khi bác sĩ không có ca nào trong ngày"** ở Cấu hình phòng khám → Lịch hẹn (dưới "Chặn đặt lịch ngoài ca đã đăng ký", chỉ dùng được khi công tắc đó bật): ngày phòng khám đã có bác sĩ đăng ký ca thì bác sĩ không có ca hôm đó không đặt được lịch hẹn và không tiếp nhận được; thẻ bác sĩ ở Tiếp nhận có nhãn "Không có ca hôm nay". Ngày không bác sĩ nào đăng ký ca thì không chặn; "Đổi bác sĩ" cũng bị chặn cùng quy tắc (bác sĩ làm thay cần quản lý xếp ca bổ sung trước). Khối "Tải theo Bác sĩ" ở "Bệnh nhân trong ngày" chỉ hiện bác sĩ có ca của ngày đang chọn (kèm bác sĩ còn bệnh nhân), có công tắc "Hiện cả bác sĩ chưa đăng ký ca". (2) **"Số ngày nghỉ tối thiểu mỗi tuần"** ở Cấu hình chung → Lịch làm việc: khi nhân viên Gửi duyệt đăng ký ca cả tháng, tuần (Thứ Hai–Chủ nhật, trọn trong tháng) nào ít ngày nghỉ hơn mức này thì bị chặn và báo rõ tuần nào; ngày không có ca được tính là ngày nghỉ. Không migration; khởi động lại API.
+
+### Đổi ca / Đăng ký ca: hoàn thiện nhỏ
+
+Danh sách đồng nghiệp để đổi ca không còn nhân viên đã nghỉ việc (tài khoản vô hiệu hoá). Đang mở "Lịch làm việc của tôi" mà có yêu cầu đổi ca mới gửi tới thì hiện thông báo "Bạn có yêu cầu đổi ca mới đang chờ xác nhận". Ba bảng ở "Lịch làm việc nhân viên" (Đăng ký ca, Đơn xin nghỉ, Đổi ca) căn giữa dữ liệu cho khớp tiêu đề cột. Không migration.
+
+### Duyệt đăng ký ca theo tháng + Đổi ca (`docs/DECISIONS.md` #225)
+
+Khi công tắc "Cho phép nhân viên tự đăng ký ca" BẬT: nhân viên chỉ đăng ký ca cho **tháng sau**, ở trạng thái **Nháp**, rồi bấm **Gửi duyệt cả tháng**; Quản lý duyệt hoặc **Trả lại** (kèm lý do) ở tab **Đăng ký ca** của "Lịch làm việc nhân viên". Gửi rồi/đã duyệt thì không tự thêm/xoá/sửa ca; chỉ **Xin nghỉ** (Quản lý duyệt) hoặc **Đổi ca**. **Đổi ca** = đổi 2 ca cho nhau với đồng nghiệp: người nhận xác nhận là hai ca đổi ngay (Quản lý chỉ xem lịch sử ở tab **Đổi ca**, có nhãn "Mới" và chấm số); ca có lịch hẹn, có đơn nghỉ, đã qua hoặc chưa được duyệt thì không đổi được. Nhân viên không tự xoá ca do Quản lý xếp; ngày đã qua và tháng hiện tại không tự đăng ký được. Công tắc TẮT: Quản lý tự xếp ca, tab "Đăng ký ca" ẩn. Quyền mới "Duyệt đăng ký ca" (mặc định Quản lý), nhóm "Đổi ca" (xem/gửi). Môi trường khác: `db:deploy` + `db:seed` rồi khởi động lại API.
+
+### Đơn xin nghỉ có duyệt + lưới Lịch hẹn chỉ hiện bác sĩ có ca (`docs/DECISIONS.md` #224)
+
+Nhân viên xin nghỉ trên ca đã đăng ký ở **Lịch làm việc của tôi** (bấm ô ca → "Xin nghỉ ca này": chọn ca hoặc cả ngày, lý do bắt buộc; bác sĩ thấy cảnh báo số lịch hẹn trong khung đó). Quản lý duyệt ở tab **Đơn xin nghỉ** của "Lịch làm việc nhân viên" (kèm danh sách lịch hẹn bị ảnh hưởng; từ chối/huỷ đơn đã duyệt cần lý do; "Ghi nghỉ hộ" duyệt luôn); tab và menu có chấm số đơn chờ duyệt. **Quyền mới** nhóm "Đơn xin nghỉ" (xem / xin nghỉ / duyệt / ghi nghỉ hộ; duyệt và ghi hộ mặc định chỉ Quản lý). Bác sĩ nghỉ đã duyệt: **không đặt/sửa/dời lịch vào khung đó được**; lịch đã có chuyển "Cần xử lý" (viền đỏ, nút "N lịch hẹn cần xử lý" mở danh sách Đổi bác sĩ/Dời lịch/Huỷ lịch — hệ thống không tự huỷ). **Lưới Lịch hẹn** chỉ hiện bác sĩ có ca trong ngày + bác sĩ còn lịch hẹn, công tắc "Hiện cả bác sĩ chưa đăng ký ca"; phòng khám không dùng ca không đổi gì. Chọn bác sĩ khi Đặt lịch: bác sĩ nghỉ trong khung giờ đang chọn bị mờ. Tiếp nhận: thẻ bác sĩ có nhãn "Nghỉ sáng/chiều/hôm nay", chọn phải xác nhận. Môi trường khác: `db:deploy` + `db:seed` rồi khởi động lại API.
+
+### Ngày đã qua không đăng ký/sửa/xoá ca được (`docs/DECISIONS.md` #224)
+
+Nhân viên không còn thêm/xoá ca cho ngày đã qua dù tháng chưa chốt (báo "Ngày đã qua không đăng ký/sửa/xoá ca được"); sao chép tuần/tháng tự bỏ qua ngày đã qua; ô ngày đã qua ẩn nút Thêm/Xoá. Chỉ người có quyền "Sửa lịch đã khoá" (mặc định Quản lý) ghi được ngày đã qua.
+
+### Giao diện nhỏ
+
+Chip "Lịch hẹn trong ngày" ở Lịch hẹn đổi thành ô viền xanh (số nền xanh đặc + icon lịch); tab ở Hồ sơ bệnh nhân đổi tên **"Lịch sử khám"**.
+
 ### Tab "Lịch sử khám chữa bệnh" ở Hồ sơ bệnh nhân + quyền xem nội dung lâm sàng (`docs/DECISIONS.md` #223)
 
 Hồ sơ bệnh nhân có tab **Lịch sử khám chữa bệnh**: bảng mọi lượt khám (mới nhất trước), lọc **Đã hoàn tất / Tất cả**, nút **Cột hiển thị** để chọn thêm Kết luận, Hẹn tái khám, Đơn thuốc, Cận lâm sàng, Tổng chi phí, Thu tiền (nhớ theo tài khoản trên máy), nút **Xem** mở chi tiết lượt khám (có thêm khối kết quả cận lâm sàng). **Quyền mới "Xem nội dung lâm sàng"** (`encounter.read_clinical`, mặc định bác sĩ/điều dưỡng/quản lý): thiếu quyền thì chẩn đoán, kết luận, đơn thuốc không được gửi về; màn khám và chi tiết lượt khám cũng cần quyền này — **lễ tân không còn mở được hồ sơ khám** như trước. Vai trò tuỳ biến đang dùng màn khám cần được cấp thêm quyền. Môi trường khác: `db:seed` rồi khởi động lại API.

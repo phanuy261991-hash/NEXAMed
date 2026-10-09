@@ -80,10 +80,14 @@ export function GeneralConfigPane() {
   const [editingExpiryWarningDays, setEditingExpiryWarningDays] = useState(false);
   const [expiryWarningDays, setExpiryWarningDays] = useState(String(DEFAULT_EXPIRY_WARNING_DAYS));
 
+  const [editingMinDaysOff, setEditingMinDaysOff] = useState(false);
+  const [minDaysOff, setMinDaysOff] = useState('0');
+
   useEffect(() => {
     if (!settingsQuery.data) return;
     setGraceDays(String(settingsQuery.data.workShiftAssignmentLockGraceDays));
     setExpiryWarningDays(String(settingsQuery.data.expiryWarningDays));
+    setMinDaysOff(String(settingsQuery.data.minWeeklyDaysOff));
   }, [settingsQuery.data]);
 
   const enabled = settingsQuery.data?.allowStaffSelfScheduleEnabled ?? true;
@@ -115,6 +119,19 @@ export function GeneralConfigPane() {
   }
 
   const graceDaysInvalid = editingGraceDays && (!Number.isInteger(Number(graceDays)) || Number(graceDays) < 0 || Number(graceDays) > 27);
+
+  function handleCancelMinDaysOff() {
+    setMinDaysOff(String(settingsQuery.data?.minWeeklyDaysOff ?? 0));
+    setEditingMinDaysOff(false);
+  }
+
+  function handleSaveMinDaysOff() {
+    const parsed = Number(minDaysOff);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 6) return;
+    updateMutation.mutate({ minWeeklyDaysOff: parsed }, { onSuccess: () => setEditingMinDaysOff(false) });
+  }
+
+  const minDaysOffInvalid = editingMinDaysOff && (!Number.isInteger(Number(minDaysOff)) || Number(minDaysOff) < 0 || Number(minDaysOff) > 6);
 
   function handleCancelExpiryWarningDays() {
     setExpiryWarningDays(String(settingsQuery.data?.expiryWarningDays ?? DEFAULT_EXPIRY_WARNING_DAYS));
@@ -193,6 +210,47 @@ export function GeneralConfigPane() {
                 {settingsQuery.data.workShiftAssignmentLockGraceDays} ngày
               </span>
               <EditIconButton onClick={() => setEditingGraceDays(true)} />
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
+        <div>
+          <p className="text-[14.5px] font-bold text-slate-900">Số ngày nghỉ tối thiểu mỗi tuần</p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+            Khi nhân viên Gửi duyệt đăng ký ca cả tháng, mỗi tuần (Thứ Hai–Chủ nhật, trọn trong tháng) phải còn ít
+            nhất số ngày nghỉ này, nếu không sẽ bị chặn và báo rõ tuần nào. Ngày không có ca được tính là ngày nghỉ.
+            <br />
+            <strong>0</strong> = không áp quota (mặc định).
+          </p>
+        </div>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          {editingMinDaysOff ? (
+            <>
+              <input
+                id="min-weekly-days-off"
+                type="number"
+                min={0}
+                max={6}
+                value={minDaysOff}
+                onChange={(e) => setMinDaysOff(e.target.value)}
+                className="w-16 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+              <span className="text-sm text-slate-500">ngày/tuần</span>
+              <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={handleCancelMinDaysOff} disabled={updateMutation.isPending}>
+                Huỷ
+              </Button>
+              <Button type="button" className="px-3 py-1.5 text-xs" loading={updateMutation.isPending} disabled={minDaysOffInvalid} onClick={handleSaveMinDaysOff}>
+                Lưu
+              </Button>
+            </>
+          ) : (
+            <>
+              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
+                {settingsQuery.data.minWeeklyDaysOff === 0 ? 'Không áp quota' : `${settingsQuery.data.minWeeklyDaysOff} ngày/tuần`}
+              </span>
+              <EditIconButton onClick={() => setEditingMinDaysOff(true)} />
             </>
           )}
         </div>

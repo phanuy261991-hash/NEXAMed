@@ -25,8 +25,8 @@ import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
-import { useDoctorsQuery, useScheduleConfigQuery } from '../appointment/appointment.queries';
-import { addDays, formatDateLabel, getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
+import { useDoctorWorkShiftsQuery, useDoctorsQuery, useScheduleConfigQuery } from '../appointment/appointment.queries';
+import { addDays, formatDateLabel, getVietnamTodayDateString, selectGridDoctors } from '../appointment/schedule-grid.utils';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { useDoctorAvailabilityTodayQuery } from '../clinic/clinic.queries';
 import { computeAgeLabel } from '../patient/patient-form.utils';
@@ -119,6 +119,9 @@ export function ReceptionListPage() {
   const exportMutation = useExportReceptionListMutation();
   const doctorsQuery = useDoctorsQuery();
   const availabilityQuery = useDoctorAvailabilityTodayQuery();
+  // Panel "Tải theo Bác sĩ" lọc theo ca của NGÀY ĐANG CHỌN (cùng quy tắc lưới Lịch hẹn, #224) — công tắc hiện cả bác sĩ chưa đăng ký ca.
+  const doctorWorkShiftsQuery = useDoctorWorkShiftsQuery(date);
+  const [showUnregistered, setShowUnregistered] = useState(false);
   const departmentsQuery = useDepartmentOptionsQuery();
   const scheduleConfigQuery = useScheduleConfigQuery();
   const warningMinutes = scheduleConfigQuery.data?.overdueWaitWarningMinutes ?? DEFAULT_OVERDUE_WAIT_WARNING_MINUTES;
@@ -179,7 +182,18 @@ export function ReceptionListPage() {
   /** Panel "Tải theo Bác sĩ" — bác sĩ đã đóng ca (ENDED) nhưng còn bệnh nhân đang chờ gán lên đầu
    * (cần điều phối lại gấp nhất), rồi tới bác sĩ đang bận (chờ/đang khám nhiều nhất), cuối cùng
    * mới tới bác sĩ rảnh/tạm nghỉ. */
-  const doctorLoad = doctors
+  const panelSelection = selectGridDoctors({
+    doctors,
+    shiftsByDoctor: doctorWorkShiftsQuery.data?.byDoctorId ?? {},
+    leaveByDoctor: doctorWorkShiftsQuery.data?.leaveByDoctorId ?? {},
+    // Bác sĩ còn bệnh nhân trong ngày vẫn hiện dù không có ca, để không mất điều phối.
+    appointments: items
+      .filter((i) => i.doctorId !== null && i.status !== 'CANCELLED' && i.status !== 'NO_SHOW')
+      .map((i) => ({ doctorId: i.doctorId as string, status: i.status })),
+    showUnregistered,
+  });
+  const unregisteredTotal = doctors.filter((d) => (doctorWorkShiftsQuery.data?.byDoctorId[d.id] ?? []).length === 0).length;
+  const doctorLoad = panelSelection.doctors
     .map((doctor) => {
       const status = availabilityByDoctorId.get(doctor.id) ?? 'ACTIVE';
       const waitingItems = items.filter((i) => i.doctorId === doctor.id && i.status === 'CHECKED_IN');
@@ -441,6 +455,13 @@ export function ReceptionListPage() {
                 </h2>
               </div>
               <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3">
+                {panelSelection.dayUsesShifts && (panelSelection.hiddenUnregisteredCount > 0 || showUnregistered) && (
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700">
+                    <input type="checkbox" checked={showUnregistered} onChange={(e) => setShowUnregistered(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+                    Hiện cả bác sĩ chưa đăng ký ca
+                    <span className="rounded-full bg-slate-100 px-1.5 text-xs text-slate-600">{unregisteredTotal}</span>
+                  </label>
+                )}
                 {doctorsQuery.isPending && <p className="px-1 text-xs text-slate-400">Đang tải...</p>}
                 {!doctorsQuery.isPending && doctorLoad.length === 0 && <p className="px-1 text-xs text-slate-400">Chưa có bác sĩ nào.</p>}
                 {doctorLoad.map(({ doctor, status, waitingItems, inProgressItems, stuck }) => {

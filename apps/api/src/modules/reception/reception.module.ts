@@ -10,6 +10,7 @@ import { BillingModule } from '../billing/billing.module';
 import { PatientModule } from '../patient/patient.module';
 import { ClinicModule } from '../clinic/clinic.module';
 import { PatientWalletModule } from '../patient-wallet/patient-wallet.module';
+import { WorkShiftAssignmentModule } from '../work-shift-assignment/work-shift-assignment.module';
 
 /**
  * Module điều phối (Sprint 3, Tiếp nhận) — không sở hữu bảng nghiệp vụ nào của riêng nó trừ
@@ -30,7 +31,7 @@ import { PatientWalletModule } from '../patient-wallet/patient-wallet.module';
  * transaction check-in/tiếp nhận trực tiếp — không đủ số dư thì bỏ qua, phiếu giữ nguyên UNPAID.
  */
 @Module({
-  imports: [AppointmentModule, EncounterModule, BillingModule, PatientModule, ClinicModule, PatientWalletModule],
+  imports: [AppointmentModule, EncounterModule, BillingModule, PatientModule, ClinicModule, PatientWalletModule, WorkShiftAssignmentModule],
   controllers: [ReceptionController],
   providers: [ReceptionService, ReceptionExportService, VitalSignRepository, EncounterServiceItemRepository],
 })

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarBlank, CaretLeft, CaretRight, Clock, ListBullets, Plus, SquaresFour } from '@phosphor-icons/react';
+import { CalendarBlank, CaretLeft, CaretRight, Clock, ListBullets, Plus, SquaresFour, Warning } from '@phosphor-icons/react';
 import type { AppointmentSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -10,8 +10,9 @@ import { AppointmentDetailPanel } from './AppointmentDetailPanel';
 import { AppointmentGridView } from './AppointmentGridView';
 import { AppointmentListView } from './AppointmentListView';
 import { AppointmentQuickCreatePanel } from './AppointmentQuickCreatePanel';
+import { LeaveAttentionPanel } from './LeaveAttentionPanel';
 import { useAppointmentsByDateQuery, useDoctorWorkShiftsQuery, useDoctorsQuery, useScheduleConfigQuery } from './appointment.queries';
-import { addDays, formatDateLabel, getVietnamTodayDateString } from './schedule-grid.utils';
+import { addDays, formatDateLabel, getVietnamTodayDateString, selectGridDoctors } from './schedule-grid.utils';
 
 /**
  * Khớp `DEFAULT_NO_SHOW_THRESHOLD_MINUTES` ở `@nexamed/shared` — khai riêng ở đây thay vì import
@@ -43,6 +44,10 @@ export function AppointmentSchedulePage() {
     time: '08:00',
   });
   const [detailAppointment, setDetailAppointment] = useState<AppointmentSummary | null>(null);
+  // "Đơn xin nghỉ" (#224): chế độ mở sẵn của panel chi tiết (từ danh sách "Cần xử lý"), công tắc bác sĩ chưa đăng ký ca, panel "Cần xử lý".
+  const [detailMode, setDetailMode] = useState<'view' | 'edit' | 'reschedule'>('view');
+  const [showUnregistered, setShowUnregistered] = useState(false);
+  const [attentionOpen, setAttentionOpen] = useState(false);
 
   const doctorsQuery = useDoctorsQuery();
   const scheduleConfigQuery = useScheduleConfigQuery();
@@ -55,14 +60,24 @@ export function AppointmentSchedulePage() {
   const noShowThresholdMinutes = scheduleConfigQuery.data?.noShowThresholdMinutes ?? DEFAULT_NO_SHOW_THRESHOLD_MINUTES;
   const noShowAutoEnabled = scheduleConfigQuery.data?.noShowAutoEnabled ?? false;
   const blockBookingOutsideWorkShift = scheduleConfigQuery.data?.blockBookingOutsideWorkShiftEnabled ?? false;
+  const shiftsByDoctor = doctorWorkShiftsQuery.data?.byDoctorId ?? {};
+  const leaveByDoctor = doctorWorkShiftsQuery.data?.leaveByDoctorId ?? {};
+  // Chỉ lưới lọc bác sĩ theo ca; danh sách/panel Đặt lịch giữ nguyên `doctors` đầy đủ.
+  const gridSelection = selectGridDoctors({ doctors, shiftsByDoctor, leaveByDoctor, appointments: dayAppointments, showUnregistered });
+  const unregisteredTotal = doctors.filter((d) => (shiftsByDoctor[d.id] ?? []).length === 0).length;
+  const needAttention = dayAppointments
+    .filter((a) => a.doctorOnLeave === true && a.status === 'SCHEDULED')
+    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  const doctorNameById = new Map(doctors.map((d) => [d.id, d.displayName ?? d.fullName]));
 
   function openQuickCreate(doctorId: string | null, time: string) {
     setDetailAppointment(null);
     setQuickCreate({ open: true, doctorId, time });
   }
 
-  function openDetail(appointment: AppointmentSummary) {
+  function openDetail(appointment: AppointmentSummary, mode: 'view' | 'edit' | 'reschedule' = 'view') {
     setQuickCreate((s) => ({ ...s, open: false }));
+    setDetailMode(mode);
     setDetailAppointment(appointment);
   }
 
@@ -120,10 +135,24 @@ export function AppointmentSchedulePage() {
             Hôm nay
           </button>
           {dayQuery.isSuccess && (
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-3 py-1.5 text-[13px] font-bold text-blue-700">
-              <CalendarBlank size={15} weight="bold" aria-hidden="true" />
-              {dayAppointments.length} lịch hẹn trong ngày
-            </span>
+            <div
+              aria-live="polite"
+              className="ml-1.5 flex h-8 items-stretch overflow-hidden rounded-md border border-blue-600 bg-blue-50 text-[13px]"
+            >
+              <span className="flex min-w-9 items-center justify-center bg-blue-600 px-2.5 text-sm font-bold tabular-nums text-white">
+                {dayAppointments.length}
+              </span>
+              <span className="flex items-center gap-1.5 px-3 font-bold text-blue-700">
+                <CalendarBlank size={15} weight="bold" aria-hidden="true" />
+                Lịch hẹn trong ngày
+              </span>
+            </div>
+          )}
+          {dayQuery.isSuccess && needAttention.length > 0 && (
+            <Button type="button" variant="danger" className="px-3 py-1.5 text-[13px] font-bold" onClick={() => setAttentionOpen((o) => !o)} aria-expanded={attentionOpen}>
+              <Warning size={14} weight="fill" aria-hidden="true" />
+              {needAttention.length} lịch hẹn cần xử lý
+            </Button>
           )}
         </div>
 
@@ -145,6 +174,13 @@ export function AppointmentSchedulePage() {
                 Bây giờ
               </span>
             </div>
+          )}
+          {view === 'grid' && gridSelection.dayUsesShifts && (gridSelection.hiddenUnregisteredCount > 0 || showUnregistered) && (
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700">
+              <input type="checkbox" checked={showUnregistered} onChange={(e) => setShowUnregistered(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+              Hiện cả bác sĩ chưa đăng ký ca
+              <span className="rounded-full bg-slate-100 px-1.5 text-xs text-slate-600">{unregisteredTotal}</span>
+            </label>
           )}
           <div className="flex overflow-hidden rounded-md border border-slate-300">
             <button
@@ -209,23 +245,34 @@ export function AppointmentSchedulePage() {
             />
           )}
           {dayQuery.isSuccess && (
+            <div className="flex min-h-0 flex-1 gap-3">
             <AppointmentGridView
               date={date}
               appointments={dayAppointments}
-              doctors={doctors}
+              doctors={gridSelection.doctors}
               businessHours={scheduleConfigQuery.data?.businessHours ?? null}
               noShowThresholdMinutes={noShowThresholdMinutes}
               noShowAutoEnabled={noShowAutoEnabled}
-              doctorWorkShifts={doctorWorkShiftsQuery.data?.byDoctorId ?? {}}
+              doctorWorkShifts={shiftsByDoctor}
+              doctorLeave={leaveByDoctor}
               blockBookingOutsideWorkShift={blockBookingOutsideWorkShift}
               onSlotClick={(doctorId, time) => openQuickCreate(doctorId, time)}
-              onCardClick={openDetail}
+              onCardClick={(a) => openDetail(a)}
             />
+            {attentionOpen && (
+              <LeaveAttentionPanel
+                appointments={needAttention}
+                doctorNameById={doctorNameById}
+                onAction={(a, mode) => openDetail(a, mode)}
+                onClose={() => setAttentionOpen(false)}
+              />
+            )}
+            </div>
           )}
         </>
       )}
 
-      {!loadingBase && !baseError && view === 'list' && <AppointmentListView date={date} doctors={doctors} onOpenAppointment={openDetail} />}
+      {!loadingBase && !baseError && view === 'list' && <AppointmentListView date={date} doctors={doctors} onOpenAppointment={(a) => openDetail(a)} />}
 
       <AppointmentQuickCreatePanel
         open={quickCreate.open}
@@ -238,7 +285,9 @@ export function AppointmentSchedulePage() {
       />
 
       <AppointmentDetailPanel
+        key={`${detailAppointment?.id ?? 'none'}-${detailMode}`}
         appointment={detailAppointment}
+        initialMode={detailMode}
         onClose={() => setDetailAppointment(null)}
         doctors={doctors}
         noShowThresholdMinutes={noShowThresholdMinutes}

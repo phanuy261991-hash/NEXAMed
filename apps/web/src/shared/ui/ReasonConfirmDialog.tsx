@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { ApiError } from '../../shared/api/client';
-import { Button } from '../../shared/ui/Button';
+import { ApiError } from '../api/client';
+import { Button } from './Button';
 
 /**
  * Popup xác nhận 1 hành động cần lý do bắt buộc (Từ chối/Huỷ phiếu nhập kho, Từ chối/Duyệt phiếu

@@ -4,6 +4,9 @@ import {
   AppointmentNotCancellableError,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
+  DoctorNoShiftOnDateError,
+  WORK_SHIFT_ASSIGNMENT_READER_PORT,
+  type WorkShiftAssignmentReaderPort,
   PARACLINICAL_PROGRESS_READER_PORT,
   EncounterAlreadyExistsError,
   EncounterNotCheckedInError,
@@ -112,6 +115,7 @@ export class ReceptionService {
     private readonly patientRepository: PatientRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(PARACLINICAL_PROGRESS_READER_PORT) private readonly paraclinicalProgress: ParaclinicalProgressReaderPort,
+    @Inject(WORK_SHIFT_ASSIGNMENT_READER_PORT) private readonly workShiftAssignmentReader: WorkShiftAssignmentReaderPort,
   ) {}
 
   /**
@@ -140,6 +144,17 @@ export class ReceptionService {
   }
 
   /**
+   * Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (09/10/2026) — chặn CỨNG khi tiếp nhận đích
+   * danh một bác sĩ không có ca. Chọn "theo Khoa" (chưa rõ bác sĩ) thì không có gì để kiểm. Gọi NGOÀI transaction.
+   */
+  private async assertDoctorHasShift(tenantId: string, doctorId: string | null, date: string): Promise<void> {
+    if (!doctorId) return;
+    if (await this.workShiftAssignmentReader.isDoctorBookingBlockedForNoShift(tenantId, doctorId, date)) {
+      throw new DoctorNoShiftOnDateError();
+    }
+  }
+
+  /**
    * `dto.patientId` đã resolve xong ở web TRƯỚC khi gọi (chọn từ danh sách trùng SĐT, tìm kiếm,
    * hoặc `POST /patients` tạo mới riêng — xem docs/DECISIONS.md). Atomic trong 1 transaction: tạo
    * `encounter` + cập nhật `appointment.status→CONVERTED` + gắn `patientId` — lỗi ở bước nào cũng
@@ -150,6 +165,7 @@ export class ReceptionService {
     // của caller) — resolve TRƯỚC khi vào transaction chính bên dưới để tránh $transaction lồng
     // nhau (đúng nguyên tắc "không dùng port cho phần cần atomic cùng check-in", docs/DECISIONS.md).
     const routing = await this.resolveRouting(tenantId, dto);
+    await this.assertDoctorHasShift(tenantId, routing.doctorId, getVietnamDateString());
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const appointment = await this.appointmentRepository.findById(tx, tenantId, dto.appointmentId);
@@ -195,6 +211,7 @@ export class ReceptionService {
   async registerDirect(tenantId: string, actorId: string, dto: RegisterReceptionRequest, meta: RequestMeta): Promise<EncounterSummary> {
     // Resolve routing TRƯỚC transaction chính — cùng lý do đã ghi ở checkIn().
     const routing = await this.resolveRouting(tenantId, dto);
+    await this.assertDoctorHasShift(tenantId, routing.doctorId, getVietnamDateString(new Date(dto.checkedInAt)));
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientNotMerged(tx, tenantId, dto.patientId);

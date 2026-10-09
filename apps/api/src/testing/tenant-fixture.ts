@@ -221,7 +221,13 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.role.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // work_shift_assignment ("Đăng ký ca làm việc" Giai đoạn 2) tham chiếu cả user_account lẫn
       // work_shift (FK RESTRICT) — xoá trước CẢ HAI (trước cả dòng xoá work_shift bên dưới).
+      // shift_swap_request ("Đổi ca", #225) tham chiếu work_shift_assignment + user_account — xoá TRƯỚC `workShiftAssignment`.
+      await prisma.shiftSwapRequest.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // work_schedule_submission (#225) tham chiếu user_account — xoá trước user_account.
+      await prisma.workScheduleSubmission.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.workShiftAssignment.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // leave_request ("Đơn xin nghỉ", #224) tham chiếu user_account + work_shift — xoá trước cả hai.
+      await prisma.leaveRequest.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // doctor_room_session (#054) tham chiếu cả user_account lẫn room (FK RESTRICT) — xoá trước cả hai.
       await prisma.doctorRoomSession.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // doctor_availability ("Tạm nghỉ / Đóng ca") tham chiếu user_account (FK RESTRICT) — xoá trước.

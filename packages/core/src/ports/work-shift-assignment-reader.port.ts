@@ -22,6 +22,25 @@ export interface WorkShiftAssignmentReaderPort {
     userIds: string[],
     date: string,
   ): Promise<Record<string, Array<{ name: string; color: PortWorkShiftColor; startTime: string; endTime: string }>>>;
+
+  /**
+   * Ca đã đăng ký của MỘT người trong một ngày, kèm `workShiftId` — "Đơn xin nghỉ" (#224) cần id để
+   * kiểm ca được chọn có thật nằm trong đăng ký của người xin nghỉ. Tự mở transaction riêng (gọi
+   * NGOÀI transaction đang mở). Trả mảng rỗng nếu chưa đăng ký ca nào.
+   */
+  listShiftsForUserOnDate(
+    tenantId: string,
+    userId: string,
+    date: string,
+  ): Promise<Array<{ workShiftId: string; name: string; startTime: string; endTime: string }>>;
+
+  /**
+   * Có phải chặn đặt lịch/tiếp nhận cho bác sĩ này vào ngày `date` vì bác sĩ KHÔNG có ca nào không? `true` chỉ
+   * khi: công tắc "Chặn đặt lịch ngoài ca" VÀ công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" đều
+   * bật, ngày đó đã có ít nhất 1 bác sĩ đăng ký ca, và bác sĩ này không có ca nào. Tự mở transaction riêng
+   * (gọi NGOÀI transaction đang mở). Caller tự ném lỗi nghiệp vụ của mình.
+   */
+  isDoctorBookingBlockedForNoShift(tenantId: string, doctorId: string, date: string): Promise<boolean>;
 }
 
 export const WORK_SHIFT_ASSIGNMENT_READER_PORT = Symbol('WORK_SHIFT_ASSIGNMENT_READER_PORT');

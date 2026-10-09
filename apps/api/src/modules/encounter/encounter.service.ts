@@ -5,6 +5,9 @@ import {
   ConcurrentModificationError,
   DiagnosisPrimaryRequiredError,
   DOCTOR_DIRECTORY_PORT,
+  DoctorNoShiftOnDateError,
+  WORK_SHIFT_ASSIGNMENT_READER_PORT,
+  type WorkShiftAssignmentReaderPort,
   EncounterAlreadyClaimedError,
   EncounterNotInConsultationError,
   EncounterNotReassignableError,
@@ -151,6 +154,7 @@ export class EncounterService {
     @Inject(STOCK_AVAILABILITY_PORT) private readonly stockAvailability: StockAvailabilityPort,
     @Inject(PARACLINICAL_RESULTS_READER_PORT) private readonly paraclinicalResultsReader: ParaclinicalResultsReaderPort,
     @Inject(PARACLINICAL_PROGRESS_READER_PORT) private readonly paraclinicalProgress: ParaclinicalProgressReaderPort,
+    @Inject(WORK_SHIFT_ASSIGNMENT_READER_PORT) private readonly workShiftAssignmentReader: WorkShiftAssignmentReaderPort,
     @Inject(ENCOUNTER_BILLING_READER_PORT) private readonly encounterBillingReader: EncounterBillingReaderPort,
     @Inject(CLINICAL_ORDER_CANCELLATION_PORT) private readonly clinicalOrderCancellation: ClinicalOrderCancellationPort,
     private readonly diagnosisSuggestionService: DiagnosisSuggestionService,
@@ -378,6 +382,11 @@ export class EncounterService {
     // `DoctorDirectoryPort` tự mở transaction RIÊNG — resolve TRƯỚC transaction chính, cùng lý do
     // đã áp dụng ở `ReceptionService.checkIn()`/`registerDirect()`.
     const routing = await resolveDoctorDepartmentRouting(this.doctorDirectory, tenantId, dto);
+    // Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (09/10/2026, #226): đổi sang bác sĩ không có ca hôm
+    // nay cũng bị chặn cứng, nếu không lễ tân tiếp nhận bác sĩ có ca rồi đổi sang bác sĩ không ca là lách được quy tắc.
+    if (routing.doctorId && (await this.workShiftAssignmentReader.isDoctorBookingBlockedForNoShift(tenantId, routing.doctorId, getVietnamDateString()))) {
+      throw new DoctorNoShiftOnDateError();
+    }
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, id);

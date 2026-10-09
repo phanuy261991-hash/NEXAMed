@@ -163,4 +163,40 @@ describe('HTTP e2e — chặn đặt lịch hẹn ngoài ca đã đăng ký', ()
       .send(bookingPayload(doctorUserId, '2026-10-05T07:00:00.000Z'));
     expect(res.status).toBe(200);
   });
+
+  it('công tắc con "chặn cả khi bác sĩ không có ca nào trong ngày" — chỉ có tác dụng khi công tắc cha cũng bật, và chỉ ở ngày đã có bác sĩ khác đăng ký ca', async () => {
+    const doctor2 = await createUserWithRole(fixture.tenantA.id, 'doctor');
+    // 2026-10-06: CHỈ bác sĩ 1 có ca → ngày này "có dùng ca"; 2026-10-07 không ai đăng ký.
+    await request(app.getHttpServer())
+      .post('/api/v1/work-shift-assignments')
+      .set(authed(clinicAdminToken))
+      .send({ userId: doctorUserId, workShiftId: shiftMorningId, workDate: '2026-10-06' });
+    const book = (doctorId: string, scheduledAt: string) =>
+      request(app.getHttpServer()).post('/api/v1/appointments').set(authed(receptionistToken)).send(bookingPayload(doctorId, scheduledAt));
+    const setSettings = async (body: Record<string, unknown>) => {
+      const res = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send(body);
+      expect(res.status).toBe(200);
+    };
+    try {
+      // Công tắc cha TẮT → công tắc con không có tác dụng.
+      await setSettings({ blockBookingOutsideWorkShiftEnabled: false, blockBookingWhenNoShiftEnabled: true });
+      expect((await book(doctor2.userId, '2026-10-06T01:00:00.000Z')).status).toBe(200);
+
+      // Cả hai BẬT → bác sĩ không có ca, ngày đã có bác sĩ khác đăng ký ca → 409.
+      await setSettings({ blockBookingOutsideWorkShiftEnabled: true, blockBookingWhenNoShiftEnabled: true });
+      const blocked = await book(doctor2.userId, '2026-10-06T03:00:00.000Z');
+      expect(blocked.status).toBe(409);
+      expect(blocked.body.error.code).toBe('DOCTOR_NO_SHIFT_ON_DATE');
+
+      // Bác sĩ có ca (đặt trong ca) vẫn đặt được; ngày không ai đăng ký ca thì không chặn.
+      expect((await book(doctorUserId, '2026-10-06T01:30:00.000Z')).status).toBe(200);
+      expect((await book(doctor2.userId, '2026-10-07T03:00:00.000Z')).status).toBe(200);
+
+      // Tắt công tắc con → quay về hành vi cũ (bác sĩ không có ca vẫn đặt được).
+      await setSettings({ blockBookingWhenNoShiftEnabled: false });
+      expect((await book(doctor2.userId, '2026-10-06T05:00:00.000Z')).status).toBe(200);
+    } finally {
+      await setSettings({ blockBookingOutsideWorkShiftEnabled: false, blockBookingWhenNoShiftEnabled: false });
+    }
+  });
 });

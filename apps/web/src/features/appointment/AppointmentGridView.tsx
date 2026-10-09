@@ -6,6 +6,7 @@ import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META, getNoShowCountdownTi
 import {
   GRID_STEP_MINUTES,
   ROW_HEIGHT_PX,
+  type GridLeaveBlock,
   extendRangeWithShifts,
   generateSlotLabels,
   getVietnamTodayDateString,
@@ -54,6 +55,7 @@ export function AppointmentGridView({
   noShowAutoEnabled,
   doctorWorkShifts = {},
   blockBookingOutsideWorkShift = false,
+  doctorLeave = {},
   onSlotClick,
   onCardClick,
 }: {
@@ -70,6 +72,8 @@ export function AppointmentGridView({
    * bấm được (chỉ áp dụng cho bác sĩ CÓ đăng ký ca hôm đó); tắt thì vẫn bấm được, chỉ tô gạch chéo
    * để cảnh báo trực quan. */
   blockBookingOutsideWorkShift?: boolean;
+  /** "Đơn xin nghỉ" (#224) — key = doctorId. Khung ĐÃ DUYỆT tô gạch chéo đỏ + không bấm đặt lịch được (chặn cứng, bất kể công tắc ca); khung CHỜ DUYỆT chỉ hiện nhãn hổ phách ở đầu cột. */
+  doctorLeave?: Record<string, GridLeaveBlock[]>;
   onSlotClick: (doctorId: string, time: string) => void;
   onCardClick: (appointment: AppointmentSummary) => void;
 }) {
@@ -133,13 +137,22 @@ export function AppointmentGridView({
         <div className="sticky top-0 z-10 border-b border-slate-200 bg-white" />
         {doctors.map((d) => {
           const shifts = doctorWorkShifts[d.id] ?? [];
+          const leaves = doctorLeave[d.id] ?? [];
+          const approvedLeaves = leaves.filter((l) => l.status === 'APPROVED');
+          const pendingLeaves = leaves.filter((l) => l.status === 'PENDING');
+          const needHandling = (byDoctor.get(d.id) ?? []).filter((a) => a.doctorOnLeave && a.status === 'SCHEDULED').length;
+          const onLeave = approvedLeaves.length > 0;
           return (
             <div
               key={d.id}
-              className="sticky top-0 z-10 flex flex-col gap-1 border-b border-r border-slate-200 bg-white px-3.5 py-2 last:border-r-0"
+              className={`sticky top-0 z-10 flex flex-col gap-1 border-b border-r border-slate-200 px-3.5 py-2 last:border-r-0 ${onLeave ? 'bg-rose-50' : 'bg-white'}`}
             >
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-600">
+                <div
+                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    onLeave ? 'bg-rose-100 text-rose-700' : 'bg-blue-50 text-blue-600'
+                  }`}
+                >
                   {initials(d.displayName ?? d.fullName)}
                 </div>
                 <div className="truncate text-[13.5px] font-semibold text-slate-900">{d.displayName ?? d.fullName}</div>
@@ -155,6 +168,19 @@ export function AppointmentGridView({
                 </div>
               ) : (
                 <div className="pl-[42px] text-[10.5px] font-semibold text-slate-400">Chưa đăng ký ca — theo giờ chung</div>
+              )}
+              {onLeave && (
+                <div className="pl-[42px] text-[10.5px] font-bold text-rose-600">
+                  Nghỉ {approvedLeaves.map((l) => (l.isWholeDay ? 'cả ngày' : (l.workShiftName ?? 'ca'))).join(', ')}
+                  {needHandling > 0 && ` · ${needHandling} lịch cần xử lý`}
+                </div>
+              )}
+              {pendingLeaves.length > 0 && (
+                <div className="pl-[42px]">
+                  <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    Chờ duyệt nghỉ {pendingLeaves.map((l) => (l.isWholeDay ? 'cả ngày' : (l.workShiftName ?? 'ca'))).join(', ')}
+                  </span>
+                </div>
               )}
             </div>
           );
@@ -214,6 +240,11 @@ export function AppointmentGridView({
           function isInsideShift(rowStartMin: number): boolean {
             return !hasShifts || shiftWindows.some((w) => rowStartMin >= w.start && rowStartMin < w.end);
           }
+          // Khung nghỉ ĐÃ DUYỆT — ô trống trong khung không đặt lịch được (backend cũng chặn 409).
+          const approvedWindows = (doctorLeave[doctor.id] ?? []).filter((l) => l.status === 'APPROVED');
+          function isOnLeave(rowStartMin: number): GridLeaveBlock | undefined {
+            return approvedWindows.find((l) => rowStartMin >= l.startMinute && rowStartMin < l.endMinute);
+          }
 
           return (
             <div
@@ -230,6 +261,21 @@ export function AppointmentGridView({
                 if (isOccupied) return null;
 
                 const rowStartMin = startMin + i * GRID_STEP_MINUTES;
+                const leaveHere = isOnLeave(rowStartMin);
+                if (leaveHere) {
+                  return (
+                    <div
+                      key={label}
+                      title={`Bác sĩ nghỉ ${leaveHere.isWholeDay ? 'cả ngày' : (leaveHere.workShiftName ?? 'ca này')} (đã duyệt) — không đặt lịch được`}
+                      className="absolute left-0.5 right-0.5 cursor-not-allowed rounded-md"
+                      style={{
+                        top: i * ROW_HEIGHT_PX,
+                        height: ROW_HEIGHT_PX - 2,
+                        backgroundImage: 'repeating-linear-gradient(135deg, rgba(225,29,72,0.10) 0px, rgba(225,29,72,0.10) 6px, transparent 6px, transparent 12px)',
+                      }}
+                    />
+                  );
+                }
                 const inside = isInsideShift(rowStartMin);
                 if (!inside && blockBookingOutsideWorkShift) {
                   // Ngoài ca đã đăng ký + đang BẬT chặn cứng — không cho bấm, chỉ tô gạch chéo +
@@ -281,19 +327,24 @@ export function AppointmentGridView({
                 const countdown = countdownTier ? noShowCountdownTierMeta(countdownTier) : null;
                 const meta = APPOINTMENT_STATUS_META[a.status];
                 const showSource = a.durationMinutes >= GRID_STEP_MINUTES;
+                // "Cần xử lý" (#224): lịch còn "Đã đặt" nằm trong khung nghỉ đã duyệt của bác sĩ.
+                const needsHandling = a.doctorOnLeave === true && a.status === 'SCHEDULED';
                 return (
                   <button
                     key={a.id}
                     type="button"
                     onClick={() => onCardClick(a)}
-                    className={`absolute left-0.5 right-0.5 overflow-hidden rounded-md border-l-[3px] px-1.5 py-1 text-left shadow-sm hover:shadow-md ${
-                      late ? 'border-amber-500 bg-amber-50' : countdown ? `${countdown.border} ${countdown.bg}` : `${meta.border} ${meta.bg}`
+                    className={`absolute left-0.5 right-0.5 overflow-hidden rounded-md px-1.5 py-1 text-left shadow-sm hover:shadow-md ${
+                      needsHandling
+                        ? 'border-2 border-rose-500 bg-white'
+                        : `border-l-[3px] ${late ? 'border-amber-500 bg-amber-50' : countdown ? `${countdown.border} ${countdown.bg}` : `${meta.border} ${meta.bg}`}`
                     } ${a.status === 'CANCELLED' || a.status === 'RESCHEDULED' ? 'opacity-60 line-through' : ''}`}
                     style={{ top: start * ROW_HEIGHT_PX + 2, height: (a.durationMinutes / GRID_STEP_MINUTES) * ROW_HEIGHT_PX - 4 }}
                   >
                     <div className={`flex items-center gap-1 text-[10.5px] font-bold tabular-nums ${late ? 'text-amber-700' : countdown ? countdown.text : meta.text}`}>
                       {late && <Clock size={10} weight="bold" aria-hidden="true" />}
                       {minutesToLabel(vnTimeOfDayMinutes(a.scheduledAt))}–{minutesToLabel(vnTimeOfDayMinutes(a.scheduledAt) + a.durationMinutes)}
+                      {needsHandling && <span className="ml-auto rounded bg-rose-600 px-1.5 text-[10px] font-bold leading-4 text-white">Cần xử lý</span>}
                     </div>
                     <div className="truncate text-xs font-semibold text-slate-900">
                       {a.fullName}

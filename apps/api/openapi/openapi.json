@@ -4043,6 +4043,9 @@
                         "noShowAutoMarked": {
                           "type": "boolean"
                         },
+                        "doctorOnLeave": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -4346,6 +4349,9 @@
                                 "format": "uuid"
                               },
                               "noShowAutoMarked": {
+                                "type": "boolean"
+                              },
+                              "doctorOnLeave": {
                                 "type": "boolean"
                               },
                               "version": {
@@ -4816,6 +4822,14 @@
                         "blockBookingOutsideWorkShiftEnabled": {
                           "type": "boolean"
                         },
+                        "blockBookingWhenNoShiftEnabled": {
+                          "type": "boolean"
+                        },
+                        "minWeeklyDaysOff": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 6
+                        },
                         "allowStaffSelfScheduleEnabled": {
                           "type": "boolean"
                         },
@@ -4888,6 +4902,8 @@
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
+                        "blockBookingWhenNoShiftEnabled",
+                        "minWeeklyDaysOff",
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
@@ -5058,10 +5074,51 @@
                               ]
                             }
                           }
+                        },
+                        "leaveByDoctorId": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "PENDING",
+                                    "APPROVED"
+                                  ]
+                                },
+                                "startMinute": {
+                                  "type": "integer"
+                                },
+                                "endMinute": {
+                                  "type": "integer"
+                                },
+                                "isWholeDay": {
+                                  "type": "boolean"
+                                },
+                                "workShiftName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "startMinute",
+                                "endMinute",
+                                "isWholeDay",
+                                "workShiftName"
+                              ]
+                            }
+                          }
                         }
                       },
                       "required": [
-                        "byDoctorId"
+                        "byDoctorId",
+                        "leaveByDoctorId"
                       ]
                     },
                     "meta": {
@@ -5379,6 +5436,9 @@
                         "noShowAutoMarked": {
                           "type": "boolean"
                         },
+                        "doctorOnLeave": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -5655,6 +5715,9 @@
                           "format": "uuid"
                         },
                         "noShowAutoMarked": {
+                          "type": "boolean"
+                        },
+                        "doctorOnLeave": {
                           "type": "boolean"
                         },
                         "version": {
@@ -5984,6 +6047,9 @@
                         "noShowAutoMarked": {
                           "type": "boolean"
                         },
+                        "doctorOnLeave": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -6273,6 +6339,9 @@
                           "format": "uuid"
                         },
                         "noShowAutoMarked": {
+                          "type": "boolean"
+                        },
+                        "doctorOnLeave": {
                           "type": "boolean"
                         },
                         "version": {
@@ -6574,6 +6643,9 @@
                           "format": "uuid"
                         },
                         "noShowAutoMarked": {
+                          "type": "boolean"
+                        },
+                        "doctorOnLeave": {
                           "type": "boolean"
                         },
                         "version": {
@@ -36496,6 +36568,14 @@
                         "blockBookingOutsideWorkShiftEnabled": {
                           "type": "boolean"
                         },
+                        "blockBookingWhenNoShiftEnabled": {
+                          "type": "boolean"
+                        },
+                        "minWeeklyDaysOff": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 6
+                        },
                         "allowStaffSelfScheduleEnabled": {
                           "type": "boolean"
                         },
@@ -36568,6 +36648,8 @@
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
+                        "blockBookingWhenNoShiftEnabled",
+                        "minWeeklyDaysOff",
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
@@ -36866,6 +36948,14 @@
                   "blockBookingOutsideWorkShiftEnabled": {
                     "type": "boolean"
                   },
+                  "blockBookingWhenNoShiftEnabled": {
+                    "type": "boolean"
+                  },
+                  "minWeeklyDaysOff": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 6
+                  },
                   "allowStaffSelfScheduleEnabled": {
                     "type": "boolean"
                   },
@@ -37130,6 +37220,14 @@
                         "blockBookingOutsideWorkShiftEnabled": {
                           "type": "boolean"
                         },
+                        "blockBookingWhenNoShiftEnabled": {
+                          "type": "boolean"
+                        },
+                        "minWeeklyDaysOff": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 6
+                        },
                         "allowStaffSelfScheduleEnabled": {
                           "type": "boolean"
                         },
@@ -37202,6 +37300,8 @@
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
                         "blockBookingOutsideWorkShiftEnabled",
+                        "blockBookingWhenNoShiftEnabled",
+                        "minWeeklyDaysOff",
                         "allowStaffSelfScheduleEnabled",
                         "workShiftAssignmentLockGraceDays",
                         "cashierShiftBlindCloseEnabled",
@@ -101577,6 +101677,5703 @@
           },
           "403": {
             "description": "Không có quyền price_list.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leave-requests": {
+      "get": {
+        "tags": [
+          "leave-request"
+        ],
+        "summary": "\"Đơn xin nghỉ\" (#224) — scope personal chỉ thấy đơn của mình, global thấy cả phòng khám (lọc status/ngày/userId)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "APPROVED",
+                "REJECTED",
+                "WITHDRAWN",
+                "CANCELLED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "userId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "userFullName": {
+                                "type": "string"
+                              },
+                              "departmentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "leaveDate": {
+                                "type": "string"
+                              },
+                              "workShiftId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "workShiftName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "startMinute": {
+                                "type": "integer"
+                              },
+                              "endMinute": {
+                                "type": "integer"
+                              },
+                              "isWholeDay": {
+                                "type": "boolean"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "PENDING",
+                                  "APPROVED",
+                                  "REJECTED",
+                                  "WITHDRAWN",
+                                  "CANCELLED"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "filedOnBehalf": {
+                                "type": "boolean"
+                              },
+                              "decidedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "decidedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "decisionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "affectedAppointmentCount": {
+                                "type": "integer"
+                              },
+                              "canWithdraw": {
+                                "type": "boolean"
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "userId",
+                              "userFullName",
+                              "departmentName",
+                              "leaveDate",
+                              "workShiftId",
+                              "workShiftName",
+                              "startMinute",
+                              "endMinute",
+                              "isWholeDay",
+                              "status",
+                              "reason",
+                              "filedOnBehalf",
+                              "decidedByName",
+                              "decidedAt",
+                              "decisionReason",
+                              "createdAt",
+                              "affectedAppointmentCount",
+                              "canWithdraw",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền leave_request.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "leave-request"
+        ],
+        "summary": "Xin nghỉ MỘT NGÀY trên ca đã đăng ký (từng ca hoặc cả ngày) cho chính mình — đơn chờ duyệt",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "leaveDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "workShiftId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "leaveDate",
+                  "workShiftId",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userFullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "leaveDate": {
+                          "type": "string"
+                        },
+                        "workShiftId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "workShiftName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startMinute": {
+                          "type": "integer"
+                        },
+                        "endMinute": {
+                          "type": "integer"
+                        },
+                        "isWholeDay": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "APPROVED",
+                            "REJECTED",
+                            "WITHDRAWN",
+                            "CANCELLED"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "filedOnBehalf": {
+                          "type": "boolean"
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decisionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "affectedAppointmentCount": {
+                          "type": "integer"
+                        },
+                        "canWithdraw": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "userFullName",
+                        "departmentName",
+                        "leaveDate",
+                        "workShiftId",
+                        "workShiftName",
+                        "startMinute",
+                        "endMinute",
+                        "isWholeDay",
+                        "status",
+                        "reason",
+                        "filedOnBehalf",
+                        "decidedByName",
+                        "decidedAt",
+                        "decisionReason",
+                        "createdAt",
+                        "affectedAppointmentCount",
+                        "canWithdraw",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền leave_request.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái đơn / trùng khung giờ / version cũ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Quá khứ / chưa đăng ký ca (LEAVE_REQUEST_PAST_DATE, LEAVE_REQUEST_NO_SHIFT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leave-requests/pending-count": {
+      "get": {
+        "tags": [
+          "leave-request"
+        ],
+        "summary": "Số đơn xin nghỉ chờ duyệt (chấm số Sidebar)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền leave_request.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leave-requests/my-impact": {
+      "get": {
+        "tags": [
+          "leave-request"
+        ],
+        "summary": "Số lịch hẹn của chính mình nằm trong khung sắp xin nghỉ (dải cảnh báo hộp Xin nghỉ)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "leaveDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "workShiftId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "affectedAppointmentCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "affectedAppointmentCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền leave_request.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Quá khứ / chưa đăng ký ca (LEAVE_REQUEST_PAST_DATE, LEAVE_REQUEST_NO_SHIFT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leave-requests/on-behalf": {
+      "post": {
+        "tags": [
+          "leave-request"
+        ],
+        "summary": "Ghi nghỉ hộ nhân viên — duyệt luôn",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "leaveDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "workShiftId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "userId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "leaveDate",
+                  "workShiftId",
+                  "reason",
+                  "userId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userFullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "leaveDate": {
+                          "type": "string"
+                        },
+                        "workShiftId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "workShiftName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startMinute": {
+                          "type": "integer"
+                        },
+                        "endMinute": {
+                          "type": "integer"
+                        },
+                        "isWholeDay": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "APPROVED",
+                            "REJECTED",
+                            "WITHDRAWN",
+                            "CANCELLED"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "filedOnBehalf": {
+                          "type": "boolean"
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decisionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "affectedAppointmentCount": {
+                          "type": "integer"
+                        },
+                        "canWithdraw": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "userFullName",
+                        "departmentName",
+                        "leaveDate",
+                        "workShiftId",
+                        "workShiftName",
+                        "startMinute",
+                        "endMinute",
+                        "isWholeDay",
+                        "status",
+                        "reason",
+                        "filedOnBehalf",
+                        "decidedByName",
+                        "decidedAt",
+                        "decisionReason",
+                        "createdAt",
+                        "affectedAppointmentCount",
+                        "canWithdraw",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền leave_request.file_on_behalf",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái đơn / trùng khung giờ / version cũ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Quá khứ / chưa đăng ký ca (LEAVE_REQUEST_PAST_DATE, LEAVE_REQUEST_NO_SHIFT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leave-requests/{id}/affected-appointments": {
+      "get": {
+        "tags": [
+          "leave-request"
+        ],
+        "summary": "Lịch hẹn còn SCHEDULED nằm trong khung nghỉ của đơn (hộp thoại Duyệt)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "bookingCode": {
+                                "type": "string"
+                              },
+                              "fullName": {
+                                "type": "string"
+                              },
+                              "phone": {
+                                "type": "string"
+                              },
+                              "scheduledAt": {
+                                "type": "string"
+                              },
+                              "durationMinutes": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "bookingCode",
+                              "fullName",
+                              "phone",
+                              "scheduledAt",
+                              "durationMinutes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền leave_request.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leave-requests/{id}/approve": {
+      "post": {
+        "tags": [
+          "leave-request"
+        ],
+        "summary": "Duyệt đơn nghỉ (không tự duyệt đơn của mình)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userFullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "leaveDate": {
+                          "type": "string"
+                        },
+                        "workShiftId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "workShiftName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startMinute": {
+                          "type": "integer"
+                        },
+                        "endMinute": {
+                          "type": "integer"
+                        },
+                        "isWholeDay": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "APPROVED",
+                            "REJECTED",
+                            "WITHDRAWN",
+                            "CANCELLED"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "filedOnBehalf": {
+                          "type": "boolean"
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decisionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "affectedAppointmentCount": {
+                          "type": "integer"
+                        },
+                        "canWithdraw": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "userFullName",
+                        "departmentName",
+                        "leaveDate",
+                        "workShiftId",
+                        "workShiftName",
+                        "startMinute",
+                        "endMinute",
+                        "isWholeDay",
+                        "status",
+                        "reason",
+                        "filedOnBehalf",
+                        "decidedByName",
+                        "decidedAt",
+                        "decisionReason",
+                        "createdAt",
+                        "affectedAppointmentCount",
+                        "canWithdraw",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền leave_request.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái đơn / trùng khung giờ / version cũ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leave-requests/{id}/reject": {
+      "post": {
+        "tags": [
+          "leave-request"
+        ],
+        "summary": "Từ chối đơn nghỉ — bắt buộc lý do",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "version",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userFullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "leaveDate": {
+                          "type": "string"
+                        },
+                        "workShiftId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "workShiftName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startMinute": {
+                          "type": "integer"
+                        },
+                        "endMinute": {
+                          "type": "integer"
+                        },
+                        "isWholeDay": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "APPROVED",
+                            "REJECTED",
+                            "WITHDRAWN",
+                            "CANCELLED"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "filedOnBehalf": {
+                          "type": "boolean"
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decisionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "affectedAppointmentCount": {
+                          "type": "integer"
+                        },
+                        "canWithdraw": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "userFullName",
+                        "departmentName",
+                        "leaveDate",
+                        "workShiftId",
+                        "workShiftName",
+                        "startMinute",
+                        "endMinute",
+                        "isWholeDay",
+                        "status",
+                        "reason",
+                        "filedOnBehalf",
+                        "decidedByName",
+                        "decidedAt",
+                        "decisionReason",
+                        "createdAt",
+                        "affectedAppointmentCount",
+                        "canWithdraw",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền leave_request.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái đơn / trùng khung giờ / version cũ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leave-requests/{id}/withdraw": {
+      "post": {
+        "tags": [
+          "leave-request"
+        ],
+        "summary": "Người gửi rút đơn khi chưa duyệt",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userFullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "leaveDate": {
+                          "type": "string"
+                        },
+                        "workShiftId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "workShiftName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startMinute": {
+                          "type": "integer"
+                        },
+                        "endMinute": {
+                          "type": "integer"
+                        },
+                        "isWholeDay": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "APPROVED",
+                            "REJECTED",
+                            "WITHDRAWN",
+                            "CANCELLED"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "filedOnBehalf": {
+                          "type": "boolean"
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decisionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "affectedAppointmentCount": {
+                          "type": "integer"
+                        },
+                        "canWithdraw": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "userFullName",
+                        "departmentName",
+                        "leaveDate",
+                        "workShiftId",
+                        "workShiftName",
+                        "startMinute",
+                        "endMinute",
+                        "isWholeDay",
+                        "status",
+                        "reason",
+                        "filedOnBehalf",
+                        "decidedByName",
+                        "decidedAt",
+                        "decisionReason",
+                        "createdAt",
+                        "affectedAppointmentCount",
+                        "canWithdraw",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền leave_request.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái đơn / trùng khung giờ / version cũ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leave-requests/{id}/cancel": {
+      "post": {
+        "tags": [
+          "leave-request"
+        ],
+        "summary": "Huỷ đơn nghỉ ĐÃ DUYỆT — bắt buộc lý do",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "version",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userFullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "leaveDate": {
+                          "type": "string"
+                        },
+                        "workShiftId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "workShiftName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startMinute": {
+                          "type": "integer"
+                        },
+                        "endMinute": {
+                          "type": "integer"
+                        },
+                        "isWholeDay": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "APPROVED",
+                            "REJECTED",
+                            "WITHDRAWN",
+                            "CANCELLED"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "filedOnBehalf": {
+                          "type": "boolean"
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decisionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "affectedAppointmentCount": {
+                          "type": "integer"
+                        },
+                        "canWithdraw": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "userFullName",
+                        "departmentName",
+                        "leaveDate",
+                        "workShiftId",
+                        "workShiftName",
+                        "startMinute",
+                        "endMinute",
+                        "isWholeDay",
+                        "status",
+                        "reason",
+                        "filedOnBehalf",
+                        "decidedByName",
+                        "decidedAt",
+                        "decisionReason",
+                        "createdAt",
+                        "affectedAppointmentCount",
+                        "canWithdraw",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền leave_request.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái đơn / trùng khung giờ / version cũ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work-shift-assignments/submissions": {
+      "get": {
+        "tags": [
+          "work-shift-assignment"
+        ],
+        "summary": "\"Duyệt đăng ký ca theo tháng\" (#225) — bảng đăng ký tháng của từng nhân viên (personal: của mình; global: cả phòng khám)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+            },
+            "required": false,
+            "name": "month",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SUBMITTED",
+                "APPROVED",
+                "RETURNED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "userId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "userFullName": {
+                                "type": "string"
+                              },
+                              "departmentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "month": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "DRAFT",
+                                  "SUBMITTED",
+                                  "APPROVED"
+                                ]
+                              },
+                              "shiftCount": {
+                                "type": "integer"
+                              },
+                              "totalMinutes": {
+                                "type": "integer"
+                              },
+                              "submittedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "decidedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "decidedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "returnReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "userId",
+                              "userFullName",
+                              "departmentName",
+                              "month",
+                              "status",
+                              "shiftCount",
+                              "totalMinutes",
+                              "submittedAt",
+                              "decidedByName",
+                              "decidedAt",
+                              "returnReason",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền work_shift_assignment.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work-shift-assignments/submissions/pending-count": {
+      "get": {
+        "tags": [
+          "work-shift-assignment"
+        ],
+        "summary": "Số bảng đăng ký tháng chờ duyệt (chấm số)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền work_shift_assignment.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work-shift-assignments/submissions/submit": {
+      "post": {
+        "tags": [
+          "work-shift-assignment"
+        ],
+        "summary": "Nhân viên gửi duyệt CẢ THÁNG của mình (tháng sau tháng hiện tại, cần ≥1 ca)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "month": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                  }
+                },
+                "required": [
+                  "month"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userFullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "month": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "SUBMITTED",
+                            "APPROVED"
+                          ]
+                        },
+                        "shiftCount": {
+                          "type": "integer"
+                        },
+                        "totalMinutes": {
+                          "type": "integer"
+                        },
+                        "submittedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "userFullName",
+                        "departmentName",
+                        "month",
+                        "status",
+                        "shiftCount",
+                        "totalMinutes",
+                        "submittedAt",
+                        "decidedByName",
+                        "decidedAt",
+                        "returnReason",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền work_shift_assignment.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work-shift-assignments/submissions/{id}/approve": {
+      "post": {
+        "tags": [
+          "work-shift-assignment"
+        ],
+        "summary": "Duyệt bảng đăng ký tháng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userFullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "month": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "SUBMITTED",
+                            "APPROVED"
+                          ]
+                        },
+                        "shiftCount": {
+                          "type": "integer"
+                        },
+                        "totalMinutes": {
+                          "type": "integer"
+                        },
+                        "submittedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "userFullName",
+                        "departmentName",
+                        "month",
+                        "status",
+                        "shiftCount",
+                        "totalMinutes",
+                        "submittedAt",
+                        "decidedByName",
+                        "decidedAt",
+                        "returnReason",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền work_shift_assignment.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work-shift-assignments/submissions/{id}/return": {
+      "post": {
+        "tags": [
+          "work-shift-assignment"
+        ],
+        "summary": "Trả lại bảng đăng ký tháng (về Nháp, bắt buộc lý do)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "version",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "userFullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "month": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "SUBMITTED",
+                            "APPROVED"
+                          ]
+                        },
+                        "shiftCount": {
+                          "type": "integer"
+                        },
+                        "totalMinutes": {
+                          "type": "integer"
+                        },
+                        "submittedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "userFullName",
+                        "departmentName",
+                        "month",
+                        "status",
+                        "shiftCount",
+                        "totalMinutes",
+                        "submittedAt",
+                        "decidedByName",
+                        "decidedAt",
+                        "returnReason",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền work_shift_assignment.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-swaps": {
+      "get": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "\"Đổi ca\" (#225) — yêu cầu đổi ca (personal: liên quan mình; global: lịch sử cả phòng khám)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "ACCEPTED",
+                "DECLINED",
+                "CANCELLED",
+                "EXPIRED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requesterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "requesterName": {
+                                "type": "string"
+                              },
+                              "requesterAssignment": {
+                                "type": "object",
+                                "properties": {
+                                  "assignmentId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "workDate": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "workShiftId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "workShiftName": {
+                                    "type": "string"
+                                  },
+                                  "startTime": {
+                                    "type": "string"
+                                  },
+                                  "endTime": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "assignmentId",
+                                  "workDate",
+                                  "workShiftId",
+                                  "workShiftName",
+                                  "startTime",
+                                  "endTime"
+                                ]
+                              },
+                              "counterpartId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "counterpartName": {
+                                "type": "string"
+                              },
+                              "counterpartAssignment": {
+                                "type": "object",
+                                "properties": {
+                                  "assignmentId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "workDate": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "workShiftId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "workShiftName": {
+                                    "type": "string"
+                                  },
+                                  "startTime": {
+                                    "type": "string"
+                                  },
+                                  "endTime": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "assignmentId",
+                                  "workDate",
+                                  "workShiftId",
+                                  "workShiftName",
+                                  "startTime",
+                                  "endTime"
+                                ]
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "PENDING",
+                                  "ACCEPTED",
+                                  "DECLINED",
+                                  "CANCELLED",
+                                  "EXPIRED"
+                                ]
+                              },
+                              "respondedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "declineReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "isNewForManager": {
+                                "type": "boolean"
+                              },
+                              "canRespond": {
+                                "type": "boolean"
+                              },
+                              "canCancel": {
+                                "type": "boolean"
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "requesterId",
+                              "requesterName",
+                              "requesterAssignment",
+                              "counterpartId",
+                              "counterpartName",
+                              "counterpartAssignment",
+                              "note",
+                              "status",
+                              "respondedAt",
+                              "declineReason",
+                              "createdAt",
+                              "isNewForManager",
+                              "canRespond",
+                              "canCancel",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "Gửi yêu cầu đổi 2 ca cho nhau",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requesterAssignmentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "counterpartAssignmentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "requesterAssignmentId",
+                  "counterpartAssignmentId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterName": {
+                          "type": "string"
+                        },
+                        "requesterAssignment": {
+                          "type": "object",
+                          "properties": {
+                            "assignmentId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "workShiftId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workShiftName": {
+                              "type": "string"
+                            },
+                            "startTime": {
+                              "type": "string"
+                            },
+                            "endTime": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "assignmentId",
+                            "workDate",
+                            "workShiftId",
+                            "workShiftName",
+                            "startTime",
+                            "endTime"
+                          ]
+                        },
+                        "counterpartId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterpartName": {
+                          "type": "string"
+                        },
+                        "counterpartAssignment": {
+                          "type": "object",
+                          "properties": {
+                            "assignmentId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "workShiftId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workShiftName": {
+                              "type": "string"
+                            },
+                            "startTime": {
+                              "type": "string"
+                            },
+                            "endTime": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "assignmentId",
+                            "workDate",
+                            "workShiftId",
+                            "workShiftName",
+                            "startTime",
+                            "endTime"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "ACCEPTED",
+                            "DECLINED",
+                            "CANCELLED",
+                            "EXPIRED"
+                          ]
+                        },
+                        "respondedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "declineReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "isNewForManager": {
+                          "type": "boolean"
+                        },
+                        "canRespond": {
+                          "type": "boolean"
+                        },
+                        "canCancel": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "requesterId",
+                        "requesterName",
+                        "requesterAssignment",
+                        "counterpartId",
+                        "counterpartName",
+                        "counterpartAssignment",
+                        "note",
+                        "status",
+                        "respondedAt",
+                        "declineReason",
+                        "createdAt",
+                        "isNewForManager",
+                        "canRespond",
+                        "canCancel",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-swaps/incoming-count": {
+      "get": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "Số yêu cầu đổi ca đang chờ MÌNH xác nhận",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-swaps/unseen-count": {
+      "get": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "Số yêu cầu đổi ca MỚI chưa xem (quản lý, scope global)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-swaps/mark-seen": {
+      "post": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "Đánh dấu đã xem mọi yêu cầu đổi ca (quản lý, scope global)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-swaps/colleagues": {
+      "get": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "Đồng nghiệp có ca sắp tới",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fullName": {
+                                "type": "string"
+                              },
+                              "departmentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "fullName",
+                              "departmentName"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-swaps/colleagues/{userId}/assignments": {
+      "get": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "Ca sắp tới của một đồng nghiệp kèm cờ đổi được/lý do chặn",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "assignmentId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "workDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "workShiftId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "workShiftName": {
+                                "type": "string"
+                              },
+                              "startTime": {
+                                "type": "string"
+                              },
+                              "endTime": {
+                                "type": "string"
+                              },
+                              "swappable": {
+                                "type": "boolean"
+                              },
+                              "blockedReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "assignmentId",
+                              "workDate",
+                              "workShiftId",
+                              "workShiftName",
+                              "startTime",
+                              "endTime",
+                              "swappable",
+                              "blockedReason"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-swaps/assignments/{assignmentId}/check": {
+      "get": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "Một ca CỦA MÌNH có đổi được không",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "assignmentId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "swappable": {
+                          "type": "boolean"
+                        },
+                        "blockedReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "swappable",
+                        "blockedReason"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-swaps/{id}/accept": {
+      "post": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "Người nhận xác nhận → đổi chủ 2 ca ngay",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterName": {
+                          "type": "string"
+                        },
+                        "requesterAssignment": {
+                          "type": "object",
+                          "properties": {
+                            "assignmentId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "workShiftId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workShiftName": {
+                              "type": "string"
+                            },
+                            "startTime": {
+                              "type": "string"
+                            },
+                            "endTime": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "assignmentId",
+                            "workDate",
+                            "workShiftId",
+                            "workShiftName",
+                            "startTime",
+                            "endTime"
+                          ]
+                        },
+                        "counterpartId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterpartName": {
+                          "type": "string"
+                        },
+                        "counterpartAssignment": {
+                          "type": "object",
+                          "properties": {
+                            "assignmentId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "workShiftId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workShiftName": {
+                              "type": "string"
+                            },
+                            "startTime": {
+                              "type": "string"
+                            },
+                            "endTime": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "assignmentId",
+                            "workDate",
+                            "workShiftId",
+                            "workShiftName",
+                            "startTime",
+                            "endTime"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "ACCEPTED",
+                            "DECLINED",
+                            "CANCELLED",
+                            "EXPIRED"
+                          ]
+                        },
+                        "respondedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "declineReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "isNewForManager": {
+                          "type": "boolean"
+                        },
+                        "canRespond": {
+                          "type": "boolean"
+                        },
+                        "canCancel": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "requesterId",
+                        "requesterName",
+                        "requesterAssignment",
+                        "counterpartId",
+                        "counterpartName",
+                        "counterpartAssignment",
+                        "note",
+                        "status",
+                        "respondedAt",
+                        "declineReason",
+                        "createdAt",
+                        "isNewForManager",
+                        "canRespond",
+                        "canCancel",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-swaps/{id}/decline": {
+      "post": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "Người nhận từ chối",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterName": {
+                          "type": "string"
+                        },
+                        "requesterAssignment": {
+                          "type": "object",
+                          "properties": {
+                            "assignmentId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "workShiftId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workShiftName": {
+                              "type": "string"
+                            },
+                            "startTime": {
+                              "type": "string"
+                            },
+                            "endTime": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "assignmentId",
+                            "workDate",
+                            "workShiftId",
+                            "workShiftName",
+                            "startTime",
+                            "endTime"
+                          ]
+                        },
+                        "counterpartId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterpartName": {
+                          "type": "string"
+                        },
+                        "counterpartAssignment": {
+                          "type": "object",
+                          "properties": {
+                            "assignmentId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "workShiftId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workShiftName": {
+                              "type": "string"
+                            },
+                            "startTime": {
+                              "type": "string"
+                            },
+                            "endTime": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "assignmentId",
+                            "workDate",
+                            "workShiftId",
+                            "workShiftName",
+                            "startTime",
+                            "endTime"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "ACCEPTED",
+                            "DECLINED",
+                            "CANCELLED",
+                            "EXPIRED"
+                          ]
+                        },
+                        "respondedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "declineReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "isNewForManager": {
+                          "type": "boolean"
+                        },
+                        "canRespond": {
+                          "type": "boolean"
+                        },
+                        "canCancel": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "requesterId",
+                        "requesterName",
+                        "requesterAssignment",
+                        "counterpartId",
+                        "counterpartName",
+                        "counterpartAssignment",
+                        "note",
+                        "status",
+                        "respondedAt",
+                        "declineReason",
+                        "createdAt",
+                        "isNewForManager",
+                        "canRespond",
+                        "canCancel",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shift-swaps/{id}/cancel": {
+      "post": {
+        "tags": [
+          "shift-swap"
+        ],
+        "summary": "Người gửi huỷ khi chưa xác nhận",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "requesterName": {
+                          "type": "string"
+                        },
+                        "requesterAssignment": {
+                          "type": "object",
+                          "properties": {
+                            "assignmentId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "workShiftId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workShiftName": {
+                              "type": "string"
+                            },
+                            "startTime": {
+                              "type": "string"
+                            },
+                            "endTime": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "assignmentId",
+                            "workDate",
+                            "workShiftId",
+                            "workShiftName",
+                            "startTime",
+                            "endTime"
+                          ]
+                        },
+                        "counterpartId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "counterpartName": {
+                          "type": "string"
+                        },
+                        "counterpartAssignment": {
+                          "type": "object",
+                          "properties": {
+                            "assignmentId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "workShiftId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "workShiftName": {
+                              "type": "string"
+                            },
+                            "startTime": {
+                              "type": "string"
+                            },
+                            "endTime": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "assignmentId",
+                            "workDate",
+                            "workShiftId",
+                            "workShiftName",
+                            "startTime",
+                            "endTime"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "ACCEPTED",
+                            "DECLINED",
+                            "CANCELLED",
+                            "EXPIRED"
+                          ]
+                        },
+                        "respondedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "declineReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "isNewForManager": {
+                          "type": "boolean"
+                        },
+                        "canRespond": {
+                          "type": "boolean"
+                        },
+                        "canCancel": {
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "requesterId",
+                        "requesterName",
+                        "requesterAssignment",
+                        "counterpartId",
+                        "counterpartName",
+                        "counterpartAssignment",
+                        "note",
+                        "status",
+                        "respondedAt",
+                        "declineReason",
+                        "createdAt",
+                        "isNewForManager",
+                        "canRespond",
+                        "canCancel",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền shift_swap.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ",
             "content": {
               "application/json": {
                 "schema": {

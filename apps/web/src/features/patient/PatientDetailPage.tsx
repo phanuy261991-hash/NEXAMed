@@ -31,7 +31,7 @@ const TABS: { id: ProfileTabId; label: string; comingSoon: boolean }[] = [
   { id: 'info', label: 'Thông tin cá nhân', comingSoon: false },
   { id: 'wallet', label: 'Ví tạm ứng', comingSoon: false },
   { id: 'record', label: 'Hồ sơ bệnh án', comingSoon: true },
-  { id: 'history', label: 'Lịch sử khám chữa bệnh', comingSoon: false },
+  { id: 'history', label: 'Lịch sử khám', comingSoon: false },
 ];
 
 /**

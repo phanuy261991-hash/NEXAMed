@@ -111,7 +111,26 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   WORK_SHIFT_ASSIGNMENT_DUPLICATE: HttpStatus.CONFLICT,
   WORK_SHIFT_ASSIGNMENT_LOCKED: HttpStatus.CONFLICT,
   WORK_SHIFT_ASSIGNMENT_MONTH_LOCKED: HttpStatus.CONFLICT,
+  WORK_SHIFT_ASSIGNMENT_PAST_DATE: HttpStatus.CONFLICT,
+  // "Duyệt đăng ký ca theo tháng" (#225) — xung đột với trạng thái/quy tắc hiện có.
+  WORK_SHIFT_ASSIGNMENT_MONTH_NOT_OPEN: HttpStatus.CONFLICT,
+  WORK_SHIFT_ASSIGNMENT_SUBMISSION_LOCKED: HttpStatus.CONFLICT,
+  SCHEDULE_SUBMISSION_INVALID_STATUS: HttpStatus.CONFLICT,
+  // "Đổi ca" (#225).
+  SHIFT_SWAP_BLOCKED: HttpStatus.CONFLICT,
+  SHIFT_SWAP_INVALID_STATUS: HttpStatus.CONFLICT,
+  SHIFT_SWAP_EXPIRED: HttpStatus.CONFLICT,
+  SHIFT_SWAP_NOT_ALLOWED_ACTOR: HttpStatus.FORBIDDEN,
   APPOINTMENT_OUTSIDE_WORK_SHIFT: HttpStatus.CONFLICT,
+  // "Đơn xin nghỉ" (#224) — xung đột với trạng thái hiện có (bác sĩ đã nghỉ/đơn trùng/sai trạng thái).
+  APPOINTMENT_DOCTOR_ON_LEAVE: HttpStatus.CONFLICT,
+  // Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" + quota nghỉ tối thiểu/tuần (09/10/2026).
+  DOCTOR_NO_SHIFT_ON_DATE: HttpStatus.CONFLICT,
+  SCHEDULE_SUBMISSION_MIN_DAYS_OFF: HttpStatus.CONFLICT,
+  LEAVE_REQUEST_OVERLAP: HttpStatus.CONFLICT,
+  LEAVE_REQUEST_INVALID_STATUS: HttpStatus.CONFLICT,
+  LEAVE_REQUEST_SELF_APPROVE: HttpStatus.FORBIDDEN,
+  LEAVE_REQUEST_NOT_OWNER: HttpStatus.FORBIDDEN,
   // "Cấu hình chung" — tự đăng ký ca bị tắt, cùng nhóm DOCTOR_AVAILABILITY_*_DISABLED ở trên (thao
   // tác bị cấu hình phòng khám chặn, không phải thiếu quyền RBAC).
   WORK_SHIFT_ASSIGNMENT_SELF_SCHEDULE_DISABLED: HttpStatus.FORBIDDEN,

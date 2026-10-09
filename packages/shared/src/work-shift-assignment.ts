@@ -104,8 +104,24 @@ export const doctorWorkShiftBlockSchema = z.object({
 });
 export type DoctorWorkShiftBlock = z.infer<typeof doctorWorkShiftBlockSchema>;
 
+/**
+ * "Đơn xin nghỉ" (#224) — khung nghỉ của bác sĩ trong ngày (đơn `PENDING` + `APPROVED`), kèm trong
+ * cùng response để lưới Lịch hẹn, picker Đặt lịch và Tiếp nhận dùng chung 1 request. Phút kể từ
+ * 00:00 giờ VN, khoảng nửa mở; `PENDING` chỉ hiện nhãn, `APPROVED` mới chặn đặt lịch.
+ */
+export const doctorLeaveBlockSchema = z.object({
+  status: z.enum(['PENDING', 'APPROVED']),
+  startMinute: z.number().int(),
+  endMinute: z.number().int(),
+  isWholeDay: z.boolean(),
+  /** Tên ca; `null` = nghỉ cả ngày. */
+  workShiftName: z.string().nullable(),
+});
+export type DoctorLeaveBlock = z.infer<typeof doctorLeaveBlockSchema>;
+
 export const doctorWorkShiftsForDateResponseSchema = z.object({
   byDoctorId: z.record(z.string().uuid(), z.array(doctorWorkShiftBlockSchema)),
+  leaveByDoctorId: z.record(z.string().uuid(), z.array(doctorLeaveBlockSchema)),
 });
 export type DoctorWorkShiftsForDateResponse = z.infer<typeof doctorWorkShiftsForDateResponseSchema>;
 

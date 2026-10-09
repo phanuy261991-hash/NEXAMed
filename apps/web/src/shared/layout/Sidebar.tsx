@@ -49,7 +49,10 @@ import {
   PRICE_LIST_ADMIN_PERMISSIONS,
 } from '../../features/auth/admin-permissions';
 import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
-import { useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
+import { useAllowStaffSelfScheduleEnabledQuery, useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
+import { useLeaveRequestPendingCountQuery } from '../../features/leave-request/leave-request.queries';
+import { useShiftSwapUnseenCountQuery } from '../../features/shift-swap/shift-swap.queries';
+import { useScheduleSubmissionPendingCountQuery } from '../../features/work-shift-assignment/schedule-submission.queries';
 import { useDoctorUnseenResultsQuery } from '../../features/reception/reception.queries';
 import { useSupplierDebtSummariesQuery } from '../../features/supplier-debt/supplier-debt.queries';
 import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context';
@@ -291,6 +294,17 @@ export function Sidebar() {
   // "Lịch làm việc nhân viên" — chỉ actor có scope GLOBAL (quản lý toàn phòng khám) mới thấy mục
   // này, khác canSeeWorkSchedule (personal cũng đủ để thấy "Lịch làm việc của tôi").
   const canSeeStaffSchedule = useDataScope('work_shift_assignment', 'read') === 'global';
+  // Chấm số đơn xin nghỉ chờ duyệt (#224) — chỉ người có quyền duyệt, đúng khuôn `supplierDebtPendingCount`.
+  const canApproveLeave = useHasPermission('leave_request', 'approve');
+  const leavePendingCount = useLeaveRequestPendingCountQuery(canApproveLeave && canSeeStaffSchedule).data?.count ?? 0;
+  // Đăng ký ca chờ duyệt + đổi ca mới chưa xem (#225) — cộng chung 1 chấm số với đơn nghỉ chờ duyệt.
+  // Công tắc tự đăng ký TẮT → không có bước duyệt đăng ký → không đếm vào chấm số (#225).
+  const sidebarSelfScheduleEnabled = useAllowStaffSelfScheduleEnabledQuery().data?.enabled ?? true;
+  const canApproveSubmission = useHasPermission('work_shift_assignment', 'approve') && sidebarSelfScheduleEnabled;
+  const submissionPendingCount = useScheduleSubmissionPendingCountQuery(canApproveSubmission && canSeeStaffSchedule).data?.count ?? 0;
+  const canReadSwapHistory = useDataScope('shift_swap', 'read') === 'global';
+  const swapUnseenCount = useShiftSwapUnseenCountQuery(canReadSwapHistory && canSeeStaffSchedule).data?.count ?? 0;
+  const staffScheduleBadge = leavePendingCount + submissionPendingCount + swapUnseenCount;
   const receptionGroupExpanded = receptionGroupOpen && !collapsed;
   const examinationGroupExpanded = examinationGroupOpen && !collapsed;
   const paraclinicalGroupExpanded = paraclinicalGroupOpen && !collapsed;
@@ -722,7 +736,9 @@ export function Sidebar() {
               {workScheduleGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   <NavItem to="/work-schedule/mine" label="Lịch làm việc của tôi" icon={Clock} collapsed={false} indent />
-                  {canSeeStaffSchedule && <NavItem to="/work-schedule/staff" label="Lịch làm việc nhân viên" icon={Users} collapsed={false} indent />}
+                  {canSeeStaffSchedule && (
+                    <NavItem to="/work-schedule/staff" label="Lịch làm việc nhân viên" icon={Users} collapsed={false} indent badge={staffScheduleBadge} />
+                  )}
                 </ul>
               )}
             </li>
