@@ -37,6 +37,7 @@ export * from './diagnosis/pair-diagnosis-amendment';
 export * from './billing/combined-invoice-totals';
 export * from './billing/compute-invoice-lines';
 export * from './billing/invoice-discount';
+export * from './billing/encounter-billing-summary';
 export * from './billing/invoice-lifecycle';
 export * from './billing/partial-refund';
 export * from './audit/log-retention';

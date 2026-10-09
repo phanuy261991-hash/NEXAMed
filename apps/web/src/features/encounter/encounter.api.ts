@@ -7,6 +7,8 @@ import type {
   ConsultationDetailResponse,
   DiagnosisSuggestionResponse,
   EncounterSummary,
+  ListPatientEncounterHistoryQuery,
+  PatientEncounterHistoryResponse,
   PreviousPrescriptionResponse,
   PrescriptionResponse,
   RecordVitalSignRequest,
@@ -102,4 +104,13 @@ export async function getPreviousPrescription(id: string): Promise<PreviousPresc
   return unwrap(
     await getApiClient().GET('/api/v1/encounters/{id}/prescription/previous', { params: { path: { id } } }),
   ) as PreviousPrescriptionResponse;
+}
+/** Tab "Lịch sử khám chữa bệnh" ở hồ sơ bệnh nhân (docs/DECISIONS.md #223). */
+export async function listPatientEncounterHistory(
+  patientId: string,
+  query: Partial<ListPatientEncounterHistoryQuery>,
+): Promise<PatientEncounterHistoryResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/encounters/by-patient/{patientId}/history', { params: { path: { patientId }, query } }),
+  ) as PatientEncounterHistoryResponse;
 }

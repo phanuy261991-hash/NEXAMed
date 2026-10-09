@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   AmendClinicalNoteRequest,
   AmendDiagnosesRequest,
@@ -19,6 +19,7 @@ import {
   completeConsultation,
   getConsultationDetail,
   getDiagnosisSuggestions,
+  listPatientEncounterHistory,
   getPreviousPrescription,
   printPrescription,
   recordVitalSigns,
@@ -170,5 +171,18 @@ export function useCompleteConsultationMutation(id: string) {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'encounter') });
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'reception') });
     },
+  });
+}
+const PATIENT_HISTORY_PAGE_SIZE = 50;
+
+/** Tab "Lịch sử khám chữa bệnh" (#223) — phân trang cursor, `keepPreviousData` để đổi bộ lọc Đã hoàn tất/Tất cả không nháy về khung xương. */
+export function usePatientEncounterHistoryQuery(patientId: string, status: 'COMPLETED' | 'ALL') {
+  const { tenantId } = useAppConfig();
+  return useInfiniteQuery({
+    queryKey: queryKey(tenantId, 'encounter', 'patient-history', patientId, status),
+    queryFn: ({ pageParam }: { pageParam: string | undefined }) => listPatientEncounterHistory(patientId, { status, cursor: pageParam, limit: PATIENT_HISTORY_PAGE_SIZE }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    placeholderData: keepPreviousData,
   });
 }

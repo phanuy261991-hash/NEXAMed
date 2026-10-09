@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Clock } from '@phosphor-icons/react';
+import { Clock, Plus } from '@phosphor-icons/react';
 import type { AppointmentSummary, BusinessHours, DoctorOption } from '@nexamed/shared';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { APPOINTMENT_SOURCE_LABEL, APPOINTMENT_STATUS_META, getNoShowCountdownTier, isAppointmentLate, noShowCountdownTierMeta } from './appointment-status';
@@ -255,7 +255,7 @@ export function AppointmentGridView({
                     onClick={() => onSlotClick(doctor.id, label)}
                     aria-label={`Đặt lịch ${label} với ${doctor.displayName ?? doctor.fullName}`}
                     title={!inside ? 'Ngoài ca làm việc bác sĩ đã đăng ký — vẫn đặt được (chỉ cảnh báo)' : undefined}
-                    className="group absolute left-0.5 right-0.5 rounded-md hover:bg-blue-50 hover:outline hover:outline-1 hover:outline-dashed hover:outline-blue-200"
+                    className="group absolute left-0.5 right-0.5 flex items-center justify-center rounded-md hover:bg-blue-50/70 hover:outline hover:outline-1 hover:outline-dashed hover:outline-blue-300 focus-visible:bg-blue-50/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
                     style={{
                       top: i * ROW_HEIGHT_PX,
                       height: ROW_HEIGHT_PX - 2,
@@ -264,7 +264,13 @@ export function AppointmentGridView({
                         : 'repeating-linear-gradient(135deg, rgba(100,116,139,0.14) 0px, rgba(100,116,139,0.14) 5px, transparent 5px, transparent 10px)',
                     }}
                   >
-                    <span className="hidden items-center justify-center text-lg font-bold text-blue-600 group-hover:flex">+</span>
+                    {/* Chỉ hiện khi rê chuột/focus bàn phím: nút tròn xanh + giờ của ô, báo rõ "bấm vào đây là đặt lịch giờ này" thay cho dấu + trơn. */}
+                    <span className="hidden items-center gap-1.5 rounded-full bg-blue-600 py-1 pl-1.5 pr-3 text-xs font-semibold text-white group-hover:flex group-focus-visible:flex">
+                      <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-white/25">
+                        <Plus size={12} weight="bold" aria-hidden="true" />
+                      </span>
+                      Đặt lịch {label}
+                    </span>
                   </button>
                 );
               })}

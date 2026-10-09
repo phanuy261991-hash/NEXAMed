@@ -24,6 +24,7 @@ import { PricingModule } from './modules/pricing/pricing.module';
 import { ClinicalOrderModule } from './modules/clinical-order/clinical-order.module';
 import { ClinicalOrderCancellationModule } from './modules/clinical-order/clinical-order-cancellation.module';
 import { ParaclinicalProgressReaderModule } from './modules/clinical-order/paraclinical-progress-reader.module';
+import { EncounterBillingReaderModule } from './modules/billing/encounter-billing-reader.module';
 import { ParaclinicalResultModule } from './modules/paraclinical-result/paraclinical-result.module';
 import { ParaclinicalResultsReaderModule } from './modules/paraclinical-result/paraclinical-results-reader.module';
 import { PricingPortModule } from './modules/pricing/pricing-port.module';
@@ -78,6 +79,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     // Huỷ lượt khám → đóng dòng chỉ định chưa bắt đầu (#219) — `@Global()`, cùng khuôn trên.
     ClinicalOrderCancellationModule,
     ParaclinicalProgressReaderModule,
+    EncounterBillingReaderModule,
     EncounterModule,
     BillingModule,
     ClinicalOrderModule,

@@ -38,6 +38,7 @@ Seed cụ thể nằm trong `apps/api/prisma/seed/permissions.seed.ts` (nguồn 
 | `appointment.read` (nurse chỉ có quyền đọc, chốt 01/10/2026 #209) | global | global | personal | global | none |
 | `appointment.create/update/cancel` | global | none | personal | global | none |
 | `encounter.read` | global | global | global | global | none |
+| `encounter.read_clinical` (#223, xem NỘI DUNG lâm sàng: màn khám, chi tiết lượt khám, tab Lịch sử khám) | none | global | global | global | none |
 | `encounter.create` | global | none | none | global | none |
 | `encounter.update` | none | none | personal | none | none |
 | `encounter.cancel` | global | none | personal | global | none |

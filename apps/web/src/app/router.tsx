@@ -156,7 +156,7 @@ export const router = createBrowserRouter([
       { path: 'reception/doctor-queue', element: <RequireDoctorQueueRoute><ReceptionDoctorQueuePage /></RequireDoctorQueueRoute> },
       // Màn hình khám bệnh (S3-06/07) — vào từ "Hàng đợi khám", không có mục sidebar riêng (cùng
       // cách patient/appointment detail không có mục sidebar riêng).
-      { path: 'encounters/:id', element: <RequirePermissionRoute module="encounter" action="read"><EncounterConsultationPage /></RequirePermissionRoute> },
+      { path: 'encounters/:id', element: <RequirePermissionRoute module="encounter" action="read_clinical"><EncounterConsultationPage /></RequirePermissionRoute> },
       // Cận lâm sàng GĐ4, tách 2 menu (#215): mỗi nhóm có hàng đợi + màn nhập/duyệt kết quả riêng, gác bằng quyền của đúng nhóm (`lab_result` / `imaging_result`).
       // Màn nhập vào từ hàng đợi, không có mục sidebar riêng. `key` buộc React dựng lại trang (và bỏ bộ lọc cũ) khi chuyển giữa 2 nhóm.
       { path: 'paraclinical/queue', element: <Navigate to="/paraclinical/lab" replace /> },

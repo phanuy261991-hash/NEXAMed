@@ -276,6 +276,33 @@ export class EncounterRepository {
   }
 
   /**
+   * Tab "Lịch sử khám chữa bệnh" (docs/DECISIONS.md #223) — một trang lượt khám của bệnh nhân, mới nhất trước, phân trang cursor theo `id`. KHÔNG lọc `data_scope=personal`
+   * (xem đủ mọi bác sĩ — cùng lý do `findPatientClinicalSummary`, liên tục chăm sóc). `onlyCompleted=false` → mọi trạng thái. Lấy `limit + 1` dòng để biết còn trang sau.
+   */
+  listHistoryPageForPatient(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    patientId: string,
+    onlyCompleted: boolean,
+    cursor: string | undefined,
+    limit: number,
+  ): Promise<Encounter[]> {
+    return tx.encounter.findMany({
+      where: { tenantId, patientId, deletedAt: null, ...(onlyCompleted ? { status: 'COMPLETED' as const } : {}) },
+      orderBy: [{ checkedInAt: 'desc' }, { id: 'desc' }],
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: limit + 1,
+    });
+  }
+
+  /** Số lượt khám cho nút lọc "Đã hoàn tất N / Tất cả N" (#223) — không phụ thuộc bộ lọc đang chọn. */
+  async countHistoryForPatient(tx: Prisma.TransactionClient, tenantId: string, patientId: string): Promise<{ completed: number; total: number }> {
+    const rows = await tx.encounter.groupBy({ by: ['status'], where: { tenantId, patientId, deletedAt: null }, _count: { _all: true } });
+    const total = rows.reduce((sum, r) => sum + r._count._all, 0);
+    return { completed: rows.find((r) => r.status === 'COMPLETED')?._count._all ?? 0, total };
+  }
+
+  /**
    * Batch resolve mã lượt khám + bệnh nhân theo id — hạ tầng cho `EncounterReaderPort` (S5-05,
    * ADM-03). Không lọc `deletedAt`/`status` — nhật ký hoạt động phải hiện đúng cả lượt khám đã huỷ.
    */

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Put, Query, Req, Res, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, Res, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuditView } from '../../common/audit-view.decorator';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
@@ -11,6 +11,7 @@ import {
   diagnosisSuggestionRequestSchema,
   exportPatientMedicalRecordQuerySchema,
   exportPatientMedicalRecordRequestSchema,
+  listPatientEncounterHistoryQuerySchema,
   patientClinicalSummaryQuerySchema,
   reassignEncounterRequestSchema,
   releaseEncounterRequestSchema,
@@ -49,6 +50,20 @@ export class EncounterController {
     const dto = patientClinicalSummaryQuerySchema.parse(query);
     const { tenantId } = req.user!;
     return this.encounterService.getPatientClinicalSummary(tenantId, dto.patientId);
+  }
+
+  /**
+   * Tab "Lịch sử khám chữa bệnh" ở hồ sơ bệnh nhân (docs/DECISIONS.md #223). Gate `patient.read` (mọi vai trò xem được hồ sơ thấy danh sách); nội dung lâm sàng/chi phí do
+   * service lọc theo `encounter.read_clinical`/`invoice.read` của chính actor. Ghi audit "xem hồ sơ bệnh nhân" vì danh sách chứa chẩn đoán/đơn thuốc.
+   */
+  @Get('by-patient/:patientId/history')
+  @RequirePermission('patient', 'read')
+  @AuditView('patient', { paramName: 'patientId' })
+  @UseInterceptors(AuditViewInterceptor)
+  async listPatientHistory(@Param('patientId', new ParseUUIDPipe()) patientId: string, @Query() query: unknown, @Req() req: Request) {
+    const dto = listPatientEncounterHistoryQuerySchema.parse(query);
+    const { tenantId, userId } = req.user!;
+    return this.encounterService.listPatientEncounterHistory(tenantId, userId, patientId, dto);
   }
 
   /**
@@ -120,7 +135,7 @@ export class EncounterController {
    * (`EncounterHistoryDetailDialog.tsx`, #090) vì tái dùng đúng endpoint này.
    */
   @Get(':id/consultation')
-  @RequirePermission('encounter', 'read', { entityIdParam: 'id' })
+  @RequirePermission('encounter', 'read_clinical', { entityIdParam: 'id' })
   @AuditView('encounter')
   @UseInterceptors(AuditViewInterceptor)
   async getConsultation(@Param('id') id: string, @Req() req: Request) {

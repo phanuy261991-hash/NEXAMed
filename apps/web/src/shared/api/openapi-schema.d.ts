@@ -3459,6 +3459,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/encounters/by-patient/{patientId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tab "Lịch sử khám chữa bệnh" ở hồ sơ bệnh nhân — danh sách lượt khám (mới nhất trước, cursor), nội dung lâm sàng/chi phí chỉ gửi khi actor có encounter.read_clinical/invoice.read */
+        get: {
+            parameters: {
+                query?: {
+                    status?: "COMPLETED" | "ALL";
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    patientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công (danh sách rỗng nếu bệnh nhân chưa có lượt khám, hoặc thuộc tenant khác) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string;
+                                    /** @enum {string} */
+                                    status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+                                    checkedInAt: string;
+                                    examTypeName: string | null;
+                                    receptionTypeCode: string | null;
+                                    doctorName: string | null;
+                                    departmentName: string | null;
+                                    reason: string | null;
+                                    clinical: {
+                                        primaryDiagnosisCode: string | null;
+                                        primaryDiagnosisName: string | null;
+                                        otherDiagnosisCount: number;
+                                        conclusion: string | null;
+                                        followUpDate: string | null;
+                                        prescriptionNo: string | null;
+                                        prescriptionItemCount: number;
+                                        paraclinical: {
+                                            total: number;
+                                            withResult: number;
+                                        } | null;
+                                    } | null;
+                                    billing: {
+                                        netAmount: number;
+                                        /** @enum {string} */
+                                        paymentState: "PAID" | "UNPAID" | "REFUNDED";
+                                    } | null;
+                                }[];
+                                /** Format: uuid */
+                                nextCursor: string | null;
+                                completedCount: number;
+                                totalCount: number;
+                                canViewClinical: boolean;
+                                canViewBilling: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description patientId/tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/encounters/{id}/start": {
         parameters: {
             query?: never;

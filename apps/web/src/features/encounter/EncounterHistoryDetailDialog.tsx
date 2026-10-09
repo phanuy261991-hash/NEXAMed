@@ -11,6 +11,7 @@ import { formatDateStringVi, vietnameseWeekdayLabel } from './follow-up-date';
 import { CLINICAL_SECTION_LABEL, DIAGNOSIS_TYPE_LABEL, VitalChip, classifyBmi, type ClinicalKey } from './clinical-display';
 import { PrescriptionItemsTable } from './PrescriptionPanel';
 import { useConsultationDetailQuery } from './encounter.queries';
+import { EncounterParaclinicalSection } from './EncounterParaclinicalSection';
 
 /** Bắt buộc (`hasRequiredClinicalFields` ở `EncounterConsultationPage.tsx`) — chỉ dùng để hiện dấu `*`, dữ liệu ở đây luôn chỉ đọc. */
 const REQUIRED_CLINICAL_KEYS = new Set<ClinicalKey>(['reasonForVisit', 'preliminaryDiagnosis']);
@@ -296,6 +297,8 @@ function DialogContent({
               <p className="text-xs text-slate-400">Chưa kê đơn thuốc cho đợt khám này.</p>
             )}
           </div>
+
+          <EncounterParaclinicalSection encounterId={encounter.id} />
         </div>
       </div>
     </>

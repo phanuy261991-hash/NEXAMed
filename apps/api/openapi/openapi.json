@@ -8358,6 +8358,377 @@
         }
       }
     },
+    "/api/v1/encounters/by-patient/{patientId}/history": {
+      "get": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "Tab \"Lịch sử khám chữa bệnh\" ở hồ sơ bệnh nhân — danh sách lượt khám (mới nhất trước, cursor), nội dung lâm sàng/chi phí chỉ gửi khi actor có encounter.read_clinical/invoice.read",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "COMPLETED",
+                "ALL"
+              ],
+              "default": "COMPLETED"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công (danh sách rỗng nếu bệnh nhân chưa có lượt khám, hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterNo": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "CHECKED_IN",
+                                  "IN_CONSULTATION",
+                                  "COMPLETED",
+                                  "CANCELLED",
+                                  "NO_SHOW"
+                                ]
+                              },
+                              "checkedInAt": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "receptionTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "doctorName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "departmentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "reason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "clinical": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "primaryDiagnosisCode": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "primaryDiagnosisName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "otherDiagnosisCount": {
+                                    "type": "integer"
+                                  },
+                                  "conclusion": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "followUpDate": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "prescriptionNo": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "prescriptionItemCount": {
+                                    "type": "integer"
+                                  },
+                                  "paraclinical": {
+                                    "type": [
+                                      "object",
+                                      "null"
+                                    ],
+                                    "properties": {
+                                      "total": {
+                                        "type": "integer"
+                                      },
+                                      "withResult": {
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "required": [
+                                      "total",
+                                      "withResult"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "primaryDiagnosisCode",
+                                  "primaryDiagnosisName",
+                                  "otherDiagnosisCount",
+                                  "conclusion",
+                                  "followUpDate",
+                                  "prescriptionNo",
+                                  "prescriptionItemCount",
+                                  "paraclinical"
+                                ]
+                              },
+                              "billing": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "netAmount": {
+                                    "type": "integer"
+                                  },
+                                  "paymentState": {
+                                    "type": "string",
+                                    "enum": [
+                                      "PAID",
+                                      "UNPAID",
+                                      "REFUNDED"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "netAmount",
+                                  "paymentState"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "encounterId",
+                              "encounterNo",
+                              "status",
+                              "checkedInAt",
+                              "examTypeName",
+                              "receptionTypeCode",
+                              "doctorName",
+                              "departmentName",
+                              "reason",
+                              "clinical",
+                              "billing"
+                            ]
+                          }
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "completedCount": {
+                          "type": "integer"
+                        },
+                        "totalCount": {
+                          "type": "integer"
+                        },
+                        "canViewClinical": {
+                          "type": "boolean"
+                        },
+                        "canViewBilling": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor",
+                        "completedCount",
+                        "totalCount",
+                        "canViewClinical",
+                        "canViewBilling"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "patientId/tham số không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/encounters/{id}/start": {
       "post": {
         "tags": [

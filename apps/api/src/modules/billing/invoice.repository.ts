@@ -474,6 +474,34 @@ export class InvoiceRepository {
       .then((rows) => rows.map((row) => ({ ...row, ...toPaymentSides(row.payments) })));
   }
 
+  /**
+   * Hoá đơn của NHIỀU lượt khám (khám + thuốc + cận lâm sàng) kèm dòng chiết khấu + payment — nguồn cho tóm tắt chi phí ở tab "Lịch sử khám chữa bệnh" (#223).
+   * Không lọc `status` (hoá đơn đã huỷ để tầng gọi bỏ qua theo `summarizeEncounterInvoices`).
+   */
+  listSummariesForEncounters(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    encounterIds: string[],
+  ): Promise<{ encounterId: string; status: Invoice['status']; totalAmount: bigint; discountType: Invoice['discountType']; discountValue: bigint | null; lines: LineDiscountFields[]; refundedTotal: bigint }[]> {
+    if (encounterIds.length === 0) return Promise.resolve([]);
+    return tx.invoice
+      .findMany({
+        where: { tenantId, deletedAt: null, encounterId: { in: encounterIds } },
+        include: { ...ACTIVE_PAYMENT_INCLUDE, ...LINE_DISCOUNT_INCLUDE },
+      })
+      .then((rows) =>
+        rows.map((row) => ({
+          encounterId: row.encounterId,
+          status: row.status,
+          totalAmount: row.totalAmount,
+          discountType: row.discountType,
+          discountValue: row.discountValue,
+          lines: row.lines,
+          refundedTotal: toPaymentSides(row.payments).refundedTotal,
+        })),
+      );
+  }
+
   /** `WHERE version=? AND status='UNPAID'` — chống double-submit/race khi 2 request "Thu tiền" gần như đồng thời. */
   markPaid(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
     return tx.invoice
