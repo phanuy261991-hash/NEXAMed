@@ -249,6 +249,30 @@ export class ClinicalOrderRepository {
     return result;
   }
 
+  /** Mỗi lượt khám: tổng dịch vụ cận lâm sàng làm tại phòng khám (không tính dòng đã huỷ) + số dịch vụ đã có kết quả được duyệt (#223). Lượt không có dịch vụ nào thì không có khoá. */
+  async resultCountsByEncounterIds(tx: Prisma.TransactionClient, tenantId: string, encounterIds: string[]): Promise<Map<string, { total: number; withResult: number }>> {
+    const result = new Map<string, { total: number; withResult: number }>();
+    if (encounterIds.length === 0) return result;
+    const rows = await tx.clinicalOrderItem.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        itemKind: 'TECHNICAL_SERVICE',
+        performance: 'IN_HOUSE',
+        status: { in: ['ORDERED', 'IN_PROGRESS', 'RESULTED', 'COMPLETED'] },
+        order: { encounterId: { in: encounterIds }, deletedAt: null },
+      },
+      select: { status: true, order: { select: { encounterId: true } } },
+    });
+    for (const r of rows) {
+      const entry = result.get(r.order.encounterId) ?? { total: 0, withResult: 0 };
+      entry.total += 1;
+      if (r.status === 'COMPLETED') entry.withResult += 1;
+      result.set(r.order.encounterId, entry);
+    }
+    return result;
+  }
+
   /** Số lượt khám ĐANG KHÁM của bác sĩ có ít nhất 1 kết quả mới chưa xem. */
   async countEncountersWithUnseenResults(tx: Prisma.TransactionClient, tenantId: string, doctorId: string): Promise<number> {
     const rows = await tx.clinicalOrderItem.findMany({

@@ -184,6 +184,8 @@ import {
   updateDepartmentRequestSchema,
   updateDepartmentTypeRequestSchema,
   patientClinicalSummaryQuerySchema,
+  listPatientEncounterHistoryQuerySchema,
+  patientEncounterHistoryResponseSchema,
   patientClinicalSummaryResponseSchema,
   doctorUnseenResultsResponseSchema,
   receptionListQuerySchema,
@@ -907,6 +909,21 @@ registry.registerPath({
   request: { query: patientClinicalSummaryQuerySchema },
   responses: {
     200: jsonResponse('Thành công (0/null/[] nếu bệnh nhân chưa có lượt khám nào, hoặc thuộc tenant khác)', envelope(patientClinicalSummaryResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/encounters/by-patient/{patientId}/history',
+  tags: ['encounter'],
+  summary: 'Tab "Lịch sử khám chữa bệnh" ở hồ sơ bệnh nhân — danh sách lượt khám (mới nhất trước, cursor), nội dung lâm sàng/chi phí chỉ gửi khi actor có encounter.read_clinical/invoice.read',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ patientId: z.string().uuid() }), query: listPatientEncounterHistoryQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công (danh sách rỗng nếu bệnh nhân chưa có lượt khám, hoặc thuộc tenant khác)', envelope(patientEncounterHistoryResponseSchema)),
+    400: errorResponse('patientId/tham số không hợp lệ'),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền patient.read'),
   },

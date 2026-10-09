@@ -4,6 +4,15 @@
 
 ## 2026-10-09
 
+### Tab "Lịch sử khám chữa bệnh" ở Hồ sơ bệnh nhân + quyền xem nội dung lâm sàng (`docs/DECISIONS.md` #223)
+
+Hồ sơ bệnh nhân có tab **Lịch sử khám chữa bệnh**: bảng mọi lượt khám (mới nhất trước), lọc **Đã hoàn tất / Tất cả**, nút **Cột hiển thị** để chọn thêm Kết luận, Hẹn tái khám, Đơn thuốc, Cận lâm sàng, Tổng chi phí, Thu tiền (nhớ theo tài khoản trên máy), nút **Xem** mở chi tiết lượt khám (có thêm khối kết quả cận lâm sàng). **Quyền mới "Xem nội dung lâm sàng"** (`encounter.read_clinical`, mặc định bác sĩ/điều dưỡng/quản lý): thiếu quyền thì chẩn đoán, kết luận, đơn thuốc không được gửi về; màn khám và chi tiết lượt khám cũng cần quyền này — **lễ tân không còn mở được hồ sơ khám** như trước. Vai trò tuỳ biến đang dùng màn khám cần được cấp thêm quyền. Môi trường khác: `db:seed` rồi khởi động lại API.
+
+### Lưới Lịch hẹn: nút thêm lịch ở ô giờ trống
+
+Rê chuột vào ô giờ trống hiện nút tròn xanh **"Đặt lịch 08:00"** thay cho dấu "+" trơn (cũng hiện khi di chuyển bằng bàn phím).
+
+
 ### Điều trị & Hẹn tái khám + Kết luận + Mẫu lời dặn (`docs/DECISIONS.md` #222)
 
 Màn khám có thêm: ô **Kết luận** (kết luận bệnh cuối cùng, không bắt buộc) dưới khối ICD-10 ở tab Khám & Chẩn đoán; tab mới **Điều trị & Hẹn tái khám** ngay sau đó với **Hướng điều trị** (tích nhiều: Kê đơn thuốc, Chuyển viện, Hẹn tái khám, Cấp cứu), **Nội dung điều trị**, **Lời dặn bác sĩ** và khung **Hẹn tái khám** (nhập số ngày 1–365 hoặc chọn ngày, ô còn lại tự đổi theo, tính từ ngày khám). Nút **Mẫu lời dặn** mở hộp thoại chọn một hoặc nhiều mẫu có sẵn rồi nối vào cuối ô Lời dặn (vẫn sửa tay được); bác sĩ và quản lý phòng khám thêm/sửa/ẩn mẫu ngay trong hộp thoại. Tất cả được ký khi Hoàn tất khám; sau đó sửa bằng **Đính chính điều trị** (bắt buộc lý do, bản cũ giữ lại). Lời dặn và ngày hẹn in cuối đơn thuốc; bệnh án PDF có thêm mục "Điều trị" và dòng "Kết luận". Hẹn tái khám chỉ ghi nhận, không tự tạo lịch hẹn; ngày hẹn rơi vào ngày phòng khám nghỉ (theo giờ làm việc đã cấu hình) có dòng nhắc nhẹ, không chặn. Mẫu lời dặn quản lý đầy đủ ở pill **"Mẫu lời dặn"** trong "Danh mục Chuyên môn" (thêm/sửa/ẩn/kích hoạt lại). Môi trường khác: `db:deploy` (2 migration) + `db:seed` (quyền mới `advice_template.*`) rồi khởi động lại API.

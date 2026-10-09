@@ -11,6 +11,8 @@ import {
   EncounterPaymentRequiredError,
   FollowUpDateInvalidError,
   CLINICAL_ORDER_CANCELLATION_PORT,
+  ENCOUNTER_BILLING_READER_PORT,
+  PARACLINICAL_PROGRESS_READER_PORT,
   PARACLINICAL_RESULTS_READER_PORT,
   PDF_RENDERER_PORT,
   PrescriptionAlreadySignedError,
@@ -37,6 +39,8 @@ import {
   type MedicalRecordEncounterEntry,
   type PatientMedicalRecordDocument,
   type ClinicalOrderCancellationPort,
+  type EncounterBillingReaderPort,
+  type ParaclinicalProgressReaderPort,
   type ParaclinicalResultsReaderPort,
   type PdfRendererPort,
   type PrescriptionDrugLine,
@@ -59,6 +63,8 @@ import type {
   Prescription as PrescriptionDto,
   PrescriptionItem as PrescriptionItemDto,
   PatientClinicalSummaryResponse,
+  ListPatientEncounterHistoryQuery,
+  PatientEncounterHistoryResponse,
   PatientVitalSignHistoryItem,
   PreviousPrescriptionResponse,
   PrescriptionResponse,
@@ -78,6 +84,7 @@ import type { ClinicalNote, EncounterTreatmentPlan, Prisma, VitalSign } from '@p
 import { PrintTemplateService } from '../print-template/print-template.service';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { findAllPermissionsForUser } from '../../infrastructure/persistence/permission-lookup.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { DiagnosisSuggestionService } from './diagnosis-suggestion.service';
 import { EncounterRepository } from './encounter.repository';
@@ -143,6 +150,8 @@ export class EncounterService {
     @Inject(PDF_RENDERER_PORT) private readonly pdfRenderer: PdfRendererPort,
     @Inject(STOCK_AVAILABILITY_PORT) private readonly stockAvailability: StockAvailabilityPort,
     @Inject(PARACLINICAL_RESULTS_READER_PORT) private readonly paraclinicalResultsReader: ParaclinicalResultsReaderPort,
+    @Inject(PARACLINICAL_PROGRESS_READER_PORT) private readonly paraclinicalProgress: ParaclinicalProgressReaderPort,
+    @Inject(ENCOUNTER_BILLING_READER_PORT) private readonly encounterBillingReader: EncounterBillingReaderPort,
     @Inject(CLINICAL_ORDER_CANCELLATION_PORT) private readonly clinicalOrderCancellation: ClinicalOrderCancellationPort,
     private readonly diagnosisSuggestionService: DiagnosisSuggestionService,
     private readonly printTemplateService: PrintTemplateService,
@@ -520,6 +529,96 @@ export class EncounterService {
       totalCompletedVisits: summary.totalCompletedVisits,
       lastCompletedVisitAt: summary.lastCompletedVisitAt?.toISOString() ?? null,
       recentVitalSigns: summary.vitalSigns.map((v) => this.toPatientVitalSignHistoryItem(v)),
+    };
+  }
+
+  /**
+   * Tab "Lịch sử khám chữa bệnh" ở hồ sơ bệnh nhân (docs/DECISIONS.md #223, mockup đã duyệt) — gate `patient.read` ở controller, CỐ Ý không giới hạn `data_scope=personal` (xem đủ mọi
+   * bác sĩ, #130). Nội dung lâm sàng (chẩn đoán, kết luận, hẹn tái khám, đơn thuốc, cận lâm sàng) CHỈ được đọc/gửi khi actor có `encounter.read_clinical`; chi phí chỉ khi có
+   * `invoice.read` — máy chủ không gửi trường nào actor không được xem (không chỉ ẩn ở giao diện). Chỉ lấy bản ĐÃ KÝ của chẩn đoán/ghi chú/kế hoạch điều trị/đơn thuốc: lượt khám
+   * đang dở không lộ bản nháp.
+   */
+  async listPatientEncounterHistory(tenantId: string, actorId: string, patientId: string, query: ListPatientEncounterHistoryQuery): Promise<PatientEncounterHistoryResponse> {
+    const permissions = await this.unitOfWork.runInTenantScope(tenantId, (tx) => findAllPermissionsForUser(tx, tenantId, actorId));
+    const canViewClinical = 'encounter.read_clinical' in permissions;
+    const canViewBilling = 'invoice.read' in permissions;
+
+    const page = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const rows = await this.encounterRepository.listHistoryPageForPatient(tx, tenantId, patientId, query.status === 'COMPLETED', query.cursor, query.limit);
+      const counts = await this.encounterRepository.countHistoryForPatient(tx, tenantId, patientId);
+      const hasMore = rows.length > query.limit;
+      const encounters = hasMore ? rows.slice(0, query.limit) : rows;
+      const ids = encounters.map((e) => e.id);
+      const clinicalRows = canViewClinical
+        ? await Promise.all([
+            this.diagnosisRepository.listForEncounters(tx, tenantId, ids),
+            this.clinicalNoteRepository.listForEncounters(tx, tenantId, ids),
+            this.treatmentPlanRepository.findActiveForEncounters(tx, tenantId, ids),
+            this.prescriptionRepository.findActiveForEncounters(tx, tenantId, ids),
+          ]).then(([diagnoses, notes, plans, prescriptions]) => ({ diagnoses, notes, plans, prescriptions }))
+        : null;
+      return { encounters, counts, nextCursor: hasMore ? (encounters[encounters.length - 1]?.id ?? null) : null, clinicalRows };
+    });
+
+    // Các port dưới đây tự mở transaction riêng — gọi NGOÀI transaction trên (cùng nguyên tắc `getConsultationDetail`).
+    const ids = page.encounters.map((e) => e.id);
+    const doctorIds = [...new Set(page.encounters.map((e) => e.doctorId).filter((v): v is string => v !== null))];
+    const [doctorNames, departmentNames, clsCounts, billing] = await Promise.all([
+      doctorIds.length > 0 ? this.doctorDirectory.getUserFullNames(tenantId, doctorIds) : Promise.resolve(new Map<string, string>()),
+      this.doctorDirectory.getDepartmentNames(tenantId),
+      canViewClinical ? this.paraclinicalProgress.getResultCountsByEncounter(tenantId, ids) : Promise.resolve(new Map<string, { total: number; withResult: number }>()),
+      canViewBilling ? this.encounterBillingReader.getSummaryByEncounter(tenantId, ids) : Promise.resolve(new Map()),
+    ]);
+
+    const items = page.encounters.map((e) => {
+      let clinical: PatientEncounterHistoryResponse['items'][number]['clinical'] = null;
+      let reason = e.chiefComplaint;
+      if (page.clinicalRows) {
+        const rows = page.clinicalRows;
+        const signedDiagnoses = (rows.diagnoses.get(e.id) ?? []).filter((d) => d.signedAt !== null);
+        const primary = signedDiagnoses.find((d) => d.type === 'PRIMARY') ?? null;
+        const signedNotes = (rows.notes.get(e.id) ?? []).filter((n) => n.signedAt !== null);
+        const noteContent = (section: string) => signedNotes.find((n) => n.section === section)?.content.trim() || null;
+        const plan = rows.plans.get(e.id);
+        const signedPlan = plan && plan.signedAt !== null ? plan : null;
+        const prescription = rows.prescriptions.get(e.id);
+        const signedPrescription = prescription && prescription.signedAt !== null ? prescription : null;
+        const cls = clsCounts.get(e.id);
+        if (!reason) reason = noteContent('REASON_FOR_VISIT');
+        clinical = {
+          primaryDiagnosisCode: primary?.icd10Code ?? null,
+          primaryDiagnosisName: primary?.icd10.nameVi ?? null,
+          otherDiagnosisCount: primary ? signedDiagnoses.length - 1 : signedDiagnoses.length,
+          conclusion: noteContent('CONCLUSION'),
+          followUpDate: signedPlan && signedPlan.directions.includes('FOLLOW_UP') && signedPlan.followUpDate ? signedPlan.followUpDate.toISOString().slice(0, 10) : null,
+          prescriptionNo: signedPrescription?.prescriptionNo ?? null,
+          prescriptionItemCount: signedPrescription ? signedPrescription.items.length : 0,
+          paraclinical: cls ? { total: cls.total, withResult: cls.withResult } : null,
+        };
+      }
+      const summary = billing.get(e.id);
+      return {
+        encounterId: e.id,
+        encounterNo: e.encounterNo,
+        status: e.status,
+        checkedInAt: e.checkedInAt.toISOString(),
+        examTypeName: e.examTypeName,
+        receptionTypeCode: e.receptionTypeCode,
+        doctorName: e.doctorId ? (doctorNames.get(e.doctorId) ?? null) : null,
+        departmentName: departmentNames.get(e.departmentId) ?? null,
+        reason: reason?.trim() ? reason : null,
+        clinical,
+        billing: summary ? { netAmount: summary.netAmount, paymentState: summary.paymentState } : null,
+      };
+    });
+
+    return {
+      items,
+      nextCursor: page.nextCursor,
+      completedCount: page.counts.completed,
+      totalCount: page.counts.total,
+      canViewClinical,
+      canViewBilling,
     };
   }
 

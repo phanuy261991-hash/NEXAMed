@@ -754,3 +754,65 @@ export type DiagnosisSuggestionGroup = z.infer<typeof diagnosisSuggestionGroupSc
 /** `groups` rỗng khi tenant chưa bật tính năng, lượt khám không còn ở trạng thái đang khám, hoặc ô Chẩn đoán trống. */
 export const diagnosisSuggestionResponseSchema = z.object({ groups: z.array(diagnosisSuggestionGroupSchema) });
 export type DiagnosisSuggestionResponse = z.infer<typeof diagnosisSuggestionResponseSchema>;
+
+/**
+ * Tab "Lịch sử khám chữa bệnh" ở hồ sơ bệnh nhân (docs/DECISIONS.md #223) — `GET /encounters/by-patient/:patientId/history`.
+ * `status=COMPLETED` (mặc định, khớp KPI "Tổng lượt khám") hoặc `ALL`. Phân trang cursor theo `id` lượt khám, mới nhất trước.
+ */
+export const PATIENT_ENCOUNTER_HISTORY_FILTERS = ['COMPLETED', 'ALL'] as const;
+export const listPatientEncounterHistoryQuerySchema = z.object({
+  status: z.enum(PATIENT_ENCOUNTER_HISTORY_FILTERS).default('COMPLETED'),
+  cursor: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type ListPatientEncounterHistoryQuery = z.infer<typeof listPatientEncounterHistoryQuerySchema>;
+
+export const patientEncounterHistoryClinicalSchema = z.object({
+  primaryDiagnosisCode: z.string().nullable(),
+  primaryDiagnosisName: z.string().nullable(),
+  /** Số chẩn đoán KÈM THEO (không tính chẩn đoán chính). */
+  otherDiagnosisCount: z.number().int(),
+  conclusion: z.string().nullable(),
+  /** `YYYY-MM-DD`, chỉ khi đã chọn hướng "Hẹn tái khám". */
+  followUpDate: z.string().nullable(),
+  prescriptionNo: z.string().nullable(),
+  prescriptionItemCount: z.number().int(),
+  /** `null` = lượt khám không có dịch vụ cận lâm sàng nào làm tại phòng khám. */
+  paraclinical: z.object({ total: z.number().int(), withResult: z.number().int() }).nullable(),
+});
+
+export const patientEncounterHistoryBillingSchema = z.object({
+  /** Tổng phải thu sau chiết khấu, trừ phần đã hoàn (đồng). */
+  netAmount: z.number().int(),
+  paymentState: z.enum(['PAID', 'UNPAID', 'REFUNDED']),
+});
+
+export const patientEncounterHistoryItemSchema = z.object({
+  encounterId: z.string().uuid(),
+  encounterNo: z.string(),
+  status: encounterStatusSchema,
+  checkedInAt: z.string(),
+  examTypeName: z.string().nullable(),
+  receptionTypeCode: z.string().nullable(),
+  doctorName: z.string().nullable(),
+  departmentName: z.string().nullable(),
+  /** Lý do khám — `chiefComplaint` của lượt khám; tài khoản có quyền lâm sàng được bù bằng mục "Lý do khám" trong ghi chú khám khi `chiefComplaint` trống. */
+  reason: z.string().nullable(),
+  /** `null` = tài khoản KHÔNG có quyền `encounter.read_clinical` — máy chủ không gửi nội dung lâm sàng. */
+  clinical: patientEncounterHistoryClinicalSchema.nullable(),
+  /** `null` = tài khoản không có quyền `invoice.read`, hoặc lượt khám chưa có hoá đơn nào còn hiệu lực. */
+  billing: patientEncounterHistoryBillingSchema.nullable(),
+});
+export type PatientEncounterHistoryItem = z.infer<typeof patientEncounterHistoryItemSchema>;
+
+export const patientEncounterHistoryResponseSchema = z.object({
+  items: z.array(patientEncounterHistoryItemSchema),
+  nextCursor: z.string().uuid().nullable(),
+  /** Số lượt khám cho nút lọc: "Đã hoàn tất N" / "Tất cả N" (không phụ thuộc bộ lọc đang chọn). */
+  completedCount: z.number().int(),
+  totalCount: z.number().int(),
+  /** Cờ quyền do máy chủ tính — web dựa vào đây để hiện/ẩn cột, không tự suy từ vai trò. */
+  canViewClinical: z.boolean(),
+  canViewBilling: z.boolean(),
+});
+export type PatientEncounterHistoryResponse = z.infer<typeof patientEncounterHistoryResponseSchema>;

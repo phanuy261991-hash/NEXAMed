@@ -17,6 +17,7 @@ export * from './backup-control.port';
 export * from './pdf-renderer.port';
 export * from './clinical-order-cancellation.port';
 export * from './paraclinical-progress-reader.port';
+export * from './encounter-billing-reader.port';
 export * from './paraclinical-results-reader.port';
 export * from './stock-availability.port';
 export * from './pricing.port';

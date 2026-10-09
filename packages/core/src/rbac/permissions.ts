@@ -29,6 +29,9 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'appointment', action: 'update', description: 'Sửa lịch hẹn' },
   { module: 'appointment', action: 'cancel', description: 'Huỷ lịch hẹn' },
   { module: 'encounter', action: 'read', description: 'Xem lượt khám và tiền sử' },
+  // Tách khỏi `encounter.read` (docs/DECISIONS.md #223): `encounter.read` mở danh sách tiếp nhận/hàng đợi (lễ tân cũng có); xem NỘI DUNG lâm sàng của lượt khám
+  // (chẩn đoán, ghi chú khám, đơn thuốc, kết quả) — màn khám, hộp "Chi tiết đợt khám", tab "Lịch sử khám chữa bệnh" ở hồ sơ bệnh nhân — cần quyền này.
+  { module: 'encounter', action: 'read_clinical', description: 'Xem nội dung lâm sàng của lượt khám (chẩn đoán, ghi chú khám, đơn thuốc, kết quả)' },
   // 3 permission mới (Sprint 3, Tiếp nhận) — vá lỗ hổng ma trận seed từ S1-04b (chỉ có
   // encounter.read, chưa tính actor nào thực sự tạo/chuyển trạng thái encounter). Xem
   // docs/DECISIONS.md (entry Tiếp nhận) — receptionist check-in tạo encounter, bác sĩ chuyển
@@ -335,6 +338,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // thật sự cho phép truy cập gì (luôn rỗng). Phòng khám 1-3 bác sĩ, điều dưỡng phục vụ mọi bác
     // sĩ — cùng lý do doctor.encounter.read=global đã chốt trước đó.
     'encounter.read': 'global',
+    'encounter.read_clinical': 'global',
     // Chốt 2026-10-01 (docs/DECISIONS.md #209): "Bệnh nhân trong ngày" lấy danh sách bác sĩ/ngưỡng chờ lâu từ API lịch hẹn,
     // thiếu quyền này bộ lọc bác sĩ trống. Chỉ ĐỌC (không create/update/cancel); global vì điều dưỡng phục vụ mọi bác sĩ.
     'appointment.read': 'global',
@@ -383,6 +387,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'appointment.update': 'personal',
     'appointment.cancel': 'personal',
     'encounter.read': 'global',
+    'encounter.read_clinical': 'global',
     // Bắt đầu khám (CHECKED_IN→IN_CONSULTATION) chỉ cho lượt khám do chính bác sĩ phụ trách —
     // mirror appointment.update=personal đã có. "Bỏ về" mirror appointment.cancel=personal.
     'encounter.update': 'personal',
@@ -447,6 +452,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'appointment.cancel': 'global',
     // Cần global cho cả 3 để clinic_admin quản lý được toàn bộ Tiếp nhận, cùng mức appointment.*.
     'encounter.read': 'global',
+    'encounter.read_clinical': 'global',
     'encounter.create': 'global',
     'encounter.cancel': 'global',
     // "Trung tâm Điều phối Tiếp nhận" — cùng mức lễ tân.

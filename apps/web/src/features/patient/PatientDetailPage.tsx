@@ -23,6 +23,7 @@ import { PatientHistorySummaryCard } from './PatientHistorySummaryCard';
 import { PatientEditDialog } from './PatientEditDialog';
 import { MedicalRecordExportDialog } from './MedicalRecordExportDialog';
 import { PatientWalletTab } from '../patient-wallet/PatientWalletTab';
+import { PatientEncounterHistoryTab } from './PatientEncounterHistoryTab';
 
 type ProfileTabId = 'info' | 'wallet' | 'record' | 'history';
 
@@ -30,7 +31,7 @@ const TABS: { id: ProfileTabId; label: string; comingSoon: boolean }[] = [
   { id: 'info', label: 'Thông tin cá nhân', comingSoon: false },
   { id: 'wallet', label: 'Ví tạm ứng', comingSoon: false },
   { id: 'record', label: 'Hồ sơ bệnh án', comingSoon: true },
-  { id: 'history', label: 'Lịch sử khám chữa bệnh', comingSoon: true },
+  { id: 'history', label: 'Lịch sử khám chữa bệnh', comingSoon: false },
 ];
 
 /**
@@ -177,9 +178,7 @@ export function PatientDetailPage() {
       {activeTab === 'record' && (
         <EmptyState icon={IdentificationCard} title="Hồ sơ bệnh án — sắp ra mắt" description="Tổng hợp dị ứng, bệnh lý nền, chẩn đoán và đơn thuốc theo thời gian tại một chỗ." />
       )}
-      {activeTab === 'history' && (
-        <EmptyState icon={IdentificationCard} title="Lịch sử khám chữa bệnh — sắp ra mắt" description="Danh sách mọi lượt khám của bệnh nhân, mở chi tiết từng lượt." />
-      )}
+      {activeTab === 'history' && <PatientEncounterHistoryTab patientId={patient.id} mergedIntoId={patient.mergedIntoId} />}
 
       <PatientHistoryDialog
         open={historyDialogOpen}

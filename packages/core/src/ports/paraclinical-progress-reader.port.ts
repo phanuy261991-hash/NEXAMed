@@ -11,7 +11,15 @@ export interface ParaclinicalProgress {
   unseenResultCount: number;
 }
 
+/** Số dịch vụ cận lâm sàng làm tại phòng khám của lượt khám (không tính dòng đã huỷ) và số dịch vụ đã có kết quả được duyệt — cột "Cận lâm sàng" tab Lịch sử khám (#223). */
+export interface ParaclinicalResultCounts {
+  total: number;
+  withResult: number;
+}
+
 export interface ParaclinicalProgressReaderPort {
+  /** Lượt khám không có dịch vụ nào thì không có khoá. */
+  getResultCountsByEncounter(tenantId: string, encounterIds: string[]): Promise<Map<string, ParaclinicalResultCounts>>;
   /** Chỉ trả các lượt khám có ít nhất 1 dịch vụ cận lâm sàng tại phòng khám; lượt không có thì không có khoá. */
   getProgressByEncounter(tenantId: string, encounterIds: string[]): Promise<Map<string, ParaclinicalProgress>>;
   /** Số bệnh nhân (lượt khám đang khám của bác sĩ) có kết quả mới chưa xem — chấm số ở menu "Hàng đợi khám". */
