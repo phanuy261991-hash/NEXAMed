@@ -34,6 +34,10 @@ import { BillingModule } from './modules/billing/billing.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { DoctorAvailabilityModule } from './modules/doctor-availability/doctor-availability.module';
 import { WorkShiftAssignmentModule } from './modules/work-shift-assignment/work-shift-assignment.module';
+import { LeaveRequestModule } from './modules/leave-request/leave-request.module';
+import { ShiftSwapModule } from './modules/shift-swap/shift-swap.module';
+import { LeaveReaderModule } from './modules/leave-request/leave-reader.module';
+import { AppointmentImpactReaderModule } from './modules/appointment/appointment-impact-reader.module';
 import { CashierShiftModule } from './modules/cashier-shift/cashier-shift.module';
 import { CashBookModule } from './modules/cash-book/cash-book.module';
 import { CashBookReportModule } from './modules/cash-book/cash-book-report.module';
@@ -88,6 +92,11 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     AuditModule,
     DoctorAvailabilityModule,
     WorkShiftAssignmentModule,
+    // "Đơn xin nghỉ" (#224) — 2 module `@Global()` bind port đọc 2 chiều (nghỉ → Lịch hẹn, Lịch hẹn → đơn nghỉ), cùng khuôn `ParaclinicalProgressReaderModule`.
+    LeaveRequestModule,
+    LeaveReaderModule,
+    AppointmentImpactReaderModule,
+    ShiftSwapModule,
     CashierShiftModule,
     CashBookModule,
     CashBookReportModule,

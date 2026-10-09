@@ -151,3 +151,47 @@ export function formatDateLabel(dateStr: string): string {
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
   return `${weekday}, ${dd}/${mm}/${d.getUTCFullYear()}`;
 }
+
+/** Khung nghỉ của 1 bác sĩ trong ngày — khớp `DoctorLeaveBlock` ở `@nexamed/shared` (phút kể từ 00:00 giờ VN). */
+export interface GridLeaveBlock {
+  status: 'PENDING' | 'APPROVED';
+  startMinute: number;
+  endMinute: number;
+  isWholeDay: boolean;
+  workShiftName: string | null;
+}
+
+/**
+ * Bác sĩ hiện ở LƯỚI Lịch hẹn (#224, mockup đã duyệt màn 3): ngày có ít nhất 1 bác sĩ đăng ký ca thì chỉ
+ * hiện bác sĩ CÓ ca (trừ khi nghỉ kín mọi ca) + bác sĩ còn lịch hẹn (kể cả đang nghỉ — để không mất
+ * lịch); bật `showUnregistered` thì hiện thêm bác sĩ chưa đăng ký ca. Ngày KHÔNG bác sĩ nào đăng ký ca
+ * (phòng khám không dùng ca) → hiện tất cả như trước, `hiddenUnregisteredCount=0` (không có công tắc).
+ * Chỉ đếm BÁC SĨ — đăng ký ca của điều dưỡng/lễ tân không làm lưới bị lọc (danh sách `doctors` chỉ gồm bác sĩ).
+ */
+export function selectGridDoctors<T extends { id: string }>(params: {
+  doctors: T[];
+  shiftsByDoctor: Record<string, { startTime: string; endTime: string }[]>;
+  leaveByDoctor: Record<string, GridLeaveBlock[]>;
+  appointments: { doctorId: string; status: string }[];
+  showUnregistered: boolean;
+}): { doctors: T[]; hiddenUnregisteredCount: number; dayUsesShifts: boolean } {
+  const { doctors, shiftsByDoctor, leaveByDoctor, appointments, showUnregistered } = params;
+  const dayUsesShifts = doctors.some((d) => (shiftsByDoctor[d.id] ?? []).length > 0);
+  if (!dayUsesShifts) return { doctors, hiddenUnregisteredCount: 0, dayUsesShifts };
+
+  const activeAppointmentDoctors = new Set(appointments.filter((a) => a.status !== 'CANCELLED' && a.status !== 'RESCHEDULED').map((a) => a.doctorId));
+  let hiddenUnregisteredCount = 0;
+  const visible = doctors.filter((d) => {
+    const shifts = shiftsByDoctor[d.id] ?? [];
+    const hasAppointments = activeAppointmentDoctors.has(d.id);
+    if (shifts.length === 0) {
+      if (hasAppointments || showUnregistered) return true;
+      hiddenUnregisteredCount += 1;
+      return false;
+    }
+    const approved = (leaveByDoctor[d.id] ?? []).filter((l) => l.status === 'APPROVED');
+    const fullyOnLeave = shifts.every((s) => approved.some((l) => l.startMinute <= toMinutes(s.startTime) && l.endMinute >= toMinutes(s.endTime)));
+    return !fullyOnLeave || hasAppointments;
+  });
+  return { doctors: visible, hiddenUnregisteredCount, dayUsesShifts };
+}

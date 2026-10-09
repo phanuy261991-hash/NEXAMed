@@ -1,8 +1,14 @@
 import { Fragment, useEffect, useState } from 'react';
-import { CaretLeft, CaretRight, CheckCircle, CheckSquare, Clock, Lock, Plus, WarningCircle, X as XIcon } from '@phosphor-icons/react';
-import type { BusinessHours } from '@nexamed/shared';
+import { ArrowsLeftRight, CalendarX, CaretLeft, CaretRight, CheckCircle, CheckSquare, Clock, Lock, Plus, Trash, WarningCircle } from '@phosphor-icons/react';
+import type { BusinessHours, LeaveRequestItem } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useAuthStore } from '../auth/auth.store';
+import { useDataScope, useHasPermission } from '../auth/usePermission';
+import { LeaveRequestDialog } from '../leave-request/LeaveRequestDialog';
+import { useLeaveRequestsQuery, useWithdrawLeaveRequestMutation } from '../leave-request/leave-request.queries';
+import { IncomingShiftSwapDialog } from '../shift-swap/IncomingShiftSwapDialog';
+import { ShiftSwapDialog, type SwapSourceAssignment } from '../shift-swap/ShiftSwapDialog';
+import { useCancelShiftSwapMutation, useShiftSwapIncomingCountQuery, useShiftSwapsQuery } from '../shift-swap/shift-swap.queries';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -13,6 +19,9 @@ import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useAllowStaffSelfScheduleEnabledQuery, useWorkShiftsQuery } from '../clinic/clinic.queries';
 import { WORK_SHIFT_COLOR_HEX } from '../clinic/WorkShiftFormModal';
 import { WorkShiftPickerModal } from './WorkShiftPickerModal';
+import { SCHEDULE_CHIP_TONE } from './ScheduleMonthGrid';
+import { formatMinutesAsHours, isMonthOpenForSelfRegistration } from './schedule-month';
+import { useScheduleSubmissionsQuery, useSubmitScheduleSubmissionMutation } from './schedule-submission.queries';
 import {
   useBulkCreateWorkShiftAssignmentsMutation,
   useCopyWorkShiftAssignmentsMutation,
@@ -114,6 +123,13 @@ export function MyWorkSchedulePage() {
   const [bulkMode, setBulkMode] = useState(false);
   const [pickerFor, setPickerFor] = useState<string[] | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // "Đơn xin nghỉ" (#224): hộp xin nghỉ đang mở (ngày + ca vừa bấm) và ô đang mở menu.
+  const [leaveDialog, setLeaveDialog] = useState<{ date: string; shiftId: string } | null>(null);
+  const [menuCell, setMenuCell] = useState<string | null>(null);
+  // "Đổi ca" (#225): ca đang mở hộp đổi ca, hộp "Yêu cầu đổi ca" của người nhận.
+  const [swapSource, setSwapSource] = useState<SwapSourceAssignment | null>(null);
+  const [showIncoming, setShowIncoming] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const selection = useRowSelection(days);
 
   const ownUserId = useAuthStore((s) => s.user?.id);
@@ -156,6 +172,41 @@ export function MyWorkSchedulePage() {
   // bỏ trống sẽ khiến backend không lọc gì và trả về ca của TOÀN BỘ nhân viên thay vì "của tôi".
   const listQuery = useWorkShiftAssignmentsQuery(view === 'week' ? days[0]! : monthFrom, view === 'week' ? days[6]! : monthTo, ownUserId);
   const businessHoursQuery = useWorkShiftAssignmentBusinessHoursQuery();
+  const canReadLeave = useHasPermission('leave_request', 'read');
+  const canCreateLeave = useHasPermission('leave_request', 'create');
+  // Cùng lý do `userId` ở `listQuery`: scope global (clinic_admin) bỏ trống sẽ lấy đơn của cả phòng khám.
+  const leaveQuery = useLeaveRequestsQuery(
+    { from: view === 'week' ? days[0]! : monthFrom, to: view === 'week' ? days[6]! : monthTo, userId: ownUserId },
+    canReadLeave && !!ownUserId,
+  );
+  const withdrawMutation = useWithdrawLeaveRequestMutation();
+
+  // "Duyệt đăng ký ca theo tháng" (#225) — nhân viên (scope personal) tự đăng ký CHỈ tháng sau, khi bảng tháng còn
+  // Nháp; Gửi duyệt cả tháng → Chờ duyệt → Đã duyệt (khoá, chỉ xin nghỉ/đổi ca). Scope global (quản lý) không bị ràng buộc.
+  const isStaffScope = useDataScope('work_shift_assignment', 'create') === 'personal';
+  const submissionsQuery = useScheduleSubmissionsQuery({ userId: ownUserId }, !!ownUserId && selfScheduleEnabled && isStaffScope);
+  const submissionByMonth = new Map((submissionsQuery.data?.items ?? []).map((r) => [r.month, r]));
+  const submitMutation = useSubmitScheduleSubmissionMutation();
+  function monthStatus(month: string): 'DRAFT' | 'SUBMITTED' | 'APPROVED' {
+    return submissionByMonth.get(month)?.status ?? 'DRAFT';
+  }
+  /** Tháng này nhân viên còn tự thêm/xoá ca được không (quản lý luôn `true`, việc còn lại server kiểm). */
+  function monthEditable(month: string): boolean {
+    if (!isStaffScope) return true;
+    return selfScheduleEnabled && isMonthOpenForSelfRegistration(month, today) && monthStatus(month) === 'DRAFT';
+  }
+  const statusMonth = view === 'month' ? monthAnchor : days[3]!.slice(0, 7);
+  const statusRow = submissionByMonth.get(statusMonth);
+  const showStatusBanner = isStaffScope && selfScheduleEnabled && (isMonthOpenForSelfRegistration(statusMonth, today) || statusRow !== undefined);
+
+  // "Đổi ca" (#225): yêu cầu đang chờ (của mình gửi hoặc gửi cho mình) + số yêu cầu chờ MÌNH xác nhận.
+  const canCreateSwap = useHasPermission('shift_swap', 'create');
+  const swapsQuery = useShiftSwapsQuery({ status: 'PENDING' }, canCreateSwap);
+  const pendingSwapByAssignment = new Map(
+    (swapsQuery.data?.items ?? []).filter((sw) => sw.requesterId === ownUserId).map((sw) => [sw.requesterAssignment.assignmentId, sw]),
+  );
+  const incomingSwapCount = useShiftSwapIncomingCountQuery(canCreateSwap).data?.count ?? 0;
+  const cancelSwapMutation = useCancelShiftSwapMutation();
   const createMutation = useCreateWorkShiftAssignmentMutation();
   const bulkMutation = useBulkCreateWorkShiftAssignmentsMutation();
   const copyMutation = useCopyWorkShiftAssignmentsMutation();
@@ -168,6 +219,16 @@ export function MyWorkSchedulePage() {
     const list = itemsByDay.get(item.workDate) ?? [];
     list.push(item);
     itemsByDay.set(item.workDate, list);
+  }
+
+  /** Đơn nghỉ áp lên ô (ngày × ca): đã duyệt > chờ duyệt > từ chối gần nhất. Nghỉ cả ngày (`workShiftId=null`) phủ mọi ca. */
+  function leaveForCell(day: string, shiftId: string): LeaveRequestItem | undefined {
+    const candidates = (leaveQuery.data?.items ?? []).filter((l) => l.leaveDate === day && (l.workShiftId === shiftId || l.workShiftId === null));
+    return (
+      candidates.find((l) => l.status === 'APPROVED') ??
+      candidates.find((l) => l.status === 'PENDING') ??
+      candidates.find((l) => l.status === 'REJECTED')
+    );
   }
 
   const loading = shiftsQuery.isPending || listQuery.isPending;
@@ -216,6 +277,17 @@ export function MyWorkSchedulePage() {
       await createMutation.mutateAsync({ workShiftId, workDate });
     } catch (err) {
       showLockErrorIfApplicable(err);
+    }
+  }
+
+  async function handleSubmitMonth(month: string) {
+    setSubmitError(null);
+    try {
+      await submitMutation.mutateAsync({ month });
+      setToast(`Đã gửi duyệt ${formatMonthLabel(month).toLowerCase()}.`);
+      setTimeout(() => setToast(null), 4000);
+    } catch (err) {
+      setSubmitError(err instanceof ApiError ? err.message : 'Gửi duyệt thất bại, vui lòng thử lại.');
     }
   }
 
@@ -340,7 +412,7 @@ export function MyWorkSchedulePage() {
           )}
         </div>
 
-        {selfScheduleEnabled && !toolbarLocked && (
+        {selfScheduleEnabled && !toolbarLocked && monthsInView.some((m) => monthEditable(m)) && (
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -375,7 +447,7 @@ export function MyWorkSchedulePage() {
           <span className="text-xs font-semibold text-slate-500">Chọn ngày để áp dụng ca:</span>
           {days.map((day, index) => {
             const dayLocked = lockedMonths.has(day.slice(0, 7)) && !unlockedForEditing;
-            if (dayLocked) return null;
+            if (dayLocked || day < today || !monthEditable(day.slice(0, 7))) return null;
             return (
               <label key={day} className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
                 <input type="checkbox" checked={selection.isSelected(day)} onChange={() => selection.toggle(day)} className="h-3.5 w-3.5" />
@@ -383,6 +455,69 @@ export function MyWorkSchedulePage() {
               </label>
             );
           })}
+        </div>
+      )}
+
+      {/* "Đổi ca" (#225): có yêu cầu đang chờ MÌNH xác nhận. */}
+      {incomingSwapCount > 0 && (
+        <div className="flex flex-shrink-0 items-center gap-2.5 rounded-md bg-amber-500 px-3.5 py-2.5 text-white shadow-sm">
+          <span className="flex-1 text-[13px] font-semibold">Có {incomingSwapCount} yêu cầu đổi ca đang chờ bạn xác nhận.</span>
+          <Button type="button" variant="secondary" className="px-3.5 py-1.5 text-xs font-bold" onClick={() => setShowIncoming(true)}>
+            Xem yêu cầu
+          </Button>
+        </div>
+      )}
+
+      {/* "Duyệt đăng ký ca theo tháng" (#225) — trạng thái bảng tháng + Gửi duyệt cả tháng. */}
+      {showStatusBanner && (
+        <div className="flex flex-shrink-0 flex-col gap-2">
+          <div className="flex items-center gap-2 px-1">
+            <span className="text-[13px] font-semibold text-slate-700">{formatMonthLabel(statusMonth)}</span>
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white ${
+                monthStatus(statusMonth) === 'APPROVED' ? 'bg-emerald-500' : monthStatus(statusMonth) === 'SUBMITTED' ? 'bg-amber-500' : statusRow?.returnReason ? 'bg-rose-600' : 'bg-slate-500'
+              }`}
+            >
+              {monthStatus(statusMonth) === 'APPROVED' ? 'Đã duyệt' : monthStatus(statusMonth) === 'SUBMITTED' ? 'Chờ duyệt' : statusRow?.returnReason ? 'Bị trả lại' : 'Nháp'}
+            </span>
+          </div>
+          {monthStatus(statusMonth) === 'DRAFT' && isMonthOpenForSelfRegistration(statusMonth, today) && statusRow?.returnReason && (
+            <div className="flex items-center gap-2.5 rounded-md bg-rose-600 px-3.5 py-2.5 text-white shadow-sm">
+              <span className="flex-1 text-[13px] font-semibold">
+                {formatMonthLabel(statusMonth)} bị trả lại: &quot;{statusRow.returnReason}&quot; Bạn sửa lại rồi gửi duyệt lần nữa.
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                className="px-3.5 py-1.5 text-xs font-bold"
+                loading={submitMutation.isPending}
+                onClick={() => void handleSubmitMonth(statusMonth)}
+              >
+                Gửi duyệt cả tháng
+              </Button>
+            </div>
+          )}
+          {monthStatus(statusMonth) === 'DRAFT' && isMonthOpenForSelfRegistration(statusMonth, today) && !statusRow?.returnReason && (
+            <div className="flex flex-wrap items-center gap-2.5 rounded-md border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-sm text-blue-900">
+              <span className="min-w-0 flex-1">
+                <span className="font-bold">Đăng ký {formatMonthLabel(statusMonth).toLowerCase()}.</span> Bạn chỉ đăng ký được cho tháng chưa tới. Đăng ký xong bấm <strong>Gửi duyệt cả tháng</strong>; sau khi gửi bạn không tự sửa hoặc xoá ca được nữa.
+              </span>
+              <Button type="button" className="px-3.5 py-1.5 text-xs font-bold" loading={submitMutation.isPending} onClick={() => void handleSubmitMonth(statusMonth)}>
+                Gửi duyệt cả tháng
+              </Button>
+            </div>
+          )}
+          {monthStatus(statusMonth) === 'SUBMITTED' && statusRow && (
+            <div className="flex items-center gap-2.5 rounded-md bg-amber-500 px-3.5 py-2.5 text-white shadow-sm">
+              <span className="flex-1 text-[13px] font-semibold">
+                Đã gửi duyệt — {statusRow.shiftCount} ca, {formatMinutesAsHours(statusRow.totalMinutes)} giờ. Đang chờ Quản lý phòng khám duyệt, trong lúc này không sửa hoặc xoá ca được.
+              </span>
+            </div>
+          )}
+          {monthStatus(statusMonth) === 'APPROVED' && (
+            <p className="px-1 text-xs text-slate-500">Lịch đã duyệt không sửa hoặc xoá trực tiếp. Chỉ xin nghỉ hoặc đổi ca.</p>
+          )}
+          {submitError && <p className="px-1 text-xs font-medium text-rose-600">{submitError}</p>}
         </div>
       )}
 
@@ -527,31 +662,180 @@ export function MyWorkSchedulePage() {
 
                     if (item) {
                       const locked = !item.canEdit || dayLocked;
-                      return (
-                        <div key={cellKey} className="border-b border-r border-slate-100 p-1.5 last:border-r-0">
-                          <div className="relative flex h-full flex-col items-center justify-center gap-0.5 rounded-md bg-emerald-50 px-2 py-2 text-center ring-1 ring-inset ring-emerald-200">
-                            {locked && <Lock size={10} weight="bold" className="absolute right-1.5 top-1.5 text-emerald-400" aria-hidden="true" />}
-                            {item.canEdit && selfScheduleEnabled && !dayLocked && (
+                      const leave = leaveForCell(day, shift.id);
+                      const canDelete = item.canEdit && selfScheduleEnabled && !dayLocked;
+                      const pendingSwap = pendingSwapByAssignment.get(item.id);
+                      const canSwap = canCreateSwap && day >= today && !item.canEdit && !pendingSwap;
+
+                      // Nghỉ ĐÃ DUYỆT — gạch chéo đỏ, ca đăng ký vẫn giữ nguyên bên dưới.
+                      if (leave?.status === 'APPROVED') {
+                        return (
+                          <div key={cellKey} className="border-b border-r border-slate-100 p-1.5 last:border-r-0">
+                            <div
+                              className="flex h-full flex-col justify-center gap-1 rounded-md border border-rose-300 px-2 py-2"
+                              style={{ backgroundImage: 'repeating-linear-gradient(135deg, rgba(225,29,72,.10) 0 6px, transparent 6px 12px)' }}
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-1">
+                                <span className="text-xs font-bold text-rose-700">Nghỉ</span>
+                                <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-semibold text-white">Đã duyệt</span>
+                              </div>
+                              <span className="truncate text-[11px] text-slate-600" title={leave.reason}>
+                                {leave.reason}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      // Chờ duyệt — nhãn hổ phách + "Rút đơn".
+                      if (leave?.status === 'PENDING') {
+                        return (
+                          <div key={cellKey} className="border-b border-r border-slate-100 p-1.5 last:border-r-0">
+                            <div className="flex h-full flex-col justify-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-2">
+                              <div className="flex flex-wrap items-center justify-between gap-1">
+                                <span className="text-xs font-bold text-amber-800">{shift.name}</span>
+                                <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white">Chờ duyệt nghỉ</span>
+                              </div>
+                              {leave.canWithdraw && (
+                                <button
+                                  type="button"
+                                  onClick={() => withdrawMutation.mutate({ id: leave.id, version: leave.version })}
+                                  className="self-start text-[11px] font-semibold text-blue-600 hover:underline"
+                                >
+                                  Rút đơn
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+                      // Chờ NGƯỜI NHẬN xác nhận đổi ca ("Đổi ca", #225) — nhãn hổ phách + "Huỷ yêu cầu".
+                      if (pendingSwap) {
+                        return (
+                          <div key={cellKey} className="border-b border-r border-slate-100 p-1.5 last:border-r-0">
+                            <div className="flex h-full flex-col justify-center gap-0.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-2">
+                              <span className="text-xs font-bold text-amber-800">Chờ xác nhận đổi ca</span>
+                              <span className="truncate text-[11px] text-slate-600">với {pendingSwap.counterpartName}</span>
                               <button
                                 type="button"
-                                aria-label="Xoá ca"
-                                onClick={() => deleteMutation.mutate({ id: item.id, version: item.version }, { onError: showLockErrorIfApplicable })}
-                                className="absolute right-1 top-1 rounded p-0.5 text-emerald-400 hover:bg-emerald-100 hover:text-emerald-700"
+                                onClick={() => cancelSwapMutation.mutate({ id: pendingSwap.id, version: pendingSwap.version })}
+                                className="self-start text-[11px] font-semibold text-blue-600 hover:underline"
                               >
-                                <XIcon size={11} weight="bold" />
+                                Huỷ yêu cầu
                               </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                      // Từ chối — xám kèm lý do; vẫn xin lại được qua menu như ô thường.
+                      const rejectedNote = leave?.status === 'REJECTED' ? leave : undefined;
+                      const canRequestLeave = canCreateLeave && day >= today;
+                      const menuOpen = menuCell === cellKey;
+
+                      return (
+                        <div key={cellKey} className="border-b border-r border-slate-100 p-1.5 last:border-r-0">
+                          <div
+                            className={`relative flex h-full flex-col items-center justify-center gap-0.5 rounded-md px-2 py-2 text-center ring-1 ring-inset ${
+                              rejectedNote ? 'bg-slate-50 ring-slate-300' : 'bg-emerald-50 ring-emerald-200'
+                            }`}
+                          >
+                            {locked && <Lock size={10} weight="bold" className="absolute right-1.5 top-1.5 text-emerald-400" aria-hidden="true" />}
+                            {rejectedNote ? (
+                              <>
+                                <span className="flex flex-wrap items-center justify-center gap-1.5 text-[12.5px] font-bold text-slate-700">
+                                  {shift.name}
+                                  <span className="rounded-full bg-slate-300 px-2 py-0.5 text-[10px] font-semibold text-slate-600">Từ chối nghỉ</span>
+                                </span>
+                                <span className="max-w-full truncate text-[11px] text-slate-500" title={rejectedNote.decisionReason ?? undefined}>
+                                  &quot;{rejectedNote.decisionReason}&quot;
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="flex items-center gap-1 text-[12.5px] font-bold text-emerald-700">
+                                  <CheckCircle size={13} weight="fill" aria-hidden="true" />
+                                  Đã đăng ký
+                                </span>
+                                <span className="text-[11px] font-semibold text-emerald-600">{formatHours(hoursBetween(item.startTime, item.endTime))} giờ</span>
+                              </>
                             )}
-                            <span className="flex items-center gap-1 text-[12.5px] font-bold text-emerald-700">
-                              <CheckCircle size={13} weight="fill" aria-hidden="true" />
-                              Đã đăng ký
-                            </span>
-                            <span className="text-[11px] font-semibold text-emerald-600">{formatHours(hoursBetween(item.startTime, item.endTime))} giờ</span>
+
+                            {(canRequestLeave || canDelete || canSwap) && (
+                              <button
+                                type="button"
+                                aria-label="Tuỳ chọn ca"
+                                aria-haspopup="menu"
+                                aria-expanded={menuOpen}
+                                onClick={() => setMenuCell(menuOpen ? null : cellKey)}
+                                className="absolute inset-0 rounded-md focus-visible:outline-2 focus-visible:outline-blue-600"
+                              />
+                            )}
+                            {menuOpen && (
+                              <>
+                                <button type="button" aria-label="Đóng menu" className="fixed inset-0 z-20 cursor-default" onClick={() => setMenuCell(null)} />
+                                <div role="menu" className="absolute left-0 top-full z-30 mt-1 w-44 rounded-md border border-slate-200 bg-white py-1 text-left text-sm font-medium text-slate-800 shadow-lg">
+                                  {canRequestLeave && (
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-slate-50"
+                                      onClick={() => {
+                                        setMenuCell(null);
+                                        setLeaveDialog({ date: day, shiftId: shift.id });
+                                      }}
+                                    >
+                                      <CalendarX size={14} weight="bold" className="text-rose-600" aria-hidden="true" />
+                                      Xin nghỉ ca này
+                                    </button>
+                                  )}
+                                  {canSwap && (
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-slate-50"
+                                      onClick={() => {
+                                        setMenuCell(null);
+                                        setSwapSource({
+                                          assignmentId: item.id,
+                                          workDate: day,
+                                          workShiftName: shift.name,
+                                          startTime: shift.startTime,
+                                          endTime: shift.endTime,
+                                        });
+                                      }}
+                                    >
+                                      <ArrowsLeftRight size={14} weight="bold" className="text-blue-600" aria-hidden="true" />
+                                      Đổi ca
+                                    </button>
+                                  )}
+                                  {canDelete ? (
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-slate-50"
+                                      onClick={() => {
+                                        setMenuCell(null);
+                                        deleteMutation.mutate({ id: item.id, version: item.version }, { onError: showLockErrorIfApplicable });
+                                      }}
+                                    >
+                                      <Trash size={14} weight="bold" className="text-slate-500" aria-hidden="true" />
+                                      Xoá ca
+                                    </button>
+                                  ) : (
+                                    <span className="flex items-center gap-2 px-3 py-1.5 text-slate-400">
+                                      <Lock size={14} weight="bold" aria-hidden="true" />
+                                      Xoá ca (đã khoá)
+                                    </span>
+                                  )}
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
                       );
                     }
 
-                    const canAdd = !bulkMode && selfScheduleEnabled && !dayLocked;
+                    // Ngày đã qua không đăng ký được (chốt 2026-10-09, #224) — server cũng chặn, ẩn nút cho đỡ nhầm.
+                    const canAdd = !bulkMode && selfScheduleEnabled && !dayLocked && day >= today && monthEditable(day.slice(0, 7));
                     return (
                       <div key={cellKey} className="border-b border-r border-slate-100 p-1.5 last:border-r-0">
                         {canAdd ? (
@@ -595,7 +879,7 @@ export function MyWorkSchedulePage() {
                 <button
                   type="button"
                   key={date}
-                  disabled={bulkMode && (!inMonth || monthAnchorLocked)}
+                  disabled={bulkMode && (!inMonth || monthAnchorLocked || date < today || !monthEditable(date.slice(0, 7)))}
                   onClick={() => {
                     if (bulkMode) {
                       selection.toggle(date);
@@ -626,13 +910,24 @@ export function MyWorkSchedulePage() {
                   <span>{Number(date.slice(8, 10))}</span>
                   {dayItems.length > 0 && (
                     <span className="mt-1.5 flex flex-wrap gap-1">
-                      {dayItems.map((item) => (
-                        <span
-                          key={item.id}
-                          className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${isToday ? 'ring-1 ring-white/60' : ''}`}
-                          style={{ background: WORK_SHIFT_COLOR_HEX[item.workShiftColor] }}
-                        />
-                      ))}
+                      {dayItems.map((item) =>
+                        isStaffScope ? (
+                          // #225: chip tên ca tô theo trạng thái bảng tháng (Nháp xanh dương / Chờ duyệt hổ phách / Đã duyệt xanh lá).
+                          <span
+                            key={item.id}
+                            title={item.workShiftName}
+                            className={`max-w-full truncate rounded bg-white px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-inset ${SCHEDULE_CHIP_TONE[monthStatus(item.workDate.slice(0, 7))]}`}
+                          >
+                            {item.workShiftName}
+                          </span>
+                        ) : (
+                          <span
+                            key={item.id}
+                            className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${isToday ? 'ring-1 ring-white/60' : ''}`}
+                            style={{ background: WORK_SHIFT_COLOR_HEX[item.workShiftColor] }}
+                          />
+                        ),
+                      )}
                     </span>
                   )}
                 </button>
@@ -654,6 +949,32 @@ export function MyWorkSchedulePage() {
           Áp dụng ca cho các ngày này
         </Button>
       </SelectionToolbar>
+
+      {swapSource && (
+        <ShiftSwapDialog
+          source={swapSource}
+          onClose={() => setSwapSource(null)}
+          onDone={() => {
+            setSwapSource(null);
+            setToast('Đã gửi yêu cầu đổi ca, đang chờ đồng nghiệp xác nhận.');
+            setTimeout(() => setToast(null), 4000);
+          }}
+        />
+      )}
+      {showIncoming && <IncomingShiftSwapDialog onClose={() => setShowIncoming(false)} />}
+
+      {leaveDialog && (
+        <LeaveRequestDialog
+          date={leaveDialog.date}
+          initialShiftId={leaveDialog.shiftId}
+          onClose={() => setLeaveDialog(null)}
+          onDone={() => {
+            setLeaveDialog(null);
+            setToast('Đã gửi đơn xin nghỉ, đang chờ duyệt.');
+            setTimeout(() => setToast(null), 4000);
+          }}
+        />
+      )}
 
       {pickerFor && (
         <WorkShiftPickerModal

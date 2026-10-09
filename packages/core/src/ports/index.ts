@@ -21,3 +21,5 @@ export * from './encounter-billing-reader.port';
 export * from './paraclinical-results-reader.port';
 export * from './stock-availability.port';
 export * from './pricing.port';
+export * from './leave-reader.port';
+export * from './appointment-impact-reader.port';

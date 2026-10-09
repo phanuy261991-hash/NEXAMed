@@ -6,11 +6,19 @@ import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { TabBar } from '../../shared/ui/TabBar';
+import { useDataScope, useHasPermission } from '../auth/usePermission';
+import { LeaveRequestsPane } from '../leave-request/LeaveRequestsPane';
+import { useLeaveRequestPendingCountQuery } from '../leave-request/leave-request.queries';
+import { ShiftSwapHistoryPane } from '../shift-swap/ShiftSwapHistoryPane';
+import { useShiftSwapUnseenCountQuery } from '../shift-swap/shift-swap.queries';
+import { ScheduleSubmissionsPane } from './ScheduleSubmissionsPane';
+import { useScheduleSubmissionPendingCountQuery } from './schedule-submission.queries';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
 import { useUserAccountsQuery } from '../user-account/user-account.queries';
 import { useDepartmentsQuery } from '../department/department.queries';
-import { useWorkShiftsQuery } from '../clinic/clinic.queries';
+import { useAllowStaffSelfScheduleEnabledQuery, useWorkShiftsQuery } from '../clinic/clinic.queries';
 import { WORK_SHIFT_COLOR_HEX } from '../clinic/WorkShiftFormModal';
 import { ImportExcelDialog } from './ImportExcelDialog';
 import { WorkShiftPickerModal } from './WorkShiftPickerModal';
@@ -74,7 +82,7 @@ const MIN_DAY_COL_WIDTH = 132;
  * Độ rộng mỗi cột ngày đo bằng `ResizeObserver` để luôn vừa đúng 7 cột trong khung nhìn hiện có,
  * responsive theo màn hình thay vì hardcode 1 con số.
  */
-export function StaffWorkSchedulePage() {
+function StaffMonthScheduleView() {
   useBreadcrumb([{ label: 'Lịch làm việc' }, { label: 'Lịch làm việc nhân viên' }]);
 
   const today = getTodayDateString();
@@ -450,7 +458,7 @@ export function StaffWorkSchedulePage() {
                             style={{ width: dayColWidth, minWidth: dayColWidth }}
                           >
                             <div className="flex flex-col gap-1.5">
-                              {rowBulkActive && (
+                              {rowBulkActive && (day >= today || canBypassLock) && (
                                 <label className="flex items-center justify-center gap-1.5 pb-0.5 text-[10.5px] text-slate-400">
                                   <input type="checkbox" checked={selection.isSelected(day)} onChange={() => selection.toggle(day)} className="h-3.5 w-3.5" />
                                   Chọn
@@ -480,7 +488,8 @@ export function StaffWorkSchedulePage() {
                                   )}
                                 </div>
                               ))}
-                              {!rowBulkActive && !monthLocked && (
+                              {/* Ngày đã qua: chỉ người có quyền "Sửa lịch đã khoá" thêm được (chốt 2026-10-09, #224). */}
+                              {!rowBulkActive && !monthLocked && (day >= today || canBypassLock) && (
                                 <Button
                                   type="button"
                                   variant="add"
@@ -535,6 +544,52 @@ export function StaffWorkSchedulePage() {
           onClose={() => setImportOpen(false)}
           onImported={() => void listQuery.refetch()}
         />
+      )}
+    </div>
+  );
+}
+
+/**
+ * "Lịch làm việc nhân viên" — các tab (#224/#225, mockup đã duyệt): "Lịch theo tháng" (lưới cũ, giữ nguyên),
+ * "Đăng ký ca" (duyệt đăng ký tháng — cần `work_shift_assignment.approve`), "Đơn xin nghỉ" (cần
+ * `leave_request.read`), "Đổi ca" (lịch sử — cần `shift_swap.read` scope global). Mỗi tab có chấm số riêng.
+ */
+export function StaffWorkSchedulePage() {
+  useBreadcrumb([{ label: 'Lịch làm việc' }, { label: 'Lịch làm việc nhân viên' }]);
+  // Công tắc "Cho phép nhân viên tự đăng ký ca" TẮT → quản lý tự xếp ca, không có bước gửi/duyệt đăng ký → ẩn tab "Đăng ký ca" (#225).
+  const selfScheduleEnabled = useAllowStaffSelfScheduleEnabledQuery().data?.enabled ?? true;
+  const canApproveSubmission = useHasPermission('work_shift_assignment', 'approve') && selfScheduleEnabled;
+  const canReadLeave = useHasPermission('leave_request', 'read');
+  const canApproveLeave = useHasPermission('leave_request', 'approve');
+  const canReadSwap = useDataScope('shift_swap', 'read') === 'global';
+  const submissionPending = useScheduleSubmissionPendingCountQuery(canApproveSubmission).data?.count;
+  const leavePending = useLeaveRequestPendingCountQuery(canApproveLeave).data?.count;
+  const swapUnseen = useShiftSwapUnseenCountQuery(canReadSwap).data?.count;
+  const [tab, setTab] = useState<'month' | 'submission' | 'leave' | 'swap'>('month');
+
+  const tabs = [
+    { id: 'month' as const, label: 'Lịch theo tháng' },
+    ...(canApproveSubmission ? [{ id: 'submission' as const, label: 'Đăng ký ca', badge: submissionPending }] : []),
+    ...(canReadLeave ? [{ id: 'leave' as const, label: 'Đơn xin nghỉ', badge: leavePending }] : []),
+    ...(canReadSwap ? [{ id: 'swap' as const, label: 'Đổi ca', badge: swapUnseen }] : []),
+  ];
+  if (tabs.length === 1) return <StaffMonthScheduleView />;
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex-shrink-0 px-3 pt-3">
+        <TabBar tabs={tabs} active={tab} onChange={setTab} variant="underline" />
+      </div>
+      {tab === 'month' ? (
+        <div className="min-h-0 flex-1">
+          <StaffMonthScheduleView />
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col p-3">
+          {tab === 'submission' && <ScheduleSubmissionsPane />}
+          {tab === 'leave' && <LeaveRequestsPane />}
+          {tab === 'swap' && <ShiftSwapHistoryPane />}
+        </div>
       )}
     </div>
   );

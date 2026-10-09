@@ -19,7 +19,7 @@ export class WorkShiftAssignmentLockedError extends DomainError {
   readonly code = 'WORK_SHIFT_ASSIGNMENT_LOCKED';
 
   constructor() {
-    super('Ca đã khoá (chỉ sửa/xoá được trong đúng ngày đăng ký) — liên hệ quản lý để đổi.');
+    super('Ca này do quản lý xếp hoặc đã khoá — liên hệ quản lý để đổi.');
   }
 }
 
@@ -47,5 +47,53 @@ export class WorkShiftAssignmentMonthLockedError extends DomainError {
 
   constructor() {
     super('Lịch làm việc tháng này đã khoá (đã qua ngày chốt bảng ca) — liên hệ người có quyền mở khoá.');
+  }
+}
+
+/**
+ * Đăng ký/sửa/xoá ca cho NGÀY ĐÃ QUA (chốt 2026-10-09, `docs/DECISIONS.md` #224) — ngày đã qua không
+ * được thay đổi, kể cả khi tháng chưa chốt; chỉ người có quyền `work_shift_assignment.unlock` làm được.
+ */
+export class WorkShiftAssignmentPastDateError extends DomainError {
+  readonly code = 'WORK_SHIFT_ASSIGNMENT_PAST_DATE';
+
+  constructor() {
+    super('Ngày đã qua không đăng ký/sửa/xoá ca được — liên hệ người có quyền "Sửa lịch đã khoá".');
+  }
+}
+
+/** "Duyệt đăng ký ca" (#225) — nhân viên chỉ tự đăng ký/xoá ca của tháng SAU tháng hiện tại. */
+export class WorkShiftAssignmentMonthNotOpenError extends DomainError {
+  readonly code = 'WORK_SHIFT_ASSIGNMENT_MONTH_NOT_OPEN';
+
+  constructor() {
+    super('Chỉ tự đăng ký được ca của tháng sau; tháng này do quản lý xếp.');
+  }
+}
+
+/** Bảng đăng ký tháng đã gửi duyệt hoặc đã duyệt — nhân viên không tự sửa/xoá/thêm ca được nữa. */
+export class WorkShiftAssignmentSubmissionLockedError extends DomainError {
+  readonly code = 'WORK_SHIFT_ASSIGNMENT_SUBMISSION_LOCKED';
+
+  constructor() {
+    super('Lịch tháng này đã gửi duyệt hoặc đã duyệt — chỉ xin nghỉ hoặc đổi ca, không sửa trực tiếp.');
+  }
+}
+
+/** Thao tác không hợp lệ với trạng thái hiện tại của bảng đăng ký tháng (gửi lại/duyệt khi không ở "Chờ duyệt"...). */
+export class ScheduleSubmissionInvalidStatusError extends DomainError {
+  readonly code = 'SCHEDULE_SUBMISSION_INVALID_STATUS';
+
+  constructor() {
+    super('Bảng đăng ký tháng không còn ở trạng thái cho phép thao tác này.');
+  }
+}
+
+/** Gửi duyệt khi tháng chưa có ca nào. */
+export class ScheduleSubmissionEmptyError extends DomainError {
+  readonly code = 'SCHEDULE_SUBMISSION_EMPTY';
+
+  constructor() {
+    super('Tháng này chưa đăng ký ca nào nên chưa gửi duyệt được.');
   }
 }

@@ -6,6 +6,9 @@ import { WorkShiftAssignmentController } from './work-shift-assignment.controlle
 import { WorkShiftAssignmentService } from './work-shift-assignment.service';
 import { WorkShiftAssignmentRepository } from './work-shift-assignment.repository';
 import { WorkShiftAssignmentImportService } from './work-shift-assignment-import.service';
+import { WorkScheduleSubmissionController } from './work-schedule-submission.controller';
+import { WorkScheduleSubmissionService } from './work-schedule-submission.service';
+import { WorkScheduleSubmissionRepository } from './work-schedule-submission.repository';
 
 /**
  * "Đăng ký ca làm việc" (Giai đoạn 2 của #101) — module MỚI, tách khỏi `clinic` (nơi sở hữu danh
@@ -16,13 +19,15 @@ import { WorkShiftAssignmentImportService } from './work-shift-assignment-import
  */
 @Module({
   imports: [IamModule, ClinicModule],
-  controllers: [WorkShiftAssignmentController],
+  controllers: [WorkShiftAssignmentController, WorkScheduleSubmissionController],
   providers: [
     WorkShiftAssignmentService,
     WorkShiftAssignmentRepository,
     WorkShiftAssignmentImportService,
+    WorkScheduleSubmissionService,
+    WorkScheduleSubmissionRepository,
     { provide: WORK_SHIFT_ASSIGNMENT_READER_PORT, useExisting: WorkShiftAssignmentService },
   ],
-  exports: [WORK_SHIFT_ASSIGNMENT_READER_PORT],
+  exports: [WORK_SHIFT_ASSIGNMENT_READER_PORT, WorkShiftAssignmentRepository, WorkScheduleSubmissionRepository],
 })
 export class WorkShiftAssignmentModule {}

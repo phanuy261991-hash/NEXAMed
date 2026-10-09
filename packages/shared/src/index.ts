@@ -41,3 +41,6 @@ export * from './pricing';
 export * from './clinical-order';
 export * from './paraclinical-result';
 export * from './specimen-tube';
+export * from './leave-request';
+export * from './work-schedule-submission';
+export * from './shift-swap';

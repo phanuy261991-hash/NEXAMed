@@ -43,6 +43,9 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   // dùng entityType này từ S2-07 nhưng chưa từng có nhãn).
   work_shift: 'Ca làm việc',
   work_shift_assignment: 'Đăng ký ca làm việc',
+  leave_request: 'Đơn xin nghỉ',
+  work_schedule_submission: 'Đăng ký ca theo tháng',
+  shift_swap: 'Đổi ca',
   doctor_availability: 'Trạng thái làm việc bác sĩ',
   tenant_setting: 'Cấu hình phòng khám',
   cashier_shift: 'Phiếu chốt ca',

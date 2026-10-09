@@ -23,7 +23,7 @@ import {
   useStockReceiptsQuery,
   useVoidStockReceiptMutation,
 } from './inventory.queries';
-import { ReasonConfirmDialog } from './ReasonConfirmDialog';
+import { ReasonConfirmDialog } from '../../shared/ui/ReasonConfirmDialog';
 
 const GRID_COLUMNS = '130px 150px 110px 130px 1.3fr 110px 80px 130px 1fr 170px';
 const TABLE_MIN_WIDTH_PX = 1300;

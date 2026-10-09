@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
 import type { Prisma } from '@prisma/client';
-import { CLINIC_CONFIG_READER_PORT, type ClinicConfigReaderPort } from '@nexamed/core';
+import { CLINIC_CONFIG_READER_PORT, getVietnamDateString, type ClinicConfigReaderPort } from '@nexamed/core';
 import type {
   ImportWorkShiftAssignmentRowError,
   ImportWorkShiftAssignmentValidRow,
@@ -11,7 +11,7 @@ import type {
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { UserAccountRepository } from '../iam/user-account.repository';
 import { WorkShiftService } from '../clinic/work-shift.service';
-import { assertMonthWritable } from './month-lock.guard';
+import { assertMonthWritable, canBypassMonthLock } from './month-lock.guard';
 import { WorkShiftAssignmentRepository } from './work-shift-assignment.repository';
 
 const WEEKDAY_ABBR = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -158,7 +158,13 @@ export class WorkShiftAssignmentImportService {
       // chặn TOÀN BỘ commit nếu tháng đó đã khoá và actor không có quyền mở khoá.
       await assertMonthWritable(tx, this.clinicConfigReader, tenantId, actorId, month);
 
-      const { validCells, duplicateCells, errorCells } = await this.parseAndResolve(tx, tenantId, month, fileBuffer);
+      const parsed = await this.parseAndResolve(tx, tenantId, month, fileBuffer);
+      const { duplicateCells, errorCells } = parsed;
+      // Ngày đã qua (chốt 2026-10-09, #224): không ghi, trừ người có quyền mở khoá — tính vào errorCount.
+      const today = getVietnamDateString();
+      const canBypass = await canBypassMonthLock(tx, tenantId, actorId);
+      const validCells = canBypass ? parsed.validCells : parsed.validCells.filter((r) => r.workDate >= today);
+      const pastSkippedCount = parsed.validCells.length - validCells.length;
 
       const createdCount = await this.repository.createManySkipDuplicates(
         tx,
@@ -172,7 +178,7 @@ export class WorkShiftAssignmentImportService {
         })),
       );
 
-      return { createdCount, duplicateCount: duplicateCells.length, errorCount: errorCells.length };
+      return { createdCount, duplicateCount: duplicateCells.length, errorCount: errorCells.length + pastSkippedCount };
     });
   }
 

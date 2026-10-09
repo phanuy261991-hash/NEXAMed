@@ -15,6 +15,7 @@ import { DoctorEndShiftDialog } from '../../shared/ui/DoctorEndShiftDialog';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useDoctorWorkShiftsQuery, useDoctorsQuery, useScheduleConfigQuery } from '../appointment/appointment.queries';
 import { getVietnamTodayDateString, minutesToLabel, vietnamNowMinutes, vnDateTimeToIso } from '../appointment/schedule-grid.utils';
+import { describeLeaveToday, formatLeaveWindow } from '../leave-request/leave-window';
 import {
   useDeferredPaymentEnabledQuery,
   useDoctorAvailabilityPolicyQuery,
@@ -211,7 +212,14 @@ export function ReceptionIntakeForm({
    * chặn cứng ở đây sẽ nghiêm ngặt hơn cả Lịch hẹn, mâu thuẫn, và sập luồng Tiếp nhận cho mọi
    * phòng khám không dùng tính năng đăng ký ca (mặc định tắt, đa số 1-2 bác sĩ). */
   const [unregisteredShiftConfirmDoctorId, setUnregisteredShiftConfirmDoctorId] = useState<string | null>(null);
-  function selectDoctor(doctor: { id: string; hasShiftToday: boolean }) {
+  /** "Đơn xin nghỉ" (#224) — bác sĩ được DUYỆT nghỉ (chưa kết thúc) hôm nay: hỏi xác nhận, KHÔNG chặn cứng
+   * (tiếp nhận tại quầy có thể có lý do đặc biệt, cùng tinh thần #103). */
+  const [leaveConfirmDoctorId, setLeaveConfirmDoctorId] = useState<string | null>(null);
+  function selectDoctor(doctor: { id: string; hasShiftToday: boolean; leaveToday?: { startMinute: number; endMinute: number } | null }) {
+    if (doctor.leaveToday) {
+      setLeaveConfirmDoctorId(doctor.id);
+      return;
+    }
     if (blockBookingOutsideWorkShift && !doctor.hasShiftToday) {
       setUnregisteredShiftConfirmDoctorId(doctor.id);
       return;
@@ -322,6 +330,7 @@ export function ReceptionIntakeForm({
   }
 
   const availabilityByDoctor = new Map((availabilityQuery.data?.items ?? []).map((a) => [a.doctorId, a]));
+  const nowMinutesVn = vietnamNowMinutes();
   const doctorCards = (doctorsQuery.data?.items ?? []).map((d) => ({
     id: d.id,
     fullName: d.displayName ?? d.fullName,
@@ -331,6 +340,8 @@ export function ReceptionIntakeForm({
     waitingCount: waitingCountByDoctor.get(d.id) ?? 0,
     availability: availabilityByDoctor.get(d.id) ?? null,
     hasShiftToday: (doctorWorkShiftsQuery.data?.byDoctorId[d.id]?.length ?? 0) > 0,
+    // Khung nghỉ ĐÃ DUYỆT hôm nay chưa kết thúc (đã qua giờ nghỉ thì không còn nhắc).
+    leaveToday: (doctorWorkShiftsQuery.data?.leaveByDoctorId[d.id] ?? []).find((l) => l.status === 'APPROVED' && l.endMinute > nowMinutesVn) ?? null,
   }));
   // Điều phối theo Khoa ("Hàng đợi ảo", #064) — hiện thẻ "(chung)" cho MỌI Khoa active, kể cả Khoa
   // chưa có bác sĩ nào gán vào (lễ tân vẫn cần đẩy bệnh nhân vào hàng chờ của Khoa mới tạo trước
@@ -801,7 +812,9 @@ export function ReceptionIntakeForm({
                               ? 'border-slate-300 bg-slate-50 opacity-70'
                               : active
                                 ? 'border-brand-teal bg-brand-teal'
-                                : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
+                                : doctor.leaveToday
+                                  ? 'border-rose-300 bg-rose-50 hover:border-rose-400'
+                                  : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
                         }`}
                       >
                         <div className="flex min-w-0 items-center gap-2">
@@ -815,7 +828,12 @@ export function ReceptionIntakeForm({
                             <div className={`truncate text-xs ${active && availabilityStatus === 'ACTIVE' ? 'text-white/80' : 'text-slate-500'}`}>
                               {[doctor.departmentName, doctor.roomName].filter(Boolean).join(' · ') || '—'}
                             </div>
-                            {doctor.hasShiftToday && (
+                            {doctor.leaveToday && (
+                              <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[10.5px] font-bold text-white">
+                                {describeLeaveToday(doctor.leaveToday)}
+                              </div>
+                            )}
+                            {doctor.hasShiftToday && !doctor.leaveToday && (
                               <div
                                 className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${
                                   active && availabilityStatus === 'ACTIVE'
@@ -1200,6 +1218,36 @@ export function ReceptionIntakeForm({
       )}
       {availabilityDialog?.kind === 'end' && (
         <DoctorEndShiftDialog doctorId={availabilityDialog.doctorId} onDone={() => setAvailabilityDialog(null)} onClose={() => setAvailabilityDialog(null)} />
+      )}
+
+      {leaveConfirmDoctorId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <p className="text-base font-bold text-slate-900">{doctorCards.find((d) => d.id === leaveConfirmDoctorId)?.fullName ?? 'Bác sĩ này'} đang nghỉ</p>
+            <p className="mt-1 text-sm text-slate-600">
+              {(() => {
+                const leave = doctorCards.find((d) => d.id === leaveConfirmDoctorId)?.leaveToday;
+                return leave
+                  ? `Bác sĩ được duyệt nghỉ hôm nay (${formatLeaveWindow(leave)}). Vẫn chuyển bệnh nhân vào hàng đợi của bác sĩ này?`
+                  : 'Bác sĩ được duyệt nghỉ. Vẫn chuyển bệnh nhân vào hàng đợi của bác sĩ này?';
+              })()}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setLeaveConfirmDoctorId(null)}>
+                Chọn bác sĩ khác
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setDoctorId(leaveConfirmDoctorId);
+                  setLeaveConfirmDoctorId(null);
+                }}
+              >
+                Vẫn chọn
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {unregisteredShiftConfirmDoctorId && (

@@ -96,6 +96,21 @@ export class WorkShiftAssignmentRepository {
     });
   }
 
+  /** Ca của NHIỀU người trong khoảng ngày — tính số ca/giờ ở bảng duyệt tháng (#225). */
+  async listForUsersBetween(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    userIds: string[],
+    from: string,
+    to: string,
+  ): Promise<WorkShiftAssignmentRow[]> {
+    if (userIds.length === 0) return [];
+    return tx.workShiftAssignment.findMany({
+      where: { tenantId, userId: { in: userIds }, deletedAt: null, workDate: { gte: new Date(from), lte: new Date(to) } },
+      include: { workShift: true },
+    });
+  }
+
   /**
    * Ca làm việc đã đăng ký của NHIỀU người cho ĐÚNG 1 ngày — dùng cho lưới Lịch hẹn
    * (`WorkShiftAssignmentReaderPort`, key = `userId`). `userIds` rỗng trả về mảng rỗng luôn, không

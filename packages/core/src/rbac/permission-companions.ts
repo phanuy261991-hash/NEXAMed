@@ -28,6 +28,13 @@ export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> 
   'lab_result.enter': ['result_template.read'],
   'imaging_result.enter': ['result_template.read'],
   'work_shift_assignment.read': ['work_shift.read', 'user_account.read'],
+  // "Đơn xin nghỉ" (#224): xin nghỉ cần xem ca đã đăng ký của mình; duyệt/ghi hộ cần xem danh sách đơn.
+  'leave_request.create': ['leave_request.read', 'work_shift_assignment.read', 'work_shift.read'],
+  'leave_request.approve': ['leave_request.read'],
+  // "Đổi ca" (#225): gửi/xác nhận đổi ca cần xem ca đã đăng ký và danh sách yêu cầu.
+  'shift_swap.create': ['shift_swap.read', 'work_shift_assignment.read'],
+  'work_shift_assignment.approve': ['work_shift_assignment.read'],
+  'leave_request.file_on_behalf': ['leave_request.read', 'work_shift_assignment.read', 'work_shift.read'],
   'reference_catalog.manage': ['reference_catalog.read'],
   'clinic_config.update': ['clinic_config.read'],
   'audit_log.read': ['user_account.read'],
