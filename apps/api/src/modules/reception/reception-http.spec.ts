@@ -1183,5 +1183,43 @@ describe('HTTP e2e — /api/v1/reception', () => {
         await setSettings({ blockBookingOutsideWorkShiftEnabled: false, blockBookingWhenNoShiftEnabled: false });
       }
     });
+
+    it('"Đổi bác sĩ" sang bác sĩ không có ca hôm nay khi công tắc con bật → 409 DOCTOR_NO_SHIFT_ON_DATE (không lách được qua đổi bác sĩ); sang bác sĩ có ca → 200', async () => {
+      const admin = await createUserWithRole(fixture.tenantA.id, 'clinic_admin');
+      const patient = await createPatient(receptionistToken);
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/reception/direct')
+        .set(authed(receptionistToken))
+        .send({ patientId: patient.id, doctorId: doctorAUserId, checkedInAt: isoAt(8, 0, 22), services: defaultServices(), receptionTypeCode: 'RT_NEW', examFormCode: 'EF_NORMAL' });
+      expect(created.status).toBe(200);
+      const shift = await request(app.getHttpServer())
+        .post('/api/v1/work-shifts')
+        .set(authed(admin.token))
+        .send({ name: 'Ca Chiều', startTime: '13:00', endTime: '17:00', color: 'teal' });
+      const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+      await request(app.getHttpServer())
+        .post('/api/v1/work-shift-assignments')
+        .set(authed(admin.token))
+        .send({ userId: doctorAUserId, workShiftId: shift.body.data.id, workDate: today });
+      const setSettings = async (body: Record<string, unknown>) => {
+        const res = await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(admin.token)).send(body);
+        expect(res.status).toBe(200);
+      };
+      const reassign = (doctorId: string, version: number) =>
+        request(app.getHttpServer()).patch(`/api/v1/encounters/${created.body.data.id}/reassign`).set(authed(receptionistToken)).send({ doctorId, version });
+      try {
+        await setSettings({ blockBookingOutsideWorkShiftEnabled: true, blockBookingWhenNoShiftEnabled: true });
+        const blocked = await reassign(doctorBUserId, created.body.data.version);
+        expect(blocked.status).toBe(409);
+        expect(blocked.body.error.code).toBe('DOCTOR_NO_SHIFT_ON_DATE');
+        const ok = await reassign(doctorAUserId, created.body.data.version);
+        expect(ok.status).toBe(200);
+        // Tắt công tắc con → đổi sang bác sĩ không có ca lại được.
+        await setSettings({ blockBookingWhenNoShiftEnabled: false });
+        expect((await reassign(doctorBUserId, ok.body.data.version)).status).toBe(200);
+      } finally {
+        await setSettings({ blockBookingOutsideWorkShiftEnabled: false, blockBookingWhenNoShiftEnabled: false });
+      }
+    });
   });
 });
