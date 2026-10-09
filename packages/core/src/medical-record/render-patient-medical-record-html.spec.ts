@@ -244,5 +244,13 @@ describe('renderPatientMedicalRecordHtml', () => {
       const absent = renderPatientMedicalRecordHtml(buildDoc({ encounters: [{ ...encounter }] }));
       expect(absent).not.toContain('<h3>Điều trị</h3>');
     });
+
+    it('giữ xuống dòng của lời dặn nhiều dòng (CSS pre-line trên .note-section)', () => {
+      const html = renderPatientMedicalRecordHtml(
+        buildDoc({ encounters: [{ ...encounter, treatment: { directionLabels: [], content: '', advice: 'Uống thuốc đúng giờ.\nTái khám nếu sốt cao.', followUpDateLabel: null } }] }),
+      );
+      expect(html).toContain('Uống thuốc đúng giờ.\nTái khám nếu sốt cao.');
+      expect(html).toMatch(/\.note-section\s*\{[^}]*white-space:\s*pre-line/);
+    });
   });
 });

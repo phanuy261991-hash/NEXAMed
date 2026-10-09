@@ -303,7 +303,7 @@ export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument
   table.vitals td, table.data-table th, table.data-table td { border: 1px solid #cbd5e1; padding: 4px 6px; font-size: 11px; }
   table.data-table th { background: #eff6ff; text-align: left; }
   .vitals-label { font-weight: 600; background: #f8fafc; width: 90px; }
-  .note-section { margin: 2px 0; }
+  .note-section { margin: 2px 0; white-space: pre-line; }
   .paraclinical-result { margin: 4px 0 8px; page-break-inside: avoid; }
   td.abnormal { font-weight: 700; text-decoration: underline; }
   .meta { color: #475569; font-size: 11px; margin: 2px 0; }
