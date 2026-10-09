@@ -42,6 +42,7 @@ const SYSTEM_LOG_ENTITY_TYPES = new Set([
   'warehouse',
   'cash_account',
   'prescription_template',
+  'advice_template',
   'print_template',
   'system_backup',
 ]);

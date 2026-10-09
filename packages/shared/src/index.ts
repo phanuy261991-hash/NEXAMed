@@ -22,6 +22,7 @@ export * from './drug';
 export * from './drug-import';
 export * from './prescription';
 export * from './prescription-template';
+export * from './advice-template';
 export * from './billing';
 export * from './cashier-shift';
 export * from './cash-book';

@@ -48,6 +48,8 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
           diagnosisLabel="Viêm họng cấp (J02.9) / Sốt (R50.9)"
           items={SAMPLE_PRESCRIPTION_ITEMS}
           signedAt="2026-10-01T07:30:00.000Z"
+          advice="Uống thuốc đúng giờ, nghỉ ngơi, uống đủ nước. Quay lại ngay nếu sốt cao hoặc khó thở."
+          followUpLabel="Thứ Năm, 08/10/2026"
         />
       );
     case 'CLINICAL_ORDER':

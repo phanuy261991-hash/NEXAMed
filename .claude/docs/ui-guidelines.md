@@ -196,6 +196,10 @@ Chủ dự án yêu cầu: form "Thêm mới" phải có thêm nút lưu xong KH
 
 **Đã áp dụng cho toàn bộ 8 nhóm form Thêm mới trong Quản trị**: `ReferenceCatalogPane.tsx` (`ItemFormModal`, mọi category dùng chung, gồm cả `ExamTypeFormModal.tsx` riêng), `RoomPane.tsx` (Tầng + Phòng), `DepartmentPane.tsx` (Loại Khoa/Phòng + Khoa/Phòng), `DrugCatalogPane.tsx`, `AllergenPane.tsx` (Nhóm dị nguyên + Dị nguyên), `WorkShiftFormModal.tsx`, `UserAccountFormDialog.tsx`. Form Thêm mới phát sinh sau này trong Quản trị PHẢI theo đúng khuôn này ngay từ đầu.
 
+### 4.9. `CheckTile` — ô tích chọn dạng thẻ, chọn NHIỀU mục cùng lúc (chốt 2026-10-09, `docs/DECISIONS.md` #222)
+
+`shared/ui/CheckTile.tsx` — dùng cho danh sách lựa chọn NGẮN mà người dùng được chọn nhiều mục (ví dụ "Hướng điều trị": Kê đơn thuốc / Chuyển viện / Hẹn tái khám / Cấp cứu). Không dùng checkbox mặc định của trình duyệt (mục 4.6): ô vuông tự vẽ, trạng thái đã chọn theo token "Lựa chọn" `brand-teal` (mục 2.1); `tone="danger"` đổi màu đã chọn sang đỏ cho mục cần nổi bật (Cấp cứu); `disabled` = chỉ xem. Chọn 1-trong-nhiều vẫn dùng thẻ chọn 1 mục (mục 12) hoặc `TwoOptionToggle` (mục 4.8).
+
 ### 4.8. `TwoOptionToggle` — công tắc trượt chọn 1-trong-2 (chốt 2026-09-09)
 
 `shared/ui/TwoOptionToggle.tsx` — dùng cho MỌI trường hợp cần chọn 1-trong-2 gọn trong không gian hẹp (ví dụ chiết khấu %/Tiền, "Từng dịch vụ"/"Toàn hoá đơn" ở `InvoiceDetailPage.tsx`) — không viết toggle 2 nút tay mới. Hỗ trợ trạng thái CHƯA CHỌN GÌ (`value=null`, cả 2 nút chỉ hiện dạng chip xám chưa tô màu) — bấm lại đúng nút đang chọn để bỏ chọn (quay về `null`).

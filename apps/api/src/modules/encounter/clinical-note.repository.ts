@@ -75,12 +75,18 @@ export class ClinicalNoteRepository {
     encounterId: string,
     section: ClinicalNoteSection,
     content: string,
-    expectedVersion: number,
+    expectedVersion: number | undefined,
     actorId: string,
     signedAt: Date,
     signedBy: string,
     amendmentReason: string,
   ): Promise<ClinicalNote | null> {
+    if (expectedVersion === undefined) {
+      // Mục chưa từng có dòng nào (#222) — tạo bản ký mới; nếu đã có dòng (client lệch trạng thái) thì coi là lệch version.
+      const existing = await tx.clinicalNote.findFirst({ where: { tenantId, encounterId, section, deletedAt: null } });
+      if (existing) return null;
+      return tx.clinicalNote.create({ data: { tenantId, encounterId, section, content, signedAt, signedBy, amendmentReason, createdBy: actorId, updatedBy: actorId } });
+    }
     const old = await tx.clinicalNote.findFirst({ where: { tenantId, encounterId, section, version: expectedVersion, deletedAt: null } });
     if (!old) return null;
     const result = await tx.clinicalNote.updateMany({

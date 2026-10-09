@@ -31,7 +31,7 @@ import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { RoomSessionDialog } from '../clinic/RoomSessionDialog';
 import { useMyRoomSessionQuery, useRoomOptionsQuery } from '../clinic/clinic.queries';
-import { ColumnEmpty, GroupLabel, WaitingCard, formatTime, matchesQueueSearch, waitMinutes } from './queue-card';
+import { ColumnEmpty, GroupLabel, ParaclinicalProgressChips, WaitingCard, formatTime, matchesQueueSearch, waitMinutes } from './queue-card';
 import { useReceptionListQuery, useStartConsultationMutation } from './reception.queries';
 
 /**
@@ -116,8 +116,16 @@ export function ReceptionDoctorQueuePage() {
   // thật (dùng `mine`/`pool`/... chưa lọc ở trên), chỉ phần thân danh sách đổi theo tìm kiếm.
   const mineFiltered = mine.filter((i) => matchesQueueSearch(i, waitingSearch.query));
   const poolFiltered = pool.filter((i) => matchesQueueSearch(i, waitingSearch.query));
-  const inConsultationFiltered = inConsultation.filter((i) => matchesQueueSearch(i, examSearch.query));
+  // Thẻ có kết quả cận lâm sàng mới chưa xem nổi lên ĐẦU cột "Đang khám" (#221) — `sort` ổn định nên các thẻ còn lại giữ nguyên thứ tự.
+  const inConsultationFiltered = inConsultation
+    .filter((i) => matchesQueueSearch(i, examSearch.query))
+    .sort((a, b) => Number(b.paraclinicalUnseenResultCount > 0) - Number(a.paraclinicalUnseenResultCount > 0));
   const doneTodayFiltered = doneToday.filter((i) => matchesQueueSearch(i, doneSearch.query));
+
+  /** Vào màn khám; có kết quả cận lâm sàng mới thì mở thẳng tab "Kết quả cận lâm sàng" (#221). */
+  function openEncounter(item: ReceptionListItem, tab?: 'ket-qua') {
+    navigate(tab ? `/encounters/${item.encounterId}?tab=${tab}` : `/encounters/${item.encounterId}`);
+  }
 
   async function handleStart(item: ReceptionListItem) {
     setRowError(null);
@@ -269,7 +277,10 @@ export function ReceptionDoctorQueuePage() {
               <ColumnEmpty icon={MagnifyingGlass} text="Không tìm thấy bệnh nhân phù hợp." />
             )}
             {inConsultationFiltered.map((item) => (
-              <div key={item.encounterId} className="rounded-lg border-2 border-l-4 border-slate-200 border-l-amber-500 bg-white p-3 shadow-sm">
+              <div
+                key={item.encounterId}
+                className={`rounded-lg border-2 border-l-4 border-slate-200 bg-white p-3 shadow-sm ${item.paraclinicalUnseenResultCount > 0 ? 'border-l-emerald-500' : 'border-l-amber-500'}`}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate text-[15px] font-bold text-slate-900">{item.fullName}</div>
@@ -290,12 +301,14 @@ export function ReceptionDoctorQueuePage() {
                     {item.chiefComplaint}
                   </p>
                 )}
+                {/* #221 — tiến độ cận lâm sàng tại phòng khám: nhãn xanh "Có kết quả mới" (chưa xem) và/hoặc nhãn hổ phách "Chờ kết quả" (còn dịch vụ chưa trả); bấm → tab kết quả của màn khám. */}
+                <ParaclinicalProgressChips item={item} onOpen={() => openEncounter(item, 'ket-qua')} />
                 {/* #085 — 1 dòng duy nhất: hành động chính (đầy chữ) + 2 nút phụ chỉ-icon, đúng
                     mẫu WaitingCard bên trên (thu ngắn thẻ, tránh 2 dòng nút). "Trả về hàng chờ"
                     (bác sĩ nhận nhầm ca/bận đột xuất) và "Hủy khám" (khách bỏ về giữa chừng) là 2
                     tình huống khác nhau, xem docs/DECISIONS.md #085. */}
                 <div className="mt-2.5 flex items-center justify-between gap-1.5">
-                  <Button type="button" variant="amber" className="px-3" onClick={() => navigate(`/encounters/${item.encounterId}`)}>
+                  <Button type="button" variant="amber" className="px-3" onClick={() => openEncounter(item, item.paraclinicalUnseenResultCount > 0 ? 'ket-qua' : undefined)}>
                     Tiếp tục khám
                     <ArrowRight size={13} weight="bold" aria-hidden="true" />
                   </Button>

@@ -74,6 +74,11 @@ import {
   prescriptionTemplateSchema,
   listPrescriptionTemplatesResponseSchema,
   listPrescriptionTemplatesQuerySchema,
+  createAdviceTemplateRequestSchema,
+  updateAdviceTemplateRequestSchema,
+  adviceTemplateSchema,
+  listAdviceTemplatesResponseSchema,
+  listAdviceTemplatesQuerySchema,
   cashAccountSchema,
   createCashAccountRequestSchema,
   updateCashAccountRequestSchema,
@@ -180,6 +185,7 @@ import {
   updateDepartmentTypeRequestSchema,
   patientClinicalSummaryQuerySchema,
   patientClinicalSummaryResponseSchema,
+  doctorUnseenResultsResponseSchema,
   receptionListQuerySchema,
   receptionListResponseSchema,
   recordVitalSignRequestSchema,
@@ -1960,6 +1966,59 @@ registry.registerPath({
     403: errorResponse('Không có quyền prescription_template.manage'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+// ---------------------------------------------------------------------------------------------
+// "Mẫu lời dặn" (Điều trị & Hẹn tái khám, docs/DECISIONS.md #222)
+// ---------------------------------------------------------------------------------------------
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/advice-templates',
+  tags: ['advice-template'],
+  summary: '"Mẫu lời dặn" — liệt kê mẫu đang dùng (includeInactive=true xem cả mẫu đã ẩn), dùng chung toàn phòng khám',
+  security: [{ bearerAuth: [] }],
+  request: { query: listAdviceTemplatesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listAdviceTemplatesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền advice_template.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/advice-templates',
+  tags: ['advice-template'],
+  summary: '"Mẫu lời dặn" — tạo mẫu mới',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createAdviceTemplateRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(adviceTemplateSchema)),
+    400: errorResponse('Tên/nội dung trống hoặc quá dài'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền advice_template.manage'),
+    409: errorResponse('Trùng tên mẫu (ADVICE_TEMPLATE_DUPLICATE_NAME)'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/advice-templates/{id}',
+  tags: ['advice-template'],
+  summary: '"Mẫu lời dặn" — sửa tên/nội dung/ẩn mẫu, bắt buộc kèm version hiện có',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ id: z.string().uuid() }),
+    body: { content: { 'application/json': { schema: updateAdviceTemplateRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(adviceTemplateSchema)),
+    400: errorResponse('Tên/nội dung trống hoặc quá dài'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền advice_template.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
+    409: errorResponse('Trùng tên mẫu, hoặc version không khớp (CONCURRENT_MODIFICATION)'),
   },
 });
 
@@ -4917,6 +4976,34 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinical_order.read'),
     404: errorResponse('Lượt khám chưa có phiếu chỉ định (hoặc không tìm thấy)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{encounterId}/clinical-orders/results-seen',
+  tags: ['clinical-order'],
+  summary: 'Hàng đợi khám (#221) — bác sĩ phụ trách mở tab "Kết quả cận lâm sàng": đánh dấu kết quả đã duyệt là ĐÃ XEM (người khác gọi thì marked = 0)',
+  security: [{ bearerAuth: [] }],
+  request: { params: clinicalOrderParams },
+  responses: {
+    200: jsonResponse('Số dòng đã đánh dấu', envelope(z.object({ marked: z.number().int().nonnegative() }))),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinical_order.read'),
+    404: errorResponse('Không tìm thấy lượt khám (hoặc ngoài phạm vi)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reception/doctor-queue/unseen-results',
+  tags: ['reception'],
+  summary: 'Hàng đợi khám (#221) — chấm số ở menu: số bệnh nhân đang khám của chính bác sĩ có kết quả cận lâm sàng mới chưa xem',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(doctorUnseenResultsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.read'),
   },
 });
 

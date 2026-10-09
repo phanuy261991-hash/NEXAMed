@@ -59,6 +59,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // và ROLE_INVALID_REFERENCE không có trong bảng này nên rơi về mặc định 422 (vi phạm quy tắc
   // nghiệp vụ, không phải xung đột trạng thái đồng thời).
   ROLE_DUPLICATE_NAME: HttpStatus.CONFLICT,
+  // Điều trị & Hẹn tái khám (docs/DECISIONS.md #222) — trùng tên mẫu lời dặn là xung đột (409); FOLLOW_UP_DATE_INVALID không có trong bảng nên rơi về mặc định 422.
+  ADVICE_TEMPLATE_DUPLICATE_NAME: HttpStatus.CONFLICT,
   ROLE_IN_USE: HttpStatus.CONFLICT,
   // Mở rộng ADM-01 — xung đột giữa Trạng thái làm việc tự-vô-hiệu-hoá và isActive:true yêu cầu.
   ACCOUNT_CANNOT_REACTIVATE_WHILE_RESIGNED: HttpStatus.CONFLICT,

@@ -178,6 +178,18 @@ export class ClinicalOrderService {
     });
   }
 
+  /**
+   * Bác sĩ phụ trách mở tab "Kết quả cận lâm sàng" → đánh dấu mọi kết quả đã duyệt của lượt khám là ĐÃ XEM (tắt nhãn "Có kết quả mới" ở Hàng đợi khám, #221). Chỉ tính khi actor
+   * LÀ bác sĩ phụ trách lượt khám — điều dưỡng/admin mở xem không làm mất thông báo của bác sĩ (trả `marked: 0`).
+   */
+  async markResultsSeen(tenantId: string, actorId: string, dataScope: DataScope, encounterId: string): Promise<{ marked: number }> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const encounter = await this.assertEncounterVisible(tx, tenantId, actorId, dataScope, encounterId);
+      if (encounter.doctorId !== actorId) return { marked: 0 };
+      return { marked: await this.repository.markResultsSeen(tx, tenantId, encounterId, actorId) };
+    });
+  }
+
   // ---------------------------------------------------------------------------------------------
 
   private async assertEncounterVisible(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dataScope: DataScope, encounterId: string) {

@@ -85,6 +85,9 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // điều dưỡng không tự quyết định phác đồ/liều dùng mẫu.
   { module: 'prescription_template', action: 'read', description: 'Xem đơn thuốc mẫu' },
   { module: 'prescription_template', action: 'manage', description: 'Thêm/sửa/ẩn đơn thuốc mẫu' },
+  // Điều trị & Hẹn tái khám (docs/DECISIONS.md #222) — "Mẫu lời dặn" dùng CHUNG toàn tenant, đúng khuôn prescription_template: `read` bác sĩ/điều dưỡng/clinic_admin (chọn mẫu lúc soạn lời dặn), `manage` chỉ bác sĩ/clinic_admin.
+  { module: 'advice_template', action: 'read', description: 'Xem mẫu lời dặn' },
+  { module: 'advice_template', action: 'manage', description: 'Thêm/sửa/ẩn mẫu lời dặn' },
   // Cận lâm sàng GĐ1 (docs/DECISIONS.md #212) — Danh mục dịch vụ kỹ thuật + Chỉ số xét nghiệm (cùng 1 trang).
   // `read` mở cho mọi vai trò lâm sàng (chọn dịch vụ lúc chỉ định, xem khoảng tham chiếu); `create`/`update`
   // chỉ clinic_admin, đúng khuôn `drug` (#156).
@@ -351,6 +354,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'result_template.read': 'global',
     // Kho Thuốc GĐ5 — điều dưỡng chỉ xem đơn thuốc mẫu, không tự thêm/sửa (bác sĩ/clinic_admin quyết định phác đồ).
     'prescription_template.read': 'global',
+    'advice_template.read': 'global',
     // Kho Thuốc GĐ2 — điều dưỡng xem tồn kho (chuẩn bị cho GĐ5 kê đơn thấy tồn), không tạo/duyệt phiếu.
     'stock_receipt.read': 'global',
     // Kho Thuốc GĐ3 — điều dưỡng tự phát thuốc tại chỗ được (mô hình "không quầy riêng").
@@ -413,6 +417,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // chung toàn tenant, không tách riêng theo bác sĩ ở v1).
     'prescription_template.read': 'global',
     'prescription_template.manage': 'global',
+    'advice_template.read': 'global',
+    'advice_template.manage': 'global',
     // Kho Thuốc GĐ2 — bác sĩ xem tồn kho (chuẩn bị cho GĐ5 kê đơn thấy tồn), không tạo/duyệt phiếu.
     'stock_receipt.read': 'global',
     // Kho Thuốc GĐ3 — bác sĩ tự phát thuốc tại chỗ được (mô hình "không quầy riêng").
@@ -483,6 +489,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // Kho Thuốc GĐ5 — clinic_admin quản lý được đơn thuốc mẫu như bác sĩ.
     'prescription_template.read': 'global',
     'prescription_template.manage': 'global',
+    'advice_template.read': 'global',
+    'advice_template.manage': 'global',
     // Kho Thuốc GĐ2 — clinic_admin (phòng khám nhỏ 1-3 bác sĩ thường tự làm cả 2 vai "lập"+"duyệt")
     // có đủ cả 3: tạo Nháp, xem, Duyệt/Từ chối/Huỷ phiếu.
     'stock_receipt.create': 'global',

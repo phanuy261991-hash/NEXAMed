@@ -6,6 +6,8 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { Button } from '../../shared/ui/Button';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { ENCOUNTER_STATUS_META } from '../reception/encounter-status';
+import { TREATMENT_DIRECTION_LABEL } from './treatment-plan';
+import { formatDateStringVi, vietnameseWeekdayLabel } from './follow-up-date';
 import { CLINICAL_SECTION_LABEL, DIAGNOSIS_TYPE_LABEL, VitalChip, classifyBmi, type ClinicalKey } from './clinical-display';
 import { PrescriptionItemsTable } from './PrescriptionPanel';
 import { useConsultationDetailQuery } from './encounter.queries';
@@ -206,7 +208,7 @@ function DialogContent({
 
             <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">Thăm khám</h3>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {(Object.keys(CLINICAL_SECTION_LABEL) as ClinicalKey[]).map((key) => (
+              {(Object.keys(CLINICAL_SECTION_LABEL) as ClinicalKey[]).filter((key) => key !== 'plan' && key !== 'doctorAdvice').map((key) => (
                 <div key={key}>
                   <label className="mb-1 block text-sm font-semibold text-slate-800">
                     {CLINICAL_SECTION_LABEL[key]}
@@ -218,6 +220,29 @@ function DialogContent({
                     ) : (
                       <span className="text-slate-400">—</span>
                     )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Điều trị & Hẹn tái khám (#222) — chỉ xem. */}
+            <div className="mb-2 mt-4 border-t border-dashed border-slate-200 pt-3">
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">Điều trị</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {[
+                { label: 'Hướng điều trị', text: (clinicalNote.treatmentPlan?.directions ?? []).map((d) => TREATMENT_DIRECTION_LABEL[d]).join('; ') },
+                {
+                  label: 'Hẹn tái khám',
+                  text: clinicalNote.treatmentPlan?.followUpDate ? `${vietnameseWeekdayLabel(clinicalNote.treatmentPlan.followUpDate)}, ${formatDateStringVi(clinicalNote.treatmentPlan.followUpDate)}` : '',
+                },
+                { label: CLINICAL_SECTION_LABEL.plan, text: clinicalNote.plan?.content ?? '' },
+                { label: CLINICAL_SECTION_LABEL.doctorAdvice, text: clinicalNote.doctorAdvice?.content ?? '' },
+              ].map((row) => (
+                <div key={row.label}>
+                  <div className="mb-1 block text-sm font-semibold text-slate-800">{row.label}</div>
+                  <div className="min-h-[46px] whitespace-pre-line rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[13px] leading-relaxed">
+                    {row.text ? <span className="font-medium text-slate-900">{row.text}</span> : <span className="text-slate-400">—</span>}
                   </div>
                 </div>
               ))}

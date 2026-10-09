@@ -15,3 +15,8 @@ export async function saveClinicalOrder(encounterId: string, body: SaveClinicalO
 export async function recordClinicalOrderPrint(encounterId: string): Promise<void> {
   unwrap(await getApiClient().POST('/api/v1/encounters/{encounterId}/clinical-orders/print', { params: { path: { encounterId } } }));
 }
+
+/** Bác sĩ phụ trách đã mở tab "Kết quả cận lâm sàng" → đánh dấu kết quả đã duyệt là đã xem (#221). Người khác gọi thì server trả `marked: 0`. */
+export async function markClinicalOrderResultsSeen(encounterId: string): Promise<{ marked: number }> {
+  return unwrap(await getApiClient().POST('/api/v1/encounters/{encounterId}/clinical-orders/results-seen', { params: { path: { encounterId } } })) as { marked: number };
+}

@@ -46,6 +46,14 @@ export class ReceptionController {
     return this.receptionService.listReceptions(tenantId, userId, req.dataScope!, dto.date, dto.doctorId, dto.includeDepartmentPool, dto.queueView);
   }
 
+  /** Chấm số ở menu "Hàng đợi khám" (#221) — số bệnh nhân đang khám của chính bác sĩ có kết quả cận lâm sàng mới chưa xem. Đặt riêng path, không đụng `list`. */
+  @Get('doctor-queue/unseen-results')
+  @RequirePermission('encounter', 'read')
+  async doctorUnseenResults(@Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.receptionService.countDoctorUnseenResults(tenantId, userId);
+  }
+
   /** "Xuất Excel" — LUÔN toàn bộ trong ngày (bỏ qua tab/tìm kiếm đang chọn), cùng quyền `encounter.read`
    * với `list()`. Đặt path riêng `list/export`, không đụng `list` (khác tiền tố, không có `:id` trong
    * controller này nên không cần lo thứ tự khai báo route). */

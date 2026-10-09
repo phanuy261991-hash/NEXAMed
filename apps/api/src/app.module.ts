@@ -17,11 +17,13 @@ import { EncounterModule } from './modules/encounter/encounter.module';
 import { ReceptionModule } from './modules/reception/reception.module';
 import { AllergenModule } from './modules/allergen/allergen.module';
 import { DrugModule } from './modules/drug/drug.module';
+import { AdviceTemplateModule } from './modules/advice-template/advice-template.module';
 import { PrintTemplateModule } from './modules/print-template/print-template.module';
 import { TechnicalServiceModule } from './modules/technical-service/technical-service.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { ClinicalOrderModule } from './modules/clinical-order/clinical-order.module';
 import { ClinicalOrderCancellationModule } from './modules/clinical-order/clinical-order-cancellation.module';
+import { ParaclinicalProgressReaderModule } from './modules/clinical-order/paraclinical-progress-reader.module';
 import { ParaclinicalResultModule } from './modules/paraclinical-result/paraclinical-result.module';
 import { ParaclinicalResultsReaderModule } from './modules/paraclinical-result/paraclinical-results-reader.module';
 import { PricingPortModule } from './modules/pricing/pricing-port.module';
@@ -59,6 +61,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     Icd10Module,
     AllergenModule,
     DrugModule,
+    AdviceTemplateModule,
     PrintTemplateModule,
     TechnicalServiceModule,
     PricingModule,
@@ -74,6 +77,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     ParaclinicalResultsReaderModule,
     // Huỷ lượt khám → đóng dòng chỉ định chưa bắt đầu (#219) — `@Global()`, cùng khuôn trên.
     ClinicalOrderCancellationModule,
+    ParaclinicalProgressReaderModule,
     EncounterModule,
     BillingModule,
     ClinicalOrderModule,

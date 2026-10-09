@@ -4,6 +4,7 @@ import {
   AppointmentNotCancellableError,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
+  PARACLINICAL_PROGRESS_READER_PORT,
   EncounterAlreadyExistsError,
   EncounterNotCheckedInError,
   PatientAlreadyMergedError,
@@ -12,6 +13,7 @@ import {
   resolveDoctorDepartmentRouting,
   vietnamDayRange,
   type DoctorDirectoryPort,
+  type ParaclinicalProgressReaderPort,
 } from '@nexamed/core';
 import {
   calculateAgeYears,
@@ -109,6 +111,7 @@ export class ReceptionService {
     private readonly businessCodeService: BusinessCodeService,
     private readonly patientRepository: PatientRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
+    @Inject(PARACLINICAL_PROGRESS_READER_PORT) private readonly paraclinicalProgress: ParaclinicalProgressReaderPort,
   ) {}
 
   /**
@@ -470,6 +473,8 @@ export class ReceptionService {
     // Resolve tên "Người tiếp nhận" SAU transaction đọc chính — `DoctorDirectoryPort` tự mở
     // transaction riêng (cùng nguyên tắc đã áp dụng cho routing ở checkIn()/registerDirect()).
     const receivedByNames = await this.doctorDirectory.getUserFullNames(tenantId, encounters.map((e) => e.createdBy));
+    // Tiến độ cận lâm sàng (#221) — port tự mở transaction riêng, cùng nguyên tắc trên.
+    const progress = await this.paraclinicalProgress.getProgressByEncounter(tenantId, encounters.map((e) => e.id));
 
     const items: ReceptionListItem[] = encounters.map((e) => ({
       encounterId: e.id,
@@ -490,10 +495,17 @@ export class ReceptionService {
       checkedInAt: e.checkedInAt.toISOString(),
       startedAt: e.startedAt?.toISOString() ?? null,
       completedAt: e.completedAt?.toISOString() ?? null,
+      paraclinicalPendingCount: progress.get(e.id)?.pendingCount ?? 0,
+      paraclinicalUnseenResultCount: progress.get(e.id)?.unseenResultCount ?? 0,
       version: e.version,
     }));
 
     return { items };
+  }
+
+  /** Chấm số ở menu "Hàng đợi khám" (#221) — số bệnh nhân đang khám của CHÍNH bác sĩ có kết quả cận lâm sàng mới chưa xem. */
+  async countDoctorUnseenResults(tenantId: string, actorId: string): Promise<{ patientCount: number }> {
+    return { patientCount: await this.paraclinicalProgress.countEncountersWithUnseenResults(tenantId, actorId) };
   }
 
   /**

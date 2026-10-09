@@ -64,6 +64,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   cash_book_export: 'Báo cáo dòng tiền',
   patient_wallet: 'Ví tạm ứng',
   prescription_template: 'Đơn thuốc mẫu',
+  advice_template: 'Mẫu lời dặn',
   reception_list_export: 'Danh sách tiếp nhận',
 };
 

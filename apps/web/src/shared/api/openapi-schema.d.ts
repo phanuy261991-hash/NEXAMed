@@ -3188,6 +3188,8 @@ export interface paths {
                                     checkedInAt: string;
                                     startedAt: string | null;
                                     completedAt: string | null;
+                                    paraclinicalPendingCount: number;
+                                    paraclinicalUnseenResultCount: number;
                                     version: number;
                                 }[];
                             };
@@ -4180,6 +4182,37 @@ export interface paths {
                                         supersedesId: string | null;
                                         amendmentReason: string | null;
                                     } | null;
+                                    conclusion: {
+                                        content: string;
+                                        version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
+                                    } | null;
+                                    doctorAdvice: {
+                                        content: string;
+                                        version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
+                                    } | null;
+                                    treatmentPlan: {
+                                        directions: ("PRESCRIPTION" | "TRANSFER" | "FOLLOW_UP" | "EMERGENCY")[];
+                                        followUpDate: string | null;
+                                        version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
+                                    } | null;
                                 };
                                 prescription: {
                                     /** Format: uuid */
@@ -4604,6 +4637,20 @@ export interface paths {
                             content: string;
                             version?: number;
                         };
+                        conclusion?: {
+                            content: string;
+                            version?: number;
+                        };
+                        doctorAdvice?: {
+                            content: string;
+                            version?: number;
+                        };
+                        treatmentPlan?: {
+                            directions: ("PRESCRIPTION" | "TRANSFER" | "FOLLOW_UP" | "EMERGENCY")[];
+                            /** Format: date */
+                            followUpDate: string | null;
+                            version?: number;
+                        };
                     };
                 };
             };
@@ -4668,6 +4715,37 @@ export interface paths {
                                 } | null;
                                 plan: {
                                     content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                conclusion: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                doctorAdvice: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                treatmentPlan: {
+                                    directions: ("PRESCRIPTION" | "TRANSFER" | "FOLLOW_UP" | "EMERGENCY")[];
+                                    followUpDate: string | null;
                                     version: number;
                                     signedAt: string | null;
                                     /** Format: uuid */
@@ -4907,12 +4985,19 @@ export interface paths {
                 content: {
                     "application/json": {
                         amendmentReason: string;
-                        sections: {
+                        /** @default [] */
+                        sections?: {
                             /** @enum {string} */
-                            section: "REASON_FOR_VISIT" | "ILLNESS_PROGRESS" | "PRELIMINARY_DIAGNOSIS" | "GENERAL_EXAM" | "REGIONAL_EXAM" | "PLAN";
+                            section: "REASON_FOR_VISIT" | "ILLNESS_PROGRESS" | "PRELIMINARY_DIAGNOSIS" | "GENERAL_EXAM" | "REGIONAL_EXAM" | "PLAN" | "CONCLUSION" | "DOCTOR_ADVICE";
                             content: string;
-                            version: number;
+                            version?: number;
                         }[];
+                        treatmentPlan?: {
+                            directions: ("PRESCRIPTION" | "TRANSFER" | "FOLLOW_UP" | "EMERGENCY")[];
+                            /** Format: date */
+                            followUpDate: string | null;
+                            version?: number;
+                        };
                     };
                 };
             };
@@ -4977,6 +5062,37 @@ export interface paths {
                                 } | null;
                                 plan: {
                                     content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                conclusion: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                doctorAdvice: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                treatmentPlan: {
+                                    directions: ("PRESCRIPTION" | "TRANSFER" | "FOLLOW_UP" | "EMERGENCY")[];
+                                    followUpDate: string | null;
                                     version: number;
                                     signedAt: string | null;
                                     /** Format: uuid */
@@ -12011,6 +12127,315 @@ export interface paths {
                     };
                 };
                 /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/advice-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Mẫu lời dặn" — liệt kê mẫu đang dùng (includeInactive=true xem cả mẫu đã ẩn), dùng chung toàn phòng khám */
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean | ("true" | "false");
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    content: string;
+                                    isActive: boolean;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền advice_template.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** "Mẫu lời dặn" — tạo mẫu mới */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        content: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                content: string;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tên/nội dung trống hoặc quá dài */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền advice_template.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Trùng tên mẫu (ADVICE_TEMPLATE_DUPLICATE_NAME) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/advice-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** "Mẫu lời dặn" — sửa tên/nội dung/ẩn mẫu, bắt buộc kèm version hiện có */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        content?: string;
+                        isActive?: boolean;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                content: string;
+                                isActive: boolean;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tên/nội dung trống hoặc quá dài */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền advice_template.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Trùng tên mẫu, hoặc version không khớp (CONCURRENT_MODIFICATION) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -33687,6 +34112,165 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{encounterId}/clinical-orders/results-seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hàng đợi khám (#221) — bác sĩ phụ trách mở tab "Kết quả cận lâm sàng": đánh dấu kết quả đã duyệt là ĐÃ XEM (người khác gọi thì marked = 0) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Số dòng đã đánh dấu */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                marked: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_order.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy lượt khám (hoặc ngoài phạm vi) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reception/doctor-queue/unseen-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hàng đợi khám (#221) — chấm số ở menu: số bệnh nhân đang khám của chính bác sĩ có kết quả cận lâm sàng mới chưa xem */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                patientCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

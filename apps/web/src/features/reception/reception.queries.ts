@@ -9,7 +9,7 @@ import type {
 } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { cancelEncounter, checkIn, exportReceptionList, getReceptionList, reassignEncounter, registerReception, releaseEncounter, startConsultation } from './reception.api';
+import { cancelEncounter, checkIn, exportReceptionList, getDoctorUnseenResults, getReceptionList, reassignEncounter, registerReception, releaseEncounter, startConsultation } from './reception.api';
 
 /**
  * "Danh sách tiếp nhận" (không `doctorId`) / "Hàng đợi khám" (kèm `doctorId`, `includeDepartmentPool`
@@ -28,6 +28,17 @@ export function useReceptionListQuery(date?: string, doctorId?: string, includeD
     refetchInterval: 30_000,
     // `enabled` (mặc định true, không đổi hành vi nơi gọi cũ) — nút "Hàng chờ" ở Topbar
     // (`DoctorQueueButton.tsx`) render ở MỌI trang nhưng chỉ nên poll khi đúng vai trò bác sĩ.
+    enabled,
+  });
+}
+
+/** Chấm số kết quả cận lâm sàng mới ở menu "Hàng đợi khám" (#221) — chỉ poll khi đúng vai trò bác sĩ (`enabled`), cùng chu kỳ 30 giây với danh sách. */
+export function useDoctorUnseenResultsQuery(enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'reception', 'doctor-unseen-results'),
+    queryFn: getDoctorUnseenResults,
+    refetchInterval: 30_000,
     enabled,
   });
 }

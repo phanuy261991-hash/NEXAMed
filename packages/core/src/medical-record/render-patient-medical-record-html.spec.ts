@@ -199,4 +199,50 @@ describe('renderPatientMedicalRecordHtml', () => {
       expect(html.indexOf('Giữ bí mật y khoa')).toBeLessThan(html.indexOf('Xuất lúc'));
     });
   });
+
+  describe('Điều trị & Hẹn tái khám (#222)', () => {
+    const encounter = {
+      encounterNo: 'KB-2610-000002',
+      checkedInAt: '2026-10-08T01:30:00.000Z',
+      doctorName: 'Trần Thị B',
+      chiefComplaint: null,
+      vitalSigns: null,
+      diagnoses: [],
+      clinicalNoteSections: [{ label: 'Kết luận', content: 'Viêm phế quản cấp, chưa biến chứng' }],
+      prescriptionItems: [],
+      signedAt: null,
+    };
+
+    it('in mục "Điều trị" đủ hướng điều trị, nội dung điều trị, lời dặn, hẹn tái khám; Kết luận nằm trong ghi chú khám', () => {
+      const html = renderPatientMedicalRecordHtml(
+        buildDoc({
+          encounters: [
+            {
+              ...encounter,
+              treatment: { directionLabels: ['Kê đơn thuốc', 'Hẹn tái khám'], content: 'Kháng sinh 7 ngày', advice: 'Giữ ấm <b>tránh</b> khói bụi', followUpDateLabel: 'Thứ Năm, 15/10/2026' },
+            },
+          ],
+        }),
+      );
+      expect(html).toContain('<h3>Điều trị</h3>');
+      expect(html).toContain('<strong>Hướng điều trị:</strong> Kê đơn thuốc; Hẹn tái khám');
+      expect(html).toContain('<strong>Nội dung điều trị:</strong> Kháng sinh 7 ngày');
+      expect(html).toContain('Giữ ấm &lt;b&gt;tránh&lt;/b&gt; khói bụi');
+      expect(html).toContain('<strong>Hẹn tái khám:</strong> Thứ Năm, 15/10/2026');
+      expect(html).toContain('<strong>Kết luận:</strong> Viêm phế quản cấp, chưa biến chứng');
+    });
+
+    it('chỉ in dòng có nội dung; không có gì thì bỏ cả mục (bệnh án cũ giữ nguyên)', () => {
+      const partial = renderPatientMedicalRecordHtml(
+        buildDoc({ encounters: [{ ...encounter, treatment: { directionLabels: [], content: '', advice: 'Uống thuốc đúng giờ', followUpDateLabel: null } }] }),
+      );
+      expect(partial).toContain('<strong>Lời dặn bác sĩ:</strong> Uống thuốc đúng giờ');
+      expect(partial).not.toContain('Hướng điều trị:');
+      expect(partial).not.toContain('Hẹn tái khám:');
+      const empty = renderPatientMedicalRecordHtml(buildDoc({ encounters: [{ ...encounter, treatment: { directionLabels: [], content: '  ', advice: '', followUpDateLabel: null } }] }));
+      expect(empty).not.toContain('<h3>Điều trị</h3>');
+      const absent = renderPatientMedicalRecordHtml(buildDoc({ encounters: [{ ...encounter }] }));
+      expect(absent).not.toContain('<h3>Điều trị</h3>');
+    });
+  });
 });

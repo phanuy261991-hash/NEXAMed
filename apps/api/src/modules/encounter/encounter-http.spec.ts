@@ -669,6 +669,9 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         generalExam: null,
         regionalExam: null,
         plan: null,
+        conclusion: null,
+        doctorAdvice: null,
+        treatmentPlan: null,
       });
     });
 

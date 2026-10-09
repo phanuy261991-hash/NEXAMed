@@ -1,6 +1,7 @@
 import type {
   CancelEncounterRequest,
   CheckInRequest,
+  DoctorUnseenResultsResponse,
   EncounterSummary,
   ReassignEncounterRequest,
   ReceptionListResponse,
@@ -60,4 +61,9 @@ export async function reassignEncounter(id: string, body: ReassignEncounterReque
   return unwrap(
     await getApiClient().PATCH('/api/v1/encounters/{id}/reassign', { params: { path: { id } }, body }),
   ) as EncounterSummary;
+}
+
+/** Chấm số ở menu "Hàng đợi khám" (#221): số bệnh nhân đang khám của chính bác sĩ có kết quả cận lâm sàng mới chưa xem. */
+export async function getDoctorUnseenResults(): Promise<DoctorUnseenResultsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/reception/doctor-queue/unseen-results')) as DoctorUnseenResultsResponse;
 }

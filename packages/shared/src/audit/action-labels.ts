@@ -214,6 +214,8 @@ const ACTION_LABELS: Record<string, string> = {
   'patient_wallet.settled': 'Tất toán ví tạm ứng',
   'prescription_template.created': 'Thêm đơn thuốc mẫu',
   'prescription_template.updated': 'Sửa đơn thuốc mẫu',
+  'advice_template.created': 'Thêm mẫu lời dặn',
+  'advice_template.updated': 'Sửa mẫu lời dặn',
   'business_code_template.updated': 'Sửa cấu hình mã hiển thị',
   'encounter.reassigned': 'Chuyển bác sĩ phụ trách lượt khám',
   'reception_list.exported': 'Xuất danh sách tiếp nhận ra Excel',

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SaveClinicalOrderRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { getClinicalOrder, recordClinicalOrderPrint, saveClinicalOrder } from './clinical-order.api';
+import { getClinicalOrder, markClinicalOrderResultsSeen, recordClinicalOrderPrint, saveClinicalOrder } from './clinical-order.api';
 
 /** Cận lâm sàng GĐ3 — Chỉ định của bác sĩ (docs/DECISIONS.md #212). */
 
@@ -34,4 +34,16 @@ export function useSaveClinicalOrderMutation(encounterId: string) {
 
 export function usePrintClinicalOrderMutation(encounterId: string) {
   return useMutation({ mutationFn: () => recordClinicalOrderPrint(encounterId) });
+}
+
+/** Mở tab "Kết quả cận lâm sàng" (#221) — làm mới Hàng đợi khám + chấm số menu để nhãn "Có kết quả mới" tắt ngay, không đợi chu kỳ 30 giây. */
+export function useMarkResultsSeenMutation(encounterId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => markClinicalOrderResultsSeen(encounterId),
+    onSuccess: (data) => {
+      if (data.marked > 0) void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'reception') });
+    },
+  });
 }

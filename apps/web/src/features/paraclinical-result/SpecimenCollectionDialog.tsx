@@ -193,7 +193,7 @@ export function SpecimenCollectionDialog({ orderId, initialSid, onClose }: { ord
   }
 
   const printable = activeTubes;
-  const gridCols = hasActionsColumn ? 'grid-cols-[72px_40px_150px_160px_minmax(0,1fr)_126px_104px_88px]' : 'grid-cols-[72px_40px_150px_160px_minmax(0,1fr)_126px_104px]';
+  const gridCols = hasActionsColumn ? 'grid-cols-[72px_40px_150px_190px_minmax(0,1fr)_126px_104px_140px]' : 'grid-cols-[72px_40px_150px_190px_minmax(0,1fr)_126px_104px]';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-label="Lấy mẫu xét nghiệm">
@@ -301,7 +301,7 @@ export function SpecimenCollectionDialog({ orderId, initialSid, onClose }: { ord
                   </div>
                 </div>
                 <div className="overflow-x-auto rounded-lg border border-slate-200">
-                  <div role="table" aria-label="Các ống mẫu cần lấy" style={{ minWidth: hasActionsColumn ? 980 : 880 }}>
+                  <div role="table" aria-label="Các ống mẫu cần lấy" style={{ minWidth: hasActionsColumn ? 1070 : 940 }}>
                     <div role="row" className={`grid ${gridCols} border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800`}>
                       <div role="columnheader" className="px-2 py-2.5 text-center">
                         Đã lấy

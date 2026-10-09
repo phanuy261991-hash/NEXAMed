@@ -7,7 +7,8 @@ import type { DiagnosisType, SaveClinicalNoteRequest } from '@nexamed/shared';
  */
 export const DIAGNOSIS_TYPE_LABEL: Record<DiagnosisType, string> = { PRIMARY: 'Bệnh chính', SECONDARY: 'Bệnh kèm theo' };
 
-export type ClinicalKey = keyof SaveClinicalNoteRequest;
+/** Các mục ghi chú khám dạng chữ (không gồm `treatmentPlan` — hướng điều trị + ngày hẹn có kiểu riêng, #222). */
+export type ClinicalKey = Exclude<keyof SaveClinicalNoteRequest, 'treatmentPlan'>;
 
 export const CLINICAL_SECTION_LABEL: Record<ClinicalKey, string> = {
   reasonForVisit: 'Lý do khám',
@@ -15,7 +16,9 @@ export const CLINICAL_SECTION_LABEL: Record<ClinicalKey, string> = {
   preliminaryDiagnosis: 'Chẩn đoán',
   generalExam: 'Kết quả khám toàn thân',
   regionalExam: 'Kết quả khám bộ phận',
-  plan: 'Kế hoạch',
+  plan: 'Nội dung điều trị',
+  conclusion: 'Kết luận',
+  doctorAdvice: 'Lời dặn bác sĩ',
 };
 
 export type VitalTier = 'normal' | 'caution' | 'danger';

@@ -155,6 +155,7 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.clinicalOrder.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.diagnosis.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalNote.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.encounterTreatmentPlan.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // prescription_item (Sprint 4) tham chiếu prescription + drug (FK RESTRICT) — xoá trước cả
       // hai. prescription tự tham chiếu (supersedes_id, đính chính) — KHÔNG null-hoá-rồi-xoá được
       // như patient.merged_into_id: trigger C8 chặn cả việc sửa supersedes_id trên bản ĐÃ KÝ (đúng
@@ -208,6 +209,7 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.technicalService.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.prescriptionTemplateItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.prescriptionTemplate.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.adviceTemplate.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // drug (Sprint 4, S4-03) — prescription_item đã xoá ở trên nên an toàn xoá drug ở đây.
       await prisma.drug.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // supplier (#146) không bị FK nào tham chiếu — xoá tự do.
