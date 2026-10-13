@@ -35,7 +35,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Node 22: @testcontainers/postgresql@12 kéo undici@8 (engines >=22.19) — Node 20 lỗi `markAsUncloneable`.
+          # Image production (apps/*/Dockerfile) vẫn dùng Node 20.
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install dependencies
