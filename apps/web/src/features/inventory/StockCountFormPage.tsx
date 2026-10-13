@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { EMPTY_LIST } from '../../shared/empty-list';
+import { makeDraftId as makeKey } from '../../shared/make-draft-id';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CaretDown, CaretRight, MagnifyingGlass, Plus, Trash, X } from '@phosphor-icons/react';
 import type { CreateStockCountRequest, DrugSummary, StockCountLine } from '@nexamed/shared';
@@ -52,10 +54,6 @@ const TYPE_FILTER_OPTIONS: { code: 'ALL' | 'MEDICINE' | 'SUPPLY'; label: string 
   { code: 'MEDICINE', label: 'Thuốc' },
   { code: 'SUPPLY', label: 'Vật tư' },
 ];
-
-function makeKey(): string {
-  return Math.random().toString(36).slice(2);
-}
 
 function todayVn(): string {
   const now = new Date(Date.now() + 7 * 60 * 60_000);
@@ -272,7 +270,7 @@ export function StockCountFormPage() {
 
   // ============ "Thêm theo nhóm" ============
 
-  const allDrugs = allDrugsQuery.data?.items ?? [];
+  const allDrugs = allDrugsQuery.data?.items ?? EMPTY_LIST;
   const groupOptions = groupCatalogQuery.data?.items ?? [];
 
   const groupMatches = useMemo(() => {

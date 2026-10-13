@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { EMPTY_LIST } from '../../shared/empty-list';
 import { Buildings, MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
 import type { DepartmentSummary, DepartmentTypeSummary } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
@@ -50,7 +51,7 @@ export function DepartmentPane() {
   const createMutation = useCreateDepartmentMutation();
   const updateMutation = useUpdateDepartmentMutation();
 
-  const types = typesQuery.data?.items ?? [];
+  const types = typesQuery.data?.items ?? EMPTY_LIST;
   const hasTypes = types.length > 0;
 
   // Phát hiện người khác vừa sửa Loại/Khoa-Phòng đang mở form Sửa (mẫu `useEditedRecordGuard`; danh sách nhỏ nên tải lại danh sách).

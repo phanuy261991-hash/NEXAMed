@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { makeDraftId as makeKey } from '../../shared/make-draft-id';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Check, Copy, MagnifyingGlass, PencilSimple, Trash } from '@phosphor-icons/react';
 import type { CreateManualStockIssueRequest, DrugSummary, ManualStockIssueType, StockIssueDetail, StockIssueStatus } from '@nexamed/shared';
@@ -55,10 +56,6 @@ const STATUS_META: Record<StockIssueStatus, { label: string; tone: StatusBadgeTo
   REJECTED: { label: 'Từ chối', tone: 'danger' },
   VOIDED: { label: 'Đã huỷ', tone: 'neutral' },
 };
-
-function makeKey(): string {
-  return Math.random().toString(36).slice(2);
-}
 
 function todayVn(): string {
   const now = new Date(Date.now() + 7 * 60 * 60_000);

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { EMPTY_LIST } from '../../shared/empty-list';
 import { BookOpenText, ListMagnifyingGlass, MagnifyingGlass } from '@phosphor-icons/react';
 import type { Icd10CodeItem } from '@nexamed/shared';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -37,7 +38,7 @@ export function Icd10Pane() {
   const searchQuery = useIcd10SearchQuery(isSearching ? debouncedSearch.trim() : '');
 
   const chapters = chaptersQuery.data?.items ?? [];
-  const groups = groupsQuery.data?.items ?? [];
+  const groups = groupsQuery.data?.items ?? EMPTY_LIST;
 
   // Nhóm các dòng Nhóm liên tiếp theo Khối (dữ liệu server đã sort theo groupCode nên các nhóm
   // cùng Khối luôn đứng liền nhau — không cần gom lại bằng Map).

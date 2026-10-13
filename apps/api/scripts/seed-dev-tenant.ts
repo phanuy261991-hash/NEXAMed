@@ -17,8 +17,29 @@ const SYSTEM_ACTOR = '00000000-0000-0000-0000-000000000000';
 const DEV_USERNAME = 'dev.admin';
 const DEV_PASSWORD = 'Dev@12345';
 
+/**
+ * Chặn chạy nhầm lên máy chủ thật: script tạo tài khoản quản trị với MẬT KHẨU CỐ ĐỊNH ở trên (biết công khai trong mã nguồn)
+ * bằng role đặc quyền. Chỉ cho chạy khi cơ sở dữ liệu ở CHÍNH MÁY NÀY, hoặc khi đặt ALLOW_DEV_SEED=true một cách tường minh.
+ */
+function assertSafeToSeed(url: string | undefined): void {
+  if (process.env.ALLOW_DEV_SEED === 'true') return;
+  let host = '';
+  try {
+    host = new URL(url ?? '').hostname;
+  } catch {
+    throw new Error('Không đọc được DATABASE_URL/MIGRATE_DATABASE_URL — từ chối tạo tài khoản dev.');
+  }
+  if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(host)) {
+    throw new Error(
+      `Từ chối: cơ sở dữ liệu ở máy '${host}' (không phải máy này). Script này tạo tài khoản mật khẩu cố định '${DEV_USERNAME}' — ` +
+        'KHÔNG chạy trên máy chủ thật. Nếu thực sự là máy dev từ xa, đặt ALLOW_DEV_SEED=true.',
+    );
+  }
+}
+
 async function main() {
   const url = process.env.MIGRATE_DATABASE_URL ?? process.env.DATABASE_URL;
+  assertSafeToSeed(url);
   const prisma = new PrismaClient({ datasources: { db: { url } } });
 
   try {

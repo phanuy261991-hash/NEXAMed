@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { EMPTY_LIST } from '../../shared/empty-list';
 import { MagnifyingGlass, PencilSimple, Plus, Warning } from '@phosphor-icons/react';
 import type { AllergenGroupSummary, AllergenItem } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
@@ -58,7 +59,7 @@ export function AllergenPane() {
   const deactivateMutation = useDeactivateAllergenMutation();
   const reactivateMutation = useReactivateAllergenMutation();
 
-  const groups = groupsQuery.data?.items ?? [];
+  const groups = groupsQuery.data?.items ?? EMPTY_LIST;
 
   const visibleGroups = useMemo(() => {
     const q = groupSearch.trim().toLowerCase();

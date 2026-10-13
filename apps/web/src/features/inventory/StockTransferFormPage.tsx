@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { makeDraftId as makeKey } from '../../shared/make-draft-id';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Check, MagnifyingGlass, Trash, Truck, Warning } from '@phosphor-icons/react';
 import type { CreateStockTransferRequest, DrugSummary, ReceiveStockTransferLineInput, StockTransferStatus } from '@nexamed/shared';
@@ -53,10 +54,6 @@ const STATUS_META: Record<StockTransferStatus, { label: string; tone: StatusBadg
   COMPLETED: { label: 'Hoàn tất', tone: 'success' },
   REJECTED: { label: 'Từ chối', tone: 'danger' },
 };
-
-function makeKey(): string {
-  return Math.random().toString(36).slice(2);
-}
 
 function todayVn(): string {
   const now = new Date(Date.now() + 7 * 60 * 60_000);

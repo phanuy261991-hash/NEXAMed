@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { EMPTY_LIST } from '../../shared/empty-list';
 import { EyeSlash, PencilSimple, Plus } from '@phosphor-icons/react';
 import type { DataScope, RoleSummary } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
@@ -47,7 +48,7 @@ export function RolePermissionPane() {
   const [renameTarget, setRenameTarget] = useState<RoleSummary | null>(null);
   const [hideTarget, setHideTarget] = useState<RoleSummary | null>(null);
 
-  const roles = rolesQuery.data?.items ?? [];
+  const roles = rolesQuery.data?.items ?? EMPTY_LIST;
 
   // Phát hiện người khác vừa đổi tên/ẩn vai trò đang mở form "Đổi tên" (mẫu `useEditedRecordGuard`).
   const renameGuard = useEditedRecordGuard({
@@ -387,7 +388,7 @@ function RoleNameDialog({
             placeholder="Ví dụ: Lễ tân trưởng"
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
-          {hint && <p className="text-xs text-slate-400" dangerouslySetInnerHTML={{ __html: hint }} />}
+          {hint && <p className="text-xs text-slate-400">{hint}</p>}
         </div>
         <div className="mt-3">
           <RecordFormNotice stale={stale} saveError={saveError} onReload={onReload} />

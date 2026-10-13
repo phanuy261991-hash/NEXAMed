@@ -4,6 +4,10 @@
 
 ## 2026-10-13
 
+### Rà soát toàn bộ mã nguồn + kiểm tra cô lập tenant toàn lược đồ (`docs/DECISIONS.md` #229)
+
+Không đổi chức năng người dùng. Thêm test kiểm RLS cho mọi bảng; sửa lỗi test lặp lại ở 3 spec (tranh chấp seed quyền); dev seed từ chối chạy trên máy chủ thật; nginx thêm header bảo mật; tính tuổi ở xuất Excel tiếp nhận không còn phụ thuộc múi giờ máy chủ; dọn cảnh báo lint. Các cảnh báo cần quyết định (danh mục dùng chung giữa tenant, CSP...) ghi ở #229.
+
 ### Nút "Bỏ qua cảnh báo này" cho cảnh báo trùng hoạt chất (`docs/DECISIONS.md` #228)
 
 Khung đỏ "Trùng hoạt chất" ở tab Kê đơn thuốc có nút **Bỏ qua cảnh báo này** (ô lý do không bắt buộc, Enter để xác nhận). Chỉ áp dụng cho đơn hiện tại: cảnh báo chuyển thành dòng mờ "Đã bỏ qua" kèm người bỏ qua, thời điểm, lý do và nút **Bật lại** (khi đơn còn nháp); lưu lại đơn hay tải lại trang vẫn nhớ; ký đơn rồi thì khoá và giữ nguyên dấu vết. Cảnh báo dị ứng và kê vượt tồn kho không có nút này. Ghi vào nhật ký hoạt động. Môi trường khác: `db:deploy` (1 migration) rồi khởi động lại API.

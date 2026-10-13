@@ -165,16 +165,25 @@ export async function syncRolePermissionsForAllTenants(
 
   const added: string[] = [];
   for (const tenant of tenants) {
-    const result = await unitOfWork.runInTenantScope(tenant.id, async (tx) => {
-      const syncResult = await syncRolePermissionsForTenant(tx, tenant.id, actorId);
-      // "Thu chi tại quầy" GĐ1 — backfill quỹ tiền mặt mặc định cho tenant TẠO TRƯỚC tính năng
-      // này (seedDefaultRolesForTenant chỉ chạy lúc tạo tenant mới, không tự chạy lại cho tenant cũ).
-      await ensureDefaultCashAccount(tx, tenant.id, actorId);
-      // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — cùng lý do backfill Kho mặc định
-      // cho tenant tạo trước tính năng này.
-      await ensureDefaultWarehouse(tx, tenant.id, actorId);
-      return syncResult;
-    });
+    let result: string[];
+    try {
+      result = await unitOfWork.runInTenantScope(tenant.id, async (tx) => {
+        const syncResult = await syncRolePermissionsForTenant(tx, tenant.id, actorId);
+        // "Thu chi tại quầy" GĐ1 — backfill quỹ tiền mặt mặc định cho tenant TẠO TRƯỚC tính năng
+        // này (seedDefaultRolesForTenant chỉ chạy lúc tạo tenant mới, không tự chạy lại cho tenant cũ).
+        await ensureDefaultCashAccount(tx, tenant.id, actorId);
+        // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — cùng lý do backfill Kho mặc định
+        // cho tenant tạo trước tính năng này.
+        await ensureDefaultWarehouse(tx, tenant.id, actorId);
+        return syncResult;
+      });
+    } catch (err) {
+      // Tenant bị xoá/vô hiệu hoá GIỮA lúc đang quét (danh sách `tenants` đọc từ trước) — không phải lỗi đồng bộ, bỏ qua tenant đó.
+      // Lỗi với tenant CÒN tồn tại vẫn được ném lại. (Trong test, các file spec dùng chung CSDL tạo/dọn tenant song song.)
+      const stillActive = await prisma.tenant.findFirst({ where: { id: tenant.id, deletedAt: null }, select: { id: true } });
+      if (!stillActive) continue;
+      throw err;
+    }
     added.push(...result);
   }
   return added;

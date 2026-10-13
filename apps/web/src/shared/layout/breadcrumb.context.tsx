@@ -66,6 +66,7 @@ export function useBreadcrumb(items: BreadcrumbItem[]): void {
   // chiếu (Provider tạo lại value mỗi lần `items` đổi), tránh vòng lặp set-lại-chính-nó.
   useEffect(() => {
     ctx?.setItems(items);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 }
 

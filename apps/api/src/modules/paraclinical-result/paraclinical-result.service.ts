@@ -24,7 +24,6 @@ import {
   vietnamDayRange,
   type ClinicConfigReaderPort,
   type LabReferenceRow,
-  type ParaclinicalItemStatus,
   type ParaclinicalServiceKind,
 } from '@nexamed/core';
 import {
@@ -50,7 +49,7 @@ import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { signFileToken } from '../../infrastructure/storage/signed-url';
-import { ClinicalOrderRepository, type QueueItemRow } from '../clinical-order/clinical-order.repository';
+import { ClinicalOrderRepository } from '../clinical-order/clinical-order.repository';
 import { UserAccountRepository } from '../iam/user-account.repository';
 import { ReferenceCatalogRepository } from '../reference-catalog/reference-catalog.repository';
 import { TechnicalServiceRepository, type IndicatorLinkFullRow } from '../technical-service/technical-service.repository';
@@ -594,13 +593,13 @@ export class ParaclinicalResultService {
     }
 
     const signed = results.find((r) => r.signedAt !== null) ?? null;
-    const any = results[0] ?? null;
+    const firstResult = results[0] ?? null;
     const approverRows = await this.userRepository.listActiveUsersWithPermission(tx, tenantId, scope.permissionModule, 'approve');
     const amended = results.find((r) => r.supersedesId !== null) ?? null;
     const original = amended?.supersedesId ? await this.resultRepository.findByIdIncludingDeleted(tx, tenantId, amended.supersedesId) : null;
-    const nameIds = [actorId, first.row.order.encounter.doctorId, any?.performedBy, signed?.signedBy, original?.signedBy].filter((x): x is string => typeof x === 'string');
+    const nameIds = [actorId, first.row.order.encounter.doctorId, firstResult?.performedBy, signed?.signedBy, original?.signedBy].filter((x): x is string => typeof x === 'string');
     const names = new Map((await this.userRepository.findFullNamesByIds(tx, tenantId, [...new Set(nameIds)])).map((u) => [u.id, u.fullName]));
-    const performedById = any?.performedBy ?? actorId;
+    const performedById = firstResult?.performedBy ?? actorId;
 
     return {
       orderNo: first.row.order.orderNo,
@@ -619,8 +618,8 @@ export class ParaclinicalResultService {
       sections,
       performedById,
       performedByName: names.get(performedById) ?? null,
-      resultedAt: any?.resultedAt?.toISOString() ?? null,
-      approverId: any?.approverId ?? null,
+      resultedAt: firstResult?.resultedAt?.toISOString() ?? null,
+      approverId: firstResult?.approverId ?? null,
       approvers: approverRows.map((u) => ({ id: u.id, fullName: u.displayName ?? u.fullName })),
       signedAt: signed?.signedAt?.toISOString() ?? null,
       signedByName: signed?.signedBy ? (names.get(signed.signedBy) ?? null) : null,

@@ -113,22 +113,17 @@ export async function seedDefaultRolesForTenant(
     });
 
     const matrix = DEFAULT_ROLE_PERMISSIONS[roleName];
-    for (const key of Object.keys(matrix)) {
+    const rows = Object.keys(matrix).map((key) => {
       const dataScope = matrix[key];
       const permissionId = permissionIdByKey.get(key);
       if (!permissionId || !dataScope) {
         throw new Error(`DEFAULT_ROLE_PERMISSIONS tham chiếu permission chưa seed: "${key}"`);
       }
-      await tx.rolePermission.create({
-        data: {
-          tenantId,
-          roleId: role.id,
-          permissionId,
-          dataScope,
-          createdBy: actorId,
-          updatedBy: actorId,
-        },
-      });
-    }
+      return { tenantId, roleId: role.id, permissionId, dataScope, createdBy: actorId, updatedBy: actorId };
+    });
+    // `createMany` + `skipDuplicates` (ON CONFLICT DO NOTHING) thay cho `create()` từng dòng: `syncRolePermissionsForAllTenants()`
+    // (chạy lúc API khởi động, quét MỌI tenant) có thể chèn trước đúng các dòng này khi một API khác vừa boot song song —
+    // `create()` sẽ ném P2002 và làm abort cả transaction (lỗi lặp lại ở 3 spec khi chạy toàn bộ bộ test).
+    await tx.rolePermission.createMany({ data: rows, skipDuplicates: true });
   }
 }

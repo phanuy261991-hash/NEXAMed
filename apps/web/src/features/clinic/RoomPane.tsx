@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { EMPTY_LIST } from '../../shared/empty-list';
 import { Buildings, ChairIcon, MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
 import type { FloorSummary, RoomSummary } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
@@ -63,7 +64,7 @@ export function RoomPane() {
   const createRoomMutation = useCreateRoomMutation();
   const updateRoomMutation = useUpdateRoomMutation();
 
-  const floors = floorsQuery.data?.items ?? [];
+  const floors = floorsQuery.data?.items ?? EMPTY_LIST;
   const hasFloors = floors.length > 0;
 
   // Phát hiện người khác vừa sửa Tầng/Phòng đang mở form Sửa (mẫu `useEditedRecordGuard`; danh sách nhỏ nên tải lại danh sách).

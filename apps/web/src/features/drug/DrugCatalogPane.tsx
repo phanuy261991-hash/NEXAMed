@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { EMPTY_LIST } from '../../shared/empty-list';
 import { useSearchParams } from 'react-router-dom';
 import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, DownloadSimple, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, Eye, FirstAidKit, UploadSimple, X } from '@phosphor-icons/react';
 import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory, StockLedgerEntry } from '@nexamed/shared';
@@ -208,7 +209,7 @@ export function DrugCatalogPane() {
   const drugRouteNameByCode = useMemo(() => new Map((drugRouteQuery.data?.items ?? []).map((i) => [i.code, i.name])), [drugRouteQuery.data]);
   const activeIngredientNameByCode = useMemo(() => new Map((activeIngredientQuery.data?.items ?? []).map((i) => [i.code, i.name])), [activeIngredientQuery.data]);
 
-  const items = query.data?.items ?? [];
+  const items = query.data?.items ?? EMPTY_LIST;
   const itemIds = items.map((d) => d.id);
   const rowSelection = useRowSelection(itemIds);
   const guard = useEditedRecordGuard({

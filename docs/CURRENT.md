@@ -464,6 +464,8 @@ Tóm tắt quyết định đã chốt (đầy đủ trong file kế hoạch, đ
 
 ## Đang chờ
 
+> **Cần chủ dự án quyết (từ rà soát 13/10/2026, `docs/DECISIONS.md` #229)**: `reference_catalog` dùng chung giữa mọi tenant nhưng `clinic_admin` từng phòng khám sửa được — chặn cho triển khai tập trung/cloud; ngưỡng xét nghiệm kiểu `DOUBLE PRECISION`; Content-Security-Policy; FORCE RLS.
+
 > **13/10/2026**: CI GitHub đã chạy được và xanh (workflow sửa 4 lỗi, xem `docs/TASK.md`). Việc còn mở thật sự: dựng lại gói on-prem (đang `2026.10.08.3`, chưa gồm #220–#227), menu "Phiếu chỉ định"/"Tra cứu kết quả" (cận lâm sàng), trường VTYT riêng, BHYT (S2-04), các việc cần pilot (S6-02/S6-04, thử máy in tem). Công nợ NCC Phần A→E và Kho GĐ5 ĐÃ XONG — nếu thấy `CLAUDE.md`/ghi chú cũ nói "chưa bắt đầu" thì đó là lỗi thời.
 > Từ 09/10/2026 mọi nhánh `feat/*` ở dưới đã merge vào `master` (PR #1–#7); quy ước làm việc: commit + push thẳng `master`, không dùng nhánh/PR trừ khi chủ dự án yêu cầu.
 

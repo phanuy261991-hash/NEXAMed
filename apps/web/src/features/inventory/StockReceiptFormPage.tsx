@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { makeDraftId as makeKey } from '../../shared/make-draft-id';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CaretDown, CaretRight, Copy, MagnifyingGlass, PencilSimple, Plus, Trash, Warning } from '@phosphor-icons/react';
 import type { CreateStockReceiptRequest, DiscountType, DrugSummary, StockReceiptDetail, StockReceiptLine, StockReceiptType } from '@nexamed/shared';
@@ -86,10 +87,6 @@ function previewDiscountAmount(base: number, type: 'PERCENT' | 'AMOUNT' | null, 
 function unitOptionsFor(drug: DrugSummary): string[] {
   const options = [drug.baseUnitCode, ...drug.units.map((u) => u.unitCode)].filter((u): u is string => Boolean(u));
   return [...new Set(options)];
-}
-
-function makeKey(): string {
-  return Math.random().toString(36).slice(2);
 }
 
 function todayVn(): string {

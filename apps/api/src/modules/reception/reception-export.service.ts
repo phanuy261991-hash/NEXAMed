@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
+import { getVietnamDateString } from '@nexamed/core';
 import type { EncounterStatus, ReceptionListItem } from '@nexamed/shared';
 
 /** Nhãn tiếng Việt cho `EncounterStatus` — khai RIÊNG ở backend, KHÔNG import từ
@@ -20,8 +21,10 @@ const STATUS_LABELS: Record<EncounterStatus, string> = {
 function ageLabel(dob: string, at: Date): string {
   const birth = new Date(dob);
   if (Number.isNaN(birth.getTime())) return '';
-  let months = (at.getFullYear() - birth.getFullYear()) * 12 + (at.getMonth() - birth.getMonth());
-  if (at.getDate() < birth.getDate()) months -= 1;
+  // Mốc "hôm nay" theo ngày Việt Nam + getter UTC thuần — KHÔNG dùng getter giờ địa phương của máy chủ (lệch tuổi khi múi giờ máy ≠ UTC+7).
+  const today = new Date(`${getVietnamDateString(at)}T00:00:00.000Z`);
+  let months = (today.getUTCFullYear() - birth.getUTCFullYear()) * 12 + (today.getUTCMonth() - birth.getUTCMonth());
+  if (today.getUTCDate() < birth.getUTCDate()) months -= 1;
   if (months < 0) return '';
   const years = Math.floor(months / 12);
   return years >= 3 ? `${years} tuổi` : `${months} tháng tuổi`;
