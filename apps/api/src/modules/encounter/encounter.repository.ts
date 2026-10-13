@@ -71,6 +71,7 @@ export interface EncounterWithConsultationPatient extends Encounter {
 
 export interface EncounterHistoryRow {
   id: string;
+  branchId: string;
   checkedInAt: Date;
   doctorId: string | null;
   chiefComplaint: string | null;
@@ -83,10 +84,11 @@ export interface EncounterHistoryRow {
 @Injectable()
 export class EncounterRepository {
   /** Luôn tạo thẳng ở `CHECKED_IN` — v1 không có luồng nào tạo encounter ở `SCHEDULED` (xem comment trong schema.prisma). */
-  create(tx: Prisma.TransactionClient, tenantId: string, actorId: string, data: CreateEncounterData): Promise<Encounter> {
+  create(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, data: CreateEncounterData): Promise<Encounter> {
     return tx.encounter.create({
       data: {
         tenantId,
+        branchId,
         patientId: data.patientId,
         doctorId: data.doctorId,
         departmentId: data.departmentId,
@@ -114,8 +116,9 @@ export class EncounterRepository {
     });
   }
 
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<Encounter | null> {
-    return tx.encounter.findFirst({ where: { tenantId, id, deletedAt: null } });
+  /** Tra theo id TRONG chi nhánh đang làm việc (docs/DECISIONS.md #231) — lượt khám của chi nhánh khác coi như không tồn tại (404). Xem lâm sàng liên chi nhánh đi qua `findByIdWithConsultationContext`. */
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<Encounter | null> {
+    return tx.encounter.findFirst({ where: { tenantId, branchId, id, deletedAt: null } });
   }
 
   /**
@@ -132,9 +135,9 @@ export class EncounterRepository {
    * 1 dòng) rồi map lại thành field `invoice` đơn — giữ nguyên shape trả về cho mọi call site cũ
    * (`existing.invoice?.status`), không phải sửa gì ở tầng Service.
    */
-  async findByIdWithInvoiceStatus(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<EncounterWithInvoiceStatus | null> {
+  async findByIdWithInvoiceStatus(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<EncounterWithInvoiceStatus | null> {
     const row = await tx.encounter.findFirst({
-      where: { tenantId, id, deletedAt: null },
+      where: { tenantId, branchId, id, deletedAt: null },
       include: { invoices: { where: { invoiceType: 'SERVICE' }, select: { status: true }, take: 1 } },
     });
     if (!row) return null;
@@ -155,9 +158,9 @@ export class EncounterRepository {
   }
 
   /** Kèm `dob` bệnh nhân — phục vụ `evaluateVitalSignWarnings()` (ReceptionService.recordVitalSigns()). */
-  findByIdWithPatientDob(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<EncounterWithPatientDob | null> {
+  findByIdWithPatientDob(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<EncounterWithPatientDob | null> {
     return tx.encounter.findFirst({
-      where: { tenantId, id, deletedAt: null },
+      where: { tenantId, branchId, id, deletedAt: null },
       include: { patient: { select: { dob: true } } },
     }) as Promise<EncounterWithPatientDob | null>;
   }
@@ -181,10 +184,12 @@ export class EncounterRepository {
   async listForDay(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     params: { dayStart: Date; dayEnd: Date; doctorId?: string; poolDepartmentId?: string; requirePaymentCleared?: boolean },
   ): Promise<EncounterWithPatientContact[]> {
     const where: Prisma.EncounterWhereInput = {
       tenantId,
+      branchId,
       deletedAt: null,
       status: { in: ['CHECKED_IN', 'IN_CONSULTATION', 'COMPLETED', 'CANCELLED'] },
       checkedInAt: { gte: params.dayStart, lt: params.dayEnd },
@@ -262,6 +267,7 @@ export class EncounterRepository {
       where: { tenantId, patientId, id: { not: excludeEncounterId }, deletedAt: null },
       select: {
         id: true,
+        branchId: true,
         checkedInAt: true,
         doctorId: true,
         chiefComplaint: true,
@@ -517,11 +523,12 @@ export class EncounterRepository {
   async releaseAllForDoctor(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     doctorId: string,
     actorId: string,
   ): Promise<{ id: string; previousStatus: 'CHECKED_IN' | 'IN_CONSULTATION' }[]> {
     const targets = await tx.encounter.findMany({
-      where: { tenantId, doctorId, deletedAt: null, status: { in: ['CHECKED_IN', 'IN_CONSULTATION'] } },
+      where: { tenantId, branchId, doctorId, deletedAt: null, status: { in: ['CHECKED_IN', 'IN_CONSULTATION'] } },
       select: { id: true, status: true },
     });
     if (targets.length === 0) {
@@ -548,18 +555,19 @@ export class EncounterRepository {
   async getShiftCounts(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     doctorId: string,
     range: { startUtc: Date; endUtc: Date },
   ): Promise<{ calledCount: number; cancelledCount: number; completedDurationsMs: number[] }> {
     const [calledCount, cancelledCount, completedRows] = await Promise.all([
       tx.encounter.count({
-        where: { tenantId, doctorId, deletedAt: null, startedAt: { gte: range.startUtc, lt: range.endUtc } },
+        where: { tenantId, branchId, doctorId, deletedAt: null, startedAt: { gte: range.startUtc, lt: range.endUtc } },
       }),
       tx.encounter.count({
-        where: { tenantId, doctorId, deletedAt: null, status: 'CANCELLED', startedAt: { gte: range.startUtc, lt: range.endUtc } },
+        where: { tenantId, branchId, doctorId, deletedAt: null, status: 'CANCELLED', startedAt: { gte: range.startUtc, lt: range.endUtc } },
       }),
       tx.encounter.findMany({
-        where: { tenantId, doctorId, deletedAt: null, status: 'COMPLETED', completedAt: { gte: range.startUtc, lt: range.endUtc } },
+        where: { tenantId, branchId, doctorId, deletedAt: null, status: 'COMPLETED', completedAt: { gte: range.startUtc, lt: range.endUtc } },
         select: { startedAt: true, completedAt: true },
       }),
     ]);

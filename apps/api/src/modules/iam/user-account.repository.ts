@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, UserAccount } from '@prisma/client';
+import { userBranchWhere } from '../../infrastructure/persistence/branch-membership.helper';
 
 export interface CreateUserAccountData {
   username: string;
@@ -149,13 +150,17 @@ export class UserAccountRepository {
   async listActiveDoctors(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
   ): Promise<{ id: string; fullName: string; displayName: string | null; departmentId: string | null }[]> {
+    // Chỉ bác sĩ được làm việc ở chi nhánh đang chọn (docs/DECISIONS.md #231).
+    const branchWhere = await userBranchWhere(tx, tenantId, branchId);
     const rows = await tx.userAccount.findMany({
       where: {
         tenantId,
         deletedAt: null,
         isActive: true,
         userRoles: { some: { deletedAt: null, role: { tenantId, deletedAt: null, name: 'doctor' } } },
+        ...branchWhere,
       },
       select: { id: true, fullName: true, displayName: true, departmentId: true },
       orderBy: { fullName: 'asc' },

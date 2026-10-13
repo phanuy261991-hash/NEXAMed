@@ -19,6 +19,7 @@ export interface WorkShiftAssignmentReaderPort {
    */
   getWorkShiftsForUsersOnDate(
     tenantId: string,
+    branchId: string,
     userIds: string[],
     date: string,
   ): Promise<Record<string, Array<{ name: string; color: PortWorkShiftColor; startTime: string; endTime: string }>>>;
@@ -30,6 +31,7 @@ export interface WorkShiftAssignmentReaderPort {
    */
   listShiftsForUserOnDate(
     tenantId: string,
+    branchId: string,
     userId: string,
     date: string,
   ): Promise<Array<{ workShiftId: string; name: string; startTime: string; endTime: string }>>;
@@ -40,7 +42,7 @@ export interface WorkShiftAssignmentReaderPort {
    * bật, ngày đó đã có ít nhất 1 bác sĩ đăng ký ca, và bác sĩ này không có ca nào. Tự mở transaction riêng
    * (gọi NGOÀI transaction đang mở). Caller tự ném lỗi nghiệp vụ của mình.
    */
-  isDoctorBookingBlockedForNoShift(tenantId: string, doctorId: string, date: string): Promise<boolean>;
+  isDoctorBookingBlockedForNoShift(tenantId: string, branchId: string, doctorId: string, date: string): Promise<boolean>;
 }
 
 export const WORK_SHIFT_ASSIGNMENT_READER_PORT = Symbol('WORK_SHIFT_ASSIGNMENT_READER_PORT');

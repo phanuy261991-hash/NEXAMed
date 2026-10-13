@@ -9,7 +9,7 @@ import * as argon2 from 'argon2';
 import { AppModule } from '../../app.module';
 import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
-import { createTwoTenantFixture, SYSTEM_TEST_ACTOR, type TwoTenantFixture } from '../../testing/tenant-fixture';
+import { createTwoTenantFixture, getDefaultBranchId, SYSTEM_TEST_ACTOR, type TwoTenantFixture } from '../../testing/tenant-fixture';
 import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-permissions';
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
 
@@ -75,6 +75,7 @@ describe('HTTP e2e — /api/v1/patients/merge', () => {
     return privileged.encounter.create({
       data: {
         tenantId,
+        branchId: await getDefaultBranchId(privileged, tenantId),
         patientId,
         departmentId: department.id,
         encounterNo: `LK-MERGE-${seq}`,

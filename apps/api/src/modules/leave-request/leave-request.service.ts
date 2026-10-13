@@ -68,17 +68,18 @@ export class LeaveRequestService {
   ) {}
 
   /** Xin nghỉ cho CHÍNH MÌNH — đơn `PENDING` chờ duyệt. */
-  create(tenantId: string, actorId: string, dto: CreateLeaveRequestRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
-    return this.createInternal(tenantId, actorId, actorId, dto, false, meta);
+  create(tenantId: string, branchId: string, actorId: string, dto: CreateLeaveRequestRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
+    return this.createInternal(tenantId, branchId, actorId, actorId, dto, false, meta);
   }
 
   /** Ghi nghỉ hộ nhân viên — duyệt luôn (người ghi hộ là người quyết định). */
-  createOnBehalf(tenantId: string, actorId: string, dto: CreateLeaveRequestOnBehalfRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
-    return this.createInternal(tenantId, actorId, dto.userId, dto, true, meta);
+  createOnBehalf(tenantId: string, branchId: string, actorId: string, dto: CreateLeaveRequestOnBehalfRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
+    return this.createInternal(tenantId, branchId, actorId, dto.userId, dto, true, meta);
   }
 
   private async createInternal(
     tenantId: string,
+    branchId: string,
     actorId: string,
     targetUserId: string,
     dto: CreateLeaveRequestRequest,
@@ -88,7 +89,7 @@ export class LeaveRequestService {
     if (dto.leaveDate < getVietnamDateString()) {
       throw new LeaveRequestPastDateError();
     }
-    const { window, workShiftId } = await this.resolveWindow(tenantId, targetUserId, dto.leaveDate, dto.workShiftId);
+    const { window, workShiftId } = await this.resolveWindow(tenantId, branchId, targetUserId, dto.leaveDate, dto.workShiftId);
 
     const row = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.repository.listActiveForUserOnDate(tx, tenantId, targetUserId, dto.leaveDate);
@@ -98,7 +99,7 @@ export class LeaveRequestService {
 
       let created: LeaveRequestRow;
       try {
-        created = await this.repository.create(tx, tenantId, actorId, {
+        created = await this.repository.create(tx, tenantId, branchId, actorId, {
           userId: targetUserId,
           leaveDate: dto.leaveDate,
           workShiftId,
@@ -141,12 +142,13 @@ export class LeaveRequestService {
       return created;
     });
 
-    const [item] = await this.toItems(tenantId, actorId, [row]);
+    const [item] = await this.toItems(tenantId, branchId, actorId, [row]);
     return item as LeaveRequestItem;
   }
 
   async list(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     query: ListLeaveRequestsQuery,
@@ -154,36 +156,36 @@ export class LeaveRequestService {
     // scope `personal`: ép lọc theo chính actor, bỏ qua `userId` client gửi (không dò đơn người khác).
     const userId = dataScope === 'personal' ? actorId : query.userId;
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.repository.list(tx, tenantId, { status: query.status, from: query.from, to: query.to, userId }),
+      this.repository.list(tx, tenantId, branchId, { status: query.status, from: query.from, to: query.to, userId }),
     );
-    return { items: await this.toItems(tenantId, actorId, rows) };
+    return { items: await this.toItems(tenantId, branchId, actorId, rows) };
   }
 
-  async pendingCount(tenantId: string): Promise<LeaveRequestPendingCountResponse> {
-    const count = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.countByStatus(tx, tenantId, 'PENDING'));
+  async pendingCount(tenantId: string, branchId: string): Promise<LeaveRequestPendingCountResponse> {
+    const count = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.countByStatus(tx, tenantId, branchId, 'PENDING'));
     return { count };
   }
 
   /** Lịch hẹn còn `SCHEDULED` trong khung nghỉ của một đơn — hộp thoại Duyệt. */
-  async listAffectedAppointments(tenantId: string, id: string): Promise<LeaveRequestAffectedAppointmentsResponse> {
-    const row = await this.getRow(tenantId, id);
-    const [items] = await this.impactReader.listScheduledInWindows(tenantId, [
+  async listAffectedAppointments(tenantId: string, branchId: string, id: string): Promise<LeaveRequestAffectedAppointmentsResponse> {
+    const row = await this.getRow(tenantId, branchId, id);
+    const [items] = await this.impactReader.listScheduledInWindows(tenantId, branchId, [
       { doctorId: row.userId, date: dateToString(row.leaveDate), startMinute: row.startMinute, endMinute: row.endMinute },
     ]);
     return { items: items ?? [] };
   }
 
   /** Dải cảnh báo ở hộp "Xin nghỉ": bao nhiêu lịch hẹn của chính actor nằm trong khung sắp nghỉ. */
-  async myImpact(tenantId: string, actorId: string, query: LeaveRequestMyImpactQuery): Promise<LeaveRequestMyImpactResponse> {
-    const { window } = await this.resolveWindow(tenantId, actorId, query.leaveDate, query.workShiftId ?? null);
-    const [items] = await this.impactReader.listScheduledInWindows(tenantId, [
+  async myImpact(tenantId: string, branchId: string, actorId: string, query: LeaveRequestMyImpactQuery): Promise<LeaveRequestMyImpactResponse> {
+    const { window } = await this.resolveWindow(tenantId, branchId, actorId, query.leaveDate, query.workShiftId ?? null);
+    const [items] = await this.impactReader.listScheduledInWindows(tenantId, branchId, [
       { doctorId: actorId, date: query.leaveDate, startMinute: window.startMinute, endMinute: window.endMinute },
     ]);
     return { affectedAppointmentCount: items?.length ?? 0 };
   }
 
-  async approve(tenantId: string, actorId: string, id: string, dto: ApproveLeaveRequestRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
-    const row = await this.getRow(tenantId, id);
+  async approve(tenantId: string, branchId: string, actorId: string, id: string, dto: ApproveLeaveRequestRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
+    const row = await this.getRow(tenantId, branchId, id);
     if (row.userId === actorId) throw new LeaveRequestSelfApproveError();
     if (row.status !== 'PENDING') throw new LeaveRequestInvalidStatusError();
 
@@ -205,11 +207,11 @@ export class LeaveRequestService {
         userAgent: meta.userAgent,
       });
     });
-    return this.getItem(tenantId, actorId, id);
+    return this.getItem(tenantId, branchId, actorId, id);
   }
 
-  async reject(tenantId: string, actorId: string, id: string, dto: RejectLeaveRequestRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
-    const row = await this.getRow(tenantId, id);
+  async reject(tenantId: string, branchId: string, actorId: string, id: string, dto: RejectLeaveRequestRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
+    const row = await this.getRow(tenantId, branchId, id);
     if (row.userId === actorId) throw new LeaveRequestSelfApproveError();
     if (row.status !== 'PENDING') throw new LeaveRequestInvalidStatusError();
 
@@ -231,12 +233,12 @@ export class LeaveRequestService {
         userAgent: meta.userAgent,
       });
     });
-    return this.getItem(tenantId, actorId, id);
+    return this.getItem(tenantId, branchId, actorId, id);
   }
 
   /** Người gửi tự rút đơn khi chưa duyệt. */
-  async withdraw(tenantId: string, actorId: string, id: string, dto: WithdrawLeaveRequestRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
-    const row = await this.getRow(tenantId, id);
+  async withdraw(tenantId: string, branchId: string, actorId: string, id: string, dto: WithdrawLeaveRequestRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
+    const row = await this.getRow(tenantId, branchId, id);
     if (row.userId !== actorId) throw new LeaveRequestNotOwnerError();
     if (row.status !== 'PENDING') throw new LeaveRequestInvalidStatusError();
 
@@ -254,12 +256,12 @@ export class LeaveRequestService {
         userAgent: meta.userAgent,
       });
     });
-    return this.getItem(tenantId, actorId, id);
+    return this.getItem(tenantId, branchId, actorId, id);
   }
 
   /** Quản lý huỷ đơn ĐÃ DUYỆT (bác sĩ đi làm lại) — khung đó mở lại bình thường. */
-  async cancel(tenantId: string, actorId: string, id: string, dto: CancelLeaveRequestRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
-    const row = await this.getRow(tenantId, id);
+  async cancel(tenantId: string, branchId: string, actorId: string, id: string, dto: CancelLeaveRequestRequest, meta: RequestMeta): Promise<LeaveRequestItem> {
+    const row = await this.getRow(tenantId, branchId, id);
     if (row.status !== 'APPROVED') throw new LeaveRequestInvalidStatusError();
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -280,7 +282,7 @@ export class LeaveRequestService {
         userAgent: meta.userAgent,
       });
     });
-    return this.getItem(tenantId, actorId, id);
+    return this.getItem(tenantId, branchId, actorId, id);
   }
 
   /**
@@ -289,11 +291,12 @@ export class LeaveRequestService {
    */
   private async resolveWindow(
     tenantId: string,
+    branchId: string,
     userId: string,
     date: string,
     workShiftId: string | null,
   ): Promise<{ window: LeaveWindow; workShiftId: string | null }> {
-    const shifts = await this.shiftReader.listShiftsForUserOnDate(tenantId, userId, date);
+    const shifts = await this.shiftReader.listShiftsForUserOnDate(tenantId, branchId, userId, date);
     if (shifts.length === 0) throw new LeaveRequestNoShiftError();
     if (workShiftId === null) {
       return { window: wholeDayLeaveWindow(), workShiftId: null };
@@ -303,25 +306,25 @@ export class LeaveRequestService {
     return { window: leaveWindowFromShift(shift.startTime, shift.endTime), workShiftId };
   }
 
-  private async getRow(tenantId: string, id: string): Promise<LeaveRequestRow> {
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.findById(tx, tenantId, id));
+  private async getRow(tenantId: string, branchId: string, id: string): Promise<LeaveRequestRow> {
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.findById(tx, tenantId, branchId, id));
     if (!row) throw new NotFoundException();
     return row;
   }
 
-  private async getItem(tenantId: string, actorId: string, id: string): Promise<LeaveRequestItem> {
-    const row = await this.getRow(tenantId, id);
-    const [item] = await this.toItems(tenantId, actorId, [row]);
+  private async getItem(tenantId: string, branchId: string, actorId: string, id: string): Promise<LeaveRequestItem> {
+    const row = await this.getRow(tenantId, branchId, id);
+    const [item] = await this.toItems(tenantId, branchId, actorId, [row]);
     return item as LeaveRequestItem;
   }
 
   /** Gắn tên người, khoa, số lịch hẹn bị ảnh hưởng — đọc qua port, NGOÀI mọi transaction ghi. */
-  private async toItems(tenantId: string, actorId: string, rows: LeaveRequestRow[]): Promise<LeaveRequestItem[]> {
+  private async toItems(tenantId: string, branchId: string, actorId: string, rows: LeaveRequestRow[]): Promise<LeaveRequestItem[]> {
     if (rows.length === 0) return [];
     const userIds = [...new Set(rows.flatMap((r) => [r.userId, ...(r.decidedBy ? [r.decidedBy] : [])]))];
     const [names, doctors, departmentNames] = await Promise.all([
       this.doctorDirectory.getUserFullNames(tenantId, userIds),
-      this.doctorDirectory.listActiveDoctors(tenantId),
+      this.doctorDirectory.listActiveDoctors(tenantId, branchId),
       this.doctorDirectory.getDepartmentNames(tenantId),
     ]);
     const doctorById = new Map(doctors.map((d) => [d.id, d]));
@@ -331,6 +334,7 @@ export class LeaveRequestService {
     const affected: AffectedAppointment[][] = countable.length
       ? await this.impactReader.listScheduledInWindows(
           tenantId,
+          branchId,
           countable.map((r) => ({ doctorId: r.userId, date: dateToString(r.leaveDate), startMinute: r.startMinute, endMinute: r.endMinute })),
         )
       : [];

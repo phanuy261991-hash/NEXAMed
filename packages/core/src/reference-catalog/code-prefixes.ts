@@ -56,3 +56,6 @@ export const REFERENCE_CATALOG_SHORT_CODE_PREFIXES: Partial<Record<ReferenceCata
  * `20261013100000_catalogs_per_tenant` đã chép giá trị cũ sang đúng khoá này.
  */
 export const CATALOG_SEQUENCE_PREFIX = 'CATALOG:';
+
+/** Tiền tố mã chi nhánh (`branch.code`, docs/DECISIONS.md #231) — cấp qua `code_sequence` theo tenant, mã dạng CN00001. */
+export const BRANCH_CODE_PREFIX = 'CN';

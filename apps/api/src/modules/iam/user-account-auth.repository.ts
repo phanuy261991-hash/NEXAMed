@@ -47,6 +47,14 @@ export class UserAccountAuthRepository {
     });
   }
 
+  /** "Nhớ lựa chọn" chi nhánh (#231) — đăng nhập lần sau vào thẳng chi nhánh này nếu còn được gán. */
+  setLastBranch(tx: Prisma.TransactionClient, tenantId: string, userId: string, branchId: string): Promise<UserAccount> {
+    return tx.userAccount.update({
+      where: { tenantId_id: { tenantId, id: userId } },
+      data: { lastBranchId: branchId, updatedBy: userId, version: { increment: 1 } },
+    });
+  }
+
   /** Tự đổi mật khẩu (mở rộng ADM-01, `AuthService.changePassword`) — luôn xoá cờ `mustChangePassword`. */
   updatePasswordAndClearMustChange(
     tx: Prisma.TransactionClient,

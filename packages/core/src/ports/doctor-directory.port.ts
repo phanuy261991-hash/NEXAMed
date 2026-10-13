@@ -8,8 +8,10 @@
  * tiếp `user_account`/`department` — đã lọc `tenant_id` theo RLS, không phải no-op.
  */
 export interface DoctorDirectoryPort {
+  /** `branchId` = chỉ bác sĩ được làm việc ở chi nhánh đó (docs/DECISIONS.md #231); công ty ≤ 1 chi nhánh hoạt động thì mọi bác sĩ. */
   listActiveDoctors(
     tenantId: string,
+    branchId: string,
   ): Promise<{ id: string; fullName: string; displayName: string | null; departmentId: string | null }[]>;
   /**
    * "Hàng đợi ảo" (#064) — server tự suy `departmentId` từ hồ sơ bác sĩ khi Tiếp nhận/Check-in chọn

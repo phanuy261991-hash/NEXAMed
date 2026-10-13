@@ -187,8 +187,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   }
 
   /** `ClinicConfigReaderPort` (#054) — xem comment ở khai báo class. */
-  getTodayDoctorRoomAssignments(tenantId: string): ReturnType<ClinicConfigReaderPort['getTodayDoctorRoomAssignments']> {
-    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.doctorRoomSessionRepository.listActiveForTenantToday(tx, tenantId));
+  getTodayDoctorRoomAssignments(tenantId: string, branchId: string): ReturnType<ClinicConfigReaderPort['getTodayDoctorRoomAssignments']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.doctorRoomSessionRepository.listActiveForTenantToday(tx, tenantId, branchId));
   }
 
   /** `ClinicConfigReaderPort` (Thu ngân cơ bản, Sprint 5/6) — xem comment ở khai báo class. */

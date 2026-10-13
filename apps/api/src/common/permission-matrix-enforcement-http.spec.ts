@@ -67,6 +67,8 @@ const PUBLIC_ROUTES = new Set<string>([
 const LOGIN_ONLY_ROUTES = new Set<string>([
   'GET /api/v1/auth/me',
   'POST /api/v1/auth/change-password',
+  // Đổi chi nhánh làm việc của CHÍNH PHIÊN mình (docs/DECISIONS.md #231) — chỉ sang chi nhánh tài khoản được gán (kiểm ở dịch vụ), tự phục vụ như /auth/me.
+  'POST /api/v1/auth/switch-branch',
   'POST /api/v1/break-glass',
   'GET /api/v1/users/me',
   'PATCH /api/v1/users/me',

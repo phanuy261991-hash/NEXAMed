@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { DOCTOR_DIRECTORY_PORT, NOTIFICATION_PORT } from '@nexamed/core';
+import { BRANCH_DIRECTORY_PORT, DOCTOR_DIRECTORY_PORT, NOTIFICATION_PORT } from '@nexamed/core';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
@@ -23,8 +23,13 @@ import { DepartmentRepository } from './department.repository';
 import { DepartmentTypeController } from './department-type.controller';
 import { DepartmentTypeService } from './department-type.service';
 import { DepartmentTypeRepository } from './department-type.repository';
+import { BranchController } from './branch.controller';
+import { BranchService } from './branch.service';
+import { BranchRepository } from './branch.repository';
+import { BranchAccessService } from './branch-access.service';
 import { NoopNotificationAdapter } from '../../infrastructure/notification/noop.adapter';
 import { DoctorDirectoryAdapter } from '../../infrastructure/directory/doctor-directory.adapter';
+import { BranchDirectoryAdapter } from '../../infrastructure/directory/branch-directory.adapter';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
 import { ClinicModule } from '../clinic/clinic.module';
 
@@ -83,6 +88,7 @@ import { ClinicModule } from '../clinic/clinic.module';
     RoleController,
     DepartmentController,
     DepartmentTypeController,
+    BranchController,
   ],
   providers: [
     AuthService,
@@ -100,12 +106,16 @@ import { ClinicModule } from '../clinic/clinic.module';
     DepartmentRepository,
     DepartmentTypeService,
     DepartmentTypeRepository,
+    BranchService,
+    BranchRepository,
+    BranchAccessService,
     { provide: NOTIFICATION_PORT, useClass: NoopNotificationAdapter },
     { provide: DOCTOR_DIRECTORY_PORT, useClass: DoctorDirectoryAdapter },
+    { provide: BRANCH_DIRECTORY_PORT, useClass: BranchDirectoryAdapter },
   ],
   // `UserAccountRepository` export thêm cho `WorkShiftAssignmentModule` (Nhập Excel — tra mã nhân
   // viên trong cùng transaction, đúng khuôn "reception/encounter/appointment chia sẻ Repository"
   // đã ghi ở docs/DECISIONS.md #042, không dùng port vì cần atomic cùng lúc ghi assignment).
-  exports: [BreakGlassService, DOCTOR_DIRECTORY_PORT, UserAccountRepository],
+  exports: [BreakGlassService, DOCTOR_DIRECTORY_PORT, BRANCH_DIRECTORY_PORT, UserAccountRepository],
 })
 export class IamModule {}

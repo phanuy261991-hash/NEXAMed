@@ -49,6 +49,6 @@ describe('JwtAuthGuard', () => {
     const context = contextWithHeader(`Bearer ${token}`, req);
 
     expect(guard.canActivate(context)).toBe(true);
-    expect(req.user).toEqual({ userId: USER_ID, tenantId: TENANT_ID });
+    expect(req.user).toEqual({ userId: USER_ID, tenantId: TENANT_ID, branchId: null });
   });
 });

@@ -10,6 +10,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { WorkScheduleSubmissionService } from './work-schedule-submission.service';
 
 /** "Duyệt đăng ký ca theo tháng" (#225) — xem docstring `WorkScheduleSubmissionService`. */
@@ -23,13 +24,13 @@ export class WorkScheduleSubmissionController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listScheduleSubmissionsQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.service.list(tenantId, userId, req.dataScope!, dto);
+    return this.service.list(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto);
   }
 
   @Get('pending-count')
   @RequirePermission('work_shift_assignment', 'approve')
   async pendingCount(@Req() req: Request) {
-    return this.service.pendingCount(req.user!.tenantId);
+    return this.service.pendingCount(req.user!.tenantId, requireBranchId(req.user!));
   }
 
   @Post('submit')
@@ -38,7 +39,7 @@ export class WorkScheduleSubmissionController {
   async submit(@Body() body: unknown, @Req() req: Request) {
     const dto = submitScheduleSubmissionRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.service.submit(tenantId, userId, dto, extractRequestMeta(req));
+    return this.service.submit(tenantId, requireBranchId(req.user!), userId, dto, extractRequestMeta(req));
   }
 
   @Post(':id/approve')
@@ -47,7 +48,7 @@ export class WorkScheduleSubmissionController {
   async approve(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = approveScheduleSubmissionRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.service.approve(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.service.approve(tenantId, requireBranchId(req.user!), userId, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/return')
@@ -56,6 +57,6 @@ export class WorkScheduleSubmissionController {
   async returnBack(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = returnScheduleSubmissionRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.service.returnBack(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.service.returnBack(tenantId, requireBranchId(req.user!), userId, id, dto, extractRequestMeta(req));
   }
 }

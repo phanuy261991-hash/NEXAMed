@@ -25,3 +25,4 @@ export * from './backup-errors';
 export * from './advice-template-errors';
 export * from './leave-request-errors';
 export * from './shift-swap-errors';
+export * from './branch-errors';

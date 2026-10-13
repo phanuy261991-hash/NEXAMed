@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
-import { DEFAULT_ROLE_PERMISSIONS, formatShortSequentialCode, permissionKey } from '@nexamed/core';
+import { BRANCH_CODE_PREFIX, DEFAULT_ROLE_PERMISSIONS, formatShortSequentialCode, permissionKey } from '@nexamed/core';
 import { USER_ROLES } from '@nexamed/shared';
 import { CodeSequenceRepository } from './code-sequence.repository';
 import { seedSystemReferenceDataForTenant } from './seed-reference-catalog';
@@ -40,6 +40,33 @@ export async function ensureDefaultCashAccount(tx: Prisma.TransactionClient, ten
       createdBy: actorId,
       updatedBy: actorId,
     },
+  });
+}
+
+/**
+ * Chi nhánh MẶC ĐỊNH (docs/DECISIONS.md #231) — mọi tenant luôn có ít nhất 1 chi nhánh (giống "Khoa chung" #064); tên/địa chỉ/SĐT lấy từ `tenant`.
+ * Tạo nếu chưa có; trả chi nhánh mặc định. Phòng khám 1 chi nhánh không thấy khái niệm này trên giao diện.
+ */
+export async function ensureDefaultBranch(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<{ id: string }> {
+  const existing = await tx.branch.findFirst({ where: { tenantId, isDefault: true, deletedAt: null }, select: { id: true } });
+  if (existing) {
+    return existing;
+  }
+  const tenant = await tx.tenant.findUnique({ where: { id: tenantId }, select: { name: true, address: true, phone: true } });
+  const seq = await codeSequenceRepository.next(tx, tenantId, BRANCH_CODE_PREFIX, actorId);
+  return tx.branch.create({
+    data: {
+      tenantId,
+      code: formatShortSequentialCode(BRANCH_CODE_PREFIX, seq),
+      name: tenant?.name ?? 'Cơ sở chính',
+      address: tenant?.address ?? null,
+      phone: tenant?.phone ?? null,
+      isDefault: true,
+      isActive: true,
+      createdBy: actorId,
+      updatedBy: actorId,
+    },
+    select: { id: true },
   });
 }
 
@@ -95,6 +122,7 @@ export async function seedDefaultRolesForTenant(
     });
   }
 
+  await ensureDefaultBranch(tx as Prisma.TransactionClient, tenantId, actorId);
   await ensureDefaultCashAccount(tx as Prisma.TransactionClient, tenantId, actorId);
   await ensureDefaultWarehouse(tx as Prisma.TransactionClient, tenantId, actorId);
   // Dòng danh mục BẮT BUỘC cho hệ thống (CASH/WALLET, loại thu chi hệ thống, từ viết tắt ICD-10) — danh mục riêng theo tenant (#230).

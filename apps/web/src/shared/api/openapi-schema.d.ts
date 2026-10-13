@@ -55,6 +55,16 @@ export interface paths {
                                         [key: string]: "none" | "personal" | "department" | "global";
                                     };
                                     mustChangePassword: boolean;
+                                    branches: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        code: string;
+                                        name: string;
+                                        address: string | null;
+                                        isDefault: boolean;
+                                    }[];
+                                    /** Format: uuid */
+                                    currentBranchId: string | null;
                                 };
                             };
                             meta: Record<string, never>;
@@ -249,6 +259,16 @@ export interface paths {
                                     [key: string]: "none" | "personal" | "department" | "global";
                                 };
                                 mustChangePassword: boolean;
+                                branches: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    address: string | null;
+                                    isDefault: boolean;
+                                }[];
+                                /** Format: uuid */
+                                currentBranchId: string | null;
                             };
                             meta: Record<string, never>;
                         };
@@ -340,6 +360,382 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/switch-branch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đổi chi nhánh làm việc của phiên (docs/DECISIONS.md #231) — chỉ sang chi nhánh được gán; cần cookie refresh; cấp lại access token mang chi nhánh mới */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        branchId: string;
+                        /** @default true */
+                        remember?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Đổi chi nhánh thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                accessToken: string;
+                                expiresIn: number;
+                                /** Format: uuid */
+                                currentBranchId: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu access token hoặc cookie phiên */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không được làm việc ở chi nhánh này (BRANCH_NOT_ASSIGNED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách chi nhánh của công ty (kèm số nhân viên được gán) */
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    address: string | null;
+                                    isDefault: boolean;
+                                    phone: string | null;
+                                    isActive: boolean;
+                                    staffCount: number;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền branch.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Thêm chi nhánh (mã CN tự sinh) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        address?: string;
+                        phone?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Tạo thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                address: string | null;
+                                isDefault: boolean;
+                                phone: string | null;
+                                isActive: boolean;
+                                staffCount: number;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền branch.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Trùng tên chi nhánh (BRANCH_DUPLICATE_NAME) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/branches/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa/ngưng/khôi phục chi nhánh — bắt buộc kèm version; chi nhánh mặc định không ngưng được */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        address?: string | null;
+                        phone?: string | null;
+                        isActive?: boolean;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                code: string;
+                                name: string;
+                                address: string | null;
+                                isDefault: boolean;
+                                phone: string | null;
+                                isActive: boolean;
+                                staffCount: number;
+                                version: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền branch.manage */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại hoặc thuộc công ty khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp / trùng tên / ngưng chi nhánh mặc định */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/break-glass": {
@@ -3539,6 +3935,9 @@ export interface paths {
                                         /** @enum {string} */
                                         paymentState: "PAID" | "UNPAID" | "REFUNDED";
                                     } | null;
+                                    branchName: string | null;
+                                    isOtherBranch: boolean;
+                                    billingHidden: boolean;
                                 }[];
                                 /** Format: uuid */
                                 nextCursor: string | null;
@@ -3546,6 +3945,7 @@ export interface paths {
                                 totalCount: number;
                                 canViewClinical: boolean;
                                 canViewBilling: boolean;
+                                multiBranch: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -4251,6 +4651,7 @@ export interface paths {
                                     doctorName: string | null;
                                     chiefComplaint: string | null;
                                     primaryDiagnosisName: string | null;
+                                    branchName: string | null;
                                 }[];
                                 diagnoses: {
                                     /** Format: uuid */
@@ -8844,6 +9245,7 @@ export interface paths {
                                     signatureUrl: string | null;
                                     isActive: boolean;
                                     roleNames: string[];
+                                    branchIds: string[];
                                     version: number;
                                     createdAt: string;
                                     updatedAt: string;
@@ -8926,6 +9328,7 @@ export interface paths {
                         /** Format: uuid */
                         defaultRoomId?: string;
                         roleIds: string[];
+                        branchIds?: string[];
                     };
                 };
             };
@@ -8965,6 +9368,7 @@ export interface paths {
                                 signatureUrl: string | null;
                                 isActive: boolean;
                                 roleNames: string[];
+                                branchIds: string[];
                                 version: number;
                                 createdAt: string;
                                 updatedAt: string;
@@ -9093,6 +9497,7 @@ export interface paths {
                                 signatureUrl: string | null;
                                 isActive: boolean;
                                 roleNames: string[];
+                                branchIds: string[];
                                 version: number;
                                 createdAt: string;
                                 updatedAt: string;
@@ -9181,6 +9586,7 @@ export interface paths {
                                 signatureUrl: string | null;
                                 isActive: boolean;
                                 roleNames: string[];
+                                branchIds: string[];
                                 version: number;
                                 createdAt: string;
                                 updatedAt: string;
@@ -9277,6 +9683,7 @@ export interface paths {
                                 signatureUrl: string | null;
                                 isActive: boolean;
                                 roleNames: string[];
+                                branchIds: string[];
                                 version: number;
                                 createdAt: string;
                                 updatedAt: string;
@@ -9374,6 +9781,7 @@ export interface paths {
                         defaultRoomId?: string | null;
                         isActive?: boolean;
                         roleIds?: string[];
+                        branchIds?: string[];
                         version: number;
                     };
                 };
@@ -9414,6 +9822,7 @@ export interface paths {
                                 signatureUrl: string | null;
                                 isActive: boolean;
                                 roleNames: string[];
+                                branchIds: string[];
                                 version: number;
                                 createdAt: string;
                                 updatedAt: string;
@@ -9565,6 +9974,7 @@ export interface paths {
                                 signatureUrl: string | null;
                                 isActive: boolean;
                                 roleNames: string[];
+                                branchIds: string[];
                                 version: number;
                                 createdAt: string;
                                 updatedAt: string;

@@ -47,6 +47,8 @@ export const createUserAccountRequestSchema = z.object({
   departmentId: z.string().uuid().optional(),
   defaultRoomId: z.string().uuid().optional(),
   roleIds: z.array(z.string().uuid()).min(1),
+  /** Chi nhánh được làm việc (#231). Bỏ trống = chi nhánh đang làm việc của người tạo; công ty 1 chi nhánh thì luôn là chi nhánh đó. */
+  branchIds: z.array(z.string().uuid()).min(1).optional(),
 });
 export type CreateUserAccountRequest = z.infer<typeof createUserAccountRequestSchema>;
 
@@ -76,6 +78,7 @@ export const updateUserAccountRequestSchema = z.object({
   defaultRoomId: z.string().uuid().nullable().optional(),
   isActive: z.boolean().optional(),
   roleIds: z.array(z.string().uuid()).min(1).optional(),
+  branchIds: z.array(z.string().uuid()).min(1).optional(),
   version: z.number().int().positive(),
 });
 export type UpdateUserAccountRequest = z.infer<typeof updateUserAccountRequestSchema>;
@@ -135,6 +138,8 @@ export const userAccountSummarySchema = z.object({
   signatureUrl: z.string().nullable(),
   isActive: z.boolean(),
   roleNames: z.array(z.string()),
+  /** Chi nhánh được gán (#231) — công ty 1 chi nhánh: luôn chứa chi nhánh đó. */
+  branchIds: z.array(z.string().uuid()),
   version: z.number().int(),
   /** "Lịch làm việc nhân viên" — chỉ hiện nhân viên đã tồn tại tại thời điểm tháng đang xem, tránh
    * hiện tên nhân viên mới tạo ở tháng trước ngày họ được tạo (2026-09-03, ngoài kế hoạch). */

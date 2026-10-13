@@ -53,19 +53,19 @@ export class WorkScheduleSubmissionService {
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
-  async list(tenantId: string, actorId: string, dataScope: DataScope, query: ListScheduleSubmissionsQuery): Promise<ListScheduleSubmissionsResponse> {
+  async list(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, query: ListScheduleSubmissionsQuery): Promise<ListScheduleSubmissionsResponse> {
     const userId = dataScope === 'personal' ? actorId : query.userId;
-    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.list(tx, tenantId, { month: query.month, status: query.status, userId }));
-    return { items: await this.toItems(tenantId, rows) };
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.list(tx, tenantId, branchId, { month: query.month, status: query.status, userId }));
+    return { items: await this.toItems(tenantId, branchId, rows) };
   }
 
-  async pendingCount(tenantId: string): Promise<ScheduleSubmissionPendingCountResponse> {
-    const count = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.countSubmitted(tx, tenantId));
+  async pendingCount(tenantId: string, branchId: string): Promise<ScheduleSubmissionPendingCountResponse> {
+    const count = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.countSubmitted(tx, tenantId, branchId));
     return { count };
   }
 
   /** Nhân viên gửi duyệt cả tháng của CHÍNH MÌNH. */
-  async submit(tenantId: string, actorId: string, dto: SubmitScheduleSubmissionRequest, meta: RequestMeta): Promise<ScheduleSubmissionItem> {
+  async submit(tenantId: string, branchId: string, actorId: string, dto: SubmitScheduleSubmissionRequest, meta: RequestMeta): Promise<ScheduleSubmissionItem> {
     if (!(await this.clinicConfigReader.getAllowStaffSelfScheduleEnabled(tenantId))) {
       throw new WorkShiftAssignmentSelfScheduleDisabledError();
     }
@@ -76,19 +76,21 @@ export class WorkScheduleSubmissionService {
     const minDaysOff = await this.clinicConfigReader.getMinWeeklyDaysOff(tenantId);
 
     const saved = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.repository.findByUserMonth(tx, tenantId, actorId, dto.month);
+      const existing = await this.repository.findByUserMonth(tx, tenantId, branchId, actorId, dto.month);
       if (existing && existing.status !== 'DRAFT') {
         throw new ScheduleSubmissionInvalidStatusError();
       }
       const { from, to } = monthRange(dto.month);
-      const assignments = await this.assignmentRepository.listForUserInRange(tx, tenantId, actorId, from, to);
+      // Gửi duyệt cho CHI NHÁNH đang làm: phải có ca xếp ở chi nhánh này; quota "nghỉ tối thiểu mỗi tuần" tính theo NGƯỜI (gộp ca ở mọi chi nhánh).
+      const assignments = await this.assignmentRepository.listForUserInRange(tx, tenantId, actorId, from, to, branchId);
       if (assignments.length === 0) {
         throw new ScheduleSubmissionEmptyError();
       }
+      const allBranchAssignments = await this.assignmentRepository.listForUserInRange(tx, tenantId, actorId, from, to);
       // Quota "nghỉ tối thiểu N ngày/tuần" (09/10/2026): ngày không có ca = ngày nghỉ, chỉ kiểm tuần trọn trong tháng.
       const shortWeeks = findWeeksBelowMinDaysOff(
         dto.month,
-        assignments.map((a) => a.workDate.toISOString().slice(0, 10)),
+        allBranchAssignments.map((a) => a.workDate.toISOString().slice(0, 10)),
         minDaysOff,
       );
       if (shortWeeks.length > 0) {
@@ -105,7 +107,7 @@ export class WorkScheduleSubmissionService {
 
       let row: WorkScheduleSubmission | null;
       try {
-        row = await this.repository.upsertSubmitted(tx, tenantId, actorId, actorId, dto.month, existing);
+        row = await this.repository.upsertSubmitted(tx, tenantId, branchId, actorId, actorId, dto.month, existing);
       } catch (err) {
         // 2 yêu cầu gửi đồng thời cùng tạo dòng đầu tiên → unique `(tenant,user,month)`.
         if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') throw new ScheduleSubmissionInvalidStatusError();
@@ -124,13 +126,13 @@ export class WorkScheduleSubmissionService {
       });
       return row;
     });
-    const [item] = await this.toItems(tenantId, [saved]);
+    const [item] = await this.toItems(tenantId, branchId, [saved]);
     return item as ScheduleSubmissionItem;
   }
 
-  async approve(tenantId: string, actorId: string, id: string, dto: ApproveScheduleSubmissionRequest, meta: RequestMeta): Promise<ScheduleSubmissionItem> {
+  async approve(tenantId: string, branchId: string, actorId: string, id: string, dto: ApproveScheduleSubmissionRequest, meta: RequestMeta): Promise<ScheduleSubmissionItem> {
     const saved = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const row = await this.repository.findById(tx, tenantId, id);
+      const row = await this.repository.findById(tx, tenantId, branchId, id);
       if (!row) throw new NotFoundException();
       if (row.status !== 'SUBMITTED') throw new ScheduleSubmissionInvalidStatusError();
       const count = await this.repository.transition(tx, tenantId, id, dto.version, 'SUBMITTED', { status: 'APPROVED', decidedBy: actorId, decidedAt: new Date() }, actorId);
@@ -145,16 +147,16 @@ export class WorkScheduleSubmissionService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      return this.repository.findById(tx, tenantId, id);
+      return this.repository.findById(tx, tenantId, branchId, id);
     });
-    const [item] = await this.toItems(tenantId, [saved as WorkScheduleSubmission]);
+    const [item] = await this.toItems(tenantId, branchId, [saved as WorkScheduleSubmission]);
     return item as ScheduleSubmissionItem;
   }
 
   /** Trả lại bảng đang chờ duyệt: về Nháp, nhân viên thấy lý do và sửa lại được. */
-  async returnBack(tenantId: string, actorId: string, id: string, dto: ReturnScheduleSubmissionRequest, meta: RequestMeta): Promise<ScheduleSubmissionItem> {
+  async returnBack(tenantId: string, branchId: string, actorId: string, id: string, dto: ReturnScheduleSubmissionRequest, meta: RequestMeta): Promise<ScheduleSubmissionItem> {
     const saved = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const row = await this.repository.findById(tx, tenantId, id);
+      const row = await this.repository.findById(tx, tenantId, branchId, id);
       if (!row) throw new NotFoundException();
       if (row.status !== 'SUBMITTED') throw new ScheduleSubmissionInvalidStatusError();
       const count = await this.repository.transition(
@@ -173,20 +175,20 @@ export class WorkScheduleSubmissionService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      return this.repository.findById(tx, tenantId, id);
+      return this.repository.findById(tx, tenantId, branchId, id);
     });
-    const [item] = await this.toItems(tenantId, [saved as WorkScheduleSubmission]);
+    const [item] = await this.toItems(tenantId, branchId, [saved as WorkScheduleSubmission]);
     return item as ScheduleSubmissionItem;
   }
 
   /** Gắn tên, khoa, số ca/giờ — đọc ngoài transaction ghi. */
-  private async toItems(tenantId: string, rows: WorkScheduleSubmission[]): Promise<ScheduleSubmissionItem[]> {
+  private async toItems(tenantId: string, branchId: string, rows: WorkScheduleSubmission[]): Promise<ScheduleSubmissionItem[]> {
     if (rows.length === 0) return [];
     const userIds = [...new Set(rows.flatMap((r) => [r.userId, ...(r.decidedBy ? [r.decidedBy] : [])]))];
     const months = rows.map((r) => r.month).sort();
     const [names, doctors, departmentNames, assignments] = await Promise.all([
       this.doctorDirectory.getUserFullNames(tenantId, userIds),
-      this.doctorDirectory.listActiveDoctors(tenantId),
+      this.doctorDirectory.listActiveDoctors(tenantId, branchId),
       this.doctorDirectory.getDepartmentNames(tenantId),
       this.unitOfWork.runInTenantScope(tenantId, (tx) =>
         this.assignmentRepository.listForUsersBetween(tx, tenantId, [...new Set(rows.map((r) => r.userId))], monthRange(months[0] as string).from, monthRange(months[months.length - 1] as string).to),
@@ -195,14 +197,14 @@ export class WorkScheduleSubmissionService {
     const doctorById = new Map(doctors.map((d) => [d.id, d]));
     const totals = new Map<string, { count: number; minutes: number }>();
     for (const a of assignments) {
-      const key = `${a.userId}|${a.workDate.toISOString().slice(0, 7)}`;
+      const key = `${a.userId}|${a.workDate.toISOString().slice(0, 7)}|${a.branchId}`;
       const t = totals.get(key) ?? { count: 0, minutes: 0 };
       t.count += 1;
       t.minutes += shiftDurationMinutes(a.workShift.startTime, a.workShift.endTime);
       totals.set(key, t);
     }
     return rows.map((r) => {
-      const total = totals.get(`${r.userId}|${r.month}`) ?? { count: 0, minutes: 0 };
+      const total = totals.get(`${r.userId}|${r.month}|${r.branchId}`) ?? { count: 0, minutes: 0 };
       const doctor = doctorById.get(r.userId);
       return {
         id: r.id,

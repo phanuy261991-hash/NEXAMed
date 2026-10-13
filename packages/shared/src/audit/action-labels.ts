@@ -54,6 +54,13 @@ const ACTION_LABELS: Record<string, string> = {
   'auth.refresh_reuse_detected': 'Phát hiện dùng lại refresh token (thu hồi phiên)',
   'auth.logout': 'Đăng xuất',
   'auth.password_changed': 'Đổi mật khẩu',
+  'auth.branch_switched': 'Đổi chi nhánh làm việc',
+  'branch.created': 'Thêm chi nhánh',
+  'branch.updated': 'Sửa chi nhánh',
+  'branch.deactivated': 'Ngưng chi nhánh',
+  'branch.reactivated': 'Khôi phục chi nhánh',
+  'user_account.branches_updated': 'Đổi chi nhánh làm việc của tài khoản',
+  'encounter.history_viewed_cross_branch': 'Xem lịch sử khám ở chi nhánh khác',
 
   // user-account (user-account.service.ts)
   'user_account.created': 'Tạo tài khoản',

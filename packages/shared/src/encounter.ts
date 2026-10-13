@@ -663,6 +663,8 @@ export const encounterHistoryItemSchema = z.object({
   doctorName: z.string().nullable(),
   chiefComplaint: z.string().nullable(),
   primaryDiagnosisName: z.string().nullable(),
+  /** Tên chi nhánh của lượt khám đó khi KHÁC chi nhánh đang làm việc (docs/DECISIONS.md #231); `null` = cùng chi nhánh (không ghi gì). */
+  branchName: z.string().nullable(),
 });
 export type EncounterHistoryItem = z.infer<typeof encounterHistoryItemSchema>;
 
@@ -800,8 +802,14 @@ export const patientEncounterHistoryItemSchema = z.object({
   reason: z.string().nullable(),
   /** `null` = tài khoản KHÔNG có quyền `encounter.read_clinical` — máy chủ không gửi nội dung lâm sàng. */
   clinical: patientEncounterHistoryClinicalSchema.nullable(),
-  /** `null` = tài khoản không có quyền `invoice.read`, hoặc lượt khám chưa có hoá đơn nào còn hiệu lực. */
+  /** `null` = tài khoản không có quyền `invoice.read`, hoặc lượt khám chưa có hoá đơn nào còn hiệu lực, hoặc `billingHidden`. */
   billing: patientEncounterHistoryBillingSchema.nullable(),
+  /** Chi nhánh nơi khám (docs/DECISIONS.md #231) — luôn có tên để web hiện cột khi công ty có nhiều chi nhánh. */
+  branchName: z.string().nullable(),
+  /** Lượt khám ở chi nhánh KHÁC chi nhánh đang làm việc (xem lâm sàng liên chi nhánh). */
+  isOtherBranch: z.boolean(),
+  /** Tiền là của chi nhánh: tài khoản KHÔNG được gán chi nhánh của lượt khám này thì máy chủ che cột tiền (web hiện gạch ngang). */
+  billingHidden: z.boolean(),
 });
 export type PatientEncounterHistoryItem = z.infer<typeof patientEncounterHistoryItemSchema>;
 
@@ -814,5 +822,7 @@ export const patientEncounterHistoryResponseSchema = z.object({
   /** Cờ quyền do máy chủ tính — web dựa vào đây để hiện/ẩn cột, không tự suy từ vai trò. */
   canViewClinical: z.boolean(),
   canViewBilling: z.boolean(),
+  /** Công ty có từ 2 chi nhánh hoạt động trở lên — web chỉ hiện cột "Chi nhánh" khi `true`. */
+  multiBranch: z.boolean(),
 });
 export type PatientEncounterHistoryResponse = z.infer<typeof patientEncounterHistoryResponseSchema>;

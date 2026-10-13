@@ -3,6 +3,8 @@ import type { Prisma, UserSession } from '@prisma/client';
 
 export interface CreateSessionInput {
   userId: string;
+  /** Chi nhánh đang làm việc của phiên (#231) — null = chưa chọn. */
+  branchId: string | null;
   refreshTokenHash: string;
   issuedAt: Date;
   expiresAt: Date;
@@ -23,6 +25,7 @@ export class SessionRepository {
       data: {
         tenantId,
         userId: input.userId,
+        branchId: input.branchId,
         refreshTokenHash: input.refreshTokenHash,
         issuedAt: input.issuedAt,
         expiresAt: input.expiresAt,
@@ -36,6 +39,14 @@ export class SessionRepository {
 
   findByHash(tx: Prisma.TransactionClient, tenantId: string, refreshTokenHash: string): Promise<UserSession | null> {
     return tx.userSession.findFirst({ where: { tenantId, refreshTokenHash } });
+  }
+
+  /** Đổi chi nhánh làm việc của phiên đang hoạt động (`POST /auth/switch-branch`, #231). */
+  setBranch(tx: Prisma.TransactionClient, tenantId: string, sessionId: string, branchId: string, actorId: string): Promise<UserSession> {
+    return tx.userSession.update({
+      where: { tenantId_id: { tenantId, id: sessionId } },
+      data: { branchId, updatedBy: actorId, version: { increment: 1 } },
+    });
   }
 
   /**

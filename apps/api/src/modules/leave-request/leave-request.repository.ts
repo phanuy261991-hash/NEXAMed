@@ -19,6 +19,7 @@ export class LeaveRequestRepository {
   create(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     actorId: string,
     data: {
       userId: string;
@@ -36,6 +37,7 @@ export class LeaveRequestRepository {
     return tx.leaveRequest.create({
       data: {
         tenantId,
+        branchId,
         userId: data.userId,
         leaveDate: new Date(data.leaveDate),
         workShiftId: data.workShiftId,
@@ -53,8 +55,9 @@ export class LeaveRequestRepository {
     });
   }
 
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<LeaveRequestRow | null> {
-    return tx.leaveRequest.findFirst({ where: { tenantId, id, deletedAt: null }, include: { workShift: true } });
+  /** Đơn của chi nhánh khác coi như không tồn tại (docs/DECISIONS.md #231 — mỗi chi nhánh có người duyệt riêng). */
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<LeaveRequestRow | null> {
+    return tx.leaveRequest.findFirst({ where: { tenantId, branchId, id, deletedAt: null }, include: { workShift: true } });
   }
 
   /** Đơn còn hiệu lực (chờ duyệt/đã duyệt) của 1 người trong 1 ngày — kiểm chồng lấn khung giờ. */
@@ -67,9 +70,10 @@ export class LeaveRequestRepository {
   list(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     filter: { status?: LeaveRequestStatus; from?: string; to?: string; userId?: string },
   ): Promise<LeaveRequestRow[]> {
-    const where: Prisma.LeaveRequestWhereInput = { tenantId, deletedAt: null };
+    const where: Prisma.LeaveRequestWhereInput = { tenantId, branchId, deletedAt: null };
     if (filter.status) where.status = filter.status;
     if (filter.userId) where.userId = filter.userId;
     if (filter.from || filter.to) {
@@ -86,14 +90,16 @@ export class LeaveRequestRepository {
     });
   }
 
-  countByStatus(tx: Prisma.TransactionClient, tenantId: string, status: LeaveRequestStatus): Promise<number> {
-    return tx.leaveRequest.count({ where: { tenantId, status, deletedAt: null } });
+  countByStatus(tx: Prisma.TransactionClient, tenantId: string, branchId: string, status: LeaveRequestStatus): Promise<number> {
+    return tx.leaveRequest.count({ where: { tenantId, branchId, status, deletedAt: null } });
   }
 
   /** Đơn chờ duyệt/đã duyệt của nhiều người trong khoảng ngày — nguồn cho `LeaveReaderPort`. */
+  /** Nghỉ đã/đang chờ duyệt của chi nhánh — chỉ chặn đặt lịch ở ĐÚNG chi nhánh đó. */
   listActiveInRange(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     userIds: string[],
     from: string,
     to: string,
@@ -102,6 +108,7 @@ export class LeaveRequestRepository {
     return tx.leaveRequest.findMany({
       where: {
         tenantId,
+        branchId,
         userId: { in: userIds },
         leaveDate: { gte: new Date(from), lte: new Date(to) },
         status: { in: ACTIVE_LEAVE_STATUSES },

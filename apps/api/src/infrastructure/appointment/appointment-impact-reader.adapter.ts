@@ -24,12 +24,12 @@ export class AppointmentImpactReaderAdapter implements AppointmentImpactReaderPo
     private readonly appointmentRepository: AppointmentRepository,
   ) {}
 
-  listScheduledInWindows(tenantId: string, queries: AppointmentImpactQuery[]): Promise<AffectedAppointment[][]> {
+  listScheduledInWindows(tenantId: string, branchId: string, queries: AppointmentImpactQuery[]): Promise<AffectedAppointment[][]> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const results: AffectedAppointment[][] = [];
       for (const q of queries) {
         const { startUtc, endUtc } = vietnamDayRange(q.date);
-        const rows = await this.appointmentRepository.list(tx, tenantId, {
+        const rows = await this.appointmentRepository.list(tx, tenantId, branchId, {
           take: MAX_APPOINTMENTS_PER_DAY,
           doctorId: q.doctorId,
           scheduledAtFrom: startUtc,

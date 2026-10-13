@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { ExamStationService } from './exam-station.service';
 
 /** "Bàn khám / Ghế" (docs/DECISIONS.md #055) — dùng chung `clinic_config.*`, cùng lý do `RoomController`/`FloorController`. */
@@ -19,7 +20,7 @@ export class ExamStationController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createExamStationRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.examStationService.createExamStation(tenantId, userId, dto, extractRequestMeta(req));
+    return this.examStationService.createExamStation(tenantId, requireBranchId(req.user!), userId, dto, extractRequestMeta(req));
   }
 
   @Get()
@@ -27,7 +28,7 @@ export class ExamStationController {
   async list(@Query('roomId') roomId: string | undefined, @Req() req: Request) {
     const { roomId: parsedRoomId } = listExamStationsQuerySchema.parse({ roomId });
     const { tenantId } = req.user!;
-    return this.examStationService.listExamStations(tenantId, parsedRoomId);
+    return this.examStationService.listExamStations(tenantId, requireBranchId(req.user!), parsedRoomId);
   }
 
   @Patch(':id')
@@ -35,6 +36,6 @@ export class ExamStationController {
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateExamStationRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.examStationService.updateExamStation(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.examStationService.updateExamStation(tenantId, requireBranchId(req.user!), userId, id, dto, extractRequestMeta(req));
   }
 }

@@ -24,7 +24,7 @@ export interface AppointmentImpactQuery {
 
 export interface AppointmentImpactReaderPort {
   /** Kết quả cùng thứ tự/độ dài với `queries`. */
-  listScheduledInWindows(tenantId: string, queries: AppointmentImpactQuery[]): Promise<AffectedAppointment[][]>;
+  listScheduledInWindows(tenantId: string, branchId: string, queries: AppointmentImpactQuery[]): Promise<AffectedAppointment[][]>;
 }
 
 export const APPOINTMENT_IMPACT_READER_PORT = Symbol('APPOINTMENT_IMPACT_READER_PORT');

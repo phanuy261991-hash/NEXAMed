@@ -26,10 +26,11 @@ export interface CreateAppointmentData {
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `appointment` — theo .claude/docs/coding-standards.md. */
 @Injectable()
 export class AppointmentRepository {
-  create(tx: Prisma.TransactionClient, tenantId: string, actorId: string, data: CreateAppointmentData): Promise<Appointment> {
+  create(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, data: CreateAppointmentData): Promise<Appointment> {
     return tx.appointment.create({
       data: {
         tenantId,
+        branchId,
         // patientId luôn null lúc tạo — đặt lịch "lead capture" không tạo/gắn patient
         // (docs/DECISIONS.md #032). Cột để sẵn cho Tiếp nhận (Sprint 3) gắn hồ sơ thật sau.
         patientId: null,
@@ -49,8 +50,9 @@ export class AppointmentRepository {
     });
   }
 
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<Appointment | null> {
-    return tx.appointment.findFirst({ where: { tenantId, id, deletedAt: null } });
+  /** Tra theo id TRONG chi nhánh đang làm việc (docs/DECISIONS.md #231) — lịch của chi nhánh khác coi như không tồn tại (404). */
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<Appointment | null> {
+    return tx.appointment.findFirst({ where: { tenantId, branchId, id, deletedAt: null } });
   }
 
   /**
@@ -69,9 +71,10 @@ export class AppointmentRepository {
   list(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     params: { cursor?: string; take: number; doctorId?: string; scheduledAtFrom?: Date; scheduledAtTo?: Date; status?: Appointment['status'] },
   ): Promise<Appointment[]> {
-    const where: Prisma.AppointmentWhereInput = { tenantId, deletedAt: null };
+    const where: Prisma.AppointmentWhereInput = { tenantId, branchId, deletedAt: null };
     if (params.doctorId) {
       where.doctorId = params.doctorId;
     }
@@ -98,14 +101,14 @@ export class AppointmentRepository {
    * ở service). Không lọc `deletedAt` — soft-delete không dùng cho `appointment` (chỉ đổi status),
    * nên điều kiện này chỉ để nhất quán với các query khác, không loại bỏ lịch hẹn cũ nào.
    */
-  async findByPhone(tx: Prisma.TransactionClient, tenantId: string, phone: string): Promise<{ suggestedFullName: string | null; cancelledCount: number }> {
+  async findByPhone(tx: Prisma.TransactionClient, tenantId: string, branchId: string, phone: string): Promise<{ suggestedFullName: string | null; cancelledCount: number }> {
     const [latest, cancelledCount] = await Promise.all([
       tx.appointment.findFirst({
-        where: { tenantId, phone, deletedAt: null },
+        where: { tenantId, branchId, phone, deletedAt: null },
         orderBy: { scheduledAt: 'desc' },
         select: { fullName: true },
       }),
-      tx.appointment.count({ where: { tenantId, phone, status: 'CANCELLED', deletedAt: null } }),
+      tx.appointment.count({ where: { tenantId, branchId, phone, status: 'CANCELLED', deletedAt: null } }),
     ]);
     return { suggestedFullName: latest?.fullName ?? null, cancelledCount };
   }

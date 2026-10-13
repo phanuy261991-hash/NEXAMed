@@ -57,6 +57,9 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'prescription', action: 'create', description: 'Kê đơn thuốc' },
   { module: 'prescription', action: 'sign', description: 'Ký đơn thuốc' },
   { module: 'prescription', action: 'print', description: 'In đơn thuốc' },
+  // "Chi nhánh" (docs/DECISIONS.md #231) — danh sách/thêm/sửa/ngưng chi nhánh của công ty và gán chi nhánh cho tài khoản; mặc định CHỈ clinic_admin.
+  { module: 'branch', action: 'read', description: 'Xem danh sách chi nhánh' },
+  { module: 'branch', action: 'manage', description: 'Thêm/sửa/ngưng chi nhánh' },
   { module: 'clinic_config', action: 'read', description: 'Xem cấu hình phòng khám' },
   { module: 'clinic_config', action: 'update', description: 'Sửa cấu hình phòng khám' },
   { module: 'user_account', action: 'read', description: 'Xem tài khoản người dùng' },
@@ -482,6 +485,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'encounter.cancel': 'global',
     // "Trung tâm Điều phối Tiếp nhận" — cùng mức lễ tân.
     'encounter.reassign': 'global',
+    'branch.read': 'global',
+    'branch.manage': 'global',
     'clinic_config.read': 'global',
     'clinic_config.update': 'global',
     'user_account.read': 'global',

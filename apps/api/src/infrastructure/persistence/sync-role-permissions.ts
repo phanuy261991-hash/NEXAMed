@@ -2,7 +2,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { DEFAULT_ROLE_PERMISSIONS, permissionKey } from '@nexamed/core';
 import { USER_ROLES, type DataScope, type UserRole } from '@nexamed/shared';
 import type { UnitOfWorkService } from './unit-of-work.service';
-import { ensureDefaultCashAccount, ensureDefaultWarehouse } from './seed-tenant-roles';
+import { ensureDefaultBranch, ensureDefaultCashAccount, ensureDefaultWarehouse } from './seed-tenant-roles';
 import { seedSystemReferenceDataForTenant } from './seed-reference-catalog';
 
 /** Module quyền cũ trước khi tách cận lâm sàng thành 2 menu (docs/DECISIONS.md #215). */
@@ -172,6 +172,10 @@ export async function syncRolePermissionsForAllTenants(
         const syncResult = await syncRolePermissionsForTenant(tx, tenant.id, actorId);
         // "Thu chi tại quầy" GĐ1 — backfill quỹ tiền mặt mặc định cho tenant TẠO TRƯỚC tính năng
         // này (seedDefaultRolesForTenant chỉ chạy lúc tạo tenant mới, không tự chạy lại cho tenant cũ).
+        // Chi nhánh mặc định (#231) — tenant tạo trước tầng chi nhánh đã được migration backfill; bước này chỉ còn là lưới an toàn.
+        if (await tx.role.findFirst({ where: { tenantId: tenant.id, isSystemDefault: true }, select: { id: true } })) {
+          await ensureDefaultBranch(tx, tenant.id, actorId);
+        }
         await ensureDefaultCashAccount(tx, tenant.id, actorId);
         // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — cùng lý do backfill Kho mặc định
         // cho tenant tạo trước tính năng này.

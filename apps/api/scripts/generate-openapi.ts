@@ -419,6 +419,13 @@ import {
   shiftSwapCountResponseSchema,
   shiftSwapItemSchema,
   submitScheduleSubmissionRequestSchema,
+  branchSummarySchema,
+  createBranchRequestSchema,
+  listBranchesQuerySchema,
+  listBranchesResponseSchema,
+  switchBranchRequestSchema,
+  switchBranchResponseSchema,
+  updateBranchRequestSchema,
 } from '@nexamed/shared';
 
 /**
@@ -515,6 +522,67 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Đổi mật khẩu thành công', envelope(changePasswordResponseSchema)),
     401: errorResponse('Thiếu access token, sai currentPassword, hoặc tài khoản đã bị vô hiệu hoá'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/switch-branch',
+  tags: ['auth'],
+  summary: 'Đổi chi nhánh làm việc của phiên (docs/DECISIONS.md #231) — chỉ sang chi nhánh được gán; cần cookie refresh; cấp lại access token mang chi nhánh mới',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: switchBranchRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Đổi chi nhánh thành công', envelope(switchBranchResponseSchema)),
+    401: errorResponse('Thiếu access token hoặc cookie phiên'),
+    403: errorResponse('Không được làm việc ở chi nhánh này (BRANCH_NOT_ASSIGNED)'),
+  },
+});
+
+const branchIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/branches',
+  tags: ['branch'],
+  summary: 'Danh sách chi nhánh của công ty (kèm số nhân viên được gán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listBranchesQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listBranchesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền branch.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/branches',
+  tags: ['branch'],
+  summary: 'Thêm chi nhánh (mã CN tự sinh)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createBranchRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Tạo thành công', envelope(branchSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền branch.manage'),
+    409: errorResponse('Trùng tên chi nhánh (BRANCH_DUPLICATE_NAME)'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/branches/{id}',
+  tags: ['branch'],
+  summary: 'Sửa/ngưng/khôi phục chi nhánh — bắt buộc kèm version; chi nhánh mặc định không ngưng được',
+  security: [{ bearerAuth: [] }],
+  request: { params: branchIdParams, body: { content: { 'application/json': { schema: updateBranchRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(branchSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền branch.manage'),
+    404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc công ty khác)'),
+    409: errorResponse('version không khớp / trùng tên / ngưng chi nhánh mặc định'),
   },
 });
 

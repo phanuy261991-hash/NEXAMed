@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { AppointmentService } from './appointment.service';
 
 @Controller('appointments')
@@ -28,7 +29,7 @@ export class AppointmentController {
     const dto = createAppointmentRequestSchema.parse(body);
     // req.user/req.dataScope luôn có giá trị ở đây — JwtAuthGuard/PermissionGuard đã chạy trước.
     const { userId, tenantId } = req.user!;
-    return this.appointmentService.createAppointment(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
+    return this.appointmentService.createAppointment(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   @Get()
@@ -36,7 +37,7 @@ export class AppointmentController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listAppointmentsQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.appointmentService.listAppointments(tenantId, userId, req.dataScope!, dto);
+    return this.appointmentService.listAppointments(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto);
   }
 
   /**
@@ -49,7 +50,7 @@ export class AppointmentController {
   @RequirePermission('appointment', 'read')
   async listDoctors(@Req() req: Request) {
     const { tenantId } = req.user!;
-    return this.appointmentService.listDoctors(tenantId);
+    return this.appointmentService.listDoctors(tenantId, requireBranchId(req.user!));
   }
 
   @Get('schedule-config')
@@ -70,7 +71,7 @@ export class AppointmentController {
   async getDoctorWorkShifts(@Query() query: unknown, @Req() req: Request) {
     const dto = doctorWorkShiftsQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.appointmentService.getDoctorWorkShifts(tenantId, dto.date);
+    return this.appointmentService.getDoctorWorkShifts(tenantId, requireBranchId(req.user!), dto.date);
   }
 
   /**
@@ -82,14 +83,14 @@ export class AppointmentController {
   async lookupByPhone(@Query() query: unknown, @Req() req: Request) {
     const dto = appointmentPhoneLookupQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.appointmentService.lookupByPhone(tenantId, dto.phone);
+    return this.appointmentService.lookupByPhone(tenantId, requireBranchId(req.user!), dto.phone);
   }
 
   @Get(':id')
   @RequirePermission('appointment', 'read', { entityIdParam: 'id' })
   async getById(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.appointmentService.getAppointment(tenantId, userId, req.dataScope!, id);
+    return this.appointmentService.getAppointment(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
   }
 
   @Post(':id/cancel')
@@ -98,7 +99,7 @@ export class AppointmentController {
   async cancel(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = cancelAppointmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.appointmentService.cancelAppointment(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.appointmentService.cancelAppointment(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /**
@@ -111,7 +112,7 @@ export class AppointmentController {
   async markNoShow(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = markNoShowRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.appointmentService.markNoShow(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.appointmentService.markNoShow(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/reschedule')
@@ -120,7 +121,7 @@ export class AppointmentController {
   async reschedule(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = rescheduleAppointmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.appointmentService.rescheduleAppointment(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.appointmentService.rescheduleAppointment(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /**
@@ -132,6 +133,6 @@ export class AppointmentController {
   async edit(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = editAppointmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.appointmentService.editAppointment(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.appointmentService.editAppointment(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 }

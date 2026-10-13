@@ -28,6 +28,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
   let disabledTenantId: string;
   let doctorId: string;
   let disabledTenantDoctorId: string;
+  const branchIdByTenant = new Map<string, string>();
 
   beforeAll(async () => {
     await privileged.$connect();
@@ -39,6 +40,13 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
     ]);
     tenantId = tenant.id;
     disabledTenantId = disabledTenant.id;
+    // Chi nhánh (docs/DECISIONS.md #231): lịch hẹn bắt buộc có `branch_id` — spec dựng tenant thủ công nên tự tạo chi nhánh mặc định.
+    for (const id of [tenantId, disabledTenantId]) {
+      const branch = await privileged.branch.create({
+        data: { tenantId: id, code: 'CN00001', name: 'Cơ sở chính', isDefault: true, createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR },
+      });
+      branchIdByTenant.set(id, branch.id);
+    }
 
     // FK (tenant_id, doctor_id) composite — mỗi tenant cần bác sĩ riêng, không dùng chung 1 doctorId.
     const [doctor, disabledTenantDoctor] = await Promise.all([
@@ -64,6 +72,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
     await privileged.auditLog.deleteMany({ where: { tenantId: { in: [tenantId, disabledTenantId] } } });
     await privileged.appointment.deleteMany({ where: { tenantId: { in: [tenantId, disabledTenantId] } } });
     await privileged.userAccount.deleteMany({ where: { tenantId: { in: [tenantId, disabledTenantId] } } });
+    await privileged.branch.deleteMany({ where: { tenantId: { in: [tenantId, disabledTenantId] } } });
     await privileged.tenant.deleteMany({ where: { id: { in: [tenantId, disabledTenantId] } } });
     await privileged.$disconnect();
     await appPrisma.$disconnect();
@@ -73,10 +82,12 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
     return new Date(Date.now() - minutes * 60_000);
   }
 
-  function createAppointment(targetTenantId: string, targetDoctorId: string, scheduledAt: Date, status: 'SCHEDULED' | 'CANCELLED' = 'SCHEDULED') {
+  async function createAppointment(targetTenantId: string, targetDoctorId: string, scheduledAt: Date, status: 'SCHEDULED' | 'CANCELLED' = 'SCHEDULED') {
+    const branchId = branchIdByTenant.get(targetTenantId) as string;
     return privileged.appointment.create({
       data: {
         tenantId: targetTenantId,
+        branchId,
         doctorId: targetDoctorId,
         bookingCode: `LH-TEST-${randomUUID().slice(0, 8)}`,
         fullName: 'Khách kiểm thử',

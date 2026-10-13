@@ -20,6 +20,8 @@ import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
 import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
+import { BranchAccessService } from './branch-access.service';
+import { BranchRepository } from './branch.repository';
 
 // Integration test thật trên Postgres cục bộ (docker-compose), không mock — cùng pattern với
 // rbac.spec.ts/tenant-isolation.spec.ts. Gọi thẳng AuthService (không qua HTTP/controller) —
@@ -45,7 +47,7 @@ describe('AuthService — login/refresh/logout', () => {
   const tokenService = new TokenService(new JwtService({}), fakeConfigService());
   const sessionRepository = new SessionRepository();
   const userAccountAuthRepository = new UserAccountAuthRepository();
-  const authService = new AuthService(unitOfWork, userAccountAuthRepository, sessionRepository, tokenService);
+  const authService = new AuthService(unitOfWork, userAccountAuthRepository, sessionRepository, tokenService, new BranchAccessService(new BranchRepository()));
 
   let tenantAId: string;
   let tenantBId: string;
@@ -113,6 +115,8 @@ describe('AuthService — login/refresh/logout', () => {
     await privileged.codeSequence.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     // Danh mục riêng theo tenant (#230): seedDefaultRolesForTenant nạp dòng danh mục hệ thống cho tenant.
     await privileged.referenceCatalog.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    await privileged.userBranch.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    await privileged.branch.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.tenant.deleteMany({ where: { id: { in: [tenantAId, tenantBId] } } });
     await privileged.$disconnect();
     await appPrisma.$disconnect();
@@ -243,6 +247,9 @@ describe('AuthService — login/refresh/logout', () => {
       // Đúng khớp ma trận mặc định của vai trò 'doctor' — permissions không phải suy diễn ở web.
       permissions: DEFAULT_ROLE_PERMISSIONS.doctor,
       mustChangePassword: false,
+      // Chi nhánh (docs/DECISIONS.md #231) — tenant test có đúng 1 chi nhánh mặc định → tài khoản tự thuộc chi nhánh đó.
+      branches: [expect.objectContaining({ isDefault: true })],
+      currentBranchId: expect.any(String),
     });
   });
 

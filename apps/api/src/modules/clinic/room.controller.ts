@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { RoomService } from './room.service';
 
 /**
@@ -23,14 +24,14 @@ export class RoomController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createRoomRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.roomService.createRoom(tenantId, userId, dto, extractRequestMeta(req));
+    return this.roomService.createRoom(tenantId, requireBranchId(req.user!), userId, dto, extractRequestMeta(req));
   }
 
   @Get()
   @RequirePermission('clinic_config', 'read')
   async list(@Req() req: Request) {
     const { tenantId } = req.user!;
-    return this.roomService.listRooms(tenantId);
+    return this.roomService.listRooms(tenantId, requireBranchId(req.user!));
   }
 
   @Patch(':id')
@@ -38,6 +39,6 @@ export class RoomController {
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateRoomRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.roomService.updateRoom(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.roomService.updateRoom(tenantId, requireBranchId(req.user!), userId, id, dto, extractRequestMeta(req));
   }
 }

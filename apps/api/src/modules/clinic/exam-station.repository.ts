@@ -14,19 +14,19 @@ export interface UpdateExamStationData {
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `exam_station` (docs/DECISIONS.md #055) — .claude/docs/coding-standards.md. */
 @Injectable()
 export class ExamStationRepository {
-  create(tx: Prisma.TransactionClient, tenantId: string, actorId: string, data: CreateExamStationData): Promise<ExamStation> {
+  create(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, data: CreateExamStationData): Promise<ExamStation> {
     return tx.examStation.create({
-      data: { tenantId, roomId: data.roomId, name: data.name, createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, branchId, roomId: data.roomId, name: data.name, createdBy: actorId, updatedBy: actorId },
     });
   }
 
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<ExamStation | null> {
-    return tx.examStation.findFirst({ where: { tenantId, id, deletedAt: null } });
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<ExamStation | null> {
+    return tx.examStation.findFirst({ where: { tenantId, branchId, id, deletedAt: null } });
   }
 
   /** Scoped theo `roomId` — mỗi phòng luôn ít bàn khám, không phân trang (cùng lý do `RoomRepository.list()`). */
-  listByRoom(tx: Prisma.TransactionClient, tenantId: string, roomId: string): Promise<ExamStation[]> {
-    return tx.examStation.findMany({ where: { tenantId, roomId, deletedAt: null }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+  listByRoom(tx: Prisma.TransactionClient, tenantId: string, branchId: string, roomId: string): Promise<ExamStation[]> {
+    return tx.examStation.findMany({ where: { tenantId, branchId, roomId, deletedAt: null }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
   }
 
   /** Đếm theo từng `roomId` — phục vụ cột "Bàn khám" ở danh sách phòng (`RoomSummary.examStationCount`). */
@@ -47,13 +47,14 @@ export class ExamStationRepository {
   async updateIfVersionMatches(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     id: string,
     expectedVersion: number,
     actorId: string,
     data: UpdateExamStationData,
   ): Promise<number> {
     const result = await tx.examStation.updateMany({
-      where: { tenantId, id, version: expectedVersion, deletedAt: null },
+      where: { tenantId, branchId, id, version: expectedVersion, deletedAt: null },
       data: { ...data, updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;

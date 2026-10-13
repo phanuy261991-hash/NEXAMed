@@ -59,6 +59,8 @@ describe('syncRolePermissionsForTenant / ForAllTenants', () => {
     await privileged.codeSequence.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     // Danh mục riêng theo tenant (#230): seedDefaultRolesForTenant nạp dòng danh mục hệ thống cho tenant.
     await privileged.referenceCatalog.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    await privileged.userBranch.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    await privileged.branch.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.tenant.deleteMany({ where: { id: { in: [tenantAId, tenantBId] } } });
     await privileged.$disconnect();
     await appPrisma.$disconnect();

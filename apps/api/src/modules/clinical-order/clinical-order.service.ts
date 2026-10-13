@@ -56,17 +56,17 @@ export class ClinicalOrderService {
     private readonly businessCodeService: BusinessCodeService,
   ) {}
 
-  async get(tenantId: string, actorId: string, dataScope: DataScope, encounterId: string): Promise<GetClinicalOrderResponse> {
+  async get(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, encounterId: string): Promise<GetClinicalOrderResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      await this.assertEncounterVisible(tx, tenantId, actorId, dataScope, encounterId);
+      await this.assertEncounterVisible(tx, tenantId, branchId, actorId, dataScope, encounterId);
       const order = await this.repository.findActiveByEncounter(tx, tenantId, encounterId);
       return { order: order ? await this.toDetail(tx, tenantId, order) : null };
     });
   }
 
-  async save(tenantId: string, actorId: string, dataScope: DataScope, encounterId: string, dto: SaveClinicalOrderRequest, meta: RequestMeta): Promise<GetClinicalOrderResponse> {
+  async save(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, encounterId: string, dto: SaveClinicalOrderRequest, meta: RequestMeta): Promise<GetClinicalOrderResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const encounter = await this.assertEncounterVisible(tx, tenantId, actorId, dataScope, encounterId);
+      const encounter = await this.assertEncounterVisible(tx, tenantId, branchId, actorId, dataScope, encounterId);
       if (encounter.status !== 'IN_CONSULTATION') throw new EncounterNotInConsultationError();
 
       // 2 request "Lưu chỉ định" gần như đồng thời cho CÙNG lượt khám (2 máy cùng mở) xếp hàng — request sau thấy phiếu đã cập nhật của request trước.
@@ -169,9 +169,9 @@ export class ClinicalOrderService {
   }
 
   /** Ghi audit mỗi lần in phiếu chỉ định (dữ liệu y tế đưa ra giấy) — cùng khuôn in đơn thuốc. */
-  async recordPrint(tenantId: string, actorId: string, dataScope: DataScope, encounterId: string, meta: RequestMeta): Promise<void> {
+  async recordPrint(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, encounterId: string, meta: RequestMeta): Promise<void> {
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      await this.assertEncounterVisible(tx, tenantId, actorId, dataScope, encounterId);
+      await this.assertEncounterVisible(tx, tenantId, branchId, actorId, dataScope, encounterId);
       const order = await this.repository.findActiveByEncounter(tx, tenantId, encounterId);
       if (!order) throw new NotFoundException();
       await writeAuditLog(tx, tenantId, { actorId, action: 'clinical_order.printed', entityType: 'clinical_order', entityId: order.id, ip: meta.ip, userAgent: meta.userAgent });
@@ -182,9 +182,9 @@ export class ClinicalOrderService {
    * Bác sĩ phụ trách mở tab "Kết quả cận lâm sàng" → đánh dấu mọi kết quả đã duyệt của lượt khám là ĐÃ XEM (tắt nhãn "Có kết quả mới" ở Hàng đợi khám, #221). Chỉ tính khi actor
    * LÀ bác sĩ phụ trách lượt khám — điều dưỡng/admin mở xem không làm mất thông báo của bác sĩ (trả `marked: 0`).
    */
-  async markResultsSeen(tenantId: string, actorId: string, dataScope: DataScope, encounterId: string): Promise<{ marked: number }> {
+  async markResultsSeen(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, encounterId: string): Promise<{ marked: number }> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const encounter = await this.assertEncounterVisible(tx, tenantId, actorId, dataScope, encounterId);
+      const encounter = await this.assertEncounterVisible(tx, tenantId, branchId, actorId, dataScope, encounterId);
       if (encounter.doctorId !== actorId) return { marked: 0 };
       return { marked: await this.repository.markResultsSeen(tx, tenantId, encounterId, actorId) };
     });
@@ -192,8 +192,8 @@ export class ClinicalOrderService {
 
   // ---------------------------------------------------------------------------------------------
 
-  private async assertEncounterVisible(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dataScope: DataScope, encounterId: string) {
-    const encounter = await this.encounterRepository.findById(tx, tenantId, encounterId);
+  private async assertEncounterVisible(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, dataScope: DataScope, encounterId: string) {
+    const encounter = await this.encounterRepository.findById(tx, tenantId, branchId, encounterId);
     if (!encounter || (dataScope === 'personal' && encounter.doctorId !== actorId)) throw new NotFoundException();
     return encounter;
   }

@@ -30,7 +30,7 @@ export interface ClinicConfigReaderPort {
    * quyền/hàng đợi khám (vẫn theo doctor_id như trước). Bác sĩ chưa chọn phòng hôm nay, hoặc
    * tenant chưa có ≥2 phòng active, thì không có key tương ứng trong kết quả.
    */
-  getTodayDoctorRoomAssignments(tenantId: string): Promise<Record<string, { roomId: string; roomName: string }>>;
+  getTodayDoctorRoomAssignments(tenantId: string, branchId: string): Promise<Record<string, { roomId: string; roomName: string }>>;
 
   /**
    * Thu ngân cơ bản (Sprint 5/6) — bật/tắt tính năng "Thanh toán sau" CẤP PHÒNG KHÁM (`tenant_setting`

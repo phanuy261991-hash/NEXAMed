@@ -18,20 +18,20 @@ export type RoomWithFloor = Room & { floor: { name: string } | null };
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `room` — theo .claude/docs/coding-standards.md. */
 @Injectable()
 export class RoomRepository {
-  create(tx: Prisma.TransactionClient, tenantId: string, actorId: string, data: CreateRoomData): Promise<Room> {
+  create(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, data: CreateRoomData): Promise<Room> {
     return tx.room.create({
-      data: { tenantId, name: data.name, floorId: data.floorId ?? null, createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, branchId, name: data.name, floorId: data.floorId ?? null, createdBy: actorId, updatedBy: actorId },
     });
   }
 
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<RoomWithFloor | null> {
-    return tx.room.findFirst({ where: { tenantId, id, deletedAt: null }, include: { floor: { select: { name: true } } } });
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<RoomWithFloor | null> {
+    return tx.room.findFirst({ where: { tenantId, branchId, id, deletedAt: null }, include: { floor: { select: { name: true } } } });
   }
 
   /** Không phân trang — xem lý do trong `packages/shared/src/clinic.ts` (listRoomsResponseSchema). */
-  list(tx: Prisma.TransactionClient, tenantId: string): Promise<RoomWithFloor[]> {
+  list(tx: Prisma.TransactionClient, tenantId: string, branchId: string): Promise<RoomWithFloor[]> {
     return tx.room.findMany({
-      where: { tenantId, deletedAt: null },
+      where: { tenantId, branchId, deletedAt: null },
       include: { floor: { select: { name: true } } },
       orderBy: { name: 'asc' },
     });
@@ -41,13 +41,14 @@ export class RoomRepository {
   async updateIfVersionMatches(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     id: string,
     expectedVersion: number,
     actorId: string,
     data: UpdateRoomData,
   ): Promise<number> {
     const result = await tx.room.updateMany({
-      where: { tenantId, id, version: expectedVersion, deletedAt: null },
+      where: { tenantId, branchId, id, version: expectedVersion, deletedAt: null },
       data: { ...data, updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;

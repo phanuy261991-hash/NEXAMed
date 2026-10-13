@@ -20,25 +20,25 @@ export class DoctorRoomSessionService {
   ) {}
 
   /** Chiếu tối thiểu phòng đang active — web dùng để quyết định có bật UI phòng hay không (`items.length > 1`). */
-  async listRoomOptions(tenantId: string): Promise<ListRoomOptionsResponse> {
+  async listRoomOptions(tenantId: string, branchId: string): Promise<ListRoomOptionsResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rooms = await this.roomRepository.list(tx, tenantId);
+      const rooms = await this.roomRepository.list(tx, tenantId, branchId);
       return { items: rooms.filter((r) => r.isActive).map((r) => ({ id: r.id, name: r.name })) };
     });
   }
 
-  async getMySession(tenantId: string, doctorId: string): Promise<RoomSession | null> {
-    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.doctorRoomSessionRepository.findToday(tx, tenantId, doctorId));
+  async getMySession(tenantId: string, branchId: string, doctorId: string): Promise<RoomSession | null> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.doctorRoomSessionRepository.findToday(tx, tenantId, branchId, doctorId));
   }
 
-  async setMySession(tenantId: string, doctorId: string, roomId: string, meta: RequestMeta): Promise<RoomSession> {
+  async setMySession(tenantId: string, branchId: string, doctorId: string, roomId: string, meta: RequestMeta): Promise<RoomSession> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const room = await this.roomRepository.findById(tx, tenantId, roomId);
+      const room = await this.roomRepository.findById(tx, tenantId, branchId, roomId);
       if (!room || !room.isActive) {
         throw new NotFoundException();
       }
 
-      await this.doctorRoomSessionRepository.upsertToday(tx, tenantId, doctorId, roomId, doctorId);
+      await this.doctorRoomSessionRepository.upsertToday(tx, tenantId, branchId, doctorId, roomId, doctorId);
 
       await writeAuditLog(tx, tenantId, {
         actorId: doctorId,
@@ -50,7 +50,7 @@ export class DoctorRoomSessionService {
         userAgent: meta.userAgent,
       });
 
-      const session = await this.doctorRoomSessionRepository.findToday(tx, tenantId, doctorId);
+      const session = await this.doctorRoomSessionRepository.findToday(tx, tenantId, branchId, doctorId);
       if (!session) {
         // Không thể xảy ra thật — vừa upsert xong trong cùng transaction.
         throw new NotFoundException();

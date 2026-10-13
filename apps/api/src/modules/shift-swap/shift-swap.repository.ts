@@ -20,29 +20,30 @@ export class ShiftSwapRepository {
   create(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     actorId: string,
     data: { requesterId: string; requesterAssignmentId: string; counterpartId: string; counterpartAssignmentId: string; note: string | null },
   ): Promise<ShiftSwapRow> {
     return tx.shiftSwapRequest.create({
-      data: { tenantId, ...data, status: 'PENDING', createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, branchId, ...data, status: 'PENDING', createdBy: actorId, updatedBy: actorId },
       include: INCLUDE,
     });
   }
 
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<ShiftSwapRow | null> {
-    return tx.shiftSwapRequest.findFirst({ where: { tenantId, id, deletedAt: null }, include: INCLUDE });
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<ShiftSwapRow | null> {
+    return tx.shiftSwapRequest.findFirst({ where: { tenantId, branchId, id, deletedAt: null }, include: INCLUDE });
   }
 
   /** `involvingUserId` = chỉ yêu cầu người đó gửi hoặc nhận (scope personal); bỏ trống = cả phòng khám (global). */
-  list(tx: Prisma.TransactionClient, tenantId: string, filter: { status?: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'; involvingUserId?: string }): Promise<ShiftSwapRow[]> {
-    const where: Prisma.ShiftSwapRequestWhereInput = { tenantId, deletedAt: null };
+  list(tx: Prisma.TransactionClient, tenantId: string, branchId: string, filter: { status?: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'; involvingUserId?: string }): Promise<ShiftSwapRow[]> {
+    const where: Prisma.ShiftSwapRequestWhereInput = { tenantId, branchId, deletedAt: null };
     if (filter.status) where.status = filter.status;
     if (filter.involvingUserId) where.OR = [{ requesterId: filter.involvingUserId }, { counterpartId: filter.involvingUserId }];
     return tx.shiftSwapRequest.findMany({ where, include: INCLUDE, orderBy: [{ createdAt: 'desc' }], take: LIST_TAKE_LIMIT });
   }
 
-  listPendingForCounterpart(tx: Prisma.TransactionClient, tenantId: string, counterpartId: string): Promise<ShiftSwapRow[]> {
-    return tx.shiftSwapRequest.findMany({ where: { tenantId, counterpartId, status: 'PENDING', deletedAt: null }, include: INCLUDE });
+  listPendingForCounterpart(tx: Prisma.TransactionClient, tenantId: string, branchId: string, counterpartId: string): Promise<ShiftSwapRow[]> {
+    return tx.shiftSwapRequest.findMany({ where: { tenantId, branchId, counterpartId, status: 'PENDING', deletedAt: null }, include: INCLUDE });
   }
 
   /** Ca đang nằm trong một yêu cầu đổi ca CHỜ khác (loại trừ chính yêu cầu `exceptRequestId`). */
@@ -75,23 +76,23 @@ export class ShiftSwapRepository {
     return result.count;
   }
 
-  countUnseen(tx: Prisma.TransactionClient, tenantId: string): Promise<number> {
-    return tx.shiftSwapRequest.count({ where: { tenantId, managerSeenAt: null, deletedAt: null } });
+  countUnseen(tx: Prisma.TransactionClient, tenantId: string, branchId: string): Promise<number> {
+    return tx.shiftSwapRequest.count({ where: { tenantId, branchId, managerSeenAt: null, deletedAt: null } });
   }
 
-  async markSeen(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<number> {
+  async markSeen(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string): Promise<number> {
     const result = await tx.shiftSwapRequest.updateMany({
-      where: { tenantId, managerSeenAt: null, deletedAt: null },
+      where: { tenantId, branchId, managerSeenAt: null, deletedAt: null },
       data: { managerSeenAt: new Date(), updatedBy: actorId },
     });
     return result.count;
   }
 
   /** Ca sắp tới (từ `fromDate`) của mọi nhân viên trừ `excludeUserId` — nguồn danh sách đồng nghiệp. */
-  listUpcomingAssignments(tx: Prisma.TransactionClient, tenantId: string, fromDate: string, excludeUserId: string, userId?: string): Promise<AssignmentWithShift[]> {
+  listUpcomingAssignments(tx: Prisma.TransactionClient, tenantId: string, branchId: string, fromDate: string, excludeUserId: string, userId?: string): Promise<AssignmentWithShift[]> {
     return tx.workShiftAssignment.findMany({
       // Chỉ đồng nghiệp còn hoạt động — nhân viên đã nghỉ việc/vô hiệu hoá không nhận ca đổi được.
-      where: { tenantId, deletedAt: null, workDate: { gte: new Date(fromDate) }, userId: userId ? userId : { not: excludeUserId }, user: { isActive: true } },
+      where: { tenantId, branchId, deletedAt: null, workDate: { gte: new Date(fromDate) }, userId: userId ? userId : { not: excludeUserId }, user: { isActive: true } },
       include: { workShift: true },
       orderBy: [{ workDate: 'asc' }],
       take: 400,

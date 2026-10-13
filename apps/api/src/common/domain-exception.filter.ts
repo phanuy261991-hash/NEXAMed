@@ -26,6 +26,12 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   CLINIC_INVALID_LOGO: HttpStatus.BAD_REQUEST,
   USER_ACCOUNT_INVALID_SIGNATURE: HttpStatus.BAD_REQUEST,
   CONCURRENT_MODIFICATION: HttpStatus.CONFLICT,
+  // Chi nhánh (docs/DECISIONS.md #231) — chưa chọn chi nhánh / trùng tên / ngưng chi nhánh mặc định là xung đột trạng thái (409); không được gán chi nhánh là 403;
+  // BRANCH_INVALID_REFERENCE và USER_BRANCH_REQUIRED không có trong bảng nên rơi về mặc định 422.
+  BRANCH_NOT_SELECTED: HttpStatus.CONFLICT,
+  BRANCH_DUPLICATE_NAME: HttpStatus.CONFLICT,
+  BRANCH_DEFAULT_IMMUTABLE: HttpStatus.CONFLICT,
+  BRANCH_NOT_ASSIGNED: HttpStatus.FORBIDDEN,
   APPOINTMENT_SLOT_CONFLICT: HttpStatus.CONFLICT,
   APPOINTMENT_NOT_CANCELLABLE: HttpStatus.CONFLICT,
   USER_ACCOUNT_DUPLICATE_USERNAME: HttpStatus.CONFLICT,

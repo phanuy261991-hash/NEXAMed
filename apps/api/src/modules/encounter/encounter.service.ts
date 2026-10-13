@@ -51,6 +51,8 @@ import {
   type PrescriptionDrugLine,
   type SignaturePort,
   type StockAvailabilityPort,
+  BRANCH_DIRECTORY_PORT,
+  type BranchDirectoryPort,
 } from '@nexamed/core';
 import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary } from '@nexamed/shared';
 import type {
@@ -172,6 +174,7 @@ export class EncounterService {
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(SIGNATURE_PORT) private readonly signaturePort: SignaturePort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
+    @Inject(BRANCH_DIRECTORY_PORT) private readonly branchDirectory: BranchDirectoryPort,
     @Inject(PDF_RENDERER_PORT) private readonly pdfRenderer: PdfRendererPort,
     @Inject(STOCK_AVAILABILITY_PORT) private readonly stockAvailability: StockAvailabilityPort,
     @Inject(PARACLINICAL_RESULTS_READER_PORT) private readonly paraclinicalResultsReader: ParaclinicalResultsReaderPort,
@@ -195,6 +198,7 @@ export class EncounterService {
    */
   async startConsultation(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -211,7 +215,7 @@ export class EncounterService {
     const deferredPaymentEnabled = await this.clinicConfigReader.getDeferredPaymentEnabled(tenantId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findByIdWithInvoiceStatus(tx, tenantId, id);
+      const existing = await this.encounterRepository.findByIdWithInvoiceStatus(tx, tenantId, branchId, id);
       if (!existing) {
         throw new NotFoundException();
       }
@@ -248,7 +252,7 @@ export class EncounterService {
         assertEncounterTransition(existing.status, 'IN_CONSULTATION');
         const count = await this.encounterRepository.claimFromPool(tx, tenantId, id, dto.version, actorId);
         if (count === 0) {
-          const recheck = await this.encounterRepository.findById(tx, tenantId, id);
+          const recheck = await this.encounterRepository.findById(tx, tenantId, branchId, id);
           if (recheck && recheck.doctorId !== null) {
             throw new EncounterAlreadyClaimedError();
           }
@@ -265,7 +269,7 @@ export class EncounterService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.encounterRepository.findById(tx, tenantId, id);
+      const updated = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }
@@ -286,6 +290,7 @@ export class EncounterService {
    */
   async cancelEncounter(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -293,7 +298,7 @@ export class EncounterService {
     meta: RequestMeta,
   ): Promise<EncounterSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -335,7 +340,7 @@ export class EncounterService {
         });
       }
 
-      const updated = await this.encounterRepository.findById(tx, tenantId, id);
+      const updated = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }
@@ -351,6 +356,7 @@ export class EncounterService {
    */
   async releaseEncounter(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -358,7 +364,7 @@ export class EncounterService {
     meta: RequestMeta,
   ): Promise<EncounterSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -378,7 +384,7 @@ export class EncounterService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.encounterRepository.findById(tx, tenantId, id);
+      const updated = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }
@@ -395,6 +401,7 @@ export class EncounterService {
    */
   async reassignEncounter(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -406,12 +413,12 @@ export class EncounterService {
     const routing = await resolveDoctorDepartmentRouting(this.doctorDirectory, tenantId, dto);
     // Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (09/10/2026, #226): đổi sang bác sĩ không có ca hôm
     // nay cũng bị chặn cứng, nếu không lễ tân tiếp nhận bác sĩ có ca rồi đổi sang bác sĩ không ca là lách được quy tắc.
-    if (routing.doctorId && (await this.workShiftAssignmentReader.isDoctorBookingBlockedForNoShift(tenantId, routing.doctorId, getVietnamDateString()))) {
+    if (routing.doctorId && (await this.workShiftAssignmentReader.isDoctorBookingBlockedForNoShift(tenantId, branchId, routing.doctorId, getVietnamDateString()))) {
       throw new DoctorNoShiftOnDateError();
     }
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -435,7 +442,7 @@ export class EncounterService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.encounterRepository.findById(tx, tenantId, id);
+      const updated = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }
@@ -465,7 +472,7 @@ export class EncounterService {
     return this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(realDrugIds)]);
   }
 
-  async getConsultationDetail(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<ConsultationDetailResponse> {
+  async getConsultationDetail(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<ConsultationDetailResponse> {
     // Kho Thuốc GĐ5 — đọc cấu hình + tồn kho TRƯỚC transaction chính, cùng nguyên tắc `signPrescription()`
     // (`ClinicConfigReaderPort`/`StockAvailabilityPort` tự mở transaction riêng, không lồng được).
     // Bug thật phát hiện lúc verify Playwright: thiếu đúng đoạn này khiến cảnh báo `stock_insufficient`
@@ -482,6 +489,20 @@ export class EncounterService {
       if (!encounter || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
         throw new NotFoundException();
       }
+      // Lượt khám ở chi nhánh KHÁC (docs/DECISIONS.md #231): chỉ XEM được khi đã hoàn tất (xem lịch sử khám của bệnh nhân) — lượt đang diễn ra ở nơi khác coi như không tồn tại.
+      if (encounter.branchId !== branchId && encounter.status !== 'COMPLETED') {
+        throw new NotFoundException();
+      }
+      if (encounter.branchId !== branchId) {
+        // Dữ liệu lâm sàng của chi nhánh khác — ghi dấu vết riêng ngoài nhật ký xem thông thường.
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'encounter.history_viewed_cross_branch',
+          entityType: 'encounter',
+          entityId: id,
+          afterJson: { viewerBranchId: branchId, encounterBranchId: encounter.branchId },
+        });
+      }
 
       const latestVitalSign = encounter.vitalSigns[0] ?? null;
       const vitalSigns = latestVitalSign ? this.toVitalSignResponse(latestVitalSign, encounter.patient.dob) : null;
@@ -489,6 +510,7 @@ export class EncounterService {
       const historyRows = await this.encounterRepository.listHistoryForPatient(tx, tenantId, encounter.patientId, id, CONSULTATION_HISTORY_LIMIT);
       const history = historyRows.map((row) => ({
         encounterId: row.id,
+        branchId: row.branchId,
         checkedInAt: row.checkedInAt.toISOString(),
         doctorId: row.doctorId,
         chiefComplaint: row.chiefComplaint,
@@ -546,7 +568,13 @@ export class EncounterService {
     // chính ở trên để tránh `$transaction` lồng nhau.
     const doctorIds = [...new Set(historyWithDoctorId.map((h) => h.doctorId).filter((v): v is string => v !== null))];
     const doctorNames = doctorIds.length > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, doctorIds) : new Map<string, string>();
-    const history = historyWithDoctorId.map(({ doctorId, ...h }) => ({ ...h, doctorName: doctorId ? (doctorNames.get(doctorId) ?? null) : null }));
+    // Tên chi nhánh chỉ ghi khi lượt khám cũ ở chi nhánh KHÁC chi nhánh đang làm (cùng chi nhánh → không ghi gì; phòng khám 1 chi nhánh không thấy khác biệt).
+    const branchNames = historyWithDoctorId.some((h) => h.branchId !== branchId) ? await this.branchDirectory.getBranchNames(tenantId) : new Map<string, string>();
+    const history = historyWithDoctorId.map(({ doctorId, branchId: rowBranchId, ...h }) => ({
+      ...h,
+      doctorName: doctorId ? (doctorNames.get(doctorId) ?? null) : null,
+      branchName: rowBranchId !== branchId ? (branchNames.get(rowBranchId) ?? null) : null,
+    }));
 
     return { ...rest, history };
   }
@@ -574,7 +602,7 @@ export class EncounterService {
    * `invoice.read` — máy chủ không gửi trường nào actor không được xem (không chỉ ẩn ở giao diện). Chỉ lấy bản ĐÃ KÝ của chẩn đoán/ghi chú/kế hoạch điều trị/đơn thuốc: lượt khám
    * đang dở không lộ bản nháp.
    */
-  async listPatientEncounterHistory(tenantId: string, actorId: string, patientId: string, query: ListPatientEncounterHistoryQuery): Promise<PatientEncounterHistoryResponse> {
+  async listPatientEncounterHistory(tenantId: string, branchId: string, actorId: string, patientId: string, query: ListPatientEncounterHistoryQuery): Promise<PatientEncounterHistoryResponse> {
     const permissions = await this.unitOfWork.runInTenantScope(tenantId, (tx) => findAllPermissionsForUser(tx, tenantId, actorId));
     const canViewClinical = 'encounter.read_clinical' in permissions;
     const canViewBilling = 'invoice.read' in permissions;
@@ -599,6 +627,13 @@ export class EncounterService {
     // Các port dưới đây tự mở transaction riêng — gọi NGOÀI transaction trên (cùng nguyên tắc `getConsultationDetail`).
     const ids = page.encounters.map((e) => e.id);
     const doctorIds = [...new Set(page.encounters.map((e) => e.doctorId).filter((v): v is string => v !== null))];
+    // Lịch sử khám đi theo NGƯỜI BỆNH nên hiện mọi chi nhánh (docs/DECISIONS.md #231); tiền là của chi nhánh → che nếu actor không được gán chi nhánh đó.
+    const [branchNames, assignedBranchIds, multiBranch] = await Promise.all([
+      this.branchDirectory.getBranchNames(tenantId),
+      this.branchDirectory.listAssignedBranchIds(tenantId, actorId),
+      this.branchDirectory.isMultiBranch(tenantId),
+    ]);
+    const assigned = new Set(assignedBranchIds);
     const [doctorNames, departmentNames, clsCounts, billing] = await Promise.all([
       doctorIds.length > 0 ? this.doctorDirectory.getUserFullNames(tenantId, doctorIds) : Promise.resolve(new Map<string, string>()),
       this.doctorDirectory.getDepartmentNames(tenantId),
@@ -632,7 +667,8 @@ export class EncounterService {
           paraclinical: cls ? { total: cls.total, withResult: cls.withResult } : null,
         };
       }
-      const summary = billing.get(e.id);
+      const billingHidden = !assigned.has(e.branchId);
+      const summary = billingHidden ? undefined : billing.get(e.id);
       return {
         encounterId: e.id,
         encounterNo: e.encounterNo,
@@ -645,6 +681,9 @@ export class EncounterService {
         reason: reason?.trim() ? reason : null,
         clinical,
         billing: summary ? { netAmount: summary.netAmount, paymentState: summary.paymentState } : null,
+        branchName: branchNames.get(e.branchId) ?? null,
+        isOtherBranch: e.branchId !== branchId,
+        billingHidden,
       };
     });
 
@@ -655,6 +694,7 @@ export class EncounterService {
       totalCount: page.counts.total,
       canViewClinical,
       canViewBilling,
+      multiBranch,
     };
   }
 
@@ -815,6 +855,7 @@ export class EncounterService {
    */
   async saveDiagnoses(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -822,7 +863,7 @@ export class EncounterService {
     meta: RequestMeta,
   ): Promise<SaveDiagnosesResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -868,6 +909,7 @@ export class EncounterService {
    */
   async amendDiagnoses(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -881,7 +923,7 @@ export class EncounterService {
       (await this.clinicConfigReader.getIcd10SuggestionEnabled(tenantId)) &&
       (await this.clinicConfigReader.getIcd10SuggestionLearningEnabled(tenantId));
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId) || existing.status !== 'COMPLETED') {
         throw new NotFoundException();
       }
@@ -936,6 +978,7 @@ export class EncounterService {
    */
   async saveClinicalNote(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -943,7 +986,7 @@ export class EncounterService {
     meta: RequestMeta,
   ): Promise<ClinicalNoteResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -1010,6 +1053,7 @@ export class EncounterService {
    */
   async amendClinicalNote(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -1017,7 +1061,7 @@ export class EncounterService {
     meta: RequestMeta,
   ): Promise<ClinicalNoteResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId) || existing.status !== 'COMPLETED') {
         throw new NotFoundException();
       }
@@ -1102,6 +1146,7 @@ export class EncounterService {
    */
   async completeConsultation(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -1115,7 +1160,7 @@ export class EncounterService {
       (await this.clinicConfigReader.getIcd10SuggestionEnabled(tenantId)) &&
       (await this.clinicConfigReader.getIcd10SuggestionLearningEnabled(tenantId));
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -1156,7 +1201,7 @@ export class EncounterService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.encounterRepository.findById(tx, tenantId, id);
+      const updated = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }
@@ -1175,6 +1220,7 @@ export class EncounterService {
    */
   async savePrescriptionItems(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -1198,7 +1244,7 @@ export class EncounterService {
       : null;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -1247,6 +1293,7 @@ export class EncounterService {
    */
   async acknowledgePrescriptionWarning(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -1258,7 +1305,7 @@ export class EncounterService {
     const actorName = (await this.doctorDirectory.getUserFullNames(tenantId, [actorId])).get(actorId) ?? '—';
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -1321,6 +1368,7 @@ export class EncounterService {
    */
   async signPrescription(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -1351,7 +1399,7 @@ export class EncounterService {
     const prescriptionStockBlockEnabled = pharmacyStockTrackingEnabled && (await this.clinicConfigReader.getPrescriptionStockBlockEnabled(tenantId));
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -1414,9 +1462,9 @@ export class EncounterService {
    * `printedAt`). Idempotent — in lại không lỗi, không đổi thời điểm in đầu tiên
    * (`markPrintedIfNotYet`).
    */
-  async markPrescriptionPrinted(tenantId: string, actorId: string, dataScope: DataScope, id: string, meta: RequestMeta): Promise<PrescriptionResponse> {
+  async markPrescriptionPrinted(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, meta: RequestMeta): Promise<PrescriptionResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -1454,6 +1502,7 @@ export class EncounterService {
    */
   async amendPrescription(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -1472,7 +1521,7 @@ export class EncounterService {
       : null;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -1531,9 +1580,9 @@ export class EncounterService {
    * đúng khuôn "Đơn thuốc mẫu". Không tính `warnings` (chỉ đọc để chèn, `computeWarnings()` sẽ tự
    * chạy lại đúng lúc `savePrescriptionItems()` lưu thật).
    */
-  async getPreviousPrescription(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<PreviousPrescriptionResponse> {
+  async getPreviousPrescription(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<PreviousPrescriptionResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }

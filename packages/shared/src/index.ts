@@ -1,6 +1,7 @@
 export * from './roles';
 export * from './data-scope';
 export * from './auth';
+export * from './branch';
 export * from './break-glass';
 export * from './patient';
 export * from './appointment';

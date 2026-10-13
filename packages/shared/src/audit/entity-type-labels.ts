@@ -44,6 +44,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   work_shift: 'Ca làm việc',
   work_shift_assignment: 'Đăng ký ca làm việc',
   leave_request: 'Đơn xin nghỉ',
+  branch: 'Chi nhánh',
   work_schedule_submission: 'Đăng ký ca theo tháng',
   shift_swap: 'Đổi ca',
   doctor_availability: 'Trạng thái làm việc bác sĩ',

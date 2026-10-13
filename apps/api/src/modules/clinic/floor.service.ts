@@ -15,9 +15,9 @@ export class FloorService {
     private readonly floorRepository: FloorRepository,
   ) {}
 
-  async createFloor(tenantId: string, actorId: string, dto: CreateFloorRequest, meta: RequestMeta): Promise<FloorSummary> {
+  async createFloor(tenantId: string, branchId: string, actorId: string, dto: CreateFloorRequest, meta: RequestMeta): Promise<FloorSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const created = await this.floorRepository.create(tx, tenantId, actorId, { name: dto.name });
+      const created = await this.floorRepository.create(tx, tenantId, branchId, actorId, { name: dto.name });
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -32,22 +32,23 @@ export class FloorService {
     });
   }
 
-  async listFloors(tenantId: string): Promise<ListFloorsResponse> {
+  async listFloors(tenantId: string, branchId: string): Promise<ListFloorsResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.floorRepository.list(tx, tenantId);
+      const rows = await this.floorRepository.list(tx, tenantId, branchId);
       return { items: rows.map((f) => this.toSummary(f)) };
     });
   }
 
   async updateFloor(
     tenantId: string,
+    branchId: string,
     actorId: string,
     id: string,
     dto: UpdateFloorRequest,
     meta: RequestMeta,
   ): Promise<FloorSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.floorRepository.findById(tx, tenantId, id);
+      const existing = await this.floorRepository.findById(tx, tenantId, branchId, id);
       if (!existing) {
         throw new NotFoundException();
       }
@@ -56,7 +57,7 @@ export class FloorService {
       if (dto.name !== undefined) patch.name = dto.name;
       if (dto.isActive !== undefined) patch.isActive = dto.isActive;
 
-      const count = await this.floorRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, patch);
+      const count = await this.floorRepository.updateIfVersionMatches(tx, tenantId, branchId, id, dto.version, actorId, patch);
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
@@ -70,7 +71,7 @@ export class FloorService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.floorRepository.findById(tx, tenantId, id);
+      const updated = await this.floorRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }

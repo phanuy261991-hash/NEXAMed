@@ -26,8 +26,9 @@ export class TokenService {
     return this.configService.getOrThrow<string>('JWT_SECRET');
   }
 
-  signAccessToken(userId: string, tenantId: string): IssuedToken {
-    const payload: JwtPayload = { sub: userId, tenantId, typ: 'access' };
+  /** `branchId` = chi nhánh đang làm việc của phiên (docs/DECISIONS.md #231); `null` = chưa chọn (được gán nhiều chi nhánh) → không có claim `bid`. */
+  signAccessToken(userId: string, tenantId: string, branchId: string | null = null): IssuedToken {
+    const payload: JwtPayload = { sub: userId, tenantId, typ: 'access', ...(branchId ? { bid: branchId } : {}) };
     const token = this.jwtService.sign(payload, { secret: this.secret, expiresIn: ACCESS_TOKEN_TTL_SECONDS });
     return { token, expiresIn: ACCESS_TOKEN_TTL_SECONDS };
   }

@@ -34,7 +34,7 @@ export class JwtAuthGuard implements CanActivate {
       if (!parsed.success || parsed.data.typ !== 'access') {
         throw new UnauthorizedException();
       }
-      request.user = { userId: parsed.data.sub, tenantId: parsed.data.tenantId };
+      request.user = { userId: parsed.data.sub, tenantId: parsed.data.tenantId, branchId: parsed.data.bid ?? null };
       return true;
     } catch {
       throw new UnauthorizedException();

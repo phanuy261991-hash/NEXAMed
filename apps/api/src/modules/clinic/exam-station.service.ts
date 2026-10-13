@@ -22,14 +22,14 @@ export class ExamStationService {
     private readonly examStationRepository: ExamStationRepository,
   ) {}
 
-  async createExamStation(tenantId: string, actorId: string, dto: CreateExamStationRequest, meta: RequestMeta): Promise<ExamStationSummary> {
+  async createExamStation(tenantId: string, branchId: string, actorId: string, dto: CreateExamStationRequest, meta: RequestMeta): Promise<ExamStationSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const room = await this.roomRepository.findById(tx, tenantId, dto.roomId);
+      const room = await this.roomRepository.findById(tx, tenantId, branchId, dto.roomId);
       if (!room) {
         throw new NotFoundException();
       }
 
-      const created = await this.examStationRepository.create(tx, tenantId, actorId, { roomId: dto.roomId, name: dto.name });
+      const created = await this.examStationRepository.create(tx, tenantId, branchId, actorId, { roomId: dto.roomId, name: dto.name });
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -44,22 +44,23 @@ export class ExamStationService {
     });
   }
 
-  async listExamStations(tenantId: string, roomId: string): Promise<ListExamStationsResponse> {
+  async listExamStations(tenantId: string, branchId: string, roomId: string): Promise<ListExamStationsResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.examStationRepository.listByRoom(tx, tenantId, roomId);
+      const rows = await this.examStationRepository.listByRoom(tx, tenantId, branchId, roomId);
       return { items: rows.map((s) => this.toSummary(s)) };
     });
   }
 
   async updateExamStation(
     tenantId: string,
+    branchId: string,
     actorId: string,
     id: string,
     dto: UpdateExamStationRequest,
     meta: RequestMeta,
   ): Promise<ExamStationSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.examStationRepository.findById(tx, tenantId, id);
+      const existing = await this.examStationRepository.findById(tx, tenantId, branchId, id);
       if (!existing) {
         throw new NotFoundException();
       }
@@ -68,7 +69,7 @@ export class ExamStationService {
       if (dto.name !== undefined) patch.name = dto.name;
       if (dto.isActive !== undefined) patch.isActive = dto.isActive;
 
-      const count = await this.examStationRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, patch);
+      const count = await this.examStationRepository.updateIfVersionMatches(tx, tenantId, branchId, id, dto.version, actorId, patch);
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
@@ -82,7 +83,7 @@ export class ExamStationService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.examStationRepository.findById(tx, tenantId, id);
+      const updated = await this.examStationRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }

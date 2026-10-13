@@ -3,6 +3,12 @@ import type { PrismaClient } from '@prisma/client';
 
 export const SYSTEM_TEST_ACTOR = '00000000-0000-0000-0000-000000000000';
 
+/** Chi nhánh mặc định của tenant (docs/DECISIONS.md #231) — dùng khi spec tạo trực tiếp lượt khám/lịch hẹn/phòng... qua Prisma đặc quyền. Cần đã gọi `seedDefaultRolesForTenant`. */
+export async function getDefaultBranchId(prisma: PrismaClient, tenantId: string): Promise<string> {
+  const branch = await prisma.branch.findFirstOrThrow({ where: { tenantId, isDefault: true, deletedAt: null }, select: { id: true } });
+  return branch.id;
+}
+
 export interface TenantFixtureRef {
   id: string;
 }
@@ -216,6 +222,8 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.supplier.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.codeSequence.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.userSession.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // user_branch tham chiếu user_account (FK RESTRICT) — xoá trước userAccount.
+      await prisma.userBranch.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.rolePermission.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.userRole.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.role.deleteMany({ where: { tenantId: { in: tenantIds } } });
@@ -249,6 +257,8 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // work_shift (#101) — work_shift_assignment đã xoá ở trên (tham chiếu tới bảng này), giờ xoá tự do.
       await prisma.workShift.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // Danh mục RIÊNG THEO TENANT (docs/DECISIONS.md #230): dị nguyên tham chiếu nhóm dị nguyên (patient_allergen đã xoá ở trên) nên xoá dị nguyên TRƯỚC nhóm.
+      // Chi nhánh (#231): branch xoá sau mọi bảng gắn chi nhánh, user_session và user_account (đã xoá ở trên).
+      await prisma.branch.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.allergen.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.allergenGroup.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.referenceCatalog.deleteMany({ where: { tenantId: { in: tenantIds } } });

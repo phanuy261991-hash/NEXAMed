@@ -87,10 +87,10 @@ export class AppointmentService {
    * hôm nay — chỉ hiển thị, không ảnh hưởng việc chọn bác sĩ. Tenant chưa dùng mô hình nhiều
    * phòng thì `getTodayDoctorRoomAssignments` trả object rỗng, mọi `currentRoomName` là `null`.
    */
-  async listDoctors(tenantId: string): Promise<ListDoctorsResponse> {
+  async listDoctors(tenantId: string, branchId: string): Promise<ListDoctorsResponse> {
     const [doctors, roomAssignments] = await Promise.all([
-      this.doctorDirectory.listActiveDoctors(tenantId),
-      this.clinicConfigReader.getTodayDoctorRoomAssignments(tenantId),
+      this.doctorDirectory.listActiveDoctors(tenantId, branchId),
+      this.clinicConfigReader.getTodayDoctorRoomAssignments(tenantId, branchId),
     ]);
     return {
       items: doctors.map((d) => ({ ...d, currentRoomName: roomAssignments[d.id]?.roomName ?? null })),
@@ -109,14 +109,14 @@ export class AppointmentService {
    * `listDoctors()`/`getScheduleConfig()` ở trên, tránh lỗ hổng "lễ tân không có quyền đọc module
    * khác" đã gặp 2 lần (#030/#064). Chỉ trả bác sĩ CÓ ít nhất 1 ca đăng ký đúng ngày đó.
    */
-  async getDoctorWorkShifts(tenantId: string, date: string): Promise<DoctorWorkShiftsForDateResponse> {
-    const doctors = await this.doctorDirectory.listActiveDoctors(tenantId);
+  async getDoctorWorkShifts(tenantId: string, branchId: string, date: string): Promise<DoctorWorkShiftsForDateResponse> {
+    const doctors = await this.doctorDirectory.listActiveDoctors(tenantId, branchId);
     const doctorIds = doctors.map((d) => d.id);
     const [byDoctorId, leaves] = await Promise.all([
-      this.workShiftAssignmentReader.getWorkShiftsForUsersOnDate(tenantId, doctorIds, date),
+      this.workShiftAssignmentReader.getWorkShiftsForUsersOnDate(tenantId, branchId, doctorIds, date),
       // "Đơn xin nghỉ" (#224): khung nghỉ chờ duyệt + đã duyệt trong ngày, đi cùng response để lưới Lịch
       // hẹn/picker Đặt lịch/Tiếp nhận dùng chung 1 request.
-      this.leaveReader.getLeaveInRange(tenantId, doctorIds, date, date),
+      this.leaveReader.getLeaveInRange(tenantId, branchId, doctorIds, date, date),
     ]);
     const leaveByDoctorId: DoctorWorkShiftsForDateResponse['leaveByDoctorId'] = {};
     for (const leave of leaves) {
@@ -136,12 +136,13 @@ export class AppointmentService {
    * kèm số lần huỷ để phía web tự quyết định hiện cảnh báo spam (ngưỡng
    * `APPOINTMENT_SPAM_CANCELLED_THRESHOLD`, không chặn đặt lịch — chỉ cảnh báo).
    */
-  async lookupByPhone(tenantId: string, phone: string): Promise<AppointmentPhoneLookupResponse> {
-    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.appointmentRepository.findByPhone(tx, tenantId, phone));
+  async lookupByPhone(tenantId: string, branchId: string, phone: string): Promise<AppointmentPhoneLookupResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.appointmentRepository.findByPhone(tx, tenantId, branchId, phone));
   }
 
   async createAppointment(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     dto: CreateAppointmentRequest,
@@ -156,8 +157,8 @@ export class AppointmentService {
         message: 'Chỉ có thể tạo lịch hẹn cho chính mình.',
       });
     }
-    await this.assertWithinWorkShift(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
-    await this.assertDoctorNotOnLeave(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
+    await this.assertWithinWorkShift(tenantId, branchId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
+    await this.assertDoctorNotOnLeave(tenantId, branchId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       // Mã đặt lịch cấp qua BusinessCodeService (docs/DECISIONS.md #114), loại mã
@@ -166,7 +167,7 @@ export class AppointmentService {
 
       let created: Appointment;
       try {
-        created = await this.appointmentRepository.create(tx, tenantId, actorId, {
+        created = await this.appointmentRepository.create(tx, tenantId, branchId, actorId, {
           bookingCode,
           fullName: dto.fullName,
           phone: dto.phone,
@@ -200,9 +201,9 @@ export class AppointmentService {
     });
   }
 
-  async getAppointment(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<AppointmentSummary> {
+  async getAppointment(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<AppointmentSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const appointment = await this.appointmentRepository.findById(tx, tenantId, id);
+      const appointment = await this.appointmentRepository.findById(tx, tenantId, branchId, id);
       if (!appointment || (dataScope === 'personal' && appointment.doctorId !== actorId)) {
         // Lịch hẹn của bác sĩ khác, ngoài scope `personal` của actor, coi như không tồn tại —
         // cùng triết lý 404 thay vì 403 khi xuyên tenant (.claude/docs/multi-tenancy.md).
@@ -221,6 +222,7 @@ export class AppointmentService {
 
   async listAppointments(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     query: ListAppointmentsQuery,
@@ -232,7 +234,7 @@ export class AppointmentService {
       // `date` (S2-09, chế độ lưới): quy đổi biên ngày theo giờ Việt Nam, không cắt mốc theo UTC
       // server (CLAUDE.md) — xem packages/core/src/date/vietnam-day-range.ts.
       const dayRange = query.date ? vietnamDayRange(query.date) : null;
-      const rows = await this.appointmentRepository.list(tx, tenantId, {
+      const rows = await this.appointmentRepository.list(tx, tenantId, branchId, {
         cursor: query.cursor,
         take: query.limit + 1,
         doctorId,
@@ -246,7 +248,7 @@ export class AppointmentService {
       return { items, nextCursor };
     });
     // Đọc nghỉ NGOÀI transaction (adapter tự mở transaction riêng).
-    const onLeaveIds = await this.findAppointmentsOnLeave(tenantId, page.items);
+    const onLeaveIds = await this.findAppointmentsOnLeave(tenantId, branchId, page.items);
     return { items: page.items.map((a) => this.toSummary(a, onLeaveIds.has(a.id))), nextCursor: page.nextCursor };
   }
 
@@ -257,6 +259,7 @@ export class AppointmentService {
    */
   async cancelAppointment(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -264,7 +267,7 @@ export class AppointmentService {
     meta: RequestMeta,
   ): Promise<AppointmentSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.appointmentRepository.findById(tx, tenantId, id);
+      const existing = await this.appointmentRepository.findById(tx, tenantId, branchId, id);
       // Cùng triết lý 404 (không phải 403) với getAppointment() — xem comment ở đó.
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
@@ -287,7 +290,7 @@ export class AppointmentService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.appointmentRepository.findById(tx, tenantId, id);
+      const updated = await this.appointmentRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }
@@ -299,9 +302,9 @@ export class AppointmentService {
    * Đánh dấu "Không đến" THỦ CÔNG (S5-07, APP-05) — dùng khi tenant tắt tự động đánh dấu
    * (`noShowAutoEnabled=false`). Cùng triết lý 404/409 với `cancelAppointment()`.
    */
-  async markNoShow(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: MarkNoShowRequest, meta: RequestMeta): Promise<AppointmentSummary> {
+  async markNoShow(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: MarkNoShowRequest, meta: RequestMeta): Promise<AppointmentSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.appointmentRepository.findById(tx, tenantId, id);
+      const existing = await this.appointmentRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -323,7 +326,7 @@ export class AppointmentService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.appointmentRepository.findById(tx, tenantId, id);
+      const updated = await this.appointmentRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }
@@ -340,6 +343,7 @@ export class AppointmentService {
    */
   async editAppointment(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -352,11 +356,11 @@ export class AppointmentService {
         message: 'Chỉ có thể sửa lịch hẹn cho chính mình.',
       });
     }
-    await this.assertWithinWorkShift(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
-    await this.assertDoctorNotOnLeave(tenantId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
+    await this.assertWithinWorkShift(tenantId, branchId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
+    await this.assertDoctorNotOnLeave(tenantId, branchId, dto.doctorId, dto.scheduledAt, dto.durationMinutes);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.appointmentRepository.findById(tx, tenantId, id);
+      const existing = await this.appointmentRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -403,7 +407,7 @@ export class AppointmentService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.appointmentRepository.findById(tx, tenantId, id);
+      const updated = await this.appointmentRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }
@@ -423,6 +427,7 @@ export class AppointmentService {
    */
   async rescheduleAppointment(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     id: string,
@@ -443,15 +448,15 @@ export class AppointmentService {
     // `assertWithinWorkShift()`). `existing` được đọc lại đầy đủ ngay dưới, trong transaction ghi
     // thật, nên race hiếm gặp (đổi status/version giữa 2 lần đọc) vẫn được optimistic lock chặn
     // đúng như trước — đọc thêm 1 lần chỉ tốn thêm 1 round-trip, không ảnh hưởng tính đúng đắn.
-    const preview = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.appointmentRepository.findById(tx, tenantId, id));
+    const preview = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.appointmentRepository.findById(tx, tenantId, branchId, id));
     if (!preview || (dataScope === 'personal' && preview.doctorId !== actorId)) {
       throw new NotFoundException();
     }
-    await this.assertWithinWorkShift(tenantId, dto.doctorId, dto.scheduledAt, preview.durationMinutes);
-    await this.assertDoctorNotOnLeave(tenantId, dto.doctorId, dto.scheduledAt, preview.durationMinutes);
+    await this.assertWithinWorkShift(tenantId, branchId, dto.doctorId, dto.scheduledAt, preview.durationMinutes);
+    await this.assertDoctorNotOnLeave(tenantId, branchId, dto.doctorId, dto.scheduledAt, preview.durationMinutes);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.appointmentRepository.findById(tx, tenantId, id);
+      const existing = await this.appointmentRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
         throw new NotFoundException();
       }
@@ -468,7 +473,7 @@ export class AppointmentService {
 
       let created: Appointment;
       try {
-        created = await this.appointmentRepository.create(tx, tenantId, actorId, {
+        created = await this.appointmentRepository.create(tx, tenantId, branchId, actorId, {
           bookingCode,
           fullName: existing.fullName,
           phone: existing.phone,
@@ -514,17 +519,17 @@ export class AppointmentService {
    * thì KHÔNG bị giới hạn gì thêm (chốt qua AskUserQuestion — tránh khoá cứng toàn bộ lịch hẹn
    * ngay khi mới bật tính năng lúc chưa ai kịp đăng ký đủ ca).
    */
-  private async assertWithinWorkShift(tenantId: string, doctorId: string, scheduledAtIso: string, durationMinutes: number): Promise<void> {
+  private async assertWithinWorkShift(tenantId: string, branchId: string, doctorId: string, scheduledAtIso: string, durationMinutes: number): Promise<void> {
     const blockEnabled = await this.clinicConfigReader.getBlockBookingOutsideWorkShiftEnabled(tenantId);
     if (!blockEnabled) return;
 
     const scheduledAt = new Date(scheduledAtIso);
     const date = getVietnamDateString(scheduledAt);
-    const byDoctorId = await this.workShiftAssignmentReader.getWorkShiftsForUsersOnDate(tenantId, [doctorId], date);
+    const byDoctorId = await this.workShiftAssignmentReader.getWorkShiftsForUsersOnDate(tenantId, branchId, [doctorId], date);
     const shifts = byDoctorId[doctorId];
     if (!shifts || shifts.length === 0) {
       // Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (09/10/2026).
-      if (await this.workShiftAssignmentReader.isDoctorBookingBlockedForNoShift(tenantId, doctorId, date)) {
+      if (await this.workShiftAssignmentReader.isDoctorBookingBlockedForNoShift(tenantId, branchId, doctorId, date)) {
         throw new DoctorNoShiftOnDateError();
       }
       return;
@@ -547,10 +552,10 @@ export class AppointmentService {
    * `assertWithinWorkShift`: LUÔN bật (không phụ thuộc công tắc "Chặn đặt lịch ngoài ca"), chỉ đơn
    * `APPROVED` chặn (đơn chờ duyệt chỉ hiện nhãn ở web). Gọi NGOÀI transaction, cùng lý do ở trên.
    */
-  private async assertDoctorNotOnLeave(tenantId: string, doctorId: string, scheduledAtIso: string, durationMinutes: number): Promise<void> {
+  private async assertDoctorNotOnLeave(tenantId: string, branchId: string, doctorId: string, scheduledAtIso: string, durationMinutes: number): Promise<void> {
     const scheduledAt = new Date(scheduledAtIso);
     const date = getVietnamDateString(scheduledAt);
-    const leaves = await this.leaveReader.getLeaveInRange(tenantId, [doctorId], date, date);
+    const leaves = await this.leaveReader.getLeaveInRange(tenantId, branchId, [doctorId], date, date);
     const blocked = leaves.some(
       (l) => l.status === 'APPROVED' && appointmentOverlapsLeaveWindow(scheduledAt, durationMinutes, { startMinute: l.startMinute, endMinute: l.endMinute }),
     );
@@ -563,12 +568,12 @@ export class AppointmentService {
    * Tập id lịch hẹn `SCHEDULED` đang nằm trong khung nghỉ ĐÃ DUYỆT của bác sĩ ("Cần xử lý", #224) —
    * tính lúc đọc, không lưu cột. Một lần đọc cho cả trang (khoảng ngày nhỏ nhất bao hết các lịch).
    */
-  private async findAppointmentsOnLeave(tenantId: string, rows: Appointment[]): Promise<Set<string>> {
+  private async findAppointmentsOnLeave(tenantId: string, branchId: string, rows: Appointment[]): Promise<Set<string>> {
     const scheduled = rows.filter((a) => a.status === 'SCHEDULED');
     if (scheduled.length === 0) return new Set();
     const dates = scheduled.map((a) => getVietnamDateString(a.scheduledAt)).sort();
     const doctorIds = [...new Set(scheduled.map((a) => a.doctorId))];
-    const leaves = await this.leaveReader.getLeaveInRange(tenantId, doctorIds, dates[0] as string, dates[dates.length - 1] as string);
+    const leaves = await this.leaveReader.getLeaveInRange(tenantId, branchId, doctorIds, dates[0] as string, dates[dates.length - 1] as string);
     const approved = leaves.filter((l) => l.status === 'APPROVED');
     if (approved.length === 0) return new Set();
     const result = new Set<string>();

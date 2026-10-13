@@ -67,6 +67,8 @@ model Tenant {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenantSettings              TenantSetting[]
+  branches                    Branch[]
+  userBranches                UserBranch[]
   floors                      Floor[]
   referenceCatalogs           ReferenceCatalog[]
   allergenGroups              AllergenGroup[]
@@ -192,6 +194,9 @@ model Floor {
   sortOrder Int     @default(0) @map("sort_order")
   isActive  Boolean @default(true) @map("is_active")
 
+  // Chi nhánh (docs/DECISIONS.md #231) — NOT NULL, composite FK (tenant_id, branch_id) chặn trỏ chéo tenant.
+  branchId String @map("branch_id") @db.Uuid
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -202,10 +207,12 @@ model Floor {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [tenantId, branchId], references: [tenantId, id])
   rooms  Room[]
 
   // Đích của composite FK (tenant_id, id) từ room.
   @@unique([tenantId, id])
+  @@index([tenantId, branchId])
   @@map("floor")
 }
 
@@ -215,6 +222,9 @@ model Room {
   floorId  String? @map("floor_id") @db.Uuid
   name     String
   isActive Boolean @default(true) @map("is_active")
+
+  // Chi nhánh (docs/DECISIONS.md #231) — NOT NULL, composite FK (tenant_id, branch_id) chặn trỏ chéo tenant.
+  branchId String @map("branch_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -226,6 +236,7 @@ model Room {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant               Tenant              @relation(fields: [tenantId], references: [id])
+  branch               Branch              @relation(fields: [tenantId, branchId], references: [tenantId, id])
   // floor_id nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu
   // user_account.department ở trên).
   floor                Floor?              @relation(fields: [tenantId, floorId], references: [tenantId, id])
@@ -238,6 +249,7 @@ model Room {
   // Đích của composite FK (tenant_id, id) từ appointment (S2-05), doctor_room_session, exam_station,
   // user_account.default_room_id.
   @@unique([tenantId, id])
+  @@index([tenantId, branchId])
   @@map("room")
 }
 
@@ -253,6 +265,9 @@ model ExamStation {
   sortOrder Int     @default(0) @map("sort_order")
   isActive  Boolean @default(true) @map("is_active")
 
+  // Chi nhánh (docs/DECISIONS.md #231) — NOT NULL, composite FK (tenant_id, branch_id) chặn trỏ chéo tenant.
+  branchId String @map("branch_id") @db.Uuid
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -263,8 +278,10 @@ model ExamStation {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [tenantId, branchId], references: [tenantId, id])
   room   Room   @relation(fields: [tenantId, roomId], references: [tenantId, id])
 
+  @@index([tenantId, branchId])
   @@map("exam_station")
 }
 
@@ -334,6 +351,9 @@ model WorkShiftAssignment {
   workShiftId String   @map("work_shift_id") @db.Uuid
   workDate    DateTime @map("work_date") @db.Date
 
+  // Chi nhánh (docs/DECISIONS.md #231) — NOT NULL, composite FK (tenant_id, branch_id) chặn trỏ chéo tenant.
+  branchId String @map("branch_id") @db.Uuid
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -344,6 +364,7 @@ model WorkShiftAssignment {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  branch             Branch             @relation(fields: [tenantId, branchId], references: [tenantId, id])
   user               UserAccount        @relation(fields: [tenantId, userId], references: [tenantId, id])
   workShift          WorkShift          @relation(fields: [tenantId, workShiftId], references: [tenantId, id])
   swapsAsRequester   ShiftSwapRequest[] @relation("SwapRequesterAssignment")
@@ -351,6 +372,7 @@ model WorkShiftAssignment {
 
   // Đích FK composite từ `shift_swap_request` (#225).
   @@unique([tenantId, id])
+  @@index([tenantId, branchId])
   @@map("work_shift_assignment")
 }
 
@@ -377,6 +399,9 @@ model LeaveRequest {
   decidedAt      DateTime? @map("decided_at") @db.Timestamptz(6)
   decisionReason String?   @map("decision_reason")
 
+  // Chi nhánh (docs/DECISIONS.md #231) — mỗi chi nhánh có người duyệt riêng.
+  branchId String @map("branch_id") @db.Uuid
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -387,9 +412,11 @@ model LeaveRequest {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant    Tenant      @relation(fields: [tenantId], references: [id])
+  branch    Branch      @relation(fields: [tenantId, branchId], references: [tenantId, id])
   user      UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
   workShift WorkShift?  @relation(fields: [tenantId, workShiftId], references: [tenantId, id])
 
+  @@index([tenantId, branchId])
   @@map("leave_request")
 }
 
@@ -410,6 +437,9 @@ model WorkScheduleSubmission {
   returnReason String?   @map("return_reason")
   returnedAt   DateTime? @map("returned_at") @db.Timestamptz(6)
 
+  // Chi nhánh (docs/DECISIONS.md #231) — mỗi chi nhánh có người duyệt riêng.
+  branchId String @map("branch_id") @db.Uuid
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -420,8 +450,10 @@ model WorkScheduleSubmission {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant Tenant      @relation(fields: [tenantId], references: [id])
+  branch Branch      @relation(fields: [tenantId, branchId], references: [tenantId, id])
   user   UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
 
+  @@index([tenantId, branchId])
   @@map("work_schedule_submission")
 }
 
@@ -442,6 +474,9 @@ model ShiftSwapRequest {
   declineReason           String?   @map("decline_reason")
   managerSeenAt           DateTime? @map("manager_seen_at") @db.Timestamptz(6)
 
+  // Chi nhánh (docs/DECISIONS.md #231) — mỗi chi nhánh có người duyệt riêng.
+  branchId String @map("branch_id") @db.Uuid
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -452,11 +487,13 @@ model ShiftSwapRequest {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant                Tenant              @relation(fields: [tenantId], references: [id])
+  branch                Branch              @relation(fields: [tenantId, branchId], references: [tenantId, id])
   requester             UserAccount         @relation("SwapRequester", fields: [tenantId, requesterId], references: [tenantId, id])
   counterpart           UserAccount         @relation("SwapCounterpart", fields: [tenantId, counterpartId], references: [tenantId, id])
   requesterAssignment   WorkShiftAssignment @relation("SwapRequesterAssignment", fields: [tenantId, requesterAssignmentId], references: [tenantId, id])
   counterpartAssignment WorkShiftAssignment @relation("SwapCounterpartAssignment", fields: [tenantId, counterpartAssignmentId], references: [tenantId, id])
 
+  @@index([tenantId, branchId])
   @@map("shift_swap_request")
 }
 
@@ -471,6 +508,9 @@ model DoctorRoomSession {
   roomId   String   @map("room_id") @db.Uuid
   workDate DateTime @map("work_date") @db.Date
 
+  // Chi nhánh (docs/DECISIONS.md #231) — NOT NULL, composite FK (tenant_id, branch_id) chặn trỏ chéo tenant.
+  branchId String @map("branch_id") @db.Uuid
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -481,9 +521,11 @@ model DoctorRoomSession {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant Tenant      @relation(fields: [tenantId], references: [id])
+  branch Branch      @relation(fields: [tenantId, branchId], references: [tenantId, id])
   doctor UserAccount @relation(fields: [tenantId, doctorId], references: [tenantId, id])
   room   Room        @relation(fields: [tenantId, roomId], references: [tenantId, id])
 
+  @@index([tenantId, branchId])
   @@map("doctor_room_session")
 }
 
@@ -652,6 +694,9 @@ model UserAccount {
   lastFailedLoginAt DateTime? @map("last_failed_login_at") @db.Timestamptz(6)
   lockedUntil       DateTime? @map("locked_until") @db.Timestamptz(6)
 
+  // Chi nhánh làm việc lần gần nhất (#231) — "Nhớ lựa chọn": đăng nhập lần sau vào thẳng chi nhánh này nếu còn được gán.
+  lastBranchId String? @map("last_branch_id") @db.Uuid
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -662,6 +707,8 @@ model UserAccount {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant                  Tenant                   @relation(fields: [tenantId], references: [id])
+  lastBranch              Branch?                  @relation("UserLastBranch", fields: [tenantId, lastBranchId], references: [tenantId, id])
+  branches                UserBranch[]
   // Composite FK (tenant_id, department_id) -> department(tenant_id, id): department_id
   // nullable nên FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE — xem docs/DECISIONS.md).
   department              Department?              @relation(fields: [tenantId, departmentId], references: [tenantId, id])
@@ -710,6 +757,8 @@ model UserSession {
   replacedBySessionId String?  @map("replaced_by_session_id") @db.Uuid
   ip                  String?  @db.Text
   userAgent           String?  @map("user_agent") @db.Text
+  // Chi nhánh đang làm việc của phiên (docs/DECISIONS.md #231) — null = nhiều chi nhánh được gán mà chưa chọn.
+  branchId            String?  @map("branch_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -721,6 +770,7 @@ model UserSession {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  branch     Branch?       @relation("SessionBranch", fields: [tenantId, branchId], references: [tenantId, id])
   // Composite FK (tenant_id, user_id) -> user_account(tenant_id, id): chống trỏ chéo tenant.
   user       UserAccount   @relation(fields: [tenantId, userId], references: [tenantId, id])
   replacedBy UserSession?  @relation("SessionRotation", fields: [tenantId, replacedBySessionId], references: [tenantId, id])
@@ -917,12 +967,12 @@ model ReferenceCatalog {
   // Chỉ thêm `version` (bảng toàn hệ thống vẫn không có tenant_id/updated_at... như ghi ở trên).
   version            Int                        @default(1)
   // 8 cột bắt buộc (tenant_id đứng đầu) — danh mục RIÊNG THEO TENANT từ #230 (trước đó toàn hệ thống).
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
-  deletedReason String?   @map("deleted_reason")
-  createdBy     String    @map("created_by") @db.Uuid
-  updatedBy     String    @map("updated_by") @db.Uuid
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime?                  @map("deleted_at") @db.Timestamptz(6)
+  deletedReason      String?                    @map("deleted_reason")
+  createdBy          String                     @map("created_by") @db.Uuid
+  updatedBy          String                     @map("updated_by") @db.Uuid
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
@@ -982,11 +1032,11 @@ model ExamTypePrice {
 // tại trong DB nhưng KHÔNG hiển thị ở
 // UI cột trái (chỉ dùng nội bộ, để đồng nhất với Allergen) — cột phải mới hiện "Mã".
 model AllergenGroup {
-  id        String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId  String     @map("tenant_id") @db.Uuid
-  code      String
-  name      String
-  isActive  Boolean    @default(true) @map("is_active")
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  code          String
+  name          String
+  isActive      Boolean   @default(true) @map("is_active")
   // 8 cột bắt buộc (tenant_id đứng đầu) — danh mục RIÊNG THEO TENANT từ #230 (trước đó toàn hệ thống).
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1007,20 +1057,20 @@ model AllergenGroup {
 // `allergenGroupId` BẮT BUỘC (không nullable) — khác `department.departmentTypeId` (tuỳ chọn):
 // mỗi Dị nguyên luôn thuộc đúng 1 Nhóm dị nguyên, không có trạng thái "chưa phân loại".
 model Allergen {
-  id               String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId         String            @map("tenant_id") @db.Uuid
-  allergenGroupId  String            @map("allergen_group_id") @db.Uuid
-  code             String
-  name             String
-  isActive         Boolean           @default(true) @map("is_active")
+  id              String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  allergenGroupId String    @map("allergen_group_id") @db.Uuid
+  code            String
+  name            String
+  isActive        Boolean   @default(true) @map("is_active")
   // 8 cột bắt buộc (tenant_id đứng đầu) — danh mục RIÊNG THEO TENANT từ #230 (trước đó toàn hệ thống).
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
-  deletedReason String?   @map("deleted_reason")
-  version       Int       @default(1)
-  createdBy     String    @map("created_by") @db.Uuid
-  updatedBy     String    @map("updated_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason   String?   @map("deleted_reason")
+  version         Int       @default(1)
+  createdBy       String    @map("created_by") @db.Uuid
+  updatedBy       String    @map("updated_by") @db.Uuid
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id])
   allergenGroup    AllergenGroup     @relation(fields: [tenantId, allergenGroupId], references: [tenantId, id])
@@ -1221,7 +1271,6 @@ model CodeSequence {
   @@map("code_sequence")
 }
 
-
 // Hồ sơ hành chính bệnh nhân (S2-01, PAT-01) — xem .claude/docs/data-model.md, docs/ERD.md.
 // `nationalIdEnc`/`nationalIdHash`: mã hoá AES-256-GCM + hash HMAC-SHA256 tra trùng
 // (apps/api/src/infrastructure/crypto/pii-encryption.ts), CCCD tuỳ chọn (PAT-01) nên cả hai
@@ -1361,6 +1410,9 @@ model Appointment {
   // `patient.mergedIntoId`, chấp nhận rủi ro lý thuyết vì service là nơi duy nhất ghi cột này.
   rescheduledFromId String?           @map("rescheduled_from_id") @db.Uuid
 
+  // Chi nhánh (docs/DECISIONS.md #231) — NOT NULL, composite FK (tenant_id, branch_id) chặn trỏ chéo tenant.
+  branchId String @map("branch_id") @db.Uuid
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1371,6 +1423,7 @@ model Appointment {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  branch          Branch        @relation(fields: [tenantId, branchId], references: [tenantId, id])
   // Composite FK (tenant_id, patient_id/doctor_id/room_id) -> ...(tenant_id, id): chống trỏ chéo
   // tenant (C5, docs/ERD.md mục 4), room_id/patient_id nullable nên FK chỉ áp khi có giá trị.
   patient         Patient?      @relation(fields: [tenantId, patientId], references: [tenantId, id])
@@ -1392,6 +1445,7 @@ model Appointment {
   @@unique([tenantId, id])
   @@unique([tenantId, bookingCode])
   @@index([tenantId, phone])
+  @@index([tenantId, branchId])
   @@map("appointment")
 }
 
@@ -1507,6 +1561,9 @@ model Encounter {
   // trước tính năng này chưa từng có invoice nên gate không áp hồi tố).
   allowsDeferredPayment Boolean         @default(false) @map("allows_deferred_payment")
 
+  // Chi nhánh (docs/DECISIONS.md #231) — NOT NULL, composite FK (tenant_id, branch_id) chặn trỏ chéo tenant.
+  branchId String @map("branch_id") @db.Uuid
+
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1517,6 +1574,7 @@ model Encounter {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant         Tenant                   @relation(fields: [tenantId], references: [id])
+  branch         Branch                   @relation(fields: [tenantId, branchId], references: [tenantId, id])
   // Composite FK (tenant_id, patient_id/doctor_id/appointment_id) -> ...(tenant_id, id): chống trỏ
   // chéo tenant (C5, docs/ERD.md mục 4), appointment_id nullable nên FK chỉ áp khi có giá trị.
   patient        Patient                  @relation(fields: [tenantId, patientId], references: [tenantId, id])
@@ -1544,6 +1602,7 @@ model Encounter {
   @@unique([tenantId, encounterNo])
   // S5-05/S5-06 — tra "các lượt khám thuộc bệnh nhân X" (nhật ký hoạt động theo bệnh nhân, gộp hồ sơ).
   @@index([tenantId, patientId])
+  @@index([tenantId, branchId])
   @@map("encounter")
 }
 
@@ -2709,23 +2768,23 @@ model StockTransferLine {
 // mới supersedesId trỏ về bản cũ, bản cũ soft-delete). signaturePayload luôn NULL ở v1 (chữ ký
 // logic qua SignaturePort no-op).
 model Prescription {
-  id               String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId         String    @map("tenant_id") @db.Uuid
-  encounterId      String    @map("encounter_id") @db.Uuid
+  id                   String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId             String    @map("tenant_id") @db.Uuid
+  encounterId          String    @map("encounter_id") @db.Uuid
   // "Mã đơn thuốc thật" (docs/DECISIONS.md #169) — NULL khi còn nháp, sinh lúc KÝ. Đính chính giữ
   // nguyên mã gốc (nên bản gốc bị soft-delete + bản đính chính đang hiệu lực CỐ Ý trùng mã) — unique
   // chỉ áp dụng cho bản ĐANG hiệu lực: UNIQUE (tenant_id, prescription_no) WHERE prescription_no IS
   // NOT NULL AND deleted_at IS NULL, khai raw SQL trong migration (Prisma không biểu diễn được).
-  prescriptionNo   String?   @map("prescription_no")
-  signedAt         DateTime? @map("signed_at") @db.Timestamptz(6)
-  signedBy         String?   @map("signed_by") @db.Uuid
-  signaturePayload Bytes?    @map("signature_payload")
-  printedAt        DateTime? @map("printed_at") @db.Timestamptz(6)
-  supersedesId     String?   @map("supersedes_id") @db.Uuid
-  amendmentReason  String?   @map("amendment_reason")
+  prescriptionNo       String?   @map("prescription_no")
+  signedAt             DateTime? @map("signed_at") @db.Timestamptz(6)
+  signedBy             String?   @map("signed_by") @db.Uuid
+  signaturePayload     Bytes?    @map("signature_payload")
+  printedAt            DateTime? @map("printed_at") @db.Timestamptz(6)
+  supersedesId         String?   @map("supersedes_id") @db.Uuid
+  amendmentReason      String?   @map("amendment_reason")
   // "Bỏ qua cảnh báo trùng hoạt chất cho đơn này" (#228) — mảng `{ key, reason, by, byName, at }`; chỉ sửa được khi đơn còn nháp
   // (trigger bất biến sau ký chặn đổi cột này). Đơn đính chính là dòng mới nên bắt đầu từ `[]`.
-  acknowledgedWarnings Json    @default("[]") @map("acknowledged_warnings")
+  acknowledgedWarnings Json      @default("[]") @map("acknowledged_warnings")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -4631,4 +4690,74 @@ model ParaclinicalResultImage {
 
   @@unique([tenantId, id])
   @@map("paraclinical_result_image")
+}
+
+// "Chi nhánh" (docs/DECISIONS.md #231, mô hình B của #075) — `tenant` = CÔNG TY, chi nhánh nằm BÊN TRONG tenant.
+// Mọi tenant có ÍT NHẤT 1 chi nhánh mặc định (tạo cùng lúc với tenant, giống "Khoa chung" #064); phòng khám 1 chi nhánh
+// không thấy khái niệm này trên giao diện. `code` tự sinh qua CodeSequenceRepository (prefix "CN"), không nhập tay.
+// Đúng 1 dòng `is_default` mỗi tenant — partial unique index raw SQL trong migration (Prisma không biểu diễn được).
+model Branch {
+  id        String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  code      String
+  name      String
+  address   String?
+  phone     String?
+  isDefault Boolean @default(false) @map("is_default")
+  isActive  Boolean @default(true) @map("is_active")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant                  Tenant                   @relation(fields: [tenantId], references: [id])
+  userBranches            UserBranch[]
+  lastBranchUsers         UserAccount[]            @relation("UserLastBranch")
+  sessions                UserSession[]            @relation("SessionBranch")
+  floors                  Floor[]
+  rooms                   Room[]
+  examStations            ExamStation[]
+  encounters              Encounter[]
+  appointments            Appointment[]
+  workShiftAssignments    WorkShiftAssignment[]
+  doctorRoomSessions      DoctorRoomSession[]
+  leaveRequests           LeaveRequest[]
+  workScheduleSubmissions WorkScheduleSubmission[]
+  shiftSwapRequests       ShiftSwapRequest[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, code])
+  @@map("branch")
+}
+
+// Nhân viên được làm việc ở chi nhánh nào (#231) — nguồn sự thật duy nhất cho "tôi được vào chi nhánh nào". Tenant chỉ có 1
+// chi nhánh đang hoạt động thì MỌI tài khoản coi như thuộc chi nhánh đó (không cần dòng nào) — xem `BranchAccessService`.
+model UserBranch {
+  id       String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+  branchId String @map("branch_id") @db.Uuid
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id])
+  user   UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
+  branch Branch      @relation(fields: [tenantId, branchId], references: [tenantId, id])
+
+  // Partial unique (tenant_id, user_id, branch_id) WHERE deleted_at IS NULL — raw SQL trong migration, cùng khuôn user_role.
+  @@index([tenantId, userId])
+  @@index([tenantId, branchId])
+  @@map("user_branch")
 }

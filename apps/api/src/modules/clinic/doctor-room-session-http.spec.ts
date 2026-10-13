@@ -9,7 +9,7 @@ import * as argon2 from 'argon2';
 import { AppModule } from '../../app.module';
 import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
-import { createTwoTenantFixture, SYSTEM_TEST_ACTOR, type TwoTenantFixture } from '../../testing/tenant-fixture';
+import { createTwoTenantFixture, getDefaultBranchId, SYSTEM_TEST_ACTOR, type TwoTenantFixture } from '../../testing/tenant-fixture';
 import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-permissions';
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
 
@@ -57,7 +57,7 @@ describe('HTTP e2e — /api/v1/rooms/options, /api/v1/rooms/my-session', () => {
 
   async function createRoom(tenantId: string, name: string): Promise<string> {
     const created = await privileged.room.create({
-      data: { tenantId, name, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+      data: { tenantId, branchId: await getDefaultBranchId(privileged, tenantId), name, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
     });
     return created.id;
   }

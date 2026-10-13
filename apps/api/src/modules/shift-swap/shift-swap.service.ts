@@ -88,7 +88,7 @@ export class ShiftSwapService {
     if (isMonthLocked(month, today, graceDays)) return 'Lịch tháng này đã khoá.';
 
     if ((await this.clinicConfigReader.getAllowStaffSelfScheduleEnabled(tenantId)) && isMonthOpenForSelfRegistration(month, today)) {
-      const statuses = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.submissionRepository.statusByMonth(tx, tenantId, a.userId, [month]));
+      const statuses = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.submissionRepository.statusByMonth(tx, tenantId, a.branchId, a.userId, [month]));
       if ((statuses.get(month) ?? 'DRAFT') !== 'APPROVED') return 'Lịch tháng này chưa được duyệt nên chưa đổi ca được.';
     }
 
@@ -96,10 +96,10 @@ export class ShiftSwapService {
     if (pending) return 'Ca này đang có một yêu cầu đổi ca khác.';
 
     const window = leaveWindowFromShift(a.workShift.startTime, a.workShift.endTime);
-    const leaves = await this.leaveReader.getLeaveInRange(tenantId, [a.userId], date, date);
+    const leaves = await this.leaveReader.getLeaveInRange(tenantId, a.branchId, [a.userId], date, date);
     if (leaves.some((l) => windowsOverlap(window, { startMinute: l.startMinute, endMinute: l.endMinute }))) return 'Ca này đang có đơn xin nghỉ.';
 
-    const [appointments] = await this.impactReader.listScheduledInWindows(tenantId, [
+    const [appointments] = await this.impactReader.listScheduledInWindows(tenantId, a.branchId, [
       { doctorId: a.userId, date, startMinute: window.startMinute, endMinute: window.endMinute },
     ]);
     if (appointments && appointments.length > 0) return `Đang có ${appointments.length} lịch hẹn trong ca này.`;
@@ -119,8 +119,8 @@ export class ShiftSwapService {
     }
     // Người nhận không được đã có đúng ca sắp nhận (unique `(user, ngày, ca)`).
     const [mineDay, theirsDay] = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => [
-      await this.assignmentRepository.listForUsersOnDate(tx, tenantId, [mine.userId], dateOf(theirs)),
-      await this.assignmentRepository.listForUsersOnDate(tx, tenantId, [theirs.userId], dateOf(mine)),
+      await this.assignmentRepository.listForUsersOnDate(tx, tenantId, mine.branchId, [mine.userId], dateOf(theirs)),
+      await this.assignmentRepository.listForUsersOnDate(tx, tenantId, theirs.branchId, [theirs.userId], dateOf(mine)),
     ]);
     if (mineDay.some((r) => r.id !== mine.id && r.workShiftId === theirs.workShiftId)) throw new ShiftSwapBlockedError('Bạn đã có ca của đồng nghiệp vào ngày đó.');
     if (theirsDay.some((r) => r.id !== theirs.id && r.workShiftId === mine.workShiftId)) throw new ShiftSwapBlockedError('Đồng nghiệp đã có ca của bạn vào ngày đó.');
@@ -133,11 +133,11 @@ export class ShiftSwapService {
 
   // ---------------------------------------------------------------- thao tác
 
-  async create(tenantId: string, actorId: string, dto: CreateShiftSwapRequest, meta: RequestMeta): Promise<ShiftSwapItem> {
+  async create(tenantId: string, branchId: string, actorId: string, dto: CreateShiftSwapRequest, meta: RequestMeta): Promise<ShiftSwapItem> {
     const today = getVietnamDateString();
     const [mine, theirs] = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => [
-      await this.assignmentRepository.findById(tx, tenantId, dto.requesterAssignmentId),
-      await this.assignmentRepository.findById(tx, tenantId, dto.counterpartAssignmentId),
+      await this.assignmentRepository.findById(tx, tenantId, branchId, dto.requesterAssignmentId),
+      await this.assignmentRepository.findById(tx, tenantId, branchId, dto.counterpartAssignmentId),
     ]);
     // Ca của người khác/không tồn tại → 404 (không lộ ca ngoài phạm vi).
     if (!mine || mine.userId !== actorId || !theirs || theirs.userId === actorId) throw new NotFoundException();
@@ -146,7 +146,7 @@ export class ShiftSwapService {
     const row = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       let created: ShiftSwapRow;
       try {
-        created = await this.repository.create(tx, tenantId, actorId, {
+        created = await this.repository.create(tx, tenantId, branchId, actorId, {
           requesterId: actorId,
           requesterAssignmentId: mine.id,
           counterpartId: theirs.userId,
@@ -170,22 +170,22 @@ export class ShiftSwapService {
       });
       return created;
     });
-    const [item] = await this.toItems(tenantId, actorId, 'personal', [row]);
+    const [item] = await this.toItems(tenantId, branchId, actorId, 'personal', [row]);
     return item as ShiftSwapItem;
   }
 
   /** Người NHẬN xác nhận → đổi chủ 2 ca ngay trong một transaction. */
-  async accept(tenantId: string, actorId: string, id: string, dto: AcceptShiftSwapRequest, meta: RequestMeta): Promise<ShiftSwapItem> {
+  async accept(tenantId: string, branchId: string, actorId: string, id: string, dto: AcceptShiftSwapRequest, meta: RequestMeta): Promise<ShiftSwapItem> {
     const today = getVietnamDateString();
-    const row = await this.getRow(tenantId, id);
+    const row = await this.getRow(tenantId, branchId, id);
     if (row.counterpartId !== actorId) throw new ShiftSwapNotAllowedActorError();
     if (row.status !== 'PENDING') throw new ShiftSwapInvalidStatusError();
     if (this.isExpired(row, today)) throw new ShiftSwapExpiredError();
 
     // Đọc lại 2 ca (có thể đã bị quản lý sửa/xoá từ lúc gửi) rồi kiểm lại toàn bộ điều kiện.
     const [mine, theirs] = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => [
-      await this.assignmentRepository.findById(tx, tenantId, row.requesterAssignmentId),
-      await this.assignmentRepository.findById(tx, tenantId, row.counterpartAssignmentId),
+      await this.assignmentRepository.findById(tx, tenantId, branchId, row.requesterAssignmentId),
+      await this.assignmentRepository.findById(tx, tenantId, branchId, row.counterpartAssignmentId),
     ]);
     if (!mine || !theirs || mine.userId !== row.requesterId || theirs.userId !== row.counterpartId) {
       throw new ShiftSwapBlockedError('Ca đã bị thay đổi sau khi gửi yêu cầu — không đổi được nữa.');
@@ -198,8 +198,8 @@ export class ShiftSwapService {
       if (deletedMine === 0 || deletedTheirs === 0) throw new ConcurrentModificationError();
       try {
         // Ca mới đứng tên `SYSTEM_ACTOR_ID` (không phải người dùng) → nhân viên không tự xoá được ca vừa đổi.
-        await this.assignmentRepository.create(tx, tenantId, row.requesterId, theirs.workShiftId, dateOf(theirs), SYSTEM_ACTOR_ID);
-        await this.assignmentRepository.create(tx, tenantId, row.counterpartId, mine.workShiftId, dateOf(mine), SYSTEM_ACTOR_ID);
+        await this.assignmentRepository.create(tx, tenantId, branchId, row.requesterId, theirs.workShiftId, dateOf(theirs), SYSTEM_ACTOR_ID);
+        await this.assignmentRepository.create(tx, tenantId, branchId, row.counterpartId, mine.workShiftId, dateOf(mine), SYSTEM_ACTOR_ID);
       } catch (err) {
         if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
           throw new ShiftSwapBlockedError('Một trong hai người đã có ca này vào ngày đó — không đổi được.');
@@ -225,11 +225,11 @@ export class ShiftSwapService {
         userAgent: meta.userAgent,
       });
     });
-    return this.getItem(tenantId, actorId, 'personal', id);
+    return this.getItem(tenantId, branchId, actorId, 'personal', id);
   }
 
-  async decline(tenantId: string, actorId: string, id: string, dto: DeclineShiftSwapRequest, meta: RequestMeta): Promise<ShiftSwapItem> {
-    const row = await this.getRow(tenantId, id);
+  async decline(tenantId: string, branchId: string, actorId: string, id: string, dto: DeclineShiftSwapRequest, meta: RequestMeta): Promise<ShiftSwapItem> {
+    const row = await this.getRow(tenantId, branchId, id);
     if (row.counterpartId !== actorId) throw new ShiftSwapNotAllowedActorError();
     if (row.status !== 'PENDING') throw new ShiftSwapInvalidStatusError();
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -246,12 +246,12 @@ export class ShiftSwapService {
         userAgent: meta.userAgent,
       });
     });
-    return this.getItem(tenantId, actorId, 'personal', id);
+    return this.getItem(tenantId, branchId, actorId, 'personal', id);
   }
 
   /** Người GỬI huỷ khi người nhận chưa xác nhận. */
-  async cancel(tenantId: string, actorId: string, id: string, dto: CancelShiftSwapRequest, meta: RequestMeta): Promise<ShiftSwapItem> {
-    const row = await this.getRow(tenantId, id);
+  async cancel(tenantId: string, branchId: string, actorId: string, id: string, dto: CancelShiftSwapRequest, meta: RequestMeta): Promise<ShiftSwapItem> {
+    const row = await this.getRow(tenantId, branchId, id);
     if (row.requesterId !== actorId) throw new ShiftSwapNotAllowedActorError();
     if (row.status !== 'PENDING') throw new ShiftSwapInvalidStatusError();
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -268,50 +268,50 @@ export class ShiftSwapService {
         userAgent: meta.userAgent,
       });
     });
-    return this.getItem(tenantId, actorId, 'personal', id);
+    return this.getItem(tenantId, branchId, actorId, 'personal', id);
   }
 
   // ---------------------------------------------------------------- đọc
 
-  async list(tenantId: string, actorId: string, dataScope: DataScope, query: ListShiftSwapsQuery): Promise<ListShiftSwapsResponse> {
+  async list(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, query: ListShiftSwapsQuery): Promise<ListShiftSwapsResponse> {
     const today = getVietnamDateString();
     // `EXPIRED` là trạng thái dẫn xuất từ `PENDING` → đọc `PENDING` rồi lọc theo hạn.
     const dbStatus = query.status === 'EXPIRED' ? 'PENDING' : query.status;
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.repository.list(tx, tenantId, { status: dbStatus as 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | undefined, involvingUserId: dataScope === 'personal' ? actorId : undefined }),
+      this.repository.list(tx, tenantId, branchId, { status: dbStatus as 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | undefined, involvingUserId: dataScope === 'personal' ? actorId : undefined }),
     );
     const filtered = rows.filter((r) => {
       if (query.status === 'EXPIRED') return this.isExpired(r, today);
       if (query.status === 'PENDING') return !this.isExpired(r, today);
       return true;
     });
-    return { items: await this.toItems(tenantId, actorId, dataScope, filtered) };
+    return { items: await this.toItems(tenantId, branchId, actorId, dataScope, filtered) };
   }
 
   /** Số yêu cầu đang chờ MÌNH xác nhận (còn hạn) — dải thông báo "Lịch làm việc của tôi". */
-  async incomingCount(tenantId: string, actorId: string): Promise<ShiftSwapCountResponse> {
+  async incomingCount(tenantId: string, branchId: string, actorId: string): Promise<ShiftSwapCountResponse> {
     const today = getVietnamDateString();
-    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.listPendingForCounterpart(tx, tenantId, actorId));
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.listPendingForCounterpart(tx, tenantId, branchId, actorId));
     return { count: rows.filter((r) => !this.isExpired(r, today)).length };
   }
 
-  async unseenCount(tenantId: string): Promise<ShiftSwapCountResponse> {
-    return { count: await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.countUnseen(tx, tenantId)) };
+  async unseenCount(tenantId: string, branchId: string): Promise<ShiftSwapCountResponse> {
+    return { count: await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.countUnseen(tx, tenantId, branchId)) };
   }
 
-  async markSeen(tenantId: string, actorId: string): Promise<ShiftSwapCountResponse> {
-    return { count: await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.markSeen(tx, tenantId, actorId)) };
+  async markSeen(tenantId: string, branchId: string, actorId: string): Promise<ShiftSwapCountResponse> {
+    return { count: await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.markSeen(tx, tenantId, branchId, actorId)) };
   }
 
   /** Đồng nghiệp có ca sắp tới (trừ chính mình). */
-  async colleagues(tenantId: string, actorId: string): Promise<ListShiftSwapColleaguesResponse> {
+  async colleagues(tenantId: string, branchId: string, actorId: string): Promise<ListShiftSwapColleaguesResponse> {
     const today = getVietnamDateString();
-    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.listUpcomingAssignments(tx, tenantId, today, actorId));
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.listUpcomingAssignments(tx, tenantId, branchId, today, actorId));
     const userIds = [...new Set(rows.map((r) => r.userId))];
     if (userIds.length === 0) return { items: [] };
     const [names, doctors, departmentNames] = await Promise.all([
       this.doctorDirectory.getUserFullNames(tenantId, userIds),
-      this.doctorDirectory.listActiveDoctors(tenantId),
+      this.doctorDirectory.listActiveDoctors(tenantId, branchId),
       this.doctorDirectory.getDepartmentNames(tenantId),
     ]);
     const doctorById = new Map(doctors.map((d) => [d.id, d]));
@@ -327,10 +327,10 @@ export class ShiftSwapService {
   }
 
   /** Ca sắp tới của một đồng nghiệp kèm cờ đổi được/lý do chặn — chọn "ca bạn nhận". */
-  async colleagueAssignments(tenantId: string, actorId: string, userId: string): Promise<ListShiftSwapCandidatesResponse> {
+  async colleagueAssignments(tenantId: string, branchId: string, actorId: string, userId: string): Promise<ListShiftSwapCandidatesResponse> {
     if (userId === actorId) throw new NotFoundException();
     const today = getVietnamDateString();
-    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.listUpcomingAssignments(tx, tenantId, today, actorId, userId));
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.listUpcomingAssignments(tx, tenantId, branchId, today, actorId, userId));
     const items = await Promise.all(
       rows.map(async (a) => {
         const blockedReason = await this.blockedReason(tenantId, a, today);
@@ -341,8 +341,8 @@ export class ShiftSwapService {
   }
 
   /** Kiểm một ca CỦA MÌNH có đổi được không (cảnh báo trong hộp Đổi ca trước khi chọn ca nhận). */
-  async checkOwnAssignment(tenantId: string, actorId: string, assignmentId: string): Promise<ShiftSwapCheckResponse> {
-    const a = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.assignmentRepository.findById(tx, tenantId, assignmentId));
+  async checkOwnAssignment(tenantId: string, branchId: string, actorId: string, assignmentId: string): Promise<ShiftSwapCheckResponse> {
+    const a = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.assignmentRepository.findById(tx, tenantId, branchId, assignmentId));
     if (!a || a.userId !== actorId) throw new NotFoundException();
     const blockedReason = await this.blockedReason(tenantId, a, getVietnamDateString());
     return { swappable: blockedReason === null, blockedReason };
@@ -350,18 +350,18 @@ export class ShiftSwapService {
 
   // ---------------------------------------------------------------- nội bộ
 
-  private async getRow(tenantId: string, id: string): Promise<ShiftSwapRow> {
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.findById(tx, tenantId, id));
+  private async getRow(tenantId: string, branchId: string, id: string): Promise<ShiftSwapRow> {
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.repository.findById(tx, tenantId, branchId, id));
     if (!row) throw new NotFoundException();
     return row;
   }
 
-  private async getItem(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<ShiftSwapItem> {
-    const [item] = await this.toItems(tenantId, actorId, dataScope, [await this.getRow(tenantId, id)]);
+  private async getItem(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<ShiftSwapItem> {
+    const [item] = await this.toItems(tenantId, branchId, actorId, dataScope, [await this.getRow(tenantId, branchId, id)]);
     return item as ShiftSwapItem;
   }
 
-  private async toItems(tenantId: string, actorId: string, dataScope: DataScope, rows: ShiftSwapRow[]): Promise<ShiftSwapItem[]> {
+  private async toItems(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, rows: ShiftSwapRow[]): Promise<ShiftSwapItem[]> {
     if (rows.length === 0) return [];
     const today = getVietnamDateString();
     const names = await this.doctorDirectory.getUserFullNames(tenantId, [...new Set(rows.flatMap((r) => [r.requesterId, r.counterpartId]))]);

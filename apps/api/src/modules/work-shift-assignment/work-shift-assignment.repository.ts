@@ -17,13 +17,14 @@ export class WorkShiftAssignmentRepository {
   async create(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     userId: string,
     workShiftId: string,
     workDate: string,
     actorId: string,
   ): Promise<WorkShiftAssignmentRow> {
     return tx.workShiftAssignment.create({
-      data: { tenantId, userId, workShiftId, workDate: new Date(workDate), createdBy: actorId, updatedBy: actorId },
+      data: { tenantId, branchId, userId, workShiftId, workDate: new Date(workDate), createdBy: actorId, updatedBy: actorId },
       include: { workShift: true },
     });
   }
@@ -39,15 +40,16 @@ export class WorkShiftAssignmentRepository {
    */
   async createManySkipDuplicates(
     tx: Prisma.TransactionClient,
-    rows: { tenantId: string; userId: string; workShiftId: string; workDate: Date; createdBy: string; updatedBy: string }[],
+    rows: { tenantId: string; branchId: string; userId: string; workShiftId: string; workDate: Date; createdBy: string; updatedBy: string }[],
   ): Promise<number> {
     if (rows.length === 0) return 0;
     const result = await tx.workShiftAssignment.createMany({ data: rows, skipDuplicates: true });
     return result.count;
   }
 
-  async findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<WorkShiftAssignmentRow | null> {
-    return tx.workShiftAssignment.findFirst({ where: { tenantId, id, deletedAt: null }, include: { workShift: true } });
+  /** Ca xếp ở chi nhánh khác coi như không tồn tại (docs/DECISIONS.md #231). */
+  async findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<WorkShiftAssignmentRow | null> {
+    return tx.workShiftAssignment.findFirst({ where: { tenantId, branchId, id, deletedAt: null }, include: { workShift: true } });
   }
 
   async softDelete(
@@ -68,11 +70,13 @@ export class WorkShiftAssignmentRepository {
   async list(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     filter: { from: string; to: string; userId?: string },
   ): Promise<WorkShiftAssignmentRow[]> {
     return tx.workShiftAssignment.findMany({
       where: {
         tenantId,
+        branchId,
         deletedAt: null,
         workDate: { gte: new Date(filter.from), lte: new Date(filter.to) },
         ...(filter.userId ? { userId: filter.userId } : {}),
@@ -82,16 +86,20 @@ export class WorkShiftAssignmentRepository {
     });
   }
 
-  /** Dùng cho "Sao chép tuần trước" — toàn bộ ca đã đăng ký của 1 người trong khoảng ngày nguồn. */
+  /**
+   * Toàn bộ ca đã đăng ký của 1 người trong khoảng ngày. `branchId` có = chỉ ca xếp ở chi nhánh đó ("Sao chép tuần trước" — chỉ chép ca của chi nhánh
+   * đang làm); bỏ trống = mọi chi nhánh ("Gửi duyệt đăng ký ca cả tháng" tính theo NGƯỜI, quota nghỉ tối thiểu phải tính cả ca ở chi nhánh khác).
+   */
   async listForUserInRange(
     tx: Prisma.TransactionClient,
     tenantId: string,
     userId: string,
     from: string,
     to: string,
+    branchId?: string,
   ): Promise<WorkShiftAssignmentRow[]> {
     return tx.workShiftAssignment.findMany({
-      where: { tenantId, userId, deletedAt: null, workDate: { gte: new Date(from), lte: new Date(to) } },
+      where: { tenantId, ...(branchId ? { branchId } : {}), userId, deletedAt: null, workDate: { gte: new Date(from), lte: new Date(to) } },
       include: { workShift: true },
     });
   }
@@ -119,12 +127,13 @@ export class WorkShiftAssignmentRepository {
   async listForUsersOnDate(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     userIds: string[],
     date: string,
   ): Promise<WorkShiftAssignmentRow[]> {
     if (userIds.length === 0) return [];
     return tx.workShiftAssignment.findMany({
-      where: { tenantId, userId: { in: userIds }, deletedAt: null, workDate: new Date(date) },
+      where: { tenantId, branchId, userId: { in: userIds }, deletedAt: null, workDate: new Date(date) },
       include: { workShift: true },
     });
   }

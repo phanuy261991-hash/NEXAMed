@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nes
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
-import { changePasswordRequestSchema, loginRequestSchema } from '@nexamed/shared';
+import { changePasswordRequestSchema, loginRequestSchema, switchBranchRequestSchema } from '@nexamed/shared';
 import { RefreshTokenInvalidError } from '@nexamed/core';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { AuthService, type RequestMeta } from './auth.service';
@@ -58,8 +58,21 @@ export class AuthController {
   @HttpCode(200)
   async me(@Req() req: Request) {
     // req.user luôn có giá trị ở đây — JwtAuthGuard đã throw UnauthorizedException trước đó nếu thiếu.
+    const { userId, tenantId, branchId } = req.user!;
+    return this.authService.getCurrentUser(tenantId, userId, branchId);
+  }
+
+  /**
+   * Đổi chi nhánh làm việc (docs/DECISIONS.md #231) — chỉ `JwtAuthGuard` (tự phục vụ, không cần quyền). Cần cookie refresh để biết phiên nào đang đổi
+   * (cookie có `path=/api/v1/auth` nên route này nhận được).
+   */
+  @Post('switch-branch')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async switchBranch(@Body() body: unknown, @Req() req: Request) {
+    const dto = switchBranchRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.authService.getCurrentUser(tenantId, userId);
+    return this.authService.switchBranch(tenantId, userId, this.readRefreshCookie(req), dto, this.requestMeta(req));
   }
 
   /**

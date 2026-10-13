@@ -37,6 +37,7 @@ export class DiagnosisSuggestionService {
    */
   async suggest(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     encounterId: string,
@@ -52,7 +53,7 @@ export class DiagnosisSuggestionService {
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounter = await this.encounterRepository.findByIdWithConsultationContext(tx, tenantId, encounterId);
-      if (!encounter || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
+      if (!encounter || encounter.branchId !== branchId || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
         throw new NotFoundException();
       }
       if (!enabled || (encounter.status !== 'IN_CONSULTATION' && encounter.status !== 'COMPLETED')) {

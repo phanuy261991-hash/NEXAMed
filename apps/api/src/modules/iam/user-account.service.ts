@@ -15,6 +15,8 @@ import {
   UserAccountDuplicateUsernameError,
   type ReferenceCatalogReaderPort,
   type StoragePort,
+  BranchInvalidReferenceError,
+  UserBranchRequiredError,
 } from '@nexamed/core';
 import type {
   CreateUserAccountRequest,
@@ -35,6 +37,7 @@ import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
 import { UserAccountRepository, type UpdateUserAccountData } from './user-account.repository';
 import { RoleRepository } from './role.repository';
+import { BranchRepository } from './branch.repository';
 
 function isUsernameConflict(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
@@ -69,6 +72,7 @@ export class UserAccountService {
     private readonly userAccountRepository: UserAccountRepository,
     private readonly userAccountAuthRepository: UserAccountAuthRepository,
     private readonly sessionRepository: SessionRepository,
+    private readonly branchRepository: BranchRepository,
     private readonly roleRepository: RoleRepository,
     private readonly businessCodeService: BusinessCodeService,
     private readonly configService: ConfigService,
@@ -87,9 +91,33 @@ export class UserAccountService {
     return this.referenceCatalogReader.findActiveByCode(tenantId, EMPLOYMENT_STATUS_CATEGORY, employmentStatusCode);
   }
 
+  /**
+   * Chi nhánh được gán của tài khoản (docs/DECISIONS.md #231) — công ty ≤ 1 chi nhánh hoạt động thì luôn là chi nhánh đó (mọi tài khoản thuộc nó).
+   */
+  private async effectiveBranchIds(tx: Prisma.TransactionClient, tenantId: string, userId: string): Promise<string[]> {
+    const active = await this.branchRepository.list(tx, tenantId, false);
+    if (active.length <= 1) return active.map((b) => b.id);
+    return (await this.branchRepository.mapAssignedBranchIds(tx, tenantId, [userId])).get(userId) ?? [];
+  }
+
+  /**
+   * Kiểm `branchIds` gửi lên: phải là chi nhánh đang hoạt động của công ty; công ty ≤ 1 chi nhánh thì LUÔN là chi nhánh đó (bỏ qua giá trị gửi lên);
+   * từ 2 chi nhánh trở lên mà không có chi nhánh nào → `USER_BRANCH_REQUIRED`.
+   */
+  private async resolveBranchIds(tx: Prisma.TransactionClient, tenantId: string, requested: string[] | undefined, fallbackBranchId: string | null): Promise<string[]> {
+    const active = await this.branchRepository.list(tx, tenantId, false);
+    if (active.length <= 1) return active.map((b) => b.id);
+    const wanted = [...new Set(requested ?? (fallbackBranchId ? [fallbackBranchId] : []))];
+    if (wanted.length === 0) throw new UserBranchRequiredError();
+    const activeIds = new Set(active.map((b) => b.id));
+    if (wanted.some((id) => !activeIds.has(id))) throw new BranchInvalidReferenceError();
+    return wanted;
+  }
+
   async createUserAccount(
     tenantId: string,
     actorId: string,
+    currentBranchId: string | null,
     dto: CreateUserAccountRequest,
     meta: RequestMeta,
   ): Promise<UserAccountSummary> {
@@ -151,6 +179,9 @@ export class UserAccountService {
       }
 
       await this.userAccountRepository.createUserRoles(tx, tenantId, actorId, created.id, roleIds);
+      // Chi nhánh làm việc (#231): bỏ trống = chi nhánh đang làm của người tạo.
+      const branchIds = await this.resolveBranchIds(tx, tenantId, dto.branchIds, currentBranchId);
+      await this.branchRepository.replaceAssignments(tx, tenantId, actorId, created.id, branchIds);
       const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, created.id);
 
       await writeAuditLog(tx, tenantId, {
@@ -163,7 +194,7 @@ export class UserAccountService {
         userAgent: meta.userAgent,
       });
 
-      return this.toSummary(created, roleNames);
+      return this.toSummary(created, roleNames, branchIds);
     });
   }
 
@@ -174,7 +205,7 @@ export class UserAccountService {
         throw new NotFoundException();
       }
       const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, id);
-      return this.toSummary(user, roleNames);
+      return this.toSummary(user, roleNames, await this.effectiveBranchIds(tx, tenantId, id));
     });
   }
 
@@ -188,10 +219,12 @@ export class UserAccountService {
 
       // Quy mô nhân sự một phòng khám 1-3 bác sĩ rất nhỏ — chấp nhận N+1 truy vấn vai trò thay
       // vì tối ưu bằng join sớm cho quy mô chưa từng xảy ra (.claude/docs/coding-standards.md).
+      const activeBranches = await this.branchRepository.list(tx, tenantId, false);
+      const assigned = activeBranches.length <= 1 ? null : await this.branchRepository.mapAssignedBranchIds(tx, tenantId, items.map((u) => u.id));
       const summaries = await Promise.all(
         items.map(async (user) => {
           const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, user.id);
-          return this.toSummary(user, roleNames);
+          return this.toSummary(user, roleNames, assigned === null ? activeBranches.map((b) => b.id) : (assigned.get(user.id) ?? []));
         }),
       );
 
@@ -293,10 +326,30 @@ export class UserAccountService {
       // (giá trị CUỐI CÙNG đã tính qua `resolveAccountActiveState`) — không phải `dto.isActive`
       // thô, vì Trạng thái làm việc "Nghỉ việc" có thể tự ép `false` dù client không gửi
       // `isActive` (mở rộng ADM-01).
+      let branchesChanged = false;
+      if (dto.branchIds !== undefined) {
+        const branchIds = await this.resolveBranchIds(tx, tenantId, dto.branchIds, null);
+        branchesChanged = await this.branchRepository.replaceAssignments(tx, tenantId, actorId, id, branchIds);
+        if (branchesChanged) {
+          await writeAuditLog(tx, tenantId, {
+            actorId,
+            action: 'user_account.branches_updated',
+            entityType: 'user_account',
+            entityId: id,
+            afterJson: { branchIds },
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+          });
+        }
+      }
+
       if (patch.isActive === false) {
         await this.sessionRepository.revokeAllForUser(tx, tenantId, id, 'account_disabled', actorId);
       } else if (dto.roleIds !== undefined) {
         await this.sessionRepository.revokeAllForUser(tx, tenantId, id, 'role_changed', actorId);
+      } else if (branchesChanged) {
+        // Đổi chi nhánh được làm → buộc đăng nhập lại để phiên không còn giữ chi nhánh đã bị gỡ (#231).
+        await this.sessionRepository.revokeAllForUser(tx, tenantId, id, 'branch_changed', actorId);
       }
 
       const updated = await this.userAccountRepository.findById(tx, tenantId, id);
@@ -304,7 +357,7 @@ export class UserAccountService {
         throw new NotFoundException();
       }
       const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, id);
-      return this.toSummary(updated, roleNames);
+      return this.toSummary(updated, roleNames, await this.effectiveBranchIds(tx, tenantId, id));
     });
   }
 
@@ -345,7 +398,7 @@ export class UserAccountService {
         throw new NotFoundException();
       }
       const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, actorId);
-      return this.toSummary(updated, roleNames);
+      return this.toSummary(updated, roleNames, await this.effectiveBranchIds(tx, tenantId, actorId));
     });
   }
 
@@ -395,7 +448,7 @@ export class UserAccountService {
         throw new NotFoundException();
       }
       const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, id);
-      return this.toSummary(updated, roleNames);
+      return this.toSummary(updated, roleNames, await this.effectiveBranchIds(tx, tenantId, id));
     });
   }
 
@@ -456,7 +509,7 @@ export class UserAccountService {
         throw new NotFoundException();
       }
       const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, id);
-      return this.toSummary(updated, roleNames);
+      return this.toSummary(updated, roleNames, await this.effectiveBranchIds(tx, tenantId, id));
     });
   }
 
@@ -471,7 +524,7 @@ export class UserAccountService {
     return `/api/v1/files/${token}`;
   }
 
-  private toSummary(user: UserAccount, roleNames: readonly string[]): UserAccountSummary {
+  private toSummary(user: UserAccount, roleNames: readonly string[], branchIds: readonly string[]): UserAccountSummary {
     return {
       id: user.id,
       employeeCode: user.employeeCode,
@@ -496,6 +549,7 @@ export class UserAccountService {
       signatureUrl: user.signatureKey ? this.signSignatureUrl(user.tenantId, user.signatureKey) : null,
       isActive: user.isActive,
       roleNames: [...roleNames],
+      branchIds: [...branchIds],
       version: user.version,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),

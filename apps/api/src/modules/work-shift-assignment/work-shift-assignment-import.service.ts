@@ -13,6 +13,7 @@ import { UserAccountRepository } from '../iam/user-account.repository';
 import { WorkShiftService } from '../clinic/work-shift.service';
 import { assertMonthWritable, canBypassMonthLock } from './month-lock.guard';
 import { WorkShiftAssignmentRepository } from './work-shift-assignment.repository';
+import { filterUserIdsInBranch } from '../../infrastructure/persistence/branch-membership.helper';
 
 const WEEKDAY_ABBR = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
@@ -99,12 +100,12 @@ export class WorkShiftAssignmentImportService {
     return Buffer.from(buffer);
   }
 
-  async buildExport(tenantId: string, month: string): Promise<Buffer> {
+  async buildExport(tenantId: string, branchId: string, month: string): Promise<Buffer> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const dayCount = daysInMonth(month);
       const from = `${month}-01`;
       const to = `${month}-${pad2(dayCount)}`;
-      const rows = await this.repository.list(tx, tenantId, { from, to });
+      const rows = await this.repository.list(tx, tenantId, branchId, { from, to });
       const users = await this.userAccountRepository.list(tx, tenantId, { take: 1000 });
       const userById = new Map(users.map((u) => [u.id, u]));
 
@@ -141,9 +142,9 @@ export class WorkShiftAssignmentImportService {
     });
   }
 
-  async preview(tenantId: string, month: string, fileBuffer: Buffer): Promise<ImportWorkShiftAssignmentsPreviewResponse> {
+  async preview(tenantId: string, branchId: string, month: string, fileBuffer: Buffer): Promise<ImportWorkShiftAssignmentsPreviewResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const { validCells, duplicateCells, errorCells } = await this.parseAndResolve(tx, tenantId, month, fileBuffer);
+      const { validCells, duplicateCells, errorCells } = await this.parseAndResolve(tx, tenantId, branchId, month, fileBuffer);
       return {
         validRows: validCells.map(toValidRowDto),
         duplicateRows: duplicateCells.map(toValidRowDto),
@@ -152,13 +153,13 @@ export class WorkShiftAssignmentImportService {
     });
   }
 
-  async commit(tenantId: string, actorId: string, month: string, fileBuffer: Buffer): Promise<ImportWorkShiftAssignmentsCommitResponse> {
+  async commit(tenantId: string, branchId: string, actorId: string, month: string, fileBuffer: Buffer): Promise<ImportWorkShiftAssignmentsCommitResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       // "Khoá bảng ca" theo tháng — Nhập Excel luôn ghi theo ĐÚNG 1 tháng (không cần lọc từng ô),
       // chặn TOÀN BỘ commit nếu tháng đó đã khoá và actor không có quyền mở khoá.
       await assertMonthWritable(tx, this.clinicConfigReader, tenantId, actorId, month);
 
-      const parsed = await this.parseAndResolve(tx, tenantId, month, fileBuffer);
+      const parsed = await this.parseAndResolve(tx, tenantId, branchId, month, fileBuffer);
       const { duplicateCells, errorCells } = parsed;
       // Ngày đã qua (chốt 2026-10-09, #224): không ghi, trừ người có quyền mở khoá — tính vào errorCount.
       const today = getVietnamDateString();
@@ -170,6 +171,7 @@ export class WorkShiftAssignmentImportService {
         tx,
         validCells.map((r) => ({
           tenantId,
+          branchId,
           userId: r.userId,
           workShiftId: r.workShiftId,
           workDate: new Date(`${r.workDate}T00:00:00.000Z`),
@@ -185,6 +187,7 @@ export class WorkShiftAssignmentImportService {
   private async parseAndResolve(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     month: string,
     fileBuffer: Buffer,
   ): Promise<{ validCells: ResolvedCell[]; duplicateCells: ResolvedCell[]; errorCells: ImportWorkShiftAssignmentRowError[] }> {
@@ -211,14 +214,16 @@ export class WorkShiftAssignmentImportService {
 
     const employeeCodes = [...new Set(rawCells.map((r) => r.employeeCode))];
     const users = await this.userAccountRepository.findActiveByEmployeeCodes(tx, tenantId, employeeCodes);
-    const userByCode = new Map(users.map((u) => [u.employeeCode!, u]));
+    // Chỉ nhân viên được làm việc ở chi nhánh đang chọn (docs/DECISIONS.md #231) — mã của chi nhánh khác báo như mã không tồn tại.
+    const inBranch = await filterUserIdsInBranch(tx, tenantId, branchId, users.map((u) => u.id));
+    const userByCode = new Map(users.filter((u) => inBranch.has(u.id)).map((u) => [u.employeeCode!, u]));
 
     const { items: workShifts } = await this.workShiftService.list(tenantId);
     const shiftByCode = new Map(workShifts.filter((s) => s.isActive).map((s) => [s.code, s]));
 
     const from = `${month}-01`;
     const to = `${month}-${pad2(dayCount)}`;
-    const existing = rawCells.length > 0 ? await this.repository.list(tx, tenantId, { from, to }) : [];
+    const existing = rawCells.length > 0 ? await this.repository.list(tx, tenantId, branchId, { from, to }) : [];
     const existingKeys = new Set(existing.map((e) => `${e.userId}|${e.workDate.toISOString().slice(0, 10)}|${e.workShiftId}`));
     const seenInFile = new Set<string>();
 
@@ -230,7 +235,7 @@ export class WorkShiftAssignmentImportService {
       const workDate = `${month}-${pad2(raw.day)}`;
       const user = userByCode.get(raw.employeeCode);
       if (!user) {
-        errorCells.push({ rowNumber: raw.rowNumber, employeeCode: raw.employeeCode, workDate, workShiftCode: raw.workShiftCode, reason: 'Mã nhân viên không tồn tại hoặc đã nghỉ việc.' });
+        errorCells.push({ rowNumber: raw.rowNumber, employeeCode: raw.employeeCode, workDate, workShiftCode: raw.workShiftCode, reason: 'Mã nhân viên không tồn tại, đã nghỉ việc hoặc không thuộc chi nhánh này.' });
         continue;
       }
       const shift = shiftByCode.get(raw.workShiftCode);

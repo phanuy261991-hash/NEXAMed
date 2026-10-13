@@ -4,6 +4,10 @@
 
 ## 2026-10-13
 
+### Tầng chi nhánh — Đợt 1 (backend; web đang làm dở) (`docs/DECISIONS.md` #231)
+
+Nền để một công ty có nhiều chi nhánh trên cùng hệ thống (và để chạy được cả SaaS lẫn máy chủ riêng). Mỗi công ty luôn có ít nhất một chi nhánh mặc định; công ty chỉ có một chi nhánh thì không thấy gì khác trên giao diện. Phòng, Tầng, Bàn khám, Lịch hẹn, Lượt khám, ca làm việc đã xếp, đăng ký ca tháng, đơn xin nghỉ và đổi ca nay thuộc từng chi nhánh; một tài khoản có thể được gán nhiều chi nhánh và chọn chi nhánh đang làm khi đăng nhập (đổi được bất cứ lúc nào, hệ thống nhớ lựa chọn). Lịch sử khám của bệnh nhân vẫn xem được ở mọi chi nhánh (kèm tên nơi khám); số tiền của chi nhánh mà tài khoản không thuộc thì bị che. Quyền mới "Chi nhánh" (xem/quản lý, mặc định Quản trị phòng khám). Môi trường khác: `db:deploy` (1 migration) rồi khởi động lại API. **Chưa bật nhiều chi nhánh ở khách thật** cho tới khi xong phần tiền/kho (Đợt 2).
+
 ### Danh mục riêng theo từng phòng khám/công ty + bảo mật cô lập tenant mạnh hơn (`docs/DECISIONS.md` #230)
 
 Trước đây các danh mục dùng chung (Dân tộc, Quốc tịch, Đơn vị tính, Hãng sản xuất, Hoạt chất, Hình thức thanh toán, Loại thu chi, Dị nguyên...) dùng chung cho mọi phòng khám trên cùng một máy chủ, nhưng quản trị từng phòng khám lại sửa được — nên phòng khám này có thể thấy và sửa danh mục của phòng khám khác. Nay **mỗi phòng khám/công ty có bản danh mục riêng**; dữ liệu hiện có được sao chép nguyên cho từng phòng khám (giữ nguyên mã nên mọi tham chiếu ở bệnh nhân/thuốc/hoá đơn không đổi). Tạo phòng khám mới được nạp sẵn bản danh mục mặc định. Kèm bật `FORCE ROW LEVEL SECURITY` cho mọi bảng có `tenant_id`. Môi trường khác: `db:deploy` (2 migration) rồi khởi động lại API.

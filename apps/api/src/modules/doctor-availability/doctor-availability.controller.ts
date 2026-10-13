@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { DoctorAvailabilityService } from './doctor-availability.service';
 
 /** "Tạm nghỉ / Đóng ca" của bác sĩ — xem docstring `DoctorAvailabilityService`. */
@@ -36,7 +37,7 @@ export class DoctorAvailabilityController {
   async setStatus(@Param('doctorId') doctorId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = setDoctorAvailabilityRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.doctorAvailabilityService.setStatus(tenantId, userId, req.dataScope!, doctorId, dto, extractRequestMeta(req));
+    return this.doctorAvailabilityService.setStatus(tenantId, requireBranchId(req.user!), userId, req.dataScope!, doctorId, dto, extractRequestMeta(req));
   }
 
   /** Popup xác nhận "Đóng ca hôm nay" — cùng quyền `doctor_availability.update` (chỉ là bước xem
@@ -45,6 +46,6 @@ export class DoctorAvailabilityController {
   @RequirePermission('doctor_availability', 'update')
   async getShiftSummary(@Param('doctorId') doctorId: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.doctorAvailabilityService.getShiftSummary(tenantId, userId, req.dataScope!, doctorId);
+    return this.doctorAvailabilityService.getShiftSummary(tenantId, requireBranchId(req.user!), userId, req.dataScope!, doctorId);
   }
 }

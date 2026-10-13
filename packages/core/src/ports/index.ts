@@ -6,6 +6,7 @@ export * from './insurance.port';
 export * from './e-prescription-gateway.port';
 export * from './patient-identity.port';
 export * from './doctor-directory.port';
+export * from './branch-directory.port';
 export * from './clinic-config-reader.port';
 export * from './reference-catalog-reader.port';
 export * from './patient-reader.port';

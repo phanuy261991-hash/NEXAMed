@@ -3,19 +3,22 @@ import * as argon2 from 'argon2';
 import {
   AccountDisabledError,
   AccountLockedError,
+  BranchNotAssignedError,
   InvalidCredentialsError,
   RefreshTokenInvalidError,
   RefreshTokenReuseDetectedError,
   isAccountLocked,
   recordFailedLogin,
+  resolveBranchId,
 } from '@nexamed/core';
-import type { ChangePasswordRequest, DataScope, LoginRequest } from '@nexamed/shared';
+import type { BranchLite, ChangePasswordRequest, DataScope, LoginRequest, SwitchBranchRequest } from '@nexamed/shared';
 import type { Prisma, UserSession } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { findAllPermissionsForUser } from '../../infrastructure/persistence/permission-lookup.helper';
 import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
 import { TokenService } from './token.service';
+import { BranchAccessService, toBranchLite } from './branch-access.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 
 export interface RequestMeta {
@@ -35,6 +38,9 @@ export interface CurrentUserResult {
   roles: string[];
   permissions: Record<string, DataScope>;
   mustChangePassword: boolean;
+  /** Chi nhánh được làm việc + chi nhánh đang chọn của phiên (docs/DECISIONS.md #231). */
+  branches: BranchLite[];
+  currentBranchId: string | null;
 }
 
 export interface LoginResult {
@@ -82,6 +88,7 @@ export class AuthService {
     private readonly userAccountAuthRepository: UserAccountAuthRepository,
     private readonly sessionRepository: SessionRepository,
     private readonly tokenService: TokenService,
+    private readonly branchAccess: BranchAccessService,
   ) {}
 
   async login(request: LoginRequest, meta: RequestMeta): Promise<LoginResult> {
@@ -120,7 +127,12 @@ export class AuthService {
       }
 
       await this.userAccountAuthRepository.recordSuccessfulLogin(tx, request.tenantId, user.id);
-      const issued = await this.issueSession(tx, request.tenantId, user.id, meta);
+      const assignedBranches = await this.branchAccess.resolveAssigned(tx, request.tenantId, user.id);
+      const currentBranchId = resolveBranchId(
+        assignedBranches.map((b) => b.id),
+        { lastBranchId: user.lastBranchId },
+      );
+      const issued = await this.issueSession(tx, request.tenantId, user.id, currentBranchId, meta);
       const roles = await this.userAccountAuthRepository.findRoleNamesForUser(tx, request.tenantId, user.id);
       const permissions = await findAllPermissionsForUser(tx, request.tenantId, user.id);
 
@@ -133,7 +145,7 @@ export class AuthService {
         userAgent: meta.userAgent,
       });
 
-      const accessToken = this.tokenService.signAccessToken(user.id, request.tenantId);
+      const accessToken = this.tokenService.signAccessToken(user.id, request.tenantId, currentBranchId);
 
       return {
         kind: 'success',
@@ -149,6 +161,8 @@ export class AuthService {
             roles,
             permissions,
             mustChangePassword: user.mustChangePassword,
+            branches: assignedBranches.map(toBranchLite),
+            currentBranchId,
           },
           refreshToken: issued.rawRefreshToken,
           refreshExpiresIn: issued.expiresIn,
@@ -219,7 +233,13 @@ export class AuthService {
         return { kind: 'account_disabled' };
       }
 
-      const issued = await this.issueSession(tx, payload.tenantId, session.userId, meta);
+      // Giữ chi nhánh của phiên nếu còn được phép; không thì chi nhánh nhớ lần trước; không thì phải chọn lại (#231).
+      const assignedBranches = await this.branchAccess.resolveAssigned(tx, payload.tenantId, session.userId);
+      const currentBranchId = resolveBranchId(
+        assignedBranches.map((b) => b.id),
+        { sessionBranchId: session.branchId, lastBranchId: user.lastBranchId },
+      );
+      const issued = await this.issueSession(tx, payload.tenantId, session.userId, currentBranchId, meta);
       await this.sessionRepository.revoke(
         tx,
         payload.tenantId,
@@ -233,7 +253,7 @@ export class AuthService {
       // xảy ra mỗi 15 phút/phiên đang mở, thuần vận hành kỹ thuật, không phải một lượt truy cập mới
       // theo nghĩa Thông tư 46 (đã có `auth.login_success` đánh dấu điểm bắt đầu phiên). Phát hiện
       // dùng lại refresh token (`auth.refresh_reuse_detected`, sự cố bảo mật thật) VẪN ghi như cũ.
-      const accessToken = this.tokenService.signAccessToken(session.userId, payload.tenantId);
+      const accessToken = this.tokenService.signAccessToken(session.userId, payload.tenantId, currentBranchId);
 
       return {
         kind: 'success',
@@ -256,6 +276,46 @@ export class AuthService {
       case 'invalid':
         throw new RefreshTokenInvalidError();
     }
+  }
+
+  /**
+   * Đổi chi nhánh làm việc của PHIÊN (docs/DECISIONS.md #231): chỉ sang chi nhánh tài khoản được gán. Cập nhật `user_session.branch_id` (để làm mới
+   * phiên sau đó giữ đúng chi nhánh), cấp lại access token mang claim `bid` mới; `remember=true` ghi nhớ làm chi nhánh mặc định cho lần đăng nhập sau.
+   * Refresh token KHÔNG xoay vòng (cùng phiên, chỉ đổi chi nhánh).
+   */
+  async switchBranch(
+    tenantId: string,
+    userId: string,
+    rawRefreshToken: string | undefined,
+    dto: SwitchBranchRequest,
+    meta: RequestMeta,
+  ): Promise<{ accessToken: string; expiresIn: number; currentBranchId: string }> {
+    const payload = rawRefreshToken ? this.tokenService.verify(rawRefreshToken) : null;
+    if (!rawRefreshToken || !payload || payload.typ !== 'refresh' || payload.sub !== userId || payload.tenantId !== tenantId) {
+      throw new RefreshTokenInvalidError();
+    }
+    const outcome = await this.unitOfWork.runInTenantScope<'invalid_session' | 'not_assigned' | { accessToken: string; expiresIn: number }>(tenantId, async (tx) => {
+      const session = await this.sessionRepository.findByHash(tx, tenantId, this.tokenService.hashRefreshToken(rawRefreshToken));
+      if (!session || session.deletedAt || session.userId !== userId) return 'invalid_session';
+      const assigned = await this.branchAccess.resolveAssigned(tx, tenantId, userId);
+      if (!assigned.some((b) => b.id === dto.branchId)) return 'not_assigned';
+
+      await this.sessionRepository.setBranch(tx, tenantId, session.id, dto.branchId, userId);
+      if (dto.remember) await this.userAccountAuthRepository.setLastBranch(tx, tenantId, userId, dto.branchId);
+      await writeAuditLog(tx, tenantId, {
+        actorId: userId,
+        action: 'auth.branch_switched',
+        entityType: 'user_account',
+        entityId: userId,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+      const accessToken = this.tokenService.signAccessToken(userId, tenantId, dto.branchId);
+      return { accessToken: accessToken.token, expiresIn: accessToken.expiresIn };
+    });
+    if (outcome === 'invalid_session') throw new RefreshTokenInvalidError();
+    if (outcome === 'not_assigned') throw new BranchNotAssignedError();
+    return { ...outcome, currentBranchId: dto.branchId };
   }
 
   /** Idempotent: cookie thiếu/hỏng/hết hạn cũng coi như đăng xuất thành công, không báo lỗi. */
@@ -293,7 +353,7 @@ export class AuthService {
    * docs/DECISIONS.md #022). Không ghi gì nên không cần lo transaction rollback-vì-throw như
    * login()/refresh() — throw thẳng trong callback là an toàn.
    */
-  async getCurrentUser(tenantId: string, userId: string): Promise<CurrentUserResult> {
+  async getCurrentUser(tenantId: string, userId: string, tokenBranchId: string | null = null): Promise<CurrentUserResult> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const user = await this.userAccountAuthRepository.findById(tx, tenantId, userId);
       if (!user || !user.isActive) {
@@ -301,6 +361,10 @@ export class AuthService {
       }
       const roles = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, userId);
       const permissions = await findAllPermissionsForUser(tx, tenantId, userId);
+      const assignedBranches = await this.branchAccess.resolveAssigned(tx, tenantId, userId);
+      const assignedIds = assignedBranches.map((b) => b.id);
+      // Claim `bid` của access token là chi nhánh phiên đang dùng; không còn được gán (đổi phân quyền giữa chừng) thì coi như chưa chọn.
+      const currentBranchId = tokenBranchId && assignedIds.includes(tokenBranchId) ? tokenBranchId : resolveBranchId(assignedIds, {});
       return {
         id: user.id,
         username: user.username,
@@ -310,6 +374,8 @@ export class AuthService {
         roles,
         permissions,
         mustChangePassword: user.mustChangePassword,
+        branches: assignedBranches.map(toBranchLite),
+        currentBranchId,
       };
     });
   }
@@ -383,6 +449,7 @@ export class AuthService {
     tx: Prisma.TransactionClient,
     tenantId: string,
     userId: string,
+    branchId: string | null,
     meta: RequestMeta,
   ): Promise<{ session: UserSession; rawRefreshToken: string; expiresIn: number }> {
     const refreshToken = this.tokenService.signRefreshToken(userId, tenantId);
@@ -392,6 +459,7 @@ export class AuthService {
 
     const session = await this.sessionRepository.create(tx, tenantId, {
       userId,
+      branchId,
       refreshTokenHash,
       issuedAt,
       expiresAt,

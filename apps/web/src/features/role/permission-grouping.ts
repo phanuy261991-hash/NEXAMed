@@ -35,6 +35,7 @@ const MODULE_LABELS: Record<string, string> = {
   // "Đơn xin nghỉ" (#224) — module mới, nhãn thêm ngay lúc tạo permission để trang Vai trò & Phân quyền
   // không hiện tên module thô.
   leave_request: 'Đơn xin nghỉ',
+  branch: 'Chi nhánh',
   shift_swap: 'Đổi ca',
   cashier_shift: 'Chốt ca',
   // "Thu chi tại quầy" GĐ1 (2026-09-05) — cùng lỗ hổng đã ghi chú ở trên: module mới thêm permission

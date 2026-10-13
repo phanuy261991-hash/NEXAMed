@@ -13,27 +13,29 @@ import type { RoomSession } from '@nexamed/shared';
 @Injectable()
 export class DoctorRoomSessionRepository {
   /** Đổi phòng giữa ngày = UPDATE tại chỗ (không phải dữ liệu lâm sàng cần giữ lịch sử bất biến). */
-  async upsertToday(tx: Prisma.TransactionClient, tenantId: string, doctorId: string, roomId: string, actorId: string): Promise<void> {
+  async upsertToday(tx: Prisma.TransactionClient, tenantId: string, branchId: string, doctorId: string, roomId: string, actorId: string): Promise<void> {
     const workDate = getVietnamDateString();
     await tx.$executeRaw`
-      INSERT INTO doctor_room_session (tenant_id, doctor_id, room_id, work_date, created_by, updated_by)
-      VALUES (${tenantId}::uuid, ${doctorId}::uuid, ${roomId}::uuid, ${workDate}::date, ${actorId}::uuid, ${actorId}::uuid)
+      INSERT INTO doctor_room_session (tenant_id, branch_id, doctor_id, room_id, work_date, created_by, updated_by)
+      VALUES (${tenantId}::uuid, ${branchId}::uuid, ${doctorId}::uuid, ${roomId}::uuid, ${workDate}::date, ${actorId}::uuid, ${actorId}::uuid)
       ON CONFLICT (tenant_id, work_date, doctor_id) WHERE deleted_at IS NULL
       DO UPDATE SET
         room_id = ${roomId}::uuid,
+        branch_id = ${branchId}::uuid,
         updated_by = ${actorId}::uuid,
         updated_at = now(),
         version = doctor_room_session.version + 1
     `;
   }
 
-  async findToday(tx: Prisma.TransactionClient, tenantId: string, doctorId: string): Promise<RoomSession | null> {
+  /** Phòng làm việc hôm nay CỦA CHI NHÁNH đang làm (bác sĩ đang ngồi phòng ở chi nhánh khác thì ở đây coi như chưa chọn). */
+  async findToday(tx: Prisma.TransactionClient, tenantId: string, branchId: string, doctorId: string): Promise<RoomSession | null> {
     const workDate = getVietnamDateString();
     const rows = await tx.$queryRaw<{ room_id: string; room_name: string }[]>`
       SELECT s.room_id, r.name AS room_name
       FROM doctor_room_session s
       JOIN room r ON r.tenant_id = s.tenant_id AND r.id = s.room_id
-      WHERE s.tenant_id = ${tenantId}::uuid AND s.doctor_id = ${doctorId}::uuid
+      WHERE s.tenant_id = ${tenantId}::uuid AND s.branch_id = ${branchId}::uuid AND s.doctor_id = ${doctorId}::uuid
         AND s.work_date = ${workDate}::date AND s.deleted_at IS NULL
       LIMIT 1
     `;
@@ -46,13 +48,13 @@ export class DoctorRoomSessionRepository {
    * `ClinicConfigReaderPort.getTodayDoctorRoomAssignments()`, tận dụng đúng index arbiter ở trên
    * làm leftmost-prefix (tenant_id, work_date) — xem comment thứ tự cột trong migration.
    */
-  async listActiveForTenantToday(tx: Prisma.TransactionClient, tenantId: string): Promise<Record<string, { roomId: string; roomName: string }>> {
+  async listActiveForTenantToday(tx: Prisma.TransactionClient, tenantId: string, branchId: string): Promise<Record<string, { roomId: string; roomName: string }>> {
     const workDate = getVietnamDateString();
     const rows = await tx.$queryRaw<{ doctor_id: string; room_id: string; room_name: string }[]>`
       SELECT s.doctor_id, s.room_id, r.name AS room_name
       FROM doctor_room_session s
       JOIN room r ON r.tenant_id = s.tenant_id AND r.id = s.room_id
-      WHERE s.tenant_id = ${tenantId}::uuid AND s.work_date = ${workDate}::date AND s.deleted_at IS NULL
+      WHERE s.tenant_id = ${tenantId}::uuid AND s.branch_id = ${branchId}::uuid AND s.work_date = ${workDate}::date AND s.deleted_at IS NULL
     `;
     const result: Record<string, { roomId: string; roomName: string }> = {};
     for (const row of rows) {

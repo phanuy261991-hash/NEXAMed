@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import { setRoomSessionRequestSchema } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { DoctorRoomSessionService } from './doctor-room-session.service';
 
 /**
@@ -19,19 +20,19 @@ export class DoctorRoomSessionController {
   @Get('options')
   async listOptions(@Req() req: Request) {
     const { tenantId } = req.user!;
-    return this.doctorRoomSessionService.listRoomOptions(tenantId);
+    return this.doctorRoomSessionService.listRoomOptions(tenantId, requireBranchId(req.user!));
   }
 
   @Get('my-session')
   async getMySession(@Req() req: Request) {
     const { tenantId, userId } = req.user!;
-    return this.doctorRoomSessionService.getMySession(tenantId, userId);
+    return this.doctorRoomSessionService.getMySession(tenantId, requireBranchId(req.user!), userId);
   }
 
   @Put('my-session')
   async setMySession(@Body() body: unknown, @Req() req: Request) {
     const dto = setRoomSessionRequestSchema.parse(body);
     const { tenantId, userId } = req.user!;
-    return this.doctorRoomSessionService.setMySession(tenantId, userId, dto.roomId, extractRequestMeta(req));
+    return this.doctorRoomSessionService.setMySession(tenantId, requireBranchId(req.user!), userId, dto.roomId, extractRequestMeta(req));
   }
 }

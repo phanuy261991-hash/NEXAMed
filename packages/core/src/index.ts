@@ -3,6 +3,7 @@ export * from './reference-catalog/data';
 export * from './reference-catalog/unit-seed-data';
 export * from './reference-catalog/generate-code';
 export * from './reference-catalog/code-prefixes';
+export * from './branch/resolve-branch';
 export * from './allergen/code-prefixes';
 export * from './allergen/data';
 export * from './geo/data';

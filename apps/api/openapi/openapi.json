@@ -120,6 +120,47 @@
                             },
                             "mustChangePassword": {
                               "type": "boolean"
+                            },
+                            "branches": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "address": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "isDefault": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "code",
+                                  "name",
+                                  "address",
+                                  "isDefault"
+                                ]
+                              }
+                            },
+                            "currentBranchId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
                             }
                           },
                           "required": [
@@ -130,7 +171,9 @@
                             "departmentId",
                             "roles",
                             "permissions",
-                            "mustChangePassword"
+                            "mustChangePassword",
+                            "branches",
+                            "currentBranchId"
                           ]
                         }
                       },
@@ -432,6 +475,47 @@
                         },
                         "mustChangePassword": {
                           "type": "boolean"
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "address": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "address",
+                              "isDefault"
+                            ]
+                          }
+                        },
+                        "currentBranchId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
                         }
                       },
                       "required": [
@@ -442,7 +526,9 @@
                         "departmentId",
                         "roles",
                         "permissions",
-                        "mustChangePassword"
+                        "mustChangePassword",
+                        "branches",
+                        "currentBranchId"
                       ]
                     },
                     "meta": {
@@ -560,6 +646,781 @@
           },
           "401": {
             "description": "Thiếu access token, sai currentPassword, hoặc tài khoản đã bị vô hiệu hoá",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/switch-branch": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Đổi chi nhánh làm việc của phiên (docs/DECISIONS.md #231) — chỉ sang chi nhánh được gán; cần cookie refresh; cấp lại access token mang chi nhánh mới",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "branchId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "remember": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [
+                  "branchId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đổi chi nhánh thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accessToken": {
+                          "type": "string"
+                        },
+                        "expiresIn": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "currentBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "accessToken",
+                        "expiresIn",
+                        "currentBranchId"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu access token hoặc cookie phiên",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không được làm việc ở chi nhánh này (BRANCH_NOT_ASSIGNED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/branches": {
+      "get": {
+        "tags": [
+          "branch"
+        ],
+        "summary": "Danh sách chi nhánh của công ty (kèm số nhân viên được gán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "includeInactive",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "address": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
+                              "phone": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "staffCount": {
+                                "type": "integer"
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "address",
+                              "isDefault",
+                              "phone",
+                              "isActive",
+                              "staffCount",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền branch.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "branch"
+        ],
+        "summary": "Thêm chi nhánh (mã CN tự sinh)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "address": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "phone": {
+                    "type": "string",
+                    "maxLength": 50
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tạo thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "address": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "staffCount": {
+                          "type": "integer"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "address",
+                        "isDefault",
+                        "phone",
+                        "isActive",
+                        "staffCount",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền branch.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Trùng tên chi nhánh (BRANCH_DUPLICATE_NAME)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/branches/{id}": {
+      "patch": {
+        "tags": [
+          "branch"
+        ],
+        "summary": "Sửa/ngưng/khôi phục chi nhánh — bắt buộc kèm version; chi nhánh mặc định không ngưng được",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "address": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 500
+                  },
+                  "phone": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 50
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sửa thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "address": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "staffCount": {
+                          "type": "integer"
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "address",
+                        "isDefault",
+                        "phone",
+                        "isActive",
+                        "staffCount",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền branch.manage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại hoặc thuộc công ty khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp / trùng tên / ngưng chi nhánh mặc định",
             "content": {
               "application/json": {
                 "schema": {
@@ -8646,6 +9507,18 @@
                                   "netAmount",
                                   "paymentState"
                                 ]
+                              },
+                              "branchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isOtherBranch": {
+                                "type": "boolean"
+                              },
+                              "billingHidden": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -8659,7 +9532,10 @@
                               "departmentName",
                               "reason",
                               "clinical",
-                              "billing"
+                              "billing",
+                              "branchName",
+                              "isOtherBranch",
+                              "billingHidden"
                             ]
                           }
                         },
@@ -8681,6 +9557,9 @@
                         },
                         "canViewBilling": {
                           "type": "boolean"
+                        },
+                        "multiBranch": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -8689,7 +9568,8 @@
                         "completedCount",
                         "totalCount",
                         "canViewClinical",
-                        "canViewBilling"
+                        "canViewBilling",
+                        "multiBranch"
                       ]
                     },
                     "meta": {
@@ -10399,6 +11279,12 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "branchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -10406,7 +11292,8 @@
                               "checkedInAt",
                               "doctorName",
                               "chiefComplaint",
-                              "primaryDiagnosisName"
+                              "primaryDiagnosisName",
+                              "branchName"
                             ]
                           }
                         },
@@ -23847,6 +24734,14 @@
                       "format": "uuid"
                     },
                     "minItems": 1
+                  },
+                  "branchIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1
                   }
                 },
                 "required": [
@@ -23998,6 +24893,13 @@
                             "type": "string"
                           }
                         },
+                        "branchIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -24032,6 +24934,7 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
+                        "branchIds",
                         "version",
                         "createdAt",
                         "updatedAt"
@@ -24351,6 +25254,13 @@
                                   "type": "string"
                                 }
                               },
+                              "branchIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              },
                               "version": {
                                 "type": "integer"
                               },
@@ -24385,6 +25295,7 @@
                               "signatureUrl",
                               "isActive",
                               "roleNames",
+                              "branchIds",
                               "version",
                               "createdAt",
                               "updatedAt"
@@ -24630,6 +25541,13 @@
                             "type": "string"
                           }
                         },
+                        "branchIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -24664,6 +25582,7 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
+                        "branchIds",
                         "version",
                         "createdAt",
                         "updatedAt"
@@ -24911,6 +25830,13 @@
                             "type": "string"
                           }
                         },
+                        "branchIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -24945,6 +25871,7 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
+                        "branchIds",
                         "version",
                         "createdAt",
                         "updatedAt"
@@ -25188,6 +26115,13 @@
                             "type": "string"
                           }
                         },
+                        "branchIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -25222,6 +26156,7 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
+                        "branchIds",
                         "version",
                         "createdAt",
                         "updatedAt"
@@ -25471,6 +26406,14 @@
                     },
                     "minItems": 1
                   },
+                  "branchIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1
+                  },
                   "version": {
                     "type": "integer",
                     "exclusiveMinimum": 0
@@ -25621,6 +26564,13 @@
                             "type": "string"
                           }
                         },
+                        "branchIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -25655,6 +26605,7 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
+                        "branchIds",
                         "version",
                         "createdAt",
                         "updatedAt"
@@ -26017,6 +26968,13 @@
                             "type": "string"
                           }
                         },
+                        "branchIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
                         "version": {
                           "type": "integer"
                         },
@@ -26051,6 +27009,7 @@
                         "signatureUrl",
                         "isActive",
                         "roleNames",
+                        "branchIds",
                         "version",
                         "createdAt",
                         "updatedAt"

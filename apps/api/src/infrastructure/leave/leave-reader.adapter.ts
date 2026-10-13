@@ -15,9 +15,9 @@ export class LeaveReaderAdapter implements LeaveReaderPort {
     private readonly repository: LeaveRequestRepository,
   ) {}
 
-  async getLeaveInRange(tenantId: string, userIds: string[], fromDate: string, toDate: string): Promise<LeaveWindowRecord[]> {
+  async getLeaveInRange(tenantId: string, branchId: string, userIds: string[], fromDate: string, toDate: string): Promise<LeaveWindowRecord[]> {
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.repository.listActiveInRange(tx, tenantId, userIds, fromDate, toDate),
+      this.repository.listActiveInRange(tx, tenantId, branchId, userIds, fromDate, toDate),
     );
     return rows.map((r) => ({
       leaveRequestId: r.id,

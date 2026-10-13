@@ -44,7 +44,7 @@ export class UserAccountController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createUserAccountRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.userAccountService.createUserAccount(tenantId, userId, dto, extractRequestMeta(req));
+    return this.userAccountService.createUserAccount(tenantId, userId, req.user!.branchId, dto, extractRequestMeta(req));
   }
 
   @Get()

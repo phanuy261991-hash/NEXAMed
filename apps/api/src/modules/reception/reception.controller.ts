@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { ReceptionService } from './reception.service';
 import { ReceptionExportService } from './reception-export.service';
 
@@ -24,7 +25,7 @@ export class ReceptionController {
   async checkIn(@Body() body: unknown, @Req() req: Request) {
     const dto = checkInRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.receptionService.checkIn(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
+    return this.receptionService.checkIn(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   /** "Tiếp nhận bệnh nhân" — tạo `encounter` trực tiếp, khách không qua đặt lịch trước. */
@@ -34,7 +35,7 @@ export class ReceptionController {
   async registerDirect(@Body() body: unknown, @Req() req: Request) {
     const dto = registerReceptionRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.receptionService.registerDirect(tenantId, userId, dto, extractRequestMeta(req));
+    return this.receptionService.registerDirect(tenantId, requireBranchId(req.user!), userId, dto, extractRequestMeta(req));
   }
 
   /** "Danh sách tiếp nhận" (mặc định) / "Hàng đợi khám" (khi truyền `doctorId`) — cùng nguồn dữ liệu. */
@@ -43,7 +44,7 @@ export class ReceptionController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = receptionListQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.receptionService.listReceptions(tenantId, userId, req.dataScope!, dto.date, dto.doctorId, dto.includeDepartmentPool, dto.queueView);
+    return this.receptionService.listReceptions(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto.date, dto.doctorId, dto.includeDepartmentPool, dto.queueView);
   }
 
   /** Chấm số ở menu "Hàng đợi khám" (#221) — số bệnh nhân đang khám của chính bác sĩ có kết quả cận lâm sàng mới chưa xem. Đặt riêng path, không đụng `list`. */
@@ -64,6 +65,7 @@ export class ReceptionController {
     const { userId, tenantId } = req.user!;
     const { targetDate, items, doctorNameById, departmentNameById } = await this.receptionService.getReceptionListForExport(
       tenantId,
+      requireBranchId(req.user!),
       userId,
       req.dataScope!,
       dto.date,
@@ -81,6 +83,6 @@ export class ReceptionController {
   async recordVitalSigns(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = recordVitalSignRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.receptionService.recordVitalSigns(tenantId, userId, req.dataScope!, encounterId, dto, extractRequestMeta(req));
+    return this.receptionService.recordVitalSigns(tenantId, requireBranchId(req.user!), userId, req.dataScope!, encounterId, dto, extractRequestMeta(req));
   }
 }

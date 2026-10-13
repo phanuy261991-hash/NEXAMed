@@ -26,7 +26,7 @@ export interface LeaveReaderPort {
    * Đơn `PENDING` + `APPROVED` của các `userIds` trong `[fromDate, toDate]` (bao gồm 2 đầu). Đơn đã
    * từ chối/rút/huỷ không trả về. `userIds` rỗng trả mảng rỗng.
    */
-  getLeaveInRange(tenantId: string, userIds: string[], fromDate: string, toDate: string): Promise<LeaveWindowRecord[]>;
+  getLeaveInRange(tenantId: string, branchId: string, userIds: string[], fromDate: string, toDate: string): Promise<LeaveWindowRecord[]>;
 }
 
 export const LEAVE_READER_PORT = Symbol('LEAVE_READER_PORT');

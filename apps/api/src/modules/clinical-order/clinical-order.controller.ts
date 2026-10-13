@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { ClinicalOrderService } from './clinical-order.service';
 
 /**
@@ -25,7 +26,7 @@ export class ClinicalOrderController {
   @UseInterceptors(AuditViewInterceptor)
   async get(@Param('encounterId', ParseUUIDPipe) encounterId: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.service.get(tenantId, userId, req.dataScope!, encounterId);
+    return this.service.get(tenantId, requireBranchId(req.user!), userId, req.dataScope!, encounterId);
   }
 
   @Put()
@@ -33,7 +34,7 @@ export class ClinicalOrderController {
   async save(@Param('encounterId', ParseUUIDPipe) encounterId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = saveClinicalOrderRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.service.save(tenantId, userId, req.dataScope!, encounterId, dto, extractRequestMeta(req));
+    return this.service.save(tenantId, requireBranchId(req.user!), userId, req.dataScope!, encounterId, dto, extractRequestMeta(req));
   }
 
   /** Bác sĩ phụ trách đã mở tab kết quả: đánh dấu kết quả đã duyệt là đã xem (#221). Không phải dữ liệu lâm sàng thay đổi nên không ghi audit riêng. */
@@ -42,7 +43,7 @@ export class ClinicalOrderController {
   @HttpCode(200)
   async markResultsSeen(@Param('encounterId', ParseUUIDPipe) encounterId: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.service.markResultsSeen(tenantId, userId, req.dataScope!, encounterId);
+    return this.service.markResultsSeen(tenantId, requireBranchId(req.user!), userId, req.dataScope!, encounterId);
   }
 
   /** Ghi audit in phiếu chỉ định (web tự dựng bản in từ dữ liệu đã tải). */
@@ -51,7 +52,7 @@ export class ClinicalOrderController {
   @HttpCode(200)
   async print(@Param('encounterId', ParseUUIDPipe) encounterId: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    await this.service.recordPrint(tenantId, userId, req.dataScope!, encounterId, extractRequestMeta(req));
+    await this.service.recordPrint(tenantId, requireBranchId(req.user!), userId, req.dataScope!, encounterId, extractRequestMeta(req));
     return { ok: true };
   }
 }

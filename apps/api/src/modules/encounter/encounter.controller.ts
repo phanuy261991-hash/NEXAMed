@@ -26,6 +26,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { DiagnosisSuggestionService } from './diagnosis-suggestion.service';
 import { EncounterService } from './encounter.service';
 
@@ -64,7 +65,7 @@ export class EncounterController {
   async listPatientHistory(@Param('patientId', new ParseUUIDPipe()) patientId: string, @Query() query: unknown, @Req() req: Request) {
     const dto = listPatientEncounterHistoryQuerySchema.parse(query);
     const { tenantId, userId } = req.user!;
-    return this.encounterService.listPatientEncounterHistory(tenantId, userId, patientId, dto);
+    return this.encounterService.listPatientEncounterHistory(tenantId, requireBranchId(req.user!), userId, patientId, dto);
   }
 
   /**
@@ -95,7 +96,7 @@ export class EncounterController {
   async start(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = startConsultationRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.startConsultation(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.startConsultation(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/cancel')
@@ -104,7 +105,7 @@ export class EncounterController {
   async cancel(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = cancelEncounterRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.cancelEncounter(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.cancelEncounter(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** #085 "Trả về hàng chờ" — bác sĩ nhả ca (nhận nhầm/bận đột xuất), dùng chung quyền `encounter.update` với "Bắt đầu khám". */
@@ -114,7 +115,7 @@ export class EncounterController {
   async release(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = releaseEncounterRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.releaseEncounter(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.releaseEncounter(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** "Trung tâm Điều phối Tiếp nhận" — lễ tân đổi bác sĩ/Khoa phụ trách, chỉ khi còn `CHECKED_IN`. */
@@ -124,7 +125,7 @@ export class EncounterController {
   async reassign(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = reassignEncounterRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.reassignEncounter(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.reassignEncounter(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /**
@@ -141,7 +142,7 @@ export class EncounterController {
   @UseInterceptors(AuditViewInterceptor)
   async getConsultation(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.encounterService.getConsultationDetail(tenantId, userId, req.dataScope!, id);
+    return this.encounterService.getConsultationDetail(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
   }
 
   @Put(':id/diagnoses')
@@ -149,7 +150,7 @@ export class EncounterController {
   async saveDiagnoses(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = saveDiagnosesRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.saveDiagnoses(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.saveDiagnoses(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /**
@@ -163,7 +164,7 @@ export class EncounterController {
   async suggestDiagnoses(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = diagnosisSuggestionRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.diagnosisSuggestionService.suggest(tenantId, userId, req.dataScope!, id, dto);
+    return this.diagnosisSuggestionService.suggest(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto);
   }
 
   @Put(':id/clinical-note')
@@ -171,7 +172,7 @@ export class EncounterController {
   async saveClinicalNote(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = saveClinicalNoteRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.saveClinicalNote(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.saveClinicalNote(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** "Đính chính chẩn đoán" (Sprint 5, S5-02/03) — chỉ khi đã ký (`status=COMPLETED`), bắt buộc lý do. */
@@ -181,7 +182,7 @@ export class EncounterController {
   async amendDiagnoses(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = amendDiagnosesRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.amendDiagnoses(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.amendDiagnoses(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** "Đính chính ghi chú khám" (Sprint 5, S5-02/03) — chỉ khi đã ký, chỉ sửa đúng section đổi nội dung. */
@@ -191,7 +192,7 @@ export class EncounterController {
   async amendClinicalNote(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = amendClinicalNoteRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.amendClinicalNote(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.amendClinicalNote(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** "Hoàn tất khám" — IN_CONSULTATION → COMPLETED, chỉ yêu cầu đúng một chẩn đoán chính. Ký hồ sơ khám ngay trong cùng transaction (Sprint 5, S5-02/03). */
@@ -201,7 +202,7 @@ export class EncounterController {
   async complete(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = completeConsultationRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.completeConsultation(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.completeConsultation(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** Kê đơn (Sprint 4, S4-01/02) — thay thế toàn bộ dòng thuốc của đơn NHÁP hiện tại. */
@@ -210,7 +211,7 @@ export class EncounterController {
   async savePrescriptionItems(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = savePrescriptionItemsRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.savePrescriptionItems(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.savePrescriptionItems(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** "Bỏ qua cảnh báo này cho đơn hiện tại" (#228) — CHỈ trùng hoạt chất, CHỈ đơn nháp; cùng quyền với sửa đơn nháp. */
@@ -220,7 +221,7 @@ export class EncounterController {
   async acknowledgePrescriptionWarning(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = acknowledgePrescriptionWarningRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.acknowledgePrescriptionWarning(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.acknowledgePrescriptionWarning(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196) — đơn ĐÃ KÝ gần nhất của cùng bệnh
@@ -230,7 +231,7 @@ export class EncounterController {
   @RequirePermission('prescription', 'create', { entityIdParam: 'id' })
   async getPreviousPrescription(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.encounterService.getPreviousPrescription(tenantId, userId, req.dataScope!, id);
+    return this.encounterService.getPreviousPrescription(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
   }
 
   /** Ký đơn thuốc — sau khi ký đơn bất biến (trigger C8 chặn UPDATE), sửa = "Sửa đơn" (đính chính). */
@@ -240,7 +241,7 @@ export class EncounterController {
   async signPrescription(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = signPrescriptionRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.signPrescription(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.signPrescription(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** In đơn (PRE-04) — ghi nhận `printedAt`, idempotent. Bố cục in nằm ở tầng web. */
@@ -249,7 +250,7 @@ export class EncounterController {
   @HttpCode(200)
   async printPrescription(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.encounterService.markPrescriptionPrinted(tenantId, userId, req.dataScope!, id, extractRequestMeta(req));
+    return this.encounterService.markPrescriptionPrinted(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, extractRequestMeta(req));
   }
 
   /** "Sửa đơn" — đính chính đơn đã ký, tạo đơn mới đã ký ngay, bắt buộc lý do. */
@@ -259,6 +260,6 @@ export class EncounterController {
   async amendPrescription(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = amendPrescriptionRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.encounterService.amendPrescription(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.encounterService.amendPrescription(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 }

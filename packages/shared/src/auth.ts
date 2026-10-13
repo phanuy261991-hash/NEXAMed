@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { dataScopeSchema } from './data-scope';
+import { branchLiteSchema } from './branch';
 
 /**
  * Request/response đăng nhập — dùng chung controller (validate) và web (S1-09).
@@ -55,6 +56,13 @@ export const currentUserSchema = z.object({
    * `changePasswordRequestSchema` dưới.
    */
   mustChangePassword: z.boolean(),
+  /**
+   * Chi nhánh tài khoản được làm việc + chi nhánh đang chọn của PHIÊN (docs/DECISIONS.md #231). Công ty 1 chi nhánh: `branches` có đúng 1
+   * phần tử, `currentBranchId` luôn có giá trị — web ẩn mọi giao diện chi nhánh. Được gán nhiều chi nhánh mà chưa chọn: `currentBranchId = null`
+   * → web hiện màn "Chọn chi nhánh làm việc".
+   */
+  branches: z.array(branchLiteSchema),
+  currentBranchId: z.string().uuid().nullable(),
 });
 
 export type CurrentUser = z.infer<typeof currentUserSchema>;
@@ -117,6 +125,8 @@ export const jwtPayloadSchema = z.object({
   tenantId: z.string().uuid(),
   typ: z.enum(['access', 'refresh']),
   jti: z.string().uuid().optional(),
+  /** Chi nhánh đang làm việc (chỉ access token, #231) — vắng = phiên chưa chọn chi nhánh. */
+  bid: z.string().uuid().optional(),
 });
 
 export type JwtPayload = z.infer<typeof jwtPayloadSchema>;

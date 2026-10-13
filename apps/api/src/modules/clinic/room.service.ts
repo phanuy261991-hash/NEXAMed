@@ -20,9 +20,9 @@ export class RoomService {
     private readonly examStationRepository: ExamStationRepository,
   ) {}
 
-  async createRoom(tenantId: string, actorId: string, dto: CreateRoomRequest, meta: RequestMeta): Promise<RoomSummary> {
+  async createRoom(tenantId: string, branchId: string, actorId: string, dto: CreateRoomRequest, meta: RequestMeta): Promise<RoomSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const created = await this.roomRepository.create(tx, tenantId, actorId, { name: dto.name, floorId: dto.floorId });
+      const created = await this.roomRepository.create(tx, tenantId, branchId, actorId, { name: dto.name, floorId: dto.floorId });
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -33,14 +33,14 @@ export class RoomService {
         userAgent: meta.userAgent,
       });
 
-      const withFloor = await this.roomRepository.findById(tx, tenantId, created.id);
+      const withFloor = await this.roomRepository.findById(tx, tenantId, branchId, created.id);
       return this.toSummary(withFloor!, 0);
     });
   }
 
-  async listRooms(tenantId: string): Promise<ListRoomsResponse> {
+  async listRooms(tenantId: string, branchId: string): Promise<ListRoomsResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.roomRepository.list(tx, tenantId);
+      const rows = await this.roomRepository.list(tx, tenantId, branchId);
       const counts = await this.examStationRepository.countByRoomIds(tx, tenantId, rows.map((r) => r.id));
       return { items: rows.map((r) => this.toSummary(r, counts[r.id] ?? 0)) };
     });
@@ -48,13 +48,14 @@ export class RoomService {
 
   async updateRoom(
     tenantId: string,
+    branchId: string,
     actorId: string,
     id: string,
     dto: UpdateRoomRequest,
     meta: RequestMeta,
   ): Promise<RoomSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.roomRepository.findById(tx, tenantId, id);
+      const existing = await this.roomRepository.findById(tx, tenantId, branchId, id);
       if (!existing) {
         throw new NotFoundException();
       }
@@ -64,7 +65,7 @@ export class RoomService {
       if (dto.floorId !== undefined) patch.floorId = dto.floorId;
       if (dto.isActive !== undefined) patch.isActive = dto.isActive;
 
-      const count = await this.roomRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, patch);
+      const count = await this.roomRepository.updateIfVersionMatches(tx, tenantId, branchId, id, dto.version, actorId, patch);
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
@@ -78,7 +79,7 @@ export class RoomService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.roomRepository.findById(tx, tenantId, id);
+      const updated = await this.roomRepository.findById(tx, tenantId, branchId, id);
       if (!updated) {
         throw new NotFoundException();
       }

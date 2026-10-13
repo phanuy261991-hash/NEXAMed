@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { FloorService } from './floor.service';
 
 /** "Tầng" (docs/DECISIONS.md #055) — dùng chung `clinic_config.*` với `RoomController`, cùng lý do PRD ADM-02. */
@@ -19,14 +20,14 @@ export class FloorController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createFloorRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.floorService.createFloor(tenantId, userId, dto, extractRequestMeta(req));
+    return this.floorService.createFloor(tenantId, requireBranchId(req.user!), userId, dto, extractRequestMeta(req));
   }
 
   @Get()
   @RequirePermission('clinic_config', 'read')
   async list(@Req() req: Request) {
     const { tenantId } = req.user!;
-    return this.floorService.listFloors(tenantId);
+    return this.floorService.listFloors(tenantId, requireBranchId(req.user!));
   }
 
   @Patch(':id')
@@ -34,6 +35,6 @@ export class FloorController {
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateFloorRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.floorService.updateFloor(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.floorService.updateFloor(tenantId, requireBranchId(req.user!), userId, id, dto, extractRequestMeta(req));
   }
 }

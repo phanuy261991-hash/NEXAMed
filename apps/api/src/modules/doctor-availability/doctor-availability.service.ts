@@ -61,7 +61,7 @@ export class DoctorAvailabilityService {
    * bác sĩ khác vì họ cũng là người có thể "Đóng ca hộ". Tính theo CẢ NGÀY hôm nay (workDate theo
    * giờ VN), không phải riêng phiên ACTIVE hiện tại — đã hỏi và chốt qua `AskUserQuestion`.
    */
-  async getShiftSummary(tenantId: string, actorId: string, dataScope: DataScope, doctorId: string): Promise<DoctorShiftSummary> {
+  async getShiftSummary(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, doctorId: string): Promise<DoctorShiftSummary> {
     if (dataScope === 'personal' && doctorId !== actorId) {
       throw new NotFoundException();
     }
@@ -69,7 +69,7 @@ export class DoctorAvailabilityService {
     const range = vietnamDayRange(getVietnamDateString());
     const raw = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const [encounterCounts, prescriptionCount] = await Promise.all([
-        this.encounterRepository.getShiftCounts(tx, tenantId, doctorId, range),
+        this.encounterRepository.getShiftCounts(tx, tenantId, branchId, doctorId, range),
         this.prescriptionRepository.countSignedForDoctorToday(tx, tenantId, doctorId, range),
       ]);
       return { ...encounterCounts, completedCount: encounterCounts.completedDurationsMs.length, prescriptionCount };
@@ -96,6 +96,7 @@ export class DoctorAvailabilityService {
    */
   async setStatus(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     targetDoctorId: string,
@@ -130,7 +131,7 @@ export class DoctorAvailabilityService {
 
       let releasedEncounterCount: number | null = null;
       if (dto.status === 'ENDED') {
-        const released = await this.encounterRepository.releaseAllForDoctor(tx, tenantId, targetDoctorId, actorId);
+        const released = await this.encounterRepository.releaseAllForDoctor(tx, tenantId, branchId, targetDoctorId, actorId);
         releasedEncounterCount = released.length;
         for (const item of released) {
           await writeAuditLog(tx, tenantId, {

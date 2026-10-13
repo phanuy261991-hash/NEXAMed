@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { requireBranchId } from '../../common/branch-context';
 import { WorkShiftAssignmentService } from './work-shift-assignment.service';
 import { WorkShiftAssignmentImportService } from './work-shift-assignment-import.service';
 
@@ -46,7 +47,7 @@ export class WorkShiftAssignmentController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listWorkShiftAssignmentsQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.service.list(tenantId, userId, req.dataScope!, dto);
+    return this.service.list(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto);
   }
 
   /** "Khoá bảng ca" theo tháng — tự-phục vụ, KHÔNG `@RequirePermission` (đúng khuôn
@@ -74,7 +75,7 @@ export class WorkShiftAssignmentController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createWorkShiftAssignmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.service.create(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
+    return this.service.create(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   /** "Áp dụng cho các ngày đã chọn" (bulk-apply nhiều ngày cùng 1 ca) — khai TRƯỚC route gốc không
@@ -85,7 +86,7 @@ export class WorkShiftAssignmentController {
   async bulkCreate(@Body() body: unknown, @Req() req: Request) {
     const dto = bulkCreateWorkShiftAssignmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.service.bulkCreate(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
+    return this.service.bulkCreate(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   /** "Sao chép tuần/tháng trước". */
@@ -95,7 +96,7 @@ export class WorkShiftAssignmentController {
   async copy(@Body() body: unknown, @Req() req: Request) {
     const dto = copyWorkShiftAssignmentsRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.service.copy(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
+    return this.service.copy(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   /** Tải file mẫu Excel đúng tháng đã chọn (chỉ "Lịch làm việc nhân viên") — trả thẳng binary,
@@ -118,7 +119,7 @@ export class WorkShiftAssignmentController {
     assertGlobalScope(req);
     const dto = monthQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    const buffer = await this.importService.buildExport(tenantId, dto.month);
+    const buffer = await this.importService.buildExport(tenantId, requireBranchId(req.user!), dto.month);
     await this.service.recordExportAudit(tenantId, userId, dto.month, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
     res.setHeader('Content-Disposition', `attachment; filename="lich-lam-viec-${dto.month}.xlsx"`);
@@ -136,7 +137,7 @@ export class WorkShiftAssignmentController {
     if (!file) throw new BadRequestException('Thiếu file Excel.');
     const { month } = importFormBodySchema.parse(body);
     const { tenantId } = req.user!;
-    return this.importService.preview(tenantId, month, file.buffer);
+    return this.importService.preview(tenantId, requireBranchId(req.user!), month, file.buffer);
   }
 
   /** Đọc lại ĐÚNG file + tháng đã preview rồi ghi các ô hợp lệ — ô trùng/lỗi luôn bị bỏ qua. */
@@ -149,7 +150,7 @@ export class WorkShiftAssignmentController {
     if (!file) throw new BadRequestException('Thiếu file Excel.');
     const { month } = importFormBodySchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.importService.commit(tenantId, userId, month, file.buffer);
+    return this.importService.commit(tenantId, requireBranchId(req.user!), userId, month, file.buffer);
   }
 
   @Delete(':id')
@@ -157,7 +158,7 @@ export class WorkShiftAssignmentController {
   async remove(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = deleteWorkShiftAssignmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    await this.service.remove(tenantId, userId, req.dataScope!, id, dto.version, extractRequestMeta(req));
+    await this.service.remove(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto.version, extractRequestMeta(req));
     return { success: true };
   }
 }

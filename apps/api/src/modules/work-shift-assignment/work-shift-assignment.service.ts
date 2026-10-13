@@ -119,6 +119,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
   private async assertPersonalMayWrite(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     canBypass: boolean,
@@ -129,12 +130,13 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     if (dates.some((d) => d < today)) throw new WorkShiftAssignmentPastDateError();
     const months = [...new Set(dates.map((d) => d.slice(0, 7)))];
     if (months.some((m) => !isMonthOpenForSelfRegistration(m, today))) throw new WorkShiftAssignmentMonthNotOpenError();
-    const statuses = await this.submissionRepository.statusByMonth(tx, tenantId, actorId, months);
+    const statuses = await this.submissionRepository.statusByMonth(tx, tenantId, branchId, actorId, months);
     if (months.some((m) => (statuses.get(m) ?? 'DRAFT') !== 'DRAFT')) throw new WorkShiftAssignmentSubmissionLockedError();
   }
 
   async create(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     dto: CreateWorkShiftAssignmentRequest,
@@ -153,11 +155,11 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
       if (dto.workDate < today && !canBypass) {
         throw new WorkShiftAssignmentPastDateError();
       }
-      await this.assertPersonalMayWrite(tx, tenantId, actorId, dataScope, canBypass, [dto.workDate], today);
+      await this.assertPersonalMayWrite(tx, tenantId, branchId, actorId, dataScope, canBypass, [dto.workDate], today);
 
       let created: WorkShiftAssignmentRow;
       try {
-        created = await this.repository.create(tx, tenantId, targetUserId, dto.workShiftId, dto.workDate, actorId);
+        created = await this.repository.create(tx, tenantId, branchId, targetUserId, dto.workShiftId, dto.workDate, actorId);
       } catch (err) {
         if (isDuplicateViolation(err)) {
           throw new WorkShiftAssignmentDuplicateError();
@@ -181,6 +183,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
 
   async bulkCreate(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     dto: BulkCreateWorkShiftAssignmentRequest,
@@ -203,10 +206,11 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
           }
         }
       }
-      await this.assertPersonalMayWrite(tx, tenantId, actorId, dataScope, canBypass, dto.workDates, today);
+      await this.assertPersonalMayWrite(tx, tenantId, branchId, actorId, dataScope, canBypass, dto.workDates, today);
 
       const rows = dto.workDates.map((workDate) => ({
         tenantId,
+        branchId,
         userId: targetUserId,
         workShiftId: dto.workShiftId,
         workDate: dateStringToUtc(workDate),
@@ -236,6 +240,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
    * không ghi đè) VÀ ngày không tồn tại ở tháng đích (chỉ nhánh `mode==='month'`). */
   async copy(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     dto: CopyWorkShiftAssignmentsRequest,
@@ -258,12 +263,13 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
           targetUserId,
           dto.fromWeekStart,
           addDaysToDateString(dto.fromWeekStart, 6),
+          branchId,
         );
         const offsetDays = daysBetween(dto.fromWeekStart, dto.toWeekStart);
         targetDates = sourceRows.map((row) => addDaysToDateString(dateToDateString(row.workDate), offsetDays));
       } else {
         const { from, to } = monthRange(dto.fromMonth);
-        sourceRows = await this.repository.listForUserInRange(tx, tenantId, targetUserId, from, to);
+        sourceRows = await this.repository.listForUserInRange(tx, tenantId, targetUserId, from, to, branchId);
         targetDates = sourceRows.map((row) => mapDayToMonth(row.workDate.getUTCDate(), dto.toMonth));
       }
 
@@ -275,6 +281,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
         .filter(({ targetDate }) => canBypass || targetDate >= today)
         .map(({ row, targetDate }) => ({
           tenantId,
+          branchId,
           userId: targetUserId,
           workShiftId: row.workShiftId,
           workDate: dateStringToUtc(targetDate),
@@ -294,7 +301,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
       let writableRows = rows;
       if (dataScope === 'personal' && !canBypass) {
         const targetMonths = [...new Set(rows.map((r) => dateToDateString(r.workDate).slice(0, 7)))];
-        const statuses = await this.submissionRepository.statusByMonth(tx, tenantId, actorId, targetMonths);
+        const statuses = await this.submissionRepository.statusByMonth(tx, tenantId, branchId, actorId, targetMonths);
         writableRows = rows.filter((r) => {
           const month = dateToDateString(r.workDate).slice(0, 7);
           return isMonthOpenForSelfRegistration(month, today) && (statuses.get(month) ?? 'DRAFT') === 'DRAFT';
@@ -320,10 +327,10 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     });
   }
 
-  async remove(tenantId: string, actorId: string, dataScope: DataScope, id: string, version: number, meta: RequestMeta): Promise<void> {
+  async remove(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, version: number, meta: RequestMeta): Promise<void> {
     await this.assertSelfScheduleAllowed(tenantId, dataScope);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.repository.findById(tx, tenantId, id);
+      const existing = await this.repository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.userId !== actorId)) {
         // Cùng triết lý 404 (không phải 403) khi ngoài phạm vi cá nhân — .claude/docs/multi-tenancy.md.
         throw new NotFoundException();
@@ -339,7 +346,7 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
           throw new WorkShiftAssignmentLockedError();
         }
         await this.assertPersonalMayWrite(
-          tx, tenantId, actorId, dataScope, await canBypassMonthLock(tx, tenantId, actorId), [dateToDateString(existing.workDate)], getVietnamDateString(),
+          tx, tenantId, branchId, actorId, dataScope, await canBypassMonthLock(tx, tenantId, actorId), [dateToDateString(existing.workDate)], getVietnamDateString(),
         );
       }
 
@@ -391,16 +398,16 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     );
   }
 
-  async list(tenantId: string, actorId: string, dataScope: DataScope, query: ListWorkShiftAssignmentsQuery): Promise<ListWorkShiftAssignmentsResponse> {
+  async list(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, query: ListWorkShiftAssignmentsQuery): Promise<ListWorkShiftAssignmentsResponse> {
     const graceDays = await this.clinicConfigReader.getWorkShiftAssignmentLockGraceDays(tenantId);
     const today = getVietnamDateString();
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const canBypass = await canBypassMonthLock(tx, tenantId, actorId);
       const userId = dataScope === 'personal' ? actorId : query.userId;
-      const rows = await this.repository.list(tx, tenantId, { from: query.from, to: query.to, userId });
+      const rows = await this.repository.list(tx, tenantId, branchId, { from: query.from, to: query.to, userId });
       // #225: trạng thái bảng tháng của CHÍNH actor (chỉ cần cho scope personal) để tính `canEdit`.
       const months = [...new Set(rows.map((r) => dateToDateString(r.workDate).slice(0, 7)))];
-      const statuses = dataScope === 'personal' ? await this.submissionRepository.statusByMonth(tx, tenantId, actorId, months) : new Map();
+      const statuses = dataScope === 'personal' ? await this.submissionRepository.statusByMonth(tx, tenantId, branchId, actorId, months) : new Map();
       return { items: rows.map((row) => this.toItem(row, actorId, dataScope, today, graceDays, canBypass, statuses)) };
     });
   }
@@ -427,11 +434,12 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
   /** `WorkShiftAssignmentReaderPort` — dùng cho lưới Lịch hẹn (module `appointment`, qua port). */
   getWorkShiftsForUsersOnDate(
     tenantId: string,
+    branchId: string,
     userIds: string[],
     date: string,
   ): ReturnType<WorkShiftAssignmentReaderPort['getWorkShiftsForUsersOnDate']> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.repository.listForUsersOnDate(tx, tenantId, userIds, date);
+      const rows = await this.repository.listForUsersOnDate(tx, tenantId, branchId, userIds, date);
       const result: Record<string, Array<{ name: string; color: PortWorkShiftColor; startTime: string; endTime: string }>> = {};
       for (const row of rows) {
         const list = result[row.userId] ?? (result[row.userId] = []);
@@ -450,15 +458,15 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
    * `WorkShiftAssignmentReaderPort` — công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (09/10/2026).
    * Chỉ chặn khi cả 2 công tắc bật, ngày đó đã có ÍT NHẤT 1 bác sĩ đăng ký ca và bác sĩ này không có ca nào.
    */
-  async isDoctorBookingBlockedForNoShift(tenantId: string, doctorId: string, date: string): Promise<boolean> {
+  async isDoctorBookingBlockedForNoShift(tenantId: string, branchId: string, doctorId: string, date: string): Promise<boolean> {
     const [blockOutside, blockNoShift] = await Promise.all([
       this.clinicConfigReader.getBlockBookingOutsideWorkShiftEnabled(tenantId),
       this.clinicConfigReader.getBlockBookingWhenNoShiftEnabled(tenantId),
     ]);
     if (!blockOutside || !blockNoShift) return false;
-    const doctors = await this.doctorDirectory.listActiveDoctors(tenantId);
+    const doctors = await this.doctorDirectory.listActiveDoctors(tenantId, branchId);
     const ids = [...new Set([...doctors.map((d) => d.id), doctorId])];
-    const byDoctor = await this.getWorkShiftsForUsersOnDate(tenantId, ids, date);
+    const byDoctor = await this.getWorkShiftsForUsersOnDate(tenantId, branchId, ids, date);
     const dayUsesShifts = Object.values(byDoctor).some((shifts) => shifts.length > 0);
     return dayUsesShifts && (byDoctor[doctorId]?.length ?? 0) === 0;
   }
@@ -466,11 +474,12 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
   /** `WorkShiftAssignmentReaderPort` — "Đơn xin nghỉ" (#224), module `leave-request` đọc qua port. */
   listShiftsForUserOnDate(
     tenantId: string,
+    branchId: string,
     userId: string,
     date: string,
   ): ReturnType<WorkShiftAssignmentReaderPort['listShiftsForUserOnDate']> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.repository.listForUsersOnDate(tx, tenantId, [userId], date);
+      const rows = await this.repository.listForUsersOnDate(tx, tenantId, branchId, [userId], date);
       return rows.map((row) => ({
         workShiftId: row.workShiftId,
         name: row.workShift.name,

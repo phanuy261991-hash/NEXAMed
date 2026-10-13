@@ -147,9 +147,9 @@ export class ReceptionService {
    * Công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" (09/10/2026) — chặn CỨNG khi tiếp nhận đích
    * danh một bác sĩ không có ca. Chọn "theo Khoa" (chưa rõ bác sĩ) thì không có gì để kiểm. Gọi NGOÀI transaction.
    */
-  private async assertDoctorHasShift(tenantId: string, doctorId: string | null, date: string): Promise<void> {
+  private async assertDoctorHasShift(tenantId: string, branchId: string, doctorId: string | null, date: string): Promise<void> {
     if (!doctorId) return;
-    if (await this.workShiftAssignmentReader.isDoctorBookingBlockedForNoShift(tenantId, doctorId, date)) {
+    if (await this.workShiftAssignmentReader.isDoctorBookingBlockedForNoShift(tenantId, branchId, doctorId, date)) {
       throw new DoctorNoShiftOnDateError();
     }
   }
@@ -160,15 +160,15 @@ export class ReceptionService {
    * `encounter` + cập nhật `appointment.status→CONVERTED` + gắn `patientId` — lỗi ở bước nào cũng
    * rollback toàn bộ (kể cả dòng `encounter` vừa tạo), không có trạng thái nửa vời.
    */
-  async checkIn(tenantId: string, actorId: string, dataScope: DataScope, dto: CheckInRequest, meta: RequestMeta): Promise<EncounterSummary> {
+  async checkIn(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, dto: CheckInRequest, meta: RequestMeta): Promise<EncounterSummary> {
     // `DoctorDirectoryPort` tự mở transaction RIÊNG (adapter chỉ nhận `tenantId`, không có `tx`
     // của caller) — resolve TRƯỚC khi vào transaction chính bên dưới để tránh $transaction lồng
     // nhau (đúng nguyên tắc "không dùng port cho phần cần atomic cùng check-in", docs/DECISIONS.md).
     const routing = await this.resolveRouting(tenantId, dto);
-    await this.assertDoctorHasShift(tenantId, routing.doctorId, getVietnamDateString());
+    await this.assertDoctorHasShift(tenantId, branchId, routing.doctorId, getVietnamDateString());
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const appointment = await this.appointmentRepository.findById(tx, tenantId, dto.appointmentId);
+      const appointment = await this.appointmentRepository.findById(tx, tenantId, branchId, dto.appointmentId);
       // Cùng triết lý 404 (không 403) khi ngoài scope personal — .claude/docs/multi-tenancy.md.
       if (!appointment || (dataScope === 'personal' && appointment.doctorId !== actorId)) {
         throw new NotFoundException();
@@ -178,7 +178,7 @@ export class ReceptionService {
       }
       await this.assertPatientNotMerged(tx, tenantId, dto.patientId);
 
-      const created = await this.createEncounterAndConvert(tx, tenantId, actorId, {
+      const created = await this.createEncounterAndConvert(tx, tenantId, branchId, actorId, {
         appointmentId: appointment.id,
         doctorId: routing.doctorId,
         departmentId: routing.departmentId,
@@ -208,10 +208,10 @@ export class ReceptionService {
    * thẳng `encounter` với `appointmentId=null`, không có bước cập nhật `appointment` nào để rollback
    * kèm theo — 1 lệnh `create`, thất bại thì tự rollback nguyên transaction.
    */
-  async registerDirect(tenantId: string, actorId: string, dto: RegisterReceptionRequest, meta: RequestMeta): Promise<EncounterSummary> {
+  async registerDirect(tenantId: string, branchId: string, actorId: string, dto: RegisterReceptionRequest, meta: RequestMeta): Promise<EncounterSummary> {
     // Resolve routing TRƯỚC transaction chính — cùng lý do đã ghi ở checkIn().
     const routing = await this.resolveRouting(tenantId, dto);
-    await this.assertDoctorHasShift(tenantId, routing.doctorId, getVietnamDateString(new Date(dto.checkedInAt)));
+    await this.assertDoctorHasShift(tenantId, branchId, routing.doctorId, getVietnamDateString(new Date(dto.checkedInAt)));
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientNotMerged(tx, tenantId, dto.patientId);
@@ -220,7 +220,7 @@ export class ReceptionService {
 
       let created: Encounter;
       try {
-        created = await this.encounterRepository.create(tx, tenantId, actorId, {
+        created = await this.encounterRepository.create(tx, tenantId, branchId, actorId, {
           encounterNo,
           patientId: dto.patientId,
           doctorId: routing.doctorId,
@@ -362,6 +362,7 @@ export class ReceptionService {
   private async createEncounterAndConvert(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     actorId: string,
     params: {
       appointmentId: string;
@@ -383,7 +384,7 @@ export class ReceptionService {
 
     let created: Encounter;
     try {
-      created = await this.encounterRepository.create(tx, tenantId, actorId, {
+      created = await this.encounterRepository.create(tx, tenantId, branchId, actorId, {
         encounterNo,
         patientId: params.patientId,
         doctorId: params.doctorId,
@@ -461,6 +462,7 @@ export class ReceptionService {
    */
   async listReceptions(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     date?: string,
@@ -478,7 +480,7 @@ export class ReceptionService {
       includeDepartmentPool && doctorId ? ((await this.doctorDirectory.getDoctorDepartmentId(tenantId, doctorId)) ?? undefined) : undefined;
 
     const encounters = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.encounterRepository.listForDay(tx, tenantId, {
+      this.encounterRepository.listForDay(tx, tenantId, branchId, {
         dayStart: dayRange.startUtc,
         dayEnd: dayRange.endUtc,
         doctorId,
@@ -532,12 +534,13 @@ export class ReceptionService {
    */
   async getReceptionListForExport(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     date?: string,
   ): Promise<{ targetDate: string; items: ReceptionListItem[]; doctorNameById: Map<string, string>; departmentNameById: Map<string, string> }> {
     const targetDate = date ?? getVietnamDateString();
-    const { items } = await this.listReceptions(tenantId, actorId, dataScope, targetDate);
+    const { items } = await this.listReceptions(tenantId, branchId, actorId, dataScope, targetDate);
 
     const doctorIds = [...new Set(items.map((i) => i.doctorId).filter((id): id is string => id !== null))];
     const [doctorNameById, departmentNameById] = await Promise.all([
@@ -569,6 +572,7 @@ export class ReceptionService {
    */
   async recordVitalSigns(
     tenantId: string,
+    branchId: string,
     actorId: string,
     dataScope: DataScope,
     encounterId: string,
@@ -576,7 +580,7 @@ export class ReceptionService {
     meta: RequestMeta,
   ): Promise<VitalSignResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const encounter = await this.encounterRepository.findByIdWithPatientDob(tx, tenantId, encounterId);
+      const encounter = await this.encounterRepository.findByIdWithPatientDob(tx, tenantId, branchId, encounterId);
       if (!encounter || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
         throw new NotFoundException();
       }
