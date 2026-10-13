@@ -5,6 +5,7 @@ import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { RequireAnyPermissionRoute, RequireDoctorQueueRoute, RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
 import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS, PRICE_LIST_ADMIN_PERMISSIONS, SYSTEM_CONFIG_PERMISSIONS } from '../features/auth/admin-permissions';
+import { ChooseBranchPage } from '../features/branch/ChooseBranchPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { AppShell } from '../shared/layout/AppShell';
 import { NotFoundPage } from './NotFoundPage';
@@ -130,6 +131,15 @@ export const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <ChangePasswordPage />
+      </RequireAuth>
+    ),
+  },
+  // Tầng chi nhánh (docs/DECISIONS.md #231) — "Chọn chi nhánh làm việc" sau đăng nhập khi tài khoản được gán từ 2 chi nhánh. Ngoài AppShell, cùng khuôn `/change-password`.
+  {
+    path: '/choose-branch',
+    element: (
+      <RequireAuth>
+        <ChooseBranchPage />
       </RequireAuth>
     ),
   },

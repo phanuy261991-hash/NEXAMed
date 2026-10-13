@@ -1,11 +1,12 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
-import { Buildings, CalendarBlank, CalendarCheck, Clock, CreditCard, Database as DatabaseIcon, MapPinLine, SlidersHorizontal, Vault } from '@phosphor-icons/react';
+import { Buildings, CalendarBlank, CalendarCheck, Clock, CreditCard, Database as DatabaseIcon, MapPinLine, SlidersHorizontal, TreeStructure, Vault } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
 import { useHasPermission } from '../auth/usePermission';
+import { BranchPane } from '../branch/BranchPane';
 import { CashAccountPane } from '../cash-book/CashAccountPane';
 import { AppointmentConfigPane } from './AppointmentConfigPane';
 import { BackupConfigPane } from './BackupConfigPane';
@@ -70,6 +71,9 @@ const BASE_PILLS: ConfigScreenPill[] = [
 ];
 const FIRST_PILL = BASE_PILLS[0]!;
 
+/** Mục "Chi nhánh" — chèn động vào pill "Cấu hình phòng khám" (ngay sau "Thông tin phòng khám") khi actor có quyền xem chi nhánh. */
+const BRANCH_ITEM = { key: 'branches', label: 'Chi nhánh', icon: TreeStructure };
+
 /** Pill "Sao lưu dữ liệu" (docs/DECISIONS.md #217) — dựng động: chỉ thêm vào khi actor có quyền xem VÀ máy có container sao lưu. */
 const BACKUP_PILL: ConfigScreenPill = { key: 'backup', label: 'Sao lưu dữ liệu' };
 
@@ -90,10 +94,16 @@ export function ClinicConfigPage() {
   const canReadBackup = useHasPermission('system_backup', 'read');
   const backupConfigQuery = useBackupConfigQuery(canReadBackup);
   const showBackupPill = canReadBackup && backupConfigQuery.data?.available === true;
-  const PILLS = useMemo(
-    () => [...(canConfigureClinic ? BASE_PILLS : []), ...(showBackupPill ? [BACKUP_PILL] : [])],
-    [canConfigureClinic, showBackupPill],
-  );
+  // Mục "Chi nhánh" (docs/DECISIONS.md #231) — chỉ hiện với actor có `branch.read` (mặc định clinic_admin). Hiện cả khi công ty mới có 1 chi nhánh: đó là cách thêm chi nhánh thứ hai.
+  const canReadBranch = useHasPermission('branch', 'read');
+  const PILLS = useMemo(() => {
+    const basePills = BASE_PILLS.map((pill) =>
+      pill.key === 'clinic' && canReadBranch && pill.items
+        ? { ...pill, items: [pill.items[0]!, BRANCH_ITEM, ...pill.items.slice(1)] }
+        : pill,
+    );
+    return [...(canConfigureClinic ? basePills : []), ...(showBackupPill ? [BACKUP_PILL] : [])];
+  }, [canConfigureClinic, canReadBranch, showBackupPill]);
 
   const activePill = PILLS.find((p) => p.key === activePillKey);
   // Pill phẳng (không `items`, ví dụ "Cấu hình thanh toán") thì đoạn cuối lấy đúng nhãn của pill.
@@ -135,6 +145,7 @@ export function ClinicConfigPage() {
       onSelectItem={setActiveItemKey}
     >
       {activePillKey === 'clinic' && activeItemKey === 'info' && <ClinicInfoPane />}
+      {activePillKey === 'clinic' && activeItemKey === 'branches' && canReadBranch && <BranchPane />}
       {activePillKey === 'clinic' && activeItemKey === 'hours' && <ClinicHoursPane />}
       {activePillKey === 'clinic' && activeItemKey === 'rooms' && <RoomPane />}
       {activePillKey === 'clinic' && activeItemKey === 'appointments' && <AppointmentConfigPane />}

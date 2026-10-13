@@ -46,6 +46,8 @@ tenant (Công ty ABC)          ← đơn vị cách ly dữ liệu (RLS) vẫn �
 
 **Ràng buộc bắt buộc cho code viết từ nay** (chưa thêm bảng/cột nào, nhưng không được viết ngược hướng):
 
+> **Cập nhật 13/10/2026 (`docs/DECISIONS.md` #231) — Đợt 1 của hướng này ĐÃ CODE**: bảng `branch`/`user_branch`, `branch_id` ở phòng/tầng/bàn khám/lịch hẹn/lượt khám/ca đã xếp/đơn nghỉ/đăng ký ca/đổi ca, đăng nhập chọn chi nhánh, trang "Chi nhánh". Điều chỉnh so với bảng dưới: **không thêm scope `branch`** (chi nhánh là lớp lọc riêng, xem `security-audit.md`) và `department` dùng CHUNG cả công ty (chỉ `room` thuộc chi nhánh). **Chưa bật chi nhánh thứ 2 ở khách thật** tới hết Đợt 2 (hoá đơn, quỹ, ca thu ngân, kho). Nâng cấp môi trường: `db:deploy` + `db:seed` rồi khởi động lại API (seed nạp quyền `branch.*` — thiếu bước này menu "Chi nhánh" không hiện).
+
 | Ràng buộc | Lý do |
 |---|---|
 | **CẤM giả định "1 tenant = 1 địa điểm vật lý"** | Tương lai một tenant có nhiều chi nhánh nhiều địa chỉ — ví dụ địa chỉ in trên phiếu phải lấy theo chi nhánh của lượt khám, không phải thuộc tính duy nhất của tenant |

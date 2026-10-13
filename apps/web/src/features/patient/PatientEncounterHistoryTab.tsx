@@ -21,44 +21,47 @@ import { usePatientEncounterHistoryQuery } from '../encounter/encounter.queries'
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 
 type Filter = 'COMPLETED' | 'ALL';
-type OptionalColumnKey = 'conclusion' | 'followup' | 'rx' | 'cls' | 'cost' | 'paid';
 
-const OPTIONAL_COLUMNS: (ColumnVisibilityOption & { key: OptionalColumnKey; needs: 'clinical' | 'billing' })[] = [
-  { key: 'conclusion', label: 'Kết luận', group: 'Lâm sàng', needs: 'clinical' },
-  { key: 'followup', label: 'Hẹn tái khám', group: 'Lâm sàng', needs: 'clinical' },
-  { key: 'rx', label: 'Đơn thuốc', group: 'Lâm sàng', needs: 'clinical' },
-  { key: 'cls', label: 'Cận lâm sàng', group: 'Lâm sàng', needs: 'clinical' },
-  { key: 'cost', label: 'Tổng chi phí', group: 'Chi phí', needs: 'billing' },
-  { key: 'paid', label: 'Thu tiền', group: 'Chi phí', needs: 'billing' },
-];
+/** Điều kiện để cột được phép hiện: quyền lâm sàng/chi phí do MÁY CHỦ quyết định; `multiBranch` = công ty có từ 2 chi nhánh. */
+type ColumnNeeds = 'any' | 'clinical' | 'billing' | 'multiBranch';
 
 interface ColumnDef {
   key: string;
   label: string;
+  /** Độ rộng cố định (px) — bảng dùng `table-layout: fixed` nên cột không bị bóp méo theo độ dài nội dung; chiều rộng thừa chia đều theo tỷ lệ. */
   width: number;
-  /** Cột cố định (luôn hiện) hoặc tuỳ chọn (theo ô chọn "Cột hiển thị"). */
-  optional?: OptionalColumnKey;
-  /** Cần quyền lâm sàng mới có (cột cố định nhưng chứa nội dung lâm sàng: chẩn đoán, thao tác xem). */
-  clinicalOnly?: boolean;
-  sticky?: 'left' | 'right';
   align: 'center' | 'left';
+  needs: ColumnNeeds;
+  /** Cột cố định luôn hiện (Ngày khám, Thao tác); còn lại bật/tắt trong "Cột hiển thị". */
+  fixed?: boolean;
+  /** Nhóm trong hộp "Cột hiển thị". */
+  group?: string;
+  /** Hiện mặc định khi chưa chọn gì — đúng bộ cột của mockup Màn 4 (docs/DECISIONS.md #231). */
+  defaultVisible?: boolean;
+  sticky?: 'left' | 'right';
 }
 
+const GROUP_INFO = 'Thông tin lượt khám';
+const GROUP_CLINICAL = 'Lâm sàng';
+const GROUP_COST = 'Chi phí';
+
+/** Thứ tự cột trong bảng. Mặc định hiện: Ngày khám · Chi nhánh · Bác sĩ·Khoa · Chẩn đoán chính · Đơn thuốc · Cận lâm sàng · Tổng chi phí · Thu tiền · Thao tác. */
 const COLUMNS: ColumnDef[] = [
-  { key: 'date', label: 'Ngày khám', width: 120, sticky: 'left', align: 'center' },
-  { key: 'no', label: 'Mã lượt khám', width: 130, align: 'center' },
-  { key: 'service', label: 'Dịch vụ khám', width: 180, align: 'center' },
-  { key: 'doctor', label: 'Bác sĩ · Khoa', width: 190, align: 'left' },
-  { key: 'reason', label: 'Lý do khám', width: 210, align: 'left' },
-  { key: 'diagnosis', label: 'Chẩn đoán chính', width: 270, clinicalOnly: true, align: 'left' },
-  { key: 'conclusion', label: 'Kết luận', width: 230, optional: 'conclusion', align: 'left' },
-  { key: 'followup', label: 'Hẹn tái khám', width: 150, optional: 'followup', align: 'center' },
-  { key: 'rx', label: 'Đơn thuốc', width: 150, optional: 'rx', align: 'center' },
-  { key: 'cls', label: 'Cận lâm sàng', width: 150, optional: 'cls', align: 'center' },
-  { key: 'cost', label: 'Tổng chi phí', width: 140, optional: 'cost', align: 'center' },
-  { key: 'paid', label: 'Thu tiền', width: 130, optional: 'paid', align: 'center' },
-  { key: 'status', label: 'Trạng thái', width: 120, align: 'center' },
-  { key: 'action', label: 'Thao tác', width: 90, clinicalOnly: true, sticky: 'right', align: 'center' },
+  { key: 'date', label: 'Ngày khám', width: 110, align: 'center', needs: 'any', fixed: true, sticky: 'left' },
+  { key: 'branch', label: 'Chi nhánh', width: 150, align: 'center', needs: 'multiBranch', group: GROUP_INFO, defaultVisible: true },
+  { key: 'no', label: 'Mã lượt khám', width: 130, align: 'center', needs: 'any', group: GROUP_INFO },
+  { key: 'service', label: 'Dịch vụ khám', width: 150, align: 'center', needs: 'any', group: GROUP_INFO },
+  { key: 'doctor', label: 'Bác sĩ · Khoa', width: 180, align: 'left', needs: 'any', group: GROUP_INFO, defaultVisible: true },
+  { key: 'reason', label: 'Lý do khám', width: 200, align: 'left', needs: 'any', group: GROUP_INFO },
+  { key: 'diagnosis', label: 'Chẩn đoán chính', width: 260, align: 'left', needs: 'clinical', group: GROUP_CLINICAL, defaultVisible: true },
+  { key: 'conclusion', label: 'Kết luận', width: 210, align: 'left', needs: 'clinical', group: GROUP_CLINICAL },
+  { key: 'followup', label: 'Hẹn tái khám', width: 140, align: 'center', needs: 'clinical', group: GROUP_CLINICAL },
+  { key: 'rx', label: 'Đơn thuốc', width: 130, align: 'center', needs: 'clinical', group: GROUP_CLINICAL, defaultVisible: true },
+  { key: 'cls', label: 'Cận lâm sàng', width: 140, align: 'center', needs: 'clinical', group: GROUP_CLINICAL, defaultVisible: true },
+  { key: 'cost', label: 'Tổng chi phí', width: 130, align: 'center', needs: 'billing', group: GROUP_COST, defaultVisible: true },
+  { key: 'paid', label: 'Thu tiền', width: 110, align: 'center', needs: 'billing', group: GROUP_COST, defaultVisible: true },
+  { key: 'status', label: 'Trạng thái', width: 120, align: 'center', needs: 'any', group: GROUP_INFO },
+  { key: 'action', label: 'Thao tác', width: 90, align: 'center', needs: 'clinical', fixed: true, sticky: 'right' },
 ];
 
 const DASH = <span className="text-slate-400">—</span>;
@@ -71,7 +74,8 @@ function vietnamTime(iso: string): string {
 /**
  * Tab "Lịch sử khám chữa bệnh" của "Hồ sơ bệnh nhân" (docs/DECISIONS.md #223, mockup Artifact đã duyệt). Bảng cuộn ngang, cột Ngày khám dính trái và Thao tác dính phải, tiêu đề
  * dính trên; mặc định chỉ lượt "Đã hoàn tất" (khớp KPI "Tổng lượt khám"), nút "Tất cả" thêm lượt đang khám/đã huỷ/không đến. Cột lâm sàng và chi phí do MÁY CHỦ quyết định theo quyền của
- * actor (`canViewClinical`/`canViewBilling` trong response) — web không tự suy từ vai trò. 6 cột tuỳ chọn bật/tắt qua "Cột hiển thị", nhớ theo tài khoản trên máy.
+ * actor (`canViewClinical`/`canViewBilling` trong response) — web không tự suy từ vai trò. Chỉ Ngày khám và Thao tác cố định; mọi cột khác bật/tắt qua "Cột hiển thị" (mặc định đúng bộ cột mockup
+ * Màn 4, #231), nhớ theo tài khoản trên máy.
  */
 export function PatientEncounterHistoryTab({ patientId, mergedIntoId }: { patientId: string; mergedIntoId: string | null }) {
   const [filter, setFilter] = useState<Filter>('COMPLETED');
@@ -85,15 +89,24 @@ export function PatientEncounterHistoryTab({ patientId, mergedIntoId }: { patien
   const first = query.data?.pages[0];
   const canViewClinical = first?.canViewClinical ?? false;
   const canViewBilling = first?.canViewBilling ?? false;
+  const multiBranch = first?.multiBranch ?? false;
   const items = query.data?.pages.flatMap((p) => p.items) ?? [];
 
-  const allowedOptions = OPTIONAL_COLUMNS.filter((o) => (o.needs === 'clinical' ? canViewClinical : canViewBilling));
-  const allowedKeys = allowedOptions.map((o) => o.key);
-  const columnVisibility = useColumnVisibility(`nexamed:patient-history-columns:${tenantId}:${userId}`, allowedKeys);
+  const isAllowed = (c: ColumnDef) =>
+    c.needs === 'any' || (c.needs === 'clinical' && canViewClinical) || (c.needs === 'billing' && canViewBilling) || (c.needs === 'multiBranch' && multiBranch);
+  const allowedColumns = COLUMNS.filter(isAllowed);
+  const optionalColumns = allowedColumns.filter((c) => !c.fixed);
+  const allowedOptions: ColumnVisibilityOption[] = optionalColumns.map((c) => ({ key: c.key, label: c.label, group: c.group }));
+  // Khoá lưu `:v2` — bộ cột mặc định đổi theo mockup nên không dùng lại lựa chọn cũ (chỉ 6 cột tuỳ chọn, mặc định hiện hết).
+  const columnVisibility = useColumnVisibility(
+    `nexamed:patient-history-columns:v2:${tenantId}:${userId}`,
+    optionalColumns.map((c) => c.key),
+    optionalColumns.filter((c) => c.defaultVisible).map((c) => c.key),
+  );
 
   const receptionTypeName = (code: string | null) => (code ? (receptionTypes.data?.items.find((i) => i.code === code)?.name ?? null) : null);
 
-  const columns = COLUMNS.filter((c) => (!c.optional || columnVisibility.visible.has(c.optional)) && (!c.clinicalOnly || canViewClinical) && (!c.optional || allowedKeys.includes(c.optional)));
+  const columns = allowedColumns.filter((c) => c.fixed || columnVisibility.visible.has(c.key));
   const minWidth = columns.reduce((sum, c) => sum + c.width, 0);
 
   // Cuộn tới đâu tự tải thêm tới đó: một phần tử đệm cuối bảng, quan sát trong chính khung cuộn.
@@ -191,7 +204,7 @@ export function PatientEncounterHistoryTab({ patientId, mergedIntoId }: { patien
           visible={columnVisibility.visible}
           onToggle={(key) => columnVisibility.toggle(key)}
           onShowAll={columnVisibility.showAll}
-          hint={`Cột cơ bản (ngày, mã, dịch vụ, bác sĩ, lý do khám${canViewClinical ? ', chẩn đoán' : ''}, trạng thái) luôn hiện.`}
+          hint={`Ngày khám${canViewClinical ? ' và Thao tác' : ''} luôn hiện. Tích chọn thêm các cột bạn cần xem.`}
           footnote="Lưu cho tài khoản này trên máy"
         />
       </div>
@@ -201,15 +214,21 @@ export function PatientEncounterHistoryTab({ patientId, mergedIntoId }: { patien
       ) : (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div ref={scrollRef} className="scroll-hover max-h-[460px] overflow-auto">
-            <table className="text-sm" style={{ minWidth, width: '100%' }}>
+            {/* `table-layout: fixed` + colgroup: độ rộng từng cột đúng như khai báo, không bị bóp theo nội dung (lỗi cột "Chẩn đoán" hẹp, tiêu đề bị cắt); thừa chiều rộng thì chia theo tỷ lệ. */}
+            <table className="text-sm" style={{ minWidth, width: '100%', tableLayout: 'fixed' }}>
+              <colgroup>
+                {columns.map((c) => (
+                  <col key={c.key} style={{ width: c.width }} />
+                ))}
+              </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr>
                   {columns.map((c) => (
                     <th
                       key={c.key}
                       scope="col"
-                      style={{ width: c.width, minWidth: c.width }}
-                      className={`border-b-2 border-blue-600 bg-slate-100 px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-slate-800 ${
+                      // Tiêu đề canh theo cột (đúng mockup Màn 4): cột chữ dài canh trái cả tiêu đề lẫn nội dung — tránh tiêu đề giữa, nội dung trái nhìn như lệch cột.
+                      className={`border-b-2 border-blue-600 bg-slate-100 px-3 py-2.5 ${c.align === 'left' ? 'text-left' : 'text-center'} text-xs font-bold uppercase tracking-wide text-slate-800 ${
                         c.sticky === 'left' ? 'sticky left-0 z-20' : c.sticky === 'right' ? 'sticky right-0 z-20' : ''
                       }`}
                     >
@@ -220,12 +239,15 @@ export function PatientEncounterHistoryTab({ patientId, mergedIntoId }: { patien
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.encounterId} className="group border-b border-slate-100 hover:bg-slate-50">
+                  // Lượt khám ở chi nhánh khác (chỉ xem được khi mở hồ sơ bệnh nhân này): nền xanh nhạt như mockup; ô dính cột phải đổi nền theo để không lộ khối trắng khi cuộn ngang.
+                  <tr key={item.encounterId} className={`group border-b border-slate-100 hover:bg-slate-50 ${item.isOtherBranch ? 'bg-blue-50/40' : ''}`}>
                     {columns.map((c) => (
                       <td
                         key={c.key}
                         className={`px-3 py-2.5 align-middle ${c.align === 'left' ? 'text-left' : 'text-center'} ${
-                          c.sticky === 'left' ? 'sticky left-0 z-[1] bg-white group-hover:bg-slate-50' : c.sticky === 'right' ? 'sticky right-0 z-[1] bg-white group-hover:bg-slate-50' : ''
+                          c.sticky
+                            ? `sticky z-[1] ${c.sticky === 'left' ? 'left-0' : 'right-0'} ${item.isOtherBranch ? 'bg-blue-50' : 'bg-white'} group-hover:bg-slate-50`
+                            : ''
                         }`}
                       >
                         {renderCell(c.key, item, receptionTypeName(item.receptionTypeCode), () => setViewing(item))}
@@ -246,6 +268,11 @@ export function PatientEncounterHistoryTab({ patientId, mergedIntoId }: { patien
       <p className="text-xs font-medium text-slate-500">
         Mới nhất ở trên · cuộn xuống tự tải thêm · cột Ngày khám{canViewClinical ? ' và Thao tác' : ''} đứng yên khi cuộn ngang.
       </p>
+      {multiBranch && (
+        <p className="text-xs font-medium text-slate-500">
+          Dòng nền xanh nhạt = lượt khám ở chi nhánh khác — phần lâm sàng xem đầy đủ. Số tiền của chi nhánh bạn không được gán để dấu gạch.
+        </p>
+      )}
 
       {viewing && <EncounterHistoryDetailDialog encounterId={viewing.encounterId} doctorName={viewing.doctorName} onClose={() => setViewing(null)} />}
     </div>
@@ -261,6 +288,16 @@ function renderCell(key: string, item: PatientEncounterHistoryItem, receptionTyp
           <div className="font-bold tabular-nums text-brand-teal">{formatDateStringVi(toVietnamDateString(item.checkedInAt))}</div>
           <div className="text-xs font-medium tabular-nums text-slate-500">{vietnamTime(item.checkedInAt)}</div>
         </>
+      );
+    case 'branch':
+      return item.isOtherBranch ? (
+        <span className="whitespace-nowrap rounded-md bg-blue-600 px-2 py-1 text-xs font-bold text-white" title={item.branchName ?? undefined}>
+          {item.branchName ?? 'Chi nhánh khác'}
+        </span>
+      ) : item.branchName ? (
+        <span className="font-medium text-slate-700">{item.branchName}</span>
+      ) : (
+        DASH
       );
     case 'no':
       return <span className="font-semibold text-slate-800">{item.encounterNo}</span>;
@@ -335,9 +372,9 @@ function renderCell(key: string, item: PatientEncounterHistoryItem, receptionTyp
       );
     }
     case 'cost':
-      return item.billing && item.billing.netAmount > 0 ? <span className="font-semibold tabular-nums text-slate-900">{formatVnd(item.billing.netAmount)}</span> : DASH;
+      return !item.billingHidden && item.billing && item.billing.netAmount > 0 ? <span className="font-semibold tabular-nums text-slate-900">{formatVnd(item.billing.netAmount)}</span> : DASH;
     case 'paid':
-      if (!item.billing) return DASH;
+      if (item.billingHidden || !item.billing) return DASH;
       return item.billing.paymentState === 'PAID' ? (
         <StatusBadge tone="success">Đã thu</StatusBadge>
       ) : item.billing.paymentState === 'UNPAID' ? (

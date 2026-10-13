@@ -16,6 +16,8 @@ interface AuthState {
   setSession: (accessToken: string, user: CurrentUser) => void;
   /** Cập nhật một phần `user` tại chỗ — dùng sau khi đổi mật khẩu (xoá cờ `mustChangePassword`), không cần re-login/refetch `/auth/me`. */
   updateUser: (patch: Partial<CurrentUser>) => void;
+  /** Sau `POST /auth/switch-branch`: đặt chi nhánh hiện hành của phiên + access token mới (mang claim `bid` mới). */
+  setCurrentBranch: (branchId: string, accessToken: string) => void;
   clear: () => void;
 }
 
@@ -56,6 +58,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ accessToken, user, status: 'authenticated' });
   },
   updateUser: (patch) => set((state) => (state.user ? { user: { ...state.user, ...patch } } : {})),
+  setCurrentBranch: (branchId, accessToken) =>
+    set((state) => (state.user ? { accessToken, user: { ...state.user, currentBranchId: branchId } } : {})),
   clear: () => {
     setSessionHint(false);
     set({ accessToken: null, user: null, status: 'unauthenticated' });

@@ -31,6 +31,7 @@ Nếu sau này có khách yêu cầu database riêng, tách bằng cách route c
 5. Unique constraint luôn kèm `tenant_id`: `UNIQUE (tenant_id, patient_code)`, không phải `UNIQUE (patient_code)`.
 6. Bệnh nhân **không** dùng chung giữa các tenant ở v1: cùng một người khám ở hai phòng khám là hai bản ghi `patient` độc lập. Nhưng code viết sẵn cho việc dùng chung sau này — mọi tra cứu bệnh nhân đi qua `PatientIdentityPort` (adapter v1 trả chính `patient.id` trong tenant), cột `global_patient_ref` đã có sẵn và luôn null ở v1. Không viết query đọc dữ liệu bệnh nhân xuyên tenant, kể cả cho mục đích chống trùng.
 7. Sequence sinh mã hiển thị tính theo tenant: bảng `code_sequence (tenant_id, prefix, current_value)`, cấp số trong transaction bằng `SELECT ... FOR UPDATE`.
+8. **Chi nhánh là lớp lọc RIÊNG, không phải ranh giới tenant** (`docs/DECISIONS.md` #231): `tenant` = công ty, `branch` nằm bên trong. Dữ liệu theo địa điểm (phòng, lịch hẹn, lượt khám, ca đã xếp...) lọc `branch_id` = chi nhánh hiện hành của phiên ở tầng repository (`requireBranchId(req.user!)`, thiếu → 409 `BRANCH_NOT_SELECTED`; tra id chi nhánh khác → 404 như cô lập tenant). RLS vẫn chỉ theo `tenant_id`. Ngoại lệ có chủ đích: lịch sử khám theo bệnh nhân xem được mọi chi nhánh (lâm sàng đầy đủ, tiền của chi nhánh không được gán bị che, ghi audit).
 
 ## Cấu hình theo tenant
 

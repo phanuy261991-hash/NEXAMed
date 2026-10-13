@@ -125,7 +125,7 @@ export function BranchPane() {
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
-                  <th className="w-28 px-4 py-2.5 text-center">Mã</th>
+                  <th className="w-28 px-4 py-2.5 text-left">Mã</th>
                   <th className="px-4 py-2.5 text-left">Tên chi nhánh</th>
                   <th className="px-4 py-2.5 text-left">Địa chỉ</th>
                   <th className="w-36 px-4 py-2.5 text-center">Điện thoại</th>
@@ -140,10 +140,10 @@ export function BranchPane() {
                     key={b.id}
                     className={`h-[60px] border-b border-l-4 border-slate-200 last:border-b-0 ${b.isDefault ? 'border-l-blue-600' : 'border-l-transparent'} ${b.isActive ? '' : 'opacity-60'}`}
                   >
-                    <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{b.code}</td>
+                    <td className="px-4 py-2 text-left text-sm font-semibold text-slate-800">{b.code}</td>
                     <td className="px-4 py-2 text-left">
                       <div className="font-bold text-slate-900">{b.name}</div>
-                      {b.isDefault && <div className="text-xs font-medium text-slate-500">Chi nhánh mặc định</div>}
+                      {b.isDefault && <div className="text-xs font-medium text-slate-500">Mặc định</div>}
                     </td>
                     <td className="px-4 py-2 text-left text-slate-600">{b.address ?? '—'}</td>
                     <td className="px-4 py-2 text-center text-slate-600">{b.phone ?? '—'}</td>
@@ -175,6 +175,12 @@ export function BranchPane() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {query.isSuccess && items.length > 0 && (
+        <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-5 py-3 text-xs text-slate-600">
+          Viền trái xanh = chi nhánh mặc định (không ngưng được). Mã <strong>CN00001</strong> tự sinh. Ngưng dùng = ẩn, dữ liệu cũ giữ nguyên.
         </div>
       )}
 

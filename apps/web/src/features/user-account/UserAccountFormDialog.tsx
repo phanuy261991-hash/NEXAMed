@@ -10,6 +10,9 @@ import { SaveFlashBanner } from '../../shared/ui/SaveFlashBanner';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
+import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
+import { useBranchesQuery } from '../branch/branch.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useDepartmentsQuery, useCreateDepartmentMutation } from '../department/department.queries';
 import { useRoomsQuery } from '../clinic/clinic.queries';
@@ -77,6 +80,8 @@ export interface UserAccountFormValues {
   defaultRoomId: string;
   isActive: boolean;
   roleIds: string[];
+  /** Chi nhánh được làm việc (docs/DECISIONS.md #231) — chỉ có ý nghĩa khi công ty có từ 2 chi nhánh hoạt động; ngược lại để trống và không gửi. */
+  branchIds: string[];
 }
 
 function toFormValues(item: UserAccountSummary | undefined): UserAccountFormValues {
@@ -102,6 +107,7 @@ function toFormValues(item: UserAccountSummary | undefined): UserAccountFormValu
     defaultRoomId: item?.defaultRoomId ?? '',
     isActive: item?.isActive ?? true,
     roleIds: [],
+    branchIds: item?.branchIds ?? [],
   };
 }
 
@@ -145,9 +151,13 @@ export function UserAccountFormDialog({
 }) {
   const fullNameInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<TabId>('general');
+  // Tạo mới: mặc định gán chi nhánh đang làm việc của người tạo (mockup Màn 3); sửa: chi nhánh đang gán của tài khoản.
+  const currentBranchId = useAuthStore((s) => s.user?.currentBranchId ?? null);
+  const defaultBranchIds = currentBranchId ? [currentBranchId] : [];
   const [values, setValues] = useState<UserAccountFormValues>(() => ({
     ...toFormValues(item),
     roleIds: currentRoleIds,
+    branchIds: mode === 'create' ? defaultBranchIds : (item?.branchIds ?? []),
   }));
   // Chỉ coi là "đã chỉnh tay" khi ĐÃ có displayName lưu sẵn (giữ nguyên, không âm thầm ghi đè) —
   // tài khoản cũ tạo trước tính năng này (displayName rỗng/null) vẫn cần được gợi ý tự động như
@@ -168,6 +178,12 @@ export function UserAccountFormDialog({
   const createDepartmentMutation = useCreateDepartmentMutation();
   const roomsQuery = useRoomsQuery();
   const rolesQuery = useRolesQuery();
+  // Ô "Chi nhánh làm việc" CHỈ hiện khi công ty có từ 2 chi nhánh hoạt động (mockup Màn 3) — 1 chi nhánh: mọi tài khoản tự thuộc chi nhánh mặc định, form không đổi.
+  const canReadBranch = useHasPermission('branch', 'read');
+  const branchesQuery = useBranchesQuery(false, canReadBranch);
+  const activeBranches = branchesQuery.data?.items ?? [];
+  const showBranchField = canReadBranch && activeBranches.length >= 2;
+  const branchOptions: ComboboxOption[] = activeBranches.map((b) => ({ value: b.id, label: b.name }));
 
   const academicTitleOptions = withLegacyValueOption(
     (academicTitleQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name })),
@@ -252,24 +268,28 @@ export function UserAccountFormDialog({
     (mode === 'edit' || values.phone.trim() !== '') &&
     (mode === 'edit' || values.displayName.trim() !== '') &&
     values.roleIds.length > 0 &&
+    (!showBranchField || values.branchIds.length > 0) &&
     (mode === 'edit' || (values.username.trim().length >= 3 && values.password.length >= 8));
 
   // Bọc `<form>` để Enter trong ô nhập tự submit — bắt buộc cho mọi form Thêm/Sửa (`.claude/docs/
   // ui-guidelines.md` mục 4.4). `Combobox`/`PasswordInput` đã tự `preventDefault()` trên Enter
   // (chọn giá trị/không có tác dụng phụ) nên không đụng submit ngoài ý muốn; riêng ô "Tên khoa/phòng
   // mới" (thêm nhanh, chưa phải submit cuối) cần chặn tay — xem `handleAddDepartmentKeyDown`.
+  // Không hiện ô chi nhánh thì không gửi `branchIds` (backend giữ nguyên/gán chi nhánh mặc định).
+  const submitValues: UserAccountFormValues = showBranchField ? values : { ...values, branchIds: [] };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
-    if (await run(() => onSubmit(values))) onCancel();
+    if (await run(() => onSubmit(submitValues))) onCancel();
   }
 
   // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định. Chỉ
   // áp dụng lúc TẠO tài khoản mới (mode === 'create', nút chỉ hiện ở đó).
   async function handleSaveAndContinue() {
     if (!canSubmit) return;
-    if (!(await run(() => onSubmit(values)))) return;
-    setValues({ ...toFormValues(undefined), roleIds: [] });
+    if (!(await run(() => onSubmit(submitValues)))) return;
+    setValues({ ...toFormValues(undefined), roleIds: [], branchIds: defaultBranchIds });
     setDisplayNameTouched(false);
     setActiveTab('general');
     fullNameInputRef.current?.focus();
@@ -537,6 +557,21 @@ export function UserAccountFormDialog({
                     </div>
                   )}
                 </Field>
+                {showBranchField && (
+                  <Field id="ua-branches" label="Chi nhánh làm việc" required className="sm:col-span-3">
+                    <MultiSelectCombobox
+                      id="ua-branches"
+                      chips
+                      values={values.branchIds}
+                      onChange={(ids) => set('branchIds', ids)}
+                      options={branchOptions}
+                      placeholder="Chọn chi nhánh..."
+                    />
+                    <p className="mt-1.5 text-xs text-slate-500">
+                      Chọn nhiều nơi nếu nhân viên đi nhiều chi nhánh. Phải chọn ít nhất một. Khoa/Phòng dùng chung cả công ty, không thuộc chi nhánh nào.
+                    </p>
+                  </Field>
+                )}
                 <Field id="ua-displayname" label="Tên hiển thị" required className="sm:col-span-3">
                   <input
                     id="ua-displayname"

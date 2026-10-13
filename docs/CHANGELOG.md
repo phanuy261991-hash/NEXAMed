@@ -4,9 +4,13 @@
 
 ## 2026-10-13
 
-### Tầng chi nhánh — Đợt 1 (backend; web đang làm dở) (`docs/DECISIONS.md` #231)
+### Tầng chi nhánh — Đợt 1 "Nền" (`docs/DECISIONS.md` #231)
 
-Nền để một công ty có nhiều chi nhánh trên cùng hệ thống (và để chạy được cả SaaS lẫn máy chủ riêng). Mỗi công ty luôn có ít nhất một chi nhánh mặc định; công ty chỉ có một chi nhánh thì không thấy gì khác trên giao diện. Phòng, Tầng, Bàn khám, Lịch hẹn, Lượt khám, ca làm việc đã xếp, đăng ký ca tháng, đơn xin nghỉ và đổi ca nay thuộc từng chi nhánh; một tài khoản có thể được gán nhiều chi nhánh và chọn chi nhánh đang làm khi đăng nhập (đổi được bất cứ lúc nào, hệ thống nhớ lựa chọn). Lịch sử khám của bệnh nhân vẫn xem được ở mọi chi nhánh (kèm tên nơi khám); số tiền của chi nhánh mà tài khoản không thuộc thì bị che. Quyền mới "Chi nhánh" (xem/quản lý, mặc định Quản trị phòng khám). Môi trường khác: `db:deploy` (1 migration) rồi khởi động lại API. **Chưa bật nhiều chi nhánh ở khách thật** cho tới khi xong phần tiền/kho (Đợt 2).
+Nền để một công ty có nhiều chi nhánh trên cùng hệ thống (và để chạy được cả SaaS lẫn máy chủ riêng). Mỗi công ty luôn có ít nhất một chi nhánh mặc định; công ty chỉ có một chi nhánh thì không thấy gì khác trên giao diện. Phòng, Tầng, Bàn khám, Lịch hẹn, Lượt khám, ca làm việc đã xếp, đăng ký ca tháng, đơn xin nghỉ và đổi ca nay thuộc từng chi nhánh; một tài khoản có thể được gán nhiều chi nhánh và chọn chi nhánh đang làm khi đăng nhập (đổi được bất cứ lúc nào, hệ thống nhớ lựa chọn). Lịch sử khám của bệnh nhân vẫn xem được ở mọi chi nhánh (kèm tên nơi khám); số tiền của chi nhánh mà tài khoản không thuộc thì bị che. Quyền mới "Chi nhánh" (xem/quản lý, mặc định Quản trị phòng khám). Môi trường khác: `db:deploy` (1 migration) rồi khởi động lại API. **Chưa bật nhiều chi nhánh ở khách thật** cho tới khi xong phần tiền/kho (Đợt 2). Giao diện: mục "Chi nhánh" trong Cấu hình hệ thống, màn "Chọn chi nhánh làm việc" sau đăng nhập, bộ chuyển chi nhánh ở thanh đỉnh, ô "Chi nhánh làm việc" ở form tài khoản, tab Lịch sử khám có cột Chi nhánh + "Cột hiển thị" mở rộng (mặc định đúng mockup). Môi trường khác: `db:deploy` + **`db:seed`** (quyền `branch.*`) rồi khởi động lại API.
+
+### Bảng "Vai trò & Phân quyền" hiện đủ nhãn tiếng Việt
+
+6 module cận lâm sàng/bảng giá (`price_list`, `result_template`, `service_package`, `technical_service`, `clinical_order`, `paraclinical_result`) từng hiện tên thô; đã thêm nhãn + test chặn module mới thiếu nhãn (`permission-grouping.spec.ts`).
 
 ### Danh mục riêng theo từng phòng khám/công ty + bảo mật cô lập tenant mạnh hơn (`docs/DECISIONS.md` #230)
 

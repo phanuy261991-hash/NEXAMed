@@ -16,6 +16,7 @@ export function MultiSelectCombobox({
   onChange,
   disabled = false,
   placeholder = 'Chọn...',
+  chips = false,
 }: {
   id: string;
   values: string[];
@@ -23,6 +24,8 @@ export function MultiSelectCombobox({
   onChange: (values: string[]) => void;
   disabled?: boolean;
   placeholder?: string;
+  /** Hiện giá trị đã chọn dạng chip có nút ✕ (thay vì nối bằng dấu phẩy) — dùng khi số mục ít và cần gỡ nhanh từng mục. */
+  chips?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,21 +50,67 @@ export function MultiSelectCombobox({
     onChange(values.includes(value) ? values.filter((v) => v !== value) : [...values, value]);
   }
 
+  const selectedOptions = useMemo(() => options.filter((o) => values.includes(o.value)), [options, values]);
+
   return (
     <div ref={containerRef} className="relative">
-      <button
-        id={id}
-        type="button"
-        disabled={disabled}
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className="flex w-full items-center justify-between rounded-md border border-slate-300 py-2 pl-3 pr-9 text-left text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
-      >
-        <span className={`truncate ${selectedLabels.length === 0 ? 'font-normal text-slate-400' : ''}`}>
-          {selectedLabels.length > 0 ? selectedLabels.join(', ') : placeholder}
-        </span>
-      </button>
+      {chips ? (
+        // Biến thể "chip" (mockup ô "Chi nhánh làm việc"): mỗi giá trị đã chọn là một chip teal có nút ✕ gỡ riêng. Ô đóng không thể là <button> (lồng nút ✕ bên trong) nên dùng div có role="combobox".
+        <div
+          id={id}
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={`${id}-listbox`}
+          aria-disabled={disabled}
+          tabIndex={disabled ? -1 : 0}
+          onClick={() => !disabled && setOpen((o) => !o)}
+          onKeyDown={(e) => {
+            if (disabled) return;
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+              e.preventDefault();
+              setOpen(true);
+            } else if (e.key === 'Escape') {
+              setOpen(false);
+            }
+          }}
+          className="flex min-h-10 w-full cursor-pointer flex-wrap items-center gap-1.5 rounded-md border border-slate-300 py-1.5 pl-2 pr-9 text-left focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 aria-disabled:cursor-default aria-disabled:bg-slate-50"
+        >
+          {selectedOptions.length === 0 && <span className="px-1 text-[15px] font-normal text-slate-400">{placeholder}</span>}
+          {selectedOptions.map((opt) => (
+            <span key={opt.value} className="flex items-center gap-1 rounded bg-brand-teal px-2 py-1 text-xs font-semibold text-white">
+              {opt.label}
+              {!disabled && (
+                <button
+                  type="button"
+                  aria-label={`Bỏ ${opt.label}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggle(opt.value);
+                  }}
+                  className="rounded px-0.5 leading-none opacity-80 hover:opacity-100"
+                >
+                  ✕
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <button
+          id={id}
+          type="button"
+          disabled={disabled}
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          className="flex w-full items-center justify-between rounded-md border border-slate-300 py-2 pl-3 pr-9 text-left text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+        >
+          <span className={`truncate ${selectedLabels.length === 0 ? 'font-normal text-slate-400' : ''}`}>
+            {selectedLabels.length > 0 ? selectedLabels.join(', ') : placeholder}
+          </span>
+        </button>
+      )}
 
       <div className="pointer-events-none absolute right-0 top-0 flex h-full w-8 items-center justify-center text-slate-400">
         <CaretDown size={13} weight="bold" className={`transition-transform duration-150 ${open ? 'rotate-180 text-blue-600' : ''}`} />
@@ -69,6 +118,7 @@ export function MultiSelectCombobox({
 
       {open && (
         <ul
+          id={`${id}-listbox`}
           role="listbox"
           aria-multiselectable="true"
           style={{ maxHeight: 220 }}

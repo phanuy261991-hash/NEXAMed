@@ -1,4 +1,4 @@
-import type { ChangePasswordRequest, ChangePasswordResponse, LoginResponse, MeResponse, RefreshResponse } from '@nexamed/shared';
+import type { ChangePasswordRequest, ChangePasswordResponse, LoginResponse, MeResponse, RefreshResponse, SwitchBranchResponse } from '@nexamed/shared';
 import { getApiClient, setAccessToken, unwrap } from '../../shared/api/client';
 
 export async function login(tenantId: string, username: string, password: string): Promise<LoginResponse> {
@@ -21,6 +21,16 @@ export async function logout(): Promise<{ success: boolean }> {
   } finally {
     setAccessToken(undefined);
   }
+}
+
+/**
+ * Đổi chi nhánh làm việc của PHIÊN (docs/DECISIONS.md #231) — máy chủ cấp access token mới mang chi nhánh mới (claim `bid`). `remember=true` lưu thành
+ * chi nhánh mặc định cho lần đăng nhập sau.
+ */
+export async function switchBranch(branchId: string, remember: boolean): Promise<SwitchBranchResponse> {
+  const result = unwrap(await getApiClient().POST('/api/v1/auth/switch-branch', { body: { branchId, remember } })) as SwitchBranchResponse;
+  setAccessToken(result.accessToken);
+  return result;
 }
 
 export async function getMe(): Promise<MeResponse> {

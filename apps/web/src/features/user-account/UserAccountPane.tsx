@@ -137,6 +137,7 @@ export function UserAccountPane() {
           departmentId: values.departmentId || undefined,
           defaultRoomId: values.defaultRoomId || undefined,
           roleIds: values.roleIds,
+          branchIds: values.branchIds.length > 0 ? values.branchIds : undefined,
         });
       } else if (modal?.item) {
         // Trạng thái làm việc tự-vô-hiệu-hoá (toggle "Đang hoạt động" đã bị khoá/disabled trong
@@ -170,6 +171,7 @@ export function UserAccountPane() {
             defaultRoomId: nullableText(values.defaultRoomId),
             isActive: statusDeactivates ? undefined : values.isActive,
             roleIds: values.roleIds,
+            branchIds: values.branchIds.length > 0 ? values.branchIds : undefined,
             version: modal.item.version,
           },
         });

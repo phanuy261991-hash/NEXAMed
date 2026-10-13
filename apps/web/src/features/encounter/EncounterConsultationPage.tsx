@@ -1625,6 +1625,12 @@ function HistoryCard({ item, highlighted = false, onOpen }: { item: EncounterHis
           {highlighted && <span className="text-[11px] font-medium text-slate-400">({formatRelativeTime(item.checkedInAt)})</span>}
         </span>
         {item.doctorName && <div className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">{item.doctorName}</div>}
+        {/* Tên chi nhánh CHỈ ghi khi lượt đó khác chi nhánh đang làm việc (docs/DECISIONS.md #231) — cùng chi nhánh/công ty 1 chi nhánh: `branchName` là null, không hiện gì. */}
+        {item.branchName && (
+          <span className="mt-1 inline-block max-w-full truncate rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white" title={item.branchName}>
+            {item.branchName}
+          </span>
+        )}
       </div>
       {item.primaryDiagnosisName && (
         <div className={`mb-1 font-bold text-slate-900 ${highlighted ? 'text-[13.5px]' : 'text-[12.5px]'}`}>{item.primaryDiagnosisName}</div>

@@ -5,7 +5,7 @@ import type { RolePermissionEntry } from '@nexamed/shared';
  * permissions.ts) — thuần trình bày, module lạ (thêm sau này, chưa kịp cập nhật nhãn) vẫn hiển
  * thị được bằng chính tên module thô (xem `moduleLabel`), không vỡ giao diện.
  */
-const MODULE_LABELS: Record<string, string> = {
+export const MODULE_LABELS: Record<string, string> = {
   patient: 'Bệnh nhân',
   appointment: 'Lịch hẹn',
   encounter: 'Lượt khám',
@@ -64,6 +64,14 @@ const MODULE_LABELS: Record<string, string> = {
   imaging_result: 'Kết quả CĐHA & Thăm dò chức năng',
   // Cấu hình sao lưu dữ liệu (docs/DECISIONS.md #217) — thêm nhãn NGAY từ đầu.
   system_backup: 'Sao lưu dữ liệu',
+  // Cận lâm sàng GĐ1–GĐ4 (docs/DECISIONS.md #212/#214) — 6 module này từng bị bỏ sót nhãn (chủ dự án phát hiện qua ảnh chụp trang Vai trò & Phân quyền, 13/10/2026,
+  // sau nhiều lần nhắc). Từ nay `permission-grouping.spec.ts` chặn: module nào có trong danh mục quyền ở packages/core mà thiếu nhãn ở đây thì test đỏ.
+  technical_service: 'Dịch vụ kỹ thuật & Chỉ số xét nghiệm',
+  result_template: 'Mẫu kết quả cận lâm sàng',
+  service_package: 'Gói dịch vụ',
+  price_list: 'Bảng giá',
+  clinical_order: 'Chỉ định cận lâm sàng',
+  paraclinical_result: 'Kết quả cận lâm sàng',
 };
 
 export function moduleLabel(module: string): string {
@@ -84,7 +92,10 @@ const SECTIONS: { label: string; modules: string[] }[] = [
   { label: 'Khám bệnh & Kê đơn', modules: ['clinical_note', 'prescription', 'prescription_template', 'advice_template'] },
   { label: 'Cấu hình & Quản trị', modules: ['clinic_config', 'user_account', 'role_permission', 'audit_log', 'system_backup'] },
   { label: 'Danh mục dùng chung', modules: ['reference_catalog'] },
-  { label: 'Cận lâm sàng', modules: ['lab_result', 'imaging_result'] },
+  {
+    label: 'Cận lâm sàng',
+    modules: ['technical_service', 'result_template', 'service_package', 'price_list', 'clinical_order', 'paraclinical_result', 'lab_result', 'imaging_result'],
+  },
 ];
 
 export interface ModuleGroup {

@@ -13,6 +13,7 @@ import { useClosingTimeReminder } from '../../features/clinic/useClosingTimeRemi
 import { DOCTOR_ONLY_ROLES } from '../../features/auth/workflow-roles';
 import { getInitials } from '../format/initials';
 import { formatClockTime } from '../format/time';
+import { BranchSwitcher } from './BranchSwitcher';
 import { useBreadcrumbItems } from './breadcrumb.context';
 
 /**
@@ -203,8 +204,10 @@ export function TopBar() {
           </span>
         )}
 
+        <BranchSwitcher />
+
         <span className="text-sm text-slate-500">
-          Xin chào, <strong className="font-semibold text-slate-900">{user.displayName ?? user.fullName}</strong>
+          Xin chào,<strong className="font-semibold text-slate-900">{user.displayName ?? user.fullName}</strong>
         </span>
 
         {showAvailabilityGear && (
