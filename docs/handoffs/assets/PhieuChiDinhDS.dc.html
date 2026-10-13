@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Phiếu chỉ định cận lâm sàng — danh sách</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+</style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; background: #f8fafc; color: #0f172a; overflow: hidden">
+
+  <nav aria-label="Menu chính" style="width: 236px; flex-shrink: 0; background: #0f172a; color: #cbd5e1; display: flex; flex-direction: column">
+    <div style="height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 18px; border-bottom: 1px solid #1e293b">
+      <div style="width: 28px; height: 28px; border-radius: 7px; background: #2563eb; color: #fff; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center">N</div>
+      <span style="font-size: 15px; font-weight: 700; color: #fff">NEXAMed</span>
+    </div>
+    <div style="padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; font-weight: 600">
+      <div style="padding: 9px 10px; border-radius: 7px">Tổng quan</div>
+      <div style="padding: 9px 10px; border-radius: 7px">Tiếp nhận và Đặt lịch</div>
+      <div style="padding: 9px 10px; border-radius: 7px">Khám bệnh</div>
+      <div style="padding: 9px 10px; border-radius: 7px">Thu ngân</div>
+      <div style="padding: 9px 10px; color: #fff; display: flex; align-items: center; justify-content: space-between">
+        <span>Cận lâm sàng</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+      <div style="margin-left: 12px; padding-left: 8px; border-left: 1px solid #334155; display: flex; flex-direction: column; gap: 2px">
+        <div style="padding: 8px 10px; border-radius: 7px">Xét nghiệm</div>
+        <div style="padding: 8px 10px; border-radius: 7px">CĐHA &amp; Thăm dò chức năng</div>
+        <div style="padding: 8px 10px; border-radius: 7px; background: #2563eb; color: #fff">Phiếu chỉ định</div>
+        <div style="padding: 8px 10px; border-radius: 7px">Tra cứu kết quả</div>
+      </div>
+      <div style="padding: 9px 10px; border-radius: 7px">Kho thuốc</div>
+      <div style="padding: 9px 10px; border-radius: 7px">Quản trị</div>
+    </div>
+  </nav>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column">
+
+    <div style="height: 46px; flex-shrink: 0; background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; padding: 0 24px; font-size: 12.5px; color: #64748b">
+      <span>Cận lâm sàng</span><span style="margin: 0 8px">/</span><span style="color: #0f172a; font-weight: 600">Phiếu chỉ định</span>
+    </div>
+
+    <div style="flex-shrink: 0; padding: 14px 24px 0">
+      <h1 style="margin: 0; font-size: 17px; font-weight: 700; color: #0f172a">Phiếu chỉ định cận lâm sàng</h1>
+      <p style="margin: 3px 0 0; font-size: 12.5px; color: #64748b">Tra cứu mọi phiếu bác sĩ đã chỉ định — tại phòng khám và chỉ định ra ngoài. Chỉ xem và in lại; thực hiện và nhập kết quả ở menu Xét nghiệm / CĐHA.</p>
+    </div>
+
+    <div style="flex-shrink: 0; padding: 12px 24px 0; display: flex; gap: 9px; align-items: center; flex-wrap: wrap">
+      <div style="display: flex; align-items: center; height: 38px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; overflow: hidden; font-size: 13px; font-weight: 600; color: #0f172a">
+        <span style="padding: 0 11px; color: #64748b; font-weight: 500">Từ</span>
+        <span style="padding: 0 4px 0 0">13/10/2026</span>
+        <span style="padding: 0 8px; color: #94a3b8">–</span>
+        <span style="padding: 0 11px 0 0">13/10/2026</span>
+      </div>
+      <select aria-label="Lọc theo loại dịch vụ" style="height: 38px; border: 1px solid #cbd5e1; border-radius: 7px; padding: 0 11px; font-size: 13px; font-weight: 600; color: #0f172a; background: #fff">
+        <option>Tất cả loại dịch vụ</option>
+      </select>
+      <select aria-label="Lọc theo nơi thực hiện" style="height: 38px; border: 1px solid #cbd5e1; border-radius: 7px; padding: 0 11px; font-size: 13px; font-weight: 600; color: #0f172a; background: #fff">
+        <option>Tại phòng khám và ra ngoài</option>
+      </select>
+      <select aria-label="Lọc theo bác sĩ chỉ định" style="height: 38px; border: 1px solid #cbd5e1; border-radius: 7px; padding: 0 11px; font-size: 13px; font-weight: 600; color: #0f172a; background: #fff">
+        <option>Tất cả bác sĩ</option>
+      </select>
+      <input type="search" aria-label="Tìm phiếu chỉ định" placeholder="Tìm tên, mã BN, mã phiếu…" style="width: 250px; height: 38px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 7px; padding: 0 11px; font-size: 13px; background: #fff; color: #0f172a">
+    </div>
+
+    <div style="flex-shrink: 0; padding: 12px 24px 0; display: flex; gap: 8px; flex-wrap: wrap">
+      <span style="background: #2563eb; color: #fff; border-radius: 999px; padding: 7px 15px; font-size: 12.5px; font-weight: 700">Tất cả</span>
+      <span style="background: #fff; color: #334155; border: 1px solid #cbd5e1; border-radius: 999px; padding: 7px 15px; font-size: 12.5px; font-weight: 600">Chờ thực hiện</span>
+      <span style="background: #fff; color: #334155; border: 1px solid #cbd5e1; border-radius: 999px; padding: 7px 15px; font-size: 12.5px; font-weight: 600">Đang thực hiện</span>
+      <span style="background: #fff; color: #334155; border: 1px solid #cbd5e1; border-radius: 999px; padding: 7px 15px; font-size: 12.5px; font-weight: 600">Đã có kết quả</span>
+      <span style="background: #fff; color: #334155; border: 1px solid #cbd5e1; border-radius: 999px; padding: 7px 15px; font-size: 12.5px; font-weight: 600">Chỉ định ra ngoài</span>
+      <span style="background: #fff; color: #334155; border: 1px solid #cbd5e1; border-radius: 999px; padding: 7px 15px; font-size: 12.5px; font-weight: 600">Đã huỷ</span>
+    </div>
+
+    <div style="flex-grow: 1; min-height: 0; padding: 12px 24px 20px; display: flex; flex-direction: column">
+      <div style="flex-grow: 1; min-height: 0; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; overflow: hidden; display: flex; flex-direction: column">
+
+        <div style="display: grid; grid-template-columns: 124px 206px minmax(0, 1fr) 150px 96px 132px 100px 96px; background: #f1f5f9; border-bottom: 2px solid #2563eb; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #1e293b; text-align: center">
+          <div style="padding: 11px 8px">Mã phiếu</div>
+          <div style="padding: 11px 8px">Bệnh nhân</div>
+          <div style="padding: 11px 8px">Dịch vụ chỉ định</div>
+          <div style="padding: 11px 8px">Bác sĩ chỉ định</div>
+          <div style="padding: 11px 8px">Chỉ định lúc</div>
+          <div style="padding: 11px 8px">Tiến độ</div>
+          <div style="padding: 11px 8px">Thanh toán</div>
+          <div style="padding: 11px 8px">Thao tác</div>
+        </div>
+
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+          <div style="display: grid; grid-template-columns: 124px 206px minmax(0, 1fr) 150px 96px 132px 100px 96px; align-items: center; height: 60px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: center">
+            <div style="font-weight: 600; color: #1e293b">{{r.no}}</div>
+            <div style="text-align: left; padding-left: 10px; min-width: 0">
+              <div style="font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</div>
+              <div style="font-size: 11.5px; color: #64748b">{{r.code}} · {{r.age}}</div>
+            </div>
+            <div style="text-align: left; padding: 0 10px; min-width: 0">
+              <div style="font-weight: 500; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.services}}</div>
+              <div style="font-size: 11.5px; color: #64748b">{{r.kinds}}</div>
+            </div>
+            <div style="font-weight: 500; color: #334155; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.doctor}}</div>
+            <div style="font-weight: 500; color: #475569; line-height: 1.3">{{r.time}}<div style="font-size: 11.5px; color: #64748b">{{r.date}}</div></div>
+            <div>
+              <span style="display: inline-block; background: {{r.progressBg}}; color: #fff; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 5px; white-space: nowrap">{{r.progress}}</span>
+            </div>
+            <div>
+              <span style="display: inline-block; background: {{r.payBg}}; color: {{r.payColor}}; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 5px">{{r.pay}}</span>
+            </div>
+            <div style="display: flex; gap: 7px; justify-content: center">
+              <button type="button" aria-label="Xem phiếu chỉ định" style="width: 32px; height: 32px; border: none; border-radius: 6px; background: #f1f5f9; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center">
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.3-4.5 6.5-4.5S14.5 8 14.5 8 12.2 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.4"></path><circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.4"></circle></svg>
+              </button>
+              <button type="button" aria-label="In phiếu chỉ định" style="width: 32px; height: 32px; border: none; border-radius: 6px; background: #f1f5f9; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center">
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6V2.5h7V6M4.5 11.5h-2v-5h11v5h-2M4.5 9.5h7v4h-7z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg>
+              </button>
+            </div>
+          </div>
+        </sc-for>
+
+        <div style="padding: 12px; text-align: center; font-size: 12px; color: #94a3b8">Cuộn xuống để tải thêm · Mặc định hiện phiếu của hôm nay, đổi khoảng ngày để tra phiếu cũ</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const OK = '#10b981', WAIT = '#f59e0b', RUN = '#2563eb', OUT = '#8b5cf6', OFF = '#cbd5e1';
+    const rows = [
+      { no: 'CLS2610000318', name: 'Phạm Quốc Khánh', code: 'BN2610000162', age: '46 · Nam', services: 'Tổng phân tích tế bào máu, Glucose máu, Ure, Creatinin', kinds: 'Xét nghiệm · 4 dịch vụ', doctor: 'BS. Trần Minh Đức', time: '08:12', date: '13/10/2026', progress: 'Đang thực hiện 2/4', progressBg: RUN, pay: 'Đã thu', payBg: OK, payColor: '#fff' },
+      { no: 'CLS2610000317', name: 'Võ Thị Ngọc Lan', code: 'BN2609000731', age: '61 · Nữ', services: 'Siêu âm ổ bụng tổng quát', kinds: 'Chẩn đoán hình ảnh · 1 dịch vụ', doctor: 'BS. Lê Hoàng Yến', time: '08:05', date: '13/10/2026', progress: 'Chờ thực hiện 0/1', progressBg: WAIT, pay: 'Chưa thu', payBg: WAIT, payColor: '#fff' },
+      { no: 'CLS2610000316', name: 'Đặng Văn Tuấn', code: 'BN2610000155', age: '33 · Nam', services: 'Điện tim thường quy', kinds: 'Thăm dò chức năng · 1 dịch vụ', doctor: 'BS. Trần Minh Đức', time: '07:58', date: '13/10/2026', progress: 'Đã có kết quả 1/1', progressBg: OK, pay: 'Đã thu', payBg: OK, payColor: '#fff' },
+      { no: 'CLS2610000315', name: 'Bùi Thị Thanh Mai', code: 'BN2610000149', age: '29 · Nữ', services: 'Nội soi tai mũi họng (làm ở phòng khám khác)', kinds: 'Chỉ định ra ngoài · 1 dịch vụ', doctor: 'BS. Nguyễn Thị Hạnh', time: '07:51', date: '13/10/2026', progress: 'Chỉ định ra ngoài', progressBg: OUT, pay: 'Không thu', payBg: '#e2e8f0', payColor: '#475569' },
+      { no: 'CLS2610000314', name: 'Trịnh Công Hậu', code: 'BN2608000402', age: '72 · Nam', services: 'HbA1c, Lipid máu (4 chỉ số), Tổng phân tích nước tiểu', kinds: 'Xét nghiệm · 3 dịch vụ', doctor: 'BS. Lê Hoàng Yến', time: '07:44', date: '13/10/2026', progress: 'Đã có kết quả 3/3', progressBg: OK, pay: 'Đã thu', payBg: OK, payColor: '#fff' },
+      { no: 'CLS2610000312', name: 'Lý Thị Hoài Thương', code: 'BN2610000148', age: '39 · Nữ', services: 'Glucose máu lúc đói, HbA1c', kinds: 'Xét nghiệm · 2 dịch vụ', doctor: 'BS. Trần Minh Đức', time: '07:40', date: '13/10/2026', progress: 'Chờ thực hiện 0/2', progressBg: WAIT, pay: 'Đã thu', payBg: OK, payColor: '#fff' },
+      { no: 'CLS2610000311', name: 'Ngô Đình Phúc', code: 'BN2610000140', age: '8 · Nam', services: 'X-quang ngực thẳng', kinds: 'Chẩn đoán hình ảnh · 1 dịch vụ', doctor: 'BS. Nguyễn Thị Hạnh', time: '07:32', date: '13/10/2026', progress: 'Đã huỷ', progressBg: OFF, pay: 'Đã hoàn', payBg: '#8b5cf6', payColor: '#fff' },
+      { no: 'CLS2610000309', name: 'Nguyễn Thị Bảy', code: 'BN2609000884', age: '67 · Nữ', services: 'Tổng phân tích tế bào máu ngoại vi', kinds: 'Xét nghiệm · 1 dịch vụ', doctor: 'BS. Lê Hoàng Yến', time: '07:25', date: '13/10/2026', progress: 'Đã có kết quả 1/1', progressBg: OK, pay: 'Đã thu', payBg: OK, payColor: '#fff' },
+    ];
+    return { rows };
+  }
+}
+</script>
+</body>
+</html>
