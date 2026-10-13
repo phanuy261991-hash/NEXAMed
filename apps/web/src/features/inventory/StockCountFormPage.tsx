@@ -11,7 +11,7 @@ import { PrintButton } from '../../shared/print/PrintButton';
 import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
-import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RecordLoadError } from '../../shared/ui/RecordLoadError';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatDobDisplay } from '../../shared/format/date';
@@ -420,7 +420,7 @@ export function StockCountFormPage() {
     );
   }
   if (isEdit && countQuery.isError) {
-    return <ErrorBanner message={countQuery.error instanceof ApiError ? countQuery.error.message : 'Không tải được phiếu.'} onRetry={() => void countQuery.refetch()} />;
+    return <RecordLoadError error={countQuery.error} fallbackMessage="Không tải được phiếu." onRetry={() => void countQuery.refetch()} fallbackTo="/inventory/counts" fallbackLabel="Về danh sách kiểm kê" />;
   }
 
   const saving = createMutation.isPending || updateMutation.isPending || approveMutation.isPending;

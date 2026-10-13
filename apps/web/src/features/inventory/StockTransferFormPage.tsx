@@ -10,7 +10,7 @@ import { PrintButton } from '../../shared/print/PrintButton';
 import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
-import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RecordLoadError } from '../../shared/ui/RecordLoadError';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
@@ -329,7 +329,7 @@ export function StockTransferFormPage() {
     );
   }
   if (isEdit && transferQuery.isError) {
-    return <ErrorBanner message={transferQuery.error instanceof ApiError ? transferQuery.error.message : 'Không tải được phiếu.'} onRetry={() => void transferQuery.refetch()} />;
+    return <RecordLoadError error={transferQuery.error} fallbackMessage="Không tải được phiếu." onRetry={() => void transferQuery.refetch()} fallbackTo="/inventory/transfers" fallbackLabel="Về danh sách điều chuyển" />;
   }
 
   const saving = createMutation.isPending || updateMutation.isPending || shipMutation.isPending;

@@ -10,7 +10,7 @@ import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { CashTenderPills } from '../../shared/ui/CashTenderPills';
 import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
 import { EmptyState } from '../../shared/ui/EmptyState';
-import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RecordLoadError } from '../../shared/ui/RecordLoadError';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
@@ -434,10 +434,7 @@ export function InvoiceDetailPage() {
       )}
 
       {invoiceQuery.isError && (
-        <ErrorBanner
-          message={invoiceQuery.error instanceof ApiError ? invoiceQuery.error.message : 'Không tải được phiếu thu.'}
-          onRetry={() => void invoiceQuery.refetch()}
-        />
+        <RecordLoadError error={invoiceQuery.error} fallbackMessage="Không tải được phiếu thu." onRetry={() => void invoiceQuery.refetch()} fallbackTo="/billing" fallbackLabel="Về danh sách phiếu thu" />
       )}
 
       {invoiceQuery.isSuccess && invoice === null && (

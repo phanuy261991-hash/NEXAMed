@@ -8,7 +8,7 @@ import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
-import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RecordLoadError } from '../../shared/ui/RecordLoadError';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { PrintButton } from '../../shared/print/PrintButton';
@@ -70,7 +70,7 @@ export function ParaclinicalResultPage({ group }: { group: ParaclinicalGroup }) 
       )}
       {query.isError && (
         <div className="p-6">
-          <ErrorBanner message={query.error instanceof ApiError ? query.error.message : 'Không tải được phiếu kết quả.'} onRetry={() => query.refetch()} />
+          <RecordLoadError error={query.error} fallbackMessage="Không tải được phiếu kết quả." onRetry={() => query.refetch()} fallbackTo={group === 'imaging' ? '/paraclinical/imaging' : '/paraclinical/lab'} fallbackLabel="Về hàng đợi" />
         </div>
       )}
       {form && <ResultForm key={`${itemId}:${form.signedAt ?? 'draft'}:${form.amendment ? 'amended' : 'original'}`} group={group} itemId={itemId} form={form} />}

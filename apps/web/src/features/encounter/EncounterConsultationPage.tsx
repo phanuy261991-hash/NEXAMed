@@ -40,8 +40,7 @@ import { ActionMenu } from '../../shared/ui/ActionMenu';
 import { Button } from '../../shared/ui/Button';
 import { BreakGlassDialog } from '../../shared/ui/BreakGlassDialog';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
-import { EmptyState } from '../../shared/ui/EmptyState';
-import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RecordLoadError } from '../../shared/ui/RecordLoadError';
 import { ReleaseEncounterDialog } from '../../shared/ui/ReleaseEncounterDialog';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { Textarea } from '../../shared/ui/Textarea';
@@ -817,20 +816,14 @@ export function EncounterConsultationPage() {
   }
 
   if (query.isError) {
-    const err = query.error;
-    if (err instanceof ApiError && err.code === 'NOT_FOUND') {
-      return (
-        <EmptyState
-          icon={ClipboardText}
-          title="Không tìm thấy lượt khám"
-          description="Lượt khám này không tồn tại hoặc bạn không có quyền xem."
-        />
-      );
-    }
+    // 404 = không tồn tại HOẶC thuộc chi nhánh khác (máy chủ không phân biệt) → trang "Không có quyền xem" có lối quay lại.
     return (
-      <ErrorBanner
-        message={err instanceof ApiError ? err.message : 'Không tải được dữ liệu lượt khám.'}
+      <RecordLoadError
+        error={query.error}
+        fallbackMessage="Không tải được dữ liệu lượt khám."
         onRetry={() => void query.refetch()}
+        fallbackTo="/reception/doctor-queue"
+        fallbackLabel="Về Hàng đợi khám"
       />
     );
   }

@@ -11,7 +11,7 @@ import { PrintButton } from '../../shared/print/PrintButton';
 import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
-import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RecordLoadError } from '../../shared/ui/RecordLoadError';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
@@ -498,7 +498,7 @@ export function StockReceiptFormPage() {
     );
   }
   if (isEdit && receiptQuery.isError) {
-    return <ErrorBanner message={receiptQuery.error instanceof ApiError ? receiptQuery.error.message : 'Không tải được phiếu.'} onRetry={() => void receiptQuery.refetch()} />;
+    return <RecordLoadError error={receiptQuery.error} fallbackMessage="Không tải được phiếu." onRetry={() => void receiptQuery.refetch()} fallbackTo="/inventory/receipts" fallbackLabel="Về danh sách phiếu nhập" />;
   }
 
   const saving = createMutation.isPending || updateMutation.isPending || approveMutation.isPending;

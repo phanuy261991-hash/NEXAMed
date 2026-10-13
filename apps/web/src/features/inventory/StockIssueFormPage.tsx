@@ -8,7 +8,7 @@ import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { PrintButton } from '../../shared/print/PrintButton';
 import { EmptyState } from '../../shared/ui/EmptyState';
-import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RecordLoadError } from '../../shared/ui/RecordLoadError';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { SummaryField } from '../../shared/ui/SummaryField';
@@ -383,7 +383,7 @@ export function StockIssueFormPage() {
     );
   }
   if (isEdit && issueQuery.isError) {
-    return <ErrorBanner message={issueQuery.error instanceof ApiError ? issueQuery.error.message : 'Không tải được phiếu.'} onRetry={() => void issueQuery.refetch()} />;
+    return <RecordLoadError error={issueQuery.error} fallbackMessage="Không tải được phiếu." onRetry={() => void issueQuery.refetch()} fallbackTo="/inventory/issues" fallbackLabel="Về danh sách phiếu xuất" />;
   }
 
   const saving = createMutation.isPending || updateMutation.isPending || approveMutation.isPending;

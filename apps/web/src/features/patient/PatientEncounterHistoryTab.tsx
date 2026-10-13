@@ -240,7 +240,7 @@ export function PatientEncounterHistoryTab({ patientId, mergedIntoId }: { patien
               <tbody>
                 {items.map((item) => (
                   // Lượt khám ở chi nhánh khác (chỉ xem được khi mở hồ sơ bệnh nhân này): nền xanh nhạt như mockup; ô dính cột phải đổi nền theo để không lộ khối trắng khi cuộn ngang.
-                  <tr key={item.encounterId} className={`group border-b border-slate-100 hover:bg-slate-50 ${item.isOtherBranch ? 'bg-blue-50/40' : ''}`}>
+                  <tr key={item.encounterId} className={`group border-b border-slate-100 hover:bg-slate-50 ${item.isOtherBranch ? 'bg-blue-50' : ''}`}>
                     {columns.map((c) => (
                       <td
                         key={c.key}
