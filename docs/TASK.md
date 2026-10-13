@@ -327,4 +327,4 @@ Lộ trình 4 giai đoạn đã chốt qua mockup 14 màn.
 
 - [x] **Nút "Bỏ qua cảnh báo này" (trùng hoạt chất)** (ngoài kế hoạch, 13/10/2026, `docs/DECISIONS.md` #228): cột `prescription.acknowledged_warnings`, endpoint `POST .../prescription/warnings/acknowledge`, nút + lý do tuỳ chọn + "Bật lại" ở tab Kê đơn; +1 test HTTP (đã kiểm đột biến), core +1, Chrome thật xác nhận.
 
-- [x] **Rà soát toàn bộ mã nguồn 13/10/2026** (`docs/DECISIONS.md` #229): chuỗi kiểm tra xanh (API 1363 test, lint 0 cảnh báo), test RLS toàn lược đồ, 8 điểm đã sửa. **Còn chờ chủ dự án quyết**: `reference_catalog` dùng chung giữa tenant nhưng phòng khám sửa được; ngưỡng xét nghiệm dạng `DOUBLE PRECISION`; CSP; FORCE RLS.
+- [x] **Rà soát toàn bộ mã nguồn 13/10/2026** (`docs/DECISIONS.md` #229): chuỗi kiểm tra xanh (API 1363 test, lint 0 cảnh báo), test RLS toàn lược đồ, 8 điểm đã sửa. **Còn chờ chủ dự án quyết**: `reference_catalog` dùng chung giữa tenant nhưng phòng khám sửa được; CSP; FORCE RLS. (Ngưỡng xét nghiệm `DOUBLE PRECISION` đã chốt là ngoại lệ.)
