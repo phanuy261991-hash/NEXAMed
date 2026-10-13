@@ -8,6 +8,7 @@ import type {
   SaveClinicalNoteRequest,
   SaveDiagnosesRequest,
   SavePrescriptionItemsRequest,
+  AcknowledgePrescriptionWarningRequest,
   SignPrescriptionRequest,
 } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
@@ -26,6 +27,7 @@ import {
   saveClinicalNote,
   saveDiagnoses,
   savePrescriptionItems,
+  acknowledgePrescriptionWarning,
   signPrescription,
 } from './encounter.api';
 
@@ -122,6 +124,15 @@ export function useSavePrescriptionItemsMutation(id: string) {
   const invalidate = useInvalidateConsultation(id);
   return useMutation({
     mutationFn: (body: SavePrescriptionItemsRequest) => savePrescriptionItems(id, body),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** "Bỏ qua cảnh báo này cho đơn hiện tại" (#228) — chỉ trùng hoạt chất, chỉ đơn nháp; `acknowledged=false` = bật lại. */
+export function useAcknowledgePrescriptionWarningMutation(id: string) {
+  const invalidate = useInvalidateConsultation(id);
+  return useMutation({
+    mutationFn: (body: AcknowledgePrescriptionWarningRequest) => acknowledgePrescriptionWarning(id, body),
     onSuccess: () => void invalidate(),
   });
 }

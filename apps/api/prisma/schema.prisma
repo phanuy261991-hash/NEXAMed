@@ -2697,6 +2697,9 @@ model Prescription {
   printedAt        DateTime? @map("printed_at") @db.Timestamptz(6)
   supersedesId     String?   @map("supersedes_id") @db.Uuid
   amendmentReason  String?   @map("amendment_reason")
+  // "Bỏ qua cảnh báo trùng hoạt chất cho đơn này" (#228) — mảng `{ key, reason, by, byName, at }`; chỉ sửa được khi đơn còn nháp
+  // (trigger bất biến sau ký chặn đổi cột này). Đơn đính chính là dòng mới nên bắt đầu từ `[]`.
+  acknowledgedWarnings Json    @default("[]") @map("acknowledged_warnings")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

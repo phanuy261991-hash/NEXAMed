@@ -59,6 +59,7 @@ import {
   prescriptionResponseSchema,
   previousPrescriptionResponseSchema,
   savePrescriptionItemsRequestSchema,
+  acknowledgePrescriptionWarningRequestSchema,
   signPrescriptionRequestSchema,
   updateDrugRequestSchema,
   createSupplierRequestSchema,
@@ -1167,6 +1168,26 @@ registry.registerPath({
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
     409: errorResponse('Chuyển trạng thái không hợp lệ (ENCOUNTER_INVALID_TRANSITION) hoặc version không khớp (CONCURRENT_MODIFICATION)'),
     422: errorResponse('Không đúng một chẩn đoán chính (DIAGNOSIS_PRIMARY_REQUIRED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/encounters/{id}/prescription/warnings/acknowledge',
+  tags: ['encounter'],
+  summary: 'Bỏ qua (hoặc bật lại) cảnh báo trùng hoạt chất cho đơn NHÁP hiện tại — chốt #228',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: encounterActionIdParams,
+    body: { content: { 'application/json': { schema: acknowledgePrescriptionWarningRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công — trả đơn thuốc sau khi cập nhật', envelope(prescriptionResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription.create'),
+    404: errorResponse('Không tìm thấy lượt khám hoặc chưa có đơn nháp'),
+    409: errorResponse('Đơn đã ký (PRESCRIPTION_ALREADY_SIGNED), lượt khám không ở trạng thái cho phép, hoặc version cũ (CONCURRENT_MODIFICATION)'),
+    422: errorResponse('Không phải cảnh báo trùng hoạt chất đang hiển thị (PRESCRIPTION_WARNING_NOT_ACKNOWLEDGEABLE)'),
   },
 });
 

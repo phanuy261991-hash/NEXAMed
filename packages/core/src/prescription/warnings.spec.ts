@@ -12,6 +12,14 @@ describe('findDuplicateActiveIngredients (PRE-02)', () => {
     expect(warnings[0]!.drugIds).toEqual(['1', '2']);
   });
 
+  it('mỗi nhóm trùng có khoá chuẩn hoá (bỏ dấu, viết thường) để "Bỏ qua cảnh báo này"', () => {
+    const lines: PrescriptionDrugLine[] = [
+      { drugId: '1', drugName: 'A', activeIngredient: 'Amoxicillin' },
+      { drugId: '2', drugName: 'B', activeIngredient: 'AMOXICILLIN' },
+    ];
+    expect(findDuplicateActiveIngredients(lines)[0]!.key).toBe('amoxicillin');
+  });
+
   it('không dấu/hoa thường khác nhau vẫn coi là trùng', () => {
     const lines: PrescriptionDrugLine[] = [
       { drugId: '1', drugName: 'A', activeIngredient: 'Amoxicillin' },

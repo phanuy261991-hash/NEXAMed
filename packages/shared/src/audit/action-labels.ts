@@ -24,6 +24,8 @@ const ACTION_LABELS: Record<string, string> = {
   'prescription.signed': 'Ký đơn thuốc',
   'prescription.signed_with_warnings': 'Ký đơn thuốc (có cảnh báo)',
   'prescription.printed': 'In đơn thuốc',
+  'prescription.warning_acknowledged': 'Bỏ qua cảnh báo đơn thuốc',
+  'prescription.warning_restored': 'Bật lại cảnh báo đơn thuốc',
   'prescription.amended': 'Đính chính đơn thuốc',
 
   // clinic (clinic-settings.service.ts, clinic-profile.service.ts)

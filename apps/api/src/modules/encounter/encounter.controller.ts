@@ -14,6 +14,7 @@ import {
   listPatientEncounterHistoryQuerySchema,
   patientClinicalSummaryQuerySchema,
   reassignEncounterRequestSchema,
+  acknowledgePrescriptionWarningRequestSchema,
   releaseEncounterRequestSchema,
   saveClinicalNoteRequestSchema,
   saveDiagnosesRequestSchema,
@@ -210,6 +211,16 @@ export class EncounterController {
     const dto = savePrescriptionItemsRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.encounterService.savePrescriptionItems(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+  }
+
+  /** "Bỏ qua cảnh báo này cho đơn hiện tại" (#228) — CHỈ trùng hoạt chất, CHỈ đơn nháp; cùng quyền với sửa đơn nháp. */
+  @Post(':id/prescription/warnings/acknowledge')
+  @RequirePermission('prescription', 'create', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async acknowledgePrescriptionWarning(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = acknowledgePrescriptionWarningRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.acknowledgePrescriptionWarning(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196) — đơn ĐÃ KÝ gần nhất của cùng bệnh

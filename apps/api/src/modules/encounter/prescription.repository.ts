@@ -159,6 +159,25 @@ export class PrescriptionRepository {
     return { ...row, items: mapItems(row.items, await loadIngredientNames(tx, row.items)) };
   }
 
+  /**
+   * "Bỏ qua cảnh báo này cho đơn hiện tại" (#228) — ghi danh sách cảnh báo đã bỏ qua của đơn NHÁP (optimistic lock qua
+   * `version`; `signedAt: null` thêm một lớp chặn nữa phía ứng dụng, trigger DB là lớp cuối). Trả số dòng đã cập nhật.
+   */
+  async setAcknowledgedWarnings(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    id: string,
+    version: number,
+    acknowledged: unknown[],
+    actorId: string,
+  ): Promise<number> {
+    const result = await tx.prescription.updateMany({
+      where: { tenantId, id, version, signedAt: null, deletedAt: null },
+      data: { acknowledgedWarnings: acknowledged as Prisma.InputJsonValue, version: { increment: 1 }, updatedBy: actorId },
+    });
+    return result.count;
+  }
+
   createDraft(tx: Prisma.TransactionClient, tenantId: string, encounterId: string, actorId: string): Promise<Prescription> {
     return tx.prescription.create({
       data: { tenantId, encounterId, createdBy: actorId, updatedBy: actorId },

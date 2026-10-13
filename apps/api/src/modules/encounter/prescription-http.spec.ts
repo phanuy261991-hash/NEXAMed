@@ -223,6 +223,68 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     expect(res.body.error.code).toBe('PRESCRIPTION_REQUIRES_DIAGNOSIS');
   });
 
+  it('"Bỏ qua cảnh báo này cho đơn hiện tại" (#228): bỏ qua có lý do + dấu vết, nhớ qua lần đọc lại, bật lại được, khoá version/ký/quyền, ghi nhật ký', async () => {
+    const { encounterId } = await prepareEncounterInConsultation(17);
+    const drugA = await createDrug(fixture.tenantA.id, 'Paracetamol 500mg (ack)', 'Paracetamol');
+    const drugB = await createDrug(fixture.tenantA.id, 'Efferalgan (ack)', 'paracetamol');
+    await seedSufficientStock(fixture.tenantA.id, drugA);
+    await seedSufficientStock(fixture.tenantA.id, drugB);
+    const items = [
+      { drugId: drugA, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 },
+      { drugId: drugB, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 },
+    ];
+    const saved = await request(app.getHttpServer()).put(`/api/v1/encounters/${encounterId}/prescription-items`).set(authed(doctorAToken)).send({ items });
+    expect(saved.status).toBe(200);
+    const warning = saved.body.data.warnings.find((w: { kind: string }) => w.kind === 'duplicate_active_ingredient');
+    expect(warning.key).toBe('duplicate_active_ingredient:paracetamol');
+    expect(warning.acknowledged).toBeNull();
+    const ack = (body: Record<string, unknown>, token = doctorAToken) =>
+      request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/warnings/acknowledge`).set(authed(token)).send(body);
+
+    // Lễ tân không có quyền sửa đơn → 403; khoá lạ/không phải trùng hoạt chất → 422; version cũ → 409.
+    expect((await ack({ key: warning.key, acknowledged: true, version: saved.body.data.version }, receptionistToken)).status).toBe(403);
+    const notAck = await ack({ key: 'allergy:khong-ton-tai', acknowledged: true, version: saved.body.data.version });
+    expect(notAck.status).toBe(422);
+    expect(notAck.body.error.code).toBe('PRESCRIPTION_WARNING_NOT_ACKNOWLEDGEABLE');
+    const stale = await ack({ key: warning.key, acknowledged: true, version: saved.body.data.version + 5 });
+    expect(stale.status).toBe(409);
+    expect(stale.body.error.code).toBe('CONCURRENT_MODIFICATION');
+
+    // Bỏ qua kèm lý do → có dấu vết (ai, lúc nào, lý do), version tăng.
+    const done = await ack({ key: warning.key, acknowledged: true, reason: '  Cố ý tăng liều  ', version: saved.body.data.version });
+    expect(done.status).toBe(200);
+    const doneWarning = done.body.data.warnings.find((w: { key: string }) => w.key === warning.key);
+    expect(doneWarning.acknowledged).toMatchObject({ reason: 'Cố ý tăng liều' });
+    expect(typeof doneWarning.acknowledged.byName).toBe('string');
+    expect(done.body.data.version).toBe(saved.body.data.version + 1);
+
+    // Nhớ qua lần đọc lại (màn khám tải lại GET .../consultation).
+    const reread = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/consultation`).set(authed(doctorAToken));
+    const rereadWarning = reread.body.data.prescription.warnings.find((w: { key: string }) => w.key === warning.key);
+    expect(rereadWarning.acknowledged).not.toBeNull();
+
+    // Nhật ký hoạt động.
+    expect(await privileged.auditLog.count({ where: { tenantId: fixture.tenantA.id, action: 'prescription.warning_acknowledged', entityId: encounterId } })).toBe(1);
+
+    // Lưu lại dòng thuốc (đơn vẫn nháp) KHÔNG làm mất việc đã bỏ qua; bật lại → cảnh báo hiện lại.
+    const resaved = await request(app.getHttpServer()).put(`/api/v1/encounters/${encounterId}/prescription-items`).set(authed(doctorAToken)).send({ items });
+    expect(resaved.body.data.warnings.find((w: { key: string }) => w.key === warning.key).acknowledged).not.toBeNull();
+    const restored = await ack({ key: warning.key, acknowledged: false, version: resaved.body.data.version });
+    expect(restored.status).toBe(200);
+    expect(restored.body.data.warnings.find((w: { key: string }) => w.key === warning.key).acknowledged).toBeNull();
+    expect(await privileged.auditLog.count({ where: { tenantId: fixture.tenantA.id, action: 'prescription.warning_restored', entityId: encounterId } })).toBe(1);
+
+    // Ký đơn rồi thì KHÔNG đổi được nữa (409 PRESCRIPTION_ALREADY_SIGNED); dấu vết lúc ký giữ nguyên.
+    const again = await ack({ key: warning.key, acknowledged: true, version: restored.body.data.version });
+    expect(again.status).toBe(200);
+    const signed = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: again.body.data.version });
+    expect(signed.status).toBe(200);
+    const afterSign = await ack({ key: warning.key, acknowledged: false, version: signed.body.data.version });
+    expect(afterSign.status).toBe(409);
+    expect(afterSign.body.error.code).toBe('PRESCRIPTION_ALREADY_SIGNED');
+    expect(signed.body.data.warnings.find((w: { key: string }) => w.key === warning.key).acknowledged).not.toBeNull();
+  });
+
   it('PRE-02 theo hoạt chất CÓ CẤU TRÚC (drug_ingredient): activeIngredient text khác nhau vẫn báo trùng theo tên chuẩn; thuốc phối hợp A+B trùng thuốc đơn B → báo B', async () => {
     const { encounterId } = await prepareEncounterInConsultation(16);
     const tag = randomUUID().slice(0, 6);

@@ -25,6 +25,7 @@ import {
   useGetPreviousPrescriptionMutation,
   usePrintPrescriptionMutation,
   useSavePrescriptionItemsMutation,
+  useAcknowledgePrescriptionWarningMutation,
   useSignPrescriptionMutation,
 } from './encounter.queries';
 
@@ -142,6 +143,11 @@ export function PrescriptionPanel({
   const signMutation = useSignPrescriptionMutation(encounterId);
   const printMutation = usePrintPrescriptionMutation(encounterId);
   const amendMutation = useAmendPrescriptionMutation(encounterId);
+  // "Bỏ qua cảnh báo này cho đơn hiện tại" (#228) — chỉ cảnh báo trùng hoạt chất, chỉ đơn nháp, lý do không bắt buộc.
+  const ackMutation = useAcknowledgePrescriptionWarningMutation(encounterId);
+  const [ackOpenKey, setAckOpenKey] = useState<string | null>(null);
+  const [ackReason, setAckReason] = useState('');
+  const [ackError, setAckError] = useState<string | null>(null);
 
   const isSigned = prescription !== null && prescription.signedAt !== null;
   const canEdit = isEditableEncounter && !isSigned;
@@ -348,6 +354,21 @@ export function PrescriptionPanel({
 
   const warnings = prescription?.warnings ?? [];
 
+  function submitAck(key: string, acknowledged: boolean) {
+    if (!prescription) return;
+    setAckError(null);
+    ackMutation.mutate(
+      { key, acknowledged, ...(acknowledged && ackReason.trim() ? { reason: ackReason.trim() } : {}), version: prescription.version },
+      {
+        onSuccess: () => {
+          setAckOpenKey(null);
+          setAckReason('');
+        },
+        onError: (err) => setAckError(err instanceof ApiError ? err.message : 'Không lưu được thao tác. Thử lại.'),
+      },
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <PrescriptionInfoHeader
@@ -366,17 +387,91 @@ export function PrescriptionPanel({
 
       {warnings.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          {warnings.map((w, i) => (
-            <p
-              key={i}
-              className={`flex items-start gap-2 rounded-lg border p-3 text-sm font-semibold ${
-                w.kind === 'stock_insufficient' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-rose-200 bg-rose-50 text-rose-700'
-              }`}
-            >
-              <Warning size={16} weight="fill" className="mt-0.5 shrink-0" aria-hidden="true" />
-              {WARNING_KIND_LABEL[w.kind] ?? w.kind}: <span className="font-normal">{w.label}</span> — {w.drugNames.join(', ')}
+          {warnings.map((w) => {
+            const canAck = !isSigned && w.kind === 'duplicate_active_ingredient';
+            if (w.acknowledged) {
+              // Đã bỏ qua trên đơn này — hiện mờ kèm dấu vết (ai, lúc nào, lý do) và nút "Bật lại" khi đơn còn nháp.
+              return (
+                <div key={w.key} className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                  <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-slate-400" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold">
+                      Đã bỏ qua · {WARNING_KIND_LABEL[w.kind] ?? w.kind}: <span className="font-normal">{w.label}</span> — {w.drugNames.join(', ')}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {w.acknowledged.byName} · {new Date(w.acknowledged.at).toLocaleString('vi-VN')}
+                      {w.acknowledged.reason ? ` · Lý do: ${w.acknowledged.reason}` : ''}
+                    </p>
+                  </div>
+                  {canAck && (
+                    <Button type="button" variant="secondary" className="shrink-0 px-3 py-1 text-xs" loading={ackMutation.isPending} onClick={() => submitAck(w.key, false)}>
+                      Bật lại
+                    </Button>
+                  )}
+                </div>
+              );
+            }
+            return (
+              <div
+                key={w.key}
+                className={`rounded-lg border p-3 text-sm font-semibold ${
+                  w.kind === 'stock_insufficient' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-rose-200 bg-rose-50 text-rose-700'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <Warning size={16} weight="fill" className="mt-0.5 shrink-0" aria-hidden="true" />
+                  <p className="min-w-0 flex-1">
+                    {WARNING_KIND_LABEL[w.kind] ?? w.kind}: <span className="font-normal">{w.label}</span> — {w.drugNames.join(', ')}
+                  </p>
+                  {canAck && ackOpenKey !== w.key && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="shrink-0 px-3 py-1 text-xs"
+                      onClick={() => {
+                        setAckOpenKey(w.key);
+                        setAckReason('');
+                        setAckError(null);
+                      }}
+                    >
+                      Bỏ qua cảnh báo này
+                    </Button>
+                  )}
+                </div>
+                {canAck && ackOpenKey === w.key && (
+                  <form
+                    className="mt-2 flex flex-wrap items-center gap-2 pl-6"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      submitAck(w.key, true);
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={ackReason}
+                      onChange={(e) => setAckReason(e.target.value)}
+                      maxLength={300}
+                      autoFocus
+                      aria-label="Lý do bỏ qua cảnh báo (không bắt buộc)"
+                      placeholder="Lý do (không bắt buộc), ví dụ: cố ý tăng liều"
+                      className="min-w-[260px] flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-normal text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                    <Button type="submit" className="px-3 py-1.5 text-xs" loading={ackMutation.isPending}>
+                      Bỏ qua cho đơn này
+                    </Button>
+                    <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => setAckOpenKey(null)}>
+                      Huỷ
+                    </Button>
+                  </form>
+                )}
+              </div>
+            );
+          })}
+          {ackError && (
+            <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-2.5 text-xs font-semibold text-rose-700">
+              {ackError}
             </p>
-          ))}
+          )}
         </div>
       )}
 

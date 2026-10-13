@@ -24,6 +24,8 @@ export interface PrescriptionDrugLine {
 }
 
 export interface DuplicateActiveIngredientWarning {
+  /** Khoá chuẩn hoá (bỏ dấu, viết thường) của hoạt chất — định danh cảnh báo để "Bỏ qua cảnh báo này" (#228). */
+  key: string;
   activeIngredient: string;
   drugIds: (string | null)[];
   drugNames: string[];
@@ -44,11 +46,11 @@ function ingredientLabelsOf(line: PrescriptionDrugLine): string[] {
  * Trả về nhóm CÓ từ 2 thuốc khác nhau trở lên cùng hoạt chất.
  */
 export function findDuplicateActiveIngredients(lines: PrescriptionDrugLine[]): DuplicateActiveIngredientWarning[] {
-  const groups = new Map<string, { activeIngredient: string; drugIds: (string | null)[]; drugNames: string[] }>();
+  const groups = new Map<string, { key: string; activeIngredient: string; drugIds: (string | null)[]; drugNames: string[] }>();
   for (const line of lines) {
     for (const label of ingredientLabelsOf(line)) {
       const key = stripVietnameseDiacritics(label);
-      const group = groups.get(key) ?? { activeIngredient: label, drugIds: [], drugNames: [] };
+      const group = groups.get(key) ?? { key, activeIngredient: label, drugIds: [], drugNames: [] };
       if (!group.drugIds.includes(line.drugId)) {
         group.drugIds.push(line.drugId);
         group.drugNames.push(line.drugName);

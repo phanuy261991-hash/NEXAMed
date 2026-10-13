@@ -430,6 +430,7 @@ erDiagram
         timestamptz printed_at
         uuid supersedes_id FK
         text amendment_reason
+        jsonb acknowledged_warnings
     }
 
     PRESCRIPTION_ITEM {

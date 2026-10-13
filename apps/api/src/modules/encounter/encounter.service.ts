@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { z } from 'zod';
 import {
   CLINIC_CONFIG_READER_PORT,
   ClinicalRecordAlreadySignedError,
@@ -23,6 +24,7 @@ import {
   PrescriptionFreeTextDisabledError,
   PrescriptionRequiresDiagnosisError,
   PrescriptionStockInsufficientError,
+  PrescriptionWarningNotAcknowledgeableError,
   renderPatientMedicalRecordHtml,
   type MedicalRecordPrintOptions,
   SIGNATURE_PORT,
@@ -78,6 +80,7 @@ import type {
   SaveDiagnosesRequest,
   SaveDiagnosesResponse,
   SavePrescriptionItemsRequest,
+  AcknowledgePrescriptionWarningRequest,
   SignPrescriptionRequest,
   StartConsultationRequest,
   TreatmentPlanInput,
@@ -130,6 +133,25 @@ const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', othe
  * KHÔNG thuộc module này — đó là `ReceptionService` (đúng ranh giới `architecture.md`: `reception`
  * = tạo encounter + sinh hiệu ban đầu; `encounter` = state machine + transition).
  */
+/** Một cảnh báo trùng hoạt chất bác sĩ đã bỏ qua trên đơn nháp (#228) — cột JSONB `prescription.acknowledged_warnings`. */
+interface AcknowledgedWarning {
+  key: string;
+  reason: string | null;
+  by: string;
+  byName: string;
+  at: string;
+}
+
+const acknowledgedWarningsSchema = z.array(
+  z.object({ key: z.string(), reason: z.string().nullable(), by: z.string(), byName: z.string(), at: z.string() }),
+);
+
+/** Đọc cột JSONB an toàn — dữ liệu hỏng/không đúng khuôn coi như chưa bỏ qua cảnh báo nào (không bao giờ làm hỏng việc xem đơn). */
+function parseAcknowledgedWarnings(value: unknown): AcknowledgedWarning[] {
+  const parsed = acknowledgedWarningsSchema.safeParse(value);
+  return parsed.success ? parsed.data : [];
+}
+
 @Injectable()
 export class EncounterService {
   constructor(
@@ -427,6 +449,22 @@ export class EncounterService {
    * `packages/core/src/rbac/permissions.ts`) nên đọc không giới hạn theo bác sĩ phụ trách — vẫn
    * kiểm `personal` phòng khi vai trò tuỳ biến gán scope hẹp hơn, cùng triết lý mọi method khác.
    */
+  /**
+   * Tồn kho cho cảnh báo `stock_insufficient` của đơn NHÁP hiện tại (`null` = không tính: tenant tắt theo dõi tồn, chưa có đơn,
+   * đơn đã ký hoặc chưa có dòng nào). Đọc TRƯỚC transaction chính vì các port tự mở transaction riêng.
+   */
+  private async loadDraftOnHand(tenantId: string, encounterId: string): Promise<Record<string, number> | null> {
+    const pharmacyStockTrackingEnabled = await this.clinicConfigReader.getPharmacyStockTrackingEnabled(tenantId);
+    if (!pharmacyStockTrackingEnabled) return null;
+    const draftPreview = await this.unitOfWork.runInTenantScope(tenantId, (previewTx) =>
+      this.prescriptionRepository.findActiveForEncounter(previewTx, tenantId, encounterId),
+    );
+    if (!draftPreview || draftPreview.signedAt !== null || draftPreview.items.length === 0) return null;
+    // Dòng "kê thuốc tự do" (`drugId=null`) không có khái niệm tồn kho — lọc bỏ trước khi tra.
+    const realDrugIds = draftPreview.items.map((i) => i.drugId).filter((v): v is string => v !== null);
+    return this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(realDrugIds)]);
+  }
+
   async getConsultationDetail(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<ConsultationDetailResponse> {
     // Kho Thuốc GĐ5 — đọc cấu hình + tồn kho TRƯỚC transaction chính, cùng nguyên tắc `signPrescription()`
     // (`ClinicConfigReaderPort`/`StockAvailabilityPort` tự mở transaction riêng, không lồng được).
@@ -437,18 +475,7 @@ export class EncounterService {
     // cảnh báo tồn kho) — cảnh báo chỉ kịp hiện trong khoảnh khắc trước khi bị ghi đè bởi dữ liệu vừa
     // refetch, coi như KHÔNG BAO GIỜ hiển thị được cho bác sĩ trong thực tế. Chỉ tính cho đơn CHƯA KÝ
     // (đơn đã ký xem như "đã xong", giữ nguyên `null` — đúng khuôn PrescriptionPrintView/lịch sử).
-    const pharmacyStockTrackingEnabled = await this.clinicConfigReader.getPharmacyStockTrackingEnabled(tenantId);
-    let onHandByDrugId: Record<string, number> | null = null;
-    if (pharmacyStockTrackingEnabled) {
-      const draftPreview = await this.unitOfWork.runInTenantScope(tenantId, (previewTx) =>
-        this.prescriptionRepository.findActiveForEncounter(previewTx, tenantId, id),
-      );
-      if (draftPreview && draftPreview.signedAt === null && draftPreview.items.length > 0) {
-        // Dòng "kê thuốc tự do" (`drugId=null`) không có khái niệm tồn kho — lọc bỏ trước khi tra.
-        const realDrugIds = draftPreview.items.map((i) => i.drugId).filter((v): v is string => v !== null);
-        onHandByDrugId = await this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(realDrugIds)]);
-      }
-    }
+    const onHandByDrugId = await this.loadDraftOnHand(tenantId, id);
 
     const { history: historyWithDoctorId, ...rest } = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounter = await this.encounterRepository.findByIdWithConsultationContext(tx, tenantId, id);
@@ -1215,6 +1242,73 @@ export class EncounterService {
   }
 
   /**
+   * "Bỏ qua cảnh báo này cho đơn hiện tại" (#228, chủ dự án chốt: CHỈ cảnh báo trùng hoạt chất, lưu cùng đơn có dấu vết, lý do không
+   * bắt buộc). Chỉ đơn NHÁP; `acknowledged=false` bật lại cảnh báo. Ghi nhật ký hoạt động; trả đơn sau khi cập nhật.
+   */
+  async acknowledgePrescriptionWarning(
+    tenantId: string,
+    actorId: string,
+    dataScope: DataScope,
+    id: string,
+    dto: AcknowledgePrescriptionWarningRequest,
+    meta: RequestMeta,
+  ): Promise<PrescriptionResponse> {
+    const onHandByDrugId = await this.loadDraftOnHand(tenantId, id);
+    // `DoctorDirectoryPort` tự mở transaction riêng — tra tên người bỏ qua TRƯỚC transaction chính (lưu snapshot vào dấu vết).
+    const actorName = (await this.doctorDirectory.getUserFullNames(tenantId, [actorId])).get(actorId) ?? '—';
+
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.encounterRepository.findById(tx, tenantId, id);
+      if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      if (existing.status !== 'IN_CONSULTATION' && existing.status !== 'COMPLETED') {
+        throw new EncounterNotInConsultationError();
+      }
+      const active = await this.prescriptionRepository.findActiveForEncounter(tx, tenantId, id);
+      if (!active) {
+        throw new NotFoundException();
+      }
+      if (active.signedAt !== null) {
+        throw new PrescriptionAlreadySignedError();
+      }
+
+      const allergenNames = (await this.patientAllergenRepository.listForPatient(tx, tenantId, existing.patientId)).map((a) => a.allergenName);
+      if (dto.acknowledged) {
+        const target = this.computeWarnings(active.items, allergenNames).find((w) => w.key === dto.key);
+        if (!target || target.kind !== 'duplicate_active_ingredient') {
+          throw new PrescriptionWarningNotAcknowledgeableError();
+        }
+      }
+
+      const next = parseAcknowledgedWarnings(active.acknowledgedWarnings).filter((a) => a.key !== dto.key);
+      if (dto.acknowledged) {
+        next.push({ key: dto.key, reason: dto.reason?.trim() ? dto.reason.trim() : null, by: actorId, byName: actorName, at: new Date().toISOString() });
+      }
+      const count = await this.prescriptionRepository.setAcknowledgedWarnings(tx, tenantId, active.id, dto.version, next, actorId);
+      if (count === 0) {
+        throw new ConcurrentModificationError();
+      }
+
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: dto.acknowledged ? 'prescription.warning_acknowledged' : 'prescription.warning_restored',
+        entityType: 'encounter',
+        entityId: id,
+        afterJson: { key: dto.key, reason: dto.acknowledged ? (dto.reason?.trim() || null) : null },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const updated = await this.prescriptionRepository.findById(tx, tenantId, active.id);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      return this.toPrescriptionResponse(updated, allergenNames, onHandByDrugId);
+    });
+  }
+
+  /**
    * Ký đơn NHÁP hiện tại — chữ ký logic qua `SignaturePort` (adapter no-op, xem .claude/docs/
    * security-audit.md). Bắt buộc ≥1 dòng thuốc (`PrescriptionEmptyError`). KHÔNG "chặn ký cứng" cho
    * PRE-02/03 — đã hỏi và chốt với chủ dự án (2026-08-25): không có nguồn dữ liệu chống chỉ định/
@@ -1486,12 +1580,27 @@ export class EncounterService {
    * sử) cứ để mặc định, BỎ QUA hoàn toàn việc tính `stock_insufficient` — KHÁC hẳn truyền `{}` (nghĩa
    * là "đã tra tồn kho thật, xác nhận = 0" cho MỌI thuốc, sẽ báo vượt tồn SAI cho mọi dòng).
    */
-  private computeWarnings(items: PrescriptionWithItems['items'], allergenNames: string[], onHandByDrugId: Record<string, number> | null = null): PrescriptionWarning[] {
+  private computeWarnings(
+    items: PrescriptionWithItems['items'],
+    allergenNames: string[],
+    onHandByDrugId: Record<string, number> | null = null,
+    acknowledged: AcknowledgedWarning[] = [],
+  ): PrescriptionWarning[] {
     const lines: PrescriptionDrugLine[] = items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, activeIngredient: i.activeIngredient, ingredientNames: i.ingredientNames }));
-    const duplicates = findDuplicateActiveIngredients(lines).map(
-      (d): PrescriptionWarning => ({ kind: 'duplicate_active_ingredient', label: d.activeIngredient, drugNames: d.drugNames }),
+    const duplicates = findDuplicateActiveIngredients(lines).map((d): PrescriptionWarning => {
+      const key = `duplicate_active_ingredient:${d.key}`;
+      const ack = acknowledged.find((a) => a.key === key);
+      return {
+        kind: 'duplicate_active_ingredient',
+        label: d.activeIngredient,
+        drugNames: d.drugNames,
+        key,
+        acknowledged: ack ? { at: ack.at, byName: ack.byName, reason: ack.reason } : null,
+      };
+    });
+    const allergies = findAllergyMatches(lines, allergenNames).map(
+      (a): PrescriptionWarning => ({ kind: 'allergy', label: a.allergenName, drugNames: a.drugNames, key: `allergy:${a.allergenName}`, acknowledged: null }),
     );
-    const allergies = findAllergyMatches(lines, allergenNames).map((a): PrescriptionWarning => ({ kind: 'allergy', label: a.allergenName, drugNames: a.drugNames }));
     // Dòng "kê thuốc tự do" không có khái niệm tồn kho — loại khỏi tính `stock_insufficient`.
     const stockLines = items
       .filter((i): i is PrescriptionWithItems['items'][number] & { drugId: string } => i.drugId !== null)
@@ -1499,7 +1608,13 @@ export class EncounterService {
     const shortages = onHandByDrugId === null
       ? []
       : findInsufficientStock(stockLines, onHandByDrugId).map(
-          (s): PrescriptionWarning => ({ kind: 'stock_insufficient', label: s.drugName, drugNames: [`cần ${s.required}, còn ${s.onHand}`] }),
+          (s): PrescriptionWarning => ({
+            kind: 'stock_insufficient',
+            label: s.drugName,
+            drugNames: [`cần ${s.required}, còn ${s.onHand}`],
+            key: `stock_insufficient:${s.drugId}`,
+            acknowledged: null,
+          }),
         );
     return [...duplicates, ...allergies, ...shortages];
   }
@@ -1509,7 +1624,7 @@ export class EncounterService {
       id: row.id,
       encounterId: row.encounterId,
       items: row.items.map((item) => this.toPrescriptionItem(item)),
-      warnings: this.computeWarnings(row.items, allergenNames, onHandByDrugId),
+      warnings: this.computeWarnings(row.items, allergenNames, onHandByDrugId, parseAcknowledgedWarnings(row.acknowledgedWarnings)),
       prescriptionNo: row.prescriptionNo,
       signedAt: row.signedAt ? row.signedAt.toISOString() : null,
       signedBy: row.signedBy,

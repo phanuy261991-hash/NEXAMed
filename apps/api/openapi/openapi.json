@@ -11060,12 +11060,42 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "acknowledged": {
+                                    "type": [
+                                      "object",
+                                      "null"
+                                    ],
+                                    "properties": {
+                                      "at": {
+                                        "type": "string"
+                                      },
+                                      "byName": {
+                                        "type": "string"
+                                      },
+                                      "reason": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "at",
+                                      "byName",
+                                      "reason"
+                                    ]
                                   }
                                 },
                                 "required": [
                                   "kind",
                                   "label",
-                                  "drugNames"
+                                  "drugNames",
+                                  "key",
+                                  "acknowledged"
                                 ]
                               }
                             },
@@ -14062,6 +14092,448 @@
         }
       }
     },
+    "/api/v1/encounters/{id}/prescription/warnings/acknowledge": {
+      "post": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "Bỏ qua (hoặc bật lại) cảnh báo trùng hoạt chất cho đơn NHÁP hiện tại — chốt #228",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "acknowledged": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 300
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "key",
+                  "acknowledged",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công — trả đơn thuốc sau khi cập nhật",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "freeTextDrugName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "activeIngredient": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "doseMorning": {
+                                "type": "integer"
+                              },
+                              "doseNoon": {
+                                "type": "integer"
+                              },
+                              "doseAfternoon": {
+                                "type": "integer"
+                              },
+                              "doseEvening": {
+                                "type": "integer"
+                              },
+                              "durationDays": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "instruction": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugName",
+                              "freeTextDrugName",
+                              "activeIngredient",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening",
+                              "durationDays",
+                              "quantity",
+                              "unitCode",
+                              "instruction"
+                            ]
+                          }
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "duplicate_active_ingredient",
+                                  "allergy",
+                                  "stock_insufficient"
+                                ]
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "drugNames": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "acknowledged": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "at": {
+                                    "type": "string"
+                                  },
+                                  "byName": {
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "at",
+                                  "byName",
+                                  "reason"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "label",
+                              "drugNames",
+                              "key",
+                              "acknowledged"
+                            ]
+                          }
+                        },
+                        "prescriptionNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "signedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "signedBy": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "supersedesId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "amendmentReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "items",
+                        "warnings",
+                        "prescriptionNo",
+                        "signedAt",
+                        "signedBy",
+                        "printedAt",
+                        "supersedesId",
+                        "amendmentReason",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền prescription.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy lượt khám hoặc chưa có đơn nháp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Đơn đã ký (PRESCRIPTION_ALREADY_SIGNED), lượt khám không ở trạng thái cho phép, hoặc version cũ (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Không phải cảnh báo trùng hoạt chất đang hiển thị (PRESCRIPTION_WARNING_NOT_ACKNOWLEDGEABLE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/encounters/{id}/prescription-items": {
       "put": {
         "tags": [
@@ -14267,12 +14739,42 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "acknowledged": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "at": {
+                                    "type": "string"
+                                  },
+                                  "byName": {
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "at",
+                                  "byName",
+                                  "reason"
+                                ]
                               }
                             },
                             "required": [
                               "kind",
                               "label",
-                              "drugNames"
+                              "drugNames",
+                              "key",
+                              "acknowledged"
                             ]
                           }
                         },
@@ -14893,12 +15395,42 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "acknowledged": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "at": {
+                                    "type": "string"
+                                  },
+                                  "byName": {
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "at",
+                                  "byName",
+                                  "reason"
+                                ]
                               }
                             },
                             "required": [
                               "kind",
                               "label",
-                              "drugNames"
+                              "drugNames",
+                              "key",
+                              "acknowledged"
                             ]
                           }
                         },
@@ -15273,12 +15805,42 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "acknowledged": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "at": {
+                                    "type": "string"
+                                  },
+                                  "byName": {
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "at",
+                                  "byName",
+                                  "reason"
+                                ]
                               }
                             },
                             "required": [
                               "kind",
                               "label",
-                              "drugNames"
+                              "drugNames",
+                              "key",
+                              "acknowledged"
                             ]
                           }
                         },
@@ -15661,12 +16223,42 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "key": {
+                                "type": "string"
+                              },
+                              "acknowledged": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "at": {
+                                    "type": "string"
+                                  },
+                                  "byName": {
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "at",
+                                  "byName",
+                                  "reason"
+                                ]
                               }
                             },
                             "required": [
                               "kind",
                               "label",
-                              "drugNames"
+                              "drugNames",
+                              "key",
+                              "acknowledged"
                             ]
                           }
                         },

@@ -4,6 +4,10 @@
 
 ## 2026-10-13
 
+### Nút "Bỏ qua cảnh báo này" cho cảnh báo trùng hoạt chất (`docs/DECISIONS.md` #228)
+
+Khung đỏ "Trùng hoạt chất" ở tab Kê đơn thuốc có nút **Bỏ qua cảnh báo này** (ô lý do không bắt buộc, Enter để xác nhận). Chỉ áp dụng cho đơn hiện tại: cảnh báo chuyển thành dòng mờ "Đã bỏ qua" kèm người bỏ qua, thời điểm, lý do và nút **Bật lại** (khi đơn còn nháp); lưu lại đơn hay tải lại trang vẫn nhớ; ký đơn rồi thì khoá và giữ nguyên dấu vết. Cảnh báo dị ứng và kê vượt tồn kho không có nút này. Ghi vào nhật ký hoạt động. Môi trường khác: `db:deploy` (1 migration) rồi khởi động lại API.
+
 ### Cảnh báo trùng hoạt chất khi kê đơn so theo hoạt chất có cấu trúc (`docs/DECISIONS.md` #227)
 
 Thuốc đã khai hoạt chất ở Danh mục Thuốc & Vật tư (nhiều hoạt chất/thuốc) được so theo từng hoạt chất: thuốc phối hợp có chung một hoạt chất với thuốc khác trong đơn thì báo trùng đúng hoạt chất đó, kể cả khi ô "Hoạt chất" dạng chữ của hai thuốc ghi khác nhau. Thuốc cũ chưa khai cấu trúc vẫn so như trước. Không migration.

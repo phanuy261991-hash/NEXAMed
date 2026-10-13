@@ -4388,6 +4388,12 @@ export interface paths {
                                         kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
                                         label: string;
                                         drugNames: string[];
+                                        key: string;
+                                        acknowledged: {
+                                            at: string;
+                                            byName: string;
+                                            reason: string | null;
+                                        } | null;
                                     }[];
                                     prescriptionNo: string | null;
                                     signedAt: string | null;
@@ -5484,6 +5490,174 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/encounters/{id}/prescription/warnings/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bỏ qua (hoặc bật lại) cảnh báo trùng hoạt chất cho đơn NHÁP hiện tại — chốt #228 */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        key: string;
+                        acknowledged: boolean;
+                        reason?: string;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công — trả đơn thuốc sau khi cập nhật */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string | null;
+                                    drugName: string;
+                                    freeTextDrugName: string | null;
+                                    activeIngredient: string | null;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
+                                    durationDays: number;
+                                    quantity: number;
+                                    unitCode: string | null;
+                                    instruction: string | null;
+                                }[];
+                                warnings: {
+                                    /** @enum {string} */
+                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
+                                    label: string;
+                                    drugNames: string[];
+                                    key: string;
+                                    acknowledged: {
+                                        at: string;
+                                        byName: string;
+                                        reason: string | null;
+                                    } | null;
+                                }[];
+                                prescriptionNo: string | null;
+                                signedAt: string | null;
+                                /** Format: uuid */
+                                signedBy: string | null;
+                                printedAt: string | null;
+                                /** Format: uuid */
+                                supersedesId: string | null;
+                                amendmentReason: string | null;
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy lượt khám hoặc chưa có đơn nháp */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đơn đã ký (PRESCRIPTION_ALREADY_SIGNED), lượt khám không ở trạng thái cho phép, hoặc version cũ (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không phải cảnh báo trùng hoạt chất đang hiển thị (PRESCRIPTION_WARNING_NOT_ACKNOWLEDGEABLE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/encounters/{id}/prescription-items": {
         parameters: {
             query?: never;
@@ -5554,6 +5728,12 @@ export interface paths {
                                     kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
                                     label: string;
                                     drugNames: string[];
+                                    key: string;
+                                    acknowledged: {
+                                        at: string;
+                                        byName: string;
+                                        reason: string | null;
+                                    } | null;
                                 }[];
                                 prescriptionNo: string | null;
                                 signedAt: string | null;
@@ -5818,6 +5998,12 @@ export interface paths {
                                     kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
                                     label: string;
                                     drugNames: string[];
+                                    key: string;
+                                    acknowledged: {
+                                        at: string;
+                                        byName: string;
+                                        reason: string | null;
+                                    } | null;
                                 }[];
                                 prescriptionNo: string | null;
                                 signedAt: string | null;
@@ -5971,6 +6157,12 @@ export interface paths {
                                     kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
                                     label: string;
                                     drugNames: string[];
+                                    key: string;
+                                    acknowledged: {
+                                        at: string;
+                                        byName: string;
+                                        reason: string | null;
+                                    } | null;
                                 }[];
                                 prescriptionNo: string | null;
                                 signedAt: string | null;
@@ -6112,6 +6304,12 @@ export interface paths {
                                     kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
                                     label: string;
                                     drugNames: string[];
+                                    key: string;
+                                    acknowledged: {
+                                        at: string;
+                                        byName: string;
+                                        reason: string | null;
+                                    } | null;
                                 }[];
                                 prescriptionNo: string | null;
                                 signedAt: string | null;

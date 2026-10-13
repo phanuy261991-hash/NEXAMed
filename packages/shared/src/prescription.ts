@@ -113,8 +113,24 @@ export const prescriptionWarningSchema = z.object({
   kind: z.enum(['duplicate_active_ingredient', 'allergy', 'stock_insufficient']),
   label: z.string(),
   drugNames: z.array(z.string()),
+  /** Khoá định danh cảnh báo (`<kind>:<nhãn chuẩn hoá>`) — dùng để "Bỏ qua cảnh báo này" (#228). */
+  key: z.string(),
+  /** Có giá trị khi bác sĩ đã bỏ qua cảnh báo này TRÊN ĐƠN HIỆN TẠI (chỉ `duplicate_active_ingredient` bỏ qua được). */
+  acknowledged: z.object({ at: z.string(), byName: z.string(), reason: z.string().nullable() }).nullable(),
 });
 export type PrescriptionWarning = z.infer<typeof prescriptionWarningSchema>;
+
+/**
+ * "Bỏ qua cảnh báo này cho đơn hiện tại" (#228) — CHỈ cảnh báo trùng hoạt chất, CHỈ đơn nháp, lý do không bắt buộc.
+ * `acknowledged=false` = bật lại cảnh báo đã bỏ qua. `version` = version của đơn (optimistic locking).
+ */
+export const acknowledgePrescriptionWarningRequestSchema = z.object({
+  key: z.string().min(1).max(200),
+  acknowledged: z.boolean(),
+  reason: z.string().trim().max(300).optional(),
+  version: z.number().int().positive(),
+});
+export type AcknowledgePrescriptionWarningRequest = z.infer<typeof acknowledgePrescriptionWarningRequestSchema>;
 
 export const prescriptionSchema = z.object({
   id: z.string().uuid(),

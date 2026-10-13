@@ -11,6 +11,7 @@ import type {
   PatientEncounterHistoryResponse,
   PreviousPrescriptionResponse,
   PrescriptionResponse,
+  AcknowledgePrescriptionWarningRequest,
   RecordVitalSignRequest,
   SaveClinicalNoteRequest,
   SaveDiagnosesRequest,
@@ -80,6 +81,12 @@ export async function recordVitalSigns(encounterId: string, body: RecordVitalSig
 export async function savePrescriptionItems(id: string, body: SavePrescriptionItemsRequest): Promise<PrescriptionResponse> {
   return unwrap(
     await getApiClient().PUT('/api/v1/encounters/{id}/prescription-items', { params: { path: { id } }, body }),
+  ) as PrescriptionResponse;
+}
+
+export async function acknowledgePrescriptionWarning(id: string, body: AcknowledgePrescriptionWarningRequest): Promise<PrescriptionResponse> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/encounters/{id}/prescription/warnings/acknowledge', { params: { path: { id } }, body }),
   ) as PrescriptionResponse;
 }
 

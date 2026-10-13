@@ -110,3 +110,15 @@ export class PrescriptionFreeTextDisabledError extends DomainError {
     super('Phòng khám chưa bật "Kê thuốc tự do, không qua danh mục" — không thể thêm dòng thuốc ngoài danh mục.');
   }
 }
+
+/**
+ * "Bỏ qua cảnh báo này cho đơn hiện tại" (#228) — khoá cảnh báo gửi lên không phải một cảnh báo trùng hoạt chất đang
+ * hiển thị trên đơn nháp (cảnh báo dị ứng/tồn kho không bỏ qua được). 422 mặc định.
+ */
+export class PrescriptionWarningNotAcknowledgeableError extends DomainError {
+  readonly code = 'PRESCRIPTION_WARNING_NOT_ACKNOWLEDGEABLE';
+
+  constructor() {
+    super('Chỉ bỏ qua được cảnh báo trùng hoạt chất đang hiển thị trên đơn này.');
+  }
+}
