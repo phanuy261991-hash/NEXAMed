@@ -4,25 +4,16 @@ import { PrismaClient } from '@prisma/client';
 /**
  * Kiểm tra TOÀN BỘ lược đồ (không chỉ vài bảng) cho cô lập tenant — chạy trên cơ sở dữ liệu thật đã áp mọi migration
  * (testcontainers, `src/testing/global-setup.ts`), chỉ ĐỌC danh mục hệ thống:
- *  1. Mọi bảng có cột `tenant_id` phải bật Row Level Security và có ít nhất 1 policy ràng buộc theo `app.current_tenant_id`.
+ *  1. Mọi bảng có cột `tenant_id` phải bật Row Level Security (kể cả FORCE) và có ít nhất 1 policy ràng buộc theo `app.current_tenant_id`.
  *  2. Bảng KHÔNG có `tenant_id` phải nằm trong danh sách "danh mục dùng chung" bên dưới — thêm bảng mới không có `tenant_id`
  *     làm test này đỏ, buộc phải xem lại có thật sự là dữ liệu dùng chung giữa các phòng khám hay là quên `tenant_id`.
  *  3. Role ứng dụng (`nexamed_app`) không được là superuser và không được BYPASSRLS.
  * (`.claude/docs/multi-tenancy.md` — kiểm chứng toàn lược đồ, bổ sung cho test cô lập theo từng endpoint.)
  */
-// Danh mục dùng chung CÓ CHỦ ĐÍCH (docs/DECISIONS.md #037/#038/#113 và `.claude/docs/data-model.md`). `reference_catalog` dùng
-// chung giữa MỌI tenant nhưng do clinic_admin của từng phòng khám sửa được — rủi ro đã báo ở rà soát 13/10/2026, chờ quyết định.
-const SHARED_TABLES = [
-  'allergen',
-  'allergen_group',
-  'global_code_sequence',
-  'icd10_catalog',
-  'permission',
-  'province',
-  'reference_catalog',
-  'tenant',
-  'ward',
-];
+// Danh mục dùng chung CÓ CHỦ ĐÍCH, chỉ đọc lúc chạy: ICD-10 (BYT), quyền hệ thống, đơn vị hành chính, và chính bảng `tenant`.
+// `reference_catalog`, `allergen`, `allergen_group`, `global_code_sequence` KHÔNG còn ở đây: từ docs/DECISIONS.md #230 danh mục riêng
+// theo tenant (mỗi phòng khám/công ty một bản).
+const SHARED_TABLES = ['icd10_catalog', 'permission', 'province', 'tenant', 'ward'];
 
 describe('Cô lập tenant — kiểm tra toàn lược đồ', () => {
   let prisma: PrismaClient;
@@ -36,9 +27,9 @@ describe('Cô lập tenant — kiểm tra toàn lược đồ', () => {
     await prisma.$disconnect();
   });
 
-  it('mọi bảng có tenant_id đều bật RLS và có policy ràng buộc theo app.current_tenant_id', async () => {
-    const tables = await prisma.$queryRawUnsafe<{ tbl: string; rls: boolean; policies: bigint; scoped: bigint }[]>(`
-      SELECT c.relname AS tbl, c.relrowsecurity AS rls,
+  it('mọi bảng có tenant_id đều bật RLS (kể cả FORCE) và có policy ràng buộc theo app.current_tenant_id', async () => {
+    const tables = await prisma.$queryRawUnsafe<{ tbl: string; rls: boolean; forced: boolean; policies: bigint; scoped: bigint }[]>(`
+      SELECT c.relname AS tbl, c.relrowsecurity AS rls, c.relforcerowsecurity AS forced,
              (SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid) AS policies,
              (SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid AND pg_get_expr(p.polqual, p.polrelid) LIKE '%current_tenant_id%') AS scoped
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -47,6 +38,7 @@ describe('Cô lập tenant — kiểm tra toàn lược đồ', () => {
       ORDER BY c.relname`);
     expect(tables.length).toBeGreaterThan(50);
     expect(tables.filter((t) => !t.rls).map((t) => t.tbl)).toEqual([]);
+    expect(tables.filter((t) => !t.forced).map((t) => t.tbl)).toEqual([]);
     expect(tables.filter((t) => Number(t.scoped) === 0).map((t) => t.tbl)).toEqual([]);
   });
 

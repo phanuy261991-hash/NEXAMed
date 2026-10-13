@@ -83,7 +83,7 @@ export class SpecimenTubeService {
       );
       for (const { itemId, tubeId } of plan.attach) await this.orderRepository.setSpecimenTube(tx, tenantId, [itemId], tubeId, actorId);
       for (const planned of plan.create) {
-        const catalog = planned.specimenTypeCode ? await this.referenceCatalogRepository.findByCategoryAndCode(tx, 'SPECIMEN_TYPE', planned.specimenTypeCode) : null;
+        const catalog = planned.specimenTypeCode ? await this.referenceCatalogRepository.findByCategoryAndCode(tx, tenantId, 'SPECIMEN_TYPE', planned.specimenTypeCode) : null;
         const tube = await this.createTube(tx, tenantId, actorId, orderId, {
           specimenTypeCode: planned.specimenTypeCode,
           specimenName: catalog?.name ?? null,
@@ -334,7 +334,7 @@ export class SpecimenTubeService {
     const abbreviationCache = new Map<string, string | null>();
     const abbreviationOf = async (code: string | null | undefined): Promise<string | null> => {
       if (!code) return null;
-      if (!abbreviationCache.has(code)) abbreviationCache.set(code, (await this.referenceCatalogRepository.findByCategoryAndCode(tx, 'TECH_SERVICE_CATEGORY', code))?.abbreviation ?? null);
+      if (!abbreviationCache.has(code)) abbreviationCache.set(code, (await this.referenceCatalogRepository.findByCategoryAndCode(tx, tenantId, 'TECH_SERVICE_CATEGORY', code))?.abbreviation ?? null);
       return abbreviationCache.get(code)!;
     };
 

@@ -137,7 +137,7 @@ export class DrugImportService {
 
   async buildTemplate(tenantId: string): Promise<Buffer> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.referenceCatalogService.listAllForImport(tx, [...DRUG_IMPORT_CATEGORIES]);
+      const rows = await this.referenceCatalogService.listAllForImport(tx, tenantId, [...DRUG_IMPORT_CATEGORIES]);
       const names = Object.fromEntries(DRUG_IMPORT_CATEGORIES.map((c) => [c, [] as string[]])) as Record<DrugImportCategory, string[]>;
       for (const r of rows) {
         if (r.isActive) names[r.category as DrugImportCategory].push(r.name);
@@ -149,7 +149,7 @@ export class DrugImportService {
   async buildExport(tenantId: string, actorId: string, meta: RequestMeta): Promise<Buffer> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const drugs = await this.drugRepository.list(tx, tenantId, { includeInactive: true });
-      const catalogRows = await this.referenceCatalogService.listAllForImport(tx, [...DRUG_IMPORT_CATEGORIES]);
+      const catalogRows = await this.referenceCatalogService.listAllForImport(tx, tenantId, [...DRUG_IMPORT_CATEGORIES]);
       const nameByCode = new Map(catalogRows.map((r) => [`${r.category}|${r.code}`, r.name]));
       const nameOf = (category: DrugImportCategory, code: string | null): string => (code ? (nameByCode.get(`${category}|${code}`) ?? code) : '');
       const yesNo = (v: boolean): string => (v ? IMPORT_YES_LABEL : IMPORT_NO_LABEL);
@@ -367,7 +367,7 @@ export class DrugImportService {
     const canCreateCatalog = maxDataScope(await findScopesForUserPermission(tx, tenantId, actorId, 'reference_catalog', 'manage')) !== 'none';
 
     // Chỉ mục tên (đã chuẩn hoá) → mục danh mục, ưu tiên mục đang hoạt động.
-    const catalogRows = await this.referenceCatalogService.listAllForImport(tx, [...DRUG_IMPORT_CATEGORIES]);
+    const catalogRows = await this.referenceCatalogService.listAllForImport(tx, tenantId, [...DRUG_IMPORT_CATEGORIES]);
     const catalogIndex = new Map<string, { code: string; name: string; isActive: boolean }>();
     for (const r of catalogRows) {
       const key = `${r.category}|${normalizeImportName(r.name)}`;

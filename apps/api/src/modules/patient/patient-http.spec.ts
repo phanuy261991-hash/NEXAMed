@@ -526,8 +526,8 @@ describe('HTTP e2e — /api/v1/patients', () => {
 
   describe('Dị nguyên đã biết — allergenIds (Sprint 4, chốt 2026-08-25, liên kết danh mục Dị nguyên có sẵn cho PRE-03)', () => {
     async function createAllergen(name: string) {
-      const group = await privileged.allergenGroup.create({ data: { code: `AGRP-${randomUUID().slice(0, 8)}`, name: `Nhóm ${name}` } });
-      const allergen = await privileged.allergen.create({ data: { allergenGroupId: group.id, code: `ALG-${randomUUID().slice(0, 8)}`, name } });
+      const group = await privileged.allergenGroup.create({ data: { tenantId: fixture.tenantA.id, code: `AGRP-${randomUUID().slice(0, 8)}`, name: `Nhóm ${name}`, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+      const allergen = await privileged.allergen.create({ data: { tenantId: fixture.tenantA.id, allergenGroupId: group.id, code: `ALG-${randomUUID().slice(0, 8)}`, name, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
       return allergen.id as string;
     }
 

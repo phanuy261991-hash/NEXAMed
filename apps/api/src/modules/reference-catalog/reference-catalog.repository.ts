@@ -51,55 +51,67 @@ export interface UpdateReferenceCatalogData {
 
 /**
  * Chỗ DUY NHẤT gọi Prisma cho bảng `reference_catalog` — theo .claude/docs/coding-standards.md.
- * Không tenant_id (bảng toàn hệ thống, xem .claude/docs/data-model.md) nhưng CÓ `version` từ
- * docs/DECISIONS.md #207 — sửa/ẩn/khôi phục khoá lạc quan bằng `WHERE id = ? AND version = ?` rồi tăng 1;
+ * RIÊNG THEO TENANT từ docs/DECISIONS.md #230 (trước đó dùng chung mọi tenant): mọi truy vấn lọc `tenant_id` tường minh (RLS là
+ * lớp phòng thủ thứ hai). Có `version` từ #207 — sửa/ẩn/khôi phục khoá lạc quan bằng `WHERE tenant_id = ? AND id = ? AND version = ?` rồi tăng 1;
  * trả `count` (0 = lệch version hoặc không còn bản ghi — service phân biệt qua `findById`).
  */
 @Injectable()
 export class ReferenceCatalogRepository {
-  create(tx: Prisma.TransactionClient, data: CreateReferenceCatalogData): Promise<ReferenceCatalog> {
-    return tx.referenceCatalog.create({ data });
+  create(tx: Prisma.TransactionClient, tenantId: string, actorId: string, data: CreateReferenceCatalogData): Promise<ReferenceCatalog> {
+    return tx.referenceCatalog.create({ data: { ...data, tenantId, createdBy: actorId, updatedBy: actorId } });
   }
 
-  findById(tx: Prisma.TransactionClient, id: string): Promise<ReferenceCatalog | null> {
-    return tx.referenceCatalog.findUnique({ where: { id } });
+  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<ReferenceCatalog | null> {
+    return tx.referenceCatalog.findFirst({ where: { tenantId, id } });
   }
 
   /** Dùng bởi `ReferenceCatalogReaderAdapter` (mở rộng ADM-01) — tra 1 mục theo (category, code). */
   findByCategoryAndCode(
     tx: Prisma.TransactionClient,
+    tenantId: string,
     category: ReferenceCatalogCategory,
     code: string,
   ): Promise<ReferenceCatalog | null> {
-    return tx.referenceCatalog.findUnique({ where: { category_code: { category, code } } });
+    return tx.referenceCatalog.findUnique({ where: { tenantId_category_code: { tenantId, category, code } } });
   }
 
   listByCategory(
     tx: Prisma.TransactionClient,
+    tenantId: string,
     category: ReferenceCatalogCategory,
     includeInactive: boolean,
   ): Promise<ReferenceCatalog[]> {
     return tx.referenceCatalog.findMany({
-      where: includeInactive ? { category } : { category, isActive: true },
+      where: includeInactive ? { tenantId, category } : { tenantId, category, isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
   }
 
   /** Nhập Excel Thuốc & Vật tư (#210) — đọc MỘT lần mọi mục (kể cả đã ẩn) của nhiều category để dựng chỉ mục tên → mã. */
-  listByCategories(tx: Prisma.TransactionClient, categories: ReferenceCatalogCategory[]): Promise<ReferenceCatalog[]> {
-    return tx.referenceCatalog.findMany({ where: { category: { in: categories } }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+  listByCategories(tx: Prisma.TransactionClient, tenantId: string, categories: ReferenceCatalogCategory[]): Promise<ReferenceCatalog[]> {
+    return tx.referenceCatalog.findMany({ where: { tenantId, category: { in: categories } }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
   }
 
   /** `data` có thể rỗng (PATCH chỉ đổi đơn giá bảng con) — vẫn tăng `version` để khoá lạc quan có hiệu lực. */
-  async update(tx: Prisma.TransactionClient, id: string, expectedVersion: number, data: UpdateReferenceCatalogData): Promise<number> {
-    const result = await tx.referenceCatalog.updateMany({ where: { id, version: expectedVersion }, data: { ...data, version: { increment: 1 } } });
+  async update(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    id: string,
+    expectedVersion: number,
+    actorId: string,
+    data: UpdateReferenceCatalogData,
+  ): Promise<number> {
+    const result = await tx.referenceCatalog.updateMany({
+      where: { tenantId, id, version: expectedVersion },
+      data: { ...data, version: { increment: 1 }, updatedBy: actorId },
+    });
     return result.count;
   }
 
-  async setActive(tx: Prisma.TransactionClient, id: string, expectedVersion: number, isActive: boolean): Promise<number> {
+  async setActive(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, isActive: boolean, actorId: string): Promise<number> {
     const result = await tx.referenceCatalog.updateMany({
-      where: { id, version: expectedVersion },
-      data: { isActive, version: { increment: 1 } },
+      where: { tenantId, id, version: expectedVersion },
+      data: { isActive, version: { increment: 1 }, updatedBy: actorId },
     });
     return result.count;
   }

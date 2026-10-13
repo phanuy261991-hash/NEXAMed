@@ -136,7 +136,7 @@ export class ServicePackageService {
     }
     const examCodes = items.filter((i) => i.itemKind === 'EXAM_TYPE').map((i) => i.examTypeCode as string);
     if (examCodes.length > 0) {
-      const catalog = await this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', true);
+      const catalog = await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'EXAM_TYPE', true);
       const known = new Set(catalog.map((c) => c.code));
       if (examCodes.some((c) => !known.has(c))) throw new BadRequestException('Có Dịch vụ khám không tồn tại trong danh mục.');
     }

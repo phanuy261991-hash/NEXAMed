@@ -27,6 +27,7 @@ export class ReferenceCatalogReaderAdapter implements ReferenceCatalogReaderPort
       // category hoặc gõ nhầm) chỉ khiến `findByCategoryAndCode` trả null, không throw.
       const row = await this.referenceCatalogRepository.findByCategoryAndCode(
         tx,
+        tenantId,
         category as never,
         code,
       );
@@ -41,7 +42,7 @@ export class ReferenceCatalogReaderAdapter implements ReferenceCatalogReaderPort
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       // includeInactive=true — phiếu chốt ca cũ có thể tham chiếu 1 hình thức thanh toán đã bị ẩn
       // sau đó, vẫn phải resolve được tên để hiển thị lại đúng lịch sử.
-      const rows = await this.referenceCatalogRepository.listByCategory(tx, category as never, true);
+      const rows = await this.referenceCatalogRepository.listByCategory(tx, tenantId, category as never, true);
       return rows.map((row) => ({ code: row.code, name: row.name, countsAsCash: row.countsAsCash }));
     });
   }

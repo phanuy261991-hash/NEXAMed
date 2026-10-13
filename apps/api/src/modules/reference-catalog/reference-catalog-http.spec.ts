@@ -12,13 +12,12 @@ import { DomainExceptionFilter } from '../../common/domain-exception.filter';
 import { createTwoTenantFixture, SYSTEM_TEST_ACTOR, type TwoTenantFixture } from '../../testing/tenant-fixture';
 import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-permissions';
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
-import { seedReferenceCatalog } from '../../infrastructure/persistence/seed-reference-catalog';
+import { seedReferenceCatalogForTenant } from '../../infrastructure/persistence/seed-reference-catalog';
 
 /**
- * HTTP e2e cho module `reference-catalog` (danh mục dùng chung toàn hệ thống — docs/DECISIONS.md,
- * đảo ngược #034 phần ethnicity/nationality). Khác mọi module khác đã có test: bảng KHÔNG có
- * `tenant_id`, nên "cách ly tenant" ở đây có nghĩa NGƯỢC LẠI — xác nhận có chủ đích 2 tenant CÙNG
- * thấy/sửa được một danh mục chung (giống `permission`), không phải cách ly.
+ * HTTP e2e cho module `reference-catalog` — danh mục RIÊNG THEO TENANT (docs/DECISIONS.md #230; trước đó
+ * dùng chung mọi tenant). Mỗi tenant có bản riêng: tenant này không thấy, không sửa, không ẩn được mục của
+ * tenant khác, và cùng `code` được phép tồn tại ở nhiều tenant.
  */
 describe('HTTP e2e — /api/v1/reference-catalog', () => {
   let app: INestApplication;
@@ -70,9 +69,10 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
 
     fixture = await createTwoTenantFixture(privileged, 'ReferenceCatalog e2e');
     await seedPermissionCatalog(privileged);
-    await seedReferenceCatalog(privileged);
     await seedDefaultRolesForTenant(privileged, fixture.tenantA.id, SYSTEM_TEST_ACTOR);
     await seedDefaultRolesForTenant(privileged, fixture.tenantB.id, SYSTEM_TEST_ACTOR);
+    await seedReferenceCatalogForTenant(privileged, fixture.tenantA.id, SYSTEM_TEST_ACTOR);
+    await seedReferenceCatalogForTenant(privileged, fixture.tenantB.id, SYSTEM_TEST_ACTOR);
 
     clinicAdminToken = await createUserWithRole(fixture.tenantA.id, 'clinic_admin');
     receptionistToken = await createUserWithRole(fixture.tenantA.id, 'receptionist');
@@ -494,45 +494,81 @@ describe('HTTP e2e — /api/v1/reference-catalog', () => {
     expect(ok.body.data.prices).toHaveLength(2);
   });
 
-  it('EXAM_TYPE — đơn giá TÁCH THEO TENANT (khác reference_catalog cha, toàn hệ thống): tenant B KHÔNG thấy đơn giá tenant A vừa tạo cho cùng 1 mục dùng chung', async () => {
+  it('EXAM_TYPE — danh mục lẫn đơn giá đều RIÊNG THEO TENANT: tenant B không thấy mục (và đơn giá) tenant A vừa tạo', async () => {
     const created = await request(app.getHttpServer())
       .post('/api/v1/reference-catalog')
       .set(authed(clinicAdminToken))
       .send({
         category: 'EXAM_TYPE',
-        name: 'Dịch vụ dùng chung, giá riêng theo tenant',
+        name: 'Dịch vụ riêng của tenant A',
         examTypePrices: [{ priceTypeCode: 'THUONG', unitCode: 'LUOT', amount: 100000, effectiveFrom: '2026-01-01' }],
       });
     const id = created.body.data.id as string;
 
-    // Tenant B thấy đúng MỤC dùng chung (reference_catalog không cách ly tenant, như test bên dưới)
-    // nhưng KHÔNG thấy đơn giá tenant A vừa tạo — exam_type_price cách ly tenant thật.
     const listFromTenantB = await request(app.getHttpServer())
       .get('/api/v1/reference-catalog/EXAM_TYPE')
       .set(authed(tenantBAdminToken));
-    const itemFromTenantB = listFromTenantB.body.data.items.find((i: { id: string }) => i.id === id);
-    expect(itemFromTenantB).toBeDefined();
-    expect(itemFromTenantB.prices).toHaveLength(0);
+    expect(listFromTenantB.body.data.items.some((i: { id: string }) => i.id === id)).toBe(false);
   });
 
-  it('không có chủ đích cách ly tenant — tenant B thấy và sửa được đúng dữ liệu tenant A vừa tạo (danh mục toàn hệ thống, giống permission)', async () => {
+  it('CÁCH LY TENANT (#230): tenant B không thấy, không sửa/ẩn/khôi phục được mục tenant A vừa tạo (404); cùng `code` ở hai tenant được phép', async () => {
     const code = `TEST-${randomUUID().slice(0, 8)}`;
     const created = await request(app.getHttpServer())
       .post('/api/v1/reference-catalog')
       .set(authed(clinicAdminToken))
-      .send({ category: 'ETHNICITY', code, name: 'Dùng chung mọi tenant', sortOrder: 995 });
+      .send({ category: 'ETHNICITY', code, name: 'Chỉ của tenant A', sortOrder: 995 });
+    expect(created.status).toBe(200);
     const id = created.body.data.id as string;
+    const version = created.body.data.version as number;
 
     const listFromTenantB = await request(app.getHttpServer())
-      .get('/api/v1/reference-catalog/ETHNICITY')
+      .get('/api/v1/reference-catalog/ETHNICITY?includeInactive=true')
       .set(authed(tenantBAdminToken));
-    expect(listFromTenantB.body.data.items.some((i: { id: string }) => i.id === id)).toBe(true);
+    expect(listFromTenantB.status).toBe(200);
+    expect(listFromTenantB.body.data.items.some((i: { id: string }) => i.id === id)).toBe(false);
+    expect(listFromTenantB.body.data.items.some((i: { code: string }) => i.code === code)).toBe(false);
 
     const patchFromTenantB = await request(app.getHttpServer())
       .patch(`/api/v1/reference-catalog/${id}`)
       .set(authed(tenantBAdminToken))
-      .send({ name: 'Sửa bởi tenant B', version: created.body.data.version });
-    expect(patchFromTenantB.status).toBe(200);
-    expect(patchFromTenantB.body.data.name).toBe('Sửa bởi tenant B');
+      .send({ name: 'Tenant B cố sửa', version });
+    expect(patchFromTenantB.status).toBe(404);
+
+    const deleteFromTenantB = await request(app.getHttpServer())
+      .delete(`/api/v1/reference-catalog/${id}?version=${version}`)
+      .set(authed(tenantBAdminToken));
+    expect(deleteFromTenantB.status).toBe(404);
+
+    const reactivateFromTenantB = await request(app.getHttpServer())
+      .post(`/api/v1/reference-catalog/${id}/reactivate?version=${version}`)
+      .set(authed(tenantBAdminToken));
+    expect(reactivateFromTenantB.status).toBe(404);
+
+    // Bản của tenant A không bị đụng tới.
+    const stillA = await request(app.getHttpServer()).get('/api/v1/reference-catalog/ETHNICITY').set(authed(clinicAdminToken));
+    expect(stillA.body.data.items.find((i: { id: string }) => i.id === id)).toMatchObject({ name: 'Chỉ của tenant A', version });
+
+    // Tenant B tạo CÙNG `code` → được (unique theo (tenant, category, code)).
+    const sameCodeInB = await request(app.getHttpServer())
+      .post('/api/v1/reference-catalog')
+      .set(authed(tenantBAdminToken))
+      .send({ category: 'ETHNICITY', code, name: 'Cùng mã, tenant B', sortOrder: 996 });
+    expect(sameCodeInB.status).toBe(200);
+    expect(sameCodeInB.body.data.id).not.toBe(id);
+  });
+
+  it('mã tự sinh (UNIT) tính RIÊNG THEO TENANT: tenant B không bị tăng số bởi tenant A', async () => {
+    const createUnit = async (token: string, name: string) => {
+      const res = await request(app.getHttpServer()).post('/api/v1/reference-catalog').set(authed(token)).send({ category: 'UNIT', name });
+      expect(res.status).toBe(200);
+      return res.body.data.code as string;
+    };
+    const a1 = await createUnit(clinicAdminToken, `Đơn vị A1 ${randomUUID().slice(0, 6)}`);
+    const a2 = await createUnit(clinicAdminToken, `Đơn vị A2 ${randomUUID().slice(0, 6)}`);
+    const b1 = await createUnit(tenantBAdminToken, `Đơn vị B1 ${randomUUID().slice(0, 6)}`);
+    const seqOf = (code: string) => Number(code.replace(/\D/g, ''));
+    expect(seqOf(a2)).toBe(seqOf(a1) + 1);
+    // Cả hai tenant đều đã nạp cùng danh sách đơn vị mặc định → B bắt đầu từ cùng mốc, không nhảy theo số của A.
+    expect(seqOf(b1)).toBeLessThanOrEqual(seqOf(a1));
   });
 });

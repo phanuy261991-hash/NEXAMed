@@ -248,6 +248,10 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.floor.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // work_shift (#101) — work_shift_assignment đã xoá ở trên (tham chiếu tới bảng này), giờ xoá tự do.
       await prisma.workShift.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Danh mục RIÊNG THEO TENANT (docs/DECISIONS.md #230): dị nguyên tham chiếu nhóm dị nguyên (patient_allergen đã xoá ở trên) nên xoá dị nguyên TRƯỚC nhóm.
+      await prisma.allergen.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.allergenGroup.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.referenceCatalog.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.tenantSetting.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
     },

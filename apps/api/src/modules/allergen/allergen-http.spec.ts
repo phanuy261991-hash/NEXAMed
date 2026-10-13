@@ -14,9 +14,8 @@ import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-per
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
 
 /**
- * HTTP e2e cho module `allergen` (danh mục "Dị nguyên" toàn hệ thống — docs/DECISIONS.md #069).
- * Cùng bản chất `reference-catalog-http.spec.ts`: bảng KHÔNG có `tenant_id`, nên "cách ly tenant"
- * ở đây có nghĩa NGƯỢC LẠI — xác nhận có chủ đích 2 tenant CÙNG thấy/sửa được một danh mục chung.
+ * HTTP e2e cho module `allergen` (danh mục "Dị nguyên" — docs/DECISIONS.md #069), RIÊNG THEO TENANT từ #230:
+ * tenant này không thấy, không sửa/ẩn được, không gắn dị nguyên vào nhóm của tenant khác.
  */
 describe('HTTP e2e — /api/v1/allergen-groups, /api/v1/allergens', () => {
   let app: INestApplication;
@@ -254,29 +253,53 @@ describe('HTTP e2e — /api/v1/allergen-groups, /api/v1/allergens', () => {
     });
   });
 
-  it('không có chủ đích cách ly tenant — tenant B thấy và sửa được đúng Nhóm dị nguyên/Dị nguyên tenant A vừa tạo (danh mục toàn hệ thống, giống reference_catalog)', async () => {
-    const group = await createGroup(clinicAdminToken, 'Dùng chung mọi tenant');
+  it('CÁCH LY TENANT (#230): tenant B không thấy Nhóm dị nguyên/Dị nguyên của tenant A, sửa/ẩn → 404, không tạo dị nguyên vào nhóm của A được', async () => {
+    const group = await createGroup(clinicAdminToken, 'Chỉ của tenant A');
     const groupId = group.body.data.id as string;
+    const allergenOfA = await request(app.getHttpServer())
+      .post('/api/v1/allergens')
+      .set(authed(clinicAdminToken))
+      .send({ allergenGroupId: groupId, name: 'Dị nguyên của A' });
+    expect(allergenOfA.status).toBe(200);
+    const allergenId = allergenOfA.body.data.id as string;
 
-    const listGroupFromTenantB = await request(app.getHttpServer()).get('/api/v1/allergen-groups').set(authed(tenantBAdminToken));
-    expect(listGroupFromTenantB.body.data.items.some((i: { id: string }) => i.id === groupId)).toBe(true);
+    const listGroupFromTenantB = await request(app.getHttpServer()).get('/api/v1/allergen-groups?includeInactive=true').set(authed(tenantBAdminToken));
+    expect(listGroupFromTenantB.body.data.items.some((i: { id: string }) => i.id === groupId)).toBe(false);
+    const listAllergenFromTenantB = await request(app.getHttpServer()).get('/api/v1/allergens?includeInactive=true').set(authed(tenantBAdminToken));
+    expect(listAllergenFromTenantB.body.data.items.some((i: { id: string }) => i.id === allergenId)).toBe(false);
 
-    const patchFromTenantB = await request(app.getHttpServer())
+    const patchGroupFromTenantB = await request(app.getHttpServer())
       .patch(`/api/v1/allergen-groups/${groupId}`)
       .set(authed(tenantBAdminToken))
-      .send({ name: 'Sửa bởi tenant B' });
-    expect(patchFromTenantB.status).toBe(200);
-    expect(patchFromTenantB.body.data.name).toBe('Sửa bởi tenant B');
+      .send({ name: 'Tenant B cố sửa' });
+    expect(patchGroupFromTenantB.status).toBe(404);
+    const patchAllergenFromTenantB = await request(app.getHttpServer())
+      .patch(`/api/v1/allergens/${allergenId}`)
+      .set(authed(tenantBAdminToken))
+      .send({ name: 'Tenant B cố sửa' });
+    expect(patchAllergenFromTenantB.status).toBe(404);
+    const deleteFromTenantB = await request(app.getHttpServer()).delete(`/api/v1/allergens/${allergenId}`).set(authed(tenantBAdminToken));
+    expect(deleteFromTenantB.status).toBe(404);
 
-    const allergenFromTenantB = await request(app.getHttpServer())
+    // Tạo dị nguyên của B vào nhóm của A → nhóm "không tồn tại" (đúng cô lập, không lộ sự tồn tại).
+    const crossTenantCreate = await request(app.getHttpServer())
       .post('/api/v1/allergens')
       .set(authed(tenantBAdminToken))
       .send({ allergenGroupId: groupId, name: 'Tạo bởi tenant B' });
-    expect(allergenFromTenantB.status).toBe(200);
+    expect(crossTenantCreate.status).toBe(422);
+    expect(crossTenantCreate.body.error.code).toBe('ALLERGEN_GROUP_INVALID_REFERENCE');
 
-    const listAllergenFromTenantA = await request(app.getHttpServer()).get('/api/v1/allergens').set(authed(clinicAdminToken));
-    expect(
-      listAllergenFromTenantA.body.data.items.some((i: { id: string }) => i.id === allergenFromTenantB.body.data.id),
-    ).toBe(true);
+    // Dữ liệu tenant A nguyên vẹn.
+    const listGroupFromTenantA = await request(app.getHttpServer()).get('/api/v1/allergen-groups').set(authed(clinicAdminToken));
+    expect(listGroupFromTenantA.body.data.items.find((i: { id: string }) => i.id === groupId)).toMatchObject({ name: 'Chỉ của tenant A' });
+  });
+
+  it('mã tự sinh tính RIÊNG THEO TENANT: tenant B có dãy mã độc lập với tenant A', async () => {
+    const a1 = await createGroup(clinicAdminToken, 'A1');
+    const a2 = await createGroup(clinicAdminToken, 'A2');
+    const b1 = await createGroup(tenantBAdminToken, 'B1');
+    const seqOf = (res: { body: { data: { code: string } } }) => Number(res.body.data.code.replace(/\D/g, ''));
+    expect(seqOf(a2)).toBe(seqOf(a1) + 1);
+    expect(seqOf(b1)).toBe(1);
   });
 });

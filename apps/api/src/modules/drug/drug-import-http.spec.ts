@@ -402,14 +402,14 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
       expect(await privileged.drug.count({ where: { tenantId: fixture.tenantA.id, code: { startsWith: `BULK${tag}-` } } })).toBe(300);
     }, 120_000);
 
-    it('cách ly tenant: tenant B nhập CÙNG mã không bị coi là trùng với tenant A; danh mục dùng chung thì dùng lại mục đã có', async () => {
+    it('cách ly tenant: tenant B nhập CÙNG mã không bị coi là trùng với tenant A; danh mục RIÊNG theo tenant nên B phải tạo bản danh mục của chính mình (#230)', async () => {
       const code = `${baseCode}-M`;
       const file = await xlsx([medicine(code)], [ingredient(code)]);
       const res = await upload('preview', tenantBAdminToken, file);
       expect(res.body.data.duplicateRows).toEqual([]);
       expect(res.body.data.validRows.map((r: { code: string }) => r.code)).toEqual([code]);
-      // Tên danh mục đã được tenant A tạo → tenant B tái dùng, không đòi tạo mới.
-      expect(res.body.data.newCatalogItems).toEqual([]);
+      // Danh mục riêng theo tenant (#230): tên tenant A đã tạo KHÔNG hiện ở tenant B → B đòi tạo mới đủ bản của mình.
+      expect(res.body.data.newCatalogItems).toHaveLength(8);
       const commit = await upload('commit', tenantBAdminToken, file);
       expect(commit.body.data.createdCount).toBe(1);
       expect(await privileged.drug.count({ where: { tenantId: fixture.tenantA.id, code } })).toBe(1);

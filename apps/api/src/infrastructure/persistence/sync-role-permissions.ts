@@ -3,6 +3,7 @@ import { DEFAULT_ROLE_PERMISSIONS, permissionKey } from '@nexamed/core';
 import { USER_ROLES, type DataScope, type UserRole } from '@nexamed/shared';
 import type { UnitOfWorkService } from './unit-of-work.service';
 import { ensureDefaultCashAccount, ensureDefaultWarehouse } from './seed-tenant-roles';
+import { seedSystemReferenceDataForTenant } from './seed-reference-catalog';
 
 /** Module quyền cũ trước khi tách cận lâm sàng thành 2 menu (docs/DECISIONS.md #215). */
 const LEGACY_PARACLINICAL_MODULE = 'paraclinical_result';
@@ -175,6 +176,11 @@ export async function syncRolePermissionsForAllTenants(
         // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — cùng lý do backfill Kho mặc định
         // cho tenant tạo trước tính năng này.
         await ensureDefaultWarehouse(tx, tenant.id, actorId);
+        // Danh mục riêng theo tenant (#230) — bổ sung dòng hệ thống thêm SAU này cho tenant THẬT (đã có vai trò hệ thống);
+        // tenant trống do test dựng dở không bị biến thành tenant có danh mục.
+        if (await tx.role.findFirst({ where: { tenantId: tenant.id, isSystemDefault: true }, select: { id: true } })) {
+          await seedSystemReferenceDataForTenant(tx, tenant.id, actorId);
+        }
         return syncResult;
       });
     } catch (err) {

@@ -18,35 +18,35 @@ export interface AllergenWithGroupName extends Allergen {
 }
 
 /**
- * Chỗ DUY NHẤT gọi Prisma cho bảng `allergen` — theo .claude/docs/coding-standards.md. Không
- * tenant_id/version (bảng toàn hệ thống), đúng khuôn `ReferenceCatalogRepository`.
+ * Chỗ DUY NHẤT gọi Prisma cho bảng `allergen` — theo .claude/docs/coding-standards.md. RIÊNG THEO
+ * TENANT từ docs/DECISIONS.md #230: mọi truy vấn lọc `tenantId` tường minh.
  */
 @Injectable()
 export class AllergenRepository {
-  create(tx: Prisma.TransactionClient, data: CreateAllergenData): Promise<AllergenWithGroupName> {
-    return tx.allergen.create({ data, include: { allergenGroup: { select: { name: true } } } });
+  create(tx: Prisma.TransactionClient, tenantId: string, actorId: string, data: CreateAllergenData): Promise<AllergenWithGroupName> {
+    return tx.allergen.create({ data: { ...data, tenantId, createdBy: actorId, updatedBy: actorId }, include: { allergenGroup: { select: { name: true } } } });
   }
 
-  findById(tx: Prisma.TransactionClient, id: string): Promise<AllergenWithGroupName | null> {
-    return tx.allergen.findUnique({ where: { id }, include: { allergenGroup: { select: { name: true } } } });
+  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<AllergenWithGroupName | null> {
+    return tx.allergen.findFirst({ where: { tenantId, id }, include: { allergenGroup: { select: { name: true } } } });
   }
 
   /** Danh sách TẤT CẢ dị nguyên (không phân trang, quy mô danh mục nhỏ) — web tự lọc theo nhóm đang chọn ở client, đúng khuôn `DepartmentRepository.list()`. */
-  list(tx: Prisma.TransactionClient, includeInactive: boolean): Promise<AllergenWithGroupName[]> {
+  list(tx: Prisma.TransactionClient, tenantId: string, includeInactive: boolean): Promise<AllergenWithGroupName[]> {
     return tx.allergen.findMany({
-      where: includeInactive ? {} : { isActive: true },
+      where: includeInactive ? { tenantId } : { tenantId, isActive: true },
       include: { allergenGroup: { select: { name: true } } },
       orderBy: { name: 'asc' },
     });
   }
 
-  async update(tx: Prisma.TransactionClient, id: string, data: UpdateAllergenData): Promise<number> {
-    const result = await tx.allergen.updateMany({ where: { id }, data });
+  async update(tx: Prisma.TransactionClient, tenantId: string, id: string, actorId: string, data: UpdateAllergenData): Promise<number> {
+    const result = await tx.allergen.updateMany({ where: { tenantId, id }, data: { ...data, version: { increment: 1 }, updatedBy: actorId } });
     return result.count;
   }
 
-  async setActive(tx: Prisma.TransactionClient, id: string, isActive: boolean): Promise<number> {
-    const result = await tx.allergen.updateMany({ where: { id }, data: { isActive } });
+  async setActive(tx: Prisma.TransactionClient, tenantId: string, id: string, isActive: boolean, actorId: string): Promise<number> {
+    const result = await tx.allergen.updateMany({ where: { tenantId, id }, data: { isActive, version: { increment: 1 }, updatedBy: actorId } });
     return result.count;
   }
 }

@@ -58,7 +58,7 @@ export class DiagnosisSuggestionService {
       if (!enabled || (encounter.status !== 'IN_CONSULTATION' && encounter.status !== 'COMPLETED')) {
         return { groups: [] };
       }
-      const lookupAbbreviation = buildAbbreviationLookup(await this.suggestionRepository.listActiveAbbreviations(tx));
+      const lookupAbbreviation = buildAbbreviationLookup(await this.suggestionRepository.listActiveAbbreviations(tx, tenantId));
       const phrases = splitDiagnosisPhrases(dto.text, lookupAbbreviation);
       if (phrases.length === 0) {
         return { groups: [] };

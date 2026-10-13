@@ -97,8 +97,8 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
   }
 
   async function createAllergen(tenantId: string, name: string) {
-    const group = await privileged.allergenGroup.create({ data: { code: `AGRP-${randomUUID().slice(0, 8)}`, name: `Nhóm ${name}` } });
-    const allergen = await privileged.allergen.create({ data: { allergenGroupId: group.id, code: `ALG-${randomUUID().slice(0, 8)}`, name } });
+    const group = await privileged.allergenGroup.create({ data: { tenantId, code: `AGRP-${randomUUID().slice(0, 8)}`, name: `Nhóm ${name}`, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+    const allergen = await privileged.allergen.create({ data: { tenantId, allergenGroupId: group.id, code: `ALG-${randomUUID().slice(0, 8)}`, name, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
     // Gán trực tiếp cho bệnh nhân qua PATCH /patients/:id ở nơi gọi — hàm này chỉ tạo mục danh mục.
     return allergen.id as string;
   }
@@ -290,7 +290,7 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     const tag = randomUUID().slice(0, 6);
     const catalogs = await Promise.all(
       [`AMOX-${tag}`, `CLAV-${tag}`].map((code, i) =>
-        privileged.referenceCatalog.create({ data: { category: 'ACTIVE_INGREDIENT', code, name: i === 0 ? `Amoxicillin ${tag}` : `Acid clavulanic ${tag}` } }),
+        privileged.referenceCatalog.create({ data: { tenantId: fixture.tenantA.id, category: 'ACTIVE_INGREDIENT', code, name: i === 0 ? `Amoxicillin ${tag}` : `Acid clavulanic ${tag}`, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } }),
       ),
     );
     try {

@@ -17,9 +17,9 @@ export class Icd10SuggestionRepository {
    * hiệu lực. Bảng dùng chung toàn hệ thống (không `tenant_id`), cùng loại dữ liệu nền với `icd10_catalog`
    * ở các hàm bên dưới. Vài chục dòng, đọc mỗi lần gợi ý (không cache) để admin sửa là có hiệu lực ngay.
    */
-  async listActiveAbbreviations(tx: Prisma.TransactionClient): Promise<{ abbreviation: string; expansion: string }[]> {
+  async listActiveAbbreviations(tx: Prisma.TransactionClient, tenantId: string): Promise<{ abbreviation: string; expansion: string }[]> {
     const rows = await tx.referenceCatalog.findMany({
-      where: { category: 'ICD10_ABBREVIATION', isActive: true },
+      where: { tenantId, category: 'ICD10_ABBREVIATION', isActive: true },
       select: { code: true, name: true },
     });
     return rows.map((r) => ({ abbreviation: r.code, expansion: r.name }));

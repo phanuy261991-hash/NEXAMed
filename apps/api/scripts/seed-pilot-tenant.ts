@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { seedPermissionCatalog } from '../src/infrastructure/persistence/seed-permissions';
 import { seedDefaultRolesForTenant } from '../src/infrastructure/persistence/seed-tenant-roles';
+import { seedTenantDefaultCatalogs } from '../src/infrastructure/persistence/seed-tenant-catalogs';
 
 /**
  * Tạo tenant + tài khoản `clinic_admin` ĐẦU TIÊN cho một phòng khám pilot thật (S4-06,
@@ -76,6 +77,7 @@ async function main() {
 
     await seedPermissionCatalog(prisma);
     await seedDefaultRolesForTenant(prisma, tenant.id, SYSTEM_ACTOR);
+    await seedTenantDefaultCatalogs(prisma, tenant.id, SYSTEM_ACTOR);
     const adminRole = await prisma.role.findFirstOrThrow({ where: { tenantId: tenant.id, name: 'clinic_admin' } });
     await prisma.userRole.create({
       data: {

@@ -173,7 +173,7 @@ export class PriceListService {
   /** Số mặt hàng của "Bảng giá chung" = mọi mặt hàng đang dùng có thể có giá (khám + kỹ thuật + gói + thuốc/vật tư). */
   private async countGeneralItems(tx: Prisma.TransactionClient, tenantId: string): Promise<number> {
     const [exam, tech, packages, drugs] = await Promise.all([
-      this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', false),
+      this.referenceCatalogRepository.listByCategory(tx, tenantId, 'EXAM_TYPE', false),
       this.technicalServiceRepository.countsByKind(tx, tenantId, false),
       this.servicePackageRepository.countActive(tx, tenantId),
       this.drugRepository.countActive(tx, tenantId),

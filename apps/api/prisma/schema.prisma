@@ -68,6 +68,9 @@ model Tenant {
 
   tenantSettings              TenantSetting[]
   floors                      Floor[]
+  referenceCatalogs           ReferenceCatalog[]
+  allergenGroups              AllergenGroup[]
+  allergens                   Allergen[]
   rooms                       Room[]
   examStations                ExamStation[]
   workShifts                  WorkShift[]
@@ -871,6 +874,7 @@ enum ReferenceCatalogDirection {
 // phần ethnicity/nationality; occupation đảo ngược tiếp sau đó — xem entry OCCUPATION).
 model ReferenceCatalog {
   id                 String                     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String                     @map("tenant_id") @db.Uuid
   category           ReferenceCatalogCategory
   code               String
   name               String
@@ -912,8 +916,18 @@ model ReferenceCatalog {
   // Khoá lạc quan (docs/DECISIONS.md #207) — sửa/ẩn/khôi phục kèm `WHERE version = ?`, tăng 1 mỗi lần.
   // Chỉ thêm `version` (bảng toàn hệ thống vẫn không có tenant_id/updated_at... như ghi ở trên).
   version            Int                        @default(1)
+  // 8 cột bắt buộc (tenant_id đứng đầu) — danh mục RIÊNG THEO TENANT từ #230 (trước đó toàn hệ thống).
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
 
-  @@unique([category, code])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, category, code])
+  @@unique([tenantId, id])
   @@map("reference_catalog")
 }
 
@@ -969,11 +983,24 @@ model ExamTypePrice {
 // UI cột trái (chỉ dùng nội bộ, để đồng nhất với Allergen) — cột phải mới hiện "Mã".
 model AllergenGroup {
   id        String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  code      String     @unique
+  tenantId  String     @map("tenant_id") @db.Uuid
+  code      String
   name      String
   isActive  Boolean    @default(true) @map("is_active")
+  // 8 cột bắt buộc (tenant_id đứng đầu) — danh mục RIÊNG THEO TENANT từ #230 (trước đó toàn hệ thống).
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
   allergens Allergen[]
 
+  @@unique([tenantId, code])
+  @@unique([tenantId, id])
   @@map("allergen_group")
 }
 
@@ -981,14 +1008,27 @@ model AllergenGroup {
 // mỗi Dị nguyên luôn thuộc đúng 1 Nhóm dị nguyên, không có trạng thái "chưa phân loại".
 model Allergen {
   id               String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String            @map("tenant_id") @db.Uuid
   allergenGroupId  String            @map("allergen_group_id") @db.Uuid
-  code             String            @unique
+  code             String
   name             String
   isActive         Boolean           @default(true) @map("is_active")
-  allergenGroup    AllergenGroup     @relation(fields: [allergenGroupId], references: [id])
+  // 8 cột bắt buộc (tenant_id đứng đầu) — danh mục RIÊNG THEO TENANT từ #230 (trước đó toàn hệ thống).
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  allergenGroup    AllergenGroup     @relation(fields: [tenantId, allergenGroupId], references: [tenantId, id])
   // Bệnh nhân đã gán dị nguyên này (Sprint 4, chốt 2026-08-25) — xem model PatientAllergen.
   patientAllergens PatientAllergen[]
 
+  @@unique([tenantId, code])
+  @@unique([tenantId, id])
   @@map("allergen")
 }
 
@@ -1181,20 +1221,6 @@ model CodeSequence {
   @@map("code_sequence")
 }
 
-// Cấp số tuần tự cho mã NGẮN của danh mục TOÀN HỆ THỐNG (reference_catalog 6 category không có
-// nguồn dữ liệu chính thức, allergen_group/allergen — docs/DECISIONS.md #113, 2026-09-03) — khác
-// `CodeSequence` ở trên (theo tenant, dùng cho mã nghiệp vụ có tháng-năm). Không tenant_id (đúng
-// bản chất `reference_catalog`/`allergen_group` mà bảng này phục vụ), cùng cơ chế atomic
-// `INSERT ... ON CONFLICT DO UPDATE` qua `prefix` (GlobalCodeSequenceRepository). Thuần hạ tầng
-// đếm số, không phải dữ liệu nghiệp vụ hiển thị — miễn trừ 8 cột bắt buộc giống `Permission`
-// (scripts/check-mandatory-columns.mjs).
-model GlobalCodeSequence {
-  id           String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  prefix       String @unique
-  currentValue BigInt @default(0) @map("current_value")
-
-  @@map("global_code_sequence")
-}
 
 // Hồ sơ hành chính bệnh nhân (S2-01, PAT-01) — xem .claude/docs/data-model.md, docs/ERD.md.
 // `nationalIdEnc`/`nationalIdHash`: mã hoá AES-256-GCM + hash HMAC-SHA256 tra trùng
@@ -3743,7 +3769,7 @@ model PatientAllergen {
   tenant   Tenant   @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, patient_id) -> patient(tenant_id, id): chống trỏ chéo tenant.
   patient  Patient  @relation(fields: [tenantId, patientId], references: [tenantId, id])
-  allergen Allergen @relation(fields: [allergenId], references: [id])
+  allergen Allergen @relation(fields: [tenantId, allergenId], references: [tenantId, id])
 
   @@unique([tenantId, id])
   @@map("patient_allergen")

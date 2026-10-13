@@ -136,7 +136,7 @@ export class ParaclinicalResultService {
         if (!specimenInfoCache.has(key)) {
           specimenInfoCache.set(
             key,
-            code ? this.referenceCatalogRepository.findByCategoryAndCode(tx, 'SPECIMEN_TYPE', code).then((r) => ({ name: r?.name ?? null, capColor: r?.capColor ?? null })) : Promise.resolve({ name: null, capColor: null }),
+            code ? this.referenceCatalogRepository.findByCategoryAndCode(tx, tenantId, 'SPECIMEN_TYPE', code).then((r) => ({ name: r?.name ?? null, capColor: r?.capColor ?? null })) : Promise.resolve({ name: null, capColor: null }),
           );
         }
         return specimenInfoCache.get(key)!;
@@ -146,7 +146,7 @@ export class ParaclinicalResultService {
       const nameOf = (category: 'SPECIMEN_TYPE' | 'TECH_SERVICE_CATEGORY', code: string | null | undefined): Promise<string | null> => {
         if (!code) return Promise.resolve(null);
         const key = `${category}:${code}`;
-        if (!catalogNames.has(key)) catalogNames.set(key, this.referenceCatalogRepository.findByCategoryAndCode(tx, category, code).then((r) => r?.name ?? null));
+        if (!catalogNames.has(key)) catalogNames.set(key, this.referenceCatalogRepository.findByCategoryAndCode(tx, tenantId, category, code).then((r) => r?.name ?? null));
         return catalogNames.get(key)!;
       };
 
@@ -572,8 +572,8 @@ export class ParaclinicalResultService {
     for (const item of group) {
       const service = item.row.technicalService!;
       const result = resultByItem.get(item.id) ?? null;
-      const specimen = service.specimenTypeCode ? await this.referenceCatalogRepository.findByCategoryAndCode(tx, 'SPECIMEN_TYPE', service.specimenTypeCode) : null;
-      const category = service.categoryCode ? await this.referenceCatalogRepository.findByCategoryAndCode(tx, 'TECH_SERVICE_CATEGORY', service.categoryCode) : null;
+      const specimen = service.specimenTypeCode ? await this.referenceCatalogRepository.findByCategoryAndCode(tx, tenantId, 'SPECIMEN_TYPE', service.specimenTypeCode) : null;
+      const category = service.categoryCode ? await this.referenceCatalogRepository.findByCategoryAndCode(tx, tenantId, 'TECH_SERVICE_CATEGORY', service.categoryCode) : null;
       sections.push({
         itemId: item.id,
         technicalServiceId: service.id,

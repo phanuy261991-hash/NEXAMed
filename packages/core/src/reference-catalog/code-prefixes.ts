@@ -49,3 +49,10 @@ export const REFERENCE_CATALOG_SHORT_CODE_PREFIXES: Partial<Record<ReferenceCata
   // Cận lâm sàng GĐ2 — Đơn vị kết quả xét nghiệm (KQ). Không trùng tiền tố nào ở trên.
   LAB_RESULT_UNIT: 'KQ',
 };
+
+/**
+ * Danh mục RIÊNG THEO TENANT (docs/DECISIONS.md #230): bộ đếm mã ngắn tuần tự nằm trong `code_sequence`
+ * của từng tenant với khoá `CATALOG:<tiền tố>` — tách khỏi mã nghiệp vụ (BN, KB...). Migration
+ * `20261013100000_catalogs_per_tenant` đã chép giá trị cũ sang đúng khoá này.
+ */
+export const CATALOG_SEQUENCE_PREFIX = 'CATALOG:';

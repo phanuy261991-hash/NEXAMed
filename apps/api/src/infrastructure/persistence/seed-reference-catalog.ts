@@ -1,216 +1,153 @@
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient, ReferenceCatalogCategory } from '@prisma/client';
 import {
+  CATALOG_SEQUENCE_PREFIX,
   DOSAGE_FORM_ITEMS,
   DRUG_GROUP_ITEMS,
   DRUG_ROUTE_ITEMS,
+  DRUG_USAGE_TIMING_ITEMS,
   EMPLOYMENT_STATUS_ITEMS,
   EMPLOYMENT_TYPE_ITEMS,
   ETHNICITY_ITEMS,
   formatShortSequentialCode,
   NATIONALITY_ITEMS,
   OCCUPATION_ITEMS,
-  DRUG_USAGE_TIMING_ITEMS,
   REFERENCE_CATALOG_SHORT_CODE_PREFIXES,
   STORAGE_CONDITION_ITEMS,
   UNIT_SEED_ITEMS,
 } from '@nexamed/core';
-import { GlobalCodeSequenceRepository } from './global-code-sequence.repository';
+import { CodeSequenceRepository } from './code-sequence.repository';
 
-const globalCodeSequenceRepository = new GlobalCodeSequenceRepository();
+const codeSequenceRepository = new CodeSequenceRepository();
 
-/**
- * Seed danh mục `reference_catalog` toàn hệ thống (idempotent — upsert theo (category, code)).
- * Không đụng `isActive` khi cập nhật dòng đã tồn tại — tránh seed script "hồi sinh" mục
- * `clinic_admin` đã chủ động ẩn qua UI quản lý. Cùng lý do, `deactivatesAccount` (chỉ
- * EMPLOYMENT_STATUS) chỉ set lúc TẠO — không ghi đè nếu clinic_admin đã tự đổi cờ này qua UI.
- */
-export async function seedReferenceCatalog(prisma: PrismaClient): Promise<void> {
-  for (const item of ETHNICITY_ITEMS) {
-    await prisma.referenceCatalog.upsert({
-      where: { category_code: { category: 'ETHNICITY', code: item.code } },
-      create: { category: 'ETHNICITY', code: item.code, name: item.name, sortOrder: item.sortOrder },
-      update: { name: item.name, sortOrder: item.sortOrder },
-    });
-  }
+type SeedClient = Prisma.TransactionClient | PrismaClient;
 
-  for (const item of NATIONALITY_ITEMS) {
-    await prisma.referenceCatalog.upsert({
-      where: { category_code: { category: 'NATIONALITY', code: item.code } },
-      create: { category: 'NATIONALITY', code: item.code, name: item.name, sortOrder: item.sortOrder },
-      update: { name: item.name, sortOrder: item.sortOrder },
-    });
-  }
-
-  for (const item of EMPLOYMENT_STATUS_ITEMS) {
-    await prisma.referenceCatalog.upsert({
-      where: { category_code: { category: 'EMPLOYMENT_STATUS', code: item.code } },
-      create: {
-        category: 'EMPLOYMENT_STATUS',
-        code: item.code,
-        name: item.name,
-        sortOrder: item.sortOrder,
-        deactivatesAccount: item.deactivatesAccount ?? false,
-      },
-      update: { name: item.name, sortOrder: item.sortOrder },
-    });
-  }
-
-  for (const item of EMPLOYMENT_TYPE_ITEMS) {
-    await prisma.referenceCatalog.upsert({
-      where: { category_code: { category: 'EMPLOYMENT_TYPE', code: item.code } },
-      create: { category: 'EMPLOYMENT_TYPE', code: item.code, name: item.name, sortOrder: item.sortOrder },
-      update: { name: item.name, sortOrder: item.sortOrder },
-    });
-  }
-
-  for (const item of OCCUPATION_ITEMS) {
-    await prisma.referenceCatalog.upsert({
-      where: { category_code: { category: 'OCCUPATION', code: item.code } },
-      create: { category: 'OCCUPATION', code: item.code, name: item.name, sortOrder: item.sortOrder },
-      update: { name: item.name, sortOrder: item.sortOrder },
-    });
-  }
-
-  // Kho Thuốc GĐ1 (docs/DECISIONS.md #152) — 3 danh mục có nguồn dữ liệu chính thức, nạp ĐẦY ĐỦ
-  // mọi cột của file gốc (mã UI/mã BYT/tên đầy đủ/mô tả), khác ACTIVE_INGREDIENT/STORAGE_
-  // CONDITION/... (không seed cứng). `bytCode`/`fullName`/`description` không phải field admin
-  // sửa được qua UI (khác `name`/`sortOrder`) nên seed luôn ghi đè lại theo nguồn, cùng khuôn
-  // ETHNICITY/NATIONALITY/OCCUPATION ở trên.
-  for (const item of DRUG_GROUP_ITEMS) {
-    await prisma.referenceCatalog.upsert({
-      where: { category_code: { category: 'DRUG_GROUP', code: item.code } },
-      create: {
-        category: 'DRUG_GROUP',
-        code: item.code,
-        name: item.name,
-        sortOrder: item.sortOrder,
-        bytCode: item.bytCode,
-        fullName: item.fullName,
-      },
-      update: { name: item.name, sortOrder: item.sortOrder, bytCode: item.bytCode, fullName: item.fullName },
-    });
-  }
-
-  for (const item of DRUG_ROUTE_ITEMS) {
-    await prisma.referenceCatalog.upsert({
-      where: { category_code: { category: 'DRUG_ROUTE', code: item.code } },
-      create: {
-        category: 'DRUG_ROUTE',
-        code: item.code,
-        name: item.name,
-        sortOrder: item.sortOrder,
-        bytCode: item.bytCode,
-        fullName: item.fullName,
-        description: item.description,
-      },
-      update: {
-        name: item.name,
-        sortOrder: item.sortOrder,
-        bytCode: item.bytCode,
-        fullName: item.fullName,
-        description: item.description,
-      },
-    });
-  }
-
-  for (const item of DOSAGE_FORM_ITEMS) {
-    await prisma.referenceCatalog.upsert({
-      where: { category_code: { category: 'DOSAGE_FORM', code: item.code } },
-      create: {
-        category: 'DOSAGE_FORM',
-        code: item.code,
-        name: item.name,
-        sortOrder: item.sortOrder,
-        bytCode: item.bytCode,
-        fullName: item.fullName,
-        description: item.description,
-      },
-      update: {
-        name: item.name,
-        sortOrder: item.sortOrder,
-        bytCode: item.bytCode,
-        fullName: item.fullName,
-        description: item.description,
-      },
-    });
-  }
-
-  // "Điều kiện bảo quản" (docs/DECISIONS.md #153) — cùng khuôn DRUG_ROUTE/DOSAGE_FORM ở trên (có
-  // cột description).
-  for (const item of STORAGE_CONDITION_ITEMS) {
-    await prisma.referenceCatalog.upsert({
-      where: { category_code: { category: 'STORAGE_CONDITION', code: item.code } },
-      create: {
-        category: 'STORAGE_CONDITION',
-        code: item.code,
-        name: item.name,
-        sortOrder: item.sortOrder,
-        bytCode: item.bytCode,
-        fullName: item.fullName,
-        description: item.description,
-      },
-      update: {
-        name: item.name,
-        sortOrder: item.sortOrder,
-        bytCode: item.bytCode,
-        fullName: item.fullName,
-        description: item.description,
-      },
-    });
-  }
-
-  // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — cùng khuôn DRUG_ROUTE/DOSAGE_FORM/
-  // STORAGE_CONDITION ở trên (có cột description).
-  for (const item of DRUG_USAGE_TIMING_ITEMS) {
-    await prisma.referenceCatalog.upsert({
-      where: { category_code: { category: 'DRUG_USAGE_TIMING', code: item.code } },
-      create: {
-        category: 'DRUG_USAGE_TIMING',
-        code: item.code,
-        name: item.name,
-        sortOrder: item.sortOrder,
-        bytCode: item.bytCode,
-        fullName: item.fullName,
-        description: item.description,
-      },
-      update: {
-        name: item.name,
-        sortOrder: item.sortOrder,
-        bytCode: item.bytCode,
-        fullName: item.fullName,
-        description: item.description,
-      },
-    });
-  }
-
-  await seedUnits(prisma);
-  await seedLabResultUnits(prisma);
+interface SourceItem {
+  code: string;
+  name: string;
+  sortOrder: number;
+  bytCode?: string | null;
+  fullName?: string | null;
+  description?: string | null;
+  deactivatesAccount?: boolean;
 }
 
 /**
- * "Đơn vị tính" (docs/DECISIONS.md, chủ dự án cung cấp `docs/data/don-vi-tinh.md`) — khác 4 vòng
- * lặp ở trên: category UNIT không có mã chính thức trong nguồn dữ liệu (dùng mã NGẮN, TUẦN TỰ tự
- * sinh, #113) nên idempotent THEO TÊN thay vì theo `code` — đúng khuôn `seedAllergenCatalog()`.
- * Mục đã tồn tại (kể cả do clinic_admin tự tạo trùng tên trước khi seed chạy) được BỎ QUA, không
- * ghi đè `description`/`sortOrder` — tôn trọng chỉnh sửa thủ công qua UI.
+ * Chèn các dòng còn thiếu cho MỘT tenant — `ON CONFLICT DO NOTHING` theo (tenant_id, category, code), nên chạy lại bao nhiêu lần cũng
+ * KHÔNG ghi đè tên/thứ tự/cờ ẩn mà `clinic_admin` của tenant đã chỉnh qua UI (danh mục riêng theo tenant từ docs/DECISIONS.md #230).
  */
-async function seedUnits(prisma: PrismaClient): Promise<void> {
-  const prefix = REFERENCE_CATALOG_SHORT_CODE_PREFIXES.UNIT;
+async function insertMissing(client: SeedClient, rows: Prisma.ReferenceCatalogCreateManyInput[]): Promise<void> {
+  if (rows.length === 0) return;
+  await (client as Prisma.TransactionClient).referenceCatalog.createMany({ data: rows, skipDuplicates: true });
+}
+
+function fromSource(tenantId: string, actorId: string, category: ReferenceCatalogCategory, items: readonly SourceItem[]): Prisma.ReferenceCatalogCreateManyInput[] {
+  return items.map((item) => ({
+    tenantId,
+    category,
+    code: item.code,
+    name: item.name,
+    sortOrder: item.sortOrder,
+    bytCode: item.bytCode ?? null,
+    fullName: item.fullName ?? null,
+    description: item.description ?? null,
+    deactivatesAccount: item.deactivatesAccount ?? false,
+    createdBy: actorId,
+    updatedBy: actorId,
+  }));
+}
+
+/** Từ viết tắt chẩn đoán nạp sẵn (docs/DECISIONS.md #206): `code` = từ viết tắt chuẩn hoá (chữ thường), `name` = cách viết đầy đủ. */
+const ICD10_ABBREVIATION_SEED_ITEMS: readonly { code: string; name: string }[] = [
+  { code: 'tha', name: 'tăng huyết áp' },
+  { code: 'đtđ', name: 'đái tháo đường' },
+  { code: 'dtd', name: 'đái tháo đường' },
+  { code: 'type', name: 'típ' },
+  { code: 'tip', name: 'típ' },
+  { code: 'sxh', name: 'sốt xuất huyết' },
+  { code: 'vpq', name: 'viêm phế quản' },
+  { code: 'rlth', name: 'rối loạn tiêu hóa' },
+  { code: 'nktn', name: 'nhiễm trùng tiết niệu' },
+  { code: 'gerd', name: 'trào ngược dạ dày thực quản' },
+  { code: 'cảm', name: 'viêm mũi họng cấp tính' },
+];
+
+/**
+ * Dòng danh mục BẮT BUỘC cho hệ thống chạy — code nghiệp vụ tra theo MÃ (hình thức thanh toán CASH/BANK_TRANSFER/WALLET, loại thu chi
+ * hệ thống cho Ví tạm ứng/Công nợ NCC) và từ điển viết tắt ICD-10. Trước #230 các dòng này do MIGRATION nạp vào bảng dùng chung; nay
+ * mỗi tenant cần bản riêng nên nạp bằng code. Nhẹ (~17 dòng) — gọi cho MỌI tenant mới (kể cả tenant test) và backfill tenant cũ lúc API khởi động.
+ * Idempotent, không ghi đè chỉnh sửa của tenant.
+ */
+export async function seedSystemReferenceDataForTenant(client: SeedClient, tenantId: string, actorId: string): Promise<void> {
+  const base = { tenantId, createdBy: actorId, updatedBy: actorId } as const;
+  await insertMissing(client, [
+    { ...base, category: 'PAYMENT_METHOD', code: 'CASH', name: 'Tiền mặt', sortOrder: 0, countsAsCash: true },
+    { ...base, category: 'PAYMENT_METHOD', code: 'BANK_TRANSFER', name: 'Chuyển khoản', sortOrder: 1, countsAsCash: false },
+    { ...base, category: 'PAYMENT_METHOD', code: 'WALLET', name: 'Ví tạm ứng', sortOrder: 2, countsAsCash: false },
+    // direction = NULL: ẩn khỏi form lập Phiếu thu/chi TAY (mã do hệ thống tự dùng).
+    { ...base, category: 'INCOME_EXPENSE_TYPE', code: 'PATIENT_ADVANCE', name: 'Tạm ứng bệnh nhân', sortOrder: 0 },
+    { ...base, category: 'INCOME_EXPENSE_TYPE', code: 'SUPPLIER_DEBT_PAYMENT', name: 'Thanh toán công nợ nhà cung cấp', sortOrder: 0 },
+    { ...base, category: 'INCOME_EXPENSE_TYPE', code: 'SUPPLIER_REFUND', name: 'Nhà cung cấp hoàn tiền', sortOrder: 0 },
+    ...ICD10_ABBREVIATION_SEED_ITEMS.map((item, index) => ({ ...base, category: 'ICD10_ABBREVIATION' as const, code: item.code, name: item.name, sortOrder: index })),
+  ]);
+}
+
+/**
+ * Nạp danh mục MẶC ĐỊNH đầy đủ cho MỘT tenant (Dân tộc, Quốc tịch, Nghề nghiệp, Trạng thái/Hình thức làm việc, 5 danh mục Kho Thuốc có
+ * nguồn BYT, Đơn vị tính, Đơn vị kết quả xét nghiệm + dòng hệ thống ở trên). "Tạo nếu thiếu, không ghi đè" — admin của tenant sửa/ẩn
+ * mục nào cũng không bị seed hồi sinh hay đè lại. Dùng khi tạo tenant thật (pilot/SaaS) và `db:seed` cho mọi tenant hiện có.
+ */
+export async function seedReferenceCatalogForTenant(client: SeedClient, tenantId: string, actorId: string): Promise<void> {
+  await seedSystemReferenceDataForTenant(client, tenantId, actorId);
+
+  await insertMissing(client, [
+    ...fromSource(tenantId, actorId, 'ETHNICITY', ETHNICITY_ITEMS),
+    ...fromSource(tenantId, actorId, 'NATIONALITY', NATIONALITY_ITEMS),
+    ...fromSource(tenantId, actorId, 'EMPLOYMENT_STATUS', EMPLOYMENT_STATUS_ITEMS),
+    ...fromSource(tenantId, actorId, 'EMPLOYMENT_TYPE', EMPLOYMENT_TYPE_ITEMS),
+    ...fromSource(tenantId, actorId, 'OCCUPATION', OCCUPATION_ITEMS),
+    // Kho Thuốc GĐ1 (#152/#153/#155) — nạp ĐẦY ĐỦ mọi cột của file nguồn.
+    ...fromSource(tenantId, actorId, 'DRUG_GROUP', DRUG_GROUP_ITEMS),
+    ...fromSource(tenantId, actorId, 'DRUG_ROUTE', DRUG_ROUTE_ITEMS),
+    ...fromSource(tenantId, actorId, 'DOSAGE_FORM', DOSAGE_FORM_ITEMS),
+    ...fromSource(tenantId, actorId, 'STORAGE_CONDITION', STORAGE_CONDITION_ITEMS),
+    ...fromSource(tenantId, actorId, 'DRUG_USAGE_TIMING', DRUG_USAGE_TIMING_ITEMS),
+  ]);
+
+  await seedUnits(client, tenantId, actorId);
+  await seedLabResultUnits(client, tenantId, actorId);
+}
+
+/**
+ * Nạp theo TÊN (mã ngắn tuần tự tự sinh, #113): mục đã có cùng tên trong tenant được BỎ QUA, không ghi đè mô tả/thứ tự.
+ * Bộ đếm mã nằm trong `code_sequence` của tenant (khoá `CATALOG:<tiền tố>`).
+ */
+async function seedByName(
+  client: SeedClient,
+  tenantId: string,
+  actorId: string,
+  category: 'UNIT' | 'LAB_RESULT_UNIT',
+  items: readonly { name: string; description?: string | null }[],
+): Promise<void> {
+  const prefix = REFERENCE_CATALOG_SHORT_CODE_PREFIXES[category];
   if (!prefix) {
-    throw new Error('REFERENCE_CATALOG_SHORT_CODE_PREFIXES.UNIT không được cấu hình.');
+    throw new Error(`REFERENCE_CATALOG_SHORT_CODE_PREFIXES.${category} không được cấu hình.`);
   }
+  const tx = client as Prisma.TransactionClient;
+  const existingNames = new Set((await tx.referenceCatalog.findMany({ where: { tenantId, category }, select: { name: true } })).map((r) => r.name));
   let sortOrder = 1;
-  for (const item of UNIT_SEED_ITEMS) {
-    const existing = await prisma.referenceCatalog.findFirst({ where: { category: 'UNIT', name: item.name } });
-    if (!existing) {
-      const seq = await globalCodeSequenceRepository.next(prisma, prefix);
-      await prisma.referenceCatalog.create({
+  for (const item of items) {
+    if (!existingNames.has(item.name)) {
+      const seq = await codeSequenceRepository.next(tx, tenantId, CATALOG_SEQUENCE_PREFIX + prefix, actorId);
+      await tx.referenceCatalog.create({
         data: {
-          category: 'UNIT',
+          tenantId,
+          category,
           code: formatShortSequentialCode(prefix, seq),
           name: item.name,
-          description: item.description,
+          description: item.description ?? null,
           sortOrder,
+          createdBy: actorId,
+          updatedBy: actorId,
         },
       });
     }
@@ -218,28 +155,17 @@ async function seedUnits(prisma: PrismaClient): Promise<void> {
   }
 }
 
-/**
- * "Đơn vị kết quả xét nghiệm" (Cận lâm sàng GĐ2, docs/DECISIONS.md #212) — đơn vị phổ biến nạp sẵn để chọn thay vì gõ tay (tránh
- * "g/L"/"g/l"/"G/L" thành nhiều đơn vị). Idempotent THEO TÊN, đúng khuôn `seedUnits()`: mục đã tồn tại (kể cả do clinic_admin tự thêm
- * trùng tên) được BỎ QUA, không ghi đè — tôn trọng chỉnh sửa/ẩn qua UI.
- */
+/** "Đơn vị tính" (chủ dự án cung cấp `docs/data/don-vi-tinh.md`). */
+function seedUnits(client: SeedClient, tenantId: string, actorId: string): Promise<void> {
+  return seedByName(client, tenantId, actorId, 'UNIT', UNIT_SEED_ITEMS);
+}
+
+/** "Đơn vị kết quả xét nghiệm" (Cận lâm sàng GĐ2, #212) — đơn vị phổ biến nạp sẵn để chọn thay vì gõ tay (tránh "g/L"/"g/l"/"G/L" thành nhiều đơn vị). */
 const LAB_RESULT_UNIT_SEED_NAMES = [
   'g/L', 'g/dL', 'mg/dL', 'mg/L', 'ng/mL', 'pg/mL', 'µg/dL', 'mmol/L', 'µmol/L', 'mEq/L',
   'U/L', 'IU/L', 'IU/mL', '%', '10^9/L', '10^12/L', 'fL', 'pg', 'mm/giờ', 'giây',
 ];
 
-async function seedLabResultUnits(prisma: PrismaClient): Promise<void> {
-  const prefix = REFERENCE_CATALOG_SHORT_CODE_PREFIXES.LAB_RESULT_UNIT;
-  if (!prefix) {
-    throw new Error('REFERENCE_CATALOG_SHORT_CODE_PREFIXES.LAB_RESULT_UNIT không được cấu hình.');
-  }
-  let sortOrder = 1;
-  for (const name of LAB_RESULT_UNIT_SEED_NAMES) {
-    const existing = await prisma.referenceCatalog.findFirst({ where: { category: 'LAB_RESULT_UNIT', name } });
-    if (!existing) {
-      const seq = await globalCodeSequenceRepository.next(prisma, prefix);
-      await prisma.referenceCatalog.create({ data: { category: 'LAB_RESULT_UNIT', code: formatShortSequentialCode(prefix, seq), name, sortOrder } });
-    }
-    sortOrder += 1;
-  }
+function seedLabResultUnits(client: SeedClient, tenantId: string, actorId: string): Promise<void> {
+  return seedByName(client, tenantId, actorId, 'LAB_RESULT_UNIT', LAB_RESULT_UNIT_SEED_NAMES.map((name) => ({ name })));
 }

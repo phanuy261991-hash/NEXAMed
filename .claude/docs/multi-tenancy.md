@@ -18,14 +18,14 @@ Nếu sau này có khách yêu cầu database riêng, tách bằng cách route c
 
 ## Ràng buộc bắt buộc
 
-1. Mọi bảng nghiệp vụ có `tenant_id UUID NOT NULL` (trừ bảng danh mục toàn hệ thống: `icd10_catalog`, `province`, `drug_catalog`).
+1. Mọi bảng nghiệp vụ có `tenant_id UUID NOT NULL` (trừ bảng danh mục toàn hệ thống chỉ đọc lúc chạy: `icd10_catalog`, `permission`, `province`, `ward`, và chính bảng `tenant`; `reference_catalog`/`allergen`/`allergen_group` đã RIÊNG THEO TENANT từ `docs/DECISIONS.md` #230).
 2. Bật RLS cho tất cả bảng có `tenant_id`:
    ```sql
    ALTER TABLE encounter ENABLE ROW LEVEL SECURITY;
    CREATE POLICY tenant_isolation ON encounter
      USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
    ```
-   App user không có `BYPASSRLS`. Đây là lớp phòng thủ cuối — không thay thế việc lọc trong code.
+   App user không có `BYPASSRLS`. Bật thêm `FORCE ROW LEVEL SECURITY` (migration `20261013110000`) để policy áp dụng cả với chủ sở hữu bảng. Đây là lớp phòng thủ cuối — không thay thế việc lọc trong code. Test `rls-coverage.spec.ts` canh toàn lược đồ.
 3. Mỗi request, middleware set `app.current_tenant_id` từ JWT vào session/transaction của Prisma trước khi chạy query. Không lấy `tenant_id` từ body, query param hay header do client gửi.
 4. Khoá ngoại phải cùng tenant. Composite FK `(tenant_id, id)` cho các quan hệ liên bảng nghiệp vụ, tránh trường hợp `encounter` của phòng khám A trỏ tới `patient` của phòng khám B.
 5. Unique constraint luôn kèm `tenant_id`: `UNIQUE (tenant_id, patient_code)`, không phải `UNIQUE (patient_code)`.

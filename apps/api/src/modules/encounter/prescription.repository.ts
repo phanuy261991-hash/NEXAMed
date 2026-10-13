@@ -84,10 +84,10 @@ const ITEMS_INCLUDE = {
  * Tên hoạt chất chuẩn theo mã (`reference_catalog` category `ACTIVE_INGREDIENT`, danh mục dùng chung — không có
  * `tenant_id`) của MỌI dòng thuốc trong các đơn vừa đọc — 1 query cho cả lô.
  */
-async function loadIngredientNames(tx: Prisma.TransactionClient, rows: RawItemWithDrug[]): Promise<Map<string, string>> {
+async function loadIngredientNames(tx: Prisma.TransactionClient, tenantId: string, rows: RawItemWithDrug[]): Promise<Map<string, string>> {
   const codes = [...new Set(rows.flatMap((r) => (r.drug?.ingredients ?? []).map((i) => i.activeIngredientCode)))];
   if (codes.length === 0) return new Map();
-  const found = await tx.referenceCatalog.findMany({ where: { category: 'ACTIVE_INGREDIENT', code: { in: codes } }, select: { code: true, name: true } });
+  const found = await tx.referenceCatalog.findMany({ where: { tenantId, category: 'ACTIVE_INGREDIENT', code: { in: codes } }, select: { code: true, name: true } });
   return new Map(found.map((c) => [c.code, c.name]));
 }
 
@@ -113,7 +113,7 @@ export class PrescriptionRepository {
       include: { items: ITEMS_INCLUDE },
     })) as RawPrescriptionWithItems | null;
     if (!row) return null;
-    return { ...row, items: mapItems(row.items, await loadIngredientNames(tx, row.items)) };
+    return { ...row, items: mapItems(row.items, await loadIngredientNames(tx, tenantId, row.items)) };
   }
 
   /** "Xuất bệnh án PDF" (S6-06) — đơn ĐANG HIỆU LỰC của NHIỀU lượt khám trong 1 query (partial
@@ -124,7 +124,7 @@ export class PrescriptionRepository {
       where: { tenantId, encounterId: { in: encounterIds }, deletedAt: null },
       include: { items: ITEMS_INCLUDE },
     })) as RawPrescriptionWithItems[];
-    const nameByCode = await loadIngredientNames(tx, rows.flatMap((r) => r.items));
+    const nameByCode = await loadIngredientNames(tx, tenantId, rows.flatMap((r) => r.items));
     const result = new Map<string, PrescriptionWithItems>();
     for (const row of rows) {
       result.set(row.encounterId, { ...row, items: mapItems(row.items, nameByCode) });
@@ -138,7 +138,7 @@ export class PrescriptionRepository {
       include: { items: ITEMS_INCLUDE },
     })) as RawPrescriptionWithItems | null;
     if (!row) return null;
-    return { ...row, items: mapItems(row.items, await loadIngredientNames(tx, row.items)) };
+    return { ...row, items: mapItems(row.items, await loadIngredientNames(tx, tenantId, row.items)) };
   }
 
   /** "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196, mockup đã duyệt) — đơn ĐÃ KÝ gần
@@ -156,7 +156,7 @@ export class PrescriptionRepository {
       include: { items: ITEMS_INCLUDE },
     })) as RawPrescriptionWithItems | null;
     if (!row) return null;
-    return { ...row, items: mapItems(row.items, await loadIngredientNames(tx, row.items)) };
+    return { ...row, items: mapItems(row.items, await loadIngredientNames(tx, tenantId, row.items)) };
   }
 
   /**

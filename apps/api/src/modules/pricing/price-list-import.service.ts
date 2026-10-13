@@ -149,12 +149,12 @@ export class PriceListImportService {
     sheet.addRow(['Loại', 'Mã', 'Tên', '', 'Loại giá dịch vụ', 'Đơn vị']).font = { bold: true };
 
     const lines: [string, string, string][] = [];
-    for (const row of await this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', false)) lines.push([KIND_LABELS.EXAM_TYPE, row.code, row.name]);
+    for (const row of await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'EXAM_TYPE', false)) lines.push([KIND_LABELS.EXAM_TYPE, row.code, row.name]);
     for (const row of await this.technicalServiceRepository.list(tx, tenantId, { includeInactive: false })) lines.push([KIND_LABELS.TECHNICAL_SERVICE, row.code, row.name]);
     for (const row of await this.servicePackageRepository.list(tx, tenantId, { includeInactive: false })) lines.push([KIND_LABELS.PACKAGE, row.code, row.name]);
     for (const row of await this.drugRepository.list(tx, tenantId, { includeInactive: false })) lines.push([row.itemType === 'SUPPLY' ? KIND_LABELS.MEDICAL_SUPPLY : KIND_LABELS.DRUG, row.code, row.name]);
-    const priceTypes = (await this.referenceCatalogRepository.listByCategory(tx, 'PRICE_TYPE', false)).map((r) => r.name);
-    const units = (await this.referenceCatalogRepository.listByCategory(tx, 'UNIT', false)).map((r) => r.name);
+    const priceTypes = (await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'PRICE_TYPE', false)).map((r) => r.name);
+    const units = (await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'UNIT', false)).map((r) => r.name);
 
     const total = Math.max(lines.length, priceTypes.length, units.length);
     for (let i = 0; i < total; i++) {
@@ -214,8 +214,8 @@ export class PriceListImportService {
         }
       }
       const items = await this.catalog.findByCodes(tx, tenantId, getVietnamDateString(), wanted);
-      const priceTypes = new Map((await this.referenceCatalogRepository.listByCategory(tx, 'PRICE_TYPE', true)).flatMap((r) => [[norm(r.name), r.code] as const, [norm(r.code), r.code] as const]));
-      const units = new Map((await this.referenceCatalogRepository.listByCategory(tx, 'UNIT', true)).flatMap((r) => [[norm(r.name), r.code] as const, [norm(r.code), r.code] as const]));
+      const priceTypes = new Map((await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'PRICE_TYPE', true)).flatMap((r) => [[norm(r.name), r.code] as const, [norm(r.code), r.code] as const]));
+      const units = new Map((await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'UNIT', true)).flatMap((r) => [[norm(r.name), r.code] as const, [norm(r.code), r.code] as const]));
 
       const seen = new Set<string>();
       for (const r of real) {

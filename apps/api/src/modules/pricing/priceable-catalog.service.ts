@@ -64,8 +64,8 @@ export class PriceableCatalogService {
   ) {}
 
   /** Thứ tự hiển thị của các Loại giá dịch vụ (`reference_catalog` PRICE_TYPE) — quyết định "mức giá đầu tiên" của dịch vụ. */
-  async priceTypeOrder(tx: Prisma.TransactionClient): Promise<Map<string, number>> {
-    const rows = await this.referenceCatalogRepository.listByCategory(tx, 'PRICE_TYPE', true);
+  async priceTypeOrder(tx: Prisma.TransactionClient, tenantId: string): Promise<Map<string, number>> {
+    const rows = await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'PRICE_TYPE', true);
     return new Map(rows.map((r, index) => [r.code, index]));
   }
 
@@ -87,7 +87,7 @@ export class PriceableCatalogService {
       else drugIds.add(r.ref);
     }
 
-    const order = await this.priceTypeOrder(tx);
+    const order = await this.priceTypeOrder(tx, tenantId);
     const sortScopes = (scopes: PriceableScope[]): PriceableScope[] =>
       [...scopes].sort((a, b) => (order.get(a.priceTypeCode ?? '') ?? NO_PRICE_TYPE_ORDER) - (order.get(b.priceTypeCode ?? '') ?? NO_PRICE_TYPE_ORDER));
 
@@ -102,7 +102,7 @@ export class PriceableCatalogService {
     // --- dịch vụ khám ---
     const baseItems = new Map<string, PriceableItem>();
     if (examCodes.size > 0) {
-      const catalog = await this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', true);
+      const catalog = await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'EXAM_TYPE', true);
       const prices = await this.examTypePriceRepository.listByExamTypeCodes(tx, tenantId, [...examCodes]);
       for (const row of catalog.filter((c) => examCodes.has(c.code))) {
         const scopes = sortScopes(
@@ -117,7 +117,7 @@ export class PriceableCatalogService {
     // --- dịch vụ kỹ thuật ---
     if (techIds.size > 0) {
       const rows = await this.technicalServiceRepository.findRowsByIds(tx, tenantId, [...techIds]);
-      const categoryNames = new Map((await this.referenceCatalogRepository.listByCategory(tx, 'TECH_SERVICE_CATEGORY', true)).map((c) => [c.code, c.name]));
+      const categoryNames = new Map((await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'TECH_SERVICE_CATEGORY', true)).map((c) => [c.code, c.name]));
       const prices = await this.technicalServiceRepository.listPrices(tx, tenantId, rows.map((r) => r.id));
       for (const row of rows) {
         const scopes = sortScopes(
@@ -206,7 +206,7 @@ export class PriceableCatalogService {
     const wants = (k: PriceListItemKind) => kind === undefined || kind === k;
 
     if (wants('EXAM_TYPE')) {
-      const catalog = await this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', false);
+      const catalog = await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'EXAM_TYPE', false);
       for (const row of catalog.filter((c) => matchesQuery(q, c.code, c.name)).slice(0, perKind)) refs.push({ itemKind: 'EXAM_TYPE', ref: row.code });
     }
     if (wants('TECHNICAL_SERVICE')) {
@@ -247,17 +247,17 @@ export class PriceableCatalogService {
   async listGroups(tx: Prisma.TransactionClient, tenantId: string): Promise<PriceableGroup[]> {
     const groups: PriceableGroup[] = [];
 
-    const exams = await this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', false);
+    const exams = await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'EXAM_TYPE', false);
     groups.push({ kind: 'EXAM_TYPE', code: null, name: 'Tất cả dịch vụ khám', itemCount: exams.length });
 
     const techRows = await this.technicalServiceRepository.list(tx, tenantId, { includeInactive: false });
-    const techCategoryNames = new Map((await this.referenceCatalogRepository.listByCategory(tx, 'TECH_SERVICE_CATEGORY', true)).map((c) => [c.code, c.name]));
+    const techCategoryNames = new Map((await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'TECH_SERVICE_CATEGORY', true)).map((c) => [c.code, c.name]));
     groups.push(...countGroups('TECHNICAL_SERVICE', techRows.map((r) => r.categoryCode), techCategoryNames));
 
     const packages = await this.servicePackageRepository.countActive(tx, tenantId);
     groups.push({ kind: 'PACKAGE', code: null, name: 'Tất cả gói dịch vụ', itemCount: packages });
 
-    const drugGroupNames = new Map((await this.referenceCatalogRepository.listByCategory(tx, 'DRUG_GROUP', true)).map((c) => [c.code, c.name]));
+    const drugGroupNames = new Map((await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'DRUG_GROUP', true)).map((c) => [c.code, c.name]));
     const medicines = await this.drugRepository.list(tx, tenantId, { itemType: 'MEDICINE', includeInactive: false });
     groups.push(...countGroups('DRUG', medicines.map((d) => d.drugGroupCode), drugGroupNames));
     const supplies = await this.drugRepository.list(tx, tenantId, { itemType: 'SUPPLY', includeInactive: false });
@@ -279,7 +279,7 @@ export class PriceableCatalogService {
     const codesOf = (kind: PriceListItemKind) => selections.filter((s) => s.kind === kind);
 
     if (codesOf('EXAM_TYPE').length > 0) {
-      for (const row of await this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', false)) push('EXAM_TYPE', row.code);
+      for (const row of await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'EXAM_TYPE', false)) push('EXAM_TYPE', row.code);
     }
     const techSel = codesOf('TECHNICAL_SERVICE');
     if (techSel.length > 0) {
@@ -320,7 +320,7 @@ export class PriceableCatalogService {
 
     const exam = wantedByKind('EXAM_TYPE');
     if (exam.size > 0) {
-      for (const row of await this.referenceCatalogRepository.listByCategory(tx, 'EXAM_TYPE', false)) {
+      for (const row of await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'EXAM_TYPE', false)) {
         if (exam.has(norm(row.code))) refs.push({ ref: { itemKind: 'EXAM_TYPE', ref: row.code }, lookup: `EXAM_TYPE:${norm(row.code)}` });
       }
     }

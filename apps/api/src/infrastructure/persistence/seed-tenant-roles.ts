@@ -2,12 +2,12 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { DEFAULT_ROLE_PERMISSIONS, formatShortSequentialCode, permissionKey } from '@nexamed/core';
 import { USER_ROLES } from '@nexamed/shared';
 import { CodeSequenceRepository } from './code-sequence.repository';
+import { seedSystemReferenceDataForTenant } from './seed-reference-catalog';
 
 /** "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — tiền tố mã `cash_account`, theo tenant (khác 6
  * category `reference_catalog` toàn hệ thống ở #113), đúng khuôn `WorkShiftService`. */
 const CASH_ACCOUNT_CODE_PREFIX = 'QU';
-// Stateless (không phụ thuộc DI nào) — cùng cách khởi tạo tay đã dùng ở `seed-allergen-catalog.ts`
-// cho `GlobalCodeSequenceRepository`, vì hàm này chạy ngoài NestJS container (seed script/test).
+// Stateless (không phụ thuộc DI nào) — khởi tạo tay vì hàm này chạy ngoài NestJS container (seed script/test).
 const codeSequenceRepository = new CodeSequenceRepository();
 
 /**
@@ -97,6 +97,8 @@ export async function seedDefaultRolesForTenant(
 
   await ensureDefaultCashAccount(tx as Prisma.TransactionClient, tenantId, actorId);
   await ensureDefaultWarehouse(tx as Prisma.TransactionClient, tenantId, actorId);
+  // Dòng danh mục BẮT BUỘC cho hệ thống (CASH/WALLET, loại thu chi hệ thống, từ viết tắt ICD-10) — danh mục riêng theo tenant (#230).
+  await seedSystemReferenceDataForTenant(tx, tenantId, actorId);
 
   const permissions = await tx.permission.findMany();
   const permissionIdByKey = new Map(permissions.map((p) => [permissionKey(p), p.id]));

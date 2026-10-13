@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type ExamTypePrice, type ReferenceCatalog } from '@prisma/client';
 import {
+  CATALOG_SEQUENCE_PREFIX,
   ConcurrentModificationError,
   ExamTypePriceOverlapError,
   formatShortSequentialCode,
@@ -9,7 +10,7 @@ import {
   ReferenceCatalogDuplicateCodeError,
   ReferenceCatalogInvalidAbbreviationError,
 } from '@nexamed/core';
-import { GlobalCodeSequenceRepository } from '../../infrastructure/persistence/global-code-sequence.repository';
+import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import {
   ICD10_ABBREVIATION_CODE_PATTERN,
   normalizeIcd10AbbreviationCode,
@@ -46,10 +47,8 @@ function isExclusionViolation(err: unknown): boolean {
 }
 
 /**
- * Danh mục dùng chung toàn hệ thống (Dân tộc, Quốc tịch — docs/DECISIONS.md, đảo ngược #034
- * phần ethnicity/nationality). Không tenant_id trên `reference_catalog` nhưng `writeAuditLog`
- * vẫn cần `tenantId`/`actorId` của người thao tác — audit luôn gắn theo tenant của actor, đúng
- * khuôn `writeAuditLog` dùng ở mọi service khác. Quyền: `reference_catalog.read` (mọi vai trò
+ * Danh mục RIÊNG THEO TENANT (docs/DECISIONS.md #230 — trước đó dùng chung mọi tenant): mỗi tenant có
+ * bản riêng, mọi truy vấn lọc `tenantId` của phiên. Quyền: `reference_catalog.read` (mọi vai trò
  * lâm sàng) / `reference_catalog.manage` (chỉ `clinic_admin`) — xem .claude/docs/security-audit.md.
  */
 @Injectable()
@@ -58,20 +57,25 @@ export class ReferenceCatalogService {
     private readonly unitOfWork: UnitOfWorkService,
     private readonly referenceCatalogRepository: ReferenceCatalogRepository,
     private readonly examTypePriceRepository: ExamTypePriceRepository,
-    private readonly globalCodeSequenceRepository: GlobalCodeSequenceRepository,
+    private readonly codeSequenceRepository: CodeSequenceRepository,
   ) {}
 
   /**
    * Mã tự sinh khi client không cung cấp `code` — category có trong
    * `REFERENCE_CATALOG_SHORT_CODE_PREFIXES` (docs/DECISIONS.md #113) dùng mã NGẮN, TUẦN TỰ
-   * (`GlobalCodeSequenceRepository`, atomic, không cần retry). Category khác (nếu có nơi nào gọi
+   * (`CodeSequenceRepository` theo tenant, khoá `CATALOG:<tiền tố>`, atomic, không cần retry). Category khác (nếu có nơi nào gọi
    * API thẳng bỏ trống `code` cho category vốn luôn nhập tay ở UI) rơi về cơ chế ngẫu nhiên cũ
    * làm lưới an toàn — không đổi hành vi ngoài phạm vi 6 category đã chốt.
    */
-  private async generateCode(tx: Prisma.TransactionClient, category: ReferenceCatalogCategory): Promise<string> {
+  private async generateCode(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    category: ReferenceCatalogCategory,
+  ): Promise<string> {
     const shortPrefix = REFERENCE_CATALOG_SHORT_CODE_PREFIXES[category];
     if (shortPrefix) {
-      const seq = await this.globalCodeSequenceRepository.next(tx, shortPrefix);
+      const seq = await this.codeSequenceRepository.next(tx, tenantId, CATALOG_SEQUENCE_PREFIX + shortPrefix, actorId);
       return formatShortSequentialCode(shortPrefix, seq);
     }
     return generateReferenceCatalogCode(category);
@@ -99,7 +103,7 @@ export class ReferenceCatalogService {
     includeInactive: boolean,
   ): Promise<ListReferenceCatalogResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.referenceCatalogRepository.listByCategory(tx, category, includeInactive);
+      const rows = await this.referenceCatalogRepository.listByCategory(tx, tenantId, category, includeInactive);
       // Batch 1 query cho CẢ danh sách (không phải N+1) — chỉ EXAM_TYPE có đơn giá, xem
       // .claude/docs/coding-standards.md mục "Hiệu suất".
       const pricesByCode = await this.loadPricesForRows(tx, tenantId, category, rows);
@@ -113,9 +117,10 @@ export class ReferenceCatalogService {
    */
   async listAllForImport(
     tx: Prisma.TransactionClient,
+    tenantId: string,
     categories: ReferenceCatalogCategory[],
   ): Promise<{ category: ReferenceCatalogCategory; code: string; name: string; isActive: boolean }[]> {
-    const rows = await this.referenceCatalogRepository.listByCategories(tx, categories);
+    const rows = await this.referenceCatalogRepository.listByCategories(tx, tenantId, categories);
     return rows.map((r) => ({ category: r.category, code: r.code, name: r.name, isActive: r.isActive }));
   }
 
@@ -132,8 +137,8 @@ export class ReferenceCatalogService {
     name: string,
     meta: RequestMeta,
   ): Promise<string> {
-    const code = await this.generateCode(tx, category);
-    const created = await this.referenceCatalogRepository.create(tx, { category, code, name, sortOrder: 0 });
+    const code = await this.generateCode(tx, tenantId, actorId, category);
+    const created = await this.referenceCatalogRepository.create(tx, tenantId, actorId, { category, code, name, sortOrder: 0 });
     await writeAuditLog(tx, tenantId, {
       actorId,
       action: 'reference_catalog.created',
@@ -160,10 +165,10 @@ export class ReferenceCatalogService {
       if (dto.category === 'ICD10_ABBREVIATION' && providedCode === undefined) {
         throw new ReferenceCatalogInvalidAbbreviationError();
       }
-      const code = providedCode ?? (await this.generateCode(tx, dto.category));
+      const code = providedCode ?? (await this.generateCode(tx, tenantId, actorId, dto.category));
       let created: ReferenceCatalog;
       try {
-        created = await this.referenceCatalogRepository.create(tx, {
+        created = await this.referenceCatalogRepository.create(tx, tenantId, actorId, {
           category: dto.category,
           code,
           name: dto.name,
@@ -261,7 +266,7 @@ export class ReferenceCatalogService {
     meta: RequestMeta,
   ): Promise<ReferenceCatalogItem> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.referenceCatalogRepository.findById(tx, id);
+      const existing = await this.referenceCatalogRepository.findById(tx, tenantId, id);
       if (!existing) {
         throw new NotFoundException();
       }
@@ -272,7 +277,7 @@ export class ReferenceCatalogService {
       // version (`count=0` trong khi bản ghi còn tồn tại — đã kiểm `findById` ở trên) → 409.
       let count: number;
       try {
-        count = await this.referenceCatalogRepository.update(tx, id, dto.version, {
+        count = await this.referenceCatalogRepository.update(tx, tenantId, id, dto.version, actorId, {
           code: nextCode,
           name: dto.name,
           sortOrder: dto.sortOrder,
@@ -313,7 +318,7 @@ export class ReferenceCatalogService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.referenceCatalogRepository.findById(tx, id);
+      const updated = await this.referenceCatalogRepository.findById(tx, tenantId, id);
       if (!updated) {
         throw new NotFoundException();
       }
@@ -334,12 +339,12 @@ export class ReferenceCatalogService {
     meta: RequestMeta,
   ): Promise<ReferenceCatalogItem> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.referenceCatalogRepository.findById(tx, id);
+      const existing = await this.referenceCatalogRepository.findById(tx, tenantId, id);
       if (!existing) {
         throw new NotFoundException();
       }
 
-      const count = await this.referenceCatalogRepository.setActive(tx, id, expectedVersion, isActive);
+      const count = await this.referenceCatalogRepository.setActive(tx, tenantId, id, expectedVersion, isActive, actorId);
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
@@ -353,7 +358,7 @@ export class ReferenceCatalogService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.referenceCatalogRepository.findById(tx, id);
+      const updated = await this.referenceCatalogRepository.findById(tx, tenantId, id);
       if (!updated) {
         throw new NotFoundException();
       }
