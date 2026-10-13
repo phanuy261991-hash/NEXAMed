@@ -27,6 +27,9 @@ jobs:
       DATABASE_URL: postgresql://nexamed_app:nexamed_app@localhost:5432/nexamed?schema=public
       # Role đặc quyền — chỉ dùng để chạy migration (bước "Prisma migrate deploy" bên dưới).
       MIGRATE_DATABASE_URL: postgresql://nexamed:nexamed@localhost:5432/nexamed?schema=public
+      # API không khởi động nếu thiếu 2 biến này (env.schema.ts). Giá trị GIẢ chỉ cho CI — không phải bí mật.
+      JWT_SECRET: ci-only-jwt-secret-not-a-real-secret
+      ENCRYPTION_KEY: ci-only-encryption-key-0123456789abcdef
     steps:
       - uses: actions/checkout@v4
 
