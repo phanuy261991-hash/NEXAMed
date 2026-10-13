@@ -223,6 +223,48 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
     expect(res.body.error.code).toBe('PRESCRIPTION_REQUIRES_DIAGNOSIS');
   });
 
+  it('PRE-02 theo hoạt chất CÓ CẤU TRÚC (drug_ingredient): activeIngredient text khác nhau vẫn báo trùng theo tên chuẩn; thuốc phối hợp A+B trùng thuốc đơn B → báo B', async () => {
+    const { encounterId } = await prepareEncounterInConsultation(16);
+    const tag = randomUUID().slice(0, 6);
+    const catalogs = await Promise.all(
+      [`AMOX-${tag}`, `CLAV-${tag}`].map((code, i) =>
+        privileged.referenceCatalog.create({ data: { category: 'ACTIVE_INGREDIENT', code, name: i === 0 ? `Amoxicillin ${tag}` : `Acid clavulanic ${tag}` } }),
+      ),
+    );
+    try {
+      // activeIngredient text KHÁC HẲN nhau — chỉ cấu trúc mới cho thấy chúng trùng.
+      const augmentin = await createDrug(fixture.tenantA.id, 'Augmentin', 'Amox/Clav');
+      const amoxil = await createDrug(fixture.tenantA.id, 'Amoxil', 'Aminopenicillin');
+      for (const [drugId, codes] of [[augmentin, [catalogs[0]!.code, catalogs[1]!.code]], [amoxil, [catalogs[0]!.code]]] as const) {
+        for (const code of codes) {
+          await privileged.drugIngredient.create({
+            data: { tenantId: fixture.tenantA.id, drugId, activeIngredientCode: code, strengthValue: 500_000, strengthUnitCode: 'MG', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+          });
+        }
+      }
+      await seedSufficientStock(fixture.tenantA.id, augmentin);
+      await seedSufficientStock(fixture.tenantA.id, amoxil);
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/v1/encounters/${encounterId}/prescription-items`)
+        .set(authed(doctorAToken))
+        .send({
+          items: [
+            { drugId: augmentin, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 },
+            { drugId: amoxil, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 1 },
+          ],
+        });
+      expect(res.status).toBe(200);
+      const dup = res.body.data.warnings.filter((w: { kind: string }) => w.kind === 'duplicate_active_ingredient');
+      expect(dup).toHaveLength(1);
+      expect(dup[0].label).toBe(`Amoxicillin ${tag}`);
+      expect(dup[0].drugNames).toEqual(['Augmentin', 'Amoxil']);
+    } finally {
+      await privileged.drugIngredient.deleteMany({ where: { tenantId: fixture.tenantA.id } });
+      await privileged.referenceCatalog.deleteMany({ where: { id: { in: catalogs.map((c) => c.id) } } });
+    }
+  });
+
   it('kê 2 thuốc trùng hoạt chất → warnings PRE-02, ký khi trống → 422 PRESCRIPTION_EMPTY, ký thành công → bất biến, sửa lại bị chặn', async () => {
     const { encounterId } = await prepareEncounterInConsultation(7);
     const drugA = await createDrug(fixture.tenantA.id, 'Paracetamol 500mg', 'Paracetamol');

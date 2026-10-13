@@ -40,6 +40,49 @@ describe('findDuplicateActiveIngredients (PRE-02)', () => {
     const lines: PrescriptionDrugLine[] = [{ drugId: '1', drugName: 'A', activeIngredient: 'Paracetamol' }];
     expect(findDuplicateActiveIngredients(lines)).toHaveLength(0);
   });
+
+  describe('hoạt chất có cấu trúc (drug_ingredient, Kho Thuốc GĐ1)', () => {
+    it('so theo tên hoạt chất chuẩn, bỏ qua `activeIngredient` text khác nhau giữa các thuốc', () => {
+      const lines: PrescriptionDrugLine[] = [
+        { drugId: '1', drugName: 'Panadol', activeIngredient: 'Acetaminophen', ingredientNames: ['Paracetamol'] },
+        { drugId: '2', drugName: 'Efferalgan', activeIngredient: null, ingredientNames: ['paracetamol'] },
+      ];
+      const warnings = findDuplicateActiveIngredients(lines);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]!.drugIds).toEqual(['1', '2']);
+    });
+
+    it('thuốc phối hợp A+B trùng với thuốc đơn B → báo đúng hoạt chất B (không báo A)', () => {
+      const lines: PrescriptionDrugLine[] = [
+        { drugId: '1', drugName: 'Augmentin', activeIngredient: null, ingredientNames: ['Amoxicillin', 'Acid clavulanic'] },
+        { drugId: '2', drugName: 'Amoxil', activeIngredient: null, ingredientNames: ['Amoxicillin'] },
+      ];
+      const warnings = findDuplicateActiveIngredients(lines);
+      expect(warnings.map((w) => w.activeIngredient)).toEqual(['Amoxicillin']);
+      expect(warnings[0]!.drugNames).toEqual(['Augmentin', 'Amoxil']);
+    });
+
+    it('thuốc có cấu trúc trùng với thuốc cũ chỉ có `activeIngredient` text (tên khớp sau chuẩn hoá) vẫn báo', () => {
+      const lines: PrescriptionDrugLine[] = [
+        { drugId: '1', drugName: 'Thuốc mới', activeIngredient: null, ingredientNames: ['Cetirizin'] },
+        { drugId: '2', drugName: 'Thuốc cũ', activeIngredient: 'CETIRIZIN' },
+      ];
+      expect(findDuplicateActiveIngredients(lines)).toHaveLength(1);
+    });
+
+    it('có cấu trúc thì BỎ QUA `activeIngredient` text của chính dòng đó; danh sách rỗng thì quay về text', () => {
+      const lines: PrescriptionDrugLine[] = [
+        { drugId: '1', drugName: 'A', activeIngredient: 'Paracetamol', ingredientNames: ['Ibuprofen'] },
+        { drugId: '2', drugName: 'B', activeIngredient: 'Paracetamol', ingredientNames: [] },
+      ];
+      expect(findDuplicateActiveIngredients(lines)).toHaveLength(0);
+      const lines2: PrescriptionDrugLine[] = [
+        { drugId: '1', drugName: 'A', activeIngredient: 'Paracetamol', ingredientNames: [] },
+        { drugId: '2', drugName: 'B', activeIngredient: 'Paracetamol' },
+      ];
+      expect(findDuplicateActiveIngredients(lines2)).toHaveLength(1);
+    });
+  });
 });
 
 describe('findAllergyMatches (PRE-03)', () => {

@@ -15,6 +15,12 @@ export interface PrescriptionDrugLine {
   drugId: string | null;
   drugName: string;
   activeIngredient: string | null;
+  /**
+   * Tên hoạt chất CHUẨN theo cấu trúc (`drug_ingredient` → danh mục `ACTIVE_INGREDIENT`, Kho Thuốc GĐ1) — thuốc nhiều
+   * hoạt chất có nhiều phần tử. Có giá trị (không rỗng) thì PRE-02 so theo danh sách này THAY cho `activeIngredient`
+   * text cũ; thuốc nhập trước GĐ1 chưa có cấu trúc thì để trống/bỏ qua → vẫn so theo `activeIngredient` như trước.
+   */
+  ingredientNames?: string[];
 }
 
 export interface DuplicateActiveIngredientWarning {
@@ -23,23 +29,32 @@ export interface DuplicateActiveIngredientWarning {
   drugNames: string[];
 }
 
+/** Các hoạt chất của một dòng: ưu tiên danh sách có cấu trúc, không có thì dùng `activeIngredient` text (thuốc cũ). */
+function ingredientLabelsOf(line: PrescriptionDrugLine): string[] {
+  const structured = (line.ingredientNames ?? []).map((n) => n.trim()).filter((n) => n.length > 0);
+  if (structured.length > 0) return structured;
+  const legacy = line.activeIngredient?.trim();
+  return legacy ? [legacy] : [];
+}
+
 /**
- * PRE-02 — trùng hoạt chất giữa các dòng trong đơn. So khớp `activeIngredient` đã chuẩn hoá (bỏ
- * dấu + viết thường) — dòng không có hoạt chất (`null`/rỗng) bị bỏ qua, không tính là "trùng". Trả
- * về nhóm CÓ từ 2 thuốc khác nhau trở lên cùng hoạt chất.
+ * PRE-02 — trùng hoạt chất giữa các dòng trong đơn. So khớp tên hoạt chất đã chuẩn hoá (bỏ dấu + viết thường):
+ * theo hoạt chất CÓ CẤU TRÚC của thuốc (nhiều hoạt chất → mỗi hoạt chất so riêng, nên thuốc phối hợp A+B trùng với
+ * thuốc đơn B vẫn báo B) hoặc `activeIngredient` text với thuốc chưa có cấu trúc. Dòng không có hoạt chất bị bỏ qua.
+ * Trả về nhóm CÓ từ 2 thuốc khác nhau trở lên cùng hoạt chất.
  */
 export function findDuplicateActiveIngredients(lines: PrescriptionDrugLine[]): DuplicateActiveIngredientWarning[] {
   const groups = new Map<string, { activeIngredient: string; drugIds: (string | null)[]; drugNames: string[] }>();
   for (const line of lines) {
-    const trimmed = line.activeIngredient?.trim();
-    if (!trimmed) continue;
-    const key = stripVietnameseDiacritics(trimmed);
-    const group = groups.get(key) ?? { activeIngredient: trimmed, drugIds: [], drugNames: [] };
-    if (!group.drugIds.includes(line.drugId)) {
-      group.drugIds.push(line.drugId);
-      group.drugNames.push(line.drugName);
+    for (const label of ingredientLabelsOf(line)) {
+      const key = stripVietnameseDiacritics(label);
+      const group = groups.get(key) ?? { activeIngredient: label, drugIds: [], drugNames: [] };
+      if (!group.drugIds.includes(line.drugId)) {
+        group.drugIds.push(line.drugId);
+        group.drugNames.push(line.drugName);
+      }
+      groups.set(key, group);
     }
-    groups.set(key, group);
   }
   return [...groups.values()].filter((g) => g.drugIds.length >= 2);
 }

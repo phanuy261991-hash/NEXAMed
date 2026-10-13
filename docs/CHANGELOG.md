@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-13
+
+### Cảnh báo trùng hoạt chất khi kê đơn so theo hoạt chất có cấu trúc (`docs/DECISIONS.md` #227)
+
+Thuốc đã khai hoạt chất ở Danh mục Thuốc & Vật tư (nhiều hoạt chất/thuốc) được so theo từng hoạt chất: thuốc phối hợp có chung một hoạt chất với thuốc khác trong đơn thì báo trùng đúng hoạt chất đó, kể cả khi ô "Hoạt chất" dạng chữ của hai thuốc ghi khác nhau. Thuốc cũ chưa khai cấu trúc vẫn so như trước. Không migration.
+
+### CI GitHub chạy được
+
+Workflow `.github/workflows/ci.yml` đã sửa (pnpm khai hai nơi, trigger nhánh `master`, build `shared`/`core` trước seed, Node 22, biến môi trường giả cho test). Mọi nhánh `feat/*` đã merge được xoá; từ nay commit thẳng `master`.
+
 ## 2026-10-09
 
 ### Chặn đặt lịch/tiếp nhận ngày bác sĩ không có ca + quota nghỉ tối thiểu mỗi tuần (`docs/DECISIONS.md` #226)

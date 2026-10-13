@@ -1487,7 +1487,7 @@ export class EncounterService {
    * là "đã tra tồn kho thật, xác nhận = 0" cho MỌI thuốc, sẽ báo vượt tồn SAI cho mọi dòng).
    */
   private computeWarnings(items: PrescriptionWithItems['items'], allergenNames: string[], onHandByDrugId: Record<string, number> | null = null): PrescriptionWarning[] {
-    const lines: PrescriptionDrugLine[] = items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, activeIngredient: i.activeIngredient }));
+    const lines: PrescriptionDrugLine[] = items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, activeIngredient: i.activeIngredient, ingredientNames: i.ingredientNames }));
     const duplicates = findDuplicateActiveIngredients(lines).map(
       (d): PrescriptionWarning => ({ kind: 'duplicate_active_ingredient', label: d.activeIngredient, drugNames: d.drugNames }),
     );
