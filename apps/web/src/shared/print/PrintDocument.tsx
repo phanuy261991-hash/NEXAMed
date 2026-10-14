@@ -24,7 +24,7 @@ export interface PrintRenderContext {
  */
 const PAPER_ZOOM: Record<PrintPaperSize, number> = { A4: 1, A5: 0.88, A5_LANDSCAPE: 0.88, K80: 0.82, LABEL_35X22: 1, LABEL_50X30: 1 };
 
-const EMPTY_HEADER: ClinicPrintHeader = { name: '', address: null, phone: null, taxCode: null, printLogoUrl: null };
+const EMPTY_HEADER: ClinicPrintHeader = { name: '', branchName: null, address: null, phone: null, taxCode: null, printLogoUrl: null };
 
 /** Dự phòng CHỈ trong khoảnh khắc trước khi `GET print-templates/resolved` nạp xong (app luôn nạp sớm ở `AppShell`). */
 function fallbackTemplate(documentType: PrintDocumentType): ResolvedPrintTemplate {
@@ -36,7 +36,7 @@ function fallbackTemplate(documentType: PrintDocumentType): ResolvedPrintTemplat
     options: [],
     config: {
       margins: { topMm: 12, rightMm: 12, bottomMm: 12, leftMm: 12 },
-      header: { showLogo: true, showClinicName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
+      header: { showLogo: true, showClinicName: true, showBranchName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
       title: { text: '' },
       footer: { note: '', showSignature: true, showSignatureHint: true },
       copies: { count: 1, labels: [] },
@@ -60,6 +60,7 @@ export function PrintDocument({
   signatures,
   signatureDateText,
   display = 'print',
+  branchId,
   children,
 }: {
   documentType: PrintDocumentType;
@@ -71,11 +72,16 @@ export function PrintDocument({
   /** Dòng ngày tháng phía trên cụm chữ ký ("Ngày 01 tháng 10 năm 2026"). */
   signatureDateText?: string;
   display?: 'print' | 'screen';
+  /**
+   * Chi nhánh CỦA CHỨNG TỪ — quyết định tên/địa chỉ/SĐT chi nhánh ở đầu phiếu (docs/DECISIONS.md #233). Bỏ trống = chi nhánh đang làm việc,
+   * đúng với mọi chứng từ chỉ mở được trong chi nhánh hiện hành; chỉ phiếu điều chuyển truyền chi nhánh GỬI.
+   */
+  branchId?: string | null;
   children: ReactNode | ((context: PrintRenderContext) => ReactNode);
 }) {
   const preview = useContext(PrintPreviewContext);
   const resolved = useResolvedPrintTemplate(documentType);
-  const headerQuery = useClinicPrintHeaderQuery();
+  const headerQuery = useClinicPrintHeaderQuery(branchId);
 
   // Khổ giấy người dùng chọn CHO LẦN IN NÀY (nút "In ▾") — bỏ qua ở xem trước của Quản lý mẫu in; không chọn thì dùng bản mặc định.
   const paperChoice = usePrintPaperChoice((s) => s.choice[documentType]);
@@ -120,7 +126,9 @@ export function PrintDocument({
                 <img src={clinicHeader.printLogoUrl} alt="" className={compact ? 'mx-auto mb-1 h-12 w-12 object-contain' : 'h-16 w-16 flex-shrink-0 object-contain'} />
               )}
               <div className="min-w-0">
-                {header.showClinicName && clinicHeader.name && <p className={`font-bold uppercase ${compact ? 'text-sm' : 'text-lg'}`}>{clinicHeader.name}</p>}
+                {header.showClinicName && clinicHeader.name && <p className={`break-words font-bold uppercase ${compact ? 'text-sm' : 'text-lg'}`}>{clinicHeader.name}</p>}
+                {/* Dòng tên chi nhánh chỉ có khi công ty ≥ 2 chi nhánh (server trả null khi 1 chi nhánh → bản in không đổi). In được nhiều dòng, không cắt chữ. */}
+                {header.showBranchName && clinicHeader.branchName && <p className={`break-words font-bold ${compact ? 'text-xs' : 'text-base'}`}>{clinicHeader.branchName}</p>}
                 {header.showAddress && clinicHeader.address && <p className={compact ? 'text-xs' : 'text-sm'}>Địa chỉ: {clinicHeader.address}</p>}
                 {header.showPhone && clinicHeader.phone && <p className={compact ? 'text-xs' : 'text-sm'}>Điện thoại: {clinicHeader.phone}</p>}
                 {header.showTaxCode && clinicHeader.taxCode && <p className={compact ? 'text-xs' : 'text-sm'}>Mã số thuế: {clinicHeader.taxCode}</p>}

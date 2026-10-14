@@ -57,6 +57,12 @@ export const walletTransactionSchema = z.object({
   note: z.string().nullable(),
   createdByName: z.string(),
   createdAt: z.string(),
+  /**
+   * Đợt 2 chi nhánh (#233 Q5) — chi nhánh nơi giao dịch xảy ra. Ví là dữ liệu CHUNG cả công ty nên số dư + số tiền luôn hiện đủ; web khoá nút
+   * mở phiếu thu/chứng từ quỹ khi chi nhánh này khác chi nhánh người xem đang làm việc. `null` khi giao dịch không gắn phiếu nào.
+   */
+  branchId: z.string().uuid().nullable(),
+  branchName: z.string().nullable(),
 });
 export type WalletTransaction = z.infer<typeof walletTransactionSchema>;
 

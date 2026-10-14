@@ -21,6 +21,9 @@ import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
+import { useAuthStore } from '../auth/auth.store';
+import { hasMultipleBranches } from '../branch/branch-visibility';
+import { BranchChip } from '../branch/BranchChip';
 import { useCreateWarehouseMutation, useUpdateWarehouseMutation, useWarehousesQuery } from './warehouse.queries';
 import { getWarehouse } from './warehouse.api';
 
@@ -39,11 +42,15 @@ interface ModalState {
  * (server xử lý, xem `WarehouseService.clearDefaultExcept`). Mã tự sinh (tiền tố KH). */
 export function WarehousePane() {
   const canManage = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
+  // Đợt 2 chi nhánh (docs/DECISIONS.md #233): kho thuộc chi nhánh. Cột/ô/bộ lọc chi nhánh CHỈ hiện khi tài khoản làm việc ở từ 2 chi nhánh.
+  const user = useAuthStore((s) => s.user);
+  const multiBranch = hasMultipleBranches(user);
+  const [allBranches, setAllBranches] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<WarehouseSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const query = useWarehousesQuery({ fresh: true });
+  const query = useWarehousesQuery({ fresh: true, allBranches: multiBranch && allBranches });
   const departmentOptionsQuery = useDepartmentOptionsQuery();
   const createMutation = useCreateWarehouseMutation();
   const updateMutation = useUpdateWarehouseMutation();
@@ -88,6 +95,19 @@ export function WarehousePane() {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+        {multiBranch && (
+          <div className="mr-auto">
+            <Combobox
+              id="warehouse-branch-filter"
+              value={allBranches ? 'all' : 'current'}
+              onChange={(v) => setAllBranches(v === 'all')}
+              options={[
+                { value: 'current', label: 'Chi nhánh đang làm việc' },
+                { value: 'all', label: 'Chi nhánh: Tất cả (được gán)' },
+              ]}
+            />
+          </div>
+        )}
         {canManage && (
           <Button type="button" onClick={() => setModal({ mode: 'create' })}>
             <Plus size={16} weight="bold" aria-hidden="true" />
@@ -125,6 +145,7 @@ export function WarehousePane() {
                   </th>
                   <th className="w-32 px-4 py-2.5 text-center">Mã</th>
                   <th className="px-4 py-2.5 text-left">Tên kho</th>
+                  {multiBranch && <th className="w-52 px-4 py-2.5 text-left">Chi nhánh</th>}
                   <th className="px-4 py-2.5 text-left">Khoa/Phòng quản lý</th>
                   <th className="w-32 px-4 py-2.5 text-center">Kho mặc định</th>
                   <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>
@@ -138,7 +159,12 @@ export function WarehousePane() {
                       <SelectionCheckbox checked={rowSelection.isSelected(warehouse.id)} onChange={() => rowSelection.toggle(warehouse.id)} ariaLabel={`Chọn ${warehouse.name}`} />
                     </td>
                     <td className="px-4 py-2 text-center font-bold text-slate-800">{warehouse.code}</td>
-                    <td className="px-4 py-2 text-left font-medium text-slate-900">{warehouse.name}</td>
+                    <td className="max-w-[320px] truncate px-4 py-2 text-left font-medium text-slate-900" title={warehouse.name}>{warehouse.name}</td>
+                    {multiBranch && (
+                      <td className="max-w-[208px] px-4 py-2 text-left">
+                        <BranchChip name={warehouse.branchName} />
+                      </td>
+                    )}
                     <td className="px-4 py-2 text-left text-slate-600">{warehouse.departmentName ?? '—'}</td>
                     <td className="px-4 py-2 text-center">
                       {warehouse.isDefault ? <StatusBadge tone="info">Mặc định</StatusBadge> : <span className="text-slate-400">—</span>}
@@ -176,6 +202,8 @@ export function WarehousePane() {
           mode={modal.mode}
           item={modal.item}
           departments={departments}
+          branchOptions={multiBranch ? (user?.branches ?? []).map((b) => ({ value: b.id, label: b.name })) : null}
+          defaultBranchId={user?.currentBranchId ?? null}
           submitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => setModal(null)}
           onSubmit={async (dto) => {
@@ -212,6 +240,8 @@ function WarehouseFormModal({
   mode,
   item,
   departments,
+  branchOptions,
+  defaultBranchId,
   submitting,
   stale,
   onReload,
@@ -221,17 +251,21 @@ function WarehouseFormModal({
   mode: 'create' | 'edit';
   item?: WarehouseSummary;
   departments: { id: string; name: string }[];
+  /** `null` = công ty 1 chi nhánh → không hiện ô chọn chi nhánh. */
+  branchOptions: { value: string; label: string }[] | null;
+  defaultBranchId: string | null;
   submitting: boolean;
   /** Người khác vừa lưu bản mới của bản ghi này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
   stale: boolean;
   onReload: () => void | Promise<void>;
   onCancel: () => void;
-  onSubmit: (dto: { name: string; departmentId?: string; isDefault?: boolean }) => Promise<void>;
+  onSubmit: (dto: { name: string; branchId?: string; departmentId?: string; isDefault?: boolean }) => Promise<void>;
 }) {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(item?.name ?? '');
   const [departmentId, setDepartmentId] = useState(item?.departmentId ?? NO_DEPARTMENT_VALUE);
   const [isDefault, setIsDefault] = useState(item?.isDefault ?? false);
+  const [branchId, setBranchId] = useState(item?.branchId ?? defaultBranchId ?? '');
   const { flashVisible, triggerFlash } = useSaveFlash();
   const { saveError, run } = useSaveAttempt();
   const isInvalid = name.trim() === '' || stale;
@@ -239,7 +273,12 @@ function WarehouseFormModal({
   const departmentOptions = [{ value: NO_DEPARTMENT_VALUE, label: 'Không gắn Khoa/Phòng nào' }, ...departments.map((d) => ({ value: d.id, label: d.name }))];
 
   function buildDto() {
-    return { name: name.trim(), departmentId: departmentId === NO_DEPARTMENT_VALUE ? undefined : departmentId, isDefault };
+    return {
+      name: name.trim(),
+      ...(branchOptions && branchId ? { branchId } : {}),
+      departmentId: departmentId === NO_DEPARTMENT_VALUE ? undefined : departmentId,
+      isDefault,
+    };
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -271,6 +310,16 @@ function WarehouseFormModal({
             </label>
             <input id="warehouse-name" ref={nameInputRef} placeholder="Ví dụ: Tủ trực phòng khám 1" value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
           </div>
+
+          {branchOptions && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="warehouse-branch" className="text-sm font-semibold text-slate-800">
+                Chi nhánh <span className="text-rose-500">*</span>
+              </label>
+              <Combobox id="warehouse-branch" value={branchId} onChange={setBranchId} options={branchOptions} />
+              <p className="text-xs text-slate-500">Không đổi được sau khi kho đã có phiếu nhập/xuất hoặc tồn. Muốn đổi, dùng điều chuyển kho.</p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="warehouse-department" className="text-sm font-semibold text-slate-800">

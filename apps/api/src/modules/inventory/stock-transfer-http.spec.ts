@@ -254,7 +254,7 @@ describe('HTTP e2e — /api/v1/inventory/transfers (Điều chuyển kho GĐ4)',
     expect(destBatchesRes.body.data.items[0]).toMatchObject({ batchNo, unitCost: 500, quantityOnHand: 50 });
   });
 
-  it('Xác nhận nhận hàng THIẾU không kèm ghi chú chênh lệch → 422', async () => {
+  it('Kiểm nhận THIẾU không kèm lý do chênh lệch → 422; chọn "Khác" mà không ghi chú → 422', async () => {
     const drugId = await createDrug(clinicAdminToken, { isBatchManaged: false });
     await createAndApproveReceipt(clinicAdminToken, fromWarehouseId, drugId, 40, 1000);
     const created = await createTransfer(clinicAdminToken, fromWarehouseId, toWarehouseId, { lines: [{ drugId, quantityShipped: 30 }] });
@@ -266,7 +266,14 @@ describe('HTTP e2e — /api/v1/inventory/transfers (Điều chuyển kho GĐ4)',
       .set(authed(clinicAdminToken))
       .send({ version: shipped.body.data.version, lines: [{ lineId, quantityReceived: 25 }] });
     expect(res.status).toBe(422);
-    expect(res.body.error.code).toBe('STOCK_TRANSFER_VARIANCE_NOTE_REQUIRED');
+    expect(res.body.error.code).toBe('STOCK_TRANSFER_VARIANCE_REASON_REQUIRED');
+
+    const other = await request(app.getHttpServer())
+      .post(`/api/v1/inventory/transfers/${created.body.data.id}/receive`)
+      .set(authed(clinicAdminToken))
+      .send({ version: shipped.body.data.version, lines: [{ lineId, quantityReceived: 25, varianceReason: 'OTHER' }] });
+    expect(other.status).toBe(422);
+    expect(other.body.error.code).toBe('STOCK_TRANSFER_VARIANCE_REASON_REQUIRED');
 
     // Vẫn IN_TRANSIT, kho đích chưa cộng gì (transaction rollback đầy đủ).
     const stillInTransit = await request(app.getHttpServer()).get(`/api/v1/inventory/transfers/${created.body.data.id}`).set(authed(clinicAdminToken));
@@ -274,7 +281,7 @@ describe('HTTP e2e — /api/v1/inventory/transfers (Điều chuyển kho GĐ4)',
     expect(await getBalance(clinicAdminToken, toWarehouseId, drugId)).toBe(0);
   });
 
-  it('Xác nhận nhận hàng THẤP hơn số đã xuất, kèm ghi chú → 200, cộng đúng số thực nhận', async () => {
+  it('Kiểm nhận THẤP hơn số đã xuất, kèm lý do → 200, VARIANCE_PENDING (chờ bên gửi xử lý), cộng đúng số thực nhận', async () => {
     const drugId = await createDrug(clinicAdminToken, { isBatchManaged: false });
     await createAndApproveReceipt(clinicAdminToken, fromWarehouseId, drugId, 40, 1000);
     const created = await createTransfer(clinicAdminToken, fromWarehouseId, toWarehouseId, { lines: [{ drugId, quantityShipped: 30 }] });
@@ -284,9 +291,10 @@ describe('HTTP e2e — /api/v1/inventory/transfers (Điều chuyển kho GĐ4)',
     const received = await request(app.getHttpServer())
       .post(`/api/v1/inventory/transfers/${created.body.data.id}/receive`)
       .set(authed(clinicAdminToken))
-      .send({ version: shipped.body.data.version, lines: [{ lineId, quantityReceived: 25, varianceNote: 'Vỡ 5 vỉ lúc vận chuyển' }] });
+      .send({ version: shipped.body.data.version, lines: [{ lineId, quantityReceived: 25, varianceReason: 'DAMAGED', varianceNote: 'Vỡ 5 vỉ lúc vận chuyển' }] });
     expect(received.status).toBe(200);
-    expect(received.body.data.lines[0]).toMatchObject({ quantityReceived: 25, varianceNote: 'Vỡ 5 vỉ lúc vận chuyển' });
+    expect(received.body.data.status).toBe('VARIANCE_PENDING');
+    expect(received.body.data.lines[0]).toMatchObject({ quantityReceived: 25, varianceReason: 'DAMAGED', varianceNote: 'Vỡ 5 vỉ lúc vận chuyển' });
     expect(await getBalance(clinicAdminToken, toWarehouseId, drugId)).toBe(25);
     // Kho nguồn KHÔNG đảo ngược phần chênh lệch — đã trừ đúng 30 lúc Duyệt xuất, giữ nguyên.
     expect(await getBalance(clinicAdminToken, fromWarehouseId, drugId)).toBe(10);

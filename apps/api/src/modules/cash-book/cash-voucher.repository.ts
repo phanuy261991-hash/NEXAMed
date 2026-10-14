@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { CashVoucher, Prisma } from '@prisma/client';
+import type { DocumentBranchRef } from '../../common/document-branch-ref';
+
+/** Phiếu kèm chi nhánh của quỹ — cho màn chung cả công ty (sổ công nợ NCC, #233 Q4). */
+export type CashVoucherWithBranch = CashVoucher & { cashAccount: { branchId: string; branch: { name: string } } };
 
 export interface CreateCashVoucherData {
   voucherNo: string;
@@ -231,18 +235,30 @@ export class CashVoucherRepository {
   listSupplierLinked(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    filter: { branchIds: string[]; supplierId?: string; from?: Date; to?: Date; status?: 'POSTED' | 'PENDING_APPROVAL' | 'REJECTED' },
-  ): Promise<CashVoucher[]> {
+    // `undefined` = CẢ CÔNG TY: công nợ NCC là dữ liệu chung nên thấy đủ phiếu mọi chi nhánh (Đợt 2 chi nhánh, #233 Q4) — web khoá nút mở phiếu chi nhánh khác.
+    filter: { branchIds?: string[]; supplierId?: string; from?: Date; to?: Date; status?: 'POSTED' | 'PENDING_APPROVAL' | 'REJECTED' },
+  ): Promise<CashVoucherWithBranch[]> {
     return tx.cashVoucher.findMany({
       where: {
         tenantId,
-        cashAccount: { branchId: { in: filter.branchIds } },
+        cashAccount: filter.branchIds ? { branchId: { in: filter.branchIds } } : undefined,
         supplierId: filter.supplierId ?? { not: null },
         occurredAt: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
         status: filter.status,
       },
+      include: { cashAccount: { select: { branchId: true, branch: { select: { name: true } } } } },
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
     });
+  }
+
+  /** CHỈ cho sổ công nợ NCC liên chi nhánh (#233 Q4): số phiếu + chi nhánh của quỹ, KHÔNG lọc chi nhánh (vẫn lọc tenant). */
+  async findBranchRefsByIds(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<DocumentBranchRef[]> {
+    if (ids.length === 0) return [];
+    const rows = await tx.cashVoucher.findMany({
+      where: { tenantId, id: { in: ids } },
+      select: { id: true, voucherNo: true, cashAccount: { select: { branchId: true, branch: { select: { name: true } } } } },
+    });
+    return rows.map((r) => ({ id: r.id, documentNo: r.voucherNo, branchId: r.cashAccount.branchId, branchName: r.cashAccount.branch.name }));
   }
 
   /** "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — tổng phiếu chi gắn NCC đang CHỜ DUYỆT

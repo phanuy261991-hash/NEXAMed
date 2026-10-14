@@ -29,6 +29,7 @@ const SAMPLE_LOGO =
 /** Đầu trang mẫu — dùng khi phòng khám chưa nhập "Thông tin phòng khám"; có thì xem trước dùng thông tin THẬT. */
 export const SAMPLE_CLINIC_HEADER: ClinicPrintHeader = {
   name: 'Phòng khám Đa khoa Minh Đức',
+  branchName: 'Chi nhánh Quận 1',
   address: '128 Lê Lợi, P. Bến Thành, TP. Hồ Chí Minh',
   phone: '028 3822 1456',
   taxCode: '0312345678',
@@ -197,6 +198,7 @@ export const SAMPLE_WALLET_RECEIPT = {
 
 export const SAMPLE_CASHIER_SHIFT: CashierShiftDetail = {
   id: ID(500),
+  branchId: ID(1),
   shiftNo: 'CC2610000012',
   cashierId: ID(501),
   cashierName: 'Nguyễn Thị Bích Ngọc',
@@ -343,8 +345,40 @@ export const SAMPLE_STOCK_TRANSFER: StockTransferDetail = {
   receivedByName: 'Trần Minh Khuê',
   receivedAt: NOW,
   rejectionReason: null,
+  fromBranchId: ID(1),
+  fromBranchName: 'Chi nhánh Quận 1',
+  toBranchId: ID(1),
+  toBranchName: 'Chi nhánh Quận 1',
+  receiveRejectReason: null,
+  receiveRejectNote: null,
+  receiveRejectedByName: null,
+  receiveRejectedAt: null,
+  returnConfirmedByName: null,
+  returnConfirmedAt: null,
+  varianceResolvedByName: null,
+  varianceResolvedAt: null,
+  varianceResolutionNote: null,
   version: 1,
-  lines: [{ id: ID(910), drugId: ID(101), drugCode: 'THUOC-0012', drugName: 'Paracetamol 500mg', isBatchManaged: true, batchId: ID(811), batchNo: 'L2610A', expiryDate: '2028-09-30', quantityShipped: 50, quantityReceived: 50, varianceNote: null }],
+  lines: [
+    {
+      id: ID(910),
+      drugId: ID(101),
+      drugCode: 'THUOC-0012',
+      drugName: 'Paracetamol 500mg',
+      isBatchManaged: true,
+      batchId: ID(811),
+      batchNo: 'L2610A',
+      expiryDate: '2028-09-30',
+      quantityShipped: 50,
+      quantityReceived: 50,
+      varianceNote: null,
+      varianceReason: null,
+      varianceResolution: null,
+      quantityReturnedBack: null,
+      returnVarianceNote: null,
+      unitCost: 1200,
+    },
+  ],
 };
 
 /** Kết quả cận lâm sàng mẫu (Cận lâm sàng GĐ4 đợt 2, #214) — dữ liệu minh hoạ cho bản xem trước ở Quản lý mẫu in. */

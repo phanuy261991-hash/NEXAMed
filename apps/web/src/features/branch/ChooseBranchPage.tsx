@@ -64,7 +64,7 @@ export function ChooseBranchPage() {
                 }`}
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-[15px] font-semibold text-slate-900">{b.name}</span>
+                  <span className="block truncate text-[15px] font-semibold text-slate-900" title={b.name}>{b.name}</span>
                   {/* Luôn có dòng địa chỉ (đúng mockup) — chi nhánh chưa nhập địa chỉ thì nhắc nhẹ thay vì để trống. */}
                   <span className={`mt-0.5 block truncate text-sm ${b.address ? 'text-slate-500' : 'text-slate-400'}`}>{b.address ?? 'Chưa cập nhật địa chỉ'}</span>
                 </span>

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Check as CheckIcon } from '@phosphor-icons/react';
 import type { PrintPaperInfo, PrintTemplateConfig } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
+import { useAuthStore } from '../auth/auth.store';
+import { showBranchInfo } from '../branch/branch-visibility';
 import { Textarea } from '../../shared/ui/Textarea';
 
 const inputClassName =
@@ -23,6 +25,7 @@ type MarginKey = keyof PrintTemplateConfig['margins'];
 const HEADER_TOGGLES: { key: HeaderKey; label: string }[] = [
   { key: 'showLogo', label: 'Logo phòng khám' },
   { key: 'showClinicName', label: 'Tên phòng khám' },
+  { key: 'showBranchName', label: 'Tên chi nhánh' },
   { key: 'showAddress', label: 'Địa chỉ' },
   { key: 'showPhone', label: 'Điện thoại' },
   { key: 'showTaxCode', label: 'Mã số thuế' },
@@ -114,6 +117,9 @@ export function PrintTemplateConfigPanel({
   /** Đặt bản này làm khổ in mặc định; `null` = chưa đặt được (bản dựng sẵn chưa lưu, hoặc còn thay đổi chưa lưu). */
   onSetDefault: (() => void) | null;
 }) {
+  // Công tắc "Tên chi nhánh" chỉ có nghĩa khi công ty có từ 2 chi nhánh — công ty 1 chi nhánh: giao diện không đổi (docs/DECISIONS.md #233).
+  const user = useAuthStore((s) => s.user);
+  const headerToggles = showBranchInfo(user) ? HEADER_TOGGLES : HEADER_TOGGLES.filter((t) => t.key !== 'showBranchName');
   const currentNotice = config.notice ?? (notice ? { show: true, title: notice.title, text: notice.defaultText } : undefined);
   const setNotice = (patch: Partial<NonNullable<PrintTemplateConfig['notice']>>) => {
     if (currentNotice) onConfigChange({ ...config, notice: { ...currentNotice, ...patch } });
@@ -184,7 +190,7 @@ export function PrintTemplateConfigPanel({
         <>
       <Block title="Đầu trang & tiêu đề">
         <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-          {HEADER_TOGGLES.map((t) => (
+          {headerToggles.map((t) => (
             <Check key={t.key} id={`pt-header-${t.key}`} label={t.label} checked={config.header[t.key]} onChange={(v) => setHeader(t.key, v)} />
           ))}
         </div>

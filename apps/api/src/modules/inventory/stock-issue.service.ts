@@ -45,6 +45,7 @@ import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import { assertWarehouseInScope, resolveActorDepartmentId } from '../../common/warehouse-scope.helper';
 import type { RequestMeta } from '../../common/request-meta';
+import type { DocumentBranchRef } from '../../common/document-branch-ref';
 import { BusinessCodeService } from '../clinic/business-code.service';
 import { DrugRepository, type DrugWithDetails } from '../drug/drug.repository';
 import { WarehouseRepository } from '../drug/warehouse.repository';
@@ -873,6 +874,11 @@ export class StockIssueService {
       this.invoiceRepository.findByStockIssueLineIds(tx, tenantId, row.lines.map((l) => l.id)),
     );
     return this.toDetailDto(row, names, attachedInvoice ? { invoiceId: attachedInvoice.id, invoiceNo: attachedInvoice.invoiceNo, invoiceType: attachedInvoice.invoiceType } : null);
+  }
+
+  /** Cho sổ công nợ NCC liên chi nhánh (#233 Q4): số phiếu + chi nhánh của phiếu xuất, KHÔNG lọc chi nhánh/Khoa — chỉ trả hai thông tin đó, không mở nội dung phiếu. */
+  findBranchRefs(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<DocumentBranchRef[]> {
+    return this.stockIssueRepository.findBranchRefsByIds(tx, tenantId, ids);
   }
 
   async list(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, query: ListStockIssuesQuery): Promise<ListStockIssuesResponse> {

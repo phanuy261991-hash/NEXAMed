@@ -52,6 +52,7 @@ import type {
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
+import type { DocumentBranchRef } from '../../common/document-branch-ref';
 import { BusinessCodeService } from '../clinic/business-code.service';
 import { CashAccountRepository } from '../cash-book/cash-account.repository';
 import { CashVoucherRepository } from '../cash-book/cash-voucher.repository';
@@ -687,6 +688,24 @@ export class SupplierDebtService {
     return { items };
   }
 
+  /**
+   * Tra số chứng từ + chi nhánh của các chứng từ gốc mà bút toán trỏ tới (#233 Q4). Công nợ NCC là dữ liệu CHUNG cả công ty nên KHÔNG lọc theo chi nhánh
+   * đang làm — chỉ trả số phiếu + tên chi nhánh để web hiện dòng và khoá nút mở phiếu của chi nhánh khác.
+   */
+  private async resolveDocumentRefs(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    entries: { stockReceiptId: string | null; stockIssueId: string | null; cashVoucherId: string | null }[],
+  ): Promise<{ receipts: Map<string, DocumentBranchRef>; issues: Map<string, DocumentBranchRef>; vouchers: Map<string, DocumentBranchRef> }> {
+    const uniq = (pick: (e: (typeof entries)[number]) => string | null): string[] => [...new Set(entries.map(pick).filter((v): v is string => v !== null))];
+    // Tuần tự trên cùng `tx` (transaction tương tác của Prisma không song song hoá an toàn).
+    const receipts = await this.stockReceiptService.findBranchRefs(tx, tenantId, uniq((e) => e.stockReceiptId));
+    const issues = await this.stockIssueService.findBranchRefs(tx, tenantId, uniq((e) => e.stockIssueId));
+    const vouchers = await this.cashVoucherRepository.findBranchRefsByIds(tx, tenantId, uniq((e) => e.cashVoucherId));
+    const toMap = (rows: DocumentBranchRef[]) => new Map(rows.map((r) => [r.id, r]));
+    return { receipts: toMap(receipts), issues: toMap(issues), vouchers: toMap(vouchers) };
+  }
+
   /** Tab "Sổ công nợ" — CŨ→MỚI, `from`/`to` (nếu có) lọc theo `occurredAt` chỉ ở TẦNG HIỂN THỊ
    * (không ảnh hưởng số liệu — `balanceAfter` đã tính sẵn theo TOÀN BỘ lịch sử lúc ghi sổ). */
   async listLedger(tenantId: string, supplierId: string, query: ListSupplierDebtLedgerQuery): Promise<ListSupplierDebtLedgerResponse> {
@@ -706,7 +725,13 @@ export class SupplierDebtService {
       for (const e of filtered) ids.add(e.createdBy);
       const names = ids.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...ids]) : new Map<string, string>();
 
-      const items = filtered.map((e) => ({
+      const refs = await this.resolveDocumentRefs(tx, tenantId, filtered);
+      const items = filtered.map((e) => {
+        const receiptRef = e.stockReceiptId ? refs.receipts.get(e.stockReceiptId) : undefined;
+        const issueRef = e.stockIssueId ? refs.issues.get(e.stockIssueId) : undefined;
+        const voucherRef = e.cashVoucherId ? refs.vouchers.get(e.cashVoucherId) : undefined;
+        const sourceRef = receiptRef ?? issueRef ?? voucherRef;
+        return {
         id: e.id,
         entryType: e.entryType,
         amountChange: Number(e.amountChange),
@@ -714,16 +739,19 @@ export class SupplierDebtService {
         occurredAt: e.occurredAt.toISOString(),
         createdAt: e.createdAt.toISOString(),
         stockReceiptId: e.stockReceiptId,
-        stockReceiptNo: null, // web tự ghép qua GET /inventory/receipts?supplierId= (xem shared/supplier-debt.ts)
+        stockReceiptNo: receiptRef?.documentNo ?? null,
         stockIssueId: e.stockIssueId,
-        stockIssueNo: null, // cùng lý do trên — ghép qua GET /inventory/issues?supplierId= (Phần C)
+        stockIssueNo: issueRef?.documentNo ?? null,
         cashVoucherId: e.cashVoucherId,
-        cashVoucherNo: null, // cùng lý do trên — ghép qua "Phiếu thanh toán NCC" (Phần B)
+        cashVoucherNo: voucherRef?.documentNo ?? null,
         reversalOfId: e.reversalOfId,
         reversed: reversedIds.has(e.id),
         note: e.note,
         createdByName: names.get(e.createdBy) ?? 'Không rõ',
-      }));
+        sourceBranchId: sourceRef?.branchId ?? null,
+        sourceBranchName: sourceRef?.branchName ?? null,
+        };
+      });
       return { items };
     });
   }
@@ -740,16 +768,22 @@ export class SupplierDebtService {
 
       const all = await this.entryRepository.listByAccountId(tx, tenantId, account.id);
       const { items: allocated } = allocateSupplierDebt(this.toEntryInputs(all));
-      const items = allocated
-        .filter((it) => it.entryType === 'PURCHASE' || it.entryType === 'OPENING_BALANCE')
-        .map((it) => ({
+      const debtItems = allocated.filter((it) => it.entryType === 'PURCHASE' || it.entryType === 'OPENING_BALANCE');
+      const refs = await this.resolveDocumentRefs(tx, tenantId, debtItems.map((it) => ({ stockReceiptId: it.stockReceiptId, stockIssueId: null, cashVoucherId: null })));
+      const items = debtItems.map((it) => {
+        const ref = it.stockReceiptId ? refs.receipts.get(it.stockReceiptId) : undefined;
+        return {
           stockReceiptId: it.stockReceiptId,
           isOpeningBalance: it.entryType === 'OPENING_BALANCE',
           originalAmount: it.originalAmount,
           paidAmount: it.paidAmount,
           dueAmount: it.dueAmount,
           status: it.status,
-        }));
+          sourceBranchId: ref?.branchId ?? null,
+          sourceBranchName: ref?.branchName ?? null,
+          stockReceiptNo: ref?.documentNo ?? null,
+        };
+      });
       return {
         items,
         totalOriginalAmount: items.reduce((sum, it) => sum + it.originalAmount, 0),
@@ -763,10 +797,10 @@ export class SupplierDebtService {
    * 1 NCC) + tab "Thanh toán" trên trang chi tiết NCC (`supplierId` cố định). Mọi `cash_voucher` có
    * `supplierId` (Trả ngay lúc nhập LẪN Thanh toán công nợ Phần B) — chưa có nguồn INCOME nào (Phần
    * C "NCC hoàn tiền" chưa code). Mặc định 90 ngày gần nhất khi bỏ trống `from`/`to` (S6-03 #142). */
-  async listPayments(tenantId: string, branchId: string, query: ListSupplierDebtPaymentsQuery): Promise<ListSupplierDebtPaymentsResponse> {
+  async listPayments(tenantId: string, query: ListSupplierDebtPaymentsQuery): Promise<ListSupplierDebtPaymentsResponse> {
     const { from, to } = resolveRecentDateRange(query.from, query.to);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.cashVoucherRepository.listSupplierLinked(tx, tenantId, { branchIds: [branchId], supplierId: query.supplierId, from, to, status: query.status });
+      const rows = await this.cashVoucherRepository.listSupplierLinked(tx, tenantId, { supplierId: query.supplierId, from, to, status: query.status });
       const suppliers = await this.supplierRepository.list(tx, tenantId, true);
       const supplierNameById = new Map(suppliers.map((s) => [s.id, s.name]));
 
@@ -796,6 +830,8 @@ export class SupplierDebtService {
           approvedByName: r.approvedBy ? (names.get(r.approvedBy) ?? 'Không rõ') : null,
           approvedAt: r.approvedAt?.toISOString() ?? null,
           rejectionReason: r.rejectionReason,
+          branchId: r.cashAccount.branchId,
+          branchName: r.cashAccount.branch.name,
         };
       });
       return { items, pendingApprovalCount };

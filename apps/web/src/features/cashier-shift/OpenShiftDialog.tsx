@@ -6,6 +6,8 @@ import { formatVnd } from '../../shared/format/currency';
 import { Button } from '../../shared/ui/Button';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { DenominationCounter } from '../../shared/ui/DenominationCounter';
+import { useAuthStore } from '../auth/auth.store';
+import { findCurrentBranch, showBranchInfo } from '../branch/branch-visibility';
 import { useOpenCashierShiftMutation } from './cashier-shift.queries';
 
 /**
@@ -26,6 +28,9 @@ export function OpenShiftDialog({
   onSuccess?: () => void;
 }) {
   const suggested = previousClosedShift?.keepForNextAmount ?? 0;
+  // Ca thuộc chi nhánh đang làm việc (docs/DECISIONS.md #233): dòng "Chi nhánh" chỉ hiện khi tài khoản làm việc ở từ 2 chi nhánh.
+  const user = useAuthStore((s) => s.user);
+  const branchName = showBranchInfo(user) ? (findCurrentBranch(user)?.name ?? null) : null;
   const [countedAmount, setCountedAmount] = useState<number>(suggested);
   const [showDenom, setShowDenom] = useState(false);
   const [reason, setReason] = useState('');
@@ -68,6 +73,13 @@ export function OpenShiftDialog({
           </div>
 
           <div className="px-6 py-5 space-y-4">
+            {branchName && (
+              <div>
+                <div className="mb-1.5 text-sm font-semibold text-slate-800">Chi nhánh</div>
+                <p className="break-words rounded-md border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-[15px] font-semibold text-slate-800" title={branchName}>{branchName}</p>
+                <p className="mt-1 text-xs text-slate-500">Vốn ca trước lấy từ ca đã chốt gần nhất của chính chi nhánh này.</p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">

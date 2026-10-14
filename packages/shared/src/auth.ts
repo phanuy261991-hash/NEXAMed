@@ -63,6 +63,11 @@ export const currentUserSchema = z.object({
    */
   branches: z.array(branchLiteSchema),
   currentBranchId: z.string().uuid().nullable(),
+  /**
+   * Công ty có từ 2 chi nhánh hoạt động trở lên không (Đợt 2 chi nhánh, #233) — KHÁC `branches.length` (số chi nhánh TÀI KHOẢN được gán). Nhân viên chỉ thuộc một chi
+   * nhánh nhưng công ty có nhiều chi nhánh vẫn cần thấy nhãn chi nhánh trên chứng từ liên chi nhánh (vd. tab "Phiếu đến" của điều chuyển kho). Công ty 1 chi nhánh: `false`.
+   */
+  multiBranchCompany: z.boolean(),
 });
 
 export type CurrentUser = z.infer<typeof currentUserSchema>;

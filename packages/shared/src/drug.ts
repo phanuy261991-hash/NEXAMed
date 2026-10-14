@@ -364,3 +364,16 @@ export type ListWarehousesQuery = z.infer<typeof listWarehousesQuerySchema>;
 
 export const listWarehousesResponseSchema = z.object({ items: z.array(warehouseSummarySchema) });
 export type ListWarehousesResponse = z.infer<typeof listWarehousesResponseSchema>;
+
+// Đợt 2 chi nhánh (#233): ô chọn KHO NHẬN ở form điều chuyển — mọi kho đang hoạt động của công ty (kể cả chi nhánh khác tài khoản không được gán), chỉ tối thiểu để chọn.
+export const warehouseTransferDestinationSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name: z.string(),
+  branchId: z.string().uuid(),
+  branchName: z.string(),
+});
+export type WarehouseTransferDestination = z.infer<typeof warehouseTransferDestinationSchema>;
+
+export const listWarehouseTransferDestinationsResponseSchema = z.object({ items: z.array(warehouseTransferDestinationSchema) });
+export type ListWarehouseTransferDestinationsResponse = z.infer<typeof listWarehouseTransferDestinationsResponseSchema>;

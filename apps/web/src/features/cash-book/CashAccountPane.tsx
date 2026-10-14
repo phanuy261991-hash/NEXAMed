@@ -2,6 +2,10 @@ import { useMemo, useRef, useState } from 'react';
 import { Bank, PencilSimple, Plus, Vault } from '@phosphor-icons/react';
 import type { CashAccount, CashAccountType } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
+import { useAuthStore } from '../auth/auth.store';
+import { hasMultipleBranches } from '../branch/branch-visibility';
+import { BranchChip } from '../branch/BranchChip';
+import { Combobox } from '../../shared/ui/Combobox';
 import { Button } from '../../shared/ui/Button';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -36,6 +40,7 @@ function todayDateString(): string {
 
 interface FormValues {
   name: string;
+  branchId: string;
   type: 'CASH' | 'BANK';
   bankName: string;
   bankAccountNo: string;
@@ -45,9 +50,10 @@ interface FormValues {
   isActive: boolean;
 }
 
-function toFormValues(item?: CashAccount): FormValues {
+function toFormValues(item?: CashAccount, defaultBranchId?: string | null): FormValues {
   return {
     name: item?.name ?? '',
+    branchId: item?.branchId ?? defaultBranchId ?? '',
     type: item?.type === 'BANK' ? 'BANK' : 'CASH',
     bankName: item?.bankName ?? '',
     bankAccountNo: item?.bankAccountNo ?? '',
@@ -61,6 +67,8 @@ function toFormValues(item?: CashAccount): FormValues {
 function CashAccountFormModal({
   mode,
   item,
+  branchOptions,
+  defaultBranchId,
   submitting,
   stale,
   onReload,
@@ -69,6 +77,9 @@ function CashAccountFormModal({
 }: {
   mode: 'create' | 'edit';
   item?: CashAccount;
+  /** `null` = công ty 1 chi nhánh → không hiện ô chi nhánh. */
+  branchOptions: { value: string; label: string }[] | null;
+  defaultBranchId: string | null;
   submitting: boolean;
   /** Người khác vừa lưu bản mới của bản ghi này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
   stale: boolean;
@@ -77,7 +88,7 @@ function CashAccountFormModal({
   onSubmit: (dto: FormValues) => Promise<void>;
 }) {
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const [values, setValues] = useState<FormValues>(() => toFormValues(item));
+  const [values, setValues] = useState<FormValues>(() => toFormValues(item, defaultBranchId));
   const { flashVisible, triggerFlash } = useSaveFlash();
   const { saveError, run } = useSaveAttempt();
 
@@ -96,7 +107,7 @@ function CashAccountFormModal({
   async function handleSaveAndContinue() {
     if (!isValid) return;
     if (!(await run(() => onSubmit(values)))) return;
-    setValues(toFormValues(undefined));
+    setValues(toFormValues(undefined, defaultBranchId));
     nameInputRef.current?.focus();
     triggerFlash();
   }
@@ -134,6 +145,20 @@ function CashAccountFormModal({
               className={inputClassName}
             />
           </div>
+
+          {branchOptions && (
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <label htmlFor="ca-branch" className="text-sm font-semibold text-slate-800">
+                Chi nhánh <span className="text-rose-500">*</span>
+              </label>
+              {mode === 'create' ? (
+                <Combobox id="ca-branch" value={values.branchId} onChange={(v) => set('branchId', v)} options={branchOptions} />
+              ) : (
+                <p id="ca-branch" className="break-words rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[15px] font-semibold text-slate-700">{item?.branchName}</p>
+              )}
+              <p className="text-[11px] text-slate-400">Quỹ thuộc đúng một chi nhánh, không đổi được sau khi tạo. Chuyển quỹ chỉ giữa hai quỹ cùng chi nhánh.</p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <label className="text-sm font-semibold text-slate-800">
@@ -237,9 +262,13 @@ function CashAccountFormModal({
  */
 export function CashAccountPane() {
   const canManage = useHasPermission('cash_account', 'manage');
+  // Đợt 2 chi nhánh (docs/DECISIONS.md #233, Q1): MỌI quỹ (kể cả ngân hàng) thuộc một chi nhánh. Cột/ô/bộ lọc chi nhánh chỉ hiện khi tài khoản làm việc ở từ 2 chi nhánh.
+  const user = useAuthStore((s) => s.user);
+  const multiBranch = hasMultipleBranches(user);
+  const [allBranches, setAllBranches] = useState(false);
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; item?: CashAccount } | null>(null);
 
-  const query = useCashAccountsQuery();
+  const query = useCashAccountsQuery({ allBranches: multiBranch && allBranches });
   const createMutation = useCreateCashAccountMutation();
   const updateMutation = useUpdateCashAccountMutation();
 
@@ -270,6 +299,7 @@ export function CashAccountPane() {
     } else {
       await createMutation.mutateAsync({
         name: dto.name,
+        ...(multiBranch && dto.branchId ? { branchId: dto.branchId } : {}),
         type: dto.type,
         bankName: dto.type === 'BANK' ? dto.bankName || null : null,
         bankAccountNo: dto.type === 'BANK' ? dto.bankAccountNo || null : null,
@@ -287,6 +317,17 @@ export function CashAccountPane() {
           Quỹ tiền mặt/ngân hàng dùng cho phiếu thu/chi ngoài dịch vụ khám. Quỹ tiền mặt mặc định đã có sẵn — thêm quỹ
           ngân hàng khi phòng khám nhận chuyển khoản.
         </p>
+        {multiBranch && (
+          <Combobox
+            id="cash-account-branch-filter"
+            value={allBranches ? 'all' : 'current'}
+            onChange={(v) => setAllBranches(v === 'all')}
+            options={[
+              { value: 'current', label: 'Chi nhánh đang làm việc' },
+              { value: 'all', label: 'Chi nhánh: Tất cả (được gán)' },
+            ]}
+          />
+        )}
         {canManage && (
           <Button type="button" onClick={() => setModal({ mode: 'create' })}>
             <Plus size={16} weight="bold" aria-hidden="true" />
@@ -325,6 +366,7 @@ export function CashAccountPane() {
                   </th>
                   <th className="w-24 px-4 py-2.5 text-center">Mã</th>
                   <th className="px-4 py-2.5 text-left">Tên quỹ</th>
+                  {multiBranch && <th className="w-52 px-4 py-2.5 text-left">Chi nhánh</th>}
                   <th className="w-32 px-4 py-2.5 text-center">Loại</th>
                   <th className="px-4 py-2.5 text-left">Số tài khoản</th>
                   <th className="w-28 px-4 py-2.5 text-center">Số dư đầu kỳ</th>
@@ -344,7 +386,12 @@ export function CashAccountPane() {
                       />
                     </td>
                     <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
-                    <td className="px-4 py-2 text-left font-medium text-slate-900">{item.name}</td>
+                    <td className="max-w-[320px] truncate px-4 py-2 text-left font-medium text-slate-900" title={item.name}>{item.name}</td>
+                    {multiBranch && (
+                      <td className="max-w-[208px] px-4 py-2 text-left">
+                        <BranchChip name={item.branchName} />
+                      </td>
+                    )}
                     <td className="px-4 py-2 text-center">
                       <span className="inline-flex items-center gap-1 text-slate-600">
                         {item.type === 'BANK' && <Bank size={13} weight="bold" aria-hidden="true" />}
@@ -383,6 +430,8 @@ export function CashAccountPane() {
           onReload={guard.reload}
           mode={modal.mode}
           item={modal.item}
+          branchOptions={multiBranch ? (user?.branches ?? []).map((b) => ({ value: b.id, label: b.name })) : null}
+          defaultBranchId={user?.currentBranchId ?? null}
           submitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => setModal(null)}
           onSubmit={handleSubmit}

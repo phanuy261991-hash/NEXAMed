@@ -1098,10 +1098,16 @@ export const getStockTransferPendingCountsResponseSchema = z.object({
 });
 export type GetStockTransferPendingCountsResponse = z.infer<typeof getStockTransferPendingCountsResponseSchema>;
 
-/** "Báo cáo hao hụt điều chuyển" — phần hao hụt của chi nhánh GỬI trong khoảng ngày xử lý xong. */
+/** `WRITE_OFF` = chi nhánh gửi chọn ghi hao hụt phần nhận thiếu; `RETURN_SHORTAGE` = phiếu bị từ chối nhận mà nhận lại thiếu. */
+export const stockTransferShrinkageCauseSchema = z.enum(['WRITE_OFF', 'RETURN_SHORTAGE']);
+export type StockTransferShrinkageCause = z.infer<typeof stockTransferShrinkageCauseSchema>;
+
+/** "Báo cáo hao hụt điều chuyển" — phần hao hụt của chi nhánh GỬI trong khoảng ngày xử lý xong; lọc thêm theo kho gửi và nguyên nhân (tuỳ chọn). */
 export const getStockTransferShrinkageQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  fromWarehouseId: z.string().uuid().optional(),
+  cause: stockTransferShrinkageCauseSchema.optional(),
 });
 export type GetStockTransferShrinkageQuery = z.infer<typeof getStockTransferShrinkageQuerySchema>;
 
@@ -1116,8 +1122,7 @@ export const stockTransferShrinkageItemSchema = z.object({
   quantity: z.number().int(),
   unitCost: z.number().int(),
   lineValue: z.number().int(),
-  /** `WRITE_OFF` = chi nhánh gửi chọn ghi hao hụt phần nhận thiếu; `RETURN_SHORTAGE` = phiếu bị từ chối nhận mà nhận lại thiếu. */
-  cause: z.enum(['WRITE_OFF', 'RETURN_SHORTAGE']),
+  cause: stockTransferShrinkageCauseSchema,
 });
 export type StockTransferShrinkageItem = z.infer<typeof stockTransferShrinkageItemSchema>;
 
@@ -1125,6 +1130,10 @@ export const getStockTransferShrinkageResponseSchema = z.object({
   items: z.array(stockTransferShrinkageItemSchema),
   totalQuantity: z.number().int(),
   totalValue: z.number().int(),
+  /** Số phiếu điều chuyển có hao hụt (đã áp bộ lọc kho gửi + nguyên nhân). */
+  transferCount: z.number().int().nonnegative(),
+  /** Số dòng hao hụt theo nguyên nhân — tính theo bộ lọc ngày + kho gửi, KHÔNG theo bộ lọc nguyên nhân (để dải số luôn cho thấy cả hai nhóm). */
+  countByCause: z.object({ WRITE_OFF: z.number().int().nonnegative(), RETURN_SHORTAGE: z.number().int().nonnegative() }),
 });
 export type GetStockTransferShrinkageResponse = z.infer<typeof getStockTransferShrinkageResponseSchema>;
 

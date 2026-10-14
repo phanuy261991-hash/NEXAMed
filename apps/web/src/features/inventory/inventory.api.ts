@@ -1,5 +1,11 @@
 import type {
   ApproveStockCountRequest,
+  ConfirmStockTransferReturnRequest,
+  GetStockTransferPendingCountsResponse,
+  GetStockTransferShrinkageQuery,
+  GetStockTransferShrinkageResponse,
+  RejectStockTransferReceiptRequest,
+  ResolveStockTransferVarianceRequest,
   ApproveStockIssueRequest,
   ApproveStockReceiptRequest,
   CreateManualStockIssueRequest,
@@ -207,9 +213,39 @@ export async function getStockLedgerReport(query: GetStockLedgerReportQuery): Pr
 
 /** Xuất Excel — tải file thô qua `downloadFile()` (fetch trực tiếp), KHÔNG qua client sinh từ
  * OpenAPI (binary, endpoint này cố ý không đăng ký OpenAPI — đúng khuôn `cash-flow-report.api.ts`). */
+/** Tải Excel báo cáo hao hụt điều chuyển (Q2, docs/DECISIONS.md #233) — cố ý không đăng ký OpenAPI (binary), cùng khuôn `exportStockLedgerReport`. */
+export async function exportStockTransferShrinkage(query: GetStockTransferShrinkageQuery): Promise<void> {
+  const params = new URLSearchParams({ from: query.from, to: query.to });
+  if (query.fromWarehouseId) params.set('fromWarehouseId', query.fromWarehouseId);
+  if (query.cause) params.set('cause', query.cause);
+  await downloadFile(`/api/v1/inventory/transfers/shrinkage-report/export?${params.toString()}`, `hao-hut-dieu-chuyen-${query.from}_${query.to}.xlsx`);
+}
+
 export async function exportStockLedgerReport(query: GetStockLedgerReportQuery): Promise<void> {
   const params = new URLSearchParams({ from: query.from, to: query.to });
   if (query.warehouseId) params.set('warehouseId', query.warehouseId);
   if (query.drugId) params.set('drugId', query.drugId);
   await downloadFile(`/api/v1/inventory/reports/stock-ledger/export?${params.toString()}`, `nhap-xuat-ton-${query.from}_${query.to}.xlsx`);
+}
+
+// ============ Đợt 2 chi nhánh (docs/DECISIONS.md #233) — kiểm nhận / từ chối nhận / xử lý chênh lệch điều chuyển kho ============
+
+export async function rejectStockTransferReceipt(id: string, body: RejectStockTransferReceiptRequest): Promise<StockTransferDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/transfers/{id}/reject-receipt', { params: { path: { id } }, body })) as StockTransferDetail;
+}
+
+export async function confirmStockTransferReturn(id: string, body: ConfirmStockTransferReturnRequest): Promise<StockTransferDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/transfers/{id}/confirm-return', { params: { path: { id } }, body })) as StockTransferDetail;
+}
+
+export async function resolveStockTransferVariance(id: string, body: ResolveStockTransferVarianceRequest): Promise<StockTransferDetail> {
+  return unwrap(await getApiClient().POST('/api/v1/inventory/transfers/{id}/resolve-variance', { params: { path: { id } }, body })) as StockTransferDetail;
+}
+
+export async function getStockTransferPendingCounts(): Promise<GetStockTransferPendingCountsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/transfers/pending-counts', {})) as GetStockTransferPendingCountsResponse;
+}
+
+export async function getStockTransferShrinkage(query: GetStockTransferShrinkageQuery): Promise<GetStockTransferShrinkageResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/transfers/shrinkage-report', { params: { query } })) as GetStockTransferShrinkageResponse;
 }

@@ -344,7 +344,7 @@ export class StockTransferRepository {
    * (1) dòng nhận thiếu mà chi nhánh gửi chọn "Ghi hao hụt" (số = đã gửi − thực nhận);
    * (2) dòng của phiếu bị từ chối nhận mà nhận lại thiếu (số = đã gửi − nhận lại).
    */
-  async listShrinkage(tx: Prisma.TransactionClient, tenantId: string, branchIds: string[], from: Date, to: Date): Promise<TransferShrinkageRow[]> {
+  async listShrinkage(tx: Prisma.TransactionClient, tenantId: string, branchIds: string[], from: Date, to: Date, fromWarehouseId?: string): Promise<TransferShrinkageRow[]> {
     const lines = await tx.stockTransferLine.findMany({
       where: {
         tenantId,
@@ -352,6 +352,7 @@ export class StockTransferRepository {
         transfer: {
           deletedAt: null,
           fromWarehouse: { branchId: { in: branchIds } },
+          ...(fromWarehouseId ? { fromWarehouseId } : {}),
           OR: [
             { status: 'COMPLETED', varianceResolvedAt: { gte: from, lte: to } },
             { status: 'RETURNED', returnConfirmedAt: { gte: from, lte: to } },

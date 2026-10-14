@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { makeDraftId as makeKey } from '../../shared/make-draft-id';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Check, MagnifyingGlass, Trash, Truck, Warning } from '@phosphor-icons/react';
-import type { CreateStockTransferRequest, DrugSummary, ReceiveStockTransferLineInput, StockTransferStatus } from '@nexamed/shared';
+import { MagnifyingGlass, Trash } from '@phosphor-icons/react';
+import type { CreateStockTransferRequest, DrugSummary, StockTransferDetail } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -12,22 +12,21 @@ import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { RecordLoadError } from '../../shared/ui/RecordLoadError';
 import { Skeleton } from '../../shared/ui/Skeleton';
-import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
+import { useAuthStore } from '../auth/auth.store';
 import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/usePermission';
+import { showBranchInfo } from '../branch/branch-visibility';
 import { useDrugsQuery } from '../drug/drug.queries';
-import { useWarehousesQuery } from '../drug/warehouse.queries';
+import { useWarehousesQuery, useWarehouseTransferDestinationsQuery } from '../drug/warehouse.queries';
 import { getDrugBatchBalances } from './inventory.api';
-import {
-  useCreateStockTransferMutation,
-  useReceiveStockTransferMutation,
-  useShipStockTransferMutation,
-  useStockBalancesQuery,
-  useStockTransferQuery,
-  useUpdateStockTransferMutation,
-} from './inventory.queries';
+import { useCreateStockTransferMutation, useShipStockTransferMutation, useStockBalancesQuery, useStockTransferQuery, useUpdateStockTransferMutation } from './inventory.queries';
+import { StockTransferConfirmReturnPanel } from './StockTransferConfirmReturnPanel';
 import { StockTransferPrintView } from './StockTransferPrintView';
+import { StockTransferReceivePanel } from './StockTransferReceivePanel';
 import { StockTransferRejectDialog } from './StockTransferRejectDialog';
+import { StockTransferResolvePanel } from './StockTransferResolvePanel';
+import { nextTransferAction, REJECT_RECEIPT_REASON_LABEL, TRANSFER_STATUS_META, transferSides, VARIANCE_REASON_LABEL, VARIANCE_RESOLUTION_LABEL } from './stock-transfer-meta';
 
 interface DraftLine {
   key: string;
@@ -43,18 +42,6 @@ interface DraftLine {
   quantityShipped: string;
 }
 
-interface ReceiveInput {
-  quantityReceived: string;
-  varianceNote: string;
-}
-
-const STATUS_META: Record<StockTransferStatus, { label: string; tone: StatusBadgeTone }> = {
-  DRAFT: { label: 'Nháp', tone: 'neutral' },
-  IN_TRANSIT: { label: 'Đang vận chuyển', tone: 'warning' },
-  COMPLETED: { label: 'Hoàn tất', tone: 'success' },
-  REJECTED: { label: 'Từ chối', tone: 'danger' },
-};
-
 function todayVn(): string {
   const now = new Date(Date.now() + 7 * 60 * 60_000);
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
@@ -65,20 +52,28 @@ function formatDateTimeVn(iso: string): string {
   return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 }
 
+/** "Chi nhánh / kho" khi công ty nhiều chi nhánh; chỉ tên kho khi 1 chi nhánh (giao diện không đổi). */
+function placeLabel(multiBranch: boolean, branchName: string, warehouseName: string): string {
+  return multiBranch ? `${branchName} / ${warehouseName}` : warehouseName;
+}
+
 /**
- * "Tạo phiếu điều chuyển" / "Sửa Nháp" / "Xác nhận nhận hàng" / "Xem chi tiết" — Kho Thuốc GĐ4, phần
- * "Điều chuyển kho" (docs/DECISIONS.md #170, mockup đã duyệt). TRANG RIÊNG (không modal, đúng khuôn
- * `StockReceiptFormPage.tsx`/`StockCountFormPage.tsx`) — dùng CHUNG 1 component cho cả 4 chế độ theo
- * trạng thái phiếu:
- * - `DRAFT` (tạo mới/sửa Nháp): form đầy đủ, search-and-pick mặt hàng theo lô tại kho NGUỒN.
- * - `IN_TRANSIT`: header chỉ đọc + bảng "Xác nhận nhận hàng" (SL thực nhận, bắt buộc ghi chú khi thiếu).
- * - `COMPLETED`/`REJECTED`: chỉ đọc toàn bộ.
+ * Trang chi tiết phiếu điều chuyển kho (Kho Thuốc GĐ4 #170 + Đợt 2 chi nhánh #233, mockup màn 4/4b). TRANG RIÊNG (không modal), dùng chung 1 component, chọn chế độ
+ * theo TRẠNG THÁI phiếu và VAI TRÒ của chi nhánh đang làm việc (gửi/nhận):
+ * - `DRAFT`: form soạn đầy đủ, search-and-pick mặt hàng theo lô tại kho NGUỒN (kho đích có thể thuộc chi nhánh khác).
+ * - Bên NHẬN, `IN_TRANSIT`: màn "Kiểm nhận hàng" (`StockTransferReceivePanel`).
+ * - Bên GỬI, `VARIANCE_PENDING`: "Xử lý chênh lệch"; `RETURNING`: "Xác nhận đã nhận lại hàng".
+ * - Còn lại: chỉ đọc (kèm lý do chênh lệch / cách xử lý / lý do từ chối nhận).
+ * Chi nhánh nhận KHÔNG thấy giá vốn (máy chủ trả `unitCost = null`).
  */
 export function StockTransferFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
   const canApprove = useHasPermission('stock_transfer', 'approve');
+  const user = useAuthStore((s) => s.user);
+  const currentBranchId = user?.currentBranchId ?? null;
+  const multiBranch = showBranchInfo(user);
 
   const transferQuery = useStockTransferQuery(id ?? '', isEdit);
   const warehousesQuery = useWarehousesQuery();
@@ -92,16 +87,18 @@ export function StockTransferFormPage() {
   const createMutation = useCreateStockTransferMutation();
   const updateMutation = useUpdateStockTransferMutation();
   const shipMutation = useShipStockTransferMutation();
-  const receiveMutation = useReceiveStockTransferMutation();
 
-  const status = transferQuery.data?.status;
+  const transfer: StockTransferDetail | undefined = transferQuery.data;
+  const status = transfer?.status;
   const isDraftEditable = !isEdit || status === 'DRAFT';
-  const isReceiving = isEdit && status === 'IN_TRANSIT';
-  const isPureReadOnly = isEdit && (status === 'COMPLETED' || status === 'REJECTED');
-  // In phiếu — dùng CHUNG 1 bố cục cho cả kho NGUỒN (in ngay sau Duyệt xuất, status IN_TRANSIT) lẫn
-  // kho ĐÍCH (in sau khi Xác nhận nhận hàng, status COMPLETED) — REJECTED không in được (không có
-  // hàng di chuyển), DRAFT chưa xuất kho nên cũng chưa có gì để in. Chủ dự án yêu cầu trực tiếp
-  // 23/09/2026, cùng hạ tầng `.print-area` dùng chung với Nhập kho/Xuất kho/Kiểm kê (#171).
+  const action = transfer && canApprove ? nextTransferAction(transfer, currentBranchId) : null;
+  const isViewOnly = isEdit && !isDraftEditable && action === null;
+  const sides = transfer ? transferSides(transfer, currentBranchId) : null;
+  // Kho đích có thể ở chi nhánh khác: danh sách riêng (không lọc chi nhánh) — chỉ cần khi đang soạn phiếu.
+  const destinationsQuery = useWarehouseTransferDestinationsQuery(isDraftEditable);
+
+  // In phiếu — dùng CHUNG 1 bố cục cho cả hai bên (đầu phiếu theo chi nhánh GỬI) từ lúc Duyệt xuất; Nháp/Từ chối không in (chưa có hàng di chuyển).
+  const printable = status !== undefined && status !== 'DRAFT' && status !== 'REJECTED';
   const [printing, setPrinting] = useState(false);
   function handlePrint() {
     setPrinting(true);
@@ -121,14 +118,11 @@ export function StockTransferFormPage() {
   const [addingDrugId, setAddingDrugId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
-  const [receiveInputs, setReceiveInputs] = useState<Record<string, ReceiveInput>>({});
   const [loadedForId, setLoadedForId] = useState<string | null>(null);
 
-  useBreadcrumb([
-    { label: 'Quản lý kho' },
-    { label: 'Điều chuyển kho', to: '/inventory/transfers' },
-    { label: isPureReadOnly ? 'Chi tiết' : isReceiving ? 'Xác nhận nhận hàng' : isEdit ? 'Sửa Nháp' : 'Tạo phiếu' },
-  ]);
+  const modeLabel =
+    action === 'receive' ? 'Kiểm nhận hàng' : action === 'resolve' ? 'Xử lý chênh lệch' : action === 'confirm-return' ? 'Nhận lại hàng' : isViewOnly ? 'Chi tiết' : isEdit ? 'Sửa Nháp' : 'Tạo phiếu';
+  useBreadcrumb([{ label: 'Quản lý kho' }, { label: 'Điều chuyển kho', to: '/inventory/transfers' }, { label: modeLabel }]);
 
   // Nạp dữ liệu phiếu đã có vào state form — chỉ khi CHUYỂN SANG phiếu khác (đúng bài học
   // `loadedForId` đã sửa ở `EncounterConsultationPage.tsx`, tránh lẫn dữ liệu 2 phiếu).
@@ -152,9 +146,6 @@ export function StockTransferFormPage() {
         availableQuantity: 0,
         quantityShipped: String(l.quantityShipped),
       })),
-    );
-    setReceiveInputs(
-      Object.fromEntries(t.lines.map((l) => [l.id, { quantityReceived: String(l.quantityReceived ?? l.quantityShipped), varianceNote: l.varianceNote ?? '' }])),
     );
     setLoadedForId(t.id);
   }, [transferQuery.data, loadedForId]);
@@ -305,20 +296,6 @@ export function StockTransferFormPage() {
     }
   }
 
-  async function handleReceive() {
-    if (!transferQuery.data) return;
-    const linesPayload: ReceiveStockTransferLineInput[] = transferQuery.data.lines.map((l) => {
-      const input = receiveInputs[l.id] ?? { quantityReceived: String(l.quantityShipped), varianceNote: '' };
-      return { lineId: l.id, quantityReceived: Number(input.quantityReceived || 0), varianceNote: input.varianceNote.trim() || undefined };
-    });
-    try {
-      await receiveMutation.mutateAsync({ id: transferQuery.data.id, body: { version: transferQuery.data.version, lines: linesPayload } });
-      navigate('/inventory/transfers');
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Xác nhận nhận hàng thất bại, vui lòng thử lại.');
-    }
-  }
-
   if (isEdit && transferQuery.isPending) {
     return (
       <div className="space-y-2 p-4">
@@ -333,24 +310,34 @@ export function StockTransferFormPage() {
   }
 
   const saving = createMutation.isPending || updateMutation.isPending || shipMutation.isPending;
-  const warehouseOptions = (warehousesQuery.data?.items ?? []).filter((w) => !isDepartmentScoped || w.departmentId === actorDepartmentId);
+  const sourceOptions = (warehousesQuery.data?.items ?? []).filter((w) => !isDepartmentScoped || w.departmentId === actorDepartmentId);
+  const destinationOptions = (destinationsQuery.data?.items ?? [])
+    .filter((w) => w.id !== fromWarehouseId)
+    .map((w) => ({ value: w.id, label: multiBranch ? `${w.name} — ${w.branchName}` : w.name }));
+  const backToList = () => navigate('/inventory/transfers');
+  const showCost = sides?.isSender === true && transfer?.lines.some((l) => l.unitCost !== null);
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
-      <h1 className="sr-only">{isPureReadOnly ? 'Chi tiết phiếu điều chuyển kho' : isReceiving ? 'Xác nhận nhận hàng' : isEdit ? 'Sửa phiếu điều chuyển kho' : 'Tạo phiếu điều chuyển kho'}</h1>
+      <h1 className="sr-only">{`${modeLabel} — phiếu điều chuyển kho`}</h1>
 
-      <div className="flex flex-shrink-0 items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <h2 className="text-lg font-bold text-slate-900">{isEdit ? transferQuery.data!.transferNo : 'Tạo phiếu điều chuyển kho'}</h2>
-          {isEdit && transferQuery.data && <StatusBadge tone={STATUS_META[transferQuery.data.status].tone}>{STATUS_META[transferQuery.data.status].label}</StatusBadge>}
+      <div className="flex flex-shrink-0 items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <h2 className="truncate text-lg font-bold text-slate-900">{isEdit && transfer ? transfer.transferNo : 'Tạo phiếu điều chuyển kho'}</h2>
+          {transfer && <StatusBadge tone={TRANSFER_STATUS_META[transfer.status].tone}>{TRANSFER_STATUS_META[transfer.status].label}</StatusBadge>}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-shrink-0 gap-2">
+          {printable && (
+            <PrintButton documentType="STOCK_TRANSFER" onPrint={handlePrint}>
+              In phiếu
+            </PrintButton>
+          )}
           {isDraftEditable && isEdit && canApprove && (
             <Button type="button" variant="secondary" onClick={() => setRejecting(true)}>
               Từ chối
             </Button>
           )}
-          <Button type="button" variant="secondary" onClick={() => navigate('/inventory/transfers')}>
+          <Button type="button" variant="secondary" onClick={backToList}>
             ← Quay lại danh sách
           </Button>
         </div>
@@ -360,7 +347,7 @@ export function StockTransferFormPage() {
       {isDraftEditable ? (
         <div className="grid flex-shrink-0 grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-4">
           <div>
-            <label className="mb-1 block text-sm font-semibold text-slate-800">
+            <label htmlFor="transfer-from-warehouse" className="mb-1 block text-sm font-semibold text-slate-800">
               Kho nguồn <span className="text-rose-500">*</span>
             </label>
             <Combobox
@@ -369,31 +356,28 @@ export function StockTransferFormPage() {
               disabled={lines.length > 0}
               onChange={setFromWarehouseId}
               placeholder="— Chọn kho —"
-              options={warehouseOptions.map((w) => ({ value: w.id, label: w.name }))}
+              options={sourceOptions.map((w) => ({ value: w.id, label: w.name }))}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold text-slate-800">
+            <label htmlFor="transfer-to-warehouse" className="mb-1 block text-sm font-semibold text-slate-800">
               Kho đích <span className="text-rose-500">*</span>
             </label>
-            <Combobox
-              id="transfer-to-warehouse"
-              value={toWarehouseId}
-              onChange={setToWarehouseId}
-              placeholder="— Chọn kho —"
-              options={(warehousesQuery.data?.items ?? []).filter((w) => w.id !== fromWarehouseId).map((w) => ({ value: w.id, label: w.name }))}
-            />
-            <p className="mt-1 text-xs text-slate-400">Danh sách tự loại bỏ kho nguồn đã chọn.</p>
+            <Combobox id="transfer-to-warehouse" value={toWarehouseId} onChange={setToWarehouseId} placeholder="— Chọn kho —" options={destinationOptions} />
+            <p className="mt-1 text-xs text-slate-400">{multiBranch ? 'Gồm cả kho của chi nhánh khác; tự loại bỏ kho nguồn đã chọn.' : 'Danh sách tự loại bỏ kho nguồn đã chọn.'}</p>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold text-slate-800">
+            <label htmlFor="transfer-occurred-at" className="mb-1 block text-sm font-semibold text-slate-800">
               Ngày chuyển <span className="text-rose-500">*</span>
             </label>
             <DateInput id="transfer-occurred-at" value={occurredAt} onChange={setOccurredAt} required />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold text-slate-800">Ghi chú</label>
+            <label htmlFor="transfer-note" className="mb-1 block text-sm font-semibold text-slate-800">
+              Ghi chú
+            </label>
             <input
+              id="transfer-note"
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -403,39 +387,39 @@ export function StockTransferFormPage() {
           </div>
         </div>
       ) : (
-        <div className="grid flex-shrink-0 grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-4">
-          <div>
-            <p className="text-sm font-medium text-slate-500">Kho nguồn</p>
-            <p className="text-base font-semibold text-slate-900">{transferQuery.data!.fromWarehouseName}</p>
+        transfer && (
+          <div className="grid flex-shrink-0 grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-500">Từ</p>
+              <p className="break-words text-base font-semibold text-slate-900">{placeLabel(multiBranch, transfer.fromBranchName, transfer.fromWarehouseName)}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-500">Đến</p>
+              <p className="break-words text-base font-semibold text-slate-900">{placeLabel(multiBranch, transfer.toBranchName, transfer.toWarehouseName)}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-500">Duyệt xuất</p>
+              <p className="break-words text-base font-semibold text-slate-900">{transfer.shippedAt ? `${formatDateTimeVn(transfer.shippedAt)} · ${transfer.shippedByName ?? ''}` : '—'}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-500">{transfer.receivedAt ? 'Kiểm nhận' : 'Ghi chú phiếu'}</p>
+              <p className="break-words text-base font-semibold text-slate-900">
+                {transfer.receivedAt ? `${formatDateTimeVn(transfer.receivedAt)} · ${transfer.receivedByName ?? ''}` : transfer.note || '—'}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Kho đích</p>
-            <p className="text-base font-semibold text-slate-900">{transferQuery.data!.toWarehouseName}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Ngày xuất</p>
-            <p className="text-base font-semibold text-slate-900">
-              {transferQuery.data!.shippedAt ? `${formatDateTimeVn(transferQuery.data!.shippedAt)} · ${transferQuery.data!.shippedByName}` : '—'}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Ghi chú phiếu</p>
-            <p className="text-base font-semibold text-slate-900">{transferQuery.data!.note || '—'}</p>
-          </div>
-        </div>
+        )
       )}
 
-      {/* ============ Xác nhận nhận hàng — banner cảnh báo ============ */}
-      {isReceiving && (
-        <div className="flex flex-shrink-0 items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-sm">
-          <Warning size={16} weight="fill" className="mt-0.5 flex-shrink-0 text-blue-600" aria-hidden="true" />
-          <p className="font-medium text-blue-900">Nhập đúng số lượng THỰC NHẬN. Có thể thấp hơn số đã xuất (bắt buộc ghi lý do) — không được nhập cao hơn.</p>
-        </div>
+      {/* ============ Các chế độ xử lý của bên nhận / bên gửi ============ */}
+      {transfer && action === 'receive' && (
+        <StockTransferReceivePanel transfer={transfer} receiverName={user?.fullName ?? ''} onDone={backToList} onCancel={backToList} />
       )}
+      {transfer && action === 'resolve' && <StockTransferResolvePanel transfer={transfer} onDone={backToList} onCancel={backToList} />}
+      {transfer && action === 'confirm-return' && <StockTransferConfirmReturnPanel transfer={transfer} onDone={backToList} onCancel={backToList} />}
 
       {/* ============ Search-and-pick (chỉ khi DRAFT) — style nổi bật đồng bộ với
-          `StockReceiptFormPage.tsx`/`StockIssueFormPage.tsx`/`StockCountFormPage.tsx` (phản hồi
-          trực tiếp: áp dụng cho mọi giao diện đang dùng kiểu ô tìm thuốc này). ============ */}
+          `StockReceiptFormPage.tsx`/`StockIssueFormPage.tsx`/`StockCountFormPage.tsx` ============ */}
       {isDraftEditable && (
         <div className="flex flex-shrink-0 items-end gap-2.5 rounded-lg border-2 border-blue-200 bg-blue-50 p-3 shadow-sm">
           <div className="relative flex-1">
@@ -459,7 +443,7 @@ export function StockTransferFormPage() {
               />
             </div>
             {isSearchingDrug && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg scroll-hover">
+              <div className="scroll-hover absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
                 {searchResults.length === 0 && <p className="px-3 py-2 text-xs text-slate-400">Không tìm thấy, hoặc đã có sẵn trong phiếu.</p>}
                 {searchResults.map((d, idx) => (
                   <button
@@ -478,119 +462,66 @@ export function StockTransferFormPage() {
         </div>
       )}
 
-      {/* ============ Bảng dòng hàng ============ */}
-      <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        {lines.length === 0 && isDraftEditable ? (
-          <EmptyState icon={MagnifyingGlass} title="Chưa có dòng hàng nào" description="Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng." />
-        ) : isDraftEditable ? (
-          <div role="table" aria-label="Dòng hàng điều chuyển" className="scroll-hover h-full overflow-x-auto">
-            <div className="flex h-full flex-col" style={{ minWidth: 820 }}>
-              <div role="row" style={{ gridTemplateColumns: '1.8fr 150px 150px 50px' }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
-                <div role="columnheader" className="py-2.5 text-left">Lô / Hạn sử dụng (tại kho nguồn)</div>
-                <div role="columnheader" className="py-2.5 text-right">Tồn khả dụng</div>
-                <div role="columnheader" className="py-2.5 text-center">SL dự kiến chuyển</div>
-                <div role="columnheader" className="py-2.5" />
-              </div>
-              <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
-                {lines.map((l) => (
-                  <div key={l.key} role="row" style={{ gridTemplateColumns: '1.8fr 150px 150px 50px', minHeight: 52 }} className="grid items-center border-b border-slate-100 px-4 text-sm">
-                    <div role="cell" className="min-w-0 truncate">
-                      <span className="font-medium text-slate-900">{l.drugName}</span> <span className="text-xs font-medium text-slate-400">({l.drugCode})</span>
-                      {l.isBatchManaged && (
-                        <span className="ml-1 text-slate-500">
-                          — Lô {l.batchNo} {l.expiryDate && <>· HSD {l.expiryDate.split('-').reverse().join('/')}</>}
-                        </span>
-                      )}
-                      {!l.isBatchManaged && <span className="ml-1 text-slate-400">— (không quản lý lô)</span>}
-                    </div>
-                    <div role="cell" className="text-right font-semibold tabular-nums text-slate-900">{l.availableQuantity}</div>
-                    <div role="cell" className="text-center">
-                      <input
-                        type="number"
-                        min={1}
-                        max={l.availableQuantity || undefined}
-                        value={l.quantityShipped}
-                        onChange={(e) => updateLine(l.key, { quantityShipped: e.target.value })}
-                        className="w-24 rounded-md border border-slate-300 px-1.5 py-1.5 text-center text-sm font-semibold text-slate-900"
-                      />
-                    </div>
-                    <div role="cell" className="text-center">
-                      <button type="button" onClick={() => removeLine(l.key)} aria-label={`Xoá dòng ${l.drugName}`} className="text-slate-400 hover:text-rose-600">
-                        <Trash size={16} weight="bold" aria-hidden="true" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div style={{ minWidth: 960 }} className="scroll-hover h-full overflow-x-auto">
-            <div role="row" style={{ gridTemplateColumns: '1.6fr 130px 150px 1.4fr' }} className="grid border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
-              <div role="columnheader" className="py-2.5 text-left">Mặt hàng / Lô</div>
-              <div role="columnheader" className="py-2.5 text-center">SL đã xuất</div>
-              <div role="columnheader" className="py-2.5 text-center">{isReceiving ? 'SL thực nhận' : 'SL thực nhận'}</div>
-              <div role="columnheader" className="py-2.5 text-left">{isReceiving ? 'Ghi chú chênh lệch' : 'Ghi chú chênh lệch'}</div>
-            </div>
-            {transferQuery.data!.lines.map((l) => {
-              const input = receiveInputs[l.id] ?? { quantityReceived: String(l.quantityShipped), varianceNote: '' };
-              const receivedNum = Number(input.quantityReceived || 0);
-              const isShort = isReceiving && receivedNum < l.quantityShipped;
-              return (
-                <div key={l.id} role="row" style={{ gridTemplateColumns: '1.6fr 130px 150px 1.4fr', minHeight: 56 }} className={`grid items-center border-b border-slate-100 px-4 text-sm ${isShort ? 'bg-amber-50/50' : ''}`}>
-                  <div role="cell" className="font-bold text-slate-900">
-                    {l.drugName}
-                    <span className="block text-xs font-medium text-slate-400">{l.isBatchManaged ? `Lô ${l.batchNo}${l.expiryDate ? ` · HSD ${l.expiryDate.split('-').reverse().join('/')}` : ''}` : '— (không quản lý lô)'}</span>
-                  </div>
-                  <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{l.quantityShipped}</div>
-                  <div role="cell" className="text-center">
-                    {isReceiving ? (
-                      <input
-                        type="number"
-                        min={0}
-                        max={l.quantityShipped}
-                        value={input.quantityReceived}
-                        onChange={(e) => setReceiveInputs((prev) => ({ ...prev, [l.id]: { ...input, quantityReceived: e.target.value } }))}
-                        className={`w-24 rounded-md border px-1.5 py-1.5 text-center text-sm font-semibold ${isShort ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-slate-300 text-slate-900'}`}
-                      />
-                    ) : (
-                      <span className="tabular-nums">{l.quantityReceived ?? '—'}</span>
-                    )}
-                  </div>
-                  <div role="cell">
-                    {isReceiving ? (
-                      isShort ? (
-                        <div>
-                          <input
-                            type="text"
-                            value={input.varianceNote}
-                            onChange={(e) => setReceiveInputs((prev) => ({ ...prev, [l.id]: { ...input, varianceNote: e.target.value } }))}
-                            placeholder="Bắt buộc nhập lý do..."
-                            className="w-full rounded-md border border-amber-400 bg-amber-50 px-2.5 py-1.5 text-sm font-semibold text-amber-900"
-                          />
-                          <p className="mt-1 text-xs font-semibold text-amber-700">Thiếu {l.quantityShipped - receivedNum} so với đã xuất — bắt buộc ghi lý do</p>
-                        </div>
-                      ) : (
-                        <span className="flex items-center gap-1.5 text-emerald-700">
-                          <Check size={14} aria-hidden="true" />
-                          <span className="text-xs font-semibold">Khớp — không cần ghi chú</span>
-                        </span>
-                      )
-                    ) : (
-                      <span className="text-slate-700">{l.varianceNote || '—'}</span>
-                    )}
-                  </div>
+      {/* ============ Bảng dòng hàng (soạn Nháp hoặc chỉ đọc) ============ */}
+      {(isDraftEditable || isViewOnly) && (
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          {isDraftEditable && lines.length === 0 ? (
+            <EmptyState icon={MagnifyingGlass} title="Chưa có dòng hàng nào" description="Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng." />
+          ) : isDraftEditable ? (
+            <div role="table" aria-label="Dòng hàng điều chuyển" className="scroll-hover h-full overflow-x-auto">
+              <div className="flex h-full flex-col" style={{ minWidth: 820 }}>
+                <div role="row" style={{ gridTemplateColumns: '1.8fr 150px 150px 50px' }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+                  <div role="columnheader" className="py-2.5 text-left">Lô / Hạn sử dụng (tại kho nguồn)</div>
+                  <div role="columnheader" className="py-2.5 text-right">Tồn khả dụng</div>
+                  <div role="columnheader" className="py-2.5 text-center">SL dự kiến chuyển</div>
+                  <div role="columnheader" className="py-2.5" />
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
+                  {lines.map((l) => (
+                    <div key={l.key} role="row" style={{ gridTemplateColumns: '1.8fr 150px 150px 50px', minHeight: 52 }} className="grid items-center border-b border-slate-100 px-4 text-sm">
+                      <div role="cell" className="min-w-0 truncate">
+                        <span className="font-medium text-slate-900">{l.drugName}</span> <span className="text-xs font-medium text-slate-400">({l.drugCode})</span>
+                        {l.isBatchManaged && (
+                          <span className="ml-1 text-slate-500">
+                            — Lô {l.batchNo} {l.expiryDate && <>· HSD {l.expiryDate.split('-').reverse().join('/')}</>}
+                          </span>
+                        )}
+                        {!l.isBatchManaged && <span className="ml-1 text-slate-400">— (không quản lý lô)</span>}
+                      </div>
+                      <div role="cell" className="text-right font-semibold tabular-nums text-slate-900">{l.availableQuantity}</div>
+                      <div role="cell" className="text-center">
+                        <input
+                          type="number"
+                          min={1}
+                          max={l.availableQuantity || undefined}
+                          value={l.quantityShipped}
+                          onChange={(e) => updateLine(l.key, { quantityShipped: e.target.value })}
+                          className="w-24 rounded-md border border-slate-300 px-1.5 py-1.5 text-center text-sm font-semibold text-slate-900"
+                        />
+                      </div>
+                      <div role="cell" className="text-center">
+                        <button type="button" onClick={() => removeLine(l.key)} aria-label={`Xoá dòng ${l.drugName}`} className="text-slate-400 hover:text-rose-600">
+                          <Trash size={16} weight="bold" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            transfer && <ReadOnlyLines transfer={transfer} showCost={showCost === true} />
+          )}
+        </div>
+      )}
+
+      {/* ============ Thông tin từ chối nhận / xử lý (chỉ đọc) ============ */}
+      {transfer && (isViewOnly || action !== null) && <TransferOutcomeNotes transfer={transfer} />}
 
       {/* ============ Footer hành động ============ */}
-      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        {formError && <p className="text-sm font-medium text-rose-600">{formError}</p>}
-        {isDraftEditable && (
+      {isDraftEditable && (
+        <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          {formError && <p className="text-sm font-medium text-rose-600">{formError}</p>}
           <div className="ml-auto flex gap-2">
             <Button type="button" variant="secondary" loading={saving} onClick={() => void handleSave(false)}>
               Lưu nháp
@@ -599,45 +530,101 @@ export function StockTransferFormPage() {
               Duyệt (Xuất kho ngay)
             </Button>
           </div>
-        )}
-        {isReceiving && (
-          <div className="ml-auto flex gap-2">
-            <PrintButton documentType="STOCK_TRANSFER" onPrint={handlePrint}>In phiếu</PrintButton>
-            {canApprove && (
-              <Button type="button" loading={receiveMutation.isPending} onClick={() => void handleReceive()}>
-                <Truck size={15} weight="bold" aria-hidden="true" />
-                Xác nhận đã nhận hàng
-              </Button>
-            )}
-          </div>
-        )}
-        {isPureReadOnly && transferQuery.data?.status === 'COMPLETED' && (
-          <PrintButton documentType="STOCK_TRANSFER" className="ml-auto" onPrint={handlePrint}>In phiếu</PrintButton>
-        )}
-      </div>
-
-      {printing && transferQuery.data && <StockTransferPrintView transfer={transferQuery.data} />}
-      {isReceiving && (
-        <p className="flex-shrink-0 px-1 text-xs text-slate-500">
-          Xác nhận là <strong>MỘT LẦN DUY NHẤT</strong> — không nhận nhiều đợt/một phần. Sau khi xác nhận: sinh phiếu Nhập kho tại kho đích đúng SL thực nhận. Phần chênh lệch chỉ ghi vào Nhật ký hoạt
-          động để tra soát — kho nguồn không đảo ngược.
-        </p>
+        </div>
       )}
+
       {isDraftEditable && (
         <p className="flex-shrink-0 px-1 text-xs text-slate-500">
-          Bấm "Duyệt" sẽ trừ tồn kho NGUỒN ngay lập tức và chuyển phiếu sang "Đang vận chuyển" — chờ kho đích xác nhận nhận hàng.
+          Bấm &quot;Duyệt&quot; sẽ trừ tồn kho NGUỒN ngay lập tức và chuyển phiếu sang &quot;Đang vận chuyển&quot; — chờ kho đích kiểm nhận hàng.
+          {multiBranch && ' Phiếu thuộc chi nhánh gửi; chi nhánh nhận chỉ thấy từ lúc Duyệt xuất.'}
         </p>
       )}
-
-      {rejecting && transferQuery.data && (
-        <StockTransferRejectDialog
-          transferId={transferQuery.data.id}
-          transferNo={transferQuery.data.transferNo}
-          version={transferQuery.data.version}
-          onDone={() => navigate('/inventory/transfers')}
-          onClose={() => setRejecting(false)}
-        />
+      {isViewOnly && transfer?.status === 'IN_TRANSIT' && sides?.isSender && !sides.isReceiver && (
+        <p className="flex-shrink-0 px-1 text-xs text-slate-500">Hàng đang đi — chi nhánh nhận sẽ kiểm nhận. In phiếu để đi kèm hàng.</p>
       )}
+
+      {printing && transfer && <StockTransferPrintView transfer={transfer} />}
+
+      {rejecting && transfer && (
+        <StockTransferRejectDialog transferId={transfer.id} transferNo={transfer.transferNo} version={transfer.version} onDone={backToList} onClose={() => setRejecting(false)} />
+      )}
+    </div>
+  );
+}
+
+/** Bảng chỉ đọc: SL đã xuất / thực nhận / lý do chênh lệch / cách xử lý; thêm cột "Giá trị thiếu" chỉ khi người xem thuộc chi nhánh GỬI (Q3). */
+function ReadOnlyLines({ transfer, showCost }: { transfer: StockTransferDetail; showCost: boolean }) {
+  const grid = showCost ? 'minmax(220px,1.5fr) 100px 100px 130px minmax(220px,1.5fr) minmax(170px,1fr)' : 'minmax(220px,1.5fr) 100px 100px minmax(220px,1.5fr) minmax(170px,1fr)';
+  return (
+    <div className="scroll-hover h-full overflow-auto">
+      <div role="table" aria-label="Dòng hàng điều chuyển" style={{ minWidth: showCost ? 1040 : 900 }}>
+        <div role="row" style={{ gridTemplateColumns: grid }} className="grid gap-x-2 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <div role="columnheader" className="py-2.5 text-left">Mặt hàng / Lô</div>
+          <div role="columnheader" className="py-2.5 text-center">SL đã xuất</div>
+          <div role="columnheader" className="py-2.5 text-center">SL thực nhận</div>
+          {showCost && <div role="columnheader" className="py-2.5 text-right">Giá trị thiếu</div>}
+          <div role="columnheader" className="py-2.5 pl-3 text-left">Lý do chênh lệch</div>
+          <div role="columnheader" className="py-2.5 text-left">Xử lý</div>
+        </div>
+        {transfer.lines.map((l) => {
+          const shortage = l.quantityReceived === null ? 0 : Math.max(0, l.quantityShipped - l.quantityReceived);
+          return (
+            <div key={l.id} role="row" style={{ gridTemplateColumns: grid, minHeight: 56 }} className={`grid items-center gap-x-2 border-b border-slate-100 px-4 text-sm ${shortage > 0 ? 'bg-amber-50/50' : ''}`}>
+              <div role="cell" className="min-w-0 py-2">
+                <p className="truncate font-bold text-slate-900" title={l.drugName}>{l.drugName}</p>
+                <p className="truncate text-xs font-medium text-slate-400">{l.isBatchManaged ? `Lô ${l.batchNo}${l.expiryDate ? ` · HSD ${l.expiryDate.split('-').reverse().join('/')}` : ''}` : '— (không quản lý lô)'}</p>
+              </div>
+              <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{l.quantityShipped}</div>
+              <div role="cell" className="text-center font-semibold tabular-nums">{l.quantityReceived ?? '—'}</div>
+              {showCost && <div role="cell" className="text-right font-semibold tabular-nums text-slate-900">{shortage > 0 && l.unitCost !== null ? (shortage * l.unitCost).toLocaleString('vi-VN') : '—'}</div>}
+              <div role="cell" className="min-w-0 pl-3 text-slate-700">
+                {l.varianceReason ? <p className="font-semibold">{VARIANCE_REASON_LABEL[l.varianceReason]}</p> : <p className="text-slate-400">—</p>}
+                {l.varianceNote && l.varianceNote !== (l.varianceReason ? VARIANCE_REASON_LABEL[l.varianceReason] : '') && <p className="break-words text-xs text-slate-500">{l.varianceNote}</p>}
+              </div>
+              <div role="cell" className="min-w-0 text-slate-700">
+                {l.varianceResolution && <p className="font-semibold">{VARIANCE_RESOLUTION_LABEL[l.varianceResolution]}</p>}
+                {l.quantityReturnedBack !== null && <p className="font-semibold">Nhận lại: {l.quantityReturnedBack}</p>}
+                {l.returnVarianceNote && <p className="break-words text-xs text-slate-500">{l.returnVarianceNote}</p>}
+                {!l.varianceResolution && l.quantityReturnedBack === null && <span className="text-slate-400">—</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Ghi lại lý do bên nhận từ chối nhận / ghi chú xử lý chênh lệch / lý do bên gửi từ chối duyệt — để cả hai bên cùng thấy dấu vết. */
+function TransferOutcomeNotes({ transfer }: { transfer: StockTransferDetail }) {
+  const notes: { title: string; body: string }[] = [];
+  if (transfer.status === 'REJECTED' && transfer.rejectionReason) {
+    notes.push({ title: 'Lý do từ chối phiếu', body: transfer.rejectionReason });
+  }
+  if (transfer.receiveRejectReason) {
+    const who = [transfer.receiveRejectedByName, transfer.receiveRejectedAt ? formatDateTimeVn(transfer.receiveRejectedAt) : null].filter(Boolean).join(' · ');
+    notes.push({
+      title: `Bên nhận từ chối nhận hàng: ${REJECT_RECEIPT_REASON_LABEL[transfer.receiveRejectReason]}`,
+      body: [transfer.receiveRejectNote, who].filter(Boolean).join(' — '),
+    });
+  }
+  if (transfer.returnConfirmedByName) {
+    notes.push({ title: 'Đã nhận lại hàng', body: [transfer.returnConfirmedByName, transfer.returnConfirmedAt ? formatDateTimeVn(transfer.returnConfirmedAt) : null].filter(Boolean).join(' · ') });
+  }
+  if (transfer.varianceResolvedByName) {
+    notes.push({
+      title: 'Đã xử lý chênh lệch',
+      body: [transfer.varianceResolutionNote, [transfer.varianceResolvedByName, transfer.varianceResolvedAt ? formatDateTimeVn(transfer.varianceResolvedAt) : null].filter(Boolean).join(' · ')].filter(Boolean).join(' — '),
+    });
+  }
+  if (notes.length === 0) return null;
+  return (
+    <div className="flex-shrink-0 space-y-1.5 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
+      {notes.map((n) => (
+        <p key={n.title} className="break-words text-slate-700">
+          <span className="font-semibold text-slate-900">{n.title}.</span> {n.body}
+        </p>
+      ))}
     </div>
   );
 }

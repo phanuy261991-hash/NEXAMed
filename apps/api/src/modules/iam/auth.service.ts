@@ -163,6 +163,7 @@ export class AuthService {
             mustChangePassword: user.mustChangePassword,
             branches: assignedBranches.map(toBranchLite),
             currentBranchId,
+            multiBranchCompany: await this.branchAccess.isMultiBranchCompany(tx, request.tenantId),
           },
           refreshToken: issued.rawRefreshToken,
           refreshExpiresIn: issued.expiresIn,
@@ -376,6 +377,7 @@ export class AuthService {
         mustChangePassword: user.mustChangePassword,
         branches: assignedBranches.map(toBranchLite),
         currentBranchId,
+        multiBranchCompany: await this.branchAccess.isMultiBranchCompany(tx, tenantId),
       };
     });
   }

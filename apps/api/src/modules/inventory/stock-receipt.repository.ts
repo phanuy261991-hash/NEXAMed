@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { DiscountType, Prisma, StockReceipt, StockReceiptType } from '@prisma/client';
+import type { DocumentBranchRef } from '../../common/document-branch-ref';
 
 export interface StockReceiptLineData {
   drugId: string;
@@ -227,6 +228,16 @@ export class StockReceiptRepository {
   /** Phiếu của kho thuộc `branchId` (Đợt 2 chi nhánh, #233) — phiếu của chi nhánh khác → null → 404. */
   findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<StockReceipt | null> {
     return tx.stockReceipt.findFirst({ where: { tenantId, id, deletedAt: null, warehouse: { branchId } } });
+  }
+
+  /** CHỈ cho sổ công nợ NCC liên chi nhánh (#233 Q4): số phiếu + chi nhánh của kho, KHÔNG lọc chi nhánh (vẫn lọc tenant) — nơi gọi chỉ được trả số phiếu/chi nhánh, không mở nội dung. */
+  async findBranchRefsByIds(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<DocumentBranchRef[]> {
+    if (ids.length === 0) return [];
+    const rows = await tx.stockReceipt.findMany({
+      where: { tenantId, id: { in: ids } },
+      select: { id: true, receiptNo: true, warehouse: { select: { branchId: true, branch: { select: { name: true } } } } },
+    });
+    return rows.map((r) => ({ id: r.id, documentNo: r.receiptNo, branchId: r.warehouse.branchId, branchName: r.warehouse.branch.name }));
   }
 
   /** Dùng cho đường XEM (GET chi tiết) — KHÔNG lọc `deletedAt`, phiếu đã huỷ vẫn xem được (chỉ đọc). */

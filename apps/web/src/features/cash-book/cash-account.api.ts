@@ -1,8 +1,9 @@
 import type { CashAccount, CreateCashAccountRequest, ListCashAccountsResponse, UpdateCashAccountRequest } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
 
-export async function getCashAccounts(): Promise<ListCashAccountsResponse> {
-  return unwrap(await getApiClient().GET('/api/v1/cash-accounts')) as ListCashAccountsResponse;
+/** `allBranches`: mọi chi nhánh tài khoản được gán (màn quản trị Quỹ); mặc định chỉ quỹ của chi nhánh đang làm việc (docs/DECISIONS.md #233). */
+export async function getCashAccounts(allBranches = false): Promise<ListCashAccountsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/cash-accounts', { params: { query: allBranches ? { allBranches: true } : {} } })) as ListCashAccountsResponse;
 }
 
 export async function createCashAccount(body: CreateCashAccountRequest): Promise<CashAccount> {

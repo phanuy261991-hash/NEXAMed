@@ -1,4 +1,6 @@
-# HANDOFF — Tầng chi nhánh ĐỢT 2 (tiền + kho + kiểm nhận điều chuyển + đầu phiếu in) — GIỮA CHỪNG, 2026-10-14
+# HANDOFF — Tầng chi nhánh ĐỢT 2 (tiền + kho + kiểm nhận điều chuyển + đầu phiếu in) — 2026-10-14
+
+> **ĐÃ HOÀN THÀNH (cùng ngày, phiên sau)**: mọi mục A–C bên dưới đã làm xong + test + verify Chrome thật; kết quả và các quyết định phát sinh ở `docs/DECISIONS.md` #233 (mục "Cập nhật 14/10/2026 cuối phiên"). File này giữ lại làm lịch sử, KHÔNG còn là việc treo. Còn lại duy nhất: dựng lại gói on-prem.
 
 > Hội thoại luôn tiếng Việt. Commit + push **thẳng `master`**, không tạo nhánh/PR. Mockup đã DUYỆT (không dựng lại). Sau mỗi đợt chạy lại TOÀN BỘ test và báo kết quả; có bước kiểm tra cô lập tenant/chi nhánh. Ảnh chụp kiểm tra để ở thư mục tạm, KHÔNG lưu vào repo.
 > **Commit này là trạng thái DỞ do hết phiên**: backend biên dịch sạch nhưng **web CHƯA biên dịch được**, 3 test API đỏ, migration CHƯA áp lên DB dev. CI trên `master` sẽ đỏ cho tới khi xong web + sửa test.

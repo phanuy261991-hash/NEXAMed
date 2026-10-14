@@ -25,6 +25,13 @@ export class WarehouseController {
     return this.warehouseService.listWarehouses(tenantId, userId, requireBranchId(req.user!), allBranches);
   }
 
+  /** Ô chọn KHO NHẬN ở form điều chuyển (#233): mọi kho hoạt động của công ty kể cả chi nhánh khác, chỉ trường tối thiểu (không tồn/giá). Dùng quyền tạo phiếu điều chuyển, không cần quyền danh mục kho. Đặt TRƯỚC `:id`. */
+  @Get('transfer-destinations')
+  @RequirePermission('stock_transfer', 'create')
+  async transferDestinations(@Req() req: Request) {
+    return this.warehouseService.listTransferDestinations(req.user!.tenantId);
+  }
+
   /** Một bản ghi theo id — nhẹ hơn tải cả danh sách; web dùng để phát hiện bản ghi bị người khác sửa lúc form Sửa đang mở (`useEditedRecordGuard`). 404 nếu không có/khác tenant/khác chi nhánh được gán. */
   @Get(':id')
   @RequirePermission('drug', 'read')

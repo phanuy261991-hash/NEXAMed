@@ -248,8 +248,12 @@ export class StockTransferService {
   async getShrinkageReport(tenantId: string, branchId: string, query: GetStockTransferShrinkageQuery): Promise<GetStockTransferShrinkageResponse> {
     const from = new Date(`${query.from}T00:00:00+07:00`);
     const to = new Date(`${query.to}T23:59:59.999+07:00`);
-    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockTransferRepository.listShrinkage(tx, tenantId, [branchId], from, to));
-    const items = rows.map((r) => ({
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockTransferRepository.listShrinkage(tx, tenantId, [branchId], from, to, query.fromWarehouseId));
+    // Dải số theo nguyên nhân tính TRƯỚC bộ lọc nguyên nhân để cả hai nhóm luôn hiện; bảng và tổng thì áp đủ bộ lọc.
+    const countByCause = { WRITE_OFF: rows.filter((r) => r.cause === 'WRITE_OFF').length, RETURN_SHORTAGE: rows.filter((r) => r.cause === 'RETURN_SHORTAGE').length };
+    const items = rows
+      .filter((r) => !query.cause || r.cause === query.cause)
+      .map((r) => ({
       transferId: r.transferId,
       transferNo: r.transferNo,
       occurredAt: r.occurredAt.toISOString(),
@@ -262,7 +266,28 @@ export class StockTransferService {
       lineValue: Number(r.unitCost * BigInt(r.quantity)),
       cause: r.cause,
     }));
-    return { items, totalQuantity: items.reduce((s, i) => s + i.quantity, 0), totalValue: items.reduce((s, i) => s + i.lineValue, 0) };
+    return {
+      items,
+      totalQuantity: items.reduce((s, i) => s + i.quantity, 0),
+      totalValue: items.reduce((s, i) => s + i.lineValue, 0),
+      transferCount: new Set(items.map((i) => i.transferId)).size,
+      countByCause,
+    };
+  }
+
+  /** Nhật ký xuất Excel báo cáo hao hụt — dùng chung nhãn `stock_ledger_report.exported` (cùng nhóm báo cáo kho), phân biệt bằng `report` trong phạm vi. */
+  async recordShrinkageExportAudit(tenantId: string, actorId: string, query: GetStockTransferShrinkageQuery, meta: RequestMeta): Promise<void> {
+    await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'stock_ledger_report.exported',
+        entityType: 'stock_ledger_report',
+        entityId: tenantId,
+        afterJson: { report: 'transfer_shrinkage', ...query },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      }),
+    );
   }
 
   /** Bên GỬI từ chối duyệt phiếu còn Nháp (khác "Từ chối nhận" của bên nhận khi hàng đã đi). */

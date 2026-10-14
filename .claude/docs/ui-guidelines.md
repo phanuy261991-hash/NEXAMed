@@ -380,3 +380,12 @@ Mẫu sai đã gặp 2 lần liên tiếp ở `WaitingCard`/`InProgressCard` (`a
 
 - Mọi chứng từ in dùng `shared/print/PrintDocument` + nút `PrintButton` (không viết `window.print()` + header riêng từng màn). Bấm "In phiếu" mở **hộp thoại chọn khổ** (thẻ chọn 2 cột, khổ mặc định chọn sẵn, Enter để in, Esc huỷ) — **KHÔNG dùng menu thả xuống có mũi tên** (bị cắt ở mép dưới màn hình, khó thấy; phản hồi trực tiếp chủ dự án). Chứng từ chỉ có 1 khổ thì in thẳng.
 - Cụm nút chọn số lượng trong khung hẹp (ví dụ "Số liên") xếp `grid grid-cols-3` dưới nhãn, `whitespace-nowrap` — không đặt cạnh nhãn dài trong khung 380px (vỡ chữ).
+
+## 14. Giao diện chi nhánh & bảng dạng lưới (chốt 14/10/2026, `docs/DECISIONS.md` #233, phản hồi trực tiếp chủ dự án)
+
+- **Công ty 1 chi nhánh: không cột/ô/tab/nhãn chi nhánh nào.** Quyết định hiện bằng `showBranchInfo(user)` (`features/branch/branch-visibility.ts`: được gán ≥ 2 chi nhánh HOẶC `user.multiBranchCompany`); chỉ bộ chuyển/màn chọn chi nhánh dùng `hasMultipleBranches(user)` (số được gán). Không tự đếm `user.branches.length` để quyết định hiện nhãn trên chứng từ.
+- **Tên chi nhánh luôn có thể dài** (tối đa 100 ký tự): ô/bảng/chip cắt chữ bằng `truncate` + `title` (chip dùng `BranchChip`, `max-w-[180px]`); khung thông tin và hộp thoại cho `break-words` (xuống dòng) — không để tên dài làm vỡ bố cục. Bản in thì xuống dòng, không cắt.
+- **Chứng từ thuộc chi nhánh khác**: vẫn hiện số phiếu + số tiền + `BranchChip otherBranch` (tông hổ phách) nhưng KHÔNG làm đường dẫn/nút mở (máy chủ trả 404); dùng `useIsOtherBranch(branchId)` (`features/branch/BranchChip.tsx`), nút icon `disabled` kèm `title` giải thích. Mở bằng đường dẫn trực tiếp thì `RecordLoadError` → trang "Không có quyền xem nội dung này".
+- **Bảng dạng lưới (`div role="table"` + `gridTemplateColumns`)**: dòng tiêu đề và dòng dữ liệu phải dùng CÙNG `gridTemplateColumns` VÀ CÙNG `gap-x-*` — lệch khoảng cách làm tiêu đề trôi dần so với nội dung (lỗi thật ở báo cáo hao hụt, 14/10/2026).
+- **Dải số tổng hợp** luôn dùng `StatCardRow` (một dải liền, chia bằng vạch mảnh, màu nằm ở chữ số). KHÔNG dùng thẻ viền bo + thanh màu bên cạnh (chủ dự án từ chối lần nữa 14/10/2026, trùng mục 12). Mỗi ô giữ gọn một dòng: nhãn nêu nội dung, giá trị chỉ là số ("1 / 0"), không viết câu dài vào ô giá trị.
+- **Báo cáo cùng nhóm gộp thành tab của một trang** (`TabBar variant="underline"`, tab nhớ trong `?tab=`) thay vì thêm menu riêng khi chủ dự án chốt như vậy (ví dụ "Hao hụt điều chuyển" nằm trong "Báo cáo Nhập-Xuất-Tồn"); đường dẫn cũ giữ lại và chuyển hướng.

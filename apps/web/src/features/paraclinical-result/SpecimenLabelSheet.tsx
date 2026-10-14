@@ -30,7 +30,7 @@ const FALLBACK_TEMPLATE: ResolvedPrintTemplate = {
   options: [],
   config: {
     margins: { topMm: 1, rightMm: 1, bottomMm: 1, leftMm: 1 },
-    header: { showLogo: false, showClinicName: false, showAddress: false, showPhone: false, showTaxCode: false, showDivider: false },
+    header: { showLogo: false, showClinicName: false, showBranchName: false, showAddress: false, showPhone: false, showTaxCode: false, showDivider: false },
     title: { text: '' },
     footer: { note: '', showSignature: false, showSignatureHint: false },
     label: { showPatientCode: false, showGroup: true, showCapColor: false, showDate: true },

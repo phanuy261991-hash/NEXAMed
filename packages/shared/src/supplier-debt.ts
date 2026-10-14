@@ -96,6 +96,13 @@ export const supplierDebtLedgerEntrySchema = z.object({
   reversed: z.boolean(),
   note: z.string().nullable(),
   createdByName: z.string(),
+  /**
+   * Đợt 2 chi nhánh (#233 Q4) — chi nhánh sở hữu chứng từ gốc (phiếu nhập/xuất/thu-chi) của dòng này; `null` với dòng không gắn chứng từ
+   * (nợ đầu kỳ, điều chỉnh). Công nợ NCC là dữ liệu CHUNG cả công ty nên dòng + số tiền luôn hiện đủ; web khoá nút mở phiếu gốc khi chi nhánh
+   * này khác chi nhánh người xem đang làm việc (số phiếu vẫn hiện).
+   */
+  sourceBranchId: z.string().uuid().nullable(),
+  sourceBranchName: z.string().nullable(),
 });
 export type SupplierDebtLedgerEntry = z.infer<typeof supplierDebtLedgerEntrySchema>;
 
@@ -128,6 +135,11 @@ export const supplierDebtReceiptStatusSchema = z.object({
   paidAmount: z.number().int(),
   dueAmount: z.number().int(),
   status: supplierDebtItemStatusSchema,
+  /** Đợt 2 chi nhánh (#233 Q4) — chi nhánh của phiếu nhập gốc (`null` với dòng ảo "Nợ đầu kỳ"). Xem `supplierDebtLedgerEntrySchema`. */
+  sourceBranchId: z.string().uuid().nullable(),
+  sourceBranchName: z.string().nullable(),
+  /** Số phiếu nhập gốc — hiện được cả khi phiếu thuộc chi nhánh khác (web không ghép được từ `GET /inventory/receipts` vì danh sách đó lọc theo chi nhánh). */
+  stockReceiptNo: z.string().nullable(),
 });
 export type SupplierDebtReceiptStatus = z.infer<typeof supplierDebtReceiptStatusSchema>;
 
@@ -177,6 +189,9 @@ export const supplierDebtPaymentSchema = z.object({
   approvedByName: z.string().nullable(),
   approvedAt: z.string().nullable(),
   rejectionReason: z.string().nullable(),
+  /** Đợt 2 chi nhánh (#233 Q4) — chi nhánh của quỹ chi/thu; thấy đủ phiếu mọi chi nhánh, web khoá nút mở/duyệt phiếu chi nhánh khác. */
+  branchId: z.string().uuid(),
+  branchName: z.string(),
 });
 export type SupplierDebtPayment = z.infer<typeof supplierDebtPaymentSchema>;
 

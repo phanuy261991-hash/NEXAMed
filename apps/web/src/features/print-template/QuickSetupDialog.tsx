@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Info, Sparkle } from '@phosphor-icons/react';
 import type { PrintDocumentType, PrintDocumentTypeInfo, PrintQuickSetupPreset, PrintQuickSetupRequest, PrintTemplateConfig } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
+import { useAuthStore } from '../auth/auth.store';
+import { showBranchInfo } from '../branch/branch-visibility';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 
@@ -11,6 +13,7 @@ type HeaderConfig = PrintTemplateConfig['header'];
 const HEADER_TOGGLES: { key: keyof HeaderConfig; label: string }[] = [
   { key: 'showLogo', label: 'Logo phòng khám' },
   { key: 'showClinicName', label: 'Tên phòng khám' },
+  { key: 'showBranchName', label: 'Tên chi nhánh' },
   { key: 'showAddress', label: 'Địa chỉ' },
   { key: 'showPhone', label: 'Điện thoại' },
   { key: 'showTaxCode', label: 'Mã số thuế' },
@@ -42,6 +45,9 @@ export function QuickSetupDialog({
   onCancel: () => void;
   onSubmit: (dto: PrintQuickSetupRequest) => void;
 }) {
+  // Công tắc "Tên chi nhánh" chỉ có nghĩa khi công ty có từ 2 chi nhánh — công ty 1 chi nhánh: giao diện không đổi (docs/DECISIONS.md #233).
+  const user = useAuthStore((s) => s.user);
+  const headerToggles = showBranchInfo(user) ? HEADER_TOGGLES : HEADER_TOGGLES.filter((t) => t.key !== 'showBranchName');
   const [preset, setPreset] = useState<PrintQuickSetupPreset>('ALL_A4');
   const [header, setHeader] = useState<HeaderConfig>(initialHeader);
   const [selected, setSelected] = useState<Set<PrintDocumentType>>(() => new Set(documentTypes.map((d) => d.documentType)));
@@ -93,7 +99,7 @@ export function QuickSetupDialog({
           <section>
             <h3 className="mb-2 text-sm font-bold text-slate-800">2. Đầu trang hiện những gì?</h3>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-lg border border-slate-200 px-3.5 py-3 sm:grid-cols-3">
-              {HEADER_TOGGLES.map((t) => (
+              {headerToggles.map((t) => (
                 <label key={t.key} className="flex items-center gap-2 text-sm text-slate-700">
                   <input type="checkbox" checked={header[t.key]} onChange={(e) => setHeader({ ...header, [t.key]: e.target.checked })} className="h-4 w-4 accent-blue-600" />
                   {t.label}

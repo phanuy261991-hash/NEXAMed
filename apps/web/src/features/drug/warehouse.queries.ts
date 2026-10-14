@@ -3,14 +3,26 @@ import type { CreateWarehouseRequest, UpdateWarehouseRequest } from '@nexamed/sh
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { STALE_REFERENCE_MS } from '../../shared/api/stale-time';
-import { createWarehouse, listWarehouses, updateWarehouse } from './warehouse.api';
+import { createWarehouse, listWarehouses, listWarehouseTransferDestinations, updateWarehouse } from './warehouse.api';
 
-export function useWarehousesQuery(options?: { fresh?: boolean }) {
+export function useWarehousesQuery(options?: { fresh?: boolean; allBranches?: boolean }) {
+  const { tenantId } = useAppConfig();
+  const allBranches = options?.allBranches ?? false;
+  return useQuery({
+    queryKey: queryKey(tenantId, 'warehouse', allBranches ? 'all-branches' : 'current'),
+    queryFn: () => listWarehouses(allBranches),
+    staleTime: options?.fresh ? 0 : STALE_REFERENCE_MS, // `fresh`: màn quản trị kho luôn lấy bản mới nhất
+  });
+}
+
+/** Kho đích liên chi nhánh cho form điều chuyển — mọi kho đang hoạt động của công ty (id, tên, chi nhánh). */
+export function useWarehouseTransferDestinationsQuery(enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
-    queryKey: queryKey(tenantId, 'warehouse'),
-    queryFn: () => listWarehouses(),
-    staleTime: options?.fresh ? 0 : STALE_REFERENCE_MS, // `fresh`: màn quản trị kho luôn lấy bản mới nhất
+    queryKey: queryKey(tenantId, 'warehouse', 'transfer-destinations'),
+    queryFn: listWarehouseTransferDestinations,
+    staleTime: STALE_REFERENCE_MS,
+    enabled,
   });
 }
 

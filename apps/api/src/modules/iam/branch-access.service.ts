@@ -22,4 +22,9 @@ export class BranchAccessService {
     if (active.length <= 1) return active;
     return this.branchRepository.listAssignedBranches(tx, tenantId, userId);
   }
+
+  /** Công ty có từ 2 chi nhánh hoạt động trở lên không (độc lập với số chi nhánh tài khoản được gán). */
+  async isMultiBranchCompany(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    return (await this.branchRepository.list(tx, tenantId, false)).length >= 2;
+  }
 }

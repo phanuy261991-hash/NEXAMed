@@ -19,8 +19,8 @@ export interface WalletTotals {
 }
 
 export interface WalletTransactionRow extends WalletTransaction {
-  invoice: { invoiceNo: string; encounterId: string } | null;
-  cashVoucher: { voucherNo: string } | null;
+  invoice: { invoiceNo: string; encounterId: string; encounter: { branchId: string; branch: { name: string } } } | null;
+  cashVoucher: { voucherNo: string; cashAccount: { branchId: string; branch: { name: string } } } | null;
 }
 
 export interface WalletListRow extends PatientWallet {
@@ -135,8 +135,8 @@ export class PatientWalletRepository {
     return tx.walletTransaction.findMany({
       where: { tenantId, walletId },
       include: {
-        invoice: { select: { invoiceNo: true, encounterId: true } },
-        cashVoucher: { select: { voucherNo: true } },
+        invoice: { select: { invoiceNo: true, encounterId: true, encounter: { select: { branchId: true, branch: { select: { name: true } } } } } },
+        cashVoucher: { select: { voucherNo: true, cashAccount: { select: { branchId: true, branch: { select: { name: true } } } } } },
       },
       orderBy: { id: 'desc' },
       take: params.take,

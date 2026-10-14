@@ -240,7 +240,14 @@ export class InvoiceService {
 
   /** `invoiceId` tuỳ chọn (Kho Thuốc GĐ3, #165) — xem `resolveTargetInvoice()`. */
   async getByEncounterId(tenantId: string, branchId: string, encounterId: string, invoiceId?: string): Promise<InvoiceDto | null> {
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, invoiceId));
+    const row = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const found = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, invoiceId);
+      // Đợt 2 chi nhánh (#233): không có phiếu VÀ lượt khám không thuộc chi nhánh đang làm → 404 (cùng triết lý cô lập: không phân biệt "không tồn tại" với
+      // "của chi nhánh khác"), để web hiện trang "Không có quyền xem nội dung này" thay vì "lượt khám này không có phiếu thu". Lượt khám CỦA chi nhánh này
+      // mà chưa có phiếu (chưa chỉ định dịch vụ có đơn giá) vẫn trả null như cũ.
+      if (!found && !(await this.invoiceRepository.encounterInBranch(tx, tenantId, branchId, encounterId))) throw new NotFoundException();
+      return found;
+    });
     if (!row) return null;
     const otherInvoices = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.invoiceRepository.findOtherInvoicesSummary(tx, tenantId, encounterId, row.id),

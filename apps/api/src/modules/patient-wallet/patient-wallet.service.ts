@@ -364,7 +364,10 @@ export class PatientWalletService {
       const actorIds = [...new Set(page.map((r) => r.createdBy))];
       const names = actorIds.length > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, actorIds) : new Map<string, string>();
       return {
-        items: page.map((r) => ({
+        items: page.map((r) => {
+          // Chi nhánh nơi giao dịch xảy ra (phiếu quỹ → chi nhánh của quỹ; phiếu thu → chi nhánh của lượt khám) — web khoá nút mở phiếu khi khác chi nhánh người xem (Đợt 2, #233 Q5).
+          const where = r.cashVoucher?.cashAccount ?? r.invoice?.encounter ?? null;
+          return {
           id: r.id,
           type: r.type,
           amount: Number(r.amount),
@@ -377,7 +380,10 @@ export class PatientWalletService {
           note: r.note,
           createdByName: names.get(r.createdBy) ?? 'Không rõ',
           createdAt: r.createdAt.toISOString(),
-        })),
+          branchId: where?.branchId ?? null,
+          branchName: where?.branch.name ?? null,
+          };
+        }),
         nextCursor: hasMore && lastRow ? lastRow.id : null,
       };
     });

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, StockIssue, StockIssueStatus, StockIssueType } from '@prisma/client';
+import type { DocumentBranchRef } from '../../common/document-branch-ref';
 
 export interface StockIssueLineData {
   prescriptionItemId: string | null;
@@ -153,6 +154,16 @@ export class StockIssueRepository {
 
   findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<StockIssue | null> {
     return tx.stockIssue.findFirst({ where: { tenantId, id, deletedAt: null, warehouse: { branchId } } });
+  }
+
+  /** CHỈ cho sổ công nợ NCC liên chi nhánh (#233 Q4): số phiếu + chi nhánh của kho, KHÔNG lọc chi nhánh (vẫn lọc tenant). */
+  async findBranchRefsByIds(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<DocumentBranchRef[]> {
+    if (ids.length === 0) return [];
+    const rows = await tx.stockIssue.findMany({
+      where: { tenantId, id: { in: ids } },
+      select: { id: true, issueNo: true, warehouse: { select: { branchId: true, branch: { select: { name: true } } } } },
+    });
+    return rows.map((r) => ({ id: r.id, documentNo: r.issueNo, branchId: r.warehouse.branchId, branchName: r.warehouse.branch.name }));
   }
 
   /** Số lượng đã xuất theo TỪNG thuốc của 1 phiếu xuất (đơn vị CƠ SỞ) — cận trên cho phiếu nhập hoàn trả gắn phiếu này. */

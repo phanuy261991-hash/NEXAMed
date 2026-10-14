@@ -161,6 +161,9 @@
                                 "null"
                               ],
                               "format": "uuid"
+                            },
+                            "multiBranchCompany": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -173,7 +176,8 @@
                             "permissions",
                             "mustChangePassword",
                             "branches",
-                            "currentBranchId"
+                            "currentBranchId",
+                            "multiBranchCompany"
                           ]
                         }
                       },
@@ -516,6 +520,9 @@
                             "null"
                           ],
                           "format": "uuid"
+                        },
+                        "multiBranchCompany": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -528,7 +535,8 @@
                         "permissions",
                         "mustChangePassword",
                         "branches",
-                        "currentBranchId"
+                        "currentBranchId",
+                        "multiBranchCompany"
                       ]
                     },
                     "meta": {
@@ -1008,7 +1016,7 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 100
                   },
                   "address": {
                     "type": "string",
@@ -1224,7 +1232,7 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 100
                   },
                   "address": {
                     "type": [
@@ -35789,6 +35797,10 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "branchId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "departmentId": {
                     "type": "string",
                     "format": "uuid"
@@ -35825,6 +35837,13 @@
                         "name": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "branchName": {
+                          "type": "string"
+                        },
                         "departmentId": {
                           "type": [
                             "string",
@@ -35852,6 +35871,8 @@
                         "id",
                         "code",
                         "name",
+                        "branchId",
+                        "branchName",
                         "departmentId",
                         "departmentName",
                         "isDefault",
@@ -35940,10 +35961,32 @@
         "tags": [
           "drug"
         ],
-        "summary": "Danh sách Kho",
+        "summary": "Danh sách Kho — mặc định chỉ kho của chi nhánh đang làm việc; allBranches=true liệt kê mọi chi nhánh tài khoản được gán (docs/DECISIONS.md #233)",
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ],
+              "default": false
+            },
+            "required": false,
+            "name": "allBranches",
+            "in": "query"
           }
         ],
         "responses": {
@@ -35970,6 +36013,13 @@
                                 "type": "string"
                               },
                               "name": {
+                                "type": "string"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
                                 "type": "string"
                               },
                               "departmentId": {
@@ -35999,6 +36049,8 @@
                               "id",
                               "code",
                               "name",
+                              "branchId",
+                              "branchName",
                               "departmentId",
                               "departmentName",
                               "isDefault",
@@ -36090,6 +36142,143 @@
         }
       }
     },
+    "/api/v1/warehouses/transfer-destinations": {
+      "get": {
+        "tags": [
+          "drug"
+        ],
+        "summary": "Ô chọn KHO NHẬN ở form điều chuyển (docs/DECISIONS.md #233) — mọi kho đang hoạt động của công ty kể cả chi nhánh khác, chỉ trường tối thiểu",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "branchId",
+                              "branchName"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_transfer.create",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/warehouses/{id}": {
       "get": {
         "tags": [
@@ -36133,6 +36322,13 @@
                         "name": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "branchName": {
+                          "type": "string"
+                        },
                         "departmentId": {
                           "type": [
                             "string",
@@ -36160,6 +36356,8 @@
                         "id",
                         "code",
                         "name",
+                        "branchId",
+                        "branchName",
                         "departmentId",
                         "departmentName",
                         "isDefault",
@@ -36306,6 +36504,10 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "branchId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "departmentId": {
                     "type": [
                       "string",
@@ -36352,6 +36554,13 @@
                         "name": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "branchName": {
+                          "type": "string"
+                        },
                         "departmentId": {
                           "type": [
                             "string",
@@ -36379,6 +36588,8 @@
                         "id",
                         "code",
                         "name",
+                        "branchId",
+                        "branchName",
                         "departmentId",
                         "departmentName",
                         "isDefault",
@@ -41706,10 +41917,21 @@
         "tags": [
           "clinic"
         ],
-        "summary": "Thu ngân cơ bản/Kê đơn — chiếu tối thiểu tự-phục vụ cho tiêu đề bản in (tên/địa chỉ/SĐT/logo in), mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030)",
+        "summary": "Thu ngân cơ bản/Kê đơn — chiếu tối thiểu tự-phục vụ cho tiêu đề bản in (tên/địa chỉ/SĐT/logo in), mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030). `branchId` tuỳ chọn: địa chỉ/SĐT/tên chi nhánh của chứng từ (docs/DECISIONS.md #233)",
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "branchId",
+            "in": "query"
           }
         ],
         "responses": {
@@ -41725,6 +41947,12 @@
                       "properties": {
                         "name": {
                           "type": "string"
+                        },
+                        "branchName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "address": {
                           "type": [
@@ -41753,6 +41981,7 @@
                       },
                       "required": [
                         "name",
+                        "branchName",
                         "address",
                         "phone",
                         "taxCode",
@@ -49713,6 +49942,10 @@
                                       "showClinicName": {
                                         "type": "boolean"
                                       },
+                                      "showBranchName": {
+                                        "type": "boolean",
+                                        "default": true
+                                      },
                                       "showAddress": {
                                         "type": "boolean"
                                       },
@@ -50040,6 +50273,10 @@
                                         "showClinicName": {
                                           "type": "boolean"
                                         },
+                                        "showBranchName": {
+                                          "type": "boolean",
+                                          "default": true
+                                        },
                                         "showAddress": {
                                           "type": "boolean"
                                         },
@@ -50211,6 +50448,10 @@
                                         },
                                         "showClinicName": {
                                           "type": "boolean"
+                                        },
+                                        "showBranchName": {
+                                          "type": "boolean",
+                                          "default": true
                                         },
                                         "showAddress": {
                                           "type": "boolean"
@@ -50384,6 +50625,10 @@
                                         "showClinicName": {
                                           "type": "boolean"
                                         },
+                                        "showBranchName": {
+                                          "type": "boolean",
+                                          "default": true
+                                        },
                                         "showAddress": {
                                           "type": "boolean"
                                         },
@@ -50555,6 +50800,10 @@
                                         },
                                         "showClinicName": {
                                           "type": "boolean"
+                                        },
+                                        "showBranchName": {
+                                          "type": "boolean",
+                                          "default": true
                                         },
                                         "showAddress": {
                                           "type": "boolean"
@@ -50728,6 +50977,10 @@
                                         "showClinicName": {
                                           "type": "boolean"
                                         },
+                                        "showBranchName": {
+                                          "type": "boolean",
+                                          "default": true
+                                        },
                                         "showAddress": {
                                           "type": "boolean"
                                         },
@@ -50899,6 +51152,10 @@
                                         },
                                         "showClinicName": {
                                           "type": "boolean"
+                                        },
+                                        "showBranchName": {
+                                          "type": "boolean",
+                                          "default": true
                                         },
                                         "showAddress": {
                                           "type": "boolean"
@@ -51216,6 +51473,10 @@
                           "showClinicName": {
                             "type": "boolean"
                           },
+                          "showBranchName": {
+                            "type": "boolean",
+                            "default": true
+                          },
                           "showAddress": {
                             "type": "boolean"
                           },
@@ -51458,6 +51719,10 @@
                                 },
                                 "showClinicName": {
                                   "type": "boolean"
+                                },
+                                "showBranchName": {
+                                  "type": "boolean",
+                                  "default": true
                                 },
                                 "showAddress": {
                                   "type": "boolean"
@@ -51887,6 +52152,10 @@
                                       "showClinicName": {
                                         "type": "boolean"
                                       },
+                                      "showBranchName": {
+                                        "type": "boolean",
+                                        "default": true
+                                      },
                                       "showAddress": {
                                         "type": "boolean"
                                       },
@@ -52089,6 +52358,10 @@
                                             },
                                             "showClinicName": {
                                               "type": "boolean"
+                                            },
+                                            "showBranchName": {
+                                              "type": "boolean",
+                                              "default": true
                                             },
                                             "showAddress": {
                                               "type": "boolean"
@@ -52326,6 +52599,10 @@
                       },
                       "showClinicName": {
                         "type": "boolean"
+                      },
+                      "showBranchName": {
+                        "type": "boolean",
+                        "default": true
                       },
                       "showAddress": {
                         "type": "boolean"
@@ -52587,6 +52864,10 @@
                           "showClinicName": {
                             "type": "boolean"
                           },
+                          "showBranchName": {
+                            "type": "boolean",
+                            "default": true
+                          },
                           "showAddress": {
                             "type": "boolean"
                           },
@@ -52834,6 +53115,10 @@
                                 },
                                 "showClinicName": {
                                   "type": "boolean"
+                                },
+                                "showBranchName": {
+                                  "type": "boolean",
+                                  "default": true
                                 },
                                 "showAddress": {
                                   "type": "boolean"
@@ -54267,6 +54552,10 @@
                             "shiftNo": {
                               "type": "string"
                             },
+                            "branchId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
                             "cashierId": {
                               "type": "string",
                               "format": "uuid"
@@ -54455,6 +54744,7 @@
                           "required": [
                             "id",
                             "shiftNo",
+                            "branchId",
                             "cashierId",
                             "cashierName",
                             "shiftLabel",
@@ -54657,6 +54947,10 @@
                         "shiftNo": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
                         "cashierId": {
                           "type": "string",
                           "format": "uuid"
@@ -54845,6 +55139,7 @@
                       "required": [
                         "id",
                         "shiftNo",
+                        "branchId",
                         "cashierId",
                         "cashierName",
                         "shiftLabel",
@@ -55708,6 +56003,10 @@
                         "shiftNo": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
                         "cashierId": {
                           "type": "string",
                           "format": "uuid"
@@ -55896,6 +56195,7 @@
                       "required": [
                         "id",
                         "shiftNo",
+                        "branchId",
                         "cashierId",
                         "cashierName",
                         "shiftLabel",
@@ -56109,6 +56409,10 @@
                         "shiftNo": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
                         "cashierId": {
                           "type": "string",
                           "format": "uuid"
@@ -56297,6 +56601,7 @@
                       "required": [
                         "id",
                         "shiftNo",
+                        "branchId",
                         "cashierId",
                         "cashierName",
                         "shiftLabel",
@@ -56769,6 +57074,10 @@
                         "shiftNo": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
                         "cashierId": {
                           "type": "string",
                           "format": "uuid"
@@ -56957,6 +57266,7 @@
                       "required": [
                         "id",
                         "shiftNo",
+                        "branchId",
                         "cashierId",
                         "cashierName",
                         "shiftLabel",
@@ -57185,6 +57495,10 @@
                         "shiftNo": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
                         "cashierId": {
                           "type": "string",
                           "format": "uuid"
@@ -57373,6 +57687,7 @@
                       "required": [
                         "id",
                         "shiftNo",
+                        "branchId",
                         "cashierId",
                         "cashierName",
                         "shiftLabel",
@@ -57623,6 +57938,10 @@
                         "shiftNo": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
                         "cashierId": {
                           "type": "string",
                           "format": "uuid"
@@ -57811,6 +58130,7 @@
                       "required": [
                         "id",
                         "shiftNo",
+                        "branchId",
                         "cashierId",
                         "cashierName",
                         "shiftLabel",
@@ -57987,10 +58307,32 @@
         "tags": [
           "cash-book"
         ],
-        "summary": "Danh sách Quỹ (tiền mặt/ngân hàng) — form lập phiếu thu/chi cần",
+        "summary": "Danh sách Quỹ (tiền mặt/ngân hàng) — form lập phiếu thu/chi cần; mặc định chỉ quỹ của chi nhánh đang làm việc, allBranches=true liệt kê mọi chi nhánh được gán (docs/DECISIONS.md #233)",
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ],
+              "default": false
+            },
+            "required": false,
+            "name": "allBranches",
+            "in": "query"
           }
         ],
         "responses": {
@@ -58017,6 +58359,13 @@
                                 "type": "string"
                               },
                               "name": {
+                                "type": "string"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
                                 "type": "string"
                               },
                               "type": {
@@ -58072,6 +58421,8 @@
                               "id",
                               "code",
                               "name",
+                              "branchId",
+                              "branchName",
                               "type",
                               "bankName",
                               "bankAccountNo",
@@ -58187,6 +58538,10 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "branchId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "type": {
                     "type": "string",
                     "enum": [
@@ -58249,6 +58604,13 @@
                         "name": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "branchName": {
+                          "type": "string"
+                        },
                         "type": {
                           "type": "string",
                           "enum": [
@@ -58302,6 +58664,8 @@
                         "id",
                         "code",
                         "name",
+                        "branchId",
+                        "branchName",
                         "type",
                         "bankName",
                         "bankAccountNo",
@@ -58505,6 +58869,13 @@
                         "name": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "branchName": {
+                          "type": "string"
+                        },
                         "type": {
                           "type": "string",
                           "enum": [
@@ -58558,6 +58929,8 @@
                         "id",
                         "code",
                         "name",
+                        "branchId",
+                        "branchName",
                         "type",
                         "bankName",
                         "bankAccountNo",
@@ -61884,6 +62257,19 @@
                               },
                               "createdAt": {
                                 "type": "string"
+                              },
+                              "branchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -61898,7 +62284,9 @@
                               "voucherNo",
                               "note",
                               "createdByName",
-                              "createdAt"
+                              "createdAt",
+                              "branchId",
+                              "branchName"
                             ]
                           }
                         },
@@ -62872,6 +63260,7 @@
                 "PURCHASE",
                 "OPENING_BALANCE",
                 "TRANSFER_IN",
+                "TRANSFER_RETURN",
                 "RETURN_FROM_USE",
                 "COUNT_SURPLUS"
               ]
@@ -62960,6 +63349,7 @@
                                   "PURCHASE",
                                   "OPENING_BALANCE",
                                   "TRANSFER_IN",
+                                  "TRANSFER_RETURN",
                                   "RETURN_FROM_USE",
                                   "COUNT_SURPLUS"
                                 ]
@@ -63250,6 +63640,7 @@
                       "PURCHASE",
                       "OPENING_BALANCE",
                       "TRANSFER_IN",
+                      "TRANSFER_RETURN",
                       "RETURN_FROM_USE",
                       "COUNT_SURPLUS"
                     ]
@@ -63413,6 +63804,7 @@
                             "PURCHASE",
                             "OPENING_BALANCE",
                             "TRANSFER_IN",
+                            "TRANSFER_RETURN",
                             "RETURN_FROM_USE",
                             "COUNT_SURPLUS"
                           ]
@@ -63867,6 +64259,7 @@
                             "PURCHASE",
                             "OPENING_BALANCE",
                             "TRANSFER_IN",
+                            "TRANSFER_RETURN",
                             "RETURN_FROM_USE",
                             "COUNT_SURPLUS"
                           ]
@@ -64284,6 +64677,7 @@
                       "PURCHASE",
                       "OPENING_BALANCE",
                       "TRANSFER_IN",
+                      "TRANSFER_RETURN",
                       "RETURN_FROM_USE",
                       "COUNT_SURPLUS"
                     ]
@@ -64451,6 +64845,7 @@
                             "PURCHASE",
                             "OPENING_BALANCE",
                             "TRANSFER_IN",
+                            "TRANSFER_RETURN",
                             "RETURN_FROM_USE",
                             "COUNT_SURPLUS"
                           ]
@@ -64922,6 +65317,7 @@
                             "PURCHASE",
                             "OPENING_BALANCE",
                             "TRANSFER_IN",
+                            "TRANSFER_RETURN",
                             "RETURN_FROM_USE",
                             "COUNT_SURPLUS"
                           ]
@@ -65398,6 +65794,7 @@
                             "PURCHASE",
                             "OPENING_BALANCE",
                             "TRANSFER_IN",
+                            "TRANSFER_RETURN",
                             "RETURN_FROM_USE",
                             "COUNT_SURPLUS"
                           ]
@@ -65874,6 +66271,7 @@
                             "PURCHASE",
                             "OPENING_BALANCE",
                             "TRANSFER_IN",
+                            "TRANSFER_RETURN",
                             "RETURN_FROM_USE",
                             "COUNT_SURPLUS"
                           ]
@@ -66358,6 +66756,7 @@
                                   "RECEIPT_PURCHASE",
                                   "RECEIPT_OPENING_BALANCE",
                                   "RECEIPT_TRANSFER_IN",
+                                  "RECEIPT_TRANSFER_RETURN",
                                   "RECEIPT_RETURN_FROM_USE",
                                   "RECEIPT_COUNT_SURPLUS",
                                   "RECEIPT_VOID",
@@ -73787,7 +74186,10 @@
                 "DRAFT",
                 "IN_TRANSIT",
                 "COMPLETED",
-                "REJECTED"
+                "REJECTED",
+                "VARIANCE_PENDING",
+                "RETURNING",
+                "RETURNED"
               ]
             },
             "required": false,
@@ -73802,6 +74204,19 @@
             },
             "required": false,
             "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "out",
+                "in"
+              ],
+              "default": "out"
+            },
+            "required": false,
+            "name": "direction",
             "in": "query"
           }
         ],
@@ -73834,7 +74249,10 @@
                                   "DRAFT",
                                   "IN_TRANSIT",
                                   "COMPLETED",
-                                  "REJECTED"
+                                  "REJECTED",
+                                  "VARIANCE_PENDING",
+                                  "RETURNING",
+                                  "RETURNED"
                                 ]
                               },
                               "fromWarehouseId": {
@@ -73896,6 +74314,80 @@
                                   "null"
                                 ]
                               },
+                              "fromBranchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fromBranchName": {
+                                "type": "string"
+                              },
+                              "toBranchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "toBranchName": {
+                                "type": "string"
+                              },
+                              "receiveRejectReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "WRONG_ITEM",
+                                  "DAMAGED",
+                                  "EXPIRED",
+                                  "OTHER"
+                                ]
+                              },
+                              "receiveRejectNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "receiveRejectedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "receiveRejectedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "returnConfirmedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "returnConfirmedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "varianceResolvedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "varianceResolvedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "varianceResolutionNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "version": {
                                 "type": "integer"
                               }
@@ -73917,6 +74409,19 @@
                               "receivedByName",
                               "receivedAt",
                               "rejectionReason",
+                              "fromBranchId",
+                              "fromBranchName",
+                              "toBranchId",
+                              "toBranchName",
+                              "receiveRejectReason",
+                              "receiveRejectNote",
+                              "receiveRejectedByName",
+                              "receiveRejectedAt",
+                              "returnConfirmedByName",
+                              "returnConfirmedAt",
+                              "varianceResolvedByName",
+                              "varianceResolvedAt",
+                              "varianceResolutionNote",
                               "version"
                             ]
                           }
@@ -74105,7 +74610,10 @@
                             "DRAFT",
                             "IN_TRANSIT",
                             "COMPLETED",
-                            "REJECTED"
+                            "REJECTED",
+                            "VARIANCE_PENDING",
+                            "RETURNING",
+                            "RETURNED"
                           ]
                         },
                         "fromWarehouseId": {
@@ -74162,6 +74670,80 @@
                           ]
                         },
                         "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fromBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromBranchName": {
+                          "type": "string"
+                        },
+                        "toBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toBranchName": {
+                          "type": "string"
+                        },
+                        "receiveRejectReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WRONG_ITEM",
+                            "DAMAGED",
+                            "EXPIRED",
+                            "OTHER"
+                          ]
+                        },
+                        "receiveRejectNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolutionNote": {
                           "type": [
                             "string",
                             "null"
@@ -74225,6 +74807,47 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "varianceReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "SHORTAGE",
+                                  "DAMAGED",
+                                  "EXPIRED",
+                                  "WRONG_ITEM",
+                                  "OTHER"
+                                ]
+                              },
+                              "varianceResolution": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "RETURN_TO_SOURCE",
+                                  "WRITE_OFF"
+                                ]
+                              },
+                              "quantityReturnedBack": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "returnVarianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -74238,7 +74861,12 @@
                               "expiryDate",
                               "quantityShipped",
                               "quantityReceived",
-                              "varianceNote"
+                              "varianceNote",
+                              "varianceReason",
+                              "varianceResolution",
+                              "quantityReturnedBack",
+                              "returnVarianceNote",
+                              "unitCost"
                             ]
                           }
                         }
@@ -74260,6 +74888,19 @@
                         "receivedByName",
                         "receivedAt",
                         "rejectionReason",
+                        "fromBranchId",
+                        "fromBranchName",
+                        "toBranchId",
+                        "toBranchName",
+                        "receiveRejectReason",
+                        "receiveRejectNote",
+                        "receiveRejectedByName",
+                        "receiveRejectedAt",
+                        "returnConfirmedByName",
+                        "returnConfirmedAt",
+                        "varianceResolvedByName",
+                        "varianceResolvedAt",
+                        "varianceResolutionNote",
                         "version",
                         "lines"
                       ]
@@ -74481,7 +75122,10 @@
                             "DRAFT",
                             "IN_TRANSIT",
                             "COMPLETED",
-                            "REJECTED"
+                            "REJECTED",
+                            "VARIANCE_PENDING",
+                            "RETURNING",
+                            "RETURNED"
                           ]
                         },
                         "fromWarehouseId": {
@@ -74538,6 +75182,80 @@
                           ]
                         },
                         "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fromBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromBranchName": {
+                          "type": "string"
+                        },
+                        "toBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toBranchName": {
+                          "type": "string"
+                        },
+                        "receiveRejectReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WRONG_ITEM",
+                            "DAMAGED",
+                            "EXPIRED",
+                            "OTHER"
+                          ]
+                        },
+                        "receiveRejectNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolutionNote": {
                           "type": [
                             "string",
                             "null"
@@ -74601,6 +75319,47 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "varianceReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "SHORTAGE",
+                                  "DAMAGED",
+                                  "EXPIRED",
+                                  "WRONG_ITEM",
+                                  "OTHER"
+                                ]
+                              },
+                              "varianceResolution": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "RETURN_TO_SOURCE",
+                                  "WRITE_OFF"
+                                ]
+                              },
+                              "quantityReturnedBack": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "returnVarianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -74614,7 +75373,12 @@
                               "expiryDate",
                               "quantityShipped",
                               "quantityReceived",
-                              "varianceNote"
+                              "varianceNote",
+                              "varianceReason",
+                              "varianceResolution",
+                              "quantityReturnedBack",
+                              "returnVarianceNote",
+                              "unitCost"
                             ]
                           }
                         }
@@ -74636,6 +75400,19 @@
                         "receivedByName",
                         "receivedAt",
                         "rejectionReason",
+                        "fromBranchId",
+                        "fromBranchName",
+                        "toBranchId",
+                        "toBranchName",
+                        "receiveRejectReason",
+                        "receiveRejectNote",
+                        "receiveRejectedByName",
+                        "receiveRejectedAt",
+                        "returnConfirmedByName",
+                        "returnConfirmedAt",
+                        "varianceResolvedByName",
+                        "varianceResolvedAt",
+                        "varianceResolutionNote",
                         "version",
                         "lines"
                       ]
@@ -74858,7 +75635,10 @@
                             "DRAFT",
                             "IN_TRANSIT",
                             "COMPLETED",
-                            "REJECTED"
+                            "REJECTED",
+                            "VARIANCE_PENDING",
+                            "RETURNING",
+                            "RETURNED"
                           ]
                         },
                         "fromWarehouseId": {
@@ -74915,6 +75695,80 @@
                           ]
                         },
                         "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fromBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromBranchName": {
+                          "type": "string"
+                        },
+                        "toBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toBranchName": {
+                          "type": "string"
+                        },
+                        "receiveRejectReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WRONG_ITEM",
+                            "DAMAGED",
+                            "EXPIRED",
+                            "OTHER"
+                          ]
+                        },
+                        "receiveRejectNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolutionNote": {
                           "type": [
                             "string",
                             "null"
@@ -74978,6 +75832,47 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "varianceReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "SHORTAGE",
+                                  "DAMAGED",
+                                  "EXPIRED",
+                                  "WRONG_ITEM",
+                                  "OTHER"
+                                ]
+                              },
+                              "varianceResolution": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "RETURN_TO_SOURCE",
+                                  "WRITE_OFF"
+                                ]
+                              },
+                              "quantityReturnedBack": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "returnVarianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -74991,7 +75886,12 @@
                               "expiryDate",
                               "quantityShipped",
                               "quantityReceived",
-                              "varianceNote"
+                              "varianceNote",
+                              "varianceReason",
+                              "varianceResolution",
+                              "quantityReturnedBack",
+                              "returnVarianceNote",
+                              "unitCost"
                             ]
                           }
                         }
@@ -75013,6 +75913,19 @@
                         "receivedByName",
                         "receivedAt",
                         "rejectionReason",
+                        "fromBranchId",
+                        "fromBranchName",
+                        "toBranchId",
+                        "toBranchName",
+                        "receiveRejectReason",
+                        "receiveRejectNote",
+                        "receiveRejectedByName",
+                        "receiveRejectedAt",
+                        "returnConfirmedByName",
+                        "returnConfirmedAt",
+                        "varianceResolvedByName",
+                        "varianceResolvedAt",
+                        "varianceResolutionNote",
                         "version",
                         "lines"
                       ]
@@ -75251,7 +76164,10 @@
                             "DRAFT",
                             "IN_TRANSIT",
                             "COMPLETED",
-                            "REJECTED"
+                            "REJECTED",
+                            "VARIANCE_PENDING",
+                            "RETURNING",
+                            "RETURNED"
                           ]
                         },
                         "fromWarehouseId": {
@@ -75308,6 +76224,80 @@
                           ]
                         },
                         "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fromBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromBranchName": {
+                          "type": "string"
+                        },
+                        "toBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toBranchName": {
+                          "type": "string"
+                        },
+                        "receiveRejectReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WRONG_ITEM",
+                            "DAMAGED",
+                            "EXPIRED",
+                            "OTHER"
+                          ]
+                        },
+                        "receiveRejectNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolutionNote": {
                           "type": [
                             "string",
                             "null"
@@ -75371,6 +76361,47 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "varianceReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "SHORTAGE",
+                                  "DAMAGED",
+                                  "EXPIRED",
+                                  "WRONG_ITEM",
+                                  "OTHER"
+                                ]
+                              },
+                              "varianceResolution": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "RETURN_TO_SOURCE",
+                                  "WRITE_OFF"
+                                ]
+                              },
+                              "quantityReturnedBack": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "returnVarianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -75384,7 +76415,12 @@
                               "expiryDate",
                               "quantityShipped",
                               "quantityReceived",
-                              "varianceNote"
+                              "varianceNote",
+                              "varianceReason",
+                              "varianceResolution",
+                              "quantityReturnedBack",
+                              "returnVarianceNote",
+                              "unitCost"
                             ]
                           }
                         }
@@ -75406,6 +76442,19 @@
                         "receivedByName",
                         "receivedAt",
                         "rejectionReason",
+                        "fromBranchId",
+                        "fromBranchName",
+                        "toBranchId",
+                        "toBranchName",
+                        "receiveRejectReason",
+                        "receiveRejectNote",
+                        "receiveRejectedByName",
+                        "receiveRejectedAt",
+                        "returnConfirmedByName",
+                        "returnConfirmedAt",
+                        "varianceResolvedByName",
+                        "varianceResolvedAt",
+                        "varianceResolutionNote",
                         "version",
                         "lines"
                       ]
@@ -75649,7 +76698,10 @@
                             "DRAFT",
                             "IN_TRANSIT",
                             "COMPLETED",
-                            "REJECTED"
+                            "REJECTED",
+                            "VARIANCE_PENDING",
+                            "RETURNING",
+                            "RETURNED"
                           ]
                         },
                         "fromWarehouseId": {
@@ -75706,6 +76758,80 @@
                           ]
                         },
                         "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fromBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromBranchName": {
+                          "type": "string"
+                        },
+                        "toBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toBranchName": {
+                          "type": "string"
+                        },
+                        "receiveRejectReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WRONG_ITEM",
+                            "DAMAGED",
+                            "EXPIRED",
+                            "OTHER"
+                          ]
+                        },
+                        "receiveRejectNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolutionNote": {
                           "type": [
                             "string",
                             "null"
@@ -75769,6 +76895,47 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "varianceReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "SHORTAGE",
+                                  "DAMAGED",
+                                  "EXPIRED",
+                                  "WRONG_ITEM",
+                                  "OTHER"
+                                ]
+                              },
+                              "varianceResolution": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "RETURN_TO_SOURCE",
+                                  "WRITE_OFF"
+                                ]
+                              },
+                              "quantityReturnedBack": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "returnVarianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -75782,7 +76949,12 @@
                               "expiryDate",
                               "quantityShipped",
                               "quantityReceived",
-                              "varianceNote"
+                              "varianceNote",
+                              "varianceReason",
+                              "varianceResolution",
+                              "quantityReturnedBack",
+                              "returnVarianceNote",
+                              "unitCost"
                             ]
                           }
                         }
@@ -75804,6 +76976,19 @@
                         "receivedByName",
                         "receivedAt",
                         "rejectionReason",
+                        "fromBranchId",
+                        "fromBranchName",
+                        "toBranchId",
+                        "toBranchName",
+                        "receiveRejectReason",
+                        "receiveRejectNote",
+                        "receiveRejectedByName",
+                        "receiveRejectedAt",
+                        "returnConfirmedByName",
+                        "returnConfirmedAt",
+                        "varianceResolvedByName",
+                        "varianceResolvedAt",
+                        "varianceResolutionNote",
                         "version",
                         "lines"
                       ]
@@ -75953,7 +77138,7 @@
         "tags": [
           "inventory"
         ],
-        "summary": "Xác nhận nhận hàng (MỘT LẦN DUY NHẤT) — IN_TRANSIT→COMPLETED, cộng đúng SL thực nhận, tự sinh Phiếu nhập TRANSFER_IN",
+        "summary": "Kiểm nhận hàng (MỘT LẦN DUY NHẤT) — IN_TRANSIT→COMPLETED (nhận đủ) hoặc VARIANCE_PENDING (nhận thiếu, kèm lý do), cộng đúng SL thực nhận, tự sinh Phiếu nhập TRANSFER_IN (docs/DECISIONS.md #233)",
         "security": [
           {
             "bearerAuth": []
@@ -75991,6 +77176,19 @@
                         "quantityReceived": {
                           "type": "integer",
                           "minimum": 0
+                        },
+                        "varianceReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "SHORTAGE",
+                            "DAMAGED",
+                            "EXPIRED",
+                            "WRONG_ITEM",
+                            "OTHER"
+                          ]
                         },
                         "varianceNote": {
                           "type": [
@@ -76040,7 +77238,10 @@
                             "DRAFT",
                             "IN_TRANSIT",
                             "COMPLETED",
-                            "REJECTED"
+                            "REJECTED",
+                            "VARIANCE_PENDING",
+                            "RETURNING",
+                            "RETURNED"
                           ]
                         },
                         "fromWarehouseId": {
@@ -76097,6 +77298,80 @@
                           ]
                         },
                         "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fromBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromBranchName": {
+                          "type": "string"
+                        },
+                        "toBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toBranchName": {
+                          "type": "string"
+                        },
+                        "receiveRejectReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WRONG_ITEM",
+                            "DAMAGED",
+                            "EXPIRED",
+                            "OTHER"
+                          ]
+                        },
+                        "receiveRejectNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolutionNote": {
                           "type": [
                             "string",
                             "null"
@@ -76160,6 +77435,47 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "varianceReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "SHORTAGE",
+                                  "DAMAGED",
+                                  "EXPIRED",
+                                  "WRONG_ITEM",
+                                  "OTHER"
+                                ]
+                              },
+                              "varianceResolution": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "RETURN_TO_SOURCE",
+                                  "WRITE_OFF"
+                                ]
+                              },
+                              "quantityReturnedBack": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "returnVarianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -76173,7 +77489,12 @@
                               "expiryDate",
                               "quantityShipped",
                               "quantityReceived",
-                              "varianceNote"
+                              "varianceNote",
+                              "varianceReason",
+                              "varianceResolution",
+                              "quantityReturnedBack",
+                              "returnVarianceNote",
+                              "unitCost"
                             ]
                           }
                         }
@@ -76195,6 +77516,19 @@
                         "receivedByName",
                         "receivedAt",
                         "rejectionReason",
+                        "fromBranchId",
+                        "fromBranchName",
+                        "toBranchId",
+                        "toBranchName",
+                        "receiveRejectReason",
+                        "receiveRejectNote",
+                        "receiveRejectedByName",
+                        "receiveRejectedAt",
+                        "returnConfirmedByName",
+                        "returnConfirmedAt",
+                        "varianceResolvedByName",
+                        "varianceResolvedAt",
+                        "varianceResolutionNote",
                         "version",
                         "lines"
                       ]
@@ -76338,6 +77672,1957 @@
           },
           "422": {
             "description": "Nhận vượt số đã xuất, hoặc nhận thiếu số lượng nhưng chưa nhập ghi chú chênh lệch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/transfers/pending-counts": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Chấm số trên menu Điều chuyển kho — phiếu đang chờ NHẬN ở chi nhánh này + phiếu chờ chi nhánh này (bên gửi) xử lý (docs/DECISIONS.md #233)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "incoming": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "toResolve": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "incoming",
+                        "toResolve"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_transfer.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/transfers/shrinkage-report": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Báo cáo hao hụt điều chuyển kho theo khoảng ngày (docs/DECISIONS.md #233)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "fromWarehouseId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WRITE_OFF",
+                "RETURN_SHORTAGE"
+              ]
+            },
+            "required": false,
+            "name": "cause",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "transferId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "transferNo": {
+                                "type": "string"
+                              },
+                              "occurredAt": {
+                                "type": "string"
+                              },
+                              "fromWarehouseName": {
+                                "type": "string"
+                              },
+                              "toWarehouseName": {
+                                "type": "string"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCost": {
+                                "type": "integer"
+                              },
+                              "lineValue": {
+                                "type": "integer"
+                              },
+                              "cause": {
+                                "type": "string",
+                                "enum": [
+                                  "WRITE_OFF",
+                                  "RETURN_SHORTAGE"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "transferId",
+                              "transferNo",
+                              "occurredAt",
+                              "fromWarehouseName",
+                              "toWarehouseName",
+                              "drugCode",
+                              "drugName",
+                              "quantity",
+                              "unitCost",
+                              "lineValue",
+                              "cause"
+                            ]
+                          }
+                        },
+                        "totalQuantity": {
+                          "type": "integer"
+                        },
+                        "totalValue": {
+                          "type": "integer"
+                        },
+                        "transferCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "countByCause": {
+                          "type": "object",
+                          "properties": {
+                            "WRITE_OFF": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "RETURN_SHORTAGE": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "WRITE_OFF",
+                            "RETURN_SHORTAGE"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "totalQuantity",
+                        "totalValue",
+                        "transferCount",
+                        "countByCause"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/transfers/{id}/reject-receipt": {
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Bên NHẬN từ chối nhận cả phiếu — IN_TRANSIT→RETURNING, hàng không vào kho nhận (docs/DECISIONS.md #233)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "WRONG_ITEM",
+                      "DAMAGED",
+                      "EXPIRED",
+                      "OTHER"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "version",
+                  "reason",
+                  "note"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "transferNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "IN_TRANSIT",
+                            "COMPLETED",
+                            "REJECTED",
+                            "VARIANCE_PENDING",
+                            "RETURNING",
+                            "RETURNED"
+                          ]
+                        },
+                        "fromWarehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromWarehouseName": {
+                          "type": "string"
+                        },
+                        "toWarehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toWarehouseName": {
+                          "type": "string"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "shippedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "shippedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receivedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receivedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fromBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromBranchName": {
+                          "type": "string"
+                        },
+                        "toBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toBranchName": {
+                          "type": "string"
+                        },
+                        "receiveRejectReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WRONG_ITEM",
+                            "DAMAGED",
+                            "EXPIRED",
+                            "OTHER"
+                          ]
+                        },
+                        "receiveRejectNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolutionNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "isBatchManaged": {
+                                "type": "boolean"
+                              },
+                              "batchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expiryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantityShipped": {
+                                "type": "integer"
+                              },
+                              "quantityReceived": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "varianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "varianceReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "SHORTAGE",
+                                  "DAMAGED",
+                                  "EXPIRED",
+                                  "WRONG_ITEM",
+                                  "OTHER"
+                                ]
+                              },
+                              "varianceResolution": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "RETURN_TO_SOURCE",
+                                  "WRITE_OFF"
+                                ]
+                              },
+                              "quantityReturnedBack": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "returnVarianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "isBatchManaged",
+                              "batchId",
+                              "batchNo",
+                              "expiryDate",
+                              "quantityShipped",
+                              "quantityReceived",
+                              "varianceNote",
+                              "varianceReason",
+                              "varianceResolution",
+                              "quantityReturnedBack",
+                              "returnVarianceNote",
+                              "unitCost"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "transferNo",
+                        "status",
+                        "fromWarehouseId",
+                        "fromWarehouseName",
+                        "toWarehouseId",
+                        "toWarehouseName",
+                        "occurredAt",
+                        "note",
+                        "lineCount",
+                        "createdByName",
+                        "shippedByName",
+                        "shippedAt",
+                        "receivedByName",
+                        "receivedAt",
+                        "rejectionReason",
+                        "fromBranchId",
+                        "fromBranchName",
+                        "toBranchId",
+                        "toBranchName",
+                        "receiveRejectReason",
+                        "receiveRejectNote",
+                        "receiveRejectedByName",
+                        "receiveRejectedAt",
+                        "returnConfirmedByName",
+                        "returnConfirmedAt",
+                        "varianceResolvedByName",
+                        "varianceResolvedAt",
+                        "varianceResolutionNote",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_transfer.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy, hoặc không thuộc kho nhận của chi nhánh đang làm việc",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, hoặc phiếu không ở trạng thái Đang vận chuyển",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/transfers/{id}/confirm-return": {
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Bên GỬI xác nhận đã nhận lại hàng bị từ chối — RETURNING→RETURNED (nhận lại thiếu = hao hụt, bắt buộc ghi chú) (docs/DECISIONS.md #233)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "lineId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "quantityReturnedBack": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "lineId",
+                        "quantityReturnedBack"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "version",
+                  "lines"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "transferNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "IN_TRANSIT",
+                            "COMPLETED",
+                            "REJECTED",
+                            "VARIANCE_PENDING",
+                            "RETURNING",
+                            "RETURNED"
+                          ]
+                        },
+                        "fromWarehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromWarehouseName": {
+                          "type": "string"
+                        },
+                        "toWarehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toWarehouseName": {
+                          "type": "string"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "shippedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "shippedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receivedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receivedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fromBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromBranchName": {
+                          "type": "string"
+                        },
+                        "toBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toBranchName": {
+                          "type": "string"
+                        },
+                        "receiveRejectReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WRONG_ITEM",
+                            "DAMAGED",
+                            "EXPIRED",
+                            "OTHER"
+                          ]
+                        },
+                        "receiveRejectNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolutionNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "isBatchManaged": {
+                                "type": "boolean"
+                              },
+                              "batchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expiryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantityShipped": {
+                                "type": "integer"
+                              },
+                              "quantityReceived": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "varianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "varianceReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "SHORTAGE",
+                                  "DAMAGED",
+                                  "EXPIRED",
+                                  "WRONG_ITEM",
+                                  "OTHER"
+                                ]
+                              },
+                              "varianceResolution": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "RETURN_TO_SOURCE",
+                                  "WRITE_OFF"
+                                ]
+                              },
+                              "quantityReturnedBack": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "returnVarianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "isBatchManaged",
+                              "batchId",
+                              "batchNo",
+                              "expiryDate",
+                              "quantityShipped",
+                              "quantityReceived",
+                              "varianceNote",
+                              "varianceReason",
+                              "varianceResolution",
+                              "quantityReturnedBack",
+                              "returnVarianceNote",
+                              "unitCost"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "transferNo",
+                        "status",
+                        "fromWarehouseId",
+                        "fromWarehouseName",
+                        "toWarehouseId",
+                        "toWarehouseName",
+                        "occurredAt",
+                        "note",
+                        "lineCount",
+                        "createdByName",
+                        "shippedByName",
+                        "shippedAt",
+                        "receivedByName",
+                        "receivedAt",
+                        "rejectionReason",
+                        "fromBranchId",
+                        "fromBranchName",
+                        "toBranchId",
+                        "toBranchName",
+                        "receiveRejectReason",
+                        "receiveRejectNote",
+                        "receiveRejectedByName",
+                        "receiveRejectedAt",
+                        "returnConfirmedByName",
+                        "returnConfirmedAt",
+                        "varianceResolvedByName",
+                        "varianceResolvedAt",
+                        "varianceResolutionNote",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_transfer.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy, hoặc không thuộc kho gửi của chi nhánh đang làm việc",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, hoặc phiếu không ở trạng thái Đang trả hàng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Nhận lại thiếu nhưng chưa nhập ghi chú",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/transfers/{id}/resolve-variance": {
+      "post": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Bên GỬI xử lý phần nhận thiếu — VARIANCE_PENDING→COMPLETED; từng dòng chọn hàng về kho gửi (phiếu nhập TRANSFER_RETURN) hoặc ghi hao hụt (docs/DECISIONS.md #233)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "lineId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "resolution": {
+                          "type": "string",
+                          "enum": [
+                            "RETURN_TO_SOURCE",
+                            "WRITE_OFF"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "lineId",
+                        "resolution"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "version",
+                  "lines"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "transferNo": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DRAFT",
+                            "IN_TRANSIT",
+                            "COMPLETED",
+                            "REJECTED",
+                            "VARIANCE_PENDING",
+                            "RETURNING",
+                            "RETURNED"
+                          ]
+                        },
+                        "fromWarehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromWarehouseName": {
+                          "type": "string"
+                        },
+                        "toWarehouseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toWarehouseName": {
+                          "type": "string"
+                        },
+                        "occurredAt": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lineCount": {
+                          "type": "integer"
+                        },
+                        "createdByName": {
+                          "type": "string"
+                        },
+                        "shippedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "shippedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receivedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receivedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "fromBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fromBranchName": {
+                          "type": "string"
+                        },
+                        "toBranchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "toBranchName": {
+                          "type": "string"
+                        },
+                        "receiveRejectReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "WRONG_ITEM",
+                            "DAMAGED",
+                            "EXPIRED",
+                            "OTHER"
+                          ]
+                        },
+                        "receiveRejectNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiveRejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "returnConfirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "varianceResolutionNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "isBatchManaged": {
+                                "type": "boolean"
+                              },
+                              "batchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "batchNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expiryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantityShipped": {
+                                "type": "integer"
+                              },
+                              "quantityReceived": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "varianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "varianceReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "SHORTAGE",
+                                  "DAMAGED",
+                                  "EXPIRED",
+                                  "WRONG_ITEM",
+                                  "OTHER"
+                                ]
+                              },
+                              "varianceResolution": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "RETURN_TO_SOURCE",
+                                  "WRITE_OFF"
+                                ]
+                              },
+                              "quantityReturnedBack": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "returnVarianceNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCost": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "isBatchManaged",
+                              "batchId",
+                              "batchNo",
+                              "expiryDate",
+                              "quantityShipped",
+                              "quantityReceived",
+                              "varianceNote",
+                              "varianceReason",
+                              "varianceResolution",
+                              "quantityReturnedBack",
+                              "returnVarianceNote",
+                              "unitCost"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "transferNo",
+                        "status",
+                        "fromWarehouseId",
+                        "fromWarehouseName",
+                        "toWarehouseId",
+                        "toWarehouseName",
+                        "occurredAt",
+                        "note",
+                        "lineCount",
+                        "createdByName",
+                        "shippedByName",
+                        "shippedAt",
+                        "receivedByName",
+                        "receivedAt",
+                        "rejectionReason",
+                        "fromBranchId",
+                        "fromBranchName",
+                        "toBranchId",
+                        "toBranchName",
+                        "receiveRejectReason",
+                        "receiveRejectNote",
+                        "receiveRejectedByName",
+                        "receiveRejectedAt",
+                        "returnConfirmedByName",
+                        "returnConfirmedAt",
+                        "varianceResolvedByName",
+                        "varianceResolvedAt",
+                        "varianceResolutionNote",
+                        "version",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_transfer.approve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy, hoặc không thuộc kho gửi của chi nhánh đang làm việc",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, hoặc phiếu không ở trạng thái Chờ xử lý chênh lệch",
             "content": {
               "application/json": {
                 "schema": {
@@ -77097,6 +80382,19 @@
                               },
                               "createdByName": {
                                 "type": "string"
+                              },
+                              "sourceBranchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "sourceBranchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -77115,7 +80413,9 @@
                               "reversalOfId",
                               "reversed",
                               "note",
-                              "createdByName"
+                              "createdByName",
+                              "sourceBranchId",
+                              "sourceBranchName"
                             ]
                           }
                         }
@@ -77297,6 +80597,25 @@
                                   "PARTIALLY_PAID",
                                   "FULLY_PAID"
                                 ]
+                              },
+                              "sourceBranchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "sourceBranchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "stockReceiptNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -77305,7 +80624,10 @@
                               "originalAmount",
                               "paidAmount",
                               "dueAmount",
-                              "status"
+                              "status",
+                              "sourceBranchId",
+                              "sourceBranchName",
+                              "stockReceiptNo"
                             ]
                           }
                         },
@@ -78084,6 +81406,13 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -78101,7 +81430,9 @@
                               "createdByName",
                               "approvedByName",
                               "approvedAt",
-                              "rejectionReason"
+                              "rejectionReason",
+                              "branchId",
+                              "branchName"
                             ]
                           }
                         },

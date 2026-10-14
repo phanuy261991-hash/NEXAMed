@@ -19,6 +19,7 @@ import { DateInput } from '../../shared/ui/DateInput';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { ApiError } from '../../shared/api/client';
 import { useHasPermission } from '../auth/usePermission';
+import { BranchChip, useIsOtherBranch, useShowBranchInfo } from '../branch/BranchChip';
 import { CashVoucherDetailDialog } from '../cash-book/CashVoucherDetailDialog';
 import { useSuppliersQuery } from '../drug/supplier.queries';
 import { StockIssueDetailDialog } from '../inventory/StockIssueDetailDialog';
@@ -249,6 +250,7 @@ export function SupplierDetailPage() {
 }
 
 function ReceiptsTab({ supplierId }: { supplierId: string }) {
+  const showBranch = useShowBranchInfo();
   const debtQuery = useSupplierDebtReceiptsQuery(supplierId);
   const receiptsQuery = useStockReceiptsQuery({ supplierId, limit: 100 });
 
@@ -274,6 +276,7 @@ function ReceiptsTab({ supplierId }: { supplierId: string }) {
         <thead>
           <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
             <th className="px-3 py-2.5 text-center">Mã phiếu</th>
+            {showBranch && <th className="px-3 py-2.5 text-center">Chi nhánh</th>}
             <th className="px-3 py-2.5 text-center">Ngày nhập</th>
             <th className="px-3 py-2.5 text-center">Tiền hàng (sau CK)</th>
             <th className="px-3 py-2.5 text-center">Đã trả</th>
@@ -288,9 +291,14 @@ function ReceiptsTab({ supplierId }: { supplierId: string }) {
             return (
               <tr key={key} className={`border-b border-slate-200 last:border-0 ${receipt?.voided ? 'opacity-50' : ''}`}>
                 <td className="px-3 py-2 text-center font-semibold text-slate-800">
-                  {item.isOpeningBalance ? 'Nợ đầu kỳ' : (receipt?.receiptNo ?? '—')}
+                  {item.isOpeningBalance ? 'Nợ đầu kỳ' : (receipt?.receiptNo ?? item.stockReceiptNo ?? '—')}
                   {receipt?.voided && <span className="ml-1.5 text-[11px] font-semibold text-slate-400">(đã huỷ)</span>}
                 </td>
+                {showBranch && (
+                  <td className="px-3 py-2 text-center">
+                    <ReceiptBranchChip item={item} />
+                  </td>
+                )}
                 <td className="px-3 py-2 text-center text-slate-600">{receipt ? formatDateShort(receipt.occurredAt) : '—'}</td>
                 <td className="px-3 py-2 text-center font-semibold text-slate-900">{formatVnd(item.originalAmount)}</td>
                 <td className="px-3 py-2 text-center text-slate-700">{item.paidAmount > 0 ? formatVnd(item.paidAmount) : '—'}</td>
@@ -305,6 +313,16 @@ function ReceiptsTab({ supplierId }: { supplierId: string }) {
       </table>
     </div>
   );
+}
+
+function ReceiptBranchChip({ item }: { item: SupplierDebtReceiptStatus }) {
+  const other = useIsOtherBranch(item.sourceBranchId);
+  return item.sourceBranchName ? <BranchChip name={item.sourceBranchName} otherBranch={other} /> : <span className="text-slate-400">—</span>;
+}
+
+function LedgerBranchChip({ entry }: { entry: SupplierDebtLedgerEntry }) {
+  const other = useIsOtherBranch(entry.sourceBranchId);
+  return entry.sourceBranchName ? <BranchChip name={entry.sourceBranchName} otherBranch={other} /> : <span className="text-slate-400">—</span>;
 }
 
 const ISSUE_STATUS_LABEL: Record<'DRAFT' | 'POSTED' | 'REJECTED' | 'VOIDED', { label: string; tone: StatusBadgeTone }> = {
@@ -369,6 +387,7 @@ function ReturnsTab({ supplierId }: { supplierId: string }) {
 }
 
 function LedgerTab({ supplierId }: { supplierId: string }) {
+  const showBranch = useShowBranchInfo();
   const query = useSupplierDebtLedgerQuery(supplierId, {});
 
   if (query.isError) {
@@ -390,6 +409,8 @@ function LedgerTab({ supplierId }: { supplierId: string }) {
             <th className="px-3 py-2.5 text-center">Ngày chứng từ</th>
             <th className="px-3 py-2.5 text-center">Ghi sổ lúc</th>
             <th className="px-3 py-2.5 text-center">Loại</th>
+            <th className="px-3 py-2.5 text-center">Chứng từ</th>
+            {showBranch && <th className="px-3 py-2.5 text-center">Chi nhánh</th>}
             <th className="px-3 py-2.5 text-center">Tăng nợ</th>
             <th className="px-3 py-2.5 text-center">Giảm nợ</th>
             <th className="px-3 py-2.5 text-center">Số dư sau</th>
@@ -405,6 +426,12 @@ function LedgerTab({ supplierId }: { supplierId: string }) {
                 <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{ENTRY_TYPE_LABEL[e.entryType]}</span>
                 {e.reversed && <div className="mt-0.5 text-[11px] font-semibold text-slate-400">đã bị đảo</div>}
               </td>
+              <td className="px-3 py-2 text-center text-xs font-semibold text-slate-700">{e.stockReceiptNo ?? e.stockIssueNo ?? e.cashVoucherNo ?? '—'}</td>
+              {showBranch && (
+                <td className="px-3 py-2 text-center">
+                  <LedgerBranchChip entry={e} />
+                </td>
+              )}
               <td className="px-3 py-2 text-center font-semibold text-amber-700">{e.amountChange > 0 ? `+${formatVnd(e.amountChange)}` : ''}</td>
               <td className="px-3 py-2 text-center font-semibold text-emerald-700">{e.amountChange < 0 ? `−${formatVnd(Math.abs(e.amountChange))}` : ''}</td>
               <td className="px-3 py-2 text-center font-bold text-slate-900">{formatVnd(e.balanceAfter)}</td>
@@ -417,6 +444,21 @@ function LedgerTab({ supplierId }: { supplierId: string }) {
   );
 }
 
+/** Chip chi nhánh gốc của dòng thanh toán — tông hổ phách khi khác chi nhánh đang làm (Đợt 2 chi nhánh, #233 Q4). */
+function PaymentBranchChip({ payment }: { payment: SupplierDebtPayment }) {
+  const other = useIsOtherBranch(payment.branchId);
+  return <BranchChip name={payment.branchName} otherBranch={other} />;
+}
+
+/** Phiếu chi nhánh khác: vẫn thấy dòng + số tiền nhưng KHÔNG mở được phiếu (máy chủ trả 404) → nút Xem bị khoá kèm lời giải thích. */
+function PaymentViewButton({ payment, onView }: { payment: SupplierDebtPayment; onView: () => void }) {
+  const other = useIsOtherBranch(payment.branchId);
+  if (other) {
+    return <RowActionButton icon={Eye} label={`Phiếu của ${payment.branchName} — đổi chi nhánh để xem`} tone="neutral" disabled />;
+  }
+  return <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={onView} />;
+}
+
 const PAYMENT_STATUS_LABEL: Record<SupplierDebtPayment['status'], { label: string; tone: StatusBadgeTone }> = {
   POSTED: { label: 'Đã ghi sổ', tone: 'success' },
   PENDING_APPROVAL: { label: 'Chờ duyệt', tone: 'warning' },
@@ -427,6 +469,7 @@ const PAYMENT_STATUS_LABEL: Record<SupplierDebtPayment['status'], { label: strin
  * nợ đứng riêng), mới→cũ. Không phân trang/lọc riêng (quy mô nhỏ/NCC) — trang `/suppliers/payments`
  * mới có bộ lọc đầy đủ cho MỌI NCC. */
 function PaymentsTab({ supplierId }: { supplierId: string }) {
+  const showBranch = useShowBranchInfo();
   const query = useSupplierDebtPaymentsQuery({ supplierId });
   const [viewVoucherId, setViewVoucherId] = useState<string | null>(null);
 
@@ -447,6 +490,7 @@ function PaymentsTab({ supplierId }: { supplierId: string }) {
         <thead>
           <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
             <th className="px-3 py-2.5 text-center">Mã phiếu</th>
+            {showBranch && <th className="px-3 py-2.5 text-center">Chi nhánh</th>}
             <th className="px-3 py-2.5 text-center">Ngày</th>
             <th className="px-3 py-2.5 text-left">Diễn giải</th>
             <th className="px-3 py-2.5 text-center">Số tiền</th>
@@ -461,6 +505,11 @@ function PaymentsTab({ supplierId }: { supplierId: string }) {
                 {p.voucherNo}
                 {p.voided && <span className="ml-1.5 text-[11px] font-semibold text-slate-400">(đã huỷ)</span>}
               </td>
+              {showBranch && (
+                <td className="px-3 py-2 text-center">
+                  <PaymentBranchChip payment={p} />
+                </td>
+              )}
               <td className="px-3 py-2 text-center text-slate-600">{formatDateShort(p.occurredAt)}</td>
               <td className="px-3 py-2 text-left font-medium text-slate-900">{p.description}</td>
               <td className="px-3 py-2 text-center font-bold text-emerald-700">−{formatVnd(p.amount)}</td>
@@ -468,7 +517,7 @@ function PaymentsTab({ supplierId }: { supplierId: string }) {
                 <StatusBadge tone={PAYMENT_STATUS_LABEL[p.status].tone}>{PAYMENT_STATUS_LABEL[p.status].label}</StatusBadge>
               </td>
               <td className="px-3 py-2 text-center">
-                <RowActionButton icon={Eye} label="Xem" tone="neutral" onClick={() => setViewVoucherId(p.id)} />
+                <PaymentViewButton payment={p} onView={() => setViewVoucherId(p.id)} />
               </td>
             </tr>
           ))}

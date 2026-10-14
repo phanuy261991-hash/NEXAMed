@@ -142,10 +142,10 @@ export function BranchPane() {
                   >
                     <td className="px-4 py-2 text-left text-sm font-semibold text-slate-800">{b.code}</td>
                     <td className="px-4 py-2 text-left">
-                      <div className="font-bold text-slate-900">{b.name}</div>
+                      <div className="max-w-[320px] truncate font-bold text-slate-900" title={b.name}>{b.name}</div>
                       {b.isDefault && <div className="text-xs font-medium text-slate-500">Mặc định</div>}
                     </td>
-                    <td className="px-4 py-2 text-left text-slate-600">{b.address ?? '—'}</td>
+                    <td className="max-w-[360px] truncate px-4 py-2 text-left text-slate-600" title={b.address ?? undefined}>{b.address ?? '—'}</td>
                     <td className="px-4 py-2 text-center text-slate-600">{b.phone ?? '—'}</td>
                     <td className="px-4 py-2 text-center font-semibold text-slate-800">{b.staffCount}</td>
                     <td className="px-4 py-2 text-center">
@@ -200,7 +200,7 @@ export function BranchPane() {
       {deactivateTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
           <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">Ngưng chi nhánh &quot;{deactivateTarget.name}&quot;?</p>
+            <p className="break-words text-sm font-semibold text-slate-900">Ngưng chi nhánh &quot;{deactivateTarget.name}&quot;?</p>
             <p className="mt-1.5 text-xs text-slate-500">
               Chi nhánh bị ẩn khỏi danh sách chọn; lượt khám, lịch hẹn và dữ liệu cũ giữ nguyên. Nhân viên đang làm ở đây cần chọn chi nhánh khác ở lần đăng nhập sau. Có thể khôi phục sau.
             </p>

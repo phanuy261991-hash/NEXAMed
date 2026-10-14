@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BranchLite } from '@nexamed/shared';
 import { getAuthRedirect } from '../auth/auth-redirect';
-import { findCurrentBranch, hasMultipleBranches, needsBranchSelection } from './branch-visibility';
+import { findCurrentBranch, hasMultipleBranches, needsBranchSelection, showBranchInfo } from './branch-visibility';
 
 const b1: BranchLite = { id: '11111111-1111-4111-8111-111111111111', code: 'CN00001', name: 'Cơ sở chính', address: null, isDefault: true };
 const b2: BranchLite = { id: '22222222-2222-4222-8222-222222222222', code: 'CN00002', name: 'Chi nhánh Quận 7', address: 'Q7', isDefault: false };
@@ -29,6 +29,22 @@ describe('hiện/ẩn giao diện chi nhánh', () => {
     expect(findCurrentBranch({ branches: [b1, b2], currentBranchId: b2.id })).toEqual(b2);
     expect(findCurrentBranch({ branches: [b1, b2], currentBranchId: null })).toBeNull();
     expect(findCurrentBranch({ branches: [b1, b2], currentBranchId: '33333333-3333-4333-8333-333333333333' })).toBeNull();
+  });
+});
+
+describe('showBranchInfo (nhãn/cột/tab chi nhánh trên chứng từ)', () => {
+  it('công ty 1 chi nhánh: ẩn', () => {
+    expect(showBranchInfo({ branches: [b1], currentBranchId: b1.id, multiBranchCompany: false })).toBe(false);
+    expect(showBranchInfo(null)).toBe(false);
+  });
+
+  it('nhân viên chỉ thuộc 1 chi nhánh nhưng công ty có nhiều chi nhánh: vẫn hiện (để thấy phiếu đến từ chi nhánh khác)', () => {
+    expect(showBranchInfo({ branches: [b2], currentBranchId: b2.id, multiBranchCompany: true })).toBe(true);
+    expect(hasMultipleBranches({ branches: [b2], currentBranchId: b2.id, multiBranchCompany: true })).toBe(false);
+  });
+
+  it('được gán nhiều chi nhánh: hiện', () => {
+    expect(showBranchInfo({ branches: [b1, b2], currentBranchId: b1.id })).toBe(true);
   });
 });
 

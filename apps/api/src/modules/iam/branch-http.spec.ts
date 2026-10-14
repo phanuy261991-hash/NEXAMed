@@ -138,6 +138,7 @@ describe('HTTP e2e — Chi nhánh (/api/v1/branches, /auth/switch-branch, cô l�
     expect(me.body.data.branches).toHaveLength(1);
     expect(me.body.data.branches[0]).toMatchObject({ id: branchA, code: 'CN00001', isDefault: true });
     expect(me.body.data.currentBranchId).toBe(branchA);
+    expect(me.body.data.multiBranchCompany).toBe(false);
   });
 
   it('GET /branches: chưa đăng nhập → 401; vai trò không có branch.read (lễ tân) → 403; clinic_admin xem được', async () => {
@@ -169,6 +170,21 @@ describe('HTTP e2e — Chi nhánh (/api/v1/branches, /auth/switch-branch, cô l�
     // Các tài khoản dựng trực tiếp ở DB (chưa có `user_branch`) vẫn vào được chi nhánh mặc định sau khi công ty có ≥ 2 chi nhánh.
     const rows = await privileged.userBranch.count({ where: { tenantId: fixture.tenantA.id, branchId: branchA, deletedAt: null } });
     expect(rows).toBeGreaterThanOrEqual(2);
+  });
+
+  it('tên chi nhánh quá 100 ký tự → 400 (tránh vỡ giao diện/đầu phiếu in); đúng 100 ký tự vẫn được', async () => {
+    const tooLong = await http().post('/api/v1/branches').set(authed(adminToken)).send({ name: 'A'.repeat(101) });
+    expect(tooLong.status).toBe(400);
+
+    const exact = await http().post('/api/v1/branches').set(authed(adminToken)).send({ name: 'B'.repeat(100) });
+    expect(exact.status, JSON.stringify(exact.body)).toBe(200);
+    const tooLongEdit = await http()
+      .patch(`/api/v1/branches/${exact.body.data.id}`)
+      .set(authed(adminToken))
+      .send({ name: 'C'.repeat(101), version: exact.body.data.version });
+    expect(tooLongEdit.status).toBe(400);
+    // Dọn: ngưng chi nhánh thử để không ảnh hưởng các test đếm chi nhánh phía sau.
+    await http().patch(`/api/v1/branches/${exact.body.data.id}`).set(authed(adminToken)).send({ isActive: false, version: exact.body.data.version });
   });
 
   it('cô lập tenant: tenant B không thấy/không sửa được chi nhánh tenant A (404)', async () => {
@@ -241,6 +257,8 @@ describe('HTTP e2e — Chi nhánh (/api/v1/branches, /auth/switch-branch, cô l�
     const session = await login(fixture.tenantA.id, onlyB.username);
     expect(session.user.branches).toHaveLength(1);
     expect(session.user.currentBranchId).toBe(branchB);
+    // Chỉ được gán 1 chi nhánh nhưng công ty có nhiều chi nhánh: cờ cấp công ty vẫn bật (để giao diện hiện phiếu đến từ chi nhánh khác).
+    expect(session.user.multiBranchCompany).toBe(true);
     onlyBToken = session.token;
   });
 

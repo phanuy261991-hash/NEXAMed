@@ -97,7 +97,7 @@ export function BranchFormModal({
                 value={values.name}
                 onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
                 className={inputClassName}
-                maxLength={200}
+                maxLength={100}
               />
             </div>
             <div className="flex flex-col gap-1.5 md:col-span-2">

@@ -65,6 +65,7 @@ export interface paths {
                                     }[];
                                     /** Format: uuid */
                                     currentBranchId: string | null;
+                                    multiBranchCompany: boolean;
                                 };
                             };
                             meta: Record<string, never>;
@@ -269,6 +270,7 @@ export interface paths {
                                 }[];
                                 /** Format: uuid */
                                 currentBranchId: string | null;
+                                multiBranchCompany: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -13579,10 +13581,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Danh sách Kho */
+        /** Danh sách Kho — mặc định chỉ kho của chi nhánh đang làm việc; allBranches=true liệt kê mọi chi nhánh tài khoản được gán (docs/DECISIONS.md #233) */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    allBranches?: boolean | ("true" | "false");
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -13602,6 +13606,9 @@ export interface paths {
                                     id: string;
                                     code: string;
                                     name: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
                                     /** Format: uuid */
                                     departmentId: string | null;
                                     departmentName: string | null;
@@ -13660,6 +13667,8 @@ export interface paths {
                     "application/json": {
                         name: string;
                         /** Format: uuid */
+                        branchId?: string;
+                        /** Format: uuid */
                         departmentId?: string;
                         isDefault?: boolean;
                     };
@@ -13678,6 +13687,9 @@ export interface paths {
                                 id: string;
                                 code: string;
                                 name: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
                                 /** Format: uuid */
                                 departmentId: string | null;
                                 departmentName: string | null;
@@ -13727,6 +13739,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/warehouses/transfer-destinations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ô chọn KHO NHẬN ở form điều chuyển (docs/DECISIONS.md #233) — mọi kho đang hoạt động của công ty kể cả chi nhánh khác, chỉ trường tối thiểu */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.create */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/warehouses/{id}": {
         parameters: {
             query?: never;
@@ -13758,6 +13849,9 @@ export interface paths {
                                 id: string;
                                 code: string;
                                 name: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
                                 /** Format: uuid */
                                 departmentId: string | null;
                                 departmentName: string | null;
@@ -13836,6 +13930,8 @@ export interface paths {
                     "application/json": {
                         name?: string;
                         /** Format: uuid */
+                        branchId?: string;
+                        /** Format: uuid */
                         departmentId?: string | null;
                         isDefault?: boolean;
                         isActive?: boolean;
@@ -13856,6 +13952,9 @@ export interface paths {
                                 id: string;
                                 code: string;
                                 name: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
                                 /** Format: uuid */
                                 departmentId: string | null;
                                 departmentName: string | null;
@@ -16322,10 +16421,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Thu ngân cơ bản/Kê đơn — chiếu tối thiểu tự-phục vụ cho tiêu đề bản in (tên/địa chỉ/SĐT/logo in), mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030) */
+        /** Thu ngân cơ bản/Kê đơn — chiếu tối thiểu tự-phục vụ cho tiêu đề bản in (tên/địa chỉ/SĐT/logo in), mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030). `branchId` tuỳ chọn: địa chỉ/SĐT/tên chi nhánh của chứng từ (docs/DECISIONS.md #233) */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    branchId?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -16341,6 +16442,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 name: string;
+                                branchName: string | null;
                                 address: string | null;
                                 phone: string | null;
                                 taxCode: string | null;
@@ -19875,6 +19977,8 @@ export interface paths {
                                         header: {
                                             showLogo: boolean;
                                             showClinicName: boolean;
+                                            /** @default true */
+                                            showBranchName: boolean;
                                             showAddress: boolean;
                                             showPhone: boolean;
                                             showTaxCode: boolean;
@@ -19940,6 +20044,8 @@ export interface paths {
                                             header: {
                                                 showLogo: boolean;
                                                 showClinicName: boolean;
+                                                /** @default true */
+                                                showBranchName: boolean;
                                                 showAddress: boolean;
                                                 showPhone: boolean;
                                                 showTaxCode: boolean;
@@ -19979,6 +20085,8 @@ export interface paths {
                                             header: {
                                                 showLogo: boolean;
                                                 showClinicName: boolean;
+                                                /** @default true */
+                                                showBranchName: boolean;
                                                 showAddress: boolean;
                                                 showPhone: boolean;
                                                 showTaxCode: boolean;
@@ -20018,6 +20126,8 @@ export interface paths {
                                             header: {
                                                 showLogo: boolean;
                                                 showClinicName: boolean;
+                                                /** @default true */
+                                                showBranchName: boolean;
                                                 showAddress: boolean;
                                                 showPhone: boolean;
                                                 showTaxCode: boolean;
@@ -20057,6 +20167,8 @@ export interface paths {
                                             header: {
                                                 showLogo: boolean;
                                                 showClinicName: boolean;
+                                                /** @default true */
+                                                showBranchName: boolean;
                                                 showAddress: boolean;
                                                 showPhone: boolean;
                                                 showTaxCode: boolean;
@@ -20096,6 +20208,8 @@ export interface paths {
                                             header: {
                                                 showLogo: boolean;
                                                 showClinicName: boolean;
+                                                /** @default true */
+                                                showBranchName: boolean;
                                                 showAddress: boolean;
                                                 showPhone: boolean;
                                                 showTaxCode: boolean;
@@ -20135,6 +20249,8 @@ export interface paths {
                                             header: {
                                                 showLogo: boolean;
                                                 showClinicName: boolean;
+                                                /** @default true */
+                                                showBranchName: boolean;
                                                 showAddress: boolean;
                                                 showPhone: boolean;
                                                 showTaxCode: boolean;
@@ -20230,6 +20346,8 @@ export interface paths {
                             header: {
                                 showLogo: boolean;
                                 showClinicName: boolean;
+                                /** @default true */
+                                showBranchName?: boolean;
                                 showAddress: boolean;
                                 showPhone: boolean;
                                 showTaxCode: boolean;
@@ -20291,6 +20409,8 @@ export interface paths {
                                     header: {
                                         showLogo: boolean;
                                         showClinicName: boolean;
+                                        /** @default true */
+                                        showBranchName: boolean;
                                         showAddress: boolean;
                                         showPhone: boolean;
                                         showTaxCode: boolean;
@@ -20451,6 +20571,8 @@ export interface paths {
                                         header: {
                                             showLogo: boolean;
                                             showClinicName: boolean;
+                                            /** @default true */
+                                            showBranchName: boolean;
                                             showAddress: boolean;
                                             showPhone: boolean;
                                             showTaxCode: boolean;
@@ -20497,6 +20619,8 @@ export interface paths {
                                             header: {
                                                 showLogo: boolean;
                                                 showClinicName: boolean;
+                                                /** @default true */
+                                                showBranchName: boolean;
                                                 showAddress: boolean;
                                                 showPhone: boolean;
                                                 showTaxCode: boolean;
@@ -20583,6 +20707,8 @@ export interface paths {
                         header: {
                             showLogo: boolean;
                             showClinicName: boolean;
+                            /** @default true */
+                            showBranchName?: boolean;
                             showAddress: boolean;
                             showPhone: boolean;
                             showTaxCode: boolean;
@@ -20791,6 +20917,8 @@ export interface paths {
                             header: {
                                 showLogo: boolean;
                                 showClinicName: boolean;
+                                /** @default true */
+                                showBranchName?: boolean;
                                 showAddress: boolean;
                                 showPhone: boolean;
                                 showTaxCode: boolean;
@@ -20854,6 +20982,8 @@ export interface paths {
                                     header: {
                                         showLogo: boolean;
                                         showClinicName: boolean;
+                                        /** @default true */
+                                        showBranchName: boolean;
                                         showAddress: boolean;
                                         showPhone: boolean;
                                         showTaxCode: boolean;
@@ -21436,6 +21566,8 @@ export interface paths {
                                     id: string;
                                     shiftNo: string;
                                     /** Format: uuid */
+                                    branchId: string;
+                                    /** Format: uuid */
                                     cashierId: string;
                                     cashierName: string;
                                     shiftLabel: string;
@@ -21563,6 +21695,8 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 shiftNo: string;
+                                /** Format: uuid */
+                                branchId: string;
                                 /** Format: uuid */
                                 cashierId: string;
                                 cashierName: string;
@@ -22002,6 +22136,8 @@ export interface paths {
                                 id: string;
                                 shiftNo: string;
                                 /** Format: uuid */
+                                branchId: string;
+                                /** Format: uuid */
                                 cashierId: string;
                                 cashierName: string;
                                 shiftLabel: string;
@@ -22140,6 +22276,8 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 shiftNo: string;
+                                /** Format: uuid */
+                                branchId: string;
                                 /** Format: uuid */
                                 cashierId: string;
                                 cashierName: string;
@@ -22407,6 +22545,8 @@ export interface paths {
                                 id: string;
                                 shiftNo: string;
                                 /** Format: uuid */
+                                branchId: string;
+                                /** Format: uuid */
                                 cashierId: string;
                                 cashierName: string;
                                 shiftLabel: string;
@@ -22554,6 +22694,8 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 shiftNo: string;
+                                /** Format: uuid */
+                                branchId: string;
                                 /** Format: uuid */
                                 cashierId: string;
                                 cashierName: string;
@@ -22709,6 +22851,8 @@ export interface paths {
                                 id: string;
                                 shiftNo: string;
                                 /** Format: uuid */
+                                branchId: string;
+                                /** Format: uuid */
                                 cashierId: string;
                                 cashierName: string;
                                 shiftLabel: string;
@@ -22825,10 +22969,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Danh sách Quỹ (tiền mặt/ngân hàng) — form lập phiếu thu/chi cần */
+        /** Danh sách Quỹ (tiền mặt/ngân hàng) — form lập phiếu thu/chi cần; mặc định chỉ quỹ của chi nhánh đang làm việc, allBranches=true liệt kê mọi chi nhánh được gán (docs/DECISIONS.md #233) */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    allBranches?: boolean | ("true" | "false");
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -22848,6 +22994,9 @@ export interface paths {
                                     id: string;
                                     code: string;
                                     name: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
                                     /** @enum {string} */
                                     type: "CASH" | "BANK" | "DRAWER";
                                     bankName: string | null;
@@ -22911,6 +23060,8 @@ export interface paths {
                 content: {
                     "application/json": {
                         name: string;
+                        /** Format: uuid */
+                        branchId?: string;
                         /** @enum {string} */
                         type: "CASH" | "BANK" | "DRAWER";
                         bankName?: string | null;
@@ -22935,6 +23086,9 @@ export interface paths {
                                 id: string;
                                 code: string;
                                 name: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
                                 /** @enum {string} */
                                 type: "CASH" | "BANK" | "DRAWER";
                                 bankName: string | null;
@@ -23053,6 +23207,9 @@ export interface paths {
                                 id: string;
                                 code: string;
                                 name: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
                                 /** @enum {string} */
                                 type: "CASH" | "BANK" | "DRAWER";
                                 bankName: string | null;
@@ -24439,6 +24596,9 @@ export interface paths {
                                     note: string | null;
                                     createdByName: string;
                                     createdAt: string;
+                                    /** Format: uuid */
+                                    branchId: string | null;
+                                    branchName: string | null;
                                 }[];
                                 nextCursor: string | null;
                             };
@@ -24882,7 +25042,7 @@ export interface paths {
                     cursor?: string;
                     limit?: number;
                     warehouseId?: string;
-                    receiptType?: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                    receiptType?: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "TRANSFER_RETURN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
                     status?: "DRAFT" | "POSTED" | "REJECTED";
                     from?: string;
                     to?: string;
@@ -24908,7 +25068,7 @@ export interface paths {
                                     id: string;
                                     receiptNo: string;
                                     /** @enum {string} */
-                                    receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                    receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "TRANSFER_RETURN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
                                     /** @enum {string} */
                                     status: "DRAFT" | "POSTED" | "REJECTED";
                                     /** Format: uuid */
@@ -24997,7 +25157,7 @@ export interface paths {
                         /** Format: uuid */
                         supplierId?: string;
                         /** @enum {string} */
-                        receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                        receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "TRANSFER_RETURN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
                         occurredAt?: string;
                         note?: string | null;
                         supplierInvoiceNo?: string | null;
@@ -25039,7 +25199,7 @@ export interface paths {
                                 id: string;
                                 receiptNo: string;
                                 /** @enum {string} */
-                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "TRANSFER_RETURN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
                                 /** @enum {string} */
                                 status: "DRAFT" | "POSTED" | "REJECTED";
                                 /** Format: uuid */
@@ -25198,7 +25358,7 @@ export interface paths {
                                 id: string;
                                 receiptNo: string;
                                 /** @enum {string} */
-                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "TRANSFER_RETURN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
                                 /** @enum {string} */
                                 status: "DRAFT" | "POSTED" | "REJECTED";
                                 /** Format: uuid */
@@ -25328,7 +25488,7 @@ export interface paths {
                         /** Format: uuid */
                         supplierId?: string;
                         /** @enum {string} */
-                        receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                        receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "TRANSFER_RETURN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
                         occurredAt?: string;
                         note?: string | null;
                         supplierInvoiceNo?: string | null;
@@ -25371,7 +25531,7 @@ export interface paths {
                                 id: string;
                                 receiptNo: string;
                                 /** @enum {string} */
-                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "TRANSFER_RETURN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
                                 /** @enum {string} */
                                 status: "DRAFT" | "POSTED" | "REJECTED";
                                 /** Format: uuid */
@@ -25534,7 +25694,7 @@ export interface paths {
                                 id: string;
                                 receiptNo: string;
                                 /** @enum {string} */
-                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "TRANSFER_RETURN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
                                 /** @enum {string} */
                                 status: "DRAFT" | "POSTED" | "REJECTED";
                                 /** Format: uuid */
@@ -25702,7 +25862,7 @@ export interface paths {
                                 id: string;
                                 receiptNo: string;
                                 /** @enum {string} */
-                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "TRANSFER_RETURN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
                                 /** @enum {string} */
                                 status: "DRAFT" | "POSTED" | "REJECTED";
                                 /** Format: uuid */
@@ -25870,7 +26030,7 @@ export interface paths {
                                 id: string;
                                 receiptNo: string;
                                 /** @enum {string} */
-                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
+                                receiptType: "PURCHASE" | "OPENING_BALANCE" | "TRANSFER_IN" | "TRANSFER_RETURN" | "RETURN_FROM_USE" | "COUNT_SURPLUS";
                                 /** @enum {string} */
                                 status: "DRAFT" | "POSTED" | "REJECTED";
                                 /** Format: uuid */
@@ -26035,7 +26195,7 @@ export interface paths {
                                     quantityChange: number;
                                     runningBalance: number;
                                     /** @enum {string} */
-                                    reason: "RECEIPT_PURCHASE" | "RECEIPT_OPENING_BALANCE" | "RECEIPT_TRANSFER_IN" | "RECEIPT_RETURN_FROM_USE" | "RECEIPT_COUNT_SURPLUS" | "RECEIPT_VOID" | "ISSUE_RETAIL_SALE" | "ISSUE_SERVICE_CONSUMPTION" | "ISSUE_INTERNAL_ALLOCATION" | "ISSUE_TRANSFER_OUT" | "ISSUE_RETURN_TO_SUPPLIER" | "ISSUE_WRITE_OFF" | "ISSUE_COUNT_SHORTAGE" | "ISSUE_VOID";
+                                    reason: "RECEIPT_PURCHASE" | "RECEIPT_OPENING_BALANCE" | "RECEIPT_TRANSFER_IN" | "RECEIPT_TRANSFER_RETURN" | "RECEIPT_RETURN_FROM_USE" | "RECEIPT_COUNT_SURPLUS" | "RECEIPT_VOID" | "ISSUE_RETAIL_SALE" | "ISSUE_SERVICE_CONSUMPTION" | "ISSUE_INTERNAL_ALLOCATION" | "ISSUE_TRANSFER_OUT" | "ISSUE_RETURN_TO_SUPPLIER" | "ISSUE_WRITE_OFF" | "ISSUE_COUNT_SHORTAGE" | "ISSUE_VOID";
                                     /** Format: uuid */
                                     warehouseId: string;
                                     warehouseName: string;
@@ -28790,8 +28950,9 @@ export interface paths {
                     limit?: number;
                     fromWarehouseId?: string;
                     toWarehouseId?: string;
-                    status?: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                    status?: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
                     q?: string;
+                    direction?: "out" | "in";
                 };
                 header?: never;
                 path?: never;
@@ -28812,7 +28973,7 @@ export interface paths {
                                     id: string;
                                     transferNo: string;
                                     /** @enum {string} */
-                                    status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                    status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
                                     /** Format: uuid */
                                     fromWarehouseId: string;
                                     fromWarehouseName: string;
@@ -28828,6 +28989,22 @@ export interface paths {
                                     receivedByName: string | null;
                                     receivedAt: string | null;
                                     rejectionReason: string | null;
+                                    /** Format: uuid */
+                                    fromBranchId: string;
+                                    fromBranchName: string;
+                                    /** Format: uuid */
+                                    toBranchId: string;
+                                    toBranchName: string;
+                                    /** @enum {string|null} */
+                                    receiveRejectReason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER" | null;
+                                    receiveRejectNote: string | null;
+                                    receiveRejectedByName: string | null;
+                                    receiveRejectedAt: string | null;
+                                    returnConfirmedByName: string | null;
+                                    returnConfirmedAt: string | null;
+                                    varianceResolvedByName: string | null;
+                                    varianceResolvedAt: string | null;
+                                    varianceResolutionNote: string | null;
                                     version: number;
                                 }[];
                                 nextCursor: string | null;
@@ -28909,7 +29086,7 @@ export interface paths {
                                 id: string;
                                 transferNo: string;
                                 /** @enum {string} */
-                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
                                 /** Format: uuid */
                                 fromWarehouseId: string;
                                 fromWarehouseName: string;
@@ -28925,6 +29102,22 @@ export interface paths {
                                 receivedByName: string | null;
                                 receivedAt: string | null;
                                 rejectionReason: string | null;
+                                /** Format: uuid */
+                                fromBranchId: string;
+                                fromBranchName: string;
+                                /** Format: uuid */
+                                toBranchId: string;
+                                toBranchName: string;
+                                /** @enum {string|null} */
+                                receiveRejectReason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER" | null;
+                                receiveRejectNote: string | null;
+                                receiveRejectedByName: string | null;
+                                receiveRejectedAt: string | null;
+                                returnConfirmedByName: string | null;
+                                returnConfirmedAt: string | null;
+                                varianceResolvedByName: string | null;
+                                varianceResolvedAt: string | null;
+                                varianceResolutionNote: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -28941,6 +29134,13 @@ export interface paths {
                                     quantityShipped: number;
                                     quantityReceived: number | null;
                                     varianceNote: string | null;
+                                    /** @enum {string|null} */
+                                    varianceReason: "SHORTAGE" | "DAMAGED" | "EXPIRED" | "WRONG_ITEM" | "OTHER" | null;
+                                    /** @enum {string|null} */
+                                    varianceResolution: "RETURN_TO_SOURCE" | "WRITE_OFF" | null;
+                                    quantityReturnedBack: number | null;
+                                    returnVarianceNote: string | null;
+                                    unitCost: number | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -29061,7 +29261,7 @@ export interface paths {
                                 id: string;
                                 transferNo: string;
                                 /** @enum {string} */
-                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
                                 /** Format: uuid */
                                 fromWarehouseId: string;
                                 fromWarehouseName: string;
@@ -29077,6 +29277,22 @@ export interface paths {
                                 receivedByName: string | null;
                                 receivedAt: string | null;
                                 rejectionReason: string | null;
+                                /** Format: uuid */
+                                fromBranchId: string;
+                                fromBranchName: string;
+                                /** Format: uuid */
+                                toBranchId: string;
+                                toBranchName: string;
+                                /** @enum {string|null} */
+                                receiveRejectReason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER" | null;
+                                receiveRejectNote: string | null;
+                                receiveRejectedByName: string | null;
+                                receiveRejectedAt: string | null;
+                                returnConfirmedByName: string | null;
+                                returnConfirmedAt: string | null;
+                                varianceResolvedByName: string | null;
+                                varianceResolvedAt: string | null;
+                                varianceResolutionNote: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -29093,6 +29309,13 @@ export interface paths {
                                     quantityShipped: number;
                                     quantityReceived: number | null;
                                     varianceNote: string | null;
+                                    /** @enum {string|null} */
+                                    varianceReason: "SHORTAGE" | "DAMAGED" | "EXPIRED" | "WRONG_ITEM" | "OTHER" | null;
+                                    /** @enum {string|null} */
+                                    varianceResolution: "RETURN_TO_SOURCE" | "WRITE_OFF" | null;
+                                    quantityReturnedBack: number | null;
+                                    returnVarianceNote: string | null;
+                                    unitCost: number | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -29194,7 +29417,7 @@ export interface paths {
                                 id: string;
                                 transferNo: string;
                                 /** @enum {string} */
-                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
                                 /** Format: uuid */
                                 fromWarehouseId: string;
                                 fromWarehouseName: string;
@@ -29210,6 +29433,22 @@ export interface paths {
                                 receivedByName: string | null;
                                 receivedAt: string | null;
                                 rejectionReason: string | null;
+                                /** Format: uuid */
+                                fromBranchId: string;
+                                fromBranchName: string;
+                                /** Format: uuid */
+                                toBranchId: string;
+                                toBranchName: string;
+                                /** @enum {string|null} */
+                                receiveRejectReason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER" | null;
+                                receiveRejectNote: string | null;
+                                receiveRejectedByName: string | null;
+                                receiveRejectedAt: string | null;
+                                returnConfirmedByName: string | null;
+                                returnConfirmedAt: string | null;
+                                varianceResolvedByName: string | null;
+                                varianceResolvedAt: string | null;
+                                varianceResolutionNote: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -29226,6 +29465,13 @@ export interface paths {
                                     quantityShipped: number;
                                     quantityReceived: number | null;
                                     varianceNote: string | null;
+                                    /** @enum {string|null} */
+                                    varianceReason: "SHORTAGE" | "DAMAGED" | "EXPIRED" | "WRONG_ITEM" | "OTHER" | null;
+                                    /** @enum {string|null} */
+                                    varianceResolution: "RETURN_TO_SOURCE" | "WRITE_OFF" | null;
+                                    quantityReturnedBack: number | null;
+                                    returnVarianceNote: string | null;
+                                    unitCost: number | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -29350,7 +29596,7 @@ export interface paths {
                                 id: string;
                                 transferNo: string;
                                 /** @enum {string} */
-                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
                                 /** Format: uuid */
                                 fromWarehouseId: string;
                                 fromWarehouseName: string;
@@ -29366,6 +29612,22 @@ export interface paths {
                                 receivedByName: string | null;
                                 receivedAt: string | null;
                                 rejectionReason: string | null;
+                                /** Format: uuid */
+                                fromBranchId: string;
+                                fromBranchName: string;
+                                /** Format: uuid */
+                                toBranchId: string;
+                                toBranchName: string;
+                                /** @enum {string|null} */
+                                receiveRejectReason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER" | null;
+                                receiveRejectNote: string | null;
+                                receiveRejectedByName: string | null;
+                                receiveRejectedAt: string | null;
+                                returnConfirmedByName: string | null;
+                                returnConfirmedAt: string | null;
+                                varianceResolvedByName: string | null;
+                                varianceResolvedAt: string | null;
+                                varianceResolutionNote: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -29382,6 +29644,13 @@ export interface paths {
                                     quantityShipped: number;
                                     quantityReceived: number | null;
                                     varianceNote: string | null;
+                                    /** @enum {string|null} */
+                                    varianceReason: "SHORTAGE" | "DAMAGED" | "EXPIRED" | "WRONG_ITEM" | "OTHER" | null;
+                                    /** @enum {string|null} */
+                                    varianceResolution: "RETURN_TO_SOURCE" | "WRITE_OFF" | null;
+                                    quantityReturnedBack: number | null;
+                                    returnVarianceNote: string | null;
+                                    unitCost: number | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -29511,7 +29780,7 @@ export interface paths {
                                 id: string;
                                 transferNo: string;
                                 /** @enum {string} */
-                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
                                 /** Format: uuid */
                                 fromWarehouseId: string;
                                 fromWarehouseName: string;
@@ -29527,6 +29796,22 @@ export interface paths {
                                 receivedByName: string | null;
                                 receivedAt: string | null;
                                 rejectionReason: string | null;
+                                /** Format: uuid */
+                                fromBranchId: string;
+                                fromBranchName: string;
+                                /** Format: uuid */
+                                toBranchId: string;
+                                toBranchName: string;
+                                /** @enum {string|null} */
+                                receiveRejectReason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER" | null;
+                                receiveRejectNote: string | null;
+                                receiveRejectedByName: string | null;
+                                receiveRejectedAt: string | null;
+                                returnConfirmedByName: string | null;
+                                returnConfirmedAt: string | null;
+                                varianceResolvedByName: string | null;
+                                varianceResolvedAt: string | null;
+                                varianceResolutionNote: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -29543,6 +29828,13 @@ export interface paths {
                                     quantityShipped: number;
                                     quantityReceived: number | null;
                                     varianceNote: string | null;
+                                    /** @enum {string|null} */
+                                    varianceReason: "SHORTAGE" | "DAMAGED" | "EXPIRED" | "WRONG_ITEM" | "OTHER" | null;
+                                    /** @enum {string|null} */
+                                    varianceResolution: "RETURN_TO_SOURCE" | "WRITE_OFF" | null;
+                                    quantityReturnedBack: number | null;
+                                    returnVarianceNote: string | null;
+                                    unitCost: number | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -29626,7 +29918,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Xác nhận nhận hàng (MỘT LẦN DUY NHẤT) — IN_TRANSIT→COMPLETED, cộng đúng SL thực nhận, tự sinh Phiếu nhập TRANSFER_IN */
+        /** Kiểm nhận hàng (MỘT LẦN DUY NHẤT) — IN_TRANSIT→COMPLETED (nhận đủ) hoặc VARIANCE_PENDING (nhận thiếu, kèm lý do), cộng đúng SL thực nhận, tự sinh Phiếu nhập TRANSFER_IN (docs/DECISIONS.md #233) */
         post: {
             parameters: {
                 query?: never;
@@ -29644,6 +29936,8 @@ export interface paths {
                             /** Format: uuid */
                             lineId: string;
                             quantityReceived: number;
+                            /** @enum {string|null} */
+                            varianceReason?: "SHORTAGE" | "DAMAGED" | "EXPIRED" | "WRONG_ITEM" | "OTHER" | null;
                             varianceNote?: string | null;
                         }[];
                     };
@@ -29662,7 +29956,7 @@ export interface paths {
                                 id: string;
                                 transferNo: string;
                                 /** @enum {string} */
-                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED";
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
                                 /** Format: uuid */
                                 fromWarehouseId: string;
                                 fromWarehouseName: string;
@@ -29678,6 +29972,22 @@ export interface paths {
                                 receivedByName: string | null;
                                 receivedAt: string | null;
                                 rejectionReason: string | null;
+                                /** Format: uuid */
+                                fromBranchId: string;
+                                fromBranchName: string;
+                                /** Format: uuid */
+                                toBranchId: string;
+                                toBranchName: string;
+                                /** @enum {string|null} */
+                                receiveRejectReason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER" | null;
+                                receiveRejectNote: string | null;
+                                receiveRejectedByName: string | null;
+                                receiveRejectedAt: string | null;
+                                returnConfirmedByName: string | null;
+                                returnConfirmedAt: string | null;
+                                varianceResolvedByName: string | null;
+                                varianceResolvedAt: string | null;
+                                varianceResolutionNote: string | null;
                                 version: number;
                                 lines: {
                                     /** Format: uuid */
@@ -29694,6 +30004,13 @@ export interface paths {
                                     quantityShipped: number;
                                     quantityReceived: number | null;
                                     varianceNote: string | null;
+                                    /** @enum {string|null} */
+                                    varianceReason: "SHORTAGE" | "DAMAGED" | "EXPIRED" | "WRONG_ITEM" | "OTHER" | null;
+                                    /** @enum {string|null} */
+                                    varianceResolution: "RETURN_TO_SOURCE" | "WRITE_OFF" | null;
+                                    quantityReturnedBack: number | null;
+                                    returnVarianceNote: string | null;
+                                    unitCost: number | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -29762,6 +30079,710 @@ export interface paths {
                 };
                 /** @description Nhận vượt số đã xuất, hoặc nhận thiếu số lượng nhưng chưa nhập ghi chú chênh lệch */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers/pending-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chấm số trên menu Điều chuyển kho — phiếu đang chờ NHẬN ở chi nhánh này + phiếu chờ chi nhánh này (bên gửi) xử lý (docs/DECISIONS.md #233) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                incoming: number;
+                                toResolve: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers/shrinkage-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Báo cáo hao hụt điều chuyển kho theo khoảng ngày (docs/DECISIONS.md #233) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    fromWarehouseId?: string;
+                    cause?: "WRITE_OFF" | "RETURN_SHORTAGE";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    transferId: string;
+                                    transferNo: string;
+                                    occurredAt: string;
+                                    fromWarehouseName: string;
+                                    toWarehouseName: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    quantity: number;
+                                    unitCost: number;
+                                    lineValue: number;
+                                    /** @enum {string} */
+                                    cause: "WRITE_OFF" | "RETURN_SHORTAGE";
+                                }[];
+                                totalQuantity: number;
+                                totalValue: number;
+                                transferCount: number;
+                                countByCause: {
+                                    WRITE_OFF: number;
+                                    RETURN_SHORTAGE: number;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.report */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers/{id}/reject-receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bên NHẬN từ chối nhận cả phiếu — IN_TRANSIT→RETURNING, hàng không vào kho nhận (docs/DECISIONS.md #233) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        /** @enum {string} */
+                        reason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER";
+                        note: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                transferNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
+                                /** Format: uuid */
+                                fromWarehouseId: string;
+                                fromWarehouseName: string;
+                                /** Format: uuid */
+                                toWarehouseId: string;
+                                toWarehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                shippedByName: string | null;
+                                shippedAt: string | null;
+                                receivedByName: string | null;
+                                receivedAt: string | null;
+                                rejectionReason: string | null;
+                                /** Format: uuid */
+                                fromBranchId: string;
+                                fromBranchName: string;
+                                /** Format: uuid */
+                                toBranchId: string;
+                                toBranchName: string;
+                                /** @enum {string|null} */
+                                receiveRejectReason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER" | null;
+                                receiveRejectNote: string | null;
+                                receiveRejectedByName: string | null;
+                                receiveRejectedAt: string | null;
+                                returnConfirmedByName: string | null;
+                                returnConfirmedAt: string | null;
+                                varianceResolvedByName: string | null;
+                                varianceResolvedAt: string | null;
+                                varianceResolutionNote: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    quantityShipped: number;
+                                    quantityReceived: number | null;
+                                    varianceNote: string | null;
+                                    /** @enum {string|null} */
+                                    varianceReason: "SHORTAGE" | "DAMAGED" | "EXPIRED" | "WRONG_ITEM" | "OTHER" | null;
+                                    /** @enum {string|null} */
+                                    varianceResolution: "RETURN_TO_SOURCE" | "WRITE_OFF" | null;
+                                    quantityReturnedBack: number | null;
+                                    returnVarianceNote: string | null;
+                                    unitCost: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy, hoặc không thuộc kho nhận của chi nhánh đang làm việc */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không ở trạng thái Đang vận chuyển */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers/{id}/confirm-return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bên GỬI xác nhận đã nhận lại hàng bị từ chối — RETURNING→RETURNED (nhận lại thiếu = hao hụt, bắt buộc ghi chú) (docs/DECISIONS.md #233) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        lines: {
+                            /** Format: uuid */
+                            lineId: string;
+                            quantityReturnedBack: number;
+                            note?: string | null;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                transferNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
+                                /** Format: uuid */
+                                fromWarehouseId: string;
+                                fromWarehouseName: string;
+                                /** Format: uuid */
+                                toWarehouseId: string;
+                                toWarehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                shippedByName: string | null;
+                                shippedAt: string | null;
+                                receivedByName: string | null;
+                                receivedAt: string | null;
+                                rejectionReason: string | null;
+                                /** Format: uuid */
+                                fromBranchId: string;
+                                fromBranchName: string;
+                                /** Format: uuid */
+                                toBranchId: string;
+                                toBranchName: string;
+                                /** @enum {string|null} */
+                                receiveRejectReason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER" | null;
+                                receiveRejectNote: string | null;
+                                receiveRejectedByName: string | null;
+                                receiveRejectedAt: string | null;
+                                returnConfirmedByName: string | null;
+                                returnConfirmedAt: string | null;
+                                varianceResolvedByName: string | null;
+                                varianceResolvedAt: string | null;
+                                varianceResolutionNote: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    quantityShipped: number;
+                                    quantityReceived: number | null;
+                                    varianceNote: string | null;
+                                    /** @enum {string|null} */
+                                    varianceReason: "SHORTAGE" | "DAMAGED" | "EXPIRED" | "WRONG_ITEM" | "OTHER" | null;
+                                    /** @enum {string|null} */
+                                    varianceResolution: "RETURN_TO_SOURCE" | "WRITE_OFF" | null;
+                                    quantityReturnedBack: number | null;
+                                    returnVarianceNote: string | null;
+                                    unitCost: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy, hoặc không thuộc kho gửi của chi nhánh đang làm việc */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không ở trạng thái Đang trả hàng */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Nhận lại thiếu nhưng chưa nhập ghi chú */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transfers/{id}/resolve-variance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bên GỬI xử lý phần nhận thiếu — VARIANCE_PENDING→COMPLETED; từng dòng chọn hàng về kho gửi (phiếu nhập TRANSFER_RETURN) hoặc ghi hao hụt (docs/DECISIONS.md #233) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        note?: string | null;
+                        lines: {
+                            /** Format: uuid */
+                            lineId: string;
+                            /** @enum {string} */
+                            resolution: "RETURN_TO_SOURCE" | "WRITE_OFF";
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                transferNo: string;
+                                /** @enum {string} */
+                                status: "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "REJECTED" | "VARIANCE_PENDING" | "RETURNING" | "RETURNED";
+                                /** Format: uuid */
+                                fromWarehouseId: string;
+                                fromWarehouseName: string;
+                                /** Format: uuid */
+                                toWarehouseId: string;
+                                toWarehouseName: string;
+                                occurredAt: string;
+                                note: string | null;
+                                lineCount: number;
+                                createdByName: string;
+                                shippedByName: string | null;
+                                shippedAt: string | null;
+                                receivedByName: string | null;
+                                receivedAt: string | null;
+                                rejectionReason: string | null;
+                                /** Format: uuid */
+                                fromBranchId: string;
+                                fromBranchName: string;
+                                /** Format: uuid */
+                                toBranchId: string;
+                                toBranchName: string;
+                                /** @enum {string|null} */
+                                receiveRejectReason: "WRONG_ITEM" | "DAMAGED" | "EXPIRED" | "OTHER" | null;
+                                receiveRejectNote: string | null;
+                                receiveRejectedByName: string | null;
+                                receiveRejectedAt: string | null;
+                                returnConfirmedByName: string | null;
+                                returnConfirmedAt: string | null;
+                                varianceResolvedByName: string | null;
+                                varianceResolvedAt: string | null;
+                                varianceResolutionNote: string | null;
+                                version: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    isBatchManaged: boolean;
+                                    /** Format: uuid */
+                                    batchId: string | null;
+                                    batchNo: string | null;
+                                    expiryDate: string | null;
+                                    quantityShipped: number;
+                                    quantityReceived: number | null;
+                                    varianceNote: string | null;
+                                    /** @enum {string|null} */
+                                    varianceReason: "SHORTAGE" | "DAMAGED" | "EXPIRED" | "WRONG_ITEM" | "OTHER" | null;
+                                    /** @enum {string|null} */
+                                    varianceResolution: "RETURN_TO_SOURCE" | "WRITE_OFF" | null;
+                                    quantityReturnedBack: number | null;
+                                    returnVarianceNote: string | null;
+                                    unitCost: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_transfer.approve */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy, hoặc không thuộc kho gửi của chi nhánh đang làm việc */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, hoặc phiếu không ở trạng thái Chờ xử lý chênh lệch */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -30114,6 +31135,9 @@ export interface paths {
                                     reversed: boolean;
                                     note: string | null;
                                     createdByName: string;
+                                    /** Format: uuid */
+                                    sourceBranchId: string | null;
+                                    sourceBranchName: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -30211,6 +31235,10 @@ export interface paths {
                                     dueAmount: number;
                                     /** @enum {string} */
                                     status: "UNPAID" | "PARTIALLY_PAID" | "FULLY_PAID";
+                                    /** Format: uuid */
+                                    sourceBranchId: string | null;
+                                    sourceBranchName: string | null;
+                                    stockReceiptNo: string | null;
                                 }[];
                                 totalOriginalAmount: number;
                                 totalPaidAmount: number;
@@ -30572,6 +31600,9 @@ export interface paths {
                                     approvedByName: string | null;
                                     approvedAt: string | null;
                                     rejectionReason: string | null;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
                                 }[];
                                 pendingApprovalCount: number;
                             };

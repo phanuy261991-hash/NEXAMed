@@ -56,6 +56,7 @@ import { useShiftSwapUnseenCountQuery } from '../../features/shift-swap/shift-sw
 import { useScheduleSubmissionPendingCountQuery } from '../../features/work-shift-assignment/schedule-submission.queries';
 import { useDoctorUnseenResultsQuery } from '../../features/reception/reception.queries';
 import { useSupplierDebtSummariesQuery } from '../../features/supplier-debt/supplier-debt.queries';
+import { useStockTransferPendingCountsQuery } from '../../features/inventory/inventory.queries';
 import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context';
 
 /**
@@ -267,6 +268,9 @@ export function Sidebar() {
   // Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170) — quyền RIÊNG `stock_receipt.report`
   // (chỉ `clinic_admin` mặc định), KHÁC `canSeeInventory` (`stock_receipt.read`, mọi vai trò kho).
   const canSeeStockLedgerReport = useHasPermission('stock_receipt', 'report');
+  // Đợt 2 chi nhánh (docs/DECISIONS.md #233): chấm số cạnh "Điều chuyển kho" = phiếu đang đến chờ chi nhánh này nhận + phiếu chờ chi nhánh này (bên gửi) xử lý.
+  const transferPendingCounts = useStockTransferPendingCountsQuery(canSeeStockTransfer);
+  const transferPendingCount = (transferPendingCounts.data?.incoming ?? 0) + (transferPendingCounts.data?.toResolve ?? 0);
   // "Mẫu in" gác bằng `clinic_config.update`; "Cấu hình hệ thống" còn mở cho `system_backup.read` (pill "Sao lưu dữ liệu", #217).
   const canSeePrintTemplates = useHasPermission('clinic_config', 'update');
   const canSeeSystemConfig = useHasAnyPermission(SYSTEM_CONFIG_PERMISSIONS);
@@ -650,7 +654,7 @@ export function Sidebar() {
                   {/* Kho Thuốc GĐ4, phần "Kiểm kê" (docs/DECISIONS.md #170). */}
                   {canSeeStockCount && <NavItem to="/inventory/counts" label="Kiểm kê" icon={ClipboardText} collapsed={false} indent />}
                   {/* Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170). */}
-                  {canSeeStockTransfer && <NavItem to="/inventory/transfers" label="Điều chuyển kho" icon={ArrowsLeftRight} collapsed={false} indent />}
+                  {canSeeStockTransfer && <NavItem to="/inventory/transfers" label="Điều chuyển kho" icon={ArrowsLeftRight} collapsed={false} indent badge={transferPendingCount} />}
                   {/* Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170). */}
                   {canSeeStockLedgerReport && <NavItem to="/inventory/reports/stock-ledger" label="Báo cáo Nhập-Xuất-Tồn" icon={ChartLine} collapsed={false} indent />}
                 </ul>

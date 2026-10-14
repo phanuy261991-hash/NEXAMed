@@ -24,11 +24,12 @@ import {
   resolveCashierShiftDiscrepancy,
 } from './cashier-shift.api';
 
-export function useCurrentCashierShiftQuery() {
+export function useCurrentCashierShiftQuery(enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'cashier-shift', 'current'),
     queryFn: getCurrentCashierShift,
+    enabled,
   });
 }
 

@@ -6,6 +6,8 @@ import { ApiError } from '../api/client';
 import { Button } from '../ui/Button';
 import { switchBranch } from '../../features/auth/auth.api';
 import { useAuthStore } from '../../features/auth/auth.store';
+import { useHasPermission } from '../../features/auth/usePermission';
+import { useCurrentCashierShiftQuery } from '../../features/cashier-shift/cashier-shift.queries';
 import { findCurrentBranch, hasMultipleBranches } from '../../features/branch/branch-visibility';
 
 /**
@@ -19,6 +21,9 @@ export function BranchSwitcher() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isOnEncounterPage = useMatch('/encounters/:id') !== null;
+  // Đợt 2 chi nhánh (docs/DECISIONS.md #233, Q6): đang có ca thu ngân mở ở chi nhánh hiện tại thì khi đổi chi nhánh CHỈ nhắc — không tự đóng ca.
+  const canReadShift = useHasPermission('cashier_shift', 'read');
+  const openShift = useCurrentCashierShiftQuery(canReadShift).data?.openShift ?? null;
 
   const [open, setOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -68,7 +73,7 @@ export function BranchSwitcher() {
       setOpen(false);
       return;
     }
-    if (isOnEncounterPage) {
+    if (isOnEncounterPage || openShift) {
       setOpen(false);
       setError(null);
       setConfirmId(branchId);
@@ -90,7 +95,7 @@ export function BranchSwitcher() {
         className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-800 hover:border-blue-200 hover:bg-blue-50"
       >
         <MapPin size={16} weight="fill" className="flex-shrink-0 text-brand-teal" aria-hidden="true" />
-        <span className="max-w-[220px] truncate">{current.name}</span>
+        <span className="max-w-[220px] truncate" title={current.name}>{current.name}</span>
         <CaretDown size={12} weight="bold" className={`flex-shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180 text-blue-600' : ''}`} aria-hidden="true" />
       </button>
 
@@ -117,7 +122,7 @@ export function BranchSwitcher() {
                   isCurrent ? 'bg-brand-teal-tint text-slate-900' : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
-                <span className="min-w-0 truncate">{b.name}</span>
+                <span className="min-w-0 truncate" title={b.name}>{b.name}</span>
                 <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
                   {isCurrent && <Check size={16} weight="bold" className="text-brand-teal" aria-label="Đang làm việc ở chi nhánh này" />}
                 </span>
@@ -133,10 +138,17 @@ export function BranchSwitcher() {
             <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3">
               <WarningCircle size={20} weight="fill" className="mt-0.5 flex-shrink-0 text-amber-600" aria-hidden="true" />
               <div>
-                <p id="branch-switch-confirm-title" className="text-sm font-bold text-slate-900">
-                  Đổi sang &quot;{confirmTarget.name}&quot; khi đang ở màn khám?
+                <p id="branch-switch-confirm-title" className="break-words text-sm font-bold text-slate-900">
+                  {isOnEncounterPage ? <>Đổi sang &quot;{confirmTarget.name}&quot; khi đang ở màn khám?</> : <>Tiếp tục đổi sang &quot;{confirmTarget.name}&quot;?</>}
                 </p>
-                <p className="mt-1 text-xs text-slate-700">Hàng đợi và phiếu thu sẽ chuyển sang nơi khác. Dữ liệu đã lưu vẫn giữ nguyên; thông tin đang nhập dở chưa lưu sẽ mất.</p>
+                {isOnEncounterPage && (
+                  <p className="mt-1 text-xs text-slate-700">Hàng đợi và phiếu thu sẽ chuyển sang nơi khác. Dữ liệu đã lưu vẫn giữ nguyên; thông tin đang nhập dở chưa lưu sẽ mất.</p>
+                )}
+                {openShift && (
+                  <p className="mt-1 break-words text-xs text-slate-700">
+                    Bạn đang có ca <strong>{openShift.shiftNo}</strong> đang mở ở <strong>{current.name}</strong>. Ca này vẫn tiếp tục cho đến khi bạn chốt ca; hệ thống không tự đóng ca khi đổi chi nhánh.
+                  </p>
+                )}
               </div>
             </div>
             {error && (

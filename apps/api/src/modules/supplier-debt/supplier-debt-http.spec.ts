@@ -179,7 +179,20 @@ describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần
       expect(ledger.body.data.items[0]).toMatchObject({ entryType: 'PURCHASE', amountChange: 150000, balanceAfter: 150000, stockReceiptId: receiptId, reversed: false });
 
       const receipts = await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/receipts`).set(authed(clinicAdminToken));
-      expect(receipts.body.data.items).toEqual([{ stockReceiptId: receiptId, isOpeningBalance: false, originalAmount: 150000, paidAmount: 0, dueAmount: 150000, status: 'UNPAID' }]);
+      // Đợt 2 chi nhánh (#233 Q4): mỗi khoản kèm chi nhánh gốc + số phiếu nhập (hiện được cả khi phiếu thuộc chi nhánh khác).
+      expect(receipts.body.data.items).toEqual([
+        {
+          stockReceiptId: receiptId,
+          isOpeningBalance: false,
+          originalAmount: 150000,
+          paidAmount: 0,
+          dueAmount: 150000,
+          status: 'UNPAID',
+          sourceBranchId: expect.any(String),
+          sourceBranchName: expect.any(String),
+          stockReceiptNo: expect.stringMatching(/^PNK/),
+        },
+      ]);
       expect(receipts.body.data.totalDueAmount).toBe(150000);
     });
 

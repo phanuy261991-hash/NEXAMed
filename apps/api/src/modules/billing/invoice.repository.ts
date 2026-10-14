@@ -260,6 +260,11 @@ export class InvoiceRepository {
       .then((row) => (row ? { ...row, ...toPaymentSides(row.payments) } : null));
   }
 
+  /** Lượt khám có thuộc chi nhánh `branchId` không (Đợt 2 chi nhánh, #233) — phân biệt "lượt khám của chi nhánh này chưa có phiếu" với "lượt khám chi nhánh khác". */
+  async encounterInBranch(tx: Prisma.TransactionClient, tenantId: string, branchId: string, encounterId: string): Promise<boolean> {
+    return (await tx.encounter.count({ where: { tenantId, id: encounterId, branchId } })) > 0;
+  }
+
   /** Kho Thuốc GĐ3 (#163, mở rộng #165) — hoá đơn CỤ THỂ theo `id`, bất kể loại (SERVICE/DRUG) —
    * dùng khi web truyền `?invoiceId=` (xem hoá đơn thuốc riêng, hoặc đúng ý bấm từ "Danh sách Thu
    * ngân"). Không lọc `invoiceType` — service tự kiểm `encounterId` khớp trước khi trả về. */

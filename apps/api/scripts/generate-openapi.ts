@@ -313,6 +313,16 @@ import {
   receiveStockTransferRequestSchema,
   listStockTransfersQuerySchema,
   listStockTransfersResponseSchema,
+  rejectStockTransferReceiptRequestSchema,
+  confirmStockTransferReturnRequestSchema,
+  resolveStockTransferVarianceRequestSchema,
+  getStockTransferPendingCountsResponseSchema,
+  getStockTransferShrinkageQuerySchema,
+  getStockTransferShrinkageResponseSchema,
+  listWarehousesQuerySchema,
+  listWarehouseTransferDestinationsResponseSchema,
+  listCashAccountsQuerySchema,
+  clinicPrintHeaderQuerySchema,
   stockTransferDetailSchema,
   getStockLedgerReportQuerySchema,
   getStockLedgerReportResponseSchema,
@@ -2247,8 +2257,9 @@ registry.registerPath({
   method: 'get',
   path: '/api/v1/warehouses',
   tags: ['drug'],
-  summary: 'Danh sách Kho',
+  summary: 'Danh sách Kho — mặc định chỉ kho của chi nhánh đang làm việc; allBranches=true liệt kê mọi chi nhánh tài khoản được gán (docs/DECISIONS.md #233)',
   security: [{ bearerAuth: [] }],
+  request: { query: listWarehousesQuerySchema },
   responses: {
     200: jsonResponse('Thành công', envelope(listWarehousesResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
@@ -2257,6 +2268,19 @@ registry.registerPath({
 });
 
 const warehouseIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/warehouses/transfer-destinations',
+  tags: ['drug'],
+  summary: 'Ô chọn KHO NHẬN ở form điều chuyển (docs/DECISIONS.md #233) — mọi kho đang hoạt động của công ty kể cả chi nhánh khác, chỉ trường tối thiểu',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listWarehouseTransferDestinationsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.create'),
+  },
+});
 
 registry.registerPath({
   method: 'get',
@@ -2677,8 +2701,9 @@ registry.registerPath({
   method: 'get',
   path: '/api/v1/clinic-profile/print-header',
   tags: ['clinic'],
-  summary: 'Thu ngân cơ bản/Kê đơn — chiếu tối thiểu tự-phục vụ cho tiêu đề bản in (tên/địa chỉ/SĐT/logo in), mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030)',
+  summary: 'Thu ngân cơ bản/Kê đơn — chiếu tối thiểu tự-phục vụ cho tiêu đề bản in (tên/địa chỉ/SĐT/logo in), mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /appointments/doctors #030). `branchId` tuỳ chọn: địa chỉ/SĐT/tên chi nhánh của chứng từ (docs/DECISIONS.md #233)',
   security: [{ bearerAuth: [] }],
+  request: { query: clinicPrintHeaderQuerySchema },
   responses: {
     200: jsonResponse('Thành công', envelope(clinicPrintHeaderSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
@@ -3612,8 +3637,9 @@ registry.registerPath({
   method: 'get',
   path: '/api/v1/cash-accounts',
   tags: ['cash-book'],
-  summary: 'Danh sách Quỹ (tiền mặt/ngân hàng) — form lập phiếu thu/chi cần',
+  summary: 'Danh sách Quỹ (tiền mặt/ngân hàng) — form lập phiếu thu/chi cần; mặc định chỉ quỹ của chi nhánh đang làm việc, allBranches=true liệt kê mọi chi nhánh được gán (docs/DECISIONS.md #233)',
   security: [{ bearerAuth: [] }],
+  request: { query: listCashAccountsQuerySchema },
   responses: {
     200: jsonResponse('Thành công', envelope(listCashAccountsResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
@@ -4429,7 +4455,7 @@ registry.registerPath({
   method: 'post',
   path: '/api/v1/inventory/transfers/{id}/receive',
   tags: ['inventory'],
-  summary: 'Xác nhận nhận hàng (MỘT LẦN DUY NHẤT) — IN_TRANSIT→COMPLETED, cộng đúng SL thực nhận, tự sinh Phiếu nhập TRANSFER_IN',
+  summary: 'Kiểm nhận hàng (MỘT LẦN DUY NHẤT) — IN_TRANSIT→COMPLETED (nhận đủ) hoặc VARIANCE_PENDING (nhận thiếu, kèm lý do), cộng đúng SL thực nhận, tự sinh Phiếu nhập TRANSFER_IN (docs/DECISIONS.md #233)',
   security: [{ bearerAuth: [] }],
   request: { params: stockTransferIdParams, body: { content: { 'application/json': { schema: receiveStockTransferRequestSchema } } } },
   responses: {
@@ -4439,6 +4465,82 @@ registry.registerPath({
     404: errorResponse('Không tìm thấy'),
     409: errorResponse('version không khớp, hoặc phiếu không ở trạng thái Đang vận chuyển (STOCK_TRANSFER_NOT_IN_TRANSIT)'),
     422: errorResponse('Nhận vượt số đã xuất, hoặc nhận thiếu số lượng nhưng chưa nhập ghi chú chênh lệch'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/transfers/pending-counts',
+  tags: ['inventory'],
+  summary: 'Chấm số trên menu Điều chuyển kho — phiếu đang chờ NHẬN ở chi nhánh này + phiếu chờ chi nhánh này (bên gửi) xử lý (docs/DECISIONS.md #233)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(getStockTransferPendingCountsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/transfers/shrinkage-report',
+  tags: ['inventory'],
+  summary: 'Báo cáo hao hụt điều chuyển kho theo khoảng ngày (docs/DECISIONS.md #233)',
+  security: [{ bearerAuth: [] }],
+  request: { query: getStockTransferShrinkageQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(getStockTransferShrinkageResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.report'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/transfers/{id}/reject-receipt',
+  tags: ['inventory'],
+  summary: 'Bên NHẬN từ chối nhận cả phiếu — IN_TRANSIT→RETURNING, hàng không vào kho nhận (docs/DECISIONS.md #233)',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockTransferIdParams, body: { content: { 'application/json': { schema: rejectStockTransferReceiptRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockTransferDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.approve'),
+    404: errorResponse('Không tìm thấy, hoặc không thuộc kho nhận của chi nhánh đang làm việc'),
+    409: errorResponse('version không khớp, hoặc phiếu không ở trạng thái Đang vận chuyển'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/transfers/{id}/confirm-return',
+  tags: ['inventory'],
+  summary: 'Bên GỬI xác nhận đã nhận lại hàng bị từ chối — RETURNING→RETURNED (nhận lại thiếu = hao hụt, bắt buộc ghi chú) (docs/DECISIONS.md #233)',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockTransferIdParams, body: { content: { 'application/json': { schema: confirmStockTransferReturnRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockTransferDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.approve'),
+    404: errorResponse('Không tìm thấy, hoặc không thuộc kho gửi của chi nhánh đang làm việc'),
+    409: errorResponse('version không khớp, hoặc phiếu không ở trạng thái Đang trả hàng'),
+    422: errorResponse('Nhận lại thiếu nhưng chưa nhập ghi chú'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/transfers/{id}/resolve-variance',
+  tags: ['inventory'],
+  summary: 'Bên GỬI xử lý phần nhận thiếu — VARIANCE_PENDING→COMPLETED; từng dòng chọn hàng về kho gửi (phiếu nhập TRANSFER_RETURN) hoặc ghi hao hụt (docs/DECISIONS.md #233)',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockTransferIdParams, body: { content: { 'application/json': { schema: resolveStockTransferVarianceRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockTransferDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_transfer.approve'),
+    404: errorResponse('Không tìm thấy, hoặc không thuộc kho gửi của chi nhánh đang làm việc'),
+    409: errorResponse('version không khớp, hoặc phiếu không ở trạng thái Chờ xử lý chênh lệch'),
   },
 });
 

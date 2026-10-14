@@ -207,6 +207,8 @@ export const router = createBrowserRouter([
       { path: 'inventory/transfers/new', element: <RequirePermissionRoute module="stock_transfer" action="create"><StockTransferFormPage /></RequirePermissionRoute> },
       { path: 'inventory/transfers/:id', element: <RequirePermissionRoute module="stock_transfer" action="read"><StockTransferFormPage /></RequirePermissionRoute> },
       { path: 'inventory/reports/stock-ledger', element: <RequirePermissionRoute module="stock_receipt" action="report"><StockLedgerReportPage /></RequirePermissionRoute> },
+      // Báo cáo hao hụt điều chuyển nay là tab của trang Nhập-Xuất-Tồn (chủ dự án chốt Q4, #233); giữ đường dẫn cũ chuyển hướng cho dấu trang đã lưu.
+      { path: 'inventory/reports/transfer-shrinkage', element: <Navigate to="/inventory/reports/stock-ledger?tab=shrinkage" replace /> },
       // "Đăng ký ca làm việc" (Giai đoạn 2 #101).
       { path: 'work-schedule/mine', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><MyWorkSchedulePage /></RequirePermissionRoute> },
       { path: 'work-schedule/staff', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><StaffWorkSchedulePage /></RequirePermissionRoute> },

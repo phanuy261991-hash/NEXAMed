@@ -25,14 +25,15 @@ export const branchSummarySchema = branchLiteSchema.extend({
 export type BranchSummary = z.infer<typeof branchSummarySchema>;
 
 export const createBranchRequestSchema = z.object({
-  name: z.string().trim().min(1).max(200),
+  // Tối đa 100 ký tự: tên chi nhánh hiện ở thanh đỉnh, hàng đợi, đầu phiếu in... — quá dài sẽ vỡ giao diện (#233).
+  name: z.string().trim().min(1).max(100, 'Tên chi nhánh tối đa 100 ký tự.'),
   address: z.string().trim().max(500).optional(),
   phone: z.string().trim().max(50).optional(),
 });
 export type CreateBranchRequest = z.infer<typeof createBranchRequestSchema>;
 
 export const updateBranchRequestSchema = z.object({
-  name: z.string().trim().min(1).max(200).optional(),
+  name: z.string().trim().min(1).max(100, 'Tên chi nhánh tối đa 100 ký tự.').optional(),
   address: z.string().trim().max(500).nullable().optional(),
   phone: z.string().trim().max(50).nullable().optional(),
   isActive: z.boolean().optional(),

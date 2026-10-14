@@ -250,6 +250,7 @@ describe('AuthService — login/refresh/logout', () => {
       // Chi nhánh (docs/DECISIONS.md #231) — tenant test có đúng 1 chi nhánh mặc định → tài khoản tự thuộc chi nhánh đó.
       branches: [expect.objectContaining({ isDefault: true })],
       currentBranchId: expect.any(String),
+      multiBranchCompany: false,
     });
   });
 

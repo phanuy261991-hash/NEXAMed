@@ -1,7 +1,13 @@
 import { Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { BRANCH_DIRECTORY_PORT, ConcurrentModificationError, formatShortSequentialCode, type BranchDirectoryPort } from '@nexamed/core';
-import type { CreateWarehouseRequest, ListWarehousesResponse, UpdateWarehouseRequest, WarehouseSummary } from '@nexamed/shared';
+import type {
+  CreateWarehouseRequest,
+  ListWarehouseTransferDestinationsResponse,
+  ListWarehousesResponse,
+  UpdateWarehouseRequest,
+  WarehouseSummary,
+} from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
@@ -73,6 +79,14 @@ export class WarehouseService {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const rows = await this.warehouseRepository.list(tx, tenantId, branchIds);
       return { items: rows.map((r) => this.toSummary(r)) };
+    });
+  }
+
+  /** Kho đích cho điều chuyển (#233) — mọi kho hoạt động của công ty, KỂ CẢ chi nhánh tài khoản không được gán (điều chuyển liên chi nhánh); chỉ trả tối thiểu để chọn. */
+  async listTransferDestinations(tenantId: string): Promise<ListWarehouseTransferDestinationsResponse> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const rows = await this.warehouseRepository.listActiveAllBranches(tx, tenantId);
+      return { items: rows.map((r) => ({ id: r.id, code: r.code, name: r.name, branchId: r.branchId, branchName: r.branch.name })) };
     });
   }
 

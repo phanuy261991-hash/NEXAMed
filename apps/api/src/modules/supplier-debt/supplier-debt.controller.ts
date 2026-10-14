@@ -45,7 +45,7 @@ export class SupplierDebtController {
   async listPayments(@Query() query: unknown, @Req() req: Request) {
     const dto = listSupplierDebtPaymentsQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.supplierDebtService.listPayments(tenantId, requireBranchId(req.user!), dto);
+    return this.supplierDebtService.listPayments(tenantId, dto);
   }
 
   @Get(':supplierId/summary')

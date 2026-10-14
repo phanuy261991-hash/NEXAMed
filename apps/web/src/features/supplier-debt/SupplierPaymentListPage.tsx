@@ -9,6 +9,7 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
+import { BranchChip, useIsOtherBranch, useShowBranchInfo } from '../branch/BranchChip';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
@@ -38,9 +39,15 @@ function formatDateShort(iso: string): string {
  * "Phiếu thu / Phiếu chi" chung (đúng RBAC `cash_voucher.approve`, khác `supplier_debt.read` gác
  * trang này).
  */
+function PaymentRowBranchChip({ branchId, branchName }: { branchId: string; branchName: string }) {
+  const other = useIsOtherBranch(branchId);
+  return <BranchChip name={branchName} otherBranch={other} />;
+}
+
 export function SupplierPaymentListPage() {
   useBreadcrumb([{ label: 'Quản lý nhà cung cấp' }, { label: 'Phiếu thanh toán NCC' }]);
   const navigate = useNavigate();
+  const showBranch = useShowBranchInfo();
 
   const [supplierId, setSupplierId] = useState('');
   const [dateFrom, setDateFrom] = useState(monthStartDateString());
@@ -108,6 +115,7 @@ export function SupplierPaymentListPage() {
                 <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
                   <th className="px-4 py-2.5 text-center">Mã phiếu</th>
                   <th className="px-4 py-2.5 text-left">Nhà cung cấp</th>
+                  {showBranch && <th className="px-4 py-2.5 text-center">Chi nhánh</th>}
                   <th className="px-4 py-2.5 text-center">Ngày</th>
                   <th className="px-4 py-2.5 text-left">Diễn giải</th>
                   <th className="px-4 py-2.5 text-center">Số tiền</th>
@@ -123,6 +131,11 @@ export function SupplierPaymentListPage() {
                       {p.voided && <span className="ml-1.5 text-[11px] font-semibold text-slate-400">(đã huỷ)</span>}
                     </td>
                     <td className="px-4 py-2 text-left font-medium text-slate-900">{p.supplierName}</td>
+                    {showBranch && (
+                      <td className="px-4 py-2 text-center">
+                        <PaymentRowBranchChip branchId={p.branchId} branchName={p.branchName} />
+                      </td>
+                    )}
                     <td className="px-4 py-2 text-center text-slate-600">{formatDateShort(p.occurredAt)}</td>
                     <td className="px-4 py-2 text-left text-slate-700">{p.description}</td>
                     <td className={`px-4 py-2 text-center font-bold tabular-nums ${p.direction === 'INCOME' ? 'text-emerald-700' : 'text-rose-700'}`}>

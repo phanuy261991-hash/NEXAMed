@@ -52,6 +52,15 @@ export class WarehouseRepository {
     });
   }
 
+  /** CHỈ cho ô chọn kho nhận của điều chuyển liên chi nhánh (#233): mọi kho ĐANG HOẠT ĐỘNG của công ty, không lọc chi nhánh. */
+  listActiveAllBranches(tx: Prisma.TransactionClient, tenantId: string): Promise<WarehouseWithDepartment[]> {
+    return tx.warehouse.findMany({
+      where: { tenantId, isActive: true, deletedAt: null },
+      include: INCLUDE,
+      orderBy: [{ branch: { name: 'asc' } }, { name: 'asc' }],
+    });
+  }
+
   /** Kho Thuốc GĐ3 (#163) — "Tự động phát thuốc lúc ký đơn" không có màn hình chọn tay, cần TỰ
    * resolve kho mặc định. Fallback kho ACTIVE tạo sớm nhất (`id` UUIDv7 time-ordered, `asc`) nếu
    * chi nhánh chưa từng đánh dấu kho nào `isDefault` (dữ liệu cũ trước #146 seed đúng 1 kho, KHÔNG

@@ -306,7 +306,7 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
   });
 
   it('"Thiết lập nhanh" MONEY_A5_REST_A4: chứng từ tiền → A5, còn lại A4 (Bệnh án luôn A4), ghi đè đầu trang, đặt mặc định; chạy lại không lỗi', async () => {
-    const header = { showLogo: true, showClinicName: true, showAddress: false, showPhone: true, showTaxCode: true, showDivider: false };
+    const header = { showLogo: true, showClinicName: true, showBranchName: true, showAddress: false, showPhone: true, showTaxCode: true, showDivider: false };
     const body = { paperPreset: 'MONEY_A5_REST_A4', header, documentTypes: ['INVOICE', 'WALLET_TOPUP_RECEIPT', 'PRESCRIPTION', 'MEDICAL_RECORD', 'STOCK_RECEIPT'] };
     const res = await request(app.getHttpServer()).post(`${API}/quick-setup`).set(authed(adminToken)).send(body);
     expect(res.status).toBe(200);

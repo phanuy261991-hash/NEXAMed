@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Archive, ArrowCircleDown, ArrowCircleUp, DownloadSimple, Scales } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
@@ -8,9 +9,11 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatCardRow } from '../../shared/ui/StatCard';
+import { TabBar } from '../../shared/ui/TabBar';
 import { ApiError } from '../../shared/api/client';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { useExportStockLedgerReportMutation, useStockLedgerReportQuery } from './inventory.queries';
+import { StockTransferShrinkageReport } from './StockTransferShrinkageReportPage';
 
 function getVietnamTodayDateString(): string {
   const now = new Date(Date.now() + 7 * 60 * 60_000);
@@ -27,9 +30,7 @@ function monthStartDateString(): string {
  * Xuất/Cuối kỳ theo mặt hàng trong khoảng ngày, đúng khuôn "Báo cáo dòng tiền" của Sổ quỹ
  * (`CashFlowReportPage.tsx`). Quyền riêng `stock_receipt.report`, chỉ `clinic_admin`.
  */
-export function StockLedgerReportPage() {
-  useBreadcrumb([{ label: 'Quản lý kho' }, { label: 'Báo cáo Nhập-Xuất-Tồn' }]);
-
+function StockLedgerTab() {
   const [dateFrom, setDateFrom] = useState(monthStartDateString());
   const [dateTo, setDateTo] = useState(getVietnamTodayDateString());
   const [warehouseId, setWarehouseId] = useState('');
@@ -41,7 +42,7 @@ export function StockLedgerReportPage() {
   const items = reportQuery.data?.items ?? [];
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-6">
+    <div className="flex min-h-0 flex-col gap-4">
       <div className="flex flex-shrink-0 flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1.5">
@@ -139,6 +140,34 @@ export function StockLedgerReportPage() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+type ReportTab = 'ledger' | 'shrinkage';
+
+/**
+ * Trang "Báo cáo kho" (`/inventory/reports/stock-ledger`) — 2 tab: "Nhập-Xuất-Tồn" (Kho Thuốc GĐ4, #170) và "Hao hụt điều chuyển" (Đợt 2 chi nhánh, #233, chủ dự án chốt gộp
+ * thành tab thay vì menu riêng). Cùng quyền `stock_receipt.report`. Tab nhớ trong đường dẫn (`?tab=shrinkage`) để mở thẳng/chuyển hướng từ đường dẫn cũ.
+ */
+export function StockLedgerReportPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: ReportTab = searchParams.get('tab') === 'shrinkage' ? 'shrinkage' : 'ledger';
+  useBreadcrumb([{ label: 'Quản lý kho' }, { label: tab === 'shrinkage' ? 'Hao hụt điều chuyển' : 'Báo cáo Nhập-Xuất-Tồn' }]);
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-6">
+      <TabBar
+        variant="underline"
+        active={tab}
+        onChange={(next) => setSearchParams(next === 'shrinkage' ? { tab: 'shrinkage' } : {}, { replace: true })}
+        className="flex-shrink-0"
+        tabs={[
+          { id: 'ledger', label: 'Nhập-Xuất-Tồn' },
+          { id: 'shrinkage', label: 'Hao hụt điều chuyển' },
+        ]}
+      />
+      {tab === 'shrinkage' ? <StockTransferShrinkageReport /> : <StockLedgerTab />}
     </div>
   );
 }

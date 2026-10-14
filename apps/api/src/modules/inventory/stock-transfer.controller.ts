@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
-import type { Request } from 'express';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, Res, UseGuards, UseInterceptors } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import {
   confirmStockTransferReturnRequestSchema,
   createStockTransferRequestSchema,
@@ -19,6 +19,7 @@ import { RequirePermission } from '../../common/require-permission.decorator';
 import { AuditView } from '../../common/audit-view.decorator';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
 import { extractRequestMeta } from '../../common/request-meta';
+import { StockLedgerReportExportService } from './stock-ledger-report-export.service';
 import { StockTransferService } from './stock-transfer.service';
 
 /**
@@ -34,7 +35,10 @@ import { StockTransferService } from './stock-transfer.service';
 @Controller('inventory/transfers')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class StockTransferController {
-  constructor(private readonly stockTransferService: StockTransferService) {}
+  constructor(
+    private readonly stockTransferService: StockTransferService,
+    private readonly exportService: StockLedgerReportExportService,
+  ) {}
 
   @Get()
   @RequirePermission('stock_transfer', 'read')
@@ -59,6 +63,20 @@ export class StockTransferController {
     const dto = getStockTransferShrinkageQuerySchema.parse(query);
     const { tenantId } = req.user!;
     return this.stockTransferService.getShrinkageReport(tenantId, requireBranchId(req.user!), dto);
+  }
+
+  /** "Xuất Excel" báo cáo hao hụt (Q2, #233) — cùng quyền `stock_receipt.report`, ghi nhật ký xuất. Đặt TRƯỚC `:id`. */
+  @Get('shrinkage-report/export')
+  @RequirePermission('stock_receipt', 'report')
+  async exportShrinkageReport(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const dto = getStockTransferShrinkageQuerySchema.parse(query);
+    const { userId, tenantId } = req.user!;
+    const report = await this.stockTransferService.getShrinkageReport(tenantId, requireBranchId(req.user!), dto);
+    const buffer = await this.exportService.buildTransferShrinkageExcel(dto.from, dto.to, report);
+    await this.stockTransferService.recordShrinkageExportAudit(tenantId, userId, dto, extractRequestMeta(req));
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="hao-hut-dieu-chuyen-${dto.from}_${dto.to}.xlsx"`);
+    res.send(buffer);
   }
 
   @Get(':id')

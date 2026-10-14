@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ApproveStockCountRequest,
+  ConfirmStockTransferReturnRequest,
+  GetStockTransferShrinkageQuery,
+  RejectStockTransferReceiptRequest,
+  ResolveStockTransferVarianceRequest,
   ApproveStockIssueRequest,
   ApproveStockReceiptRequest,
   CreateManualStockIssueRequest,
@@ -32,6 +36,11 @@ import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
   approveStockCount,
+  confirmStockTransferReturn,
+  getStockTransferPendingCounts,
+  getStockTransferShrinkage,
+  rejectStockTransferReceipt,
+  resolveStockTransferVariance,
   approveStockIssue,
   approveStockReceipt,
   createManualStockIssue,
@@ -40,6 +49,7 @@ import {
   createStockReceipt,
   createStockTransfer,
   exportStockLedgerReport,
+  exportStockTransferShrinkage,
   getDispenseQueue,
   getDrugBatchBalances,
   getDrugLedger,
@@ -432,6 +442,55 @@ export function useReceiveStockTransferMutation() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: ReceiveStockTransferRequest }) => receiveStockTransfer(id, body),
     onSuccess: invalidate,
+  });
+}
+
+// ============ Đợt 2 chi nhánh (docs/DECISIONS.md #233) — Từ chối nhận / Nhận lại / Xử lý chênh lệch / chấm số / báo cáo hao hụt ============
+
+export function useRejectStockTransferReceiptMutation() {
+  const invalidate = useInvalidateAfterTransfer();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: RejectStockTransferReceiptRequest }) => rejectStockTransferReceipt(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useConfirmStockTransferReturnMutation() {
+  const invalidate = useInvalidateAfterTransfer();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ConfirmStockTransferReturnRequest }) => confirmStockTransferReturn(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useResolveStockTransferVarianceMutation() {
+  const invalidate = useInvalidateAfterTransfer();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ResolveStockTransferVarianceRequest }) => resolveStockTransferVariance(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+/** Chấm số trên menu "Điều chuyển kho" + tab "Phiếu đến": phiếu đang chờ chi nhánh NÀY nhận / chờ chi nhánh này (bên gửi) xử lý. Làm mới mỗi phút để người nhận thấy phiếu mới mà không cần tải lại. */
+export function useStockTransferPendingCountsQuery(enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-transfer', 'pending-counts'),
+    queryFn: getStockTransferPendingCounts,
+    enabled,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useExportStockTransferShrinkageMutation() {
+  return useMutation({ mutationFn: (query: GetStockTransferShrinkageQuery) => exportStockTransferShrinkage(query) });
+}
+
+export function useStockTransferShrinkageQuery(query: GetStockTransferShrinkageQuery) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-transfer', 'shrinkage', JSON.stringify(query)),
+    queryFn: () => getStockTransferShrinkage(query),
   });
 }
 

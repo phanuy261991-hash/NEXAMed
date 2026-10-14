@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BranchChip, useIsOtherBranch, useShowBranchInfo } from '../branch/BranchChip';
 import { CalendarBlank, PlusCircle, Receipt, Wallet, XCircle } from '@phosphor-icons/react';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -7,6 +8,7 @@ import { Button } from '../../shared/ui/Button';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
 import { useHasPermission } from '../auth/usePermission';
+import type { WalletTransaction } from '@nexamed/shared';
 import { useWalletQuery, useWalletTransactionsQuery } from './patient-wallet.queries';
 import { formatWalletDate, formatWalletDateTime, walletTransactionDescription, walletTransactionMeta } from './wallet-format';
 import { TopUpWalletDialog } from './TopUpWalletDialog';
@@ -18,6 +20,36 @@ const BADGE_TONE_MAP: Record<ReturnType<typeof walletTransactionMeta>['badgeTone
   accent: 'accent',
   neutral: 'neutral',
 };
+
+/**
+ * Chứng từ của một giao dịch ví. Ví là dữ liệu CHUNG cả công ty nên số dư + số tiền luôn hiện đủ; nhưng phiếu thu/phiếu quỹ thuộc chi nhánh nơi giao dịch xảy ra — khác chi nhánh
+ * đang làm việc thì chỉ hiện số phiếu + tên chi nhánh, KHÔNG làm thành đường dẫn (máy chủ trả 404). Đợt 2 chi nhánh, docs/DECISIONS.md #233 Q5.
+ */
+function WalletTxDocument({ tx }: { tx: WalletTransaction }) {
+  const other = useIsOtherBranch(tx.branchId);
+  const showBranch = useShowBranchInfo();
+  const number = tx.invoiceNo ?? tx.voucherNo ?? '—';
+  if (other) {
+    return (
+      <span className="inline-flex flex-col items-center gap-0.5">
+        <span className="font-semibold text-slate-800">{number}</span>
+        <BranchChip name={tx.branchName} otherBranch />
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex flex-col items-center gap-0.5">
+      {tx.invoiceId && tx.encounterId ? (
+        <Link to={`/billing/${tx.encounterId}`} className="font-medium text-blue-600 hover:text-blue-700">
+          {tx.invoiceNo}
+        </Link>
+      ) : (
+        <span className="font-semibold text-slate-800">{tx.voucherNo ?? '—'}</span>
+      )}
+      {showBranch && <BranchChip name={tx.branchName} />}
+    </span>
+  );
+}
 
 /**
  * Tab "Ví tạm ứng" trong Hồ sơ bệnh nhân — khối số dư + 3 ô thống kê + bảng lịch sử giao dịch, đúng
@@ -135,13 +167,7 @@ export function PatientWalletTab({ patientId }: { patientId: string }) {
                     <tr key={tx.id} className="border-b border-slate-100 font-medium last:border-0">
                       <td className="whitespace-nowrap px-3 py-3 text-center text-slate-700">{formatWalletDateTime(tx.createdAt)}</td>
                       <td className="whitespace-nowrap px-3 py-3 text-center">
-                        {tx.invoiceId && tx.encounterId ? (
-                          <Link to={`/billing/${tx.encounterId}`} className="font-medium text-blue-600 hover:text-blue-700">
-                            {tx.invoiceNo}
-                          </Link>
-                        ) : (
-                          <span className="font-semibold text-slate-800">{tx.voucherNo ?? '—'}</span>
-                        )}
+                        <WalletTxDocument tx={tx} />
                       </td>
                       <td className="whitespace-nowrap px-3 py-3 text-center">
                         <StatusBadge tone={BADGE_TONE_MAP[meta.badgeTone]}>{meta.label}</StatusBadge>
