@@ -235,8 +235,9 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     const drugId = created.body.data.id as string;
     expect(created.body.data.isBatchManaged).toBe(true); // mặc định tạo mới
 
+    const defaultBranch = await privileged.branch.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, isDefault: true } });
     const warehouse = await privileged.warehouse.create({
-      data: { tenantId: fixture.tenantA.id, code: `WH-${randomUUID().slice(0, 6)}`, name: 'Kho test guard', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+      data: { tenantId: fixture.tenantA.id, branchId: defaultBranch.id, code: `WH-${randomUUID().slice(0, 6)}`, name: 'Kho test guard', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
     });
     const balance = await privileged.stockBalance.create({
       data: {

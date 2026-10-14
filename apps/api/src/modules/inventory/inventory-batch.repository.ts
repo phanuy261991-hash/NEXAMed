@@ -66,9 +66,9 @@ export class InventoryBatchRepository {
   }
 
   /** "Tồn kho theo lô" (panel chi tiết thuốc) — mọi lô CÒN TỒN (`quantityOnHand > 0`) của 1 thuốc. */
-  async listWithBalanceForDrug(tx: Prisma.TransactionClient, tenantId: string, drugId: string, warehouseId?: string): Promise<DrugBatchBalanceRow[]> {
+  async listWithBalanceForDrug(tx: Prisma.TransactionClient, tenantId: string, branchId: string, drugId: string, warehouseId?: string): Promise<DrugBatchBalanceRow[]> {
     const balances = await tx.stockBalance.findMany({
-      where: { tenantId, drugId, warehouseId, batchId: { not: null }, quantityOnHand: { gt: 0 }, deletedAt: null },
+      where: { tenantId, warehouse: { branchId }, drugId, warehouseId, batchId: { not: null }, quantityOnHand: { gt: 0 }, deletedAt: null },
       select: { batchId: true, quantityOnHand: true },
     });
     if (balances.length === 0) return [];
@@ -90,9 +90,9 @@ export class InventoryBatchRepository {
   }
 
   /** "Cảnh báo hạn dùng" — mọi lô CÒN TỒN, hạn dùng trước/đúng `threshold` (gồm đã hết hạn). */
-  async listExpiryWarnings(tx: Prisma.TransactionClient, tenantId: string, threshold: Date, warehouseId?: string): Promise<ExpiryWarningRow[]> {
+  async listExpiryWarnings(tx: Prisma.TransactionClient, tenantId: string, branchId: string, threshold: Date, warehouseId?: string): Promise<ExpiryWarningRow[]> {
     const balances = await tx.stockBalance.findMany({
-      where: { tenantId, warehouseId, batchId: { not: null }, quantityOnHand: { gt: 0 }, deletedAt: null },
+      where: { tenantId, warehouse: { branchId }, warehouseId, batchId: { not: null }, quantityOnHand: { gt: 0 }, deletedAt: null },
       select: { batchId: true, quantityOnHand: true },
     });
     if (balances.length === 0) return [];

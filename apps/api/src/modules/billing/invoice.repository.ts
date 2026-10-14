@@ -251,10 +251,10 @@ export class InvoiceRepository {
    * #163: nay `encounterId` có thể ứng nhiều hoá đơn khi có thêm hoá đơn `DRUG` riêng). Đây vẫn là
    * hoá đơn MẶC ĐỊNH mà `GET /billing/invoices/:encounterId` trả về khi không truyền `invoiceId` —
    * đúng hành vi cũ, không phá vỡ mọi nơi gọi hiện có. */
-  findByEncounterId(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<InvoiceWithLines | null> {
+  findByEncounterId(tx: Prisma.TransactionClient, tenantId: string, branchId: string, encounterId: string): Promise<InvoiceWithLines | null> {
     return tx.invoice
       .findFirst({
-        where: { tenantId, encounterId, invoiceType: 'SERVICE', deletedAt: null },
+        where: { tenantId, encounterId, invoiceType: 'SERVICE', deletedAt: null, encounter: { branchId } },
         include: { ...LINE_WITH_ISSUE_INCLUDE, ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE, ...REFUND_HISTORY_INCLUDE },
       })
       .then((row) => (row ? { ...row, ...toPaymentSides(row.payments) } : null));
@@ -263,10 +263,10 @@ export class InvoiceRepository {
   /** Kho Thuốc GĐ3 (#163, mở rộng #165) — hoá đơn CỤ THỂ theo `id`, bất kể loại (SERVICE/DRUG) —
    * dùng khi web truyền `?invoiceId=` (xem hoá đơn thuốc riêng, hoặc đúng ý bấm từ "Danh sách Thu
    * ngân"). Không lọc `invoiceType` — service tự kiểm `encounterId` khớp trước khi trả về. */
-  findByIdWithLines(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<InvoiceWithLines | null> {
+  findByIdWithLines(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<InvoiceWithLines | null> {
     return tx.invoice
       .findFirst({
-        where: { tenantId, id, deletedAt: null },
+        where: { tenantId, id, deletedAt: null, encounter: { branchId } },
         include: { ...LINE_WITH_ISSUE_INCLUDE, ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE, ...REFUND_HISTORY_INCLUDE },
       })
       .then((row) => (row ? { ...row, ...toPaymentSides(row.payments) } : null));
@@ -275,9 +275,9 @@ export class InvoiceRepository {
   /** Phiếu thu tổng hợp — MỌI hoá đơn chưa huỷ của lượt khám, đủ dòng/thanh toán/bối cảnh để in.
    * `CANCELLED` bị loại (chứng từ đã vô hiệu không đưa cho khách). SERVICE luôn đứng trước rồi tới
    * các hoá đơn DRUG theo thứ tự tạo — sắp ở JS (không tin thứ tự enum Postgres cho `invoiceType`). */
-  async findAllForCombinedPrint(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<InvoiceWithLines[]> {
+  async findAllForCombinedPrint(tx: Prisma.TransactionClient, tenantId: string, branchId: string, encounterId: string): Promise<InvoiceWithLines[]> {
     const rows = await tx.invoice.findMany({
-      where: { tenantId, encounterId, deletedAt: null, status: { not: 'CANCELLED' } },
+      where: { tenantId, encounterId, deletedAt: null, status: { not: 'CANCELLED' }, encounter: { branchId } },
       include: { ...LINE_WITH_ISSUE_INCLUDE, ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE, ...REFUND_HISTORY_INCLUDE },
       orderBy: { createdAt: 'asc' },
     });
@@ -464,10 +464,10 @@ export class InvoiceRepository {
   }
 
   /** BIL-04 — theo `encounter.checkedInAt` trong biên ngày (giờ Việt Nam, `vietnamDayRange()` ở service). */
-  listForDay(tx: Prisma.TransactionClient, tenantId: string, dayStart: Date, dayEnd: Date): Promise<BillingListRow[]> {
+  listForDay(tx: Prisma.TransactionClient, tenantId: string, branchId: string, dayStart: Date, dayEnd: Date): Promise<BillingListRow[]> {
     return tx.invoice
       .findMany({
-        where: { tenantId, deletedAt: null, encounter: { checkedInAt: { gte: dayStart, lt: dayEnd } } },
+        where: { tenantId, deletedAt: null, encounter: { branchId, checkedInAt: { gte: dayStart, lt: dayEnd } } },
         include: { ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE, ...LINE_DISCOUNT_INCLUDE },
         orderBy: { encounter: { checkedInAt: 'asc' } },
       })

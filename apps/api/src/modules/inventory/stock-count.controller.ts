@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
 import { approveStockCountRequestSchema, createStockCountRequestSchema, listStockCountsQuerySchema, rejectStockCountRequestSchema, updateStockCountRequestSchema } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -29,7 +30,7 @@ export class StockCountController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listStockCountsQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.stockCountService.list(tenantId, userId, req.dataScope!, dto);
+    return this.stockCountService.list(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto);
   }
 
   @Get(':id')
@@ -38,7 +39,7 @@ export class StockCountController {
   @UseInterceptors(AuditViewInterceptor)
   async get(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.stockCountService.getById(tenantId, userId, req.dataScope!, id);
+    return this.stockCountService.getById(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
   }
 
   @Post()
@@ -47,7 +48,7 @@ export class StockCountController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createStockCountRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockCountService.create(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
+    return this.stockCountService.create(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   @Patch(':id')
@@ -55,7 +56,7 @@ export class StockCountController {
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateStockCountRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockCountService.update(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockCountService.update(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/approve')
@@ -64,7 +65,7 @@ export class StockCountController {
   async approve(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = approveStockCountRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockCountService.approve(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockCountService.approve(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/reject')
@@ -73,6 +74,6 @@ export class StockCountController {
   async reject(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = rejectStockCountRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockCountService.reject(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockCountService.reject(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 }

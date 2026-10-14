@@ -460,7 +460,7 @@ export class EncounterService {
    * Tồn kho cho cảnh báo `stock_insufficient` của đơn NHÁP hiện tại (`null` = không tính: tenant tắt theo dõi tồn, chưa có đơn,
    * đơn đã ký hoặc chưa có dòng nào). Đọc TRƯỚC transaction chính vì các port tự mở transaction riêng.
    */
-  private async loadDraftOnHand(tenantId: string, encounterId: string): Promise<Record<string, number> | null> {
+  private async loadDraftOnHand(tenantId: string, branchId: string, encounterId: string): Promise<Record<string, number> | null> {
     const pharmacyStockTrackingEnabled = await this.clinicConfigReader.getPharmacyStockTrackingEnabled(tenantId);
     if (!pharmacyStockTrackingEnabled) return null;
     const draftPreview = await this.unitOfWork.runInTenantScope(tenantId, (previewTx) =>
@@ -469,7 +469,7 @@ export class EncounterService {
     if (!draftPreview || draftPreview.signedAt !== null || draftPreview.items.length === 0) return null;
     // Dòng "kê thuốc tự do" (`drugId=null`) không có khái niệm tồn kho — lọc bỏ trước khi tra.
     const realDrugIds = draftPreview.items.map((i) => i.drugId).filter((v): v is string => v !== null);
-    return this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(realDrugIds)]);
+    return this.stockAvailability.getOnHandQuantities(tenantId, branchId, [...new Set(realDrugIds)]);
   }
 
   async getConsultationDetail(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<ConsultationDetailResponse> {
@@ -482,7 +482,7 @@ export class EncounterService {
     // cảnh báo tồn kho) — cảnh báo chỉ kịp hiện trong khoảnh khắc trước khi bị ghi đè bởi dữ liệu vừa
     // refetch, coi như KHÔNG BAO GIỜ hiển thị được cho bác sĩ trong thực tế. Chỉ tính cho đơn CHƯA KÝ
     // (đơn đã ký xem như "đã xong", giữ nguyên `null` — đúng khuôn PrescriptionPrintView/lịch sử).
-    const onHandByDrugId = await this.loadDraftOnHand(tenantId, id);
+    const onHandByDrugId = await this.loadDraftOnHand(tenantId, branchId, id);
 
     const { history: historyWithDoctorId, ...rest } = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounter = await this.encounterRepository.findByIdWithConsultationContext(tx, tenantId, id);
@@ -710,7 +710,8 @@ export class EncounterService {
     // Ngoài transaction chính — cùng lý do `doctorDirectory.getUserFullNames()` ở `getConsultationDetail()`
     // (mỗi port/service tự mở transaction riêng, tránh `$transaction` lồng nhau).
     const patient = await this.patientService.getPatient(tenantId, patientId);
-    const clinicHeader = await this.clinicProfileService.getPrintHeader(tenantId);
+    // Bệnh án PDF gộp lượt khám của MỌI chi nhánh (hồ sơ đi theo người bệnh) → đầu trang của CÔNG TY, không gắn một chi nhánh nào (#233).
+    const clinicHeader = await this.clinicProfileService.getPrintHeader(tenantId, null);
 
     const provinceCode = patient.address?.province;
     const wardCode = patient.address?.ward;
@@ -1240,7 +1241,7 @@ export class EncounterService {
     // (`drugId=undefined`) — không có khái niệm tồn kho.
     const realDrugIds = [...new Set(dto.items.map((i) => i.drugId).filter((v): v is string => v !== undefined))];
     const onHandByDrugId: Record<string, number> | null = pharmacyStockTrackingEnabled
-      ? await this.stockAvailability.getOnHandQuantities(tenantId, realDrugIds)
+      ? await this.stockAvailability.getOnHandQuantities(tenantId, branchId, realDrugIds)
       : null;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -1300,7 +1301,7 @@ export class EncounterService {
     dto: AcknowledgePrescriptionWarningRequest,
     meta: RequestMeta,
   ): Promise<PrescriptionResponse> {
-    const onHandByDrugId = await this.loadDraftOnHand(tenantId, id);
+    const onHandByDrugId = await this.loadDraftOnHand(tenantId, branchId, id);
     // `DoctorDirectoryPort` tự mở transaction riêng — tra tên người bỏ qua TRƯỚC transaction chính (lưu snapshot vào dấu vết).
     const actorName = (await this.doctorDirectory.getUserFullNames(tenantId, [actorId])).get(actorId) ?? '—';
 
@@ -1393,7 +1394,7 @@ export class EncounterService {
       if (draftPreview) {
         // Dòng "kê thuốc tự do" (`drugId=null`) không có khái niệm tồn kho — lọc bỏ trước khi tra.
         const realDrugIds = draftPreview.items.map((i) => i.drugId).filter((v): v is string => v !== null);
-        onHandByDrugId = await this.stockAvailability.getOnHandQuantities(tenantId, [...new Set(realDrugIds)]);
+        onHandByDrugId = await this.stockAvailability.getOnHandQuantities(tenantId, branchId, [...new Set(realDrugIds)]);
       }
     }
     const prescriptionStockBlockEnabled = pharmacyStockTrackingEnabled && (await this.clinicConfigReader.getPrescriptionStockBlockEnabled(tenantId));
@@ -1517,7 +1518,7 @@ export class EncounterService {
     this.assertFreeTextAllowed(dto.items, allowFreeTextPrescriptionEnabled);
     const realDrugIds = [...new Set(dto.items.map((i) => i.drugId).filter((v): v is string => v !== undefined))];
     const onHandByDrugId: Record<string, number> | null = pharmacyStockTrackingEnabled
-      ? await this.stockAvailability.getOnHandQuantities(tenantId, realDrugIds)
+      ? await this.stockAvailability.getOnHandQuantities(tenantId, branchId, realDrugIds)
       : null;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {

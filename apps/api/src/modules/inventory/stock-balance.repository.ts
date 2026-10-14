@@ -66,10 +66,10 @@ export class StockBalanceRepository {
   }
 
   /** "Tồn kho" (view "Theo mặt hàng") — tổng `quantityOnHand` GỘP mọi lô, theo từng (drug, warehouse). */
-  async listAggregated(tx: Prisma.TransactionClient, tenantId: string, warehouseId?: string): Promise<AggregatedBalanceRow[]> {
+  async listAggregated(tx: Prisma.TransactionClient, tenantId: string, branchId: string, warehouseId?: string): Promise<AggregatedBalanceRow[]> {
     const rows = await tx.stockBalance.groupBy({
       by: ['drugId', 'warehouseId'],
-      where: { tenantId, warehouseId, deletedAt: null },
+      where: { tenantId, warehouse: { branchId }, warehouseId, deletedAt: null },
       _sum: { quantityOnHand: true },
     });
     return rows.map((r) => ({ drugId: r.drugId, warehouseId: r.warehouseId, quantityOnHand: r._sum.quantityOnHand ?? 0 }));
@@ -83,11 +83,11 @@ export class StockBalanceRepository {
    * thụ trực tiếp bởi `DrugPicker.tsx`/`PrescriptionPanel.tsx`, không đi qua `findInsufficientStock()`
    * có `?? 0` phòng vệ sẵn) coi thuốc chưa từng nhập kho là "chưa tra được tồn" thay vì "Hết hàng",
    * ẩn hẳn badge tồn kho thay vì hiện đúng cảnh báo. */
-  async sumOnHandByDrugIds(tx: Prisma.TransactionClient, tenantId: string, drugIds: string[]): Promise<Record<string, number>> {
+  async sumOnHandByDrugIds(tx: Prisma.TransactionClient, tenantId: string, branchId: string, drugIds: string[]): Promise<Record<string, number>> {
     if (drugIds.length === 0) return {};
     const rows = await tx.stockBalance.groupBy({
       by: ['drugId'],
-      where: { tenantId, drugId: { in: drugIds }, deletedAt: null },
+      where: { tenantId, warehouse: { branchId }, drugId: { in: drugIds }, deletedAt: null },
       _sum: { quantityOnHand: true },
     });
     const onHandByDrugId = Object.fromEntries(rows.map((r) => [r.drugId, r._sum.quantityOnHand ?? 0]));

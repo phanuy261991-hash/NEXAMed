@@ -146,3 +146,50 @@ export class StockTransferVarianceNoteRequiredError extends DomainError {
     super(`"${drugName}" — nhận ít hơn số đã xuất, phải nhập ghi chú chênh lệch.`);
   }
 }
+
+// ============ Đợt 2 chi nhánh (docs/DECISIONS.md #233) — kiểm nhận / từ chối nhận / hoàn trả điều chuyển kho ============
+
+/** Xử lý chênh lệch một phiếu không (còn) ở trạng thái "Nhận có chênh lệch · chờ bên gửi xử lý". */
+export class StockTransferNotVariancePendingError extends DomainError {
+  readonly code = 'STOCK_TRANSFER_NOT_VARIANCE_PENDING';
+
+  constructor() {
+    super('Phiếu điều chuyển kho này không ở trạng thái chờ bên gửi xử lý chênh lệch.');
+  }
+}
+
+/** Xác nhận nhận lại hàng một phiếu không (còn) ở trạng thái "Từ chối nhận · đang hoàn trả". */
+export class StockTransferNotReturningError extends DomainError {
+  readonly code = 'STOCK_TRANSFER_NOT_RETURNING';
+
+  constructor() {
+    super('Phiếu điều chuyển kho này không ở trạng thái đang hoàn trả.');
+  }
+}
+
+/** Kiểm nhận — dòng nhận thiếu nhưng chưa chọn lý do chênh lệch (hoặc chọn "Khác" mà không ghi chú). */
+export class StockTransferVarianceReasonRequiredError extends DomainError {
+  readonly code = 'STOCK_TRANSFER_VARIANCE_REASON_REQUIRED';
+
+  constructor(drugName: string) {
+    super(`"${drugName}" — nhận ít hơn số trên phiếu, phải chọn lý do chênh lệch (chọn "Khác" thì phải ghi chú).`);
+  }
+}
+
+/** Xác nhận nhận lại hàng — số nhận lại vượt số đã gửi, hoặc nhận lại thiếu mà không ghi chú hao hụt. */
+export class StockTransferReturnQuantityInvalidError extends DomainError {
+  readonly code = 'STOCK_TRANSFER_RETURN_QUANTITY_INVALID';
+
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/** Xử lý chênh lệch — danh sách dòng gửi lên không khớp đúng các dòng đang thiếu của phiếu. */
+export class StockTransferResolutionIncompleteError extends DomainError {
+  readonly code = 'STOCK_TRANSFER_RESOLUTION_INCOMPLETE';
+
+  constructor() {
+    super('Phải chọn cách xử lý cho đúng mọi dòng đang nhận thiếu của phiếu.');
+  }
+}

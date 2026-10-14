@@ -49,16 +49,16 @@ export class InvoiceRefundService {
     @Inject(CASHIER_SHIFT_READER_PORT) private readonly cashierShiftReader: CashierShiftReaderPort,
   ) {}
 
-  async refundItems(tenantId: string, actorId: string, encounterId: string, dto: RefundInvoiceItemsRequest, meta: RequestMeta): Promise<InvoiceDto> {
+  async refundItems(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: RefundInvoiceItemsRequest, meta: RequestMeta): Promise<InvoiceDto> {
     // Cùng khuôn `InvoiceService.refund()` — resolve ca/két TRƯỚC transaction chính (port tự mở
     // transaction đọc riêng, không lồng vào `tx` đang mở).
     const [cashierShiftId, drawerAccountId] = await Promise.all([
-      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
-      this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
     ]);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.invoiceRepository.findByIdWithLines(tx, tenantId, dto.invoiceId);
+      const invoice = await this.invoiceRepository.findByIdWithLines(tx, tenantId, branchId, dto.invoiceId);
       // Phải thuộc đúng lượt khám trên URL — không lộ hoá đơn của lượt khám/tenant khác (404).
       if (!invoice || invoice.encounterId !== encounterId) {
         throw new NotFoundException();
@@ -183,7 +183,7 @@ export class InvoiceRefundService {
 
       // ── Dòng payment REFUND (gom theo `refundId`) + trả ngược ví ──────────────────────────────
       for (const allocation of allocations) {
-        const cashAccountId = await this.invoiceService.resolveCashAccountId(tx, tenantId, allocation.method, drawerAccountId);
+        const cashAccountId = await this.invoiceService.resolveCashAccountId(tx, tenantId, branchId, allocation.method, drawerAccountId);
         await this.paymentRepository.createRefund(
           tx,
           tenantId,
@@ -220,7 +220,7 @@ export class InvoiceRefundService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.invoiceRepository.findByIdWithLines(tx, tenantId, invoice.id);
+      const updated = await this.invoiceRepository.findByIdWithLines(tx, tenantId, branchId, invoice.id);
       return toInvoiceResponse(updated!);
     });
   }

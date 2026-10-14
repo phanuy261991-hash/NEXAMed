@@ -75,8 +75,9 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
    * không lẫn thêm cảnh báo ngoài ý muốn, giữ đúng số lượng `warnings` các test đó đang kiểm.
    */
   async function seedSufficientStock(tenantId: string, drugId: string, quantity = 999) {
+    const defaultBranch = await privileged.branch.findFirstOrThrow({ where: { tenantId, isDefault: true } });
     const warehouse = await privileged.warehouse.create({
-      data: { tenantId, code: `KHO-${randomUUID().slice(0, 8)}`, name: 'Kho test', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+      data: { tenantId, branchId: defaultBranch.id, code: `KHO-${randomUUID().slice(0, 8)}`, name: 'Kho test', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
     });
     await privileged.stockBalance.create({
       data: { tenantId, drugId, warehouseId: warehouse.id, quantityOnHand: quantity, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },

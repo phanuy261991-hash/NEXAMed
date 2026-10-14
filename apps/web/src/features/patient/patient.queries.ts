@@ -12,7 +12,6 @@ import {
   getPatientClinicalSummary,
   listPatients,
   updatePatient,
-  uploadPatientPhoto,
 } from './patient.api';
 
 const PATIENT_LIST_LIMIT = 50;
@@ -157,19 +156,6 @@ export function useUpdatePatientMutation(id: string) {
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKey(tenantId, 'patient', 'detail', id), updated);
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'patient', 'list') });
-    },
-  });
-}
-
-/** Ảnh đại diện (docs/DECISIONS.md #034) — cập nhật thẳng cache chi tiết, không cần invalidate
- * danh sách (list không hiển thị ảnh, xem ghi chú ở `patientSummarySchema`). */
-export function useUploadPatientPhotoMutation(id: string) {
-  const { tenantId } = useAppConfig();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ file, version }: { file: File; version: number }) => uploadPatientPhoto(id, file, version),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(queryKey(tenantId, 'patient', 'detail', id), updated);
     },
   });
 }

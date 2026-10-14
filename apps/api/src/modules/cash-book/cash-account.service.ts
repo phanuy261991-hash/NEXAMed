@@ -1,12 +1,12 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ConcurrentModificationError, DOCTOR_DIRECTORY_PORT, formatShortSequentialCode, type DoctorDirectoryPort } from '@nexamed/core';
+import { BRANCH_DIRECTORY_PORT, ConcurrentModificationError, DOCTOR_DIRECTORY_PORT, formatShortSequentialCode, type BranchDirectoryPort, type DoctorDirectoryPort } from '@nexamed/core';
 import type { CashAccount as CashAccountDto, CreateCashAccountRequest, ListCashAccountsResponse, UpdateCashAccountRequest } from '@nexamed/shared';
-import type { CashAccount } from '@prisma/client';
+import { resolveBranchScope } from '../../common/branch-context';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import type { RequestMeta } from '../../common/request-meta';
-import { CashAccountRepository, type UpdateCashAccountData } from './cash-account.repository';
+import { CashAccountRepository, type CashAccountWithBranch, type UpdateCashAccountData } from './cash-account.repository';
 
 /** Mã ngắn tuần tự (docs/DECISIONS.md #113) — RIÊNG theo tenant (khác 6 category `reference_catalog`
  * toàn hệ thống), dùng `CodeSequenceRepository` có sẵn — đúng khuôn `WorkShiftService`/`department`. */
@@ -25,12 +25,16 @@ export class CashAccountService {
     private readonly cashAccountRepository: CashAccountRepository,
     private readonly codeSequenceRepository: CodeSequenceRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
+    @Inject(BRANCH_DIRECTORY_PORT) private readonly branchDirectory: BranchDirectoryPort,
   ) {}
 
-  async create(tenantId: string, actorId: string, dto: CreateCashAccountRequest, meta: RequestMeta): Promise<CashAccountDto> {
+  async create(tenantId: string, actorId: string, currentBranchId: string, dto: CreateCashAccountRequest, meta: RequestMeta): Promise<CashAccountDto> {
+    const branchId = dto.branchId ?? currentBranchId;
+    await this.assertBranchAssigned(tenantId, actorId, currentBranchId, branchId);
+
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       if (dto.isDefault) {
-        const other = await this.cashAccountRepository.findDefault(tx, tenantId, dto.type);
+        const other = await this.cashAccountRepository.findDefault(tx, tenantId, branchId, dto.type);
         if (other) {
           await this.cashAccountRepository.clearDefaultFlag(tx, tenantId, other.id, actorId);
         }
@@ -40,6 +44,7 @@ export class CashAccountService {
       const code = formatShortSequentialCode(CASH_ACCOUNT_CODE_PREFIX, seq);
 
       const created = await this.cashAccountRepository.create(tx, tenantId, actorId, {
+        branchId,
         code,
         name: dto.name,
         type: dto.type,
@@ -55,31 +60,35 @@ export class CashAccountService {
         action: 'cash_account.created',
         entityType: 'cash_account',
         entityId: created.id,
-        afterJson: { code, name: dto.name, type: dto.type },
+        afterJson: { code, name: dto.name, type: dto.type, branchId },
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
 
-      return this.toDto(created, new Map());
+      const withBranch = await this.cashAccountRepository.findByIdAnyBranch(tx, tenantId, created.id);
+      return this.toDto(withBranch!, new Map());
     });
   }
 
-  async list(tenantId: string): Promise<ListCashAccountsResponse> {
-    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashAccountRepository.list(tx, tenantId));
+  async list(tenantId: string, actorId: string, currentBranchId: string, allBranches: boolean): Promise<ListCashAccountsResponse> {
+    const branchIds = await resolveBranchScope(this.branchDirectory, tenantId, actorId, currentBranchId, allBranches);
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashAccountRepository.list(tx, tenantId, branchIds));
     const ownerIds = [...new Set(rows.map((r) => r.ownerUserId).filter((id): id is string => id !== null))];
     const names = ownerIds.length > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, ownerIds) : new Map<string, string>();
     return { items: rows.map((row) => this.toDto(row, names)) };
   }
 
-  async update(tenantId: string, actorId: string, id: string, dto: UpdateCashAccountRequest, meta: RequestMeta): Promise<CashAccountDto> {
+  async update(tenantId: string, actorId: string, currentBranchId: string, id: string, dto: UpdateCashAccountRequest, meta: RequestMeta): Promise<CashAccountDto> {
+    // Màn QUẢN TRỊ quỹ: sửa được quỹ của mọi chi nhánh tài khoản được gán (không chỉ chi nhánh đang làm); chi nhánh không được gán → 404.
+    const assigned = new Set([currentBranchId, ...(await this.branchDirectory.listAssignedBranchIds(tenantId, actorId))]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.cashAccountRepository.findById(tx, tenantId, id);
-      if (!existing) {
+      const existing = await this.cashAccountRepository.findByIdAnyBranch(tx, tenantId, id);
+      if (!existing || !assigned.has(existing.branchId)) {
         throw new NotFoundException();
       }
 
       if (dto.isDefault === true) {
-        const other = await this.cashAccountRepository.findOtherDefault(tx, tenantId, existing.type, id);
+        const other = await this.cashAccountRepository.findOtherDefault(tx, tenantId, existing.branchId, existing.type, id);
         if (other) {
           await this.cashAccountRepository.clearDefaultFlag(tx, tenantId, other.id, actorId);
         }
@@ -107,17 +116,27 @@ export class CashAccountService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.cashAccountRepository.findById(tx, tenantId, id);
+      const updated = await this.cashAccountRepository.findByIdAnyBranch(tx, tenantId, id);
       const names = updated?.ownerUserId ? await this.doctorDirectory.getUserFullNames(tenantId, [updated.ownerUserId]) : new Map<string, string>();
       return this.toDto(updated!, names);
     });
   }
 
-  private toDto(row: CashAccount, names: Map<string, string>): CashAccountDto {
+  private async assertBranchAssigned(tenantId: string, actorId: string, currentBranchId: string, branchId: string): Promise<void> {
+    if (branchId === currentBranchId) return;
+    const assigned = await this.branchDirectory.listAssignedBranchIds(tenantId, actorId);
+    if (!assigned.includes(branchId)) {
+      throw new NotFoundException();
+    }
+  }
+
+  private toDto(row: CashAccountWithBranch, names: Map<string, string>): CashAccountDto {
     return {
       id: row.id,
       code: row.code,
       name: row.name,
+      branchId: row.branchId,
+      branchName: row.branch.name,
       type: row.type,
       bankName: row.bankName,
       bankAccountNo: row.bankAccountNo,

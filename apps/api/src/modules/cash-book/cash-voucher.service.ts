@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
   CASHIER_SHIFT_READER_PORT,
   CashVoucherNotEditableError,
@@ -56,7 +56,7 @@ export class CashVoucherService {
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
-  async create(tenantId: string, actorId: string, dto: CreateCashVoucherRequest, meta: RequestMeta): Promise<CashVoucherDto> {
+  async create(tenantId: string, branchId: string, actorId: string, dto: CreateCashVoucherRequest, meta: RequestMeta): Promise<CashVoucherDto> {
     // "Chuyển quỹ" (GĐ2) — di chuyển tiền giữa 2 quỹ NỘI BỘ, không phải Thu/Chi thật: server luôn
     // ép direction='EXPENSE' (nghĩa: cashAccountId là quỹ NGUỒN bị trừ, counterAccountId là quỹ
     // ĐÍCH được cộng), KHÔNG có Loại thu chi, KHÔNG qua duyệt (tiền vẫn ở lại phòng khám, rủi ro
@@ -66,20 +66,24 @@ export class CashVoucherService {
 
     // Đúng khuôn InvoiceService.markPaid() — port tự mở transaction đọc riêng, resolve TRƯỚC
     // transaction chính, không lồng runInTenantScope.
-    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
+    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId);
     // Chỉ phiếu CHI THẬT mới cần duyệt (chủ đích — tiền ra khỏi két mới cần kiểm soát chặt, phiếu
     // THU và Chuyển quỹ không ảnh hưởng, xem comment `cashVoucherApprovalEnabled` ở packages/shared/src/clinic.ts).
     const approvalEnabled = !isTransfer && direction === 'EXPENSE' && (await this.clinicConfigReader.getCashVoucherApprovalEnabled(tenantId));
 
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const account = await this.cashAccountRepository.findById(tx, tenantId, dto.cashAccountId);
+      const account = await this.cashAccountRepository.findById(tx, tenantId, branchId, dto.cashAccountId);
       if (!account) {
         throw new NotFoundException();
       }
       if (isTransfer) {
-        const counterAccount = await this.cashAccountRepository.findById(tx, tenantId, dto.counterAccountId!);
+        const counterAccount = await this.cashAccountRepository.findByIdAnyBranch(tx, tenantId, dto.counterAccountId!);
         if (!counterAccount) {
           throw new NotFoundException();
+        }
+        // Đợt 2 chi nhánh (#233): chuyển quỹ chỉ giữa hai quỹ CÙNG chi nhánh — đưa tiền sang chi nhánh khác phải chi ở nơi này rồi thu ở nơi kia.
+        if (counterAccount.branchId !== branchId) {
+          throw new UnprocessableEntityException('Chuyển quỹ chỉ được thực hiện giữa hai quỹ cùng chi nhánh.');
         }
         // Chuyển quỹ LẬP TAY chỉ cho ai có `cash_account.manage` (mặc định chỉ clinic_admin) —
         // KHÁC hẳn `cash_voucher.create` (receptionist cũng có) gác chung cho endpoint này. Tránh
@@ -129,8 +133,8 @@ export class CashVoucherService {
     return this.toDto(tenantId, created);
   }
 
-  async getById(tenantId: string, dataScope: DataScope, actorId: string, id: string): Promise<CashVoucherDto> {
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashVoucherRepository.findByIdAny(tx, tenantId, id));
+  async getById(tenantId: string, branchId: string, dataScope: DataScope, actorId: string, id: string): Promise<CashVoucherDto> {
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashVoucherRepository.findByIdAny(tx, tenantId, branchId, id));
     if (!row || (dataScope === 'personal' && row.createdBy !== actorId)) {
       throw new NotFoundException();
     }
@@ -143,7 +147,7 @@ export class CashVoucherService {
     return resolveRecentDateRange(query.from, query.to);
   }
 
-  async list(tenantId: string, query: ListCashVouchersQuery): Promise<ListCashVouchersResponse> {
+  async list(tenantId: string, branchId: string, query: ListCashVouchersQuery): Promise<ListCashVouchersResponse> {
     // S6-03 (rà soát bảo mật): `from`/`to` bỏ trống trước đây khiến Prisma bỏ hẳn điều kiện lọc
     // ngày, trả VỀ TOÀN BỘ lịch sử thu-chi của tenant không giới hạn — vi phạm .claude/docs/
     // security-audit.md ("không thêm endpoint trả danh sách... không phân trang"). Web luôn gửi
@@ -154,6 +158,7 @@ export class CashVoucherService {
     const { from, to } = this.resolveDateRange(query);
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.cashVoucherRepository.list(tx, tenantId, {
+        branchIds: [branchId],
         from,
         to,
         direction: query.direction,
@@ -178,8 +183,8 @@ export class CashVoucherService {
     return { items, totalIncomeAmount, totalExpenseAmount, pendingApprovalCount };
   }
 
-  async update(tenantId: string, dataScope: DataScope, actorId: string, id: string, dto: UpdateCashVoucherRequest, meta: RequestMeta): Promise<CashVoucherDto> {
-    const existing = await this.findOwnedOrThrow(tenantId, dataScope, actorId, id);
+  async update(tenantId: string, branchId: string, dataScope: DataScope, actorId: string, id: string, dto: UpdateCashVoucherRequest, meta: RequestMeta): Promise<CashVoucherDto> {
+    const existing = await this.findOwnedOrThrow(tenantId, branchId, dataScope, actorId, id);
     await this.assertEditable(tenantId, existing);
 
     const patch: UpdateCashVoucherData = {};
@@ -194,6 +199,11 @@ export class CashVoucherService {
     if (dto.note !== undefined) patch.note = dto.note;
 
     const updated = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      for (const accountId of [dto.cashAccountId, dto.counterAccountId]) {
+        if (accountId && !(await this.cashAccountRepository.findById(tx, tenantId, branchId, accountId))) {
+          throw new NotFoundException();
+        }
+      }
       const count = await this.cashVoucherRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, patch);
       if (count === 0) {
         throw new ConcurrentModificationError();
@@ -207,7 +217,7 @@ export class CashVoucherService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      return this.cashVoucherRepository.findById(tx, tenantId, id);
+      return this.cashVoucherRepository.findById(tx, tenantId, branchId, id);
     });
     return this.toDto(tenantId, updated!);
   }
@@ -223,8 +233,8 @@ export class CashVoucherService {
    * giữ nguyên bản ghi lịch sử đã in ra lúc chốt ca, đúng triết lý "sửa = bản ghi mới" của
    * `CLAUDE.md`: muốn điều chỉnh thì Huỷ phiếu sai rồi lập phiếu mới ở ngày hiện tại.
    */
-  async voidVoucher(tenantId: string, dataScope: DataScope, actorId: string, id: string, dto: VoidCashVoucherRequest, meta: RequestMeta): Promise<CashVoucherDto> {
-    const existing = await this.findOwnedOrThrow(tenantId, dataScope, actorId, id);
+  async voidVoucher(tenantId: string, branchId: string, dataScope: DataScope, actorId: string, id: string, dto: VoidCashVoucherRequest, meta: RequestMeta): Promise<CashVoucherDto> {
+    const existing = await this.findOwnedOrThrow(tenantId, branchId, dataScope, actorId, id);
     if (existing.status === 'REJECTED' || existing.isAutoGenerated) {
       throw new CashVoucherNotEditableError();
     }
@@ -260,14 +270,14 @@ export class CashVoucherService {
       }
       // `findById` lọc `deletedAt: null` (vừa huỷ xong sẽ trả null) — dùng `findByIdAny` để đọc
       // lại đúng bản ghi vừa huỷ (voided=true), không tái tạo DTO thủ công.
-      return this.cashVoucherRepository.findByIdAny(tx, tenantId, id);
+      return this.cashVoucherRepository.findByIdAny(tx, tenantId, branchId, id);
     });
     return this.toDto(tenantId, updated!);
   }
 
   /** Chỉ `clinic_admin` (`cash_voucher.approve=global`) — không kiểm sở hữu. */
-  async approve(tenantId: string, actorId: string, id: string, version: number, meta: RequestMeta): Promise<CashVoucherDto> {
-    const existing = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashVoucherRepository.findById(tx, tenantId, id));
+  async approve(tenantId: string, branchId: string, actorId: string, id: string, version: number, meta: RequestMeta): Promise<CashVoucherDto> {
+    const existing = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashVoucherRepository.findById(tx, tenantId, branchId, id));
     if (!existing) {
       throw new NotFoundException();
     }
@@ -290,7 +300,7 @@ export class CashVoucherService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      const posted = await this.cashVoucherRepository.findById(tx, tenantId, id);
+      const posted = await this.cashVoucherRepository.findById(tx, tenantId, branchId, id);
       // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — voucher gắn NCC vừa POSTED, ghi bút
       // toán PAYMENT/REFUND_RECEIVED TRONG CÙNG transaction (đúng khuôn mọi nơi khác gọi hook xuyên
       // module qua Service, không phải port — xem comment `supplier-debt.module.ts`).
@@ -302,8 +312,8 @@ export class CashVoucherService {
     return this.toDto(tenantId, updated!);
   }
 
-  async reject(tenantId: string, actorId: string, id: string, dto: RejectCashVoucherRequest, meta: RequestMeta): Promise<CashVoucherDto> {
-    const existing = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashVoucherRepository.findById(tx, tenantId, id));
+  async reject(tenantId: string, branchId: string, actorId: string, id: string, dto: RejectCashVoucherRequest, meta: RequestMeta): Promise<CashVoucherDto> {
+    const existing = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashVoucherRepository.findById(tx, tenantId, branchId, id));
     if (!existing) {
       throw new NotFoundException();
     }
@@ -326,13 +336,13 @@ export class CashVoucherService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      return this.cashVoucherRepository.findById(tx, tenantId, id);
+      return this.cashVoucherRepository.findById(tx, tenantId, branchId, id);
     });
     return this.toDto(tenantId, updated!);
   }
 
-  async markPrinted(tenantId: string, dataScope: DataScope, actorId: string, id: string, meta: RequestMeta): Promise<CashVoucherDto> {
-    const existing = await this.findOwnedOrThrow(tenantId, dataScope, actorId, id);
+  async markPrinted(tenantId: string, branchId: string, dataScope: DataScope, actorId: string, id: string, meta: RequestMeta): Promise<CashVoucherDto> {
+    const existing = await this.findOwnedOrThrow(tenantId, branchId, dataScope, actorId, id);
     const updated = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.cashVoucherRepository.markPrintedIfNotYet(tx, tenantId, id, actorId);
       await writeAuditLog(tx, tenantId, {
@@ -343,13 +353,13 @@ export class CashVoucherService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      return this.cashVoucherRepository.findById(tx, tenantId, id);
+      return this.cashVoucherRepository.findById(tx, tenantId, branchId, id);
     });
     return this.toDto(tenantId, updated ?? existing);
   }
 
-  private async findOwnedOrThrow(tenantId: string, dataScope: DataScope, actorId: string, id: string): Promise<CashVoucher> {
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashVoucherRepository.findById(tx, tenantId, id));
+  private async findOwnedOrThrow(tenantId: string, branchId: string, dataScope: DataScope, actorId: string, id: string): Promise<CashVoucher> {
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashVoucherRepository.findById(tx, tenantId, branchId, id));
     if (!row || (dataScope === 'personal' && row.createdBy !== actorId)) {
       throw new NotFoundException();
     }

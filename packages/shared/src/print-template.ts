@@ -109,6 +109,8 @@ export const printTemplateConfigSchema = z.object({
   header: z.object({
     showLogo: z.boolean(),
     showClinicName: z.boolean(),
+    /** Đợt 2 chi nhánh (#233): in dòng tên chi nhánh dưới tên phòng khám — chỉ có tác dụng khi công ty có từ 2 chi nhánh. Mẫu cũ chưa có trường này = bật. */
+    showBranchName: z.boolean().default(true),
     showAddress: z.boolean(),
     showPhone: z.boolean(),
     showTaxCode: z.boolean(),
@@ -160,7 +162,7 @@ export function buildDefaultPrintTemplateConfig(paperSize: PrintPaperSize): Prin
     const large = paperSize === 'LABEL_50X30';
     return {
       margins: { topMm: 1, rightMm: 1, bottomMm: 1, leftMm: 1 },
-      header: { showLogo: false, showClinicName: false, showAddress: false, showPhone: false, showTaxCode: false, showDivider: false },
+      header: { showLogo: false, showClinicName: false, showBranchName: false, showAddress: false, showPhone: false, showTaxCode: false, showDivider: false },
       title: { text: '' },
       footer: { note: '', showSignature: false, showSignatureHint: false },
       label: { showPatientCode: large, showGroup: true, showCapColor: large, showDate: true },
@@ -171,7 +173,7 @@ export function buildDefaultPrintTemplateConfig(paperSize: PrintPaperSize): Prin
   const margin = roll ? 3 : paperSize === 'A4' ? 12 : 10;
   return {
     margins: { topMm: margin, rightMm: margin, bottomMm: margin, leftMm: margin },
-    header: { showLogo: !roll, showClinicName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
+    header: { showLogo: !roll, showClinicName: true, showBranchName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
     title: { text: '' },
     footer: { note: '', showSignature: !roll, showSignatureHint: true },
     copies: { count: 1, labels: [...DEFAULT_PRINT_COPY_LABELS] },

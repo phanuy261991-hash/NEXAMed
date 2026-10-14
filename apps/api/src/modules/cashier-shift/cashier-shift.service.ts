@@ -75,17 +75,17 @@ export class CashierShiftService implements CashierShiftReaderPort {
   ) {}
 
   /** `CashierShiftReaderPort` — `billing` gọi để gắn `payment.cashierShiftId` lúc thu/hoàn tiền. */
-  async getRelevantOpenShiftId(tenantId: string, actorId: string): Promise<string | null> {
+  async getRelevantOpenShiftId(tenantId: string, branchId: string, actorId: string): Promise<string | null> {
     const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      multiCashierEnabled ? this.cashierShiftRepository.findOpenForCashier(tx, tenantId, actorId) : this.cashierShiftRepository.findOpen(tx, tenantId),
+      multiCashierEnabled ? this.cashierShiftRepository.findOpenForCashier(tx, tenantId, branchId, actorId) : this.cashierShiftRepository.findOpen(tx, tenantId, branchId),
     );
     return row?.id ?? null;
   }
 
   /** `CashierShiftReaderPort` ("Thu chi tại quầy" GĐ1) — `cash-book` gọi để khoá sửa/huỷ phiếu gắn ca đã chốt. */
   async isCashierShiftOpen(tenantId: string, cashierShiftId: string): Promise<boolean> {
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashierShiftRepository.findById(tx, tenantId, cashierShiftId));
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashierShiftRepository.findByIdAnyBranch(tx, tenantId, cashierShiftId));
     return row?.status === 'OPEN';
   }
 
@@ -93,22 +93,22 @@ export class CashierShiftService implements CashierShiftReaderPort {
    * mặt) của actor này phải đi vào két riêng nào, thay vì Quỹ CASH mặc định. Không kiểm lại công
    * tắc `cashierDrawerSeparateEnabled` ở đây — chỉ cần đọc đúng `drawerAccountId` SNAPSHOT lúc mở
    * ca (đã ép đúng công tắc TẠI THỜI ĐIỂM ĐÓ), tránh 1 lần đọc `tenant_setting` không cần thiết. */
-  async getCashAccountIdForActor(tenantId: string, actorId: string): Promise<string | null> {
+  async getCashAccountIdForActor(tenantId: string, branchId: string, actorId: string): Promise<string | null> {
     const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     if (!multiCashierEnabled) {
       return null; // Thủ quỹ riêng bắt buộc đi cùng Đa thu ngân — tắt thì không có ca "của actor" để tra.
     }
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashierShiftRepository.findOpenForCashier(tx, tenantId, actorId));
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashierShiftRepository.findOpenForCashier(tx, tenantId, branchId, actorId));
     return row?.drawerAccountId ?? null;
   }
 
-  async getCurrent(tenantId: string, actorId: string): Promise<CurrentCashierShiftResponse> {
+  async getCurrent(tenantId: string, branchId: string, actorId: string): Promise<CurrentCashierShiftResponse> {
     const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     const { open, lastClosed } = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const openRow = multiCashierEnabled
-        ? await this.cashierShiftRepository.findOpenForCashier(tx, tenantId, actorId)
-        : await this.cashierShiftRepository.findOpen(tx, tenantId);
-      const lastClosedRow = openRow ? null : await this.cashierShiftRepository.findLastClosed(tx, tenantId, multiCashierEnabled ? actorId : undefined);
+        ? await this.cashierShiftRepository.findOpenForCashier(tx, tenantId, branchId, actorId)
+        : await this.cashierShiftRepository.findOpen(tx, tenantId, branchId);
+      const lastClosedRow = openRow ? null : await this.cashierShiftRepository.findLastClosed(tx, tenantId, branchId, multiCashierEnabled ? actorId : undefined);
       return { open: openRow, lastClosed: lastClosedRow };
     });
 
@@ -132,7 +132,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
     };
   }
 
-  async openShift(tenantId: string, actorId: string, dto: OpenCashierShiftRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
+  async openShift(tenantId: string, branchId: string, actorId: string, dto: OpenCashierShiftRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
     const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     // "Thủ quỹ riêng" (GĐ2) — bắt buộc đi cùng Đa thu ngân (đã validate ở PATCH /clinic-settings,
     // nhưng đọc lại multiCashierEnabled tại đây để phòng dữ liệu cấu hình lệch — tắt Đa thu ngân
@@ -145,26 +145,27 @@ export class CashierShiftService implements CashierShiftReaderPort {
       // theo `tenantId` — giữ đúng đảm bảo cũ (2 thu ngân khác nhau mở gần như đồng thời → đúng 1
       // thành công), chỉ khác là DB không còn tự lo phần này, phải khoá tay. BẬT: khoá theo
       // `tenantId:actorId` — chỉ chặn CHÍNH người đó mở 2 lần, không tranh chấp người khác.
-      const lockKey = multiCashierEnabled ? `${tenantId}:${actorId}` : tenantId;
+      const lockKey = multiCashierEnabled ? `${tenantId}:${branchId}:${actorId}` : `${tenantId}:${branchId}`;
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
 
       const existing = multiCashierEnabled
-        ? await this.cashierShiftRepository.findOpenForCashier(tx, tenantId, actorId)
-        : await this.cashierShiftRepository.findOpen(tx, tenantId);
+        ? await this.cashierShiftRepository.findOpenForCashier(tx, tenantId, branchId, actorId)
+        : await this.cashierShiftRepository.findOpen(tx, tenantId, branchId);
       if (existing) {
         throw new CashierShiftAlreadyOpenError();
       }
 
-      const lastClosed = await this.cashierShiftRepository.findLastClosed(tx, tenantId, multiCashierEnabled ? actorId : undefined);
+      const lastClosed = await this.cashierShiftRepository.findLastClosed(tx, tenantId, branchId, multiCashierEnabled ? actorId : undefined);
       const openingFloatExpected = lastClosed ? Number(lastClosed.keepForNextAmount ?? 0) : null;
       if (openingFloatExpected !== null && openingFloatExpected !== dto.openingFloatActual && !dto.openingDiscrepancyReason) {
         throw new CashierShiftDiscrepancyReasonRequiredError();
       }
 
-      const drawerAccountId = drawerSeparateEnabled ? await this.findOrCreateDrawerAccount(tx, tenantId, actorId) : null;
+      const drawerAccountId = drawerSeparateEnabled ? await this.findOrCreateDrawerAccount(tx, tenantId, branchId, actorId) : null;
 
       const openedAt = new Date();
       const row = await this.cashierShiftRepository.create(tx, tenantId, actorId, {
+        branchId,
         shiftLabel: deriveShiftLabel(openedAt),
         openedAt,
         openingFloatExpected,
@@ -195,10 +196,10 @@ export class CashierShiftService implements CashierShiftReaderPort {
   }
 
   /** Dùng chung cho `GET .../summary` (preview SỐNG lúc đang mở ca) lẫn `GET .../resync-preview` (đã chốt). */
-  async getSummary(tenantId: string, id: string): Promise<CashierShiftSummary> {
+  async getSummary(tenantId: string, branchId: string, id: string): Promise<CashierShiftSummary> {
     const methodMap = await this.loadPaymentMethodMap(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const row = await this.cashierShiftRepository.findById(tx, tenantId, id);
+      const row = await this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
       if (!row) {
         throw new NotFoundException();
       }
@@ -207,10 +208,10 @@ export class CashierShiftService implements CashierShiftReaderPort {
     });
   }
 
-  async close(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: CloseCashierShiftRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
+  async close(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: CloseCashierShiftRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
     const methodMap = await this.loadPaymentMethodMap(tenantId);
     const closed = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const row = await this.cashierShiftRepository.findById(tx, tenantId, id);
+      const row = await this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
       if (!row) {
         throw new NotFoundException();
       }
@@ -259,7 +260,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
       // và cộng thêm submittedAmount vào cashOutAmount đã chốt, gây tăng dần mỗi lần tính lại (tự
       // tham chiếu). Phiếu vẫn truy vết được qua `description` + `occurredAt=closedAt` + `isAutoGenerated`.
       if (row.drawerAccountId && submittedAmount > 0) {
-        const defaultCashAccount = await this.cashAccountRepository.findDefault(tx, tenantId, 'CASH');
+        const defaultCashAccount = await this.cashAccountRepository.findDefault(tx, tenantId, row.branchId, 'CASH');
         if (defaultCashAccount && defaultCashAccount.id !== row.drawerAccountId) {
           const voucherNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'CASH_TRANSFER', closedAt);
           await this.cashVoucherRepository.create(tx, tenantId, actorId, {
@@ -295,7 +296,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
         userAgent: meta.userAgent,
       });
 
-      return this.cashierShiftRepository.findById(tx, tenantId, id);
+      return this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
     });
 
     const names = await this.doctorDirectory.getUserFullNames(tenantId, this.collectActorIds(closed!));
@@ -308,15 +309,15 @@ export class CashierShiftService implements CashierShiftReaderPort {
    * payment cùng hoá đơn + loại + thời điểm thành 1 sự kiện (trả hỗn hợp ví + tiền mặt = 1 dòng).
    * Cùng quy tắc xem như `getDetail()`: scope `personal` chỉ xem ca của chính mình (404 nếu không).
    */
-  async listInvoicePayments(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<CashierShiftInvoicePaymentsResponse> {
+  async listInvoicePayments(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<CashierShiftInvoicePaymentsResponse> {
     const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const row = await this.cashierShiftRepository.findById(tx, tenantId, id);
+      const row = await this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
       if (!row || (dataScope === 'personal' && row.cashierId !== actorId)) {
         throw new NotFoundException();
       }
       const endAt = row.closedAt ?? new Date();
-      const payments = await this.paymentRepository.listActivityForShift(tx, tenantId, multiCashierEnabled ? { cashierShiftId: row.id } : { startAt: row.openedAt, endAt });
+      const payments = await this.paymentRepository.listActivityForShift(tx, tenantId, multiCashierEnabled ? { cashierShiftId: row.id } : { branchId: row.branchId, startAt: row.openedAt, endAt });
       const events = new Map<string, CashierShiftInvoicePaymentsResponse['items'][number]>();
       for (const p of payments) {
         const key = `${p.invoiceId}|${p.type}|${p.paidAt.getTime()}`;
@@ -342,8 +343,8 @@ export class CashierShiftService implements CashierShiftReaderPort {
     });
   }
 
-  async getDetail(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<CashierShiftDetail> {
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashierShiftRepository.findById(tx, tenantId, id));
+  async getDetail(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<CashierShiftDetail> {
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashierShiftRepository.findById(tx, tenantId, branchId, id));
     if (!row || (dataScope === 'personal' && row.cashierId !== actorId)) {
       throw new NotFoundException();
     }
@@ -351,7 +352,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
     return this.toDetail(row, names);
   }
 
-  async list(tenantId: string, dataScope: DataScope, query: ListCashierShiftsQuery): Promise<ListCashierShiftsResponse> {
+  async list(tenantId: string, branchId: string, dataScope: DataScope, query: ListCashierShiftsQuery): Promise<ListCashierShiftsResponse> {
     // "Danh sách phiếu chốt ca" là màn Quản lý/Kế toán — scope `personal` (thu ngân) không có gì để
     // duyệt qua đây (chỉ xem ca hiện tại của mình qua `GET .../current`).
     if (dataScope === 'personal') {
@@ -360,6 +361,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
 
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.cashierShiftRepository.list(tx, tenantId, {
+        branchIds: [branchId],
         dateFrom: query.dateFrom ? vietnamDayRange(query.dateFrom).startUtc : undefined,
         dateTo: query.dateTo ? vietnamDayRange(query.dateTo).endUtc : undefined,
         cashierId: query.cashierId,
@@ -406,9 +408,9 @@ export class CashierShiftService implements CashierShiftReaderPort {
     };
   }
 
-  async resolveDiscrepancy(tenantId: string, actorId: string, id: string, dto: ResolveCashierShiftDiscrepancyRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
+  async resolveDiscrepancy(tenantId: string, branchId: string, actorId: string, id: string, dto: ResolveCashierShiftDiscrepancyRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
     const updated = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const row = await this.cashierShiftRepository.findById(tx, tenantId, id);
+      const row = await this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
       if (!row) {
         throw new NotFoundException();
       }
@@ -428,15 +430,15 @@ export class CashierShiftService implements CashierShiftReaderPort {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      return this.cashierShiftRepository.findById(tx, tenantId, id);
+      return this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
     });
     const names = await this.doctorDirectory.getUserFullNames(tenantId, this.collectActorIds(updated!));
     return this.toDetail(updated!, names);
   }
 
-  async approve(tenantId: string, actorId: string, id: string, version: number, meta: RequestMeta): Promise<CashierShiftDetail> {
+  async approve(tenantId: string, branchId: string, actorId: string, id: string, version: number, meta: RequestMeta): Promise<CashierShiftDetail> {
     const updated = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const row = await this.cashierShiftRepository.findById(tx, tenantId, id);
+      const row = await this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
       if (!row) {
         throw new NotFoundException();
       }
@@ -455,18 +457,18 @@ export class CashierShiftService implements CashierShiftReaderPort {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      return this.cashierShiftRepository.findById(tx, tenantId, id);
+      return this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
     });
     const names = await this.doctorDirectory.getUserFullNames(tenantId, this.collectActorIds(updated!));
     return this.toDetail(updated!, names);
   }
 
   /** "Mở khoá để sửa" — CHỈ áp dụng cho ca đã CLOSED/APPROVED, `reason` bắt buộc (ghi audit before/after). */
-  async edit(tenantId: string, actorId: string, id: string, dto: EditCashierShiftRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
+  async edit(tenantId: string, branchId: string, actorId: string, id: string, dto: EditCashierShiftRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
     const methodMap = dto.resyncSystemTotals ? await this.loadPaymentMethodMap(tenantId) : null;
 
     const updated = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const before = await this.cashierShiftRepository.findById(tx, tenantId, id);
+      const before = await this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
       if (!before) {
         throw new NotFoundException();
       }
@@ -498,7 +500,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
-      const after = await this.cashierShiftRepository.findById(tx, tenantId, id);
+      const after = await this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -543,8 +545,8 @@ export class CashierShiftService implements CashierShiftReaderPort {
   /** "Thủ quỹ riêng" (GĐ2) — két `DRAWER` CỦA CHÍNH `actorId`, tự cấp lần đầu actor mở ca với công
    * tắc đang bật (find-or-create, TRONG transaction `openShift()`). Mã qua `CodeSequenceRepository`
    * (tiền tố `QU`, tenant-scoped) — CÙNG dãy số với quỹ lập tay ở `CashAccountService.create()`. */
-  private async findOrCreateDrawerAccount(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<string> {
-    const existing = await this.cashAccountRepository.findDrawerForUser(tx, tenantId, actorId);
+  private async findOrCreateDrawerAccount(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string): Promise<string> {
+    const existing = await this.cashAccountRepository.findDrawerForUser(tx, tenantId, branchId, actorId);
     if (existing) {
       return existing.id;
     }
@@ -552,6 +554,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
     const seq = await this.codeSequenceRepository.next(tx, tenantId, CASH_ACCOUNT_CODE_PREFIX, actorId);
     const code = formatShortSequentialCode(CASH_ACCOUNT_CODE_PREFIX, seq);
     const created = await this.cashAccountRepository.create(tx, tenantId, actorId, {
+      branchId,
       code,
       name: `Két — ${names.get(actorId) ?? 'Không rõ'}`,
       type: 'DRAWER',
@@ -593,8 +596,8 @@ export class CashierShiftService implements CashierShiftReaderPort {
     const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     const endAt = endAtOverride ?? row.closedAt ?? new Date();
     const [paymentRows, voucherRows] = await Promise.all([
-      multiCashierEnabled ? this.paymentRepository.listForShift(tx, tenantId, row.id) : this.paymentRepository.listForWindow(tx, tenantId, row.openedAt, endAt),
-      multiCashierEnabled ? this.cashVoucherRepository.listPostedForShift(tx, tenantId, row.id) : this.cashVoucherRepository.listPostedForWindow(tx, tenantId, row.openedAt, endAt),
+      multiCashierEnabled ? this.paymentRepository.listForShift(tx, tenantId, row.id) : this.paymentRepository.listForWindow(tx, tenantId, row.branchId, row.openedAt, endAt),
+      multiCashierEnabled ? this.cashVoucherRepository.listPostedForShift(tx, tenantId, row.id) : this.cashVoucherRepository.listPostedForWindow(tx, tenantId, row.branchId, row.openedAt, endAt),
     ]);
     const inputs = [...this.buildPaymentInputs(paymentRows, methodMap), ...this.buildVoucherInputs(voucherRows, methodMap)];
     return computeCashierShiftTotals(Number(row.openingFloatActual), inputs);
@@ -632,6 +635,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
     return {
       id: row.id,
       shiftNo: row.shiftNo,
+      branchId: row.branchId,
       cashierId: row.cashierId,
       cashierName: names.get(row.cashierId) ?? 'Không rõ',
       shiftLabel: row.shiftLabel,

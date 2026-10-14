@@ -61,8 +61,6 @@ export function PatientEditDialog({ patient, onClose }: { patient: PatientDetail
             onChange={setFormValues}
             patientId={patient.id}
             patientCode={patient.patientCode}
-            photoUrl={patient.photoUrl}
-            version={patient.version}
           />
         </div>
 

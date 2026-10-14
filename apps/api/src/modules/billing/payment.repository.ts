@@ -95,9 +95,9 @@ export class PaymentRepository {
    * THỜI GIAN (`paidAt`), KHÔNG theo `createdBy` — v1 chỉ 1 két dùng chung, bất kỳ ai xử lý thu
    * ngân trong khung giờ ca đang mở đều tính vào ca đó (đúng bản chất tiền vào CÙNG 1 két vật lý).
    */
-  listForWindow(tx: Prisma.TransactionClient, tenantId: string, startAt: Date, endAt: Date): Promise<Array<Pick<Payment, 'method' | 'type' | 'amount'>>> {
+  listForWindow(tx: Prisma.TransactionClient, tenantId: string, branchId: string, startAt: Date, endAt: Date): Promise<Array<Pick<Payment, 'method' | 'type' | 'amount'>>> {
     return tx.payment.findMany({
-      where: { tenantId, deletedAt: null, paidAt: { gte: startAt, lt: endAt } },
+      where: { tenantId, deletedAt: null, paidAt: { gte: startAt, lt: endAt }, invoice: { encounter: { branchId } } },
       select: { method: true, type: true, amount: true },
     });
   }
@@ -123,10 +123,14 @@ export class PaymentRepository {
   listActivityForShift(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    scope: { cashierShiftId: string } | { startAt: Date; endAt: Date },
+    scope: { cashierShiftId: string } | { branchId: string; startAt: Date; endAt: Date },
   ) {
     return tx.payment.findMany({
-      where: { tenantId, deletedAt: null, ...('cashierShiftId' in scope ? { cashierShiftId: scope.cashierShiftId } : { paidAt: { gte: scope.startAt, lt: scope.endAt } }) },
+      where: {
+        tenantId,
+        deletedAt: null,
+        ...('cashierShiftId' in scope ? { cashierShiftId: scope.cashierShiftId } : { paidAt: { gte: scope.startAt, lt: scope.endAt }, invoice: { encounter: { branchId: scope.branchId } } }),
+      },
       select: {
         id: true,
         invoiceId: true,
@@ -163,9 +167,9 @@ export class PaymentRepository {
    * "Báo cáo dòng tiền" (GĐ2) — mọi dòng thu/hoàn tiền khám (MỌI quỹ) trong khoảng [from, to] —
    * dùng để gộp bucket "Thu tiền khám"/"Hoàn tiền khám" (`byType`) và phân bổ theo quỹ (`byAccount`).
    */
-  listForReport(tx: Prisma.TransactionClient, tenantId: string, from: Date, to: Date) {
+  listForReport(tx: Prisma.TransactionClient, tenantId: string, branchIds: string[], from: Date, to: Date) {
     return tx.payment.findMany({
-      where: { tenantId, deletedAt: null, paidAt: { gte: from, lte: to } },
+      where: { tenantId, deletedAt: null, paidAt: { gte: from, lte: to }, invoice: { encounter: { branchId: { in: branchIds } } } },
       select: { type: true, amount: true, cashAccountId: true },
     });
   }

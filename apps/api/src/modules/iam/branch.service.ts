@@ -11,6 +11,7 @@ import type { BranchSummary, CreateBranchRequest, ListBranchesResponse, UpdateBr
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { provisionBranchDefaults } from '../../infrastructure/persistence/seed-tenant-roles';
 import type { RequestMeta } from '../../common/request-meta';
 import { BranchRepository } from './branch.repository';
 
@@ -52,6 +53,8 @@ export class BranchService {
         isDefault: false,
       });
       if (activeBefore <= 1) await this.materializeAssignments(tx, tenantId, actorId);
+      // Q2 (docs/DECISIONS.md #233): chi nhánh mới có sẵn 1 kho mặc định + 1 quỹ tiền mặt mặc định.
+      await provisionBranchDefaults(tx, tenantId, created.id, created.name, actorId);
 
       await writeAuditLog(tx, tenantId, {
         actorId,

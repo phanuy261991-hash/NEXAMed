@@ -14,6 +14,7 @@ import {
   recordSupplierDebtRefundRequestSchema,
   rejectSupplierDebtAdjustmentRequestSchema,
 } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -44,7 +45,7 @@ export class SupplierDebtController {
   async listPayments(@Query() query: unknown, @Req() req: Request) {
     const dto = listSupplierDebtPaymentsQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.supplierDebtService.listPayments(tenantId, dto);
+    return this.supplierDebtService.listPayments(tenantId, requireBranchId(req.user!), dto);
   }
 
   @Get(':supplierId/summary')
@@ -85,7 +86,7 @@ export class SupplierDebtController {
   async recordPayment(@Param('supplierId') supplierId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = recordSupplierDebtPaymentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.supplierDebtService.recordPayment(tenantId, userId, supplierId, dto, extractRequestMeta(req));
+    return this.supplierDebtService.recordPayment(tenantId, requireBranchId(req.user!), userId, supplierId, dto, extractRequestMeta(req));
   }
 
   /** Phần C — "Thu tiền NCC hoàn lại" (Q8), CHỈ hợp lệ khi NCC đang nợ lại phòng khám (`balance<0`). */
@@ -95,7 +96,7 @@ export class SupplierDebtController {
   async recordRefund(@Param('supplierId') supplierId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = recordSupplierDebtRefundRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.supplierDebtService.recordRefund(tenantId, userId, supplierId, dto, extractRequestMeta(req));
+    return this.supplierDebtService.recordRefund(tenantId, requireBranchId(req.user!), userId, supplierId, dto, extractRequestMeta(req));
   }
 
   // ============ Phần D "Luồng xử lý sai sót" (docs/DECISIONS.md #180/#182) ============
@@ -128,7 +129,7 @@ export class SupplierDebtController {
   async approveAdjustment(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = approveSupplierDebtAdjustmentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.supplierDebtService.approveAdjustment(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.supplierDebtService.approveAdjustment(tenantId, requireBranchId(req.user!), userId, id, dto, extractRequestMeta(req));
   }
 
   @Post('adjustments/:id/reject')

@@ -10,7 +10,7 @@ import { invoiceTypeSchema, discountTypeSchema } from './billing';
  * enum còn lại khai sẵn cho GĐ3/4, chưa có UI/logic.
  */
 
-export const stockReceiptTypeSchema = z.enum(['PURCHASE', 'OPENING_BALANCE', 'TRANSFER_IN', 'RETURN_FROM_USE', 'COUNT_SURPLUS']);
+export const stockReceiptTypeSchema = z.enum(['PURCHASE', 'OPENING_BALANCE', 'TRANSFER_IN', 'TRANSFER_RETURN', 'RETURN_FROM_USE', 'COUNT_SURPLUS']);
 export type StockReceiptType = z.infer<typeof stockReceiptTypeSchema>;
 
 export const stockReceiptStatusSchema = z.enum(['DRAFT', 'POSTED', 'REJECTED']);
@@ -350,6 +350,7 @@ export const stockLedgerReasonSchema = z.enum([
   'RECEIPT_PURCHASE',
   'RECEIPT_OPENING_BALANCE',
   'RECEIPT_TRANSFER_IN',
+  'RECEIPT_TRANSFER_RETURN',
   'RECEIPT_RETURN_FROM_USE',
   'RECEIPT_COUNT_SURPLUS',
   'RECEIPT_VOID',
@@ -883,7 +884,9 @@ export type ListStockCountsResponse = z.infer<typeof listStockCountsResponseSche
 // IN_TRANSIT. Luôn ở đơn vị CƠ SỞ (không chọn đơn vị như `stock_receipt`, đúng khuôn `stock_count`/
 // `stock_issue`). ============
 
-export const stockTransferStatusSchema = z.enum(['DRAFT', 'IN_TRANSIT', 'COMPLETED', 'REJECTED']);
+// Đợt 2 chi nhánh (#233): thêm VARIANCE_PENDING (bên nhận đã kiểm đếm, có dòng nhận THIẾU — chờ bên GỬI xử lý), RETURNING (bên nhận từ chối
+// nhận cả phiếu — hàng đang trên đường về), RETURNED (bên gửi đã xác nhận nhận lại hàng).
+export const stockTransferStatusSchema = z.enum(['DRAFT', 'IN_TRANSIT', 'COMPLETED', 'REJECTED', 'VARIANCE_PENDING', 'RETURNING', 'RETURNED']);
 export type StockTransferStatus = z.infer<typeof stockTransferStatusSchema>;
 
 /** 1 dòng hàng — `batchId` bắt buộc nếu thuốc quản lý theo lô (kiểm ở Service, cần tra
@@ -932,6 +935,18 @@ export type RejectStockTransferRequest = z.infer<typeof rejectStockTransferReque
 export const shipStockTransferRequestSchema = z.object({ version: z.number().int() });
 export type ShipStockTransferRequest = z.infer<typeof shipStockTransferRequestSchema>;
 
+/** Lý do bên nhận chọn khi số thực nhận KHÁC số trên phiếu (màn "Kiểm nhận hàng"). `OTHER` bắt buộc ghi chú. */
+export const stockTransferVarianceReasonSchema = z.enum(['SHORTAGE', 'DAMAGED', 'EXPIRED', 'WRONG_ITEM', 'OTHER']);
+export type StockTransferVarianceReason = z.infer<typeof stockTransferVarianceReasonSchema>;
+
+/** Lý do bên nhận TỪ CHỐI nhận cả phiếu. */
+export const stockTransferRejectReceiptReasonSchema = z.enum(['WRONG_ITEM', 'DAMAGED', 'EXPIRED', 'OTHER']);
+export type StockTransferRejectReceiptReason = z.infer<typeof stockTransferRejectReceiptReasonSchema>;
+
+/** Cách chi nhánh GỬI xử lý phần hàng nhận thiếu của 1 dòng: hàng đã quay về kho gửi (tồn kho gửi tăng lại) hoặc ghi hao hụt. */
+export const stockTransferVarianceResolutionSchema = z.enum(['RETURN_TO_SOURCE', 'WRITE_OFF']);
+export type StockTransferVarianceResolution = z.infer<typeof stockTransferVarianceResolutionSchema>;
+
 /** 1 dòng lúc Xác nhận nhận hàng — `quantityReceived` gửi TƯỜNG MINH cho MỌI dòng (FE mặc định
  * = `quantityShipped`, người dùng sửa xuống thấp hơn nếu cần). `varianceNote` bắt buộc THẬT chỉ khi
  * `quantityReceived < quantityShipped` (Service kiểm tra sau khi so với số đã lưu trên dòng, Zod
@@ -940,6 +955,8 @@ export type ShipStockTransferRequest = z.infer<typeof shipStockTransferRequestSc
 export const receiveStockTransferLineInputSchema = z.object({
   lineId: z.string().uuid(),
   quantityReceived: z.number().int().nonnegative(),
+  /** Bắt buộc khi `quantityReceived < quantityShipped` (Service kiểm). */
+  varianceReason: stockTransferVarianceReasonSchema.nullable().optional(),
   varianceNote: z.string().trim().min(1).nullable().optional(),
 });
 export type ReceiveStockTransferLineInput = z.infer<typeof receiveStockTransferLineInputSchema>;
@@ -951,6 +968,43 @@ export const receiveStockTransferRequestSchema = z.object({
   lines: z.array(receiveStockTransferLineInputSchema).min(1),
 });
 export type ReceiveStockTransferRequest = z.infer<typeof receiveStockTransferRequestSchema>;
+
+/** `POST /inventory/transfers/:id/reject-receipt` — bên NHẬN từ chối nhận cả phiếu, IN_TRANSIT→RETURNING. Không hoàn tác được. */
+export const rejectStockTransferReceiptRequestSchema = z.object({
+  version: z.number().int(),
+  reason: stockTransferRejectReceiptReasonSchema,
+  note: z.string().trim().min(1, 'Phải ghi chú chi tiết lý do từ chối nhận.'),
+});
+export type RejectStockTransferReceiptRequest = z.infer<typeof rejectStockTransferReceiptRequestSchema>;
+
+/** `POST /inventory/transfers/:id/confirm-return` — bên GỬI xác nhận đã nhận lại hàng bị từ chối, RETURNING→RETURNED. Nhận lại THIẾU thì phần thiếu
+ * ghi thẳng là hao hụt kèm ghi chú (bắt buộc), không còn vòng xử lý thứ hai. */
+export const confirmStockTransferReturnLineInputSchema = z.object({
+  lineId: z.string().uuid(),
+  quantityReturnedBack: z.number().int().nonnegative(),
+  note: z.string().trim().min(1).nullable().optional(),
+});
+export type ConfirmStockTransferReturnLineInput = z.infer<typeof confirmStockTransferReturnLineInputSchema>;
+
+export const confirmStockTransferReturnRequestSchema = z.object({
+  version: z.number().int(),
+  lines: z.array(confirmStockTransferReturnLineInputSchema).min(1),
+});
+export type ConfirmStockTransferReturnRequest = z.infer<typeof confirmStockTransferReturnRequestSchema>;
+
+/** `POST /inventory/transfers/:id/resolve-variance` — bên GỬI xử lý phần nhận thiếu, VARIANCE_PENDING→COMPLETED. Phải đủ MỌI dòng đang thiếu. */
+export const resolveStockTransferVarianceLineInputSchema = z.object({
+  lineId: z.string().uuid(),
+  resolution: stockTransferVarianceResolutionSchema,
+});
+export type ResolveStockTransferVarianceLineInput = z.infer<typeof resolveStockTransferVarianceLineInputSchema>;
+
+export const resolveStockTransferVarianceRequestSchema = z.object({
+  version: z.number().int(),
+  note: z.string().trim().min(1).nullable().optional(),
+  lines: z.array(resolveStockTransferVarianceLineInputSchema).min(1),
+});
+export type ResolveStockTransferVarianceRequest = z.infer<typeof resolveStockTransferVarianceRequestSchema>;
 
 export const stockTransferLineSchema = z.object({
   id: z.string().uuid(),
@@ -965,6 +1019,16 @@ export const stockTransferLineSchema = z.object({
   /** `null` khi phiếu còn `DRAFT` (chưa Duyệt xuất) hoặc `IN_TRANSIT` (chưa Xác nhận nhận hàng). */
   quantityReceived: z.number().int().nullable(),
   varianceNote: z.string().nullable(),
+  varianceReason: stockTransferVarianceReasonSchema.nullable(),
+  varianceResolution: stockTransferVarianceResolutionSchema.nullable(),
+  /** Số thực nhận lại ở kho gửi (chỉ có khi phiếu từng bị từ chối nhận cả phiếu). */
+  quantityReturnedBack: z.number().int().nullable(),
+  returnVarianceNote: z.string().nullable(),
+  /**
+   * Giá vốn 1 đơn vị cơ sở đã chốt lúc Duyệt xuất — CHỈ gửi cho người ở chi nhánh GỬI (Q3, docs/DECISIONS.md #233: chi nhánh nhận KHÔNG thấy
+   * giá vốn); `null` với chi nhánh nhận hoặc khi phiếu còn Nháp.
+   */
+  unitCost: z.number().int().nullable(),
 });
 export type StockTransferLine = z.infer<typeof stockTransferLineSchema>;
 
@@ -985,6 +1049,20 @@ export const stockTransferSummarySchema = z.object({
   receivedByName: z.string().nullable(),
   receivedAt: z.string().nullable(),
   rejectionReason: z.string().nullable(),
+  // Đợt 2 chi nhánh (#233) — kho gửi/nhận có thể thuộc 2 chi nhánh khác nhau.
+  fromBranchId: z.string().uuid(),
+  fromBranchName: z.string(),
+  toBranchId: z.string().uuid(),
+  toBranchName: z.string(),
+  receiveRejectReason: stockTransferRejectReceiptReasonSchema.nullable(),
+  receiveRejectNote: z.string().nullable(),
+  receiveRejectedByName: z.string().nullable(),
+  receiveRejectedAt: z.string().nullable(),
+  returnConfirmedByName: z.string().nullable(),
+  returnConfirmedAt: z.string().nullable(),
+  varianceResolvedByName: z.string().nullable(),
+  varianceResolvedAt: z.string().nullable(),
+  varianceResolutionNote: z.string().nullable(),
   version: z.number().int(),
 });
 export type StockTransferSummary = z.infer<typeof stockTransferSummarySchema>;
@@ -999,6 +1077,11 @@ export const listStockTransfersQuerySchema = z.object({
   toWarehouseId: z.string().uuid().optional(),
   status: stockTransferStatusSchema.optional(),
   q: z.string().min(1).max(100).optional(),
+  /**
+   * `out` (mặc định) = phiếu có kho GỬI thuộc chi nhánh đang làm (gồm cả điều chuyển trong cùng chi nhánh); `in` = phiếu từ chi nhánh KHÁC đang đến /
+   * đã đến chi nhánh này (chỉ từ lúc Duyệt xuất, không thấy Nháp của bên gửi).
+   */
+  direction: z.enum(['out', 'in']).optional().default('out'),
 });
 export type ListStockTransfersQuery = z.infer<typeof listStockTransfersQuerySchema>;
 
@@ -1007,6 +1090,43 @@ export const listStockTransfersResponseSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 export type ListStockTransfersResponse = z.infer<typeof listStockTransfersResponseSchema>;
+
+/** Chấm số trên menu "Điều chuyển kho" (Đợt 2 chi nhánh, #233): phiếu đang chờ chi nhánh NÀY nhận, và phiếu chờ chi nhánh này (bên gửi) xử lý. */
+export const getStockTransferPendingCountsResponseSchema = z.object({
+  incoming: z.number().int().nonnegative(),
+  toResolve: z.number().int().nonnegative(),
+});
+export type GetStockTransferPendingCountsResponse = z.infer<typeof getStockTransferPendingCountsResponseSchema>;
+
+/** "Báo cáo hao hụt điều chuyển" — phần hao hụt của chi nhánh GỬI trong khoảng ngày xử lý xong. */
+export const getStockTransferShrinkageQuerySchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+export type GetStockTransferShrinkageQuery = z.infer<typeof getStockTransferShrinkageQuerySchema>;
+
+export const stockTransferShrinkageItemSchema = z.object({
+  transferId: z.string().uuid(),
+  transferNo: z.string(),
+  occurredAt: z.string(),
+  fromWarehouseName: z.string(),
+  toWarehouseName: z.string(),
+  drugCode: z.string(),
+  drugName: z.string(),
+  quantity: z.number().int(),
+  unitCost: z.number().int(),
+  lineValue: z.number().int(),
+  /** `WRITE_OFF` = chi nhánh gửi chọn ghi hao hụt phần nhận thiếu; `RETURN_SHORTAGE` = phiếu bị từ chối nhận mà nhận lại thiếu. */
+  cause: z.enum(['WRITE_OFF', 'RETURN_SHORTAGE']),
+});
+export type StockTransferShrinkageItem = z.infer<typeof stockTransferShrinkageItemSchema>;
+
+export const getStockTransferShrinkageResponseSchema = z.object({
+  items: z.array(stockTransferShrinkageItemSchema),
+  totalQuantity: z.number().int(),
+  totalValue: z.number().int(),
+});
+export type GetStockTransferShrinkageResponse = z.infer<typeof getStockTransferShrinkageResponseSchema>;
 
 // ============ Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170, kế hoạch kỹ thuật
 // bright-bubbling-axolotl.md mục 5, mockup đã duyệt) — bảng kê Đầu kỳ/Nhập/Xuất/Cuối kỳ theo mặt

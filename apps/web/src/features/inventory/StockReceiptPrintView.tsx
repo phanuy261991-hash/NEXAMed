@@ -8,6 +8,7 @@ const TYPE_LABEL: Record<StockReceiptType, string> = {
   PURCHASE: 'Nhập nhà cung cấp',
   OPENING_BALANCE: 'Nhập khởi tạo (Đầu kỳ)',
   TRANSFER_IN: 'Nhập chuyển kho',
+  TRANSFER_RETURN: 'Nhập hoàn trả về kho gửi',
   RETURN_FROM_USE: 'Nhập hoàn trả',
   COUNT_SURPLUS: 'Nhập cân bằng kiểm kê',
 };

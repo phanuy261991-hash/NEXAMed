@@ -3,6 +3,8 @@ import type { CashierShift, CashierShiftDiscrepancyResolution, Prisma } from '@p
 import { BusinessCodeService } from '../clinic/business-code.service';
 
 export interface OpenCashierShiftData {
+  /** Chi nhánh đang làm việc (Đợt 2, docs/DECISIONS.md #233, Q6). */
+  branchId: string;
   shiftLabel: string;
   openedAt: Date;
   openingFloatExpected: number | null;
@@ -29,6 +31,7 @@ export interface CloseCashierShiftData {
 }
 
 export interface ListCashierShiftFilters {
+  branchIds: string[];
   dateFrom?: Date;
   dateTo?: Date;
   cashierId?: string;
@@ -63,6 +66,7 @@ export class CashierShiftRepository {
     return tx.cashierShift.create({
       data: {
         tenantId,
+        branchId: data.branchId,
         shiftNo,
         cashierId: actorId,
         shiftLabel: data.shiftLabel,
@@ -78,13 +82,13 @@ export class CashierShiftRepository {
     });
   }
 
-  findOpen(tx: Prisma.TransactionClient, tenantId: string): Promise<CashierShift | null> {
-    return tx.cashierShift.findFirst({ where: { tenantId, status: 'OPEN', deletedAt: null } });
+  findOpen(tx: Prisma.TransactionClient, tenantId: string, branchId: string): Promise<CashierShift | null> {
+    return tx.cashierShift.findFirst({ where: { tenantId, branchId, status: 'OPEN', deletedAt: null } });
   }
 
   /** "Đa thu ngân" — ca đang mở CỦA ĐÚNG người này (khác `findOpen()` không lọc theo ai). */
-  findOpenForCashier(tx: Prisma.TransactionClient, tenantId: string, cashierId: string): Promise<CashierShift | null> {
-    return tx.cashierShift.findFirst({ where: { tenantId, cashierId, status: 'OPEN', deletedAt: null } });
+  findOpenForCashier(tx: Prisma.TransactionClient, tenantId: string, branchId: string, cashierId: string): Promise<CashierShift | null> {
+    return tx.cashierShift.findFirst({ where: { tenantId, branchId, cashierId, status: 'OPEN', deletedAt: null } });
   }
 
   /**
@@ -93,19 +97,24 @@ export class CashierShiftRepository {
    * (2026-09-04) truyền `cashierId` → CHỈ tính ca đóng gần nhất của CHÍNH người đó (mỗi người có
    * két riêng, không kế thừa vốn từ két người khác).
    */
-  findLastClosed(tx: Prisma.TransactionClient, tenantId: string, cashierId?: string): Promise<CashierShift | null> {
+  findLastClosed(tx: Prisma.TransactionClient, tenantId: string, branchId: string, cashierId?: string): Promise<CashierShift | null> {
     return tx.cashierShift.findFirst({
-      where: { tenantId, status: { in: ['CLOSED', 'APPROVED'] }, deletedAt: null, ...(cashierId ? { cashierId } : {}) },
+      where: { tenantId, branchId, status: { in: ['CLOSED', 'APPROVED'] }, deletedAt: null, ...(cashierId ? { cashierId } : {}) },
       orderBy: { closedAt: 'desc' },
     });
   }
 
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<CashierShift | null> {
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<CashierShift | null> {
+    return tx.cashierShift.findFirst({ where: { tenantId, branchId, id, deletedAt: null } });
+  }
+
+  /** CHỈ cho port `CashierShiftReaderPort.isCashierShiftOpen` — id ca đến từ chứng từ ĐÃ được khoá theo chi nhánh (phiếu thu/chi). */
+  findByIdAnyBranch(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<CashierShift | null> {
     return tx.cashierShift.findFirst({ where: { tenantId, id, deletedAt: null } });
   }
 
   list(tx: Prisma.TransactionClient, tenantId: string, filters: ListCashierShiftFilters): Promise<CashierShift[]> {
-    const where: Prisma.CashierShiftWhereInput = { tenantId, deletedAt: null, status: { not: 'OPEN' } };
+    const where: Prisma.CashierShiftWhereInput = { tenantId, branchId: { in: filters.branchIds }, deletedAt: null, status: { not: 'OPEN' } };
     if (filters.cashierId) {
       where.cashierId = filters.cashierId;
     }

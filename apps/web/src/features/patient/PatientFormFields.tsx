@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { MagnifyingGlass, PencilSimple } from '@phosphor-icons/react';
 import type { FamilyRelation, PatientGender } from '@nexamed/shared';
 import { calculateAgeYears, computeAgeLabel, computeBirthYear, findRepeatedFamilyConditions } from './patient-form.utils';
-import { PatientAvatarUpload } from './PatientAvatarUpload';
 import { PhoneDuplicateWarning } from './PhoneDuplicateWarning';
 import { PatientHistoryDialog } from './PatientHistoryDialog';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
@@ -153,9 +152,9 @@ function HistorySummaryPill({ label, count, tone }: { label: string; count: numb
  * #034) chia 2 khối rõ ràng: "Thông tin hành chính" / "Thông tin người thân", lưới 2-3 cột theo
  * .claude/docs/ui-guidelines.md mục 4.1 (trường bắt buộc có dấu `*` đỏ, textarea kéo full-width).
  *
- * `patientId`/`patientCode`/`photoUrl`/`version` chỉ có giá trị ở trang Chi tiết (patient đã tồn
- * tại) — `undefined` ở trang Thêm mới, `PatientAvatarUpload`/Mã bệnh nhân tự chuyển sang trạng
- * thái phù hợp (chưa upload được / hiển thị "sẽ cấp tự động").
+ * `patientId`/`patientCode` chỉ có giá trị ở trang Chi tiết (patient đã tồn tại) — `undefined` ở
+ * trang Thêm mới, Mã bệnh nhân tự chuyển sang trạng thái phù hợp (hiển thị "sẽ cấp tự động").
+ * Không còn ảnh đại diện bệnh nhân (chủ dự án bỏ 14/10/2026).
  */
 export function PatientFormFields({
   values,
@@ -165,8 +164,6 @@ export function PatientFormFields({
   hidePhoneDuplicateHint = false,
   patientId,
   patientCode,
-  photoUrl,
-  version,
   onSearchPatient,
 }: {
   values: PatientFormValues;
@@ -187,8 +184,6 @@ export function PatientFormFields({
   hidePhoneDuplicateHint?: boolean;
   patientId?: string;
   patientCode?: string;
-  photoUrl?: string | null;
-  version?: number;
   /**
    * Icon "Tìm kiếm khách hàng" cạnh ô Mã bệnh nhân (Sprint 5) — CHỈ truyền từ `ReceptionIntakeForm.tsx`
    * (mở `PatientSearchDialog`). Không truyền = không hiện icon (Thêm/Sửa bệnh nhân không cần tìm
@@ -249,10 +244,7 @@ export function PatientFormFields({
       <div className={sectionBoxClassName}>
         <span className={sectionBadgeClassName}>Thông tin hành chính</span>
 
-        <div className="flex flex-col gap-4 sm:flex-row">
-        <PatientAvatarUpload patientId={patientId} photoUrl={photoUrl ?? null} version={version} disabled={disabled} />
-
-        <div className={`flex-1 ${fieldGridClassName}`}>
+        <div className={fieldGridClassName}>
           <Field id="patientCode" label="Mã bệnh nhân">
             <div className="flex items-center gap-1.5">
               <input
@@ -467,7 +459,6 @@ export function PatientFormFields({
               </button>
             </div>
           </Field>
-        </div>
         </div>
 
         <PatientHistoryDialog

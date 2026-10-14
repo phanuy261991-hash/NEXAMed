@@ -110,17 +110,20 @@ export class StockIssueService {
     @Inject(PRICING_PORT) private readonly pricing: PricingPort,
   ) {}
 
-  async create(tenantId: string, actorId: string, dataScope: DataScope, dto: CreateStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+  async create(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, dto: CreateStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
     const pharmacySeparateInvoiceEnabled = await this.clinicConfigReader.getPharmacySeparateInvoiceEnabled(tenantId);
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     const createdId = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
       assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
 
       const prescription = await this.prescriptionRepository.findById(tx, tenantId, dto.prescriptionId);
       if (!prescription || prescription.signedAt === null) throw new NotFoundException();
+      // Đợt 2 chi nhánh (#233): đơn thuốc của lượt khám ở chi nhánh khác → 404 (kho đã khoá theo chi nhánh ở trên).
+      const encounter = await this.encounterRepository.findById(tx, tenantId, branchId, prescription.encounterId);
+      if (!encounter) throw new NotFoundException();
 
       // Khoá tay theo TỪNG mặt hàng trong phiếu — tần suất phát thuốc cao, đồng thời tại 1 quầy
       // hoặc auto-dispense là race THẬT (khác GĐ2 chấp nhận rủi ro hiếm giữa 2 phiếu NHẬP).
@@ -179,7 +182,7 @@ export class StockIssueService {
         quantity: line.quantity,
         lineTotal: line.lineAmount,
       }));
-      await this.attachInvoiceLines(tx, tenantId, actorId, prescription.encounterId, pharmacySeparateInvoiceEnabled, invoiceLines);
+      await this.attachInvoiceLines(tx, tenantId, branchId, actorId, prescription.encounterId, pharmacySeparateInvoiceEnabled, invoiceLines);
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -194,7 +197,7 @@ export class StockIssueService {
       return created.id;
     });
 
-    return this.getById(tenantId, actorId, dataScope, createdId);
+    return this.getById(tenantId, branchId, actorId, dataScope, createdId);
   }
 
   /** Đọc/validate mọi dòng hàng — dùng chung cho `create()` (thủ công) và `autoDispenseForPrescription()`. */
@@ -293,12 +296,13 @@ export class StockIssueService {
   private async attachInvoiceLines(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     actorId: string,
     encounterId: string,
     pharmacySeparateInvoiceEnabled: boolean,
     invoiceLines: InvoiceLineToAppend[],
   ): Promise<void> {
-    const serviceInvoice = pharmacySeparateInvoiceEnabled ? null : await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+    const serviceInvoice = pharmacySeparateInvoiceEnabled ? null : await this.invoiceRepository.findByEncounterId(tx, tenantId, branchId, encounterId);
     if (serviceInvoice && serviceInvoice.status === 'UNPAID') {
       const count = await this.invoiceRepository.appendLines(tx, tenantId, serviceInvoice.id, serviceInvoice.version, actorId, invoiceLines);
       if (count > 0) return;
@@ -313,18 +317,18 @@ export class StockIssueService {
     await this.invoiceRepository.createDrugInvoice(tx, tenantId, actorId, encounterId, invoiceLines);
   }
 
-  async voidIssue(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: VoidStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+  async voidIssue(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: VoidStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, id);
+      const existing = await this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       assertWarehouseInScope(existing.warehouse.departmentId, dataScope, actorDepartmentId);
 
       await this.voidPostedCore(tx, tenantId, actorId, existing, dto.version, dto.reason, meta);
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
   /**
@@ -333,8 +337,8 @@ export class StockIssueService {
    * `stock_issue.create` đã lập). Chạy TRONG transaction của caller — cùng khuôn
    * `voidPostedForAdjustment()` ở `StockReceiptService`, không kiểm `dataScope`/Khoa-Phòng.
    */
-  async voidPostedForAdjustment(tx: Prisma.TransactionClient, tenantId: string, actorId: string, id: string, reason: string, meta: RequestMeta): Promise<void> {
-    const existing = await this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, id);
+  async voidPostedForAdjustment(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, id: string, reason: string, meta: RequestMeta): Promise<void> {
+    const existing = await this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, branchId, id);
     if (!existing) throw new NotFoundException();
     await this.voidPostedCore(tx, tenantId, actorId, existing, existing.version, reason, meta);
   }
@@ -413,23 +417,23 @@ export class StockIssueService {
   // lập Nháp — đúng khuôn `StockTransferService.approveShip()`, KHÔNG dùng advisory lock (thao tác
   // không tần suất cao như "Phát thuốc" tại quầy). ============
 
-  async createManual(tenantId: string, actorId: string, dataScope: DataScope, dto: CreateManualStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+  async createManual(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, dto: CreateManualStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
     if (!SUPPORTED_MANUAL_ISSUE_TYPES.includes(dto.issueType)) {
       throw new UnprocessableEntityException(`Loại phiếu "${dto.issueType}" chưa được hỗ trợ ở giai đoạn này.`);
     }
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
       assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
       if (dto.departmentId) {
         const departments = await this.doctorDirectory.getDepartmentNames(tenantId);
         if (!departments.has(dto.departmentId)) throw new NotFoundException();
       }
-      await this.validateReturnSupplierRefs(tx, tenantId, dto.supplierId, dto.sourceReceiptId);
+      await this.validateReturnSupplierRefs(tx, tenantId, branchId, dto.supplierId, dto.sourceReceiptId);
 
-      const lines = await this.buildManualLineData(tx, tenantId, dto.warehouseId, dto.issueType, dto.sourceReceiptId ?? null, dto.lines);
+      const lines = await this.buildManualLineData(tx, tenantId, branchId, dto.warehouseId, dto.issueType, dto.sourceReceiptId ?? null, dto.lines);
       const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
       const issueNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_ISSUE', occurredAt);
       const totalAmount = lines.reduce((sum, l) => sum + l.lineAmount, 0n);
@@ -464,35 +468,35 @@ export class StockIssueService {
       return row;
     });
 
-    return this.getById(tenantId, actorId, dataScope, created.id);
+    return this.getById(tenantId, branchId, actorId, dataScope, created.id);
   }
 
   /** Sửa Nháp — bulk-replace toàn bộ dòng hàng + header, chỉ khi `status='DRAFT'`. Kiểm scope CẢ 2
    * đầu (kho HIỆN TẠI của phiếu VÀ kho MỚI trong `dto`) — đúng khuôn `StockReceiptService.update()`. */
-  async updateManual(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: UpdateManualStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+  async updateManual(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: UpdateManualStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
     if (!SUPPORTED_MANUAL_ISSUE_TYPES.includes(dto.issueType)) {
       throw new UnprocessableEntityException(`Loại phiếu "${dto.issueType}" chưa được hỗ trợ ở giai đoạn này.`);
     }
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockIssueRepository.findById(tx, tenantId, id);
+      const existing = await this.stockIssueRepository.findById(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockIssueNotDraftError();
 
-      const currentWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      const currentWarehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, existing.warehouseId);
       assertWarehouseInScope(currentWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
       assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
       if (dto.departmentId) {
         const departments = await this.doctorDirectory.getDepartmentNames(tenantId);
         if (!departments.has(dto.departmentId)) throw new NotFoundException();
       }
-      await this.validateReturnSupplierRefs(tx, tenantId, dto.supplierId, dto.sourceReceiptId);
+      await this.validateReturnSupplierRefs(tx, tenantId, branchId, dto.supplierId, dto.sourceReceiptId);
 
-      const lines = await this.buildManualLineData(tx, tenantId, dto.warehouseId, dto.issueType, dto.sourceReceiptId ?? null, dto.lines);
+      const lines = await this.buildManualLineData(tx, tenantId, branchId, dto.warehouseId, dto.issueType, dto.sourceReceiptId ?? null, dto.lines);
       const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : existing.occurredAt;
       const totalAmount = lines.reduce((sum, l) => sum + l.lineAmount, 0n);
 
@@ -520,16 +524,16 @@ export class StockIssueService {
       });
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
   /** Duyệt — đọc lại tồn kho SỐNG cho từng dòng, chặn nếu bất kỳ dòng nào không đủ tồn, rồi trừ tồn
    * + ghi thẻ kho (mirror `applyPostedLines()` phía `StockReceiptService` nhưng CỘNG→TRỪ). */
-  async approveManual(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: ApproveStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+  async approveManual(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: ApproveStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, id);
+      const existing = await this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockIssueNotDraftError();
       assertWarehouseInScope(existing.warehouse.departmentId, dataScope, actorDepartmentId);
@@ -591,18 +595,18 @@ export class StockIssueService {
       });
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
-  async rejectManual(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: RejectStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
+  async rejectManual(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: RejectStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockIssueRepository.findById(tx, tenantId, id);
+      const existing = await this.stockIssueRepository.findById(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockIssueNotDraftError();
 
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, existing.warehouseId);
       assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       const count = await this.stockIssueRepository.rejectManual(tx, tenantId, id, dto.version, actorId, dto.reason);
@@ -620,7 +624,7 @@ export class StockIssueService {
       });
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
   /** "Công nợ nhà cung cấp" Phần C — `supplierId`/`sourceReceiptId` bắt buộc/không tuỳ theo
@@ -628,12 +632,12 @@ export class StockIssueService {
    * ĐÚNG TENANT. `sourceReceiptId` (nếu có) phải là phiếu nhập `PURCHASE` ĐÃ DUYỆT của ĐÚNG NCC đó
    * (chọn "phiếu nhập gốc" của NCC khác, hoặc phiếu còn Nháp — CHƯA từng ghi PURCHASE vào sổ công
    * nợ nên không có gì để "trừ vào đúng phiếu đó trước" — không có ý nghĩa gì). */
-  private async validateReturnSupplierRefs(tx: Prisma.TransactionClient, tenantId: string, supplierId: string | undefined, sourceReceiptId: string | undefined): Promise<void> {
+  private async validateReturnSupplierRefs(tx: Prisma.TransactionClient, tenantId: string, branchId: string, supplierId: string | undefined, sourceReceiptId: string | undefined): Promise<void> {
     if (!supplierId) return;
     const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
     if (!supplier) throw new NotFoundException();
     if (!sourceReceiptId) return;
-    const receipt = await this.stockReceiptRepository.findById(tx, tenantId, sourceReceiptId);
+    const receipt = await this.stockReceiptRepository.findById(tx, tenantId, branchId, sourceReceiptId);
     if (!receipt || receipt.receiptType !== 'PURCHASE' || receipt.status !== 'POSTED' || receipt.supplierId !== supplierId) {
       throw new UnprocessableEntityException('Phiếu nhập gốc không hợp lệ — phải là phiếu nhập ĐÃ DUYỆT từ đúng nhà cung cấp đã chọn.');
     }
@@ -647,6 +651,7 @@ export class StockIssueService {
   private async buildManualLineData(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     warehouseId: string,
     issueType: ManualStockIssueType,
     sourceReceiptId: string | null,
@@ -670,7 +675,7 @@ export class StockIssueService {
           throw new UnprocessableEntityException(`Thuốc/vật tư "${drug.name}" quản lý theo lô — phải chọn lô.`);
         }
         const batch = await this.inventoryBatchRepository.findById(tx, tenantId, line.batchId);
-        if (!batch || batch.drugId !== line.drugId) throw new NotFoundException();
+        if (!batch || batch.drugId !== line.drugId || batch.warehouseId !== warehouseId) throw new NotFoundException();
         unitCost = batch.unitCost;
         batchId = line.batchId;
       } else {
@@ -679,7 +684,7 @@ export class StockIssueService {
       }
 
       if (issueType === 'RETURN_TO_SUPPLIER') {
-        const returnUnitPrice = await this.resolveReturnUnitPrice(tx, tenantId, warehouseId, sourceReceiptId, drug, batchId, unitCost, line.returnUnitPrice);
+        const returnUnitPrice = await this.resolveReturnUnitPrice(tx, tenantId, branchId, warehouseId, sourceReceiptId, drug, batchId, unitCost, line.returnUnitPrice);
         const lineAmount = returnUnitPrice * BigInt(line.quantity);
         result.push({ prescriptionItemId: null, drugId: line.drugId, batchId, quantity: line.quantity, unitCost, sellPrice: 0n, lineAmount, returnUnitPrice });
       } else {
@@ -700,6 +705,7 @@ export class StockIssueService {
   private async resolveReturnUnitPrice(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     warehouseId: string,
     sourceReceiptId: string | null,
     drug: DrugWithDetails,
@@ -710,7 +716,7 @@ export class StockIssueService {
     if (explicitPrice !== undefined) return BigInt(explicitPrice);
 
     if (sourceReceiptId && drug.baseUnitCode) {
-      const receipt = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, sourceReceiptId);
+      const receipt = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, branchId, sourceReceiptId);
       if (receipt) {
         let batchNo: string | null = null;
         if (batchId) {
@@ -852,10 +858,10 @@ export class StockIssueService {
     return created;
   }
 
-  async getById(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<StockIssueDetail> {
+  async getById(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<StockIssueDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, id));
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, branchId, id));
     if (!row) throw new NotFoundException();
     assertWarehouseInScope(row.warehouse.departmentId, dataScope, actorDepartmentId);
     const names = await this.doctorDirectory.getUserFullNames(tenantId, row.voidedBy ? [row.createdBy, row.voidedBy] : [row.createdBy]);
@@ -869,7 +875,7 @@ export class StockIssueService {
     return this.toDetailDto(row, names, attachedInvoice ? { invoiceId: attachedInvoice.id, invoiceNo: attachedInvoice.invoiceNo, invoiceType: attachedInvoice.invoiceType } : null);
   }
 
-  async list(tenantId: string, actorId: string, dataScope: DataScope, query: ListStockIssuesQuery): Promise<ListStockIssuesResponse> {
+  async list(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, query: ListStockIssuesQuery): Promise<ListStockIssuesResponse> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
     // Scope `department` nhưng actor CHƯA gán Khoa/Phòng nào — trả rỗng ngay, đúng khuôn
     // `StockCountService.list()`/`StockReceiptService.list()`.
@@ -879,6 +885,7 @@ export class StockIssueService {
 
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.stockIssueRepository.list(tx, tenantId, {
+        branchIds: [branchId],
         warehouseId: query.warehouseId,
         status: query.status,
         issueType: query.issueType,
@@ -911,12 +918,15 @@ export class StockIssueService {
   }
 
   /** `GET /inventory/prescriptions/:id/dispense-status` — kê/đã phát/còn lại từng dòng + gợi ý FEFO. */
-  async getDispenseStatus(tenantId: string, prescriptionId: string, warehouseId: string | undefined): Promise<GetPrescriptionDispenseStatusResponse> {
+  async getDispenseStatus(tenantId: string, branchId: string, prescriptionId: string, warehouseId: string | undefined): Promise<GetPrescriptionDispenseStatusResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const prescription = await this.prescriptionRepository.findById(tx, tenantId, prescriptionId);
       if (!prescription || prescription.signedAt === null) throw new NotFoundException();
+      const encounter = await this.encounterRepository.findById(tx, tenantId, branchId, prescription.encounterId);
+      if (!encounter) throw new NotFoundException();
+      if (warehouseId && !(await this.warehouseRepository.findById(tx, tenantId, branchId, warehouseId))) throw new NotFoundException();
 
-      const resolvedWarehouseId = warehouseId ?? (await this.warehouseRepository.findDefault(tx, tenantId))?.id ?? null;
+      const resolvedWarehouseId = warehouseId ?? (await this.warehouseRepository.findDefault(tx, tenantId, branchId))?.id ?? null;
       const itemIds = prescription.items.map((i) => i.id);
       const dispensedMap = await this.stockIssueRepository.sumDispensedForItems(tx, tenantId, itemIds);
 
@@ -953,7 +963,7 @@ export class StockIssueService {
         let warehouseStockOnHand = 0;
         if (resolvedWarehouseId) {
           if (drug.isBatchManaged) {
-            const batches = await this.inventoryBatchRepository.listWithBalanceForDrug(tx, tenantId, item.drugId, resolvedWarehouseId);
+            const batches = await this.inventoryBatchRepository.listWithBalanceForDrug(tx, tenantId, branchId, item.drugId, resolvedWarehouseId);
             const withStringExpiry = batches.map((b) => ({ ...b, expiryDate: b.expiryDate ? b.expiryDate.toISOString().slice(0, 10) : null }));
             suggestedBatches = sortBatchesByFefo(withStringExpiry).map((b) => ({
               batchId: b.batchId,
@@ -1010,11 +1020,12 @@ export class StockIssueService {
   }
 
   /** `GET /inventory/dispense-queue` — đơn ĐÃ KÝ còn thuốc chưa phát hết. */
-  async listDispenseQueue(tenantId: string, query: ListDispenseQueueQuery): Promise<ListDispenseQueueResponse> {
+  async listDispenseQueue(tenantId: string, branchId: string, query: ListDispenseQueueQuery): Promise<ListDispenseQueueResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const qRaw = query.q?.trim() || undefined;
       const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       const prescriptions = await this.stockIssueRepository.listSignedPrescriptionsForDispenseQueue(tx, tenantId, {
+        branchId,
         qRaw,
         qNormalized: qRaw ? stripVietnameseDiacritics(qRaw) : undefined,
         includeOlder: query.includeOlder,

@@ -10,8 +10,11 @@
  * đọc `StockBalanceRepository` — `EncounterModule` chỉ inject token, không thêm gì vào `imports`.
  */
 export interface StockAvailabilityPort {
-  /** `Record<drugId, tổng quantityOnHand mọi kho>` — thuốc không có dòng `stock_balance` nào coi như `0`. */
-  getOnHandQuantities(tenantId: string, drugIds: string[]): Promise<Record<string, number>>;
+  /**
+   * `Record<drugId, tổng quantityOnHand mọi kho CỦA CHI NHÁNH>` — thuốc không có dòng `stock_balance` nào coi như `0`. Đợt 2 chi nhánh
+   * (docs/DECISIONS.md #233): cảnh báo kê vượt tồn chỉ cộng tồn kho của chi nhánh lượt khám, không cộng kho chi nhánh khác.
+   */
+  getOnHandQuantities(tenantId: string, branchId: string, drugIds: string[]): Promise<Record<string, number>>;
 }
 
 export const STOCK_AVAILABILITY_PORT = Symbol('STOCK_AVAILABILITY_PORT');

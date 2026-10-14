@@ -17,7 +17,7 @@ export class StockAvailabilityAdapter implements StockAvailabilityPort {
     private readonly stockBalanceRepository: StockBalanceRepository,
   ) {}
 
-  getOnHandQuantities(tenantId: string, drugIds: string[]): Promise<Record<string, number>> {
-    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockBalanceRepository.sumOnHandByDrugIds(tx, tenantId, drugIds));
+  getOnHandQuantities(tenantId: string, branchId: string, drugIds: string[]): Promise<Record<string, number>> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockBalanceRepository.sumOnHandByDrugIds(tx, tenantId, branchId, drugIds));
   }
 }

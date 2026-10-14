@@ -1,6 +1,7 @@
 import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { getStockLedgerReportQuerySchema } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -26,7 +27,7 @@ export class StockLedgerReportController {
   async report(@Query() query: unknown, @Req() req: Request) {
     const dto = getStockLedgerReportQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.reportService.getReport(tenantId, dto);
+    return this.reportService.getReport(tenantId, requireBranchId(req.user!), dto);
   }
 
   @Get('stock-ledger/export')
@@ -34,7 +35,7 @@ export class StockLedgerReportController {
   async exportReport(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
     const dto = getStockLedgerReportQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    const report = await this.reportService.getReport(tenantId, dto);
+    const report = await this.reportService.getReport(tenantId, requireBranchId(req.user!), dto);
     const buffer = await this.exportService.buildStockLedgerReportExcel(dto.from, dto.to, report);
     await this.reportService.recordExportAudit(tenantId, userId, dto, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);

@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { getDrugLedgerQuerySchema } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -17,6 +18,6 @@ export class StockLedgerController {
   async getLedger(@Param('drugId') drugId: string, @Query() query: unknown, @Req() req: Request) {
     const dto = getDrugLedgerQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.stockLedgerService.getForDrug(tenantId, drugId, dto);
+    return this.stockLedgerService.getForDrug(tenantId, requireBranchId(req.user!), drugId, dto);
   }
 }

@@ -26,6 +26,11 @@ export class BranchDirectoryAdapter implements BranchDirectoryPort {
     return rows.map((b) => b.id);
   }
 
+  async getBranchPrintInfo(tenantId: string, branchId: string): Promise<{ name: string; address: string | null; phone: string | null } | null> {
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.branchRepository.findById(tx, tenantId, branchId));
+    return row ? { name: row.name, address: row.address, phone: row.phone } : null;
+  }
+
   async isMultiBranch(tenantId: string): Promise<boolean> {
     return (await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.branchRepository.countActive(tx, tenantId))) > 1;
   }

@@ -8,6 +8,7 @@ import {
   updateStockReceiptRequestSchema,
   voidStockReceiptRequestSchema,
 } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -30,7 +31,7 @@ export class StockReceiptController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listStockReceiptsQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.stockReceiptService.list(tenantId, userId, req.dataScope!, dto);
+    return this.stockReceiptService.list(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto);
   }
 
   @Get(':id')
@@ -39,7 +40,7 @@ export class StockReceiptController {
   @UseInterceptors(AuditViewInterceptor)
   async get(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.stockReceiptService.getById(tenantId, userId, req.dataScope!, id);
+    return this.stockReceiptService.getById(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
   }
 
   @Post()
@@ -48,7 +49,7 @@ export class StockReceiptController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createStockReceiptRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockReceiptService.create(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
+    return this.stockReceiptService.create(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   @Patch(':id')
@@ -56,7 +57,7 @@ export class StockReceiptController {
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateStockReceiptRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockReceiptService.update(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockReceiptService.update(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/approve')
@@ -65,7 +66,7 @@ export class StockReceiptController {
   async approve(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = approveStockReceiptRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockReceiptService.approve(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockReceiptService.approve(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/reject')
@@ -74,7 +75,7 @@ export class StockReceiptController {
   async reject(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = rejectStockReceiptRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockReceiptService.reject(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockReceiptService.reject(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/void')
@@ -83,6 +84,6 @@ export class StockReceiptController {
   async voidReceipt(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = voidStockReceiptRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockReceiptService.voidReceipt(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockReceiptService.voidReceipt(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 }

@@ -7,6 +7,7 @@ import {
   settleWalletRequestSchema,
   topUpWalletRequestSchema,
 } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -54,7 +55,7 @@ export class PatientWalletController {
   async topUp(@Body() body: unknown, @Req() req: Request) {
     const dto = topUpWalletRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.walletService.topUp(tenantId, userId, dto, extractRequestMeta(req));
+    return this.walletService.topUp(tenantId, requireBranchId(req.user!), userId, dto, extractRequestMeta(req));
   }
 
   @Post('settle')
@@ -63,6 +64,6 @@ export class PatientWalletController {
   async settle(@Body() body: unknown, @Req() req: Request) {
     const dto = settleWalletRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.walletService.settle(tenantId, userId, dto, extractRequestMeta(req));
+    return this.walletService.settle(tenantId, requireBranchId(req.user!), userId, dto, extractRequestMeta(req));
   }
 }

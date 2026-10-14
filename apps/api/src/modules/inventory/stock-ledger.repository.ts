@@ -77,9 +77,9 @@ export class StockLedgerRepository {
   /** Toàn bộ lịch sử của 1 thuốc (gộp mọi lô/kho nếu không lọc `warehouseId`), sắp CŨ→MỚI để
    * `InventoryService` tính "Tồn sau" luỹ kế rồi tự đảo MỚI→CŨ cho response (đúng quy ước hiển thị
    * List Screen chung của app). */
-  async listForDrug(tx: Prisma.TransactionClient, tenantId: string, drugId: string, warehouseId?: string): Promise<StockLedgerRow[]> {
+  async listForDrug(tx: Prisma.TransactionClient, tenantId: string, branchIds: string[], drugId: string, warehouseId?: string): Promise<StockLedgerRow[]> {
     const rows = await tx.stockLedger.findMany({
-      where: { tenantId, drugId, warehouseId },
+      where: { tenantId, warehouse: { branchId: { in: branchIds } }, drugId, warehouseId },
       include: {
         warehouse: { select: { name: true } },
         sourceReceipt: { select: { receiptNo: true } },
@@ -138,12 +138,13 @@ export class StockLedgerRepository {
   async sumQuantityGrouped(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    params: { before?: Date; from?: Date; to?: Date; quantitySign?: 'positive' | 'negative'; warehouseId?: string; drugId?: string },
+    params: { branchIds: string[]; before?: Date; from?: Date; to?: Date; quantitySign?: 'positive' | 'negative'; warehouseId?: string; drugId?: string },
   ): Promise<{ drugId: string; warehouseId: string; sum: number }[]> {
     const rows = await tx.stockLedger.groupBy({
       by: ['drugId', 'warehouseId'],
       where: {
         tenantId,
+        warehouse: { branchId: { in: params.branchIds } },
         warehouseId: params.warehouseId,
         drugId: params.drugId,
         occurredAt: params.before ? { lt: params.before } : params.from || params.to ? { gte: params.from, lte: params.to } : undefined,

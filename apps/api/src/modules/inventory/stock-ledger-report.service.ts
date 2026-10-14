@@ -23,10 +23,11 @@ export class StockLedgerReportService {
     private readonly warehouseRepository: WarehouseRepository,
   ) {}
 
-  async getReport(tenantId: string, query: GetStockLedgerReportQuery): Promise<GetStockLedgerReportResponse> {
+  async getReport(tenantId: string, branchId: string, query: GetStockLedgerReportQuery): Promise<GetStockLedgerReportResponse> {
     const fromAt = new Date(`${query.from}T00:00:00+07:00`);
     const toAt = new Date(`${query.to}T23:59:59.999+07:00`);
-    const filter = { warehouseId: query.warehouseId, drugId: query.drugId };
+    // Đợt 2 chi nhánh (#233): báo cáo CHỈ của chi nhánh đang làm; truy vấn nhận danh sách chi nhánh sẵn để Đợt 3 (tổng hợp nhiều chi nhánh) dùng lại.
+    const filter = { branchIds: [branchId], warehouseId: query.warehouseId, drugId: query.drugId };
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const [openingRows, inRows, outRows] = await Promise.all([
@@ -56,7 +57,7 @@ export class StockLedgerReportService {
       const warehouseIds = [...new Set([...buckets.keys()].map((k) => k.split(':')[1]!))];
       const [drugs, warehouses] = await Promise.all([
         this.drugRepository.findByIds(tx, tenantId, drugIds),
-        this.warehouseRepository.list(tx, tenantId),
+        this.warehouseRepository.list(tx, tenantId, [branchId]),
       ]);
       const drugById = new Map(drugs.map((d) => [d.id, d]));
       const warehouseById = new Map(warehouses.filter((w) => warehouseIds.includes(w.id)).map((w) => [w.id, w]));

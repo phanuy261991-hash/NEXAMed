@@ -200,7 +200,7 @@ export class InvoiceService {
    * hoặc actor không có ca mở dùng két riêng). `null` cuối cùng nếu tenant chưa có quỹ tiền mặt mặc
    * định nào — KHÔNG chặn thu tiền.
    */
-  async resolveCashAccountId(tx: Prisma.TransactionClient, tenantId: string, method: string, drawerAccountId: string | null): Promise<string | null> {
+  async resolveCashAccountId(tx: Prisma.TransactionClient, tenantId: string, branchId: string, method: string, drawerAccountId: string | null): Promise<string | null> {
     const meta = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
     const isCash = meta.find((m) => m.code === method)?.countsAsCash ?? false;
     if (!isCash) {
@@ -209,7 +209,7 @@ export class InvoiceService {
     if (drawerAccountId) {
       return drawerAccountId;
     }
-    const account = await this.cashAccountRepository.findDefault(tx, tenantId, 'CASH');
+    const account = await this.cashAccountRepository.findDefault(tx, tenantId, branchId, 'CASH');
     return account?.id ?? null;
   }
 
@@ -227,19 +227,20 @@ export class InvoiceService {
   private async resolveTargetInvoice(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     encounterId: string,
     invoiceId?: string,
   ): Promise<InvoiceWithLines | null> {
     if (invoiceId) {
-      const specific = await this.invoiceRepository.findByIdWithLines(tx, tenantId, invoiceId);
+      const specific = await this.invoiceRepository.findByIdWithLines(tx, tenantId, branchId, invoiceId);
       return specific && specific.encounterId === encounterId ? specific : null;
     }
-    return this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+    return this.invoiceRepository.findByEncounterId(tx, tenantId, branchId, encounterId);
   }
 
   /** `invoiceId` tuỳ chọn (Kho Thuốc GĐ3, #165) — xem `resolveTargetInvoice()`. */
-  async getByEncounterId(tenantId: string, encounterId: string, invoiceId?: string): Promise<InvoiceDto | null> {
-    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId));
+  async getByEncounterId(tenantId: string, branchId: string, encounterId: string, invoiceId?: string): Promise<InvoiceDto | null> {
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, invoiceId));
     if (!row) return null;
     const otherInvoices = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.invoiceRepository.findOtherInvoicesSummary(tx, tenantId, encounterId, row.id),
@@ -247,10 +248,10 @@ export class InvoiceService {
     return toInvoiceResponse(row, otherInvoices);
   }
 
-  async listForDay(tenantId: string, date?: string): Promise<ListBillingInvoicesResponse> {
+  async listForDay(tenantId: string, branchId: string, date?: string): Promise<ListBillingInvoicesResponse> {
     const targetDate = date ?? getVietnamDateString();
     const dayRange = vietnamDayRange(targetDate);
-    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.invoiceRepository.listForDay(tx, tenantId, dayRange.startUtc, dayRange.endUtc));
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.invoiceRepository.listForDay(tx, tenantId, branchId, dayRange.startUtc, dayRange.endUtc));
 
     // #085 — nguồn tính duy nhất `computeDailyBillingTotals()` ở `@nexamed/core`, không cộng tay ở
     // đây nữa (giữ đúng quy ước "REFUNDED vẫn tính vào paidTotalAmount rồi trừ ra ở netTotalAmount").
@@ -293,16 +294,16 @@ export class InvoiceService {
   }
 
   /** "Thu tiền" (BIL-03) — đánh dấu "Đã thu" + ghi nhận phương thức. */
-  async markPaid(tenantId: string, actorId: string, encounterId: string, dto: MarkInvoicePaidRequest, meta: RequestMeta): Promise<InvoiceDto> {
+  async markPaid(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: MarkInvoicePaidRequest, meta: RequestMeta): Promise<InvoiceDto> {
     // "Đa thu ngân" (2026-09-04) — resolve TRƯỚC transaction chính (port tự mở transaction đọc
     // riêng, không lồng `runInTenantScope`, đúng khuôn mọi port đọc khác trong dự án). `null` khi
     // không có ca nào đang mở — KHÔNG chặn thu tiền, độc lập với "Yêu cầu mở ca trước khi thu tiền".
     const [cashierShiftId, drawerAccountId] = await Promise.all([
-      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
-      this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -310,7 +311,7 @@ export class InvoiceService {
       const paidAt = new Date();
       const count = await this.invoiceRepository.markPaid(tx, tenantId, invoice.id, dto.version, actorId);
       if (count === 0) {
-        const recheck = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+        const recheck = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
         if (recheck?.status === 'PAID') {
           throw new InvoiceAlreadyPaidError();
         }
@@ -323,7 +324,7 @@ export class InvoiceService {
       }
       // Chiết khấu — thu ĐÚNG `dueAmount` (sau chiết khấu), KHÔNG phải `invoice.totalAmount`.
       const dueAmount = BigInt(computeDue(invoice).dueAmount);
-      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, dto.method, drawerAccountId);
+      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, branchId, dto.method, drawerAccountId);
       await this.paymentRepository.create(tx, tenantId, actorId, invoice.id, dto.method, dueAmount, paidAt, cashierShiftId, cashAccountId);
 
       await writeAuditLog(tx, tenantId, {
@@ -336,7 +337,7 @@ export class InvoiceService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       return toInvoiceResponse(updated!);
     });
   }
@@ -352,6 +353,7 @@ export class InvoiceService {
   private async payWithWalletCore(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     actorId: string,
     encounterId: string,
     invoiceId: string | undefined,
@@ -361,7 +363,7 @@ export class InvoiceService {
     drawerAccountId: string | null,
     meta: RequestMeta,
   ): Promise<InvoiceDto> {
-    const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId);
+    const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, invoiceId);
     if (!invoice) {
       throw new NotFoundException();
     }
@@ -393,7 +395,7 @@ export class InvoiceService {
     const paidAt = new Date();
     const count = await this.invoiceRepository.markPaid(tx, tenantId, invoice.id, expectedVersion, actorId);
     if (count === 0) {
-      const recheck = await this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId);
+      const recheck = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, invoiceId);
       if (recheck?.status === 'PAID') {
         throw new InvoiceAlreadyPaidError();
       }
@@ -409,7 +411,7 @@ export class InvoiceService {
       rows.push({ method: 'WALLET', amount: covered, cashAccountId: null });
     }
     if (remainder > 0n) {
-      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, remainderPaymentMethodCode!, drawerAccountId);
+      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, branchId, remainderPaymentMethodCode!, drawerAccountId);
       rows.push({ method: remainderPaymentMethodCode!, amount: remainder, cashAccountId });
     }
     await this.paymentRepository.createMany(tx, tenantId, actorId, invoice.id, rows, paidAt, cashierShiftId);
@@ -424,18 +426,18 @@ export class InvoiceService {
       userAgent: meta.userAgent,
     });
 
-    const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId);
+    const updated = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, invoiceId);
     return toInvoiceResponse(updated!);
   }
 
   /** `POST /billing/invoices/:encounterId/pay-with-wallet` — dùng số dư ví HIỆN CÓ, không nạp thêm. */
-  async payWithWallet(tenantId: string, actorId: string, encounterId: string, dto: PayInvoiceWithWalletRequest, meta: RequestMeta): Promise<InvoiceDto> {
+  async payWithWallet(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: PayInvoiceWithWalletRequest, meta: RequestMeta): Promise<InvoiceDto> {
     const [cashierShiftId, drawerAccountId] = await Promise.all([
-      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
-      this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.payWithWalletCore(tx, tenantId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta),
+      this.payWithWalletCore(tx, tenantId, branchId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta),
     );
   }
 
@@ -444,26 +446,26 @@ export class InvoiceService {
    * 2 PRD: "Nạp phần thiếu"/"Nạp mức chuẩn") rồi chạy lại đúng logic `payWithWalletCore()` trong
    * CÙNG transaction. Quyền riêng `patient_wallet.topup` (có hành động nạp tiền thật).
    */
-  async topUpAndPayWithWallet(tenantId: string, actorId: string, encounterId: string, dto: TopUpAndPayInvoiceWithWalletRequest, meta: RequestMeta): Promise<InvoiceDto> {
+  async topUpAndPayWithWallet(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: TopUpAndPayInvoiceWithWalletRequest, meta: RequestMeta): Promise<InvoiceDto> {
     const [cashierShiftId, drawerAccountId] = await Promise.all([
-      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
-      this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
       const patientId = invoice.encounter.patient.id;
-      await this.walletService.credit(tx, tenantId, actorId, patientId, BigInt(dto.topUpAmount), dto.topUpPaymentMethodCode, dto.cashAccountId, undefined, meta);
-      return this.payWithWalletCore(tx, tenantId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta);
+      await this.walletService.credit(tx, tenantId, branchId, actorId, patientId, BigInt(dto.topUpAmount), dto.topUpPaymentMethodCode, dto.cashAccountId, undefined, meta);
+      return this.payWithWalletCore(tx, tenantId, branchId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta);
     });
   }
 
   /** "Đánh dấu chưa thu" (huỷ nhầm) — lý do bắt buộc, ghi audit trước/sau. */
-  async revertPayment(tenantId: string, actorId: string, encounterId: string, dto: RevertInvoicePaymentRequest, meta: RequestMeta): Promise<InvoiceDto> {
+  async revertPayment(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: RevertInvoicePaymentRequest, meta: RequestMeta): Promise<InvoiceDto> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -476,7 +478,7 @@ export class InvoiceService {
 
       const count = await this.invoiceRepository.revertPayment(tx, tenantId, invoice.id, dto.version, actorId);
       if (count === 0) {
-        const recheck = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+        const recheck = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
         if (recheck?.status === 'UNPAID') {
           throw new InvoiceNotPaidError();
         }
@@ -508,7 +510,7 @@ export class InvoiceService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       return toInvoiceResponse(updated!);
     });
   }
@@ -520,14 +522,14 @@ export class InvoiceService {
    * Chỉ hoàn TOÀN PHẦN ở v1 — số tiền lấy đúng tổng `activePayments` đã thu (đã trừ chiết khấu nếu
    * có, xem `markPaid()`/`payWithWalletCore()`), không nhận từ client.
    */
-  async refund(tenantId: string, actorId: string, encounterId: string, dto: RefundInvoiceRequest, meta: RequestMeta): Promise<InvoiceDto> {
+  async refund(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: RefundInvoiceRequest, meta: RequestMeta): Promise<InvoiceDto> {
     // "Đa thu ngân"/"Thủ quỹ riêng" — xem comment ở markPaid() phía trên.
     const [cashierShiftId, drawerAccountId] = await Promise.all([
-      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
-      this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -567,7 +569,7 @@ export class InvoiceService {
         if (amount <= 0n) {
           continue;
         }
-        const cashAccountId = await this.resolveCashAccountId(tx, tenantId, p.method, drawerAccountId);
+        const cashAccountId = await this.resolveCashAccountId(tx, tenantId, branchId, p.method, drawerAccountId);
         await this.paymentRepository.createRefund(tx, tenantId, actorId, invoice.id, p.method, amount, refundedAt, dto.reason, cashierShiftId, cashAccountId);
         refundedTotal += amount;
         if (p.method === 'WALLET') {
@@ -586,15 +588,15 @@ export class InvoiceService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       return toInvoiceResponse(updated!);
     });
   }
 
   /** "Lưu tạm" (F8) — lễ tân đang nhập dở phương thức/tiền khách đưa, chưa "Thu tiền". */
-  async saveDraft(tenantId: string, actorId: string, encounterId: string, dto: SaveInvoiceDraftRequest, meta: RequestMeta): Promise<InvoiceDto> {
+  async saveDraft(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: SaveInvoiceDraftRequest, meta: RequestMeta): Promise<InvoiceDto> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -618,7 +620,7 @@ export class InvoiceService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       return toInvoiceResponse(updated!);
     });
   }
@@ -631,9 +633,9 @@ export class InvoiceService {
    * lẫn nhau đã ở tầng schema (`applyInvoiceDiscountRequestSchema`, discriminated union theo
    * `mode`) — service không cần kiểm tra lại.
    */
-  async applyDiscount(tenantId: string, actorId: string, encounterId: string, dto: ApplyInvoiceDiscountRequest, meta: RequestMeta): Promise<InvoiceDto> {
+  async applyDiscount(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: ApplyInvoiceDiscountRequest, meta: RequestMeta): Promise<InvoiceDto> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -641,7 +643,7 @@ export class InvoiceService {
 
       const count = await this.invoiceRepository.applyDiscount(tx, tenantId, invoice.id, dto.version, actorId, dto);
       if (count === 0) {
-        const recheck = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+        const recheck = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
         if (recheck && recheck.status !== 'UNPAID') {
           throw new InvoiceDiscountNotAllowedError();
         }
@@ -659,7 +661,7 @@ export class InvoiceService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, dto.invoiceId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
       return toInvoiceResponse(updated!);
     });
   }
@@ -670,9 +672,9 @@ export class InvoiceService {
    * transaction với việc đọc dữ liệu để bản in và vết audit không thể lệch nhau. 404 khi lượt khám
    * không có phiếu thu nào còn hiệu lực.
    */
-  async printCombined(tenantId: string, actorId: string, encounterId: string, meta: RequestMeta): Promise<CombinedInvoicePrintResponse> {
+  async printCombined(tenantId: string, branchId: string, actorId: string, encounterId: string, meta: RequestMeta): Promise<CombinedInvoicePrintResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const before = await this.invoiceRepository.findAllForCombinedPrint(tx, tenantId, encounterId);
+      const before = await this.invoiceRepository.findAllForCombinedPrint(tx, tenantId, branchId, encounterId);
       if (before.length === 0) {
         throw new NotFoundException();
       }
@@ -689,7 +691,7 @@ export class InvoiceService {
         });
       }
       // Đọc lại sau khi đánh dấu để `printedAt`/`version` trong bản in phản ánh đúng trạng thái mới.
-      const rows = await this.invoiceRepository.findAllForCombinedPrint(tx, tenantId, encounterId);
+      const rows = await this.invoiceRepository.findAllForCombinedPrint(tx, tenantId, branchId, encounterId);
       const invoices = rows.map((row) => toInvoiceResponse(row));
       return {
         invoices,
@@ -699,9 +701,9 @@ export class InvoiceService {
   }
 
   /** In phiếu thu (BIL-02, dùng chung hạ tầng in với PRE-04) — idempotent, ghi audit lần in. */
-  async markPrinted(tenantId: string, actorId: string, encounterId: string, invoiceId: string | undefined, meta: RequestMeta): Promise<InvoiceDto> {
+  async markPrinted(tenantId: string, branchId: string, actorId: string, encounterId: string, invoiceId: string | undefined, meta: RequestMeta): Promise<InvoiceDto> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const invoice = await this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId);
+      const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, invoiceId);
       if (!invoice) {
         throw new NotFoundException();
       }
@@ -714,7 +716,7 @@ export class InvoiceService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
-      const updated = await this.resolveTargetInvoice(tx, tenantId, encounterId, invoiceId);
+      const updated = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, invoiceId);
       return toInvoiceResponse(updated!);
     });
   }

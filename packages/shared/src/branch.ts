@@ -64,3 +64,13 @@ export const switchBranchResponseSchema = z.object({
   currentBranchId: z.string().uuid(),
 });
 export type SwitchBranchResponse = z.infer<typeof switchBranchResponseSchema>;
+
+/**
+ * Phạm vi chi nhánh của màn danh sách/báo cáo (Đợt 2 chi nhánh, docs/DECISIONS.md #233): mặc định CHỈ chi nhánh đang làm việc; `true` = mọi chi nhánh
+ * tài khoản được gán (công ty 1 chi nhánh: không khác gì). Đợt 3 (báo cáo tổng hợp nhiều chi nhánh) dùng lại đúng trường này.
+ */
+export const allBranchesQuerySchema = z
+  .union([z.boolean(), z.enum(['true', 'false'])])
+  .optional()
+  .default(false)
+  .transform((v) => (typeof v === 'string' ? v === 'true' : v));

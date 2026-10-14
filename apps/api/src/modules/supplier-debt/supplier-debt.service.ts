@@ -166,6 +166,7 @@ export class SupplierDebtService {
   async recordPurchaseApproval(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     actorId: string,
     params: {
       supplierId: string;
@@ -206,11 +207,12 @@ export class SupplierDebtService {
     if (params.prepaidAmount > params.netAmount) {
       throw new UnprocessableEntityException('Số tiền "Trả ngay" không được vượt quá tiền hàng phải trả.');
     }
-    const cashAccount = await this.cashAccountRepository.findById(tx, tenantId, params.prepaidCashAccountId!);
+    // Đợt 2 chi nhánh (#233): "Trả ngay" chi từ quỹ CÙNG chi nhánh với kho nhập.
+    const cashAccount = await this.cashAccountRepository.findById(tx, tenantId, branchId, params.prepaidCashAccountId!);
     if (!cashAccount) throw new NotFoundException();
 
     const approvalEnabled = await this.clinicConfigReader.getCashVoucherApprovalEnabled(tenantId);
-    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
+    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId);
     const status: 'POSTED' | 'PENDING_APPROVAL' = approvalEnabled ? 'PENDING_APPROVAL' : 'POSTED';
     const voucherNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'CASH_PAYMENT', params.occurredAt);
 
@@ -463,17 +465,17 @@ export class SupplierDebtService {
    * kỹ thuật mục 3): số tiền ≤ (số nợ hiện tại − tổng phiếu chi gắn NCC đang Chờ duyệt) — chặn lập
    * nhiều yêu cầu thanh toán cộng dồn vượt quá công nợ thật.
    */
-  async recordPayment(tenantId: string, actorId: string, supplierId: string, dto: RecordSupplierDebtPaymentRequest, meta: RequestMeta): Promise<SupplierDebtSummary> {
+  async recordPayment(tenantId: string, branchId: string, actorId: string, supplierId: string, dto: RecordSupplierDebtPaymentRequest, meta: RequestMeta): Promise<SupplierDebtSummary> {
     // Đúng khuôn "port tự mở transaction đọc riêng, resolve TRƯỚC transaction chính" đã áp dụng ở
     // `CashVoucherService.create()`.
     const approvalEnabled = await this.clinicConfigReader.getCashVoucherApprovalEnabled(tenantId);
-    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
+    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId);
     const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
       if (!supplier) throw new NotFoundException();
-      const cashAccount = await this.cashAccountRepository.findById(tx, tenantId, dto.cashAccountId);
+      const cashAccount = await this.cashAccountRepository.findById(tx, tenantId, branchId, dto.cashAccountId);
       if (!cashAccount) throw new NotFoundException();
 
       const account0 = await this.getOrCreateAccount(tx, tenantId, actorId, supplierId);
@@ -525,14 +527,14 @@ export class SupplierDebtService {
    * `REFUND_RECEIVED` thẳng trong CÙNG transaction — không cần hook `recordVoucherPosted()` qua
    * `CashVoucherService.approve()` như "Thanh toán công nợ" (Phần B, EXPENSE có thể Chờ duyệt).
    */
-  async recordRefund(tenantId: string, actorId: string, supplierId: string, dto: RecordSupplierDebtRefundRequest, meta: RequestMeta): Promise<SupplierDebtSummary> {
-    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId);
+  async recordRefund(tenantId: string, branchId: string, actorId: string, supplierId: string, dto: RecordSupplierDebtRefundRequest, meta: RequestMeta): Promise<SupplierDebtSummary> {
+    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId);
     const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
       if (!supplier) throw new NotFoundException();
-      const cashAccount = await this.cashAccountRepository.findById(tx, tenantId, dto.cashAccountId);
+      const cashAccount = await this.cashAccountRepository.findById(tx, tenantId, branchId, dto.cashAccountId);
       if (!cashAccount) throw new NotFoundException();
 
       const account0 = await this.accountRepository.findBySupplierId(tx, tenantId, supplierId);
@@ -761,10 +763,10 @@ export class SupplierDebtService {
    * 1 NCC) + tab "Thanh toán" trên trang chi tiết NCC (`supplierId` cố định). Mọi `cash_voucher` có
    * `supplierId` (Trả ngay lúc nhập LẪN Thanh toán công nợ Phần B) — chưa có nguồn INCOME nào (Phần
    * C "NCC hoàn tiền" chưa code). Mặc định 90 ngày gần nhất khi bỏ trống `from`/`to` (S6-03 #142). */
-  async listPayments(tenantId: string, query: ListSupplierDebtPaymentsQuery): Promise<ListSupplierDebtPaymentsResponse> {
+  async listPayments(tenantId: string, branchId: string, query: ListSupplierDebtPaymentsQuery): Promise<ListSupplierDebtPaymentsResponse> {
     const { from, to } = resolveRecentDateRange(query.from, query.to);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.cashVoucherRepository.listSupplierLinked(tx, tenantId, { supplierId: query.supplierId, from, to, status: query.status });
+      const rows = await this.cashVoucherRepository.listSupplierLinked(tx, tenantId, { branchIds: [branchId], supplierId: query.supplierId, from, to, status: query.status });
       const suppliers = await this.supplierRepository.list(tx, tenantId, true);
       const supplierNameById = new Map(suppliers.map((s) => [s.id, s.name]));
 
@@ -901,7 +903,7 @@ export class SupplierDebtService {
    * hook đã gắn sẵn ở `voidPostedCore()`, không gọi lại `reverseStockEntry()` ở đây). TOÀN BỘ trong
    * 1 transaction — nguyên tử giữa "Huỷ chứng từ"/"ghi bút toán" và "chuyển trạng thái Đã duyệt".
    */
-  async approveAdjustment(tenantId: string, actorId: string, id: string, dto: ApproveSupplierDebtAdjustmentRequest, meta: RequestMeta): Promise<SupplierDebtAdjustmentDto> {
+  async approveAdjustment(tenantId: string, branchId: string, actorId: string, id: string, dto: ApproveSupplierDebtAdjustmentRequest, meta: RequestMeta): Promise<SupplierDebtAdjustmentDto> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const adjustment = await this.adjustmentRepository.findById(tx, tenantId, id);
       if (!adjustment) throw new NotFoundException();
@@ -909,9 +911,9 @@ export class SupplierDebtService {
 
       if (adjustment.kind === 'VOID_REQUEST') {
         if (adjustment.targetReceiptId) {
-          await this.stockReceiptService.voidPostedForAdjustment(tx, tenantId, actorId, adjustment.targetReceiptId, adjustment.reason, meta);
+          await this.stockReceiptService.voidPostedForAdjustment(tx, tenantId, branchId, actorId, adjustment.targetReceiptId, adjustment.reason, meta);
         } else {
-          await this.stockIssueService.voidPostedForAdjustment(tx, tenantId, actorId, adjustment.targetIssueId!, adjustment.reason, meta);
+          await this.stockIssueService.voidPostedForAdjustment(tx, tenantId, branchId, actorId, adjustment.targetIssueId!, adjustment.reason, meta);
         }
       } else {
         const account0 = await this.getOrCreateAccount(tx, tenantId, actorId, adjustment.supplierId);

@@ -13,6 +13,7 @@ import {
   saveInvoiceDraftRequestSchema,
   topUpAndPayInvoiceWithWalletRequestSchema,
 } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -35,7 +36,7 @@ export class InvoiceController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listBillingInvoicesQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.invoiceService.listForDay(tenantId, dto.date);
+    return this.invoiceService.listForDay(tenantId, requireBranchId(req.user!), dto.date);
   }
 
   /** `?invoiceId=` tuỳ chọn (Kho Thuốc GĐ3, #165) — mở đúng 1 hoá đơn cụ thể của lượt khám (hoá đơn
@@ -45,7 +46,7 @@ export class InvoiceController {
   async get(@Param('encounterId') encounterId: string, @Query() query: unknown, @Req() req: Request) {
     const { invoiceId } = getBillingInvoiceQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.invoiceService.getByEncounterId(tenantId, encounterId, invoiceId);
+    return this.invoiceService.getByEncounterId(tenantId, requireBranchId(req.user!), encounterId, invoiceId);
   }
 
   @Post(':encounterId/pay')
@@ -54,7 +55,7 @@ export class InvoiceController {
   async pay(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = markInvoicePaidRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.markPaid(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+    return this.invoiceService.markPaid(tenantId, requireBranchId(req.user!), userId, encounterId, dto, extractRequestMeta(req));
   }
 
   @Post(':encounterId/revert-payment')
@@ -63,7 +64,7 @@ export class InvoiceController {
   async revertPayment(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = revertInvoicePaymentRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.revertPayment(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+    return this.invoiceService.revertPayment(tenantId, requireBranchId(req.user!), userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /**
@@ -77,7 +78,7 @@ export class InvoiceController {
   async refund(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = refundInvoiceRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.refund(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+    return this.invoiceService.refund(tenantId, requireBranchId(req.user!), userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /**
@@ -90,7 +91,7 @@ export class InvoiceController {
   async refundItems(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = refundInvoiceItemsRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.invoiceRefundService.refundItems(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+    return this.invoiceRefundService.refundItems(tenantId, requireBranchId(req.user!), userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /**
@@ -103,7 +104,7 @@ export class InvoiceController {
   async payWithWallet(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = payInvoiceWithWalletRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.payWithWallet(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+    return this.invoiceService.payWithWallet(tenantId, requireBranchId(req.user!), userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /**
@@ -118,7 +119,7 @@ export class InvoiceController {
   async topUpAndPayWithWallet(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = topUpAndPayInvoiceWithWalletRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.topUpAndPayWithWallet(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+    return this.invoiceService.topUpAndPayWithWallet(tenantId, requireBranchId(req.user!), userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /** "Lưu tạm" (F8) — phương thức/tiền khách đưa đang nhập dở, chưa "Thu tiền". */
@@ -128,7 +129,7 @@ export class InvoiceController {
   async saveDraft(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = saveInvoiceDraftRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.saveDraft(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+    return this.invoiceService.saveDraft(tenantId, requireBranchId(req.user!), userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /**
@@ -141,7 +142,7 @@ export class InvoiceController {
   async applyDiscount(@Param('encounterId') encounterId: string, @Body() body: unknown, @Req() req: Request) {
     const dto = applyInvoiceDiscountRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.applyDiscount(tenantId, userId, encounterId, dto, extractRequestMeta(req));
+    return this.invoiceService.applyDiscount(tenantId, requireBranchId(req.user!), userId, encounterId, dto, extractRequestMeta(req));
   }
 
   /**
@@ -153,7 +154,7 @@ export class InvoiceController {
   @HttpCode(200)
   async printCombined(@Param('encounterId') encounterId: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.printCombined(tenantId, userId, encounterId, extractRequestMeta(req));
+    return this.invoiceService.printCombined(tenantId, requireBranchId(req.user!), userId, encounterId, extractRequestMeta(req));
   }
 
   /** In phiếu thu (BIL-02) — ghi nhận `printedAt`, idempotent. Bố cục in nằm ở tầng web. */
@@ -164,6 +165,6 @@ export class InvoiceController {
     // Body tuỳ chọn (chỉ `invoiceId`) — client cũ không gửi gì vẫn hợp lệ (`undefined` → `{}`).
     const dto = printInvoiceRequestSchema.parse(body ?? {});
     const { userId, tenantId } = req.user!;
-    return this.invoiceService.markPrinted(tenantId, userId, encounterId, dto.invoiceId, extractRequestMeta(req));
+    return this.invoiceService.markPrinted(tenantId, requireBranchId(req.user!), userId, encounterId, dto.invoiceId, extractRequestMeta(req));
   }
 }

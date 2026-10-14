@@ -17,8 +17,8 @@ export class StockLedgerService {
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
-  async getForDrug(tenantId: string, drugId: string, query: GetDrugLedgerQuery): Promise<GetDrugLedgerResponse> {
-    const ascRows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockLedgerRepository.listForDrug(tx, tenantId, drugId, query.warehouseId));
+  async getForDrug(tenantId: string, branchId: string, drugId: string, query: GetDrugLedgerQuery): Promise<GetDrugLedgerResponse> {
+    const ascRows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockLedgerRepository.listForDrug(tx, tenantId, [branchId], drugId, query.warehouseId));
 
     let running = 0;
     const withBalance = ascRows.map((row) => {

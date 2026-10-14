@@ -8,6 +8,7 @@ import {
   openCashierShiftRequestSchema,
   resolveCashierShiftDiscrepancyRequestSchema,
 } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -28,7 +29,7 @@ export class CashierShiftController {
   @RequirePermission('cashier_shift', 'read')
   async current(@Req() req: Request) {
     const { tenantId, userId } = req.user!;
-    return this.cashierShiftService.getCurrent(tenantId, userId);
+    return this.cashierShiftService.getCurrent(tenantId, requireBranchId(req.user!), userId);
   }
 
   @Post('open')
@@ -37,7 +38,7 @@ export class CashierShiftController {
   async open(@Body() body: unknown, @Req() req: Request) {
     const dto = openCashierShiftRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashierShiftService.openShift(tenantId, userId, dto, extractRequestMeta(req));
+    return this.cashierShiftService.openShift(tenantId, requireBranchId(req.user!), userId, dto, extractRequestMeta(req));
   }
 
   @Get()
@@ -45,14 +46,14 @@ export class CashierShiftController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listCashierShiftsQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.cashierShiftService.list(tenantId, req.dataScope!, dto);
+    return this.cashierShiftService.list(tenantId, requireBranchId(req.user!), req.dataScope!, dto);
   }
 
   @Get(':id/summary')
   @RequirePermission('cashier_shift', 'read', { entityIdParam: 'id' })
   async summary(@Param('id') id: string, @Req() req: Request) {
     const { tenantId } = req.user!;
-    return this.cashierShiftService.getSummary(tenantId, id);
+    return this.cashierShiftService.getSummary(tenantId, requireBranchId(req.user!), id);
   }
 
   /** "Phiếu trong ca của tôi" — từng sự kiện thu/hoàn tiền khám của ca (nguồn = dòng `payment`). */
@@ -60,14 +61,14 @@ export class CashierShiftController {
   @RequirePermission('cashier_shift', 'read', { entityIdParam: 'id' })
   async invoicePayments(@Param('id') id: string, @Req() req: Request) {
     const { tenantId, userId } = req.user!;
-    return this.cashierShiftService.listInvoicePayments(tenantId, userId, req.dataScope!, id);
+    return this.cashierShiftService.listInvoicePayments(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
   }
 
   @Get(':id')
   @RequirePermission('cashier_shift', 'read', { entityIdParam: 'id' })
   async get(@Param('id') id: string, @Req() req: Request) {
     const { tenantId, userId } = req.user!;
-    return this.cashierShiftService.getDetail(tenantId, userId, req.dataScope!, id);
+    return this.cashierShiftService.getDetail(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
   }
 
   @Post(':id/close')
@@ -76,7 +77,7 @@ export class CashierShiftController {
   async close(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = closeCashierShiftRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashierShiftService.close(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.cashierShiftService.close(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   /** Quản lý xem trước "Tính toán lại" (chưa lưu) — dùng lại đúng hàm tính của bước 1 wizard. */
@@ -84,7 +85,7 @@ export class CashierShiftController {
   @RequirePermission('cashier_shift', 'manage', { entityIdParam: 'id' })
   async resyncPreview(@Param('id') id: string, @Req() req: Request) {
     const { tenantId } = req.user!;
-    return this.cashierShiftService.getSummary(tenantId, id);
+    return this.cashierShiftService.getSummary(tenantId, requireBranchId(req.user!), id);
   }
 
   @Post(':id/resolve-discrepancy')
@@ -93,7 +94,7 @@ export class CashierShiftController {
   async resolveDiscrepancy(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = resolveCashierShiftDiscrepancyRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashierShiftService.resolveDiscrepancy(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.cashierShiftService.resolveDiscrepancy(tenantId, requireBranchId(req.user!), userId, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/approve')
@@ -102,7 +103,7 @@ export class CashierShiftController {
   async approve(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = approveCashierShiftRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashierShiftService.approve(tenantId, userId, id, dto.version, extractRequestMeta(req));
+    return this.cashierShiftService.approve(tenantId, requireBranchId(req.user!), userId, id, dto.version, extractRequestMeta(req));
   }
 
   /** "Mở khoá để sửa" — sửa số liệu người nhập + "Tính toán lại" số hệ thống trong cùng lần submit. */
@@ -112,6 +113,6 @@ export class CashierShiftController {
   async edit(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = editCashierShiftRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashierShiftService.edit(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.cashierShiftService.edit(tenantId, requireBranchId(req.user!), userId, id, dto, extractRequestMeta(req));
   }
 }

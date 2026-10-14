@@ -20,8 +20,9 @@ const codeSequenceRepository = new CodeSequenceRepository();
  * này) cũng gọi lại được — cùng lý do `syncRolePermissionsForTenant` tồn tại: tenant tạo trước một
  * tính năng mới sẽ không tự có dữ liệu nền tương ứng nếu không backfill.
  */
-export async function ensureDefaultCashAccount(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<void> {
-  const existingDefaultCashAccount = await tx.cashAccount.findFirst({ where: { tenantId, type: 'CASH', isDefault: true } });
+export async function ensureDefaultCashAccount(tx: Prisma.TransactionClient, tenantId: string, actorId: string, branchId: string, name = 'Quỹ tiền mặt'): Promise<void> {
+  // Đợt 2 chi nhánh (docs/DECISIONS.md #233): quỹ tiền mặt mặc định THEO TỪNG CHI NHÁNH.
+  const existingDefaultCashAccount = await tx.cashAccount.findFirst({ where: { tenantId, branchId, type: 'CASH', isDefault: true, deletedAt: null } });
   if (existingDefaultCashAccount) {
     return;
   }
@@ -30,8 +31,9 @@ export async function ensureDefaultCashAccount(tx: Prisma.TransactionClient, ten
   await tx.cashAccount.create({
     data: {
       tenantId,
+      branchId,
       code,
-      name: 'Quỹ tiền mặt',
+      name,
       type: 'CASH',
       openingBalance: 0n,
       openingBalanceAt: new Date(),
@@ -70,6 +72,15 @@ export async function ensureDefaultBranch(tx: Prisma.TransactionClient, tenantId
   });
 }
 
+/**
+ * Chi nhánh MỚI (Đợt 2 chi nhánh, docs/DECISIONS.md #233, Q2) tự có sẵn 1 kho mặc định + 1 quỹ tiền mặt mặc định để phát thuốc / thu tiền được ngay.
+ * Tên mặc định "Kho <tên chi nhánh>", "Quỹ tiền mặt <tên chi nhánh>" — sửa được sau ở Danh mục.
+ */
+export async function provisionBranchDefaults(tx: Prisma.TransactionClient, tenantId: string, branchId: string, branchName: string, actorId: string): Promise<void> {
+  await ensureDefaultWarehouse(tx, tenantId, actorId, branchId, `Kho ${branchName}`);
+  await ensureDefaultCashAccount(tx, tenantId, actorId, branchId, `Quỹ tiền mặt ${branchName}`);
+}
+
 /** Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — tiền tố mã `warehouse`, theo tenant,
  * đúng khuôn CASH_ACCOUNT_CODE_PREFIX ở trên. */
 const WAREHOUSE_CODE_PREFIX = 'KH';
@@ -79,8 +90,9 @@ const WAREHOUSE_CODE_PREFIX = 'KH';
  * `ensureDefaultCashAccount`/`department` "Khoa chung" (#064): điều kiện tiên quyết để module Kho
  * (GĐ2+) luôn có ít nhất 1 kho để nhập/xuất, và để web tự ẩn UI chọn kho khi tenant chỉ có 1 kho.
  */
-export async function ensureDefaultWarehouse(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<void> {
-  const existingDefault = await tx.warehouse.findFirst({ where: { tenantId, isDefault: true } });
+export async function ensureDefaultWarehouse(tx: Prisma.TransactionClient, tenantId: string, actorId: string, branchId: string, name = 'Kho chính'): Promise<void> {
+  // Đợt 2 chi nhánh (#233): kho mặc định THEO TỪNG CHI NHÁNH.
+  const existingDefault = await tx.warehouse.findFirst({ where: { tenantId, branchId, isDefault: true, deletedAt: null } });
   if (existingDefault) {
     return;
   }
@@ -89,8 +101,9 @@ export async function ensureDefaultWarehouse(tx: Prisma.TransactionClient, tenan
   await tx.warehouse.create({
     data: {
       tenantId,
+      branchId,
       code,
-      name: 'Kho chính',
+      name,
       isDefault: true,
       isActive: true,
       createdBy: actorId,
@@ -122,9 +135,9 @@ export async function seedDefaultRolesForTenant(
     });
   }
 
-  await ensureDefaultBranch(tx as Prisma.TransactionClient, tenantId, actorId);
-  await ensureDefaultCashAccount(tx as Prisma.TransactionClient, tenantId, actorId);
-  await ensureDefaultWarehouse(tx as Prisma.TransactionClient, tenantId, actorId);
+  const defaultBranch = await ensureDefaultBranch(tx as Prisma.TransactionClient, tenantId, actorId);
+  await ensureDefaultCashAccount(tx as Prisma.TransactionClient, tenantId, actorId, defaultBranch.id);
+  await ensureDefaultWarehouse(tx as Prisma.TransactionClient, tenantId, actorId, defaultBranch.id);
   // Dòng danh mục BẮT BUỘC cho hệ thống (CASH/WALLET, loại thu chi hệ thống, từ viết tắt ICD-10) — danh mục riêng theo tenant (#230).
   await seedSystemReferenceDataForTenant(tx, tenantId, actorId);
 

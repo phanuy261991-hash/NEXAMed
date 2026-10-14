@@ -56,6 +56,7 @@ const RECEIPT_TYPE_TO_LEDGER_REASON: Record<StockReceiptType, StockLedgerReason>
   PURCHASE: 'RECEIPT_PURCHASE',
   OPENING_BALANCE: 'RECEIPT_OPENING_BALANCE',
   TRANSFER_IN: 'RECEIPT_TRANSFER_IN',
+  TRANSFER_RETURN: 'RECEIPT_TRANSFER_RETURN',
   RETURN_FROM_USE: 'RECEIPT_RETURN_FROM_USE',
   COUNT_SURPLUS: 'RECEIPT_COUNT_SURPLUS',
 };
@@ -81,21 +82,21 @@ export class StockReceiptService {
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
-  async create(tenantId: string, actorId: string, dataScope: DataScope, dto: CreateStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+  async create(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, dto: CreateStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
     if (!SUPPORTED_RECEIPT_TYPES.includes(dto.receiptType)) {
       throw new UnprocessableEntityException(`Loại phiếu "${dto.receiptType}" chưa được hỗ trợ ở giai đoạn này.`);
     }
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
       assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
       if (dto.supplierId) {
         const supplier = await this.supplierRepository.findById(tx, tenantId, dto.supplierId);
         if (!supplier) throw new NotFoundException();
       }
-      await this.validateSourceIssueRef(tx, tenantId, dto.sourceIssueId);
+      await this.validateSourceIssueRef(tx, tenantId, branchId, dto.sourceIssueId);
 
       const lines = await this.buildLineData(tx, tenantId, dto.lines);
       await this.assertReturnWithinIssued(tx, tenantId, dto.receiptType, dto.sourceIssueId, lines);
@@ -137,34 +138,34 @@ export class StockReceiptService {
       return row;
     });
 
-    return this.getById(tenantId, actorId, dataScope, created.id);
+    return this.getById(tenantId, branchId, actorId, dataScope, created.id);
   }
 
   /** Sửa Nháp — bulk-replace toàn bộ dòng hàng + header, chỉ khi `status='DRAFT'`. Kiểm scope CẢ 2
    * đầu: kho HIỆN TẠI của phiếu (không cho sửa phiếu ngoài Khoa mình) VÀ kho MỚI trong `dto` (không
    * cho "chuyển" phiếu sang kho ngoài Khoa mình) — đúng khuôn `StockCountService.update()`. */
-  async update(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: UpdateStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+  async update(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: UpdateStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
     if (!SUPPORTED_RECEIPT_TYPES.includes(dto.receiptType)) {
       throw new UnprocessableEntityException(`Loại phiếu "${dto.receiptType}" chưa được hỗ trợ ở giai đoạn này.`);
     }
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockReceiptRepository.findById(tx, tenantId, id);
+      const existing = await this.stockReceiptRepository.findById(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockReceiptNotDraftError();
 
-      const currentWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      const currentWarehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, existing.warehouseId);
       assertWarehouseInScope(currentWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
       assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
       if (dto.supplierId) {
         const supplier = await this.supplierRepository.findById(tx, tenantId, dto.supplierId);
         if (!supplier) throw new NotFoundException();
       }
-      await this.validateSourceIssueRef(tx, tenantId, dto.sourceIssueId);
+      await this.validateSourceIssueRef(tx, tenantId, branchId, dto.sourceIssueId);
 
       const lines = await this.buildLineData(tx, tenantId, dto.lines);
       await this.assertReturnWithinIssued(tx, tenantId, dto.receiptType, dto.sourceIssueId, lines, id);
@@ -201,16 +202,16 @@ export class StockReceiptService {
       });
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
-  async getById(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<StockReceiptDetail> {
+  async getById(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<StockReceiptDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     const row = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const receipt = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, id);
+      const receipt = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, branchId, id);
       if (!receipt) throw new NotFoundException();
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, receipt.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, receipt.warehouseId);
       assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
       const supplier = receipt.supplierId ? await this.supplierRepository.findById(tx, tenantId, receipt.supplierId) : null;
       return { receipt, warehouseName: warehouse?.name ?? '—', supplierName: supplier?.name ?? null };
@@ -220,7 +221,7 @@ export class StockReceiptService {
     return this.toLineDetailDto(row.receipt, row.warehouseName, row.supplierName, names);
   }
 
-  async list(tenantId: string, actorId: string, dataScope: DataScope, query: ListStockReceiptsQuery): Promise<ListStockReceiptsResponse> {
+  async list(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, query: ListStockReceiptsQuery): Promise<ListStockReceiptsResponse> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
     // Scope `department` nhưng actor CHƯA gán Khoa/Phòng nào — không thể khớp bất kỳ kho nào, trả
     // rỗng ngay (không lỗi) thay vì query rồi lọc ra 0 kết quả, đúng khuôn `StockCountService.list()`.
@@ -230,6 +231,7 @@ export class StockReceiptService {
 
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.stockReceiptRepository.list(tx, tenantId, {
+        branchIds: [branchId],
         warehouseId: query.warehouseId,
         receiptType: query.receiptType,
         status: query.status,
@@ -256,15 +258,15 @@ export class StockReceiptService {
     return { items: page.map((row) => this.toSummaryDto(row, row.warehouse.name, row.supplier?.name ?? null, row._count.lines, names)), nextCursor };
   }
 
-  async approve(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: ApproveStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+  async approve(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: ApproveStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, id);
+      const existing = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockReceiptNotDraftError();
 
-      const existingWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      const existingWarehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, existing.warehouseId);
       assertWarehouseInScope(existingWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — ghi PURCHASE + xử lý "Trả ngay" TRƯỚC
@@ -280,7 +282,7 @@ export class StockReceiptService {
           discountValue: existing.discountValue !== null ? Number(existing.discountValue) : null,
           lines: existing.lines.map((l) => ({ lineTotal: Number(l.lineAmount), discountType: l.discountType, discountValue: l.discountValue !== null ? Number(l.discountValue) : null })),
         });
-        const { prepaidVoucherId: voucherId } = await this.supplierDebtService.recordPurchaseApproval(tx, tenantId, actorId, {
+        const { prepaidVoucherId: voucherId } = await this.supplierDebtService.recordPurchaseApproval(tx, tenantId, branchId, actorId, {
           supplierId: existing.supplierId,
           supplierName: supplier.name,
           netAmount: BigInt(discount.dueAmount),
@@ -312,7 +314,7 @@ export class StockReceiptService {
       });
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
   /**
@@ -501,6 +503,48 @@ export class StockReceiptService {
     return created;
   }
 
+  /**
+   * Đợt 2 chi nhánh (docs/DECISIONS.md #233) — hàng bị nhận THIẾU hoặc bị TỪ CHỐI nhận quay VỀ KHO GỬI: `StockTransferService` gọi hàm này TRONG CÙNG
+   * transaction để tự sinh 1 `StockReceipt` (`receiptType='TRANSFER_RETURN'`) đã `POSTED` NGAY tại kho GỬI. Đối xứng `createTransferInReceipt()`: dùng
+   * đúng `unitCost` đã snapshot lúc Duyệt xuất và nhập lại ĐÚNG lô cũ (`applyPostedLines()` tra lô theo `batchNo`).
+   */
+  async createTransferReturnReceipt(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: { warehouseId: string; transferId: string; occurredAt: Date; transferNo: string; lines: StockReceiptLineData[]; reasonNote: string },
+  ): Promise<StockReceiptWithLines> {
+    const totalAmount = params.lines.reduce((sum, l) => sum + l.lineAmount, 0n);
+    const receiptNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_RECEIPT', params.occurredAt);
+
+    const created = await this.stockReceiptRepository.create(tx, tenantId, actorId, {
+      receiptNo,
+      warehouseId: params.warehouseId,
+      supplierId: null,
+      receiptType: 'TRANSFER_RETURN',
+      occurredAt: params.occurredAt,
+      note: `Tự sinh từ phiếu điều chuyển kho ${params.transferNo} — ${params.reasonNote}`,
+      supplierInvoiceNo: null,
+      totalAmount,
+      discountType: null,
+      discountValue: null,
+      discountReason: null,
+      prepaidAmount: 0n,
+      prepaidPaymentMethodCode: null,
+      prepaidCashAccountId: null,
+      lines: params.lines,
+      countId: null,
+      transferId: params.transferId,
+      sourceIssueId: null,
+    });
+
+    const postedCount = await this.stockReceiptRepository.approve(tx, tenantId, created.id, created.version, actorId);
+    if (postedCount === 0) throw new ConcurrentModificationError();
+
+    await this.applyPostedLines(tx, tenantId, actorId, created);
+    return created;
+  }
+
   /** Cộng tồn kho + ghi thẻ kho cho từng dòng của 1 phiếu VỪA chuyển POSTED — dùng chung cho
    * `approve()` (phiếu lập tay) và `createCountSurplusReceipt()` (phiếu tự sinh từ Kiểm kê, GĐ4). */
   private async applyPostedLines(tx: Prisma.TransactionClient, tenantId: string, actorId: string, receipt: StockReceiptWithLines): Promise<void> {
@@ -567,15 +611,15 @@ export class StockReceiptService {
     }
   }
 
-  async reject(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: RejectStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+  async reject(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: RejectStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockReceiptRepository.findById(tx, tenantId, id);
+      const existing = await this.stockReceiptRepository.findById(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockReceiptNotDraftError();
 
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, existing.warehouseId);
       assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       const count = await this.stockReceiptRepository.reject(tx, tenantId, id, dto.version, actorId, dto.reason);
@@ -593,7 +637,7 @@ export class StockReceiptService {
       });
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
   /** Huỷ phiếu ĐÃ DUYỆT — đảo NGƯỢC đúng các dòng `stock_ledger` mà chính phiếu này đã sinh ra
@@ -601,20 +645,20 @@ export class StockReceiptService {
    * lệch nếu đơn vị quy đổi của thuốc đã đổi sau khi phiếu được duyệt). Chặn huỷ nếu tồn hiện có
    * của bất kỳ lô/dòng nào không đủ để trừ ngược (đã bị dùng bớt — GĐ2 chưa có xuất kho nên trường
    * hợp này chỉ xảy ra khi GĐ3 đã chạy, để sẵn logic đúng từ bây giờ). */
-  async voidReceipt(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: VoidStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
+  async voidReceipt(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: VoidStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockReceiptRepository.findById(tx, tenantId, id);
+      const existing = await this.stockReceiptRepository.findById(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
 
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, existing.warehouseId);
       assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       await this.voidPostedCore(tx, tenantId, actorId, existing, dto.version, dto.reason, meta);
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
   /**
@@ -626,8 +670,8 @@ export class StockReceiptService {
    * chỉ cần `supplier_debt.approve`, đã chốt qua AskUserQuestion). Đọc `version` hiện tại NGAY TRƯỚC
    * khi huỷ (không nhận từ caller — caller không biết trước).
    */
-  async voidPostedForAdjustment(tx: Prisma.TransactionClient, tenantId: string, actorId: string, id: string, reason: string, meta: RequestMeta): Promise<void> {
-    const existing = await this.stockReceiptRepository.findById(tx, tenantId, id);
+  async voidPostedForAdjustment(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, id: string, reason: string, meta: RequestMeta): Promise<void> {
+    const existing = await this.stockReceiptRepository.findById(tx, tenantId, branchId, id);
     if (!existing) throw new NotFoundException();
     await this.voidPostedCore(tx, tenantId, actorId, existing, existing.version, reason, meta);
   }
@@ -703,9 +747,9 @@ export class StockReceiptService {
    * TUỲ CHỌN) phải là phiếu xuất ĐÃ DUYỆT tồn tại trong đúng tenant. Không chọn (`undefined`) luôn
    * hợp lệ — chủ dự án yêu cầu chủ động KHÔNG bắt buộc, không tìm ra phiếu xuất gốc vẫn phải lập
    * được phiếu trả hàng vào kho. Cùng khuôn `validateReturnSupplierRefs()` của `StockIssueService`. */
-  private async validateSourceIssueRef(tx: Prisma.TransactionClient, tenantId: string, sourceIssueId: string | null | undefined): Promise<void> {
+  private async validateSourceIssueRef(tx: Prisma.TransactionClient, tenantId: string, branchId: string, sourceIssueId: string | null | undefined): Promise<void> {
     if (!sourceIssueId) return;
-    const issue = await this.stockIssueRepository.findById(tx, tenantId, sourceIssueId);
+    const issue = await this.stockIssueRepository.findById(tx, tenantId, branchId, sourceIssueId);
     if (!issue || issue.status !== 'POSTED') {
       throw new UnprocessableEntityException('Phiếu xuất gốc không hợp lệ — phải là phiếu xuất ĐÃ DUYỆT.');
     }

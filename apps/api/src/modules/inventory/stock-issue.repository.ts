@@ -85,6 +85,8 @@ export interface StockIssueListRow extends StockIssue {
 }
 
 export interface ListStockIssuesFilter {
+  /** Chi nhánh được phép đọc (Đợt 2, docs/DECISIONS.md #233) — phiếu thuộc chi nhánh qua kho. */
+  branchIds: string[];
   warehouseId?: string;
   status?: StockIssue['status'];
   issueType?: StockIssueType;
@@ -149,8 +151,8 @@ export class StockIssueRepository {
     return created as StockIssueWithContext;
   }
 
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<StockIssue | null> {
-    return tx.stockIssue.findFirst({ where: { tenantId, id, deletedAt: null } });
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<StockIssue | null> {
+    return tx.stockIssue.findFirst({ where: { tenantId, id, deletedAt: null, warehouse: { branchId } } });
   }
 
   /** Số lượng đã xuất theo TỪNG thuốc của 1 phiếu xuất (đơn vị CƠ SỞ) — cận trên cho phiếu nhập hoàn trả gắn phiếu này. */
@@ -171,13 +173,14 @@ export class StockIssueRepository {
   }
 
   /** Dùng cho đường XEM (GET chi tiết) — KHÔNG lọc `deletedAt`, phiếu đã huỷ vẫn xem được (chỉ đọc). */
-  findByIdAnyWithContext(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<StockIssueWithContext | null> {
-    return tx.stockIssue.findFirst({ where: { tenantId, id }, include: CONTEXT_INCLUDE }) as Promise<StockIssueWithContext | null>;
+  findByIdAnyWithContext(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<StockIssueWithContext | null> {
+    return tx.stockIssue.findFirst({ where: { tenantId, id, warehouse: { branchId } }, include: CONTEXT_INCLUDE }) as Promise<StockIssueWithContext | null>;
   }
 
   async list(tx: Prisma.TransactionClient, tenantId: string, filter: ListStockIssuesFilter): Promise<StockIssueListRow[]> {
     const where: Prisma.StockIssueWhereInput = {
       tenantId,
+      warehouse: { branchId: { in: filter.branchIds } },
       warehouseId: filter.warehouseId,
       status: filter.status,
       issueType: filter.issueType,
@@ -191,7 +194,7 @@ export class StockIssueRepository {
       ];
     }
     if (filter.departmentId) {
-      where.warehouse = { departmentId: filter.departmentId };
+      where.warehouse = { branchId: { in: filter.branchIds }, departmentId: filter.departmentId };
     }
     if (filter.supplierId) {
       where.supplierId = filter.supplierId;
@@ -310,11 +313,13 @@ export class StockIssueRepository {
   async listSignedPrescriptionsForDispenseQueue(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    params: { qRaw?: string; qNormalized?: string; includeOlder: boolean; cutoff: Date },
+    params: { branchId: string; qRaw?: string; qNormalized?: string; includeOlder: boolean; cutoff: Date },
   ) {
-    const where: Prisma.PrescriptionWhereInput = { tenantId, signedAt: { not: null }, deletedAt: null };
+    // Đợt 2 chi nhánh (#233): hàng đợi phát thuốc CHỈ gồm đơn của lượt khám thuộc chi nhánh đang làm.
+    const where: Prisma.PrescriptionWhereInput = { tenantId, signedAt: { not: null }, deletedAt: null, encounter: { branchId: params.branchId } };
     if (params.qRaw) {
       where.encounter = {
+        branchId: params.branchId,
         patient: {
           OR: [
             { patientCode: { startsWith: params.qRaw, mode: 'insensitive' } },

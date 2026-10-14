@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { getDrugBatchBalancesQuerySchema, getStockOnHandSummaryQuerySchema, listStockBalancesQuerySchema, listStockExpiryWarningsQuerySchema } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -18,7 +19,7 @@ export class StockBalanceController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listStockBalancesQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.stockBalanceService.list(tenantId, dto);
+    return this.stockBalanceService.list(tenantId, requireBranchId(req.user!), dto);
   }
 
   /** Kho Thuốc GĐ5 — "tổng tồn toàn phòng khám" cho một danh sách thuốc, dùng cho `DrugPicker.tsx`/
@@ -30,7 +31,7 @@ export class StockBalanceController {
   async getOnHandSummary(@Query() query: unknown, @Req() req: Request) {
     const dto = getStockOnHandSummaryQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.stockBalanceService.getOnHandSummary(tenantId, dto.drugIds);
+    return this.stockBalanceService.getOnHandSummary(tenantId, requireBranchId(req.user!), dto.drugIds);
   }
 
   @Get('drugs/:drugId/balances')
@@ -38,7 +39,7 @@ export class StockBalanceController {
   async getForDrug(@Param('drugId') drugId: string, @Query() query: unknown, @Req() req: Request) {
     const dto = getDrugBatchBalancesQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.stockBalanceService.getForDrug(tenantId, drugId, dto.warehouseId);
+    return this.stockBalanceService.getForDrug(tenantId, requireBranchId(req.user!), drugId, dto.warehouseId);
   }
 
   @Get('expiry-warnings')
@@ -46,6 +47,6 @@ export class StockBalanceController {
   async listExpiryWarnings(@Query() query: unknown, @Req() req: Request) {
     const dto = listStockExpiryWarningsQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.stockBalanceService.listExpiryWarnings(tenantId, dto);
+    return this.stockBalanceService.listExpiryWarnings(tenantId, requireBranchId(req.user!), dto);
   }
 }

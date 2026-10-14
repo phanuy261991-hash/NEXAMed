@@ -72,6 +72,8 @@ export type CashierShiftInvoicePaymentsResponse = z.infer<typeof cashierShiftInv
 export const cashierShiftDetailSchema = z.object({
   id: z.string().uuid(),
   shiftNo: z.string(),
+  /** Đợt 2 chi nhánh (#233): ca thuộc đúng một chi nhánh. */
+  branchId: z.string().uuid(),
   cashierId: z.string().uuid(),
   cashierName: z.string(),
   shiftLabel: z.string(),

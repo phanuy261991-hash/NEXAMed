@@ -173,13 +173,17 @@ export async function syncRolePermissionsForAllTenants(
         // "Thu chi tại quầy" GĐ1 — backfill quỹ tiền mặt mặc định cho tenant TẠO TRƯỚC tính năng
         // này (seedDefaultRolesForTenant chỉ chạy lúc tạo tenant mới, không tự chạy lại cho tenant cũ).
         // Chi nhánh mặc định (#231) — tenant tạo trước tầng chi nhánh đã được migration backfill; bước này chỉ còn là lưới an toàn.
+        let defaultBranchId: string | null = null;
         if (await tx.role.findFirst({ where: { tenantId: tenant.id, isSystemDefault: true }, select: { id: true } })) {
-          await ensureDefaultBranch(tx, tenant.id, actorId);
+          defaultBranchId = (await ensureDefaultBranch(tx, tenant.id, actorId)).id;
+        } else {
+          defaultBranchId = (await tx.branch.findFirst({ where: { tenantId: tenant.id, isDefault: true, deletedAt: null }, select: { id: true } }))?.id ?? null;
         }
-        await ensureDefaultCashAccount(tx, tenant.id, actorId);
+        // Đợt 2 chi nhánh (#233): quỹ + kho mặc định theo chi nhánh MẶC ĐỊNH (chi nhánh khác tự có khi tạo, xem `provisionBranchDefaults`).
+        if (defaultBranchId) await ensureDefaultCashAccount(tx, tenant.id, actorId, defaultBranchId);
         // Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — cùng lý do backfill Kho mặc định
         // cho tenant tạo trước tính năng này.
-        await ensureDefaultWarehouse(tx, tenant.id, actorId);
+        if (defaultBranchId) await ensureDefaultWarehouse(tx, tenant.id, actorId, defaultBranchId);
         // Danh mục riêng theo tenant (#230) — bổ sung dòng hệ thống thêm SAU này cho tenant THẬT (đã có vai trò hệ thống);
         // tenant trống do test dựng dở không bị biến thành tenant có danh mục.
         if (await tx.role.findFirst({ where: { tenantId: tenant.id, isSystemDefault: true }, select: { id: true } })) {

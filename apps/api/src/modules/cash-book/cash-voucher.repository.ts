@@ -49,6 +49,8 @@ export interface CashVoucherLedgerRow {
 }
 
 export interface ListCashVouchersFilter {
+  /** Chi nhánh được phép đọc (Đợt 2, docs/DECISIONS.md #233) — phiếu thuộc chi nhánh qua quỹ (`cash_account.branch_id`). */
+  branchIds: string[];
   from?: Date;
   to?: Date;
   direction?: 'EXPENSE' | 'INCOME';
@@ -93,14 +95,14 @@ export class CashVoucherRepository {
 
   /** Dùng cho các đường EDIT (sửa/huỷ/duyệt/từ chối/in) — phiếu đã huỷ (soft-delete) trả `null`,
    * chặn thao tác lặp lại trên phiếu đã huỷ (đúng khuôn mọi repository khác trong dự án). */
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<CashVoucher | null> {
-    return tx.cashVoucher.findFirst({ where: { tenantId, id, deletedAt: null } });
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<CashVoucher | null> {
+    return tx.cashVoucher.findFirst({ where: { tenantId, id, deletedAt: null, cashAccount: { branchId } } });
   }
 
   /** Dùng cho đường XEM (GET chi tiết) — KHÔNG lọc `deletedAt`, phiếu đã huỷ vẫn xem được (chỉ
    * đọc), tránh "biến mất" khó hiểu. Web tự ẩn mọi nút thao tác khi `voided=true`. */
-  findByIdAny(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<CashVoucher | null> {
-    return tx.cashVoucher.findFirst({ where: { tenantId, id } });
+  findByIdAny(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<CashVoucher | null> {
+    return tx.cashVoucher.findFirst({ where: { tenantId, id, cashAccount: { branchId } } });
   }
 
   /** Danh sách — cùng lý do `findByIdAny`, KHÔNG lọc `deletedAt` để phiếu đã huỷ vẫn hiện (kèm badge).
@@ -113,6 +115,7 @@ export class CashVoucherRepository {
     return tx.cashVoucher.findMany({
       where: {
         tenantId,
+        cashAccount: { branchId: { in: filter.branchIds } },
         occurredAt: { gte: filter.from, lte: filter.to },
         direction: filter.direction,
         status: filter.status,
@@ -175,9 +178,9 @@ export class CashVoucherRepository {
    * người dùng tự khai, có thể lùi ngày để ghi sổ trễ, không phản ánh đúng lúc tiền rời/vào két).
    * Cùng khuôn `PaymentRepository.listForWindow()`.
    */
-  listPostedForWindow(tx: Prisma.TransactionClient, tenantId: string, startAt: Date, endAt: Date): Promise<CashVoucherCashierShiftRow[]> {
+  listPostedForWindow(tx: Prisma.TransactionClient, tenantId: string, branchId: string, startAt: Date, endAt: Date): Promise<CashVoucherCashierShiftRow[]> {
     return tx.cashVoucher.findMany({
-      where: { tenantId, deletedAt: null, status: 'POSTED', createdAt: { gte: startAt, lt: endAt } },
+      where: { tenantId, deletedAt: null, status: 'POSTED', createdAt: { gte: startAt, lt: endAt }, cashAccount: { branchId } },
       select: { paymentMethodCode: true, direction: true, amount: true },
     });
   }
@@ -215,9 +218,9 @@ export class CashVoucherRepository {
    * bucket theo Loại thu chi (`byType`, loại trừ Chuyển quỹ) và phân bổ theo quỹ (`byAccount`, GỒM
    * cả Chuyển quỹ 2 chiều).
    */
-  listPostedForReport(tx: Prisma.TransactionClient, tenantId: string, from: Date, to: Date) {
+  listPostedForReport(tx: Prisma.TransactionClient, tenantId: string, branchIds: string[], from: Date, to: Date) {
     return tx.cashVoucher.findMany({
-      where: { tenantId, deletedAt: null, status: 'POSTED', occurredAt: { gte: from, lte: to } },
+      where: { tenantId, deletedAt: null, status: 'POSTED', occurredAt: { gte: from, lte: to }, cashAccount: { branchId: { in: branchIds } } },
       select: { direction: true, amount: true, cashAccountId: true, counterAccountId: true, incomeExpenseTypeCode: true },
     });
   }
@@ -228,11 +231,12 @@ export class CashVoucherRepository {
   listSupplierLinked(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    filter: { supplierId?: string; from?: Date; to?: Date; status?: 'POSTED' | 'PENDING_APPROVAL' | 'REJECTED' },
+    filter: { branchIds: string[]; supplierId?: string; from?: Date; to?: Date; status?: 'POSTED' | 'PENDING_APPROVAL' | 'REJECTED' },
   ): Promise<CashVoucher[]> {
     return tx.cashVoucher.findMany({
       where: {
         tenantId,
+        cashAccount: { branchId: { in: filter.branchIds } },
         supplierId: filter.supplierId ?? { not: null },
         occurredAt: filter.from || filter.to ? { gte: filter.from, lte: filter.to } : undefined,
         status: filter.status,

@@ -79,6 +79,8 @@ export interface StockReceiptListRow extends StockReceipt {
 }
 
 export interface ListStockReceiptsFilter {
+  /** Chi nhánh được phép đọc (Đợt 2, docs/DECISIONS.md #233) — phiếu thuộc chi nhánh qua kho; BẮT BUỘC, không có đường liệt kê "mọi chi nhánh". */
+  branchIds: string[];
   warehouseId?: string;
   receiptType?: StockReceiptType;
   status?: StockReceipt['status'];
@@ -222,14 +224,15 @@ export class StockReceiptRepository {
     return result.count;
   }
 
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<StockReceipt | null> {
-    return tx.stockReceipt.findFirst({ where: { tenantId, id, deletedAt: null } });
+  /** Phiếu của kho thuộc `branchId` (Đợt 2 chi nhánh, #233) — phiếu của chi nhánh khác → null → 404. */
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<StockReceipt | null> {
+    return tx.stockReceipt.findFirst({ where: { tenantId, id, deletedAt: null, warehouse: { branchId } } });
   }
 
   /** Dùng cho đường XEM (GET chi tiết) — KHÔNG lọc `deletedAt`, phiếu đã huỷ vẫn xem được (chỉ đọc). */
-  findByIdAnyWithLines(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<StockReceiptWithLines | null> {
+  findByIdAnyWithLines(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<StockReceiptWithLines | null> {
     return tx.stockReceipt.findFirst({
-      where: { tenantId, id },
+      where: { tenantId, id, warehouse: { branchId } },
       include: { lines: LINE_INCLUDE, sourceIssue: { select: { issueNo: true } } },
     }) as Promise<StockReceiptWithLines | null>;
   }
@@ -237,6 +240,7 @@ export class StockReceiptRepository {
   async list(tx: Prisma.TransactionClient, tenantId: string, filter: ListStockReceiptsFilter): Promise<StockReceiptListRow[]> {
     const where: Prisma.StockReceiptWhereInput = {
       tenantId,
+      warehouse: { branchId: { in: filter.branchIds } },
       warehouseId: filter.warehouseId,
       receiptType: filter.receiptType,
       status: filter.status,
@@ -247,7 +251,7 @@ export class StockReceiptRepository {
       where.OR = [{ receiptNo: { contains: filter.q, mode: 'insensitive' } }, { supplier: { name: { contains: filter.q, mode: 'insensitive' } } }];
     }
     if (filter.departmentId) {
-      where.warehouse = { departmentId: filter.departmentId };
+      where.warehouse = { branchId: { in: filter.branchIds }, departmentId: filter.departmentId };
     }
     const rows = await tx.stockReceipt.findMany({
       where,

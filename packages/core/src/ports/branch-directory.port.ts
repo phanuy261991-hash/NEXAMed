@@ -12,6 +12,11 @@ export interface BranchDirectoryPort {
   listAssignedBranchIds(tenantId: string, userId: string): Promise<string[]>;
   /** Công ty có từ 2 chi nhánh hoạt động trở lên không — giao diện chỉ hiện cột/nhãn chi nhánh khi `true`. */
   isMultiBranch(tenantId: string): Promise<boolean>;
+  /**
+   * Tên/địa chỉ/SĐT của MỘT chi nhánh (kể cả đã ngưng) — dùng cho ĐẦU PHIẾU IN theo chi nhánh của chứng từ (Đợt 2, docs/DECISIONS.md #233). `null` nếu
+   * không có chi nhánh đó trong công ty.
+   */
+  getBranchPrintInfo(tenantId: string, branchId: string): Promise<{ name: string; address: string | null; phone: string | null } | null>;
 }
 
 export const BRANCH_DIRECTORY_PORT = Symbol('BRANCH_DIRECTORY_PORT');

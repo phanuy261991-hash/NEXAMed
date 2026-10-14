@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { referenceCatalogDirectionSchema } from './reference-catalog';
 import { paymentMethodSchema } from './billing';
+import { allBranchesQuerySchema } from './branch';
 
 /**
  * "Thu chi tại quầy" (Sổ quỹ & Thu chi, Giai đoạn 1) — module `cash-book`. Mockup Artifact duyệt
@@ -19,6 +20,9 @@ export const cashAccountSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
   name: z.string(),
+  // Đợt 2 chi nhánh (#233, Q1): MỌI quỹ (kể cả quỹ ngân hàng) thuộc đúng một chi nhánh.
+  branchId: z.string().uuid(),
+  branchName: z.string(),
   type: cashAccountTypeSchema,
   bankName: z.string().nullable(),
   bankAccountNo: z.string().nullable(),
@@ -33,6 +37,10 @@ export const cashAccountSchema = z.object({
 });
 export type CashAccount = z.infer<typeof cashAccountSchema>;
 
+/** Mặc định chỉ quỹ của chi nhánh đang làm; `allBranches=true` = mọi chi nhánh tài khoản được gán (màn quản trị quỹ). */
+export const listCashAccountsQuerySchema = z.object({ allBranches: allBranchesQuerySchema });
+export type ListCashAccountsQuery = z.infer<typeof listCashAccountsQuerySchema>;
+
 export const listCashAccountsResponseSchema = z.object({ items: z.array(cashAccountSchema) });
 export type ListCashAccountsResponse = z.infer<typeof listCashAccountsResponseSchema>;
 
@@ -40,6 +48,8 @@ export type ListCashAccountsResponse = z.infer<typeof listCashAccountsResponseSc
 export const createCashAccountRequestSchema = z
   .object({
     name: z.string().min(1, 'Phải nhập tên quỹ.'),
+    /** Bỏ trống = chi nhánh đang làm việc; phải là chi nhánh tài khoản được gán. Không đổi được sau khi tạo. */
+    branchId: z.string().uuid().optional(),
     type: cashAccountTypeSchema,
     bankName: z.string().nullable().optional(),
     bankAccountNo: z.string().nullable().optional(),

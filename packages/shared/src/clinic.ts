@@ -585,6 +585,9 @@ export type ClinicProfile = z.infer<typeof clinicProfileSchema>;
  */
 export const clinicPrintHeaderSchema = z.object({
   name: z.string(),
+  /** Đợt 2 chi nhánh (docs/DECISIONS.md #233): tên chi nhánh của chứng từ — CHỈ có khi công ty có từ 2 chi nhánh hoạt động (1 chi nhánh: luôn `null`, đầu phiếu không đổi). */
+  branchName: z.string().nullable(),
+  /** Địa chỉ/SĐT: của chi nhánh (nếu công ty ≥ 2 chi nhánh và chi nhánh có khai), không thì của công ty. */
   address: z.string().nullable(),
   phone: z.string().nullable(),
   /** Mã số thuế — chỉ hiện trên bản in khi bản mẫu bật "Mã số thuế" (docs/DECISIONS.md #211). */
@@ -592,6 +595,10 @@ export const clinicPrintHeaderSchema = z.object({
   printLogoUrl: z.string().nullable(),
 });
 export type ClinicPrintHeader = z.infer<typeof clinicPrintHeaderSchema>;
+
+/** `GET /clinic-profile/print-header?branchId=` — chi nhánh của chứng từ cần in; bỏ trống = chi nhánh đang làm việc. */
+export const clinicPrintHeaderQuerySchema = z.object({ branchId: z.string().uuid().optional() });
+export type ClinicPrintHeaderQuery = z.infer<typeof clinicPrintHeaderQuerySchema>;
 
 /** PATCH từng phần, `version` bắt buộc cho optimistic locking (cùng mẫu `updateRoomRequestSchema`). */
 export const updateClinicProfileRequestSchema = z.object({

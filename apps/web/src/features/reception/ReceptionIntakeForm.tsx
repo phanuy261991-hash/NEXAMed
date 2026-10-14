@@ -645,8 +645,6 @@ export function ReceptionIntakeForm({
         hidePhoneDuplicateHint
         patientId={matchedPatient?.id}
         patientCode={matchedPatient?.patientCode}
-        photoUrl={matchedPatient?.photoUrl}
-        version={matchedPatient?.version}
         onSearchPatient={() => setSearchDialogOpen(true)}
       />
 

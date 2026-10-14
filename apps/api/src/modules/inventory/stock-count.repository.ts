@@ -46,6 +46,8 @@ export interface StockCountListRow extends StockCount {
 }
 
 export interface ListStockCountsFilter {
+  /** Chi nhánh được phép đọc (Đợt 2, docs/DECISIONS.md #233) — phiếu thuộc chi nhánh qua kho. */
+  branchIds: string[];
   warehouseId?: string;
   status?: StockCount['status'];
   q?: string;
@@ -132,19 +134,20 @@ export class StockCountRepository {
     return result.count;
   }
 
-  findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<StockCount | null> {
-    return tx.stockCount.findFirst({ where: { tenantId, id, deletedAt: null } });
+  findById(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<StockCount | null> {
+    return tx.stockCount.findFirst({ where: { tenantId, id, deletedAt: null, warehouse: { branchId } } });
   }
 
   /** Dùng cho đường XEM (GET chi tiết) — KHÔNG lọc `deletedAt` (thuần theo khuôn `stock_receipt`,
    * dù `stock_count` hiện chưa có đường huỷ mềm nào). */
-  findByIdAnyWithLines(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<StockCountWithLines | null> {
-    return tx.stockCount.findFirst({ where: { tenantId, id }, include: { lines: LINE_INCLUDE } }) as Promise<StockCountWithLines | null>;
+  findByIdAnyWithLines(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<StockCountWithLines | null> {
+    return tx.stockCount.findFirst({ where: { tenantId, id, warehouse: { branchId } }, include: { lines: LINE_INCLUDE } }) as Promise<StockCountWithLines | null>;
   }
 
   async list(tx: Prisma.TransactionClient, tenantId: string, filter: ListStockCountsFilter): Promise<StockCountListRow[]> {
     const where: Prisma.StockCountWhereInput = {
       tenantId,
+      warehouse: { branchId: { in: filter.branchIds } },
       warehouseId: filter.warehouseId,
       status: filter.status,
     };
@@ -152,7 +155,7 @@ export class StockCountRepository {
       where.countNo = { contains: filter.q, mode: 'insensitive' };
     }
     if (filter.departmentId) {
-      where.warehouse = { departmentId: filter.departmentId };
+      where.warehouse = { branchId: { in: filter.branchIds }, departmentId: filter.departmentId };
     }
     const rows = await tx.stockCount.findMany({
       where,

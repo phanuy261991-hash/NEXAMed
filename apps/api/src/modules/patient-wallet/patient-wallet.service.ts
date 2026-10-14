@@ -75,17 +75,17 @@ export class PatientWalletService {
    * CASH mặc định; phương thức khác → quỹ BANK mặc định. `null` nếu tenant chưa cấu hình quỹ tương
    * ứng — phía gọi (`credit()`/`settle()`) tự ném lỗi rõ ràng thay vì để Prisma báo lỗi FK mơ hồ.
    */
-  private async resolveVoucherCashAccountId(tx: Prisma.TransactionClient, tenantId: string, method: string, drawerAccountId: string | null): Promise<string | null> {
+  private async resolveVoucherCashAccountId(tx: Prisma.TransactionClient, tenantId: string, branchId: string, method: string, drawerAccountId: string | null): Promise<string | null> {
     const meta = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
     const isCash = meta.find((m) => m.code === method)?.countsAsCash ?? false;
     if (isCash) {
       if (drawerAccountId) {
         return drawerAccountId;
       }
-      const account = await this.cashAccountRepository.findDefault(tx, tenantId, 'CASH');
+      const account = await this.cashAccountRepository.findDefault(tx, tenantId, branchId, 'CASH');
       return account?.id ?? null;
     }
-    const account = await this.cashAccountRepository.findDefault(tx, tenantId, 'BANK');
+    const account = await this.cashAccountRepository.findDefault(tx, tenantId, branchId, 'BANK');
     return account?.id ?? null;
   }
 
@@ -187,6 +187,7 @@ export class PatientWalletService {
   async credit(
     tx: Prisma.TransactionClient,
     tenantId: string,
+    branchId: string,
     actorId: string,
     patientId: string,
     amount: bigint,
@@ -204,10 +205,14 @@ export class PatientWalletService {
       throw new NotFoundException();
     }
     const [cashierShiftId, drawerAccountId] = await Promise.all([
-      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
-      this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
     ]);
-    const cashAccountId = cashAccountIdInput ?? (await this.resolveVoucherCashAccountId(tx, tenantId, paymentMethodCode, drawerAccountId));
+    // Quỹ chọn tay phải thuộc chi nhánh đang làm (Đợt 2, #233): tiền nạp ví vào quỹ của nơi thu.
+    if (cashAccountIdInput && !(await this.cashAccountRepository.findById(tx, tenantId, branchId, cashAccountIdInput))) {
+      throw new NotFoundException();
+    }
+    const cashAccountId = cashAccountIdInput ?? (await this.resolveVoucherCashAccountId(tx, tenantId, branchId, paymentMethodCode, drawerAccountId));
     if (!cashAccountId) {
       throw new BadRequestException('Chưa có quỹ nào để nhận tiền — tạo Quỹ tiền mặt/ngân hàng trước khi nạp tạm ứng.');
     }
@@ -252,16 +257,16 @@ export class PatientWalletService {
   }
 
   /** `POST /wallet/topup` — endpoint riêng, tự mở transaction. */
-  async topUp(tenantId: string, actorId: string, dto: TopUpWalletRequest, meta: RequestMeta): Promise<TopUpWalletResponse> {
+  async topUp(tenantId: string, branchId: string, actorId: string, dto: TopUpWalletRequest, meta: RequestMeta): Promise<TopUpWalletResponse> {
     const result = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.credit(tx, tenantId, actorId, dto.patientId, BigInt(dto.amount), dto.paymentMethodCode, dto.cashAccountId, dto.note, meta),
+      this.credit(tx, tenantId, branchId, actorId, dto.patientId, BigInt(dto.amount), dto.paymentMethodCode, dto.cashAccountId, dto.note, meta),
     );
     const wallet = await this.getWallet(tenantId, dto.patientId);
     return { wallet: wallet!, voucherNo: result.voucherNo, occurredAt: result.occurredAt.toISOString() };
   }
 
   /** `POST /wallet/settle` — hoàn số dư còn lại (nếu >0, tạo phiếu chi) rồi khoá ví. */
-  async settle(tenantId: string, actorId: string, dto: SettleWalletRequest, meta: RequestMeta): Promise<SettleWalletResponse> {
+  async settle(tenantId: string, branchId: string, actorId: string, dto: SettleWalletRequest, meta: RequestMeta): Promise<SettleWalletResponse> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const wallet = await this.walletRepository.findByPatientId(tx, tenantId, dto.patientId);
       if (!wallet) {
@@ -281,10 +286,13 @@ export class PatientWalletService {
           throw new NotFoundException();
         }
         const [cashierShiftId, drawerAccountId] = await Promise.all([
-          this.cashierShiftReader.getRelevantOpenShiftId(tenantId, actorId),
-          this.cashierShiftReader.getCashAccountIdForActor(tenantId, actorId),
+          this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
+          this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
         ]);
-        const cashAccountId = dto.cashAccountId ?? (await this.resolveVoucherCashAccountId(tx, tenantId, dto.paymentMethodCode, drawerAccountId));
+        if (dto.cashAccountId && !(await this.cashAccountRepository.findById(tx, tenantId, branchId, dto.cashAccountId))) {
+          throw new NotFoundException();
+        }
+        const cashAccountId = dto.cashAccountId ?? (await this.resolveVoucherCashAccountId(tx, tenantId, branchId, dto.paymentMethodCode, drawerAccountId));
         if (!cashAccountId) {
           throw new BadRequestException('Chưa có quỹ nào để chi tiền — tạo Quỹ tiền mặt/ngân hàng trước khi tất toán.');
         }

@@ -464,6 +464,8 @@ Tóm tắt quyết định đã chốt (đầy đủ trong file kế hoạch, đ
 
 ## Đang chờ
 
+> **ĐANG LÀM DỞ — Tầng chi nhánh ĐỢT 2 (14/10/2026, `docs/DECISIONS.md` #233, bàn giao `docs/handoffs/HANDOFF-ChiNhanh-Dot2-2026-10-14.md`)**: mockup đã duyệt; backend xong và biên dịch sạch, web CHƯA biên dịch, migration `20261015090000_branch_dot2` CHƯA áp DB dev, 3 test API đỏ (đã biết nguyên nhân). Đọc handoff trước khi làm tiếp. KHÔNG bật chi nhánh thứ 2 ở khách thật. Sau Đợt 2: tab Kết quả CLS + biểu đồ chỉ số (đã chốt) và Đợt 3 báo cáo nhiều chi nhánh.
+
 > **Việc còn mở thật sự (cập nhật 14/10/2026)**: (1) **Đợt 2 chi nhánh** (hoá đơn/quỹ/ca thu ngân/kho/đầu phiếu in theo chi nhánh, điều chuyển kho liên chi nhánh) — cần mockup duyệt trước khi code, **không bật chi nhánh thứ 2 ở khách thật trước khi xong**; Đợt 3 báo cáo, Đợt 4 SaaS; (2) CSP đang ở chế độ Report-Only (nginx, 14/10/2026) — chuyển sang chặn sau khi pilot không còn cảnh báo Console; (3) trường VTYT riêng, BHYT (S2-04); (4) việc cần pilot thật: S6-02/S6-04, thử máy in tem/súng quét. Đã xong, KHÔNG còn treo: danh mục riêng theo tenant + FORCE RLS (#230), CI GitHub xanh (13/10), menu Phiếu chỉ định/Tra cứu kết quả (#232), Công nợ NCC A→E, Kho GĐ5.
 > Từ 09/10/2026 mọi nhánh `feat/*` ở dưới đã merge vào `master` (PR #1–#7); quy ước làm việc: commit + push thẳng `master`, không dùng nhánh/PR trừ khi chủ dự án yêu cầu.
 

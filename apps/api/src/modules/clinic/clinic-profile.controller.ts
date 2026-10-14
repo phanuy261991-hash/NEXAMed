@@ -1,8 +1,8 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Patch, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import { z } from 'zod';
-import { updateClinicProfileRequestSchema } from '@nexamed/shared';
+import { clinicPrintHeaderQuerySchema, updateClinicProfileRequestSchema } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -34,9 +34,10 @@ export class ClinicProfileController {
    * sĩ cần tên/logo phòng khám để in phiếu thu/đơn thuốc nhưng không có `clinic_config.read`.
    */
   @Get('print-header')
-  async getPrintHeader(@Req() req: Request) {
-    const { tenantId } = req.user!;
-    return this.clinicProfileService.getPrintHeader(tenantId);
+  async getPrintHeader(@Query() query: unknown, @Req() req: Request) {
+    const { tenantId, branchId: currentBranchId } = req.user!;
+    const { branchId } = clinicPrintHeaderQuerySchema.parse(query);
+    return this.clinicProfileService.getPrintHeader(tenantId, branchId ?? currentBranchId);
   }
 
   @Patch()

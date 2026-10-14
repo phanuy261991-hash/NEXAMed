@@ -7,6 +7,10 @@
  * `billing.module.ts`/`cashier-shift.module.ts`) — vòng phụ thuộc 2 chiều có thật (mỗi module cần
  * dữ liệu của module kia), không phải lỗi thiết kế.
  */
+/**
+ * Đợt 2 chi nhánh (docs/DECISIONS.md #233): ca thu ngân thuộc ĐÚNG MỘT chi nhánh; `branchId` là chi nhánh đang làm việc của phiên. TẮT "Đa thu ngân" =
+ * ca đang mở CHUNG của chi nhánh đó (không phải của cả công ty).
+ */
 export interface CashierShiftReaderPort {
   /**
    * Id ca thu ngân LIÊN QUAN tới `actorId` TẠI THỜI ĐIỂM gọi — TẮT "Đa thu ngân" (mặc định): ca
@@ -14,7 +18,7 @@ export interface CashierShiftReaderPort {
    * không có ca nào đang mở — KHÔNG chặn tạo `payment` (độc lập với công tắc "Yêu cầu mở ca trước
    * khi thu tiền"), chỉ đơn thuần không gắn `cashierShiftId`.
    */
-  getRelevantOpenShiftId(tenantId: string, actorId: string): Promise<string | null>;
+  getRelevantOpenShiftId(tenantId: string, branchId: string, actorId: string): Promise<string | null>;
 
   /**
    * "Thu chi tại quầy" (GĐ1) — ca này còn `OPEN` không, dùng để khoá sửa/huỷ `cash_voucher` gắn
@@ -30,7 +34,7 @@ export interface CashierShiftReaderPort {
    * dùng két riêng) — `InvoiceService.resolveCashAccountId()` fallback về quỹ CASH mặc định khi
    * nhận `null`, giữ đúng hành vi cũ khi tính năng tắt.
    */
-  getCashAccountIdForActor(tenantId: string, actorId: string): Promise<string | null>;
+  getCashAccountIdForActor(tenantId: string, branchId: string, actorId: string): Promise<string | null>;
 }
 
 export const CASHIER_SHIFT_READER_PORT = Symbol('CASHIER_SHIFT_READER_PORT');

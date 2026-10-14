@@ -57,11 +57,11 @@ export class StockCountService {
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
   ) {}
 
-  async create(tenantId: string, actorId: string, dataScope: DataScope, dto: CreateStockCountRequest, meta: RequestMeta): Promise<StockCountDetail> {
+  async create(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, dto: CreateStockCountRequest, meta: RequestMeta): Promise<StockCountDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
       assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
 
@@ -90,24 +90,24 @@ export class StockCountService {
       return row;
     });
 
-    return this.getById(tenantId, actorId, dataScope, created.id);
+    return this.getById(tenantId, branchId, actorId, dataScope, created.id);
   }
 
   /** Sửa Nháp — bulk-replace toàn bộ dòng đếm + header, chỉ khi `status='DRAFT'`. Kiểm scope CẢ 2
    * đầu: kho HIỆN TẠI của phiếu (không cho sửa phiếu ngoài Khoa mình) VÀ kho MỚI trong `dto` (không
    * cho "chuyển" phiếu sang kho ngoài Khoa mình). */
-  async update(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: UpdateStockCountRequest, meta: RequestMeta): Promise<StockCountDetail> {
+  async update(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: UpdateStockCountRequest, meta: RequestMeta): Promise<StockCountDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockCountRepository.findById(tx, tenantId, id);
+      const existing = await this.stockCountRepository.findById(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockCountNotDraftError();
 
-      const currentWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      const currentWarehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, existing.warehouseId);
       assertWarehouseInScope(currentWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, dto.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
       assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
 
@@ -133,16 +133,16 @@ export class StockCountService {
       });
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
-  async getById(tenantId: string, actorId: string, dataScope: DataScope, id: string): Promise<StockCountDetail> {
+  async getById(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<StockCountDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     const row = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const count = await this.stockCountRepository.findByIdAnyWithLines(tx, tenantId, id);
+      const count = await this.stockCountRepository.findByIdAnyWithLines(tx, tenantId, branchId, id);
       if (!count) throw new NotFoundException();
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, count.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, count.warehouseId);
       assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
       return { count, warehouseName: warehouse?.name ?? '—' };
     });
@@ -151,7 +151,7 @@ export class StockCountService {
     return this.toDetailDto(row.count, row.warehouseName, names);
   }
 
-  async list(tenantId: string, actorId: string, dataScope: DataScope, query: ListStockCountsQuery): Promise<ListStockCountsResponse> {
+  async list(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, query: ListStockCountsQuery): Promise<ListStockCountsResponse> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
     // Scope `department` nhưng actor CHƯA gán Khoa/Phòng nào — không thể khớp bất kỳ kho nào, trả
     // rỗng ngay (không lỗi) thay vì query rồi lọc ra 0 kết quả.
@@ -161,6 +161,7 @@ export class StockCountService {
 
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.stockCountRepository.list(tx, tenantId, {
+        branchIds: [branchId],
         warehouseId: query.warehouseId,
         status: query.status,
         q: query.q,
@@ -183,15 +184,15 @@ export class StockCountService {
     return { items: page.map((row) => this.toSummaryDto(row, row.warehouse.name, row._count.lines, names)), nextCursor };
   }
 
-  async reject(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: RejectStockCountRequest, meta: RequestMeta): Promise<StockCountDetail> {
+  async reject(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: RejectStockCountRequest, meta: RequestMeta): Promise<StockCountDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockCountRepository.findById(tx, tenantId, id);
+      const existing = await this.stockCountRepository.findById(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockCountNotDraftError();
 
-      const warehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, existing.warehouseId);
       assertWarehouseInScope(warehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       const count = await this.stockCountRepository.reject(tx, tenantId, id, dto.version, actorId, dto.reason);
@@ -209,7 +210,7 @@ export class StockCountService {
       });
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
   /**
@@ -219,15 +220,15 @@ export class StockCountService {
    * (`COUNT_SURPLUS`), mọi dòng THIẾU thành 1 `StockIssue` tự sinh (`COUNT_SHORTAGE`) — cả hai POST
    * NGAY trong cùng transaction, đúng thiết kế đã chốt.
    */
-  async approve(tenantId: string, actorId: string, dataScope: DataScope, id: string, dto: ApproveStockCountRequest, meta: RequestMeta): Promise<StockCountDetail> {
+  async approve(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: ApproveStockCountRequest, meta: RequestMeta): Promise<StockCountDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const existing = await this.stockCountRepository.findByIdAnyWithLines(tx, tenantId, id);
+      const existing = await this.stockCountRepository.findByIdAnyWithLines(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       if (existing.status !== 'DRAFT') throw new StockCountNotDraftError();
 
-      const existingWarehouse = await this.warehouseRepository.findById(tx, tenantId, existing.warehouseId);
+      const existingWarehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, existing.warehouseId);
       assertWarehouseInScope(existingWarehouse?.departmentId ?? null, dataScope, actorDepartmentId);
 
       const differenceUpdates: { lineId: string; difference: number }[] = [];
@@ -336,7 +337,7 @@ export class StockCountService {
       });
     });
 
-    return this.getById(tenantId, actorId, dataScope, id);
+    return this.getById(tenantId, branchId, actorId, dataScope, id);
   }
 
   // ============ helpers ============

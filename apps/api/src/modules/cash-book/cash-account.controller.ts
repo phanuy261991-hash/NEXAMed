@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { createCashAccountRequestSchema, updateCashAccountRequestSchema } from '@nexamed/shared';
+import { createCashAccountRequestSchema, listCashAccountsQuerySchema, updateCashAccountRequestSchema } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -16,9 +17,10 @@ export class CashAccountController {
 
   @Get()
   @RequirePermission('cash_account', 'read')
-  async list(@Req() req: Request) {
-    const { tenantId } = req.user!;
-    return this.cashAccountService.list(tenantId);
+  async list(@Query() query: unknown, @Req() req: Request) {
+    const { tenantId, userId } = req.user!;
+    const { allBranches } = listCashAccountsQuerySchema.parse(query);
+    return this.cashAccountService.list(tenantId, userId, requireBranchId(req.user!), allBranches);
   }
 
   @Post()
@@ -27,7 +29,7 @@ export class CashAccountController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createCashAccountRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashAccountService.create(tenantId, userId, dto, extractRequestMeta(req));
+    return this.cashAccountService.create(tenantId, userId, requireBranchId(req.user!), dto, extractRequestMeta(req));
   }
 
   @Patch(':id')
@@ -35,6 +37,6 @@ export class CashAccountController {
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateCashAccountRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashAccountService.update(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.cashAccountService.update(tenantId, userId, requireBranchId(req.user!), id, dto, extractRequestMeta(req));
   }
 }

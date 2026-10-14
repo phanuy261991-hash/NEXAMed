@@ -2,10 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Tenant } from '@prisma/client';
 import {
+  BRANCH_DIRECTORY_PORT,
   ConcurrentModificationError,
   InvalidLogoError,
   STORAGE_PORT,
   sniffImageExtension,
+  type BranchDirectoryPort,
   type StoragePort,
 } from '@nexamed/core';
 import type { ClinicPrintHeader, ClinicProfile, SocialLink, UpdateClinicProfileRequest } from '@nexamed/shared';
@@ -33,6 +35,7 @@ export class ClinicProfileService {
     private readonly clinicProfileRepository: ClinicProfileRepository,
     private readonly configService: ConfigService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+    @Inject(BRANCH_DIRECTORY_PORT) private readonly branchDirectory: BranchDirectoryPort,
   ) {}
 
   async getProfile(tenantId: string): Promise<ClinicProfile> {
@@ -46,9 +49,22 @@ export class ClinicProfileService {
   }
 
   /** Tự-phục vụ (Thu ngân/Kê đơn) — xem comment `clinicPrintHeaderSchema` (`packages/shared`). */
-  async getPrintHeader(tenantId: string): Promise<ClinicPrintHeader> {
+  /**
+   * Đợt 2 chi nhánh (docs/DECISIONS.md #233): logo, tên công ty, mã số thuế là của CÔNG TY; tên chi nhánh + địa chỉ + SĐT là của CHI NHÁNH của chứng từ
+   * (`branchId`; bỏ trống = chi nhánh đang làm việc). Chi nhánh chưa khai địa chỉ/SĐT thì rơi về của công ty. Công ty chỉ có 1 chi nhánh hoạt động:
+   * đầu phiếu GIỮ NGUYÊN như trước (không tên chi nhánh, địa chỉ/SĐT của công ty).
+   */
+  async getPrintHeader(tenantId: string, branchId: string | null): Promise<ClinicPrintHeader> {
     const profile = await this.getProfile(tenantId);
-    return { name: profile.name, address: profile.address, phone: profile.phone, taxCode: profile.taxCode, printLogoUrl: profile.printLogoUrl };
+    const base = { name: profile.name, taxCode: profile.taxCode, printLogoUrl: profile.printLogoUrl };
+    if (!branchId || !(await this.branchDirectory.isMultiBranch(tenantId))) {
+      return { ...base, branchName: null, address: profile.address, phone: profile.phone };
+    }
+    const branch = await this.branchDirectory.getBranchPrintInfo(tenantId, branchId);
+    if (!branch) {
+      return { ...base, branchName: null, address: profile.address, phone: profile.phone };
+    }
+    return { ...base, branchName: branch.name, address: branch.address?.trim() ? branch.address : profile.address, phone: branch.phone?.trim() ? branch.phone : profile.phone };
   }
 
   async updateProfile(

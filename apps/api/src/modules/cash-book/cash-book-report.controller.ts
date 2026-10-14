@@ -1,6 +1,7 @@
 import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { cashFlowReportQuerySchema, getCashBookLedgerQuerySchema, listCashVouchersQuerySchema } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -28,7 +29,7 @@ export class CashBookReportController {
   async ledger(@Query() query: unknown, @Req() req: Request) {
     const dto = getCashBookLedgerQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.reportService.getLedger(tenantId, dto.cashAccountId, dto.from, dto.to);
+    return this.reportService.getLedger(tenantId, requireBranchId(req.user!), dto.cashAccountId, dto.from, dto.to);
   }
 
   /** "Xuất Excel" cho "Sổ quỹ" — cùng quyền `cash_voucher.read` với `ledger()` (tra cứu vận hành
@@ -39,7 +40,7 @@ export class CashBookReportController {
   async exportLedger(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
     const dto = getCashBookLedgerQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    const ledger = await this.reportService.getLedger(tenantId, dto.cashAccountId, dto.from, dto.to);
+    const ledger = await this.reportService.getLedger(tenantId, requireBranchId(req.user!), dto.cashAccountId, dto.from, dto.to);
     const buffer = await this.exportService.buildCashBookLedgerExcel(ledger, dto.from, dto.to);
     await this.reportService.recordExportAudit(tenantId, userId, 'cash_book_ledger.exported', dto, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
@@ -54,7 +55,7 @@ export class CashBookReportController {
   async exportVouchers(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
     const dto = listCashVouchersQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    const data = await this.reportService.getVoucherExportData(tenantId, dto);
+    const data = await this.reportService.getVoucherExportData(tenantId, requireBranchId(req.user!), dto);
     const buffer = await this.exportService.buildCashVoucherListExcel(dto.from, dto.to, data);
     await this.reportService.recordExportAudit(tenantId, userId, 'cash_voucher.exported', dto, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
@@ -67,7 +68,7 @@ export class CashBookReportController {
   async cashFlowReport(@Query() query: unknown, @Req() req: Request) {
     const dto = cashFlowReportQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.reportService.getCashFlowReport(tenantId, dto.from, dto.to);
+    return this.reportService.getCashFlowReport(tenantId, [requireBranchId(req.user!)], dto.from, dto.to);
   }
 
   @Get('cash-flow-report/export')
@@ -75,7 +76,7 @@ export class CashBookReportController {
   async exportCashFlowReport(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
     const dto = cashFlowReportQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    const report = await this.reportService.getCashFlowReport(tenantId, dto.from, dto.to);
+    const report = await this.reportService.getCashFlowReport(tenantId, [requireBranchId(req.user!)], dto.from, dto.to);
     const buffer = await this.exportService.buildCashFlowReportExcel(dto.from, dto.to, report);
     await this.reportService.recordExportAudit(tenantId, userId, 'cash_flow_report.exported', dto, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);

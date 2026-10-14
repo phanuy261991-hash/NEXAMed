@@ -2076,6 +2076,9 @@ model Supplier {
 model Warehouse {
   id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId     String  @map("tenant_id") @db.Uuid
+  // Đợt 2 chi nhánh (#233) — kho thuộc ĐÚNG MỘT chi nhánh; mọi phiếu kho/tồn/lô/thẻ kho kế thừa chi nhánh qua kho. Mỗi chi nhánh có
+  // đúng 1 kho mặc định (partial unique `(tenant_id, branch_id) WHERE is_default`, khai raw SQL trong migration).
+  branchId     String  @map("branch_id") @db.Uuid
   departmentId String? @map("department_id") @db.Uuid
   code         String
   name         String
@@ -2092,6 +2095,7 @@ model Warehouse {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant             Tenant           @relation(fields: [tenantId], references: [id])
+  branch             Branch           @relation(fields: [tenantId, branchId], references: [tenantId, id])
   // department_id nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floor).
   department         Department?      @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   // Kho Thuốc GĐ2 — xem model StockReceipt/InventoryBatch/StockLedger/StockBalance.
@@ -2214,6 +2218,7 @@ enum StockReceiptType {
   PURCHASE // Nhập nhà cung cấp — xây GĐ2
   OPENING_BALANCE // Nhập khởi tạo / Đầu kỳ — xây GĐ2
   TRANSFER_IN // Nhập chuyển kho — để sẵn cho GĐ4
+  TRANSFER_RETURN // Nhập hoàn trả về kho GỬI sau điều chuyển (Đợt 2 chi nhánh, #233) — hàng nhận thiếu/bị từ chối quay về
   RETURN_FROM_USE // Nhập hoàn trả từ bệnh nhân/khoa phòng — để sẵn cho GĐ3/4
   COUNT_SURPLUS // Nhập cân bằng, dôi dư kiểm kê — để sẵn cho GĐ4
 
@@ -2358,6 +2363,7 @@ enum StockLedgerReason {
   RECEIPT_PURCHASE
   RECEIPT_OPENING_BALANCE
   RECEIPT_TRANSFER_IN // để sẵn GĐ4
+  RECEIPT_TRANSFER_RETURN // hàng nhận thiếu / bị từ chối quay về kho gửi (Đợt 2 chi nhánh, #233)
   RECEIPT_RETURN_FROM_USE // để sẵn GĐ3/4
   RECEIPT_COUNT_SURPLUS // để sẵn GĐ4
   RECEIPT_VOID // đảo phiếu nhập bị huỷ — xây GĐ2
@@ -2688,6 +2694,18 @@ model StockTransfer {
   receivedAt      DateTime?           @map("received_at") @db.Timestamptz(6)
   // Bắt buộc khi status=REJECTED, NULL các trạng thái khác.
   rejectionReason String?             @map("rejection_reason")
+  // Đợt 2 chi nhánh (#233) — từ chối NHẬN cả phiếu khi đang IN_TRANSIT (khác `rejectionReason`: bên GỬI từ chối lúc Nháp).
+  receiveRejectReasonCode String?     @map("receive_reject_reason_code")
+  receiveRejectNote       String?     @map("receive_reject_note")
+  receiveRejectedBy       String?     @map("receive_rejected_by") @db.Uuid
+  receiveRejectedAt       DateTime?   @map("receive_rejected_at") @db.Timestamptz(6)
+  // Bên gửi xác nhận đã nhận lại hàng bị từ chối (RETURNING→RETURNED).
+  returnConfirmedBy       String?     @map("return_confirmed_by") @db.Uuid
+  returnConfirmedAt       DateTime?   @map("return_confirmed_at") @db.Timestamptz(6)
+  // Bên gửi xử lý xong phần nhận thiếu (VARIANCE_PENDING→COMPLETED).
+  varianceResolvedBy      String?     @map("variance_resolved_by") @db.Uuid
+  varianceResolvedAt      DateTime?   @map("variance_resolved_at") @db.Timestamptz(6)
+  varianceResolutionNote  String?     @map("variance_resolution_note")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2719,6 +2737,12 @@ enum StockTransferStatus {
   IN_TRANSIT
   COMPLETED
   REJECTED
+  // Đợt 2 chi nhánh (#233): bên nhận đã kiểm đếm, có dòng NHẬN THIẾU — hàng thực nhận đã vào kho đích, phần thiếu chờ bên GỬI xử lý.
+  VARIANCE_PENDING
+  // Bên nhận TỪ CHỐI nhận cả phiếu — hàng không vào kho đích, đang trên đường về, chờ bên gửi xác nhận nhận lại.
+  RETURNING
+  // Bên gửi đã xác nhận nhận lại hàng bị từ chối.
+  RETURNED
 
   @@map("stock_transfer_status")
 }
@@ -2741,6 +2765,12 @@ model StockTransferLine {
   unitCost         BigInt? @map("unit_cost")
   quantityReceived Int?    @map("quantity_received")
   varianceNote     String? @map("variance_note")
+  // Đợt 2 chi nhánh (#233): lý do lệch bên nhận chọn (SHORTAGE/DAMAGED/EXPIRED/WRONG_ITEM/OTHER), cách bên gửi xử lý phần thiếu
+  // (RETURN_TO_SOURCE/WRITE_OFF), và số thực nhận lại ở kho gửi khi bên nhận từ chối cả phiếu (phần còn thiếu = hao hụt).
+  varianceReasonCode   String? @map("variance_reason_code")
+  varianceResolution   String? @map("variance_resolution")
+  quantityReturnedBack Int?    @map("quantity_returned_back")
+  returnVarianceNote   String? @map("return_variance_note")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -3246,6 +3276,9 @@ model InvoiceRefundLine {
 model CashAccount {
   id               String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId         String          @map("tenant_id") @db.Uuid
+  // Đợt 2 chi nhánh (#233) — quỹ (kể cả quỹ ngân hàng, Q1) thuộc ĐÚNG MỘT chi nhánh; phiếu thu/chi/chuyển quỹ kế thừa qua quỹ.
+  // Mỗi loại quỹ có tối đa 1 quỹ mặc định MỖI chi nhánh (partial unique khai raw SQL trong migration).
+  branchId         String          @map("branch_id") @db.Uuid
   // Mã ngắn tự sinh qua CodeSequenceRepository (tenant-scoped, tiền tố "QU"), không nhập tay —
   // đúng khuôn WorkShift.code (docs/DECISIONS.md #113).
   code             String
@@ -3272,6 +3305,7 @@ model CashAccount {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant                Tenant         @relation(fields: [tenantId], references: [id])
+  branch                Branch         @relation(fields: [tenantId, branchId], references: [tenantId, id])
   // Composite FK (tenant_id, owner_user_id) -> user_account(tenant_id, id), NULLABLE.
   ownerUser             UserAccount?   @relation("CashAccountOwner", fields: [tenantId, ownerUserId], references: [tenantId, id])
   payments              Payment[]
@@ -3409,6 +3443,8 @@ enum CashierShiftDiscrepancyResolution {
 model CashierShift {
   id         String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId   String             @map("tenant_id") @db.Uuid
+  // Đợt 2 chi nhánh (#233, Q6) — ca thuộc ĐÚNG MỘT chi nhánh; mỗi thu ngân tối đa 1 ca mở MỖI chi nhánh (partial unique raw SQL).
+  branchId   String             @map("branch_id") @db.Uuid
   // Mã hiển thị, sinh qua code_sequence (prefix "PCC", packages/shared/src/cashier-shift.ts).
   shiftNo    String             @map("shift_no")
   // Người mở ca — CHỈ đúng người này (hoặc actor có cashier_shift.manage) mới chốt/sửa được, kiểm
@@ -3477,6 +3513,7 @@ model CashierShift {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  branch        Branch        @relation(fields: [tenantId, branchId], references: [tenantId, id])
   cashier       UserAccount   @relation(fields: [tenantId, cashierId], references: [tenantId, id])
   // Composite FK (tenant_id, drawer_account_id) -> cash_account(tenant_id, id), NULLABLE.
   drawerAccount CashAccount?  @relation("CashierShiftDrawerAccount", fields: [tenantId, drawerAccountId], references: [tenantId, id])
@@ -4729,6 +4766,10 @@ model Branch {
   leaveRequests           LeaveRequest[]
   workScheduleSubmissions WorkScheduleSubmission[]
   shiftSwapRequests       ShiftSwapRequest[]
+  // Đợt 2 (#233) — kho, quỹ, ca thu ngân theo chi nhánh.
+  warehouses              Warehouse[]
+  cashAccounts            CashAccount[]
+  cashierShifts           CashierShift[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])

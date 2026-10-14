@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { allBranchesQuerySchema } from './branch';
 
 /**
  * Danh mục Thuốc & Vật tư y tế (Sprint 4 S4-03, mở rộng Giai đoạn 1 của Kho Thuốc & Vật tư y tế —
@@ -326,6 +327,8 @@ export type ListSuppliersResponse = z.infer<typeof listSuppliersResponseSchema>;
 // `code` KHÔNG nhận từ client — server tự sinh (formatShortSequentialCode, tiền tố "KH").
 export const createWarehouseRequestSchema = z.object({
   name: z.string().min(1),
+  // Đợt 2 chi nhánh (#233): chi nhánh sở hữu kho — bỏ trống = chi nhánh đang làm việc; phải là chi nhánh tài khoản được gán.
+  branchId: z.string().uuid().optional(),
   departmentId: z.string().uuid().optional(),
   isDefault: z.boolean().optional(),
 });
@@ -333,6 +336,8 @@ export type CreateWarehouseRequest = z.infer<typeof createWarehouseRequestSchema
 
 export const updateWarehouseRequestSchema = z.object({
   name: z.string().min(1).optional(),
+  // Đổi chi nhánh CHỈ được khi kho chưa phát sinh phiếu/tồn nào (xem WarehouseService).
+  branchId: z.string().uuid().optional(),
   departmentId: z.string().uuid().nullable().optional(),
   isDefault: z.boolean().optional(),
   isActive: z.boolean().optional(),
@@ -344,6 +349,8 @@ export const warehouseSummarySchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
   name: z.string(),
+  branchId: z.string().uuid(),
+  branchName: z.string(),
   departmentId: z.string().uuid().nullable(),
   departmentName: z.string().nullable(),
   isDefault: z.boolean(),
@@ -351,6 +358,9 @@ export const warehouseSummarySchema = z.object({
   version: z.number().int(),
 });
 export type WarehouseSummary = z.infer<typeof warehouseSummarySchema>;
+
+export const listWarehousesQuerySchema = z.object({ allBranches: allBranchesQuerySchema });
+export type ListWarehousesQuery = z.infer<typeof listWarehousesQuerySchema>;
 
 export const listWarehousesResponseSchema = z.object({ items: z.array(warehouseSummarySchema) });
 export type ListWarehousesResponse = z.infer<typeof listWarehousesResponseSchema>;

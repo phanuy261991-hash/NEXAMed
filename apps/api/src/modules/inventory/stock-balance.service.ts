@@ -35,11 +35,11 @@ export class StockBalanceService {
   ) {}
 
   /** "Tồn kho" (view "Theo mặt hàng") — tổng hợp theo (drug, warehouse), gộp mọi lô. */
-  async list(tenantId: string, query: ListStockBalancesQuery): Promise<ListStockBalancesResponse> {
+  async list(tenantId: string, branchId: string, query: ListStockBalancesQuery): Promise<ListStockBalancesResponse> {
     const { aggregated, drugById, warehouseById } = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const aggregated = await this.stockBalanceRepository.listAggregated(tx, tenantId, query.warehouseId);
+      const aggregated = await this.stockBalanceRepository.listAggregated(tx, tenantId, branchId, query.warehouseId);
       const drugs = await this.drugRepository.findByIds(tx, tenantId, [...new Set(aggregated.map((a) => a.drugId))]);
-      const warehouses = await this.warehouseRepository.list(tx, tenantId);
+      const warehouses = await this.warehouseRepository.list(tx, tenantId, [branchId]);
       return {
         aggregated,
         drugById: new Map(drugs.map((d) => [d.id, d])),
@@ -81,9 +81,9 @@ export class StockBalanceService {
   }
 
   /** "Tồn kho theo lô" (panel chi tiết thuốc) — 1 thuốc, mọi lô còn tồn. */
-  async getForDrug(tenantId: string, drugId: string, warehouseId?: string): Promise<GetDrugBatchBalancesResponse> {
+  async getForDrug(tenantId: string, branchId: string, drugId: string, warehouseId?: string): Promise<GetDrugBatchBalancesResponse> {
     const [rows, expiryWarningDays] = await Promise.all([
-      this.unitOfWork.runInTenantScope(tenantId, (tx) => this.inventoryBatchRepository.listWithBalanceForDrug(tx, tenantId, drugId, warehouseId)),
+      this.unitOfWork.runInTenantScope(tenantId, (tx) => this.inventoryBatchRepository.listWithBalanceForDrug(tx, tenantId, branchId, drugId, warehouseId)),
       this.clinicConfigReader.getExpiryWarningDays(tenantId),
     ]);
     const today = toVietnamDateParts(new Date());
@@ -108,13 +108,13 @@ export class StockBalanceService {
   /** "Cảnh báo hạn dùng" — mọi lô còn tồn, hạn dùng trong ngưỡng `expiryWarningDays` tới hoặc đã
    * hết hạn. Ngưỡng đọc theo tenant qua `ClinicConfigReaderPort` (`tenant_setting.expiry_warning_days`,
    * mặc định 30 — đọc/ghi qua `GET/PATCH /clinic-settings`). */
-  async listExpiryWarnings(tenantId: string, query: ListStockExpiryWarningsQuery): Promise<ListStockExpiryWarningsResponse> {
+  async listExpiryWarnings(tenantId: string, branchId: string, query: ListStockExpiryWarningsQuery): Promise<ListStockExpiryWarningsResponse> {
     const expiryWarningDays = await this.clinicConfigReader.getExpiryWarningDays(tenantId);
     const today = toVietnamDateParts(new Date());
     const thresholdMs = Date.UTC(today.year, today.month - 1, today.day) + expiryWarningDays * 24 * 60 * 60 * 1000;
     const threshold = new Date(thresholdMs);
 
-    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.inventoryBatchRepository.listExpiryWarnings(tx, tenantId, threshold, query.warehouseId));
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.inventoryBatchRepository.listExpiryWarnings(tx, tenantId, branchId, threshold, query.warehouseId));
     const todayMs = Date.UTC(today.year, today.month - 1, today.day);
 
     let expiringSoonCount = 0;
@@ -145,9 +145,9 @@ export class StockBalanceService {
    * `DrugPicker.tsx`/`PrescriptionPanel.tsx` hiện badge tồn kho lúc kê đơn. Dùng chung nguyên
    * `StockBalanceRepository.sumOnHandByDrugIds()` — cùng phép tính `EncounterService.signPrescription()`
    * đọc qua `StockAvailabilityPort` (khác lối vào, cùng một nguồn dữ liệu). */
-  async getOnHandSummary(tenantId: string, drugIds: string[]): Promise<GetStockOnHandSummaryResponse> {
+  async getOnHandSummary(tenantId: string, branchId: string, drugIds: string[]): Promise<GetStockOnHandSummaryResponse> {
     const uniqueIds = [...new Set(drugIds)];
-    const onHandByDrugId = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockBalanceRepository.sumOnHandByDrugIds(tx, tenantId, uniqueIds));
+    const onHandByDrugId = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockBalanceRepository.sumOnHandByDrugIds(tx, tenantId, branchId, uniqueIds));
     return { onHandByDrugId };
   }
 }

@@ -11,6 +11,7 @@ import {
   updateManualStockIssueRequestSchema,
   voidStockIssueRequestSchema,
 } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -36,7 +37,7 @@ export class StockIssueController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listStockIssuesQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.stockIssueService.list(tenantId, userId, req.dataScope!, dto);
+    return this.stockIssueService.list(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto);
   }
 
   @Get('issues/:id')
@@ -45,7 +46,7 @@ export class StockIssueController {
   @UseInterceptors(AuditViewInterceptor)
   async get(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.stockIssueService.getById(tenantId, userId, req.dataScope!, id);
+    return this.stockIssueService.getById(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
   }
 
   @Post('issues')
@@ -54,7 +55,7 @@ export class StockIssueController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createStockIssueRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockIssueService.create(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
+    return this.stockIssueService.create(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   @Post('issues/:id/void')
@@ -63,7 +64,7 @@ export class StockIssueController {
   async voidIssue(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = voidStockIssueRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockIssueService.voidIssue(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockIssueService.voidIssue(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   // ============ "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) — 3 loại Nháp→Duyệt lập tay
@@ -78,7 +79,7 @@ export class StockIssueController {
   async createManual(@Body() body: unknown, @Req() req: Request) {
     const dto = createManualStockIssueRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockIssueService.createManual(tenantId, userId, req.dataScope!, dto, extractRequestMeta(req));
+    return this.stockIssueService.createManual(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto, extractRequestMeta(req));
   }
 
   @Patch('issues/manual/:id')
@@ -86,7 +87,7 @@ export class StockIssueController {
   async updateManual(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateManualStockIssueRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockIssueService.updateManual(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockIssueService.updateManual(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post('issues/manual/:id/approve')
@@ -95,7 +96,7 @@ export class StockIssueController {
   async approveManual(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = approveStockIssueRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockIssueService.approveManual(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockIssueService.approveManual(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Post('issues/manual/:id/reject')
@@ -104,7 +105,7 @@ export class StockIssueController {
   async rejectManual(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = rejectStockIssueRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.stockIssueService.rejectManual(tenantId, userId, req.dataScope!, id, dto, extractRequestMeta(req));
+    return this.stockIssueService.rejectManual(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Get('prescriptions/:prescriptionId/dispense-status')
@@ -112,7 +113,7 @@ export class StockIssueController {
   async dispenseStatus(@Param('prescriptionId') prescriptionId: string, @Query() query: unknown, @Req() req: Request) {
     const dto = getPrescriptionDispenseStatusQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.stockIssueService.getDispenseStatus(tenantId, prescriptionId, dto.warehouseId);
+    return this.stockIssueService.getDispenseStatus(tenantId, requireBranchId(req.user!), prescriptionId, dto.warehouseId);
   }
 
   @Get('dispense-queue')
@@ -120,6 +121,6 @@ export class StockIssueController {
   async dispenseQueue(@Query() query: unknown, @Req() req: Request) {
     const dto = listDispenseQueueQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.stockIssueService.listDispenseQueue(tenantId, dto);
+    return this.stockIssueService.listDispenseQueue(tenantId, requireBranchId(req.user!), dto);
   }
 }

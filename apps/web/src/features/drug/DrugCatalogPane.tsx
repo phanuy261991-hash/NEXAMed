@@ -649,6 +649,7 @@ const LEDGER_REASON_LABEL: Record<string, string> = {
   RECEIPT_PURCHASE: 'Nhập nhà cung cấp',
   RECEIPT_OPENING_BALANCE: 'Nhập khởi tạo (Đầu kỳ)',
   RECEIPT_TRANSFER_IN: 'Nhập chuyển kho',
+  RECEIPT_TRANSFER_RETURN: 'Nhập hoàn trả về kho gửi',
   RECEIPT_RETURN_FROM_USE: 'Nhập hoàn trả',
   RECEIPT_COUNT_SURPLUS: 'Nhập cân bằng kiểm kê',
   RECEIPT_VOID: 'Đảo phiếu nhập (huỷ)',

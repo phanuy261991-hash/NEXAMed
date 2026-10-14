@@ -8,7 +8,7 @@ import type {
   PatientDetail,
   UpdatePatientRequest,
 } from '@nexamed/shared';
-import { ApiError, getAccessToken, getApiClient, resolveApiUrl, unwrap, uploadFile } from '../../shared/api/client';
+import { ApiError, getAccessToken, getApiClient, resolveApiUrl, unwrap } from '../../shared/api/client';
 
 export async function listPatients(params: {
   q?: string;
@@ -100,10 +100,3 @@ export async function findPatientsByNationalId(nationalId: string, excludePatien
   ) as PatientByNationalIdResponse;
 }
 
-/** Upload/thay ảnh đại diện (docs/DECISIONS.md #034) — multipart, xem shared/api/client.ts#uploadFile. */
-export async function uploadPatientPhoto(id: string, file: File, version: number): Promise<PatientDetail> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('version', String(version));
-  return uploadFile<PatientDetail>(`/api/v1/patients/${id}/photo`, formData);
-}

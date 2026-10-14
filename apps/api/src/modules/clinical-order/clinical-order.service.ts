@@ -148,7 +148,7 @@ export class ClinicalOrderService {
         })),
         ...createdPackages.map((p) => ({ sourceOrderPackageId: p.id, examTypeCode: p.packageCode, examTypeName: p.packageName, unitPrice: p.unitPrice, quantity: 1, lineTotal: p.unitPrice })),
       ];
-      if (newLines.length > 0) await this.attachInvoiceLines(tx, tenantId, actorId, encounterId, newLines);
+      if (newLines.length > 0) await this.attachInvoiceLines(tx, tenantId, branchId, actorId, encounterId, newLines);
 
       const bumped = await this.repository.bumpVersion(tx, tenantId, order.id, order.version, actorId);
       if (bumped === 0) throw new BadRequestException('Phiếu chỉ định vừa được cập nhật ở nơi khác — tải lại rồi lưu lại.');
@@ -367,9 +367,9 @@ export class ClinicalOrderService {
    * Gắn tiền vào hoá đơn (đúng khuôn tiền thuốc, #163): hoá đơn khám đang UNPAID → cộng vào đó; không thì hoá đơn `PARACLINICAL` UNPAID gần nhất; không
    * có nữa → tạo mới. Retry 1 lần khi version lệch, rơi sang tạo hoá đơn riêng nếu vẫn kẹt.
    */
-  private async attachInvoiceLines(tx: Prisma.TransactionClient, tenantId: string, actorId: string, encounterId: string, lines: InvoiceLineToCreate[]): Promise<void> {
+  private async attachInvoiceLines(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, encounterId: string, lines: InvoiceLineToCreate[]): Promise<void> {
     for (let attempt = 0; attempt < 2; attempt++) {
-      const service = await this.invoiceRepository.findByEncounterId(tx, tenantId, encounterId);
+      const service = await this.invoiceRepository.findByEncounterId(tx, tenantId, branchId, encounterId);
       const target = service && service.status === 'UNPAID' ? service : await this.invoiceRepository.findOpenParaclinicalInvoiceForEncounter(tx, tenantId, encounterId);
       if (!target) break;
       const count = await this.invoiceRepository.appendLines(tx, tenantId, target.id, target.version, actorId, lines);

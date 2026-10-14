@@ -8,6 +8,7 @@ import {
   updateCashVoucherRequestSchema,
   voidCashVoucherRequestSchema,
 } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -31,7 +32,7 @@ export class CashVoucherController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listCashVouchersQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.cashVoucherService.list(tenantId, dto);
+    return this.cashVoucherService.list(tenantId, requireBranchId(req.user!), dto);
   }
 
   @Get(':id')
@@ -40,7 +41,7 @@ export class CashVoucherController {
   @UseInterceptors(AuditViewInterceptor)
   async get(@Param('id') id: string, @Req() req: Request) {
     const { tenantId, userId } = req.user!;
-    return this.cashVoucherService.getById(tenantId, req.dataScope!, userId, id);
+    return this.cashVoucherService.getById(tenantId, requireBranchId(req.user!), req.dataScope!, userId, id);
   }
 
   @Post()
@@ -49,7 +50,7 @@ export class CashVoucherController {
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createCashVoucherRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashVoucherService.create(tenantId, userId, dto, extractRequestMeta(req));
+    return this.cashVoucherService.create(tenantId, requireBranchId(req.user!), userId, dto, extractRequestMeta(req));
   }
 
   @Patch(':id')
@@ -57,7 +58,7 @@ export class CashVoucherController {
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateCashVoucherRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashVoucherService.update(tenantId, req.dataScope!, userId, id, dto, extractRequestMeta(req));
+    return this.cashVoucherService.update(tenantId, requireBranchId(req.user!), req.dataScope!, userId, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/void')
@@ -66,7 +67,7 @@ export class CashVoucherController {
   async voidVoucher(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = voidCashVoucherRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashVoucherService.voidVoucher(tenantId, req.dataScope!, userId, id, dto, extractRequestMeta(req));
+    return this.cashVoucherService.voidVoucher(tenantId, requireBranchId(req.user!), req.dataScope!, userId, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/approve')
@@ -75,7 +76,7 @@ export class CashVoucherController {
   async approve(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = approveCashVoucherRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashVoucherService.approve(tenantId, userId, id, dto.version, extractRequestMeta(req));
+    return this.cashVoucherService.approve(tenantId, requireBranchId(req.user!), userId, id, dto.version, extractRequestMeta(req));
   }
 
   @Post(':id/reject')
@@ -84,7 +85,7 @@ export class CashVoucherController {
   async reject(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = rejectCashVoucherRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.cashVoucherService.reject(tenantId, userId, id, dto, extractRequestMeta(req));
+    return this.cashVoucherService.reject(tenantId, requireBranchId(req.user!), userId, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/print')
@@ -92,6 +93,6 @@ export class CashVoucherController {
   @HttpCode(200)
   async print(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.cashVoucherService.markPrinted(tenantId, req.dataScope!, userId, id, extractRequestMeta(req));
+    return this.cashVoucherService.markPrinted(tenantId, requireBranchId(req.user!), req.dataScope!, userId, id, extractRequestMeta(req));
   }
 }

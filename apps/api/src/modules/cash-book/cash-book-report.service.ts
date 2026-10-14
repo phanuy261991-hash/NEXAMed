@@ -80,12 +80,12 @@ export class CashBookReportService {
     );
   }
 
-  async getLedger(tenantId: string, cashAccountId: string, from?: string, to?: string): Promise<CashBookLedgerResponse> {
+  async getLedger(tenantId: string, branchId: string, cashAccountId: string, from?: string, to?: string): Promise<CashBookLedgerResponse> {
     const fromAt = from ? startOfDayVn(from) : undefined;
     const toAt = to ? endOfDayVn(to) : undefined;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const account = await this.cashAccountRepository.findById(tx, tenantId, cashAccountId);
+      const account = await this.cashAccountRepository.findById(tx, tenantId, branchId, cashAccountId);
       if (!account) {
         throw new NotFoundException();
       }
@@ -192,6 +192,7 @@ export class CashBookReportService {
    */
   async getVoucherExportData(
     tenantId: string,
+    branchId: string,
     query: ListCashVouchersQuery,
   ): Promise<{
     items: CashVoucher[];
@@ -201,9 +202,9 @@ export class CashBookReportService {
     accountNameById: Map<string, string>;
   }> {
     const [{ items, totalIncomeAmount, totalExpenseAmount }, incomeExpenseTypes, accounts] = await Promise.all([
-      this.cashVoucherService.list(tenantId, query),
+      this.cashVoucherService.list(tenantId, branchId, query),
       this.referenceCatalogReader.listByCategory(tenantId, 'INCOME_EXPENSE_TYPE'),
-      this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashAccountRepository.list(tx, tenantId)),
+      this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashAccountRepository.list(tx, tenantId, [branchId])),
     ]);
     return {
       items,
@@ -214,17 +215,21 @@ export class CashBookReportService {
     };
   }
 
-  async getCashFlowReport(tenantId: string, from: string, to: string): Promise<CashFlowReportResponse> {
+  /**
+   * Đợt 2 chi nhánh (docs/DECISIONS.md #233): nhận DANH SÁCH chi nhánh được đọc — Đợt 2 chỉ truyền `[chi nhánh đang làm]`; Đợt 3 (tổng hợp nhiều chi
+   * nhánh) chỉ cần truyền thêm các chi nhánh người xem được gán, không đổi truy vấn.
+   */
+  async getCashFlowReport(tenantId: string, branchIds: string[], from: string, to: string): Promise<CashFlowReportResponse> {
     const fromAt = startOfDayVn(from);
     const toAt = endOfDayVn(to);
     const afterToAt = new Date(toAt.getTime() + 1);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const [accounts, incomeExpenseTypes, paymentRows, voucherRows] = await Promise.all([
-        this.cashAccountRepository.list(tx, tenantId),
+        this.cashAccountRepository.list(tx, tenantId, branchIds),
         this.referenceCatalogReader.listByCategory(tenantId, 'INCOME_EXPENSE_TYPE'),
-        this.paymentRepository.listForReport(tx, tenantId, fromAt, toAt),
-        this.cashVoucherRepository.listPostedForReport(tx, tenantId, fromAt, toAt),
+        this.paymentRepository.listForReport(tx, tenantId, branchIds, fromAt, toAt),
+        this.cashVoucherRepository.listPostedForReport(tx, tenantId, branchIds, fromAt, toAt),
       ]);
       const typeLabelByCode = new Map(incomeExpenseTypes.map((t) => [t.code, t.name]));
 
