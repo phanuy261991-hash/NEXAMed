@@ -34791,6 +34791,149 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clinical-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Menu "Phiếu chỉ định" (#232) — sổ phiếu chỉ định cận lâm sàng của CHI NHÁNH đang làm việc theo nhóm (Xét nghiệm / CĐHA & Thăm dò chức năng / Chỉ định ra ngoài), khoảng ngày (mặc định hôm nay), tiến độ, bác sĩ, tìm kiếm; phân trang cursor */
+        get: {
+            parameters: {
+                query?: {
+                    group?: "LAB" | "IMAGING" | "EXTERNAL";
+                    dateFrom?: string;
+                    dateTo?: string;
+                    doctorId?: string;
+                    progress?: "WAITING" | "IN_PROGRESS" | "DONE" | "CANCELLED";
+                    q?: string;
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    orderId: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string | null;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientName: string;
+                                    patientCode: string;
+                                    patientDob: string;
+                                    patientGender: string;
+                                    patientPhone: string | null;
+                                    ageYears: number | null;
+                                    doctorName: string | null;
+                                    primaryDiagnosis: {
+                                        code: string;
+                                        name: string;
+                                    } | null;
+                                    orderedAt: string;
+                                    serviceNames: string[];
+                                    serviceCount: number;
+                                    progress: {
+                                        /** @enum {string} */
+                                        state: "WAITING" | "IN_PROGRESS" | "DONE" | "CANCELLED" | "EXTERNAL";
+                                        done: number;
+                                        total: number;
+                                    };
+                                    /** @enum {string} */
+                                    payment: "PAID" | "UNPAID" | "REFUNDED" | "NOT_CHARGED";
+                                }[];
+                                /** Format: uuid */
+                                nextCursor: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số sai định dạng */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_order.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chưa chọn chi nhánh làm việc (BRANCH_NOT_SELECTED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/encounters/{encounterId}/clinical-orders/print": {
         parameters: {
             query?: never;
@@ -35157,6 +35300,140 @@ export interface paths {
                 };
                 /** @description Không có quyền lab_result.read */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/lab/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Menu "Tra cứu kết quả" (#232) — kết quả ĐÃ DUYỆT của chi nhánh đang làm việc theo khoảng ngày duyệt (mặc định 7 ngày): xét nghiệm 1 dòng/phiếu kèm số chỉ số bất thường, CĐHA/thăm dò 1 dòng/dịch vụ; lọc trạng thái, chỉ bất thường, tìm kiếm; phân trang cursor */
+        get: {
+            parameters: {
+                query?: {
+                    dateFrom?: string;
+                    dateTo?: string;
+                    q?: string;
+                    status?: "APPROVED" | "AMENDED";
+                    abnormalOnly?: "true" | "false";
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    itemIds: string[];
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientName: string;
+                                    patientCode: string;
+                                    ageYears: number | null;
+                                    /** @enum {string|null} */
+                                    gender: "male" | "female" | "other" | null;
+                                    serviceNames: string[];
+                                    serviceCount: number;
+                                    signedAt: string;
+                                    signedByName: string | null;
+                                    /** @enum {string} */
+                                    status: "APPROVED" | "AMENDED";
+                                    /** @enum {string} */
+                                    summary: "ABNORMAL" | "NORMAL" | "HAS_CONCLUSION" | "NONE";
+                                    abnormalCount: number;
+                                }[];
+                                /** Format: uuid */
+                                nextCursor: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số sai định dạng */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_result.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chưa chọn chi nhánh làm việc (BRANCH_NOT_SELECTED) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -36480,6 +36757,140 @@ export interface paths {
                 };
                 /** @description Không có quyền imaging_result.read */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/paraclinical/imaging/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Menu "Tra cứu kết quả" (#232) — kết quả ĐÃ DUYỆT của chi nhánh đang làm việc theo khoảng ngày duyệt (mặc định 7 ngày): xét nghiệm 1 dòng/phiếu kèm số chỉ số bất thường, CĐHA/thăm dò 1 dòng/dịch vụ; lọc trạng thái, chỉ bất thường, tìm kiếm; phân trang cursor */
+        get: {
+            parameters: {
+                query?: {
+                    dateFrom?: string;
+                    dateTo?: string;
+                    q?: string;
+                    status?: "APPROVED" | "AMENDED";
+                    abnormalOnly?: "true" | "false";
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    key: string;
+                                    itemIds: string[];
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientName: string;
+                                    patientCode: string;
+                                    ageYears: number | null;
+                                    /** @enum {string|null} */
+                                    gender: "male" | "female" | "other" | null;
+                                    serviceNames: string[];
+                                    serviceCount: number;
+                                    signedAt: string;
+                                    signedByName: string | null;
+                                    /** @enum {string} */
+                                    status: "APPROVED" | "AMENDED";
+                                    /** @enum {string} */
+                                    summary: "ABNORMAL" | "NORMAL" | "HAS_CONCLUSION" | "NONE";
+                                    abnormalCount: number;
+                                }[];
+                                /** Format: uuid */
+                                nextCursor: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số sai định dạng */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền imaging_result.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chưa chọn chi nhánh làm việc (BRANCH_NOT_SELECTED) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };

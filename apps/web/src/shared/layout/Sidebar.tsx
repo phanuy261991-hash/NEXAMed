@@ -11,6 +11,7 @@ import {
   Export,
   FileText,
   Flask,
+  ListMagnifyingGlass,
   Scan,
   FolderSimple,
   GearSix,
@@ -238,7 +239,10 @@ export function Sidebar() {
   // "Cận lâm sàng" (GĐ4, tách 2 menu #215) — mỗi mục con gate theo ĐÚNG quyền của route của nó; không có quyền nhóm nào thì cả nhóm ẩn.
   const canSeeLabQueue = useHasPermission('lab_result', 'read');
   const canSeeImagingQueue = useHasPermission('imaging_result', 'read');
-  const canSeeParaclinical = canSeeLabQueue || canSeeImagingQueue;
+  // "Phiếu chỉ định" (#232) — gate theo `clinical_order.read` (kỹ thuật viên không có, họ dùng hàng đợi); "Tra cứu kết quả" — có quyền xem kết quả của ít nhất một nhóm.
+  const canSeeClinicalOrderBook = useHasPermission('clinical_order', 'read');
+  const canSeeResultLookup = canSeeLabQueue || canSeeImagingQueue;
+  const canSeeParaclinical = canSeeLabQueue || canSeeImagingQueue || canSeeClinicalOrderBook;
   // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — 2 mục "Công nợ nhà cung cấp"/
   // "Phiếu thanh toán NCC" trong nhóm "Quản lý nhà cung cấp", gate RIÊNG khỏi `canSeeCatalogPharmacy`
   // (mặc định CHỈ clinic_admin có `supplier_debt.read`, khác `drug.create`/`drug.update`).
@@ -454,6 +458,8 @@ export function Sidebar() {
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   {canSeeLabQueue && <NavItem to="/paraclinical/lab" label="Xét nghiệm" icon={Flask} collapsed={false} indent />}
                   {canSeeImagingQueue && <NavItem to="/paraclinical/imaging" label="CĐHA & Thăm dò CN" icon={Scan} collapsed={false} indent />}
+                  {canSeeClinicalOrderBook && <NavItem to="/paraclinical/orders" label="Phiếu chỉ định" icon={ClipboardText} collapsed={false} indent />}
+                  {canSeeResultLookup && <NavItem to="/paraclinical/results" label="Tra cứu kết quả" icon={ListMagnifyingGlass} collapsed={false} indent />}
                 </ul>
               )}
             </li>

@@ -1,10 +1,15 @@
-import type { GetClinicalOrderResponse, SaveClinicalOrderRequest } from '@nexamed/shared';
+import type { GetClinicalOrderResponse, ListClinicalOrdersQuery, ListClinicalOrdersResponse, SaveClinicalOrderRequest } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
 
 /** Cận lâm sàng GĐ3 — Chỉ định của bác sĩ (docs/DECISIONS.md #212). */
 
 export async function getClinicalOrder(encounterId: string): Promise<GetClinicalOrderResponse> {
   return unwrap(await getApiClient().GET('/api/v1/encounters/{encounterId}/clinical-orders', { params: { path: { encounterId } } })) as GetClinicalOrderResponse;
+}
+
+/** Menu "Phiếu chỉ định" (#232) — sổ phiếu chỉ định của chi nhánh đang làm việc, phân trang cursor. */
+export async function listClinicalOrders(query: ListClinicalOrdersQuery): Promise<ListClinicalOrdersResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/clinical-orders', { params: { query } })) as ListClinicalOrdersResponse;
 }
 
 export async function saveClinicalOrder(encounterId: string, body: SaveClinicalOrderRequest): Promise<GetClinicalOrderResponse> {

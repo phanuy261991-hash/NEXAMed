@@ -177,12 +177,15 @@ export class UserAccountRepository {
     tenantId: string,
     module: string,
     action: string,
+    /** Điều kiện bổ sung (vd lọc theo chi nhánh qua `userBranchWhere`). */
+    extraWhere: Prisma.UserAccountWhereInput = {},
   ): Promise<{ id: string; fullName: string; displayName: string | null }[]> {
     return tx.userAccount.findMany({
       where: {
         tenantId,
         deletedAt: null,
         isActive: true,
+        ...extraWhere,
         userRoles: {
           some: {
             tenantId,

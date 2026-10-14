@@ -11,6 +11,12 @@ export const ADMIN_ORG_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
   ['reference_catalog', 'manage'],
 ];
 
+/** "Tra cứu kết quả" (docs/DECISIONS.md #232) — có quyền xem kết quả của ÍT NHẤT MỘT nhóm (Xét nghiệm hoặc CĐHA & Thăm dò chức năng). Route guard (`router.tsx`) và menu (`Sidebar.tsx`) dùng chung. */
+export const PARACLINICAL_LOOKUP_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
+  ['lab_result', 'read'],
+  ['imaging_result', 'read'],
+];
+
 /** "Danh mục cận lâm sàng" (docs/DECISIONS.md #212) — thêm/sửa dịch vụ kỹ thuật + chỉ số xét nghiệm (`technical_service`), hoặc quản lý mẫu
  * kết quả (`result_template.manage`, bác sĩ cũng có). Dùng chung cho route guard (`router.tsx`) và ẩn/hiện menu (`Sidebar.tsx`). */
 export const PARACLINICAL_CATALOG_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [

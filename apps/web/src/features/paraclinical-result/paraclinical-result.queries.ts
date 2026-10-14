@@ -1,9 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AmendParaclinicalResultRequest, ListParaclinicalQueueQuery, SaveParaclinicalResultRequest, StartParaclinicalItemsRequest } from '@nexamed/shared';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { AmendParaclinicalResultRequest, ListParaclinicalLookupQuery, ListParaclinicalQueueQuery, SaveParaclinicalResultRequest, StartParaclinicalItemsRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import type { ParaclinicalGroup } from './paraclinical-group';
-import { amendParaclinicalResult, approveParaclinicalResult, cancelParaclinicalAmendment, deleteParaclinicalImage, getParaclinicalResult, listParaclinicalQueue, recordParaclinicalResultPrint, saveParaclinicalResult, startParaclinicalItems, uploadParaclinicalImage } from './paraclinical-result.api';
+import { amendParaclinicalResult, approveParaclinicalResult, cancelParaclinicalAmendment, deleteParaclinicalImage, getParaclinicalResult, listParaclinicalLookup, listParaclinicalQueue, recordParaclinicalResultPrint, saveParaclinicalResult, startParaclinicalItems, uploadParaclinicalImage } from './paraclinical-result.api';
 
 /** Cận lâm sàng GĐ4 — Hàng đợi & kết quả (docs/DECISIONS.md #212), tách 2 menu theo nhóm (#215). Cache key có `group` vì 2 nhóm là 2 hàng đợi độc lập. */
 
@@ -16,6 +16,21 @@ export function useParaclinicalQueueQuery(group: ParaclinicalGroup, params: List
     queryFn: () => listParaclinicalQueue(group, params),
     // Hàng đợi là màn "treo" ở quầy kỹ thuật — tự làm mới để thấy phiếu mới thu tiền/chỉ định, không bắt bấm F5.
     refetchInterval: QUEUE_REFRESH_MS,
+  });
+}
+
+const LOOKUP_PAGE_SIZE = 50;
+
+/** Menu "Tra cứu kết quả" (#232) — phân trang cursor, `keepPreviousData` để đổi bộ lọc không nháy về khung xương. Cache key có `group` (2 nhóm quyền riêng). */
+export function useParaclinicalLookupQuery(group: ParaclinicalGroup, params: Omit<ListParaclinicalLookupQuery, 'cursor' | 'limit'>, enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useInfiniteQuery({
+    queryKey: queryKey(tenantId, 'paraclinical', 'lookup', group, JSON.stringify(params)),
+    queryFn: ({ pageParam }: { pageParam: string | undefined }) => listParaclinicalLookup(group, { ...params, cursor: pageParam, limit: LOOKUP_PAGE_SIZE }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    placeholderData: keepPreviousData,
+    enabled,
   });
 }
 

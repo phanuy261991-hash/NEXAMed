@@ -1,6 +1,8 @@
 import type {
   AmendParaclinicalResultRequest,
   GetParaclinicalResultResponse,
+  ListParaclinicalLookupQuery,
+  ListParaclinicalLookupResponse,
   ListParaclinicalQueueQuery,
   ListParaclinicalQueueResponse,
   SaveParaclinicalResultRequest,
@@ -19,6 +21,15 @@ export async function listParaclinicalQueue(group: ParaclinicalGroup, query: Lis
   const client = getApiClient();
   const res = group === 'lab' ? await client.GET('/api/v1/paraclinical/lab/queue', { params: { query } }) : await client.GET('/api/v1/paraclinical/imaging/queue', { params: { query } });
   return unwrap(res) as ListParaclinicalQueueResponse;
+}
+
+/** Menu "Tra cứu kết quả" (#232) — kết quả ĐÃ DUYỆT của chi nhánh đang làm việc theo khoảng ngày, phân trang cursor. */
+export async function listParaclinicalLookup(group: ParaclinicalGroup, query: ListParaclinicalLookupQuery): Promise<ListParaclinicalLookupResponse> {
+  const client = getApiClient();
+  // Query string chỉ mang chuỗi: cờ `abnormalOnly` gửi dạng 'true'/'false' (API tự đổi lại thành boolean).
+  const wire = { ...query, abnormalOnly: query.abnormalOnly ? ('true' as const) : ('false' as const) };
+  const res = group === 'lab' ? await client.GET('/api/v1/paraclinical/lab/results', { params: { query: wire } }) : await client.GET('/api/v1/paraclinical/imaging/results', { params: { query: wire } });
+  return unwrap(res) as ListParaclinicalLookupResponse;
 }
 
 /** "Gọi vào phòng" — CHỈ CĐHA & Thăm dò chức năng. Xét nghiệm không còn `start`: lấy mẫu đi qua ống mẫu (`specimen-tube.api.ts`, docs/DECISIONS.md #220). */

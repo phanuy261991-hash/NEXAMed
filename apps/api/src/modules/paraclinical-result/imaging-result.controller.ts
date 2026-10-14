@@ -2,16 +2,18 @@ import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Pa
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import { PARACLINICAL_GROUP_KINDS, PARACLINICAL_GROUP_PERMISSION_MODULE } from '@nexamed/core';
-import { PARACLINICAL_IMAGE_MAX_BYTES, amendParaclinicalResultRequestSchema, listParaclinicalQueueQuerySchema, saveParaclinicalResultRequestSchema, startParaclinicalItemsRequestSchema } from '@nexamed/shared';
+import { PARACLINICAL_IMAGE_MAX_BYTES, amendParaclinicalResultRequestSchema, listParaclinicalLookupQuerySchema, listParaclinicalQueueQuerySchema, saveParaclinicalResultRequestSchema, startParaclinicalItemsRequestSchema } from '@nexamed/shared';
 import { AuditView } from '../../common/audit-view.decorator';
+import { requireBranchId } from '../../common/branch-context';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { ParaclinicalLookupService } from './paraclinical-lookup.service';
 import { ParaclinicalResultService, type ResultAccessScope } from './paraclinical-result.service';
 
-const scopeOf = (req: Request): ResultAccessScope => ({ dataScope: req.dataScope!, kinds: PARACLINICAL_GROUP_KINDS.imaging, permissionModule: PARACLINICAL_GROUP_PERMISSION_MODULE.imaging });
+const scopeOf = (req: Request): ResultAccessScope => ({ dataScope: req.dataScope!, kinds: PARACLINICAL_GROUP_KINDS.imaging, permissionModule: PARACLINICAL_GROUP_PERMISSION_MODULE.imaging, branchId: requireBranchId(req.user!) });
 
 /**
  * Menu "Chẩn đoán hình ảnh & Thăm dò chức năng" — hàng đợi, gọi vào phòng, nhập mô tả + kết luận, ảnh đính kèm, duyệt kết quả (docs/DECISIONS.md #212; tách 2 menu #215).
@@ -20,7 +22,17 @@ const scopeOf = (req: Request): ResultAccessScope => ({ dataScope: req.dataScope
 @Controller('paraclinical/imaging')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class ImagingResultController {
-  constructor(private readonly service: ParaclinicalResultService) {}
+  constructor(
+    private readonly service: ParaclinicalResultService,
+    private readonly lookupService: ParaclinicalLookupService,
+  ) {}
+
+  /** "Tra cứu kết quả" (docs/DECISIONS.md #232): kết quả ĐÃ DUYỆT của chi nhánh đang làm việc theo khoảng ngày — danh sách tóm tắt, không kèm nội dung. */
+  @Get('results')
+  @RequirePermission('imaging_result', 'read')
+  async lookup(@Query() query: unknown, @Req() req: Request) {
+    return this.lookupService.list(req.user!.tenantId, req.user!.userId, scopeOf(req), listParaclinicalLookupQuerySchema.parse(query));
+  }
 
   @Get('queue')
   @RequirePermission('imaging_result', 'read')

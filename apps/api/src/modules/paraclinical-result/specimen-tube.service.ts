@@ -157,7 +157,7 @@ export class SpecimenTubeService {
         if (tube.status !== 'PENDING') throw new SpecimenTubeInvalidStateError(`Ống ${tube.sid} không ở trạng thái chờ lấy mẫu.`);
         if (tube.items.length === 0) throw new SpecimenTubeInvalidStateError(`Ống ${tube.sid} không còn xét nghiệm nào.`);
         const itemIds = tube.items.map((i) => i.id);
-        const enriched = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, itemIds));
+        const enriched = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, scope.branchId, itemIds));
         this.assertEncounterOpen(enriched[0]!);
         for (const item of enriched) {
           if (item.status !== 'ORDERED') throw new ParaclinicalItemInvalidStateError(`"${item.row.name}" không ở trạng thái chờ lấy mẫu.`);
@@ -298,7 +298,7 @@ export class SpecimenTubeService {
 
   /** Các dòng xét nghiệm (LAB) còn hiệu lực của phiếu mà tài khoản được phép thấy; không còn dòng nào → 404 (không lộ sự tồn tại). */
   private async scopedLabItems(tx: Prisma.TransactionClient, tenantId: string, actorId: string, scope: ResultAccessScope, orderId: string): Promise<EnrichedItem[]> {
-    const all = enrich(await this.orderRepository.findQueueItemsByOrder(tx, tenantId, orderId)).filter((i) => i.serviceKind === 'LAB');
+    const all = enrich(await this.orderRepository.findQueueItemsByOrder(tx, tenantId, scope.branchId, orderId)).filter((i) => i.serviceKind === 'LAB');
     const departmentId = await this.resolveScopeDepartment(tx, tenantId, actorId, scope);
     const visible = departmentId === undefined ? all : all.filter((i) => departmentId !== null && i.row.technicalService?.departmentId === departmentId);
     if (visible.length === 0) throw new NotFoundException();

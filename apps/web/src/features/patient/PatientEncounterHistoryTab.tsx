@@ -9,6 +9,7 @@ import { Button } from '../../shared/ui/Button';
 import { ColumnVisibilityMenu, type ColumnVisibilityOption } from '../../shared/ui/ColumnVisibilityMenu';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { SegmentedToggle } from '../../shared/ui/SegmentedToggle';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { useAuthStore } from '../auth/auth.store';
@@ -180,24 +181,15 @@ export function PatientEncounterHistoryTab({ patientId, mergedIntoId }: { patien
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5" role="group" aria-label="Lọc trạng thái lượt khám">
-          {(
-            [
-              { id: 'COMPLETED', label: 'Đã hoàn tất', count: completedCount },
-              { id: 'ALL', label: 'Tất cả', count: totalCount },
-            ] as const
-          ).map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setFilter(f.id)}
-              aria-pressed={filter === f.id}
-              className={`rounded-md px-3.5 py-1.5 text-sm font-semibold ${filter === f.id ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-            >
-              {f.label} <span className="ml-1 tabular-nums opacity-80">{f.count}</span>
-            </button>
-          ))}
-        </div>
+        <SegmentedToggle
+          ariaLabel="Lọc trạng thái lượt khám"
+          value={filter}
+          onChange={setFilter}
+          items={[
+            { id: 'COMPLETED', label: 'Đã hoàn tất', count: completedCount },
+            { id: 'ALL', label: 'Tất cả', count: totalCount },
+          ]}
+        />
         <ColumnVisibilityMenu
           idPrefix="patient-history-col"
           options={allowedOptions}

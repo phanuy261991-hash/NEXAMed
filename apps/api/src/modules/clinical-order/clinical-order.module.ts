@@ -4,6 +4,8 @@ import { ClinicModule } from '../clinic/clinic.module';
 import { EncounterModule } from '../encounter/encounter.module';
 import { PricingModule } from '../pricing/pricing.module';
 import { TechnicalServiceModule } from '../technical-service/technical-service.module';
+import { ClinicalOrderBookController } from './clinical-order-book.controller';
+import { ClinicalOrderBookService } from './clinical-order-book.service';
 import { ClinicalOrderController } from './clinical-order.controller';
 import { ClinicalOrderRepository } from './clinical-order.repository';
 import { ClinicalOrderService } from './clinical-order.service';
@@ -15,8 +17,8 @@ import { ClinicalOrderService } from './clinical-order.service';
  */
 @Module({
   imports: [BillingModule, ClinicModule, EncounterModule, PricingModule, TechnicalServiceModule],
-  controllers: [ClinicalOrderController],
-  providers: [ClinicalOrderService, ClinicalOrderRepository],
+  controllers: [ClinicalOrderController, ClinicalOrderBookController],
+  providers: [ClinicalOrderService, ClinicalOrderBookService, ClinicalOrderRepository],
   exports: [ClinicalOrderRepository],
 })
 export class ClinicalOrderModule {}

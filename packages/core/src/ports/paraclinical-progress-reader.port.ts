@@ -23,7 +23,7 @@ export interface ParaclinicalProgressReaderPort {
   /** Chỉ trả các lượt khám có ít nhất 1 dịch vụ cận lâm sàng tại phòng khám; lượt không có thì không có khoá. */
   getProgressByEncounter(tenantId: string, encounterIds: string[]): Promise<Map<string, ParaclinicalProgress>>;
   /** Số bệnh nhân (lượt khám đang khám của bác sĩ) có kết quả mới chưa xem — chấm số ở menu "Hàng đợi khám". */
-  countEncountersWithUnseenResults(tenantId: string, doctorId: string): Promise<number>;
+  countEncountersWithUnseenResults(tenantId: string, branchId: string, doctorId: string): Promise<number>;
 }
 
 export const PARACLINICAL_PROGRESS_READER_PORT = Symbol('PARACLINICAL_PROGRESS_READER_PORT');

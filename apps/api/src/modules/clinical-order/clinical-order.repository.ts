@@ -80,6 +80,124 @@ const QUEUE_ITEM_INCLUDE = {
 
 export type QueueItemRow = Prisma.ClinicalOrderItemGetPayload<{ include: typeof QUEUE_ITEM_INCLUDE }>;
 
+export type OrderBookGroup = 'LAB' | 'IMAGING' | 'EXTERNAL';
+
+/** Điều kiện lọc DÒNG chỉ định thuộc một nhóm của sổ "Phiếu chỉ định" (docs/DECISIONS.md #232). */
+function bookGroupItemWhere(group: OrderBookGroup): Prisma.ClinicalOrderItemWhereInput {
+  switch (group) {
+    case 'LAB':
+      return { deletedAt: null, performance: 'IN_HOUSE', technicalService: { serviceKind: 'LAB' } };
+    case 'IMAGING':
+      return { deletedAt: null, performance: 'IN_HOUSE', technicalService: { serviceKind: { in: ['IMAGING', 'FUNCTIONAL'] } } };
+    case 'EXTERNAL':
+      return { deletedAt: null, performance: 'EXTERNAL' };
+  }
+}
+
+/** Điều kiện tiến độ ở mức phiếu (khớp `deriveOrderRowProgress` ở packages/core): mọi điều kiện phải cùng đúng. */
+function bookProgressConditions(group: OrderBookGroup, progress: 'WAITING' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED'): Prisma.ClinicalOrderWhereInput[] {
+  const g = bookGroupItemWhere(group);
+  const some = (status: Prisma.ClinicalOrderItemWhereInput['status']): Prisma.ClinicalOrderWhereInput => ({ items: { some: { ...g, status } } });
+  const none = (status: Prisma.ClinicalOrderItemWhereInput['status']): Prisma.ClinicalOrderWhereInput => ({ items: { none: { ...g, status } } });
+  switch (progress) {
+    case 'WAITING':
+      return [none({ in: ['IN_PROGRESS', 'RESULTED', 'COMPLETED'] }), some('ORDERED')];
+    case 'IN_PROGRESS':
+      return [some({ in: ['IN_PROGRESS', 'RESULTED', 'COMPLETED'] }), some({ in: ['ORDERED', 'IN_PROGRESS', 'RESULTED'] })];
+    case 'DONE':
+      return [some('COMPLETED'), none({ in: ['ORDERED', 'IN_PROGRESS', 'RESULTED'] })];
+    case 'CANCELLED':
+      return [none({ not: 'CANCELLED' })];
+  }
+}
+
+const BOOK_ORDER_INCLUDE = (group: OrderBookGroup) =>
+  ({
+    encounter: {
+      select: {
+        id: true,
+        encounterNo: true,
+        doctorId: true,
+        patient: { select: { id: true, fullName: true, patientCode: true, dob: true, gender: true, phone: true } },
+      },
+    },
+    items: {
+      where: bookGroupItemWhere(group),
+      orderBy: [{ sortOrder: 'asc' as const }, { createdAt: 'asc' as const }],
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        clinicalOrderPackageId: true,
+        invoiceLines: INVOICE_STATUS_SELECT,
+        package: { select: { invoiceLines: INVOICE_STATUS_SELECT } },
+      },
+    },
+  }) satisfies Prisma.ClinicalOrderInclude;
+
+export type OrderBookRow = Prisma.ClinicalOrderGetPayload<{ include: ReturnType<typeof BOOK_ORDER_INCLUDE> }>;
+
+/** Điều kiện lọc của "Tra cứu kết quả" (docs/DECISIONS.md #232). */
+export interface LookupFilter {
+  kinds: readonly ('LAB' | 'IMAGING' | 'FUNCTIONAL')[];
+  /** Mốc duyệt kết quả: `[from, to]` gồm cả hai đầu. */
+  from: Date;
+  to: Date;
+  /** `AMENDED` = bản đính chính (`supersedes_id` có giá trị); `APPROVED` = bản duyệt lần đầu. */
+  status?: 'APPROVED' | 'AMENDED';
+  /** Chỉ dịch vụ do Khoa/Phòng này thực hiện (scope `department`). */
+  departmentId?: string;
+  search?: { raw: string; normalized: string };
+  cursor?: string;
+  /** Số PHIẾU tối đa mỗi lần lấy (lấy thêm 1 để biết còn trang sau). */
+  limit: number;
+}
+
+function lookupItemWhere(f: LookupFilter): Prisma.ClinicalOrderItemWhereInput {
+  return {
+    deletedAt: null,
+    performance: 'IN_HOUSE',
+    status: 'COMPLETED',
+    technicalService: { serviceKind: { in: [...f.kinds] }, ...(f.departmentId ? { departmentId: f.departmentId } : {}) },
+    results: {
+      some: {
+        deletedAt: null,
+        signedAt: { gte: f.from, lte: f.to },
+        ...(f.status === 'AMENDED' ? { supersedesId: { not: null } } : f.status === 'APPROVED' ? { supersedesId: null } : {}),
+      },
+    },
+  };
+}
+
+const LOOKUP_ORDER_INCLUDE = (itemWhere: Prisma.ClinicalOrderItemWhereInput) =>
+  ({
+    encounter: { select: { id: true, patient: { select: { id: true, fullName: true, patientCode: true, dob: true, gender: true } } } },
+    items: {
+      where: itemWhere,
+      orderBy: [{ sortOrder: 'asc' as const }, { createdAt: 'asc' as const }],
+      select: {
+        id: true,
+        name: true,
+        clinicalOrderPackageId: true,
+        invoiceLines: INVOICE_STATUS_SELECT,
+        package: { select: { invoiceLines: INVOICE_STATUS_SELECT } },
+        technicalService: { select: { serviceKind: true } },
+        results: {
+          where: { deletedAt: null, signedAt: { not: null } },
+          select: {
+            signedAt: true,
+            signedBy: true,
+            supersedesId: true,
+            conclusionText: true,
+            values: { where: { deletedAt: null }, select: { valueType: true, valueText: true, referenceSnapshot: true } },
+          },
+        },
+      },
+    },
+  }) satisfies Prisma.ClinicalOrderInclude;
+
+export type LookupOrderRow = Prisma.ClinicalOrderGetPayload<{ include: ReturnType<typeof LOOKUP_ORDER_INCLUDE> }>;
+
 /** Chỗ DUY NHẤT gọi Prisma cho `clinical_order` + `clinical_order_item` + `clinical_order_package` (Cận lâm sàng GĐ3, docs/DECISIONS.md #212). */
 @Injectable()
 export class ClinicalOrderRepository {
@@ -132,7 +250,7 @@ export class ClinicalOrderRepository {
    * (dòng hoá đơn của chính dòng lẻ hoặc của gói chứa nó). Dòng chưa xong lấy hết mọi ngày (việc tồn đọng vẫn phải thấy); dòng `COMPLETED` chỉ lấy khi đã duyệt
    * trong khoảng `completedRange`.
    */
-  listQueueItems(tx: Prisma.TransactionClient, tenantId: string, completedRange: { from: Date; to: Date }): Promise<QueueItemRow[]> {
+  listQueueItems(tx: Prisma.TransactionClient, tenantId: string, branchId: string, completedRange: { from: Date; to: Date }): Promise<QueueItemRow[]> {
     return tx.clinicalOrderItem.findMany({
       where: {
         tenantId,
@@ -140,7 +258,8 @@ export class ClinicalOrderRepository {
         performance: 'IN_HOUSE',
         technicalServiceId: { not: null },
         status: { not: 'CANCELLED' },
-        order: { deletedAt: null, encounter: { status: { not: 'CANCELLED' } } },
+        // Chi nhánh (docs/DECISIONS.md #231): hàng đợi chỉ gồm lượt khám của chi nhánh đang làm việc.
+        order: { deletedAt: null, encounter: { status: { not: 'CANCELLED' }, branchId } },
         OR: [
           { status: { not: 'COMPLETED' } },
           { status: 'COMPLETED', results: { some: { deletedAt: null, signedAt: { gte: completedRange.from, lt: completedRange.to } } } },
@@ -151,19 +270,19 @@ export class ClinicalOrderRepository {
     });
   }
 
-  findQueueItemsByIds(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<QueueItemRow[]> {
+  findQueueItemsByIds(tx: Prisma.TransactionClient, tenantId: string, branchId: string, ids: string[]): Promise<QueueItemRow[]> {
     if (ids.length === 0) return Promise.resolve([]);
     return tx.clinicalOrderItem.findMany({
-      where: { tenantId, id: { in: ids }, deletedAt: null, order: { deletedAt: null } },
+      where: { tenantId, id: { in: ids }, deletedAt: null, order: { deletedAt: null, encounter: { branchId } } },
       include: QUEUE_ITEM_INCLUDE,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
   }
 
   /** Các dòng chỉ định tại phòng khám CÙNG PHIẾU (dùng gom xét nghiệm cùng nhóm lúc mở màn nhập kết quả). */
-  findQueueItemsByOrder(tx: Prisma.TransactionClient, tenantId: string, clinicalOrderId: string): Promise<QueueItemRow[]> {
+  findQueueItemsByOrder(tx: Prisma.TransactionClient, tenantId: string, branchId: string, clinicalOrderId: string): Promise<QueueItemRow[]> {
     return tx.clinicalOrderItem.findMany({
-      where: { tenantId, clinicalOrderId, deletedAt: null, performance: 'IN_HOUSE', technicalServiceId: { not: null }, status: { not: 'CANCELLED' } },
+      where: { tenantId, clinicalOrderId, deletedAt: null, performance: 'IN_HOUSE', technicalServiceId: { not: null }, status: { not: 'CANCELLED' }, order: { encounter: { branchId } } },
       include: QUEUE_ITEM_INCLUDE,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
@@ -274,7 +393,7 @@ export class ClinicalOrderRepository {
   }
 
   /** Số lượt khám ĐANG KHÁM của bác sĩ có ít nhất 1 kết quả mới chưa xem. */
-  async countEncountersWithUnseenResults(tx: Prisma.TransactionClient, tenantId: string, doctorId: string): Promise<number> {
+  async countEncountersWithUnseenResults(tx: Prisma.TransactionClient, tenantId: string, branchId: string, doctorId: string): Promise<number> {
     const rows = await tx.clinicalOrderItem.findMany({
       where: {
         tenantId,
@@ -283,7 +402,7 @@ export class ClinicalOrderRepository {
         performance: 'IN_HOUSE',
         status: 'COMPLETED',
         doctorSeenAt: null,
-        order: { deletedAt: null, encounter: { doctorId, status: 'IN_CONSULTATION', deletedAt: null } },
+        order: { deletedAt: null, encounter: { doctorId, branchId, status: 'IN_CONSULTATION', deletedAt: null } },
       },
       select: { order: { select: { encounterId: true } } },
     });
@@ -297,5 +416,76 @@ export class ClinicalOrderRepository {
       data: { doctorSeenAt: new Date(), updatedBy: actorId, version: { increment: 1 } },
     });
     return r.count;
+  }
+  // ---- Menu "Phiếu chỉ định" (docs/DECISIONS.md #232) ----
+
+  /**
+   * Sổ phiếu chỉ định theo nhóm dịch vụ: phiếu có ÍT NHẤT 1 dòng thuộc nhóm, của lượt khám ở chi nhánh `branchId` (chi nhánh khác không bao giờ xuất hiện), tạo trong
+   * khoảng `[from, to)`. Mới nhất trước (`createdAt desc, id desc`), phân trang cursor theo id phiếu. Trả tối đa `limit + 1` dòng để biết còn trang sau.
+   */
+  listForBook(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    branchId: string,
+    f: {
+      group: OrderBookGroup;
+      from: Date;
+      to: Date;
+      doctorId?: string;
+      progress?: 'WAITING' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+      /** Từ khoá thô (đã trim) + bản không dấu viết thường để so với `patient.search_key`. */
+      search?: { raw: string; normalized: string };
+      cursor?: string;
+      limit: number;
+    },
+  ): Promise<OrderBookRow[]> {
+    const and: Prisma.ClinicalOrderWhereInput[] = [{ items: { some: bookGroupItemWhere(f.group) } }];
+    if (f.progress && f.group !== 'EXTERNAL') and.push(...bookProgressConditions(f.group, f.progress));
+    if (f.search) {
+      and.push({
+        OR: [
+          { orderNo: { contains: f.search.raw, mode: 'insensitive' } },
+          { encounter: { patient: { OR: [{ searchKey: { contains: f.search.normalized } }, { patientCode: { contains: f.search.raw, mode: 'insensitive' } }] } } },
+        ],
+      });
+    }
+    return tx.clinicalOrder.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        createdAt: { gte: f.from, lt: f.to },
+        encounter: { branchId, deletedAt: null, ...(f.doctorId ? { doctorId: f.doctorId } : {}) },
+        AND: and,
+      },
+      include: BOOK_ORDER_INCLUDE(f.group),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: f.limit + 1,
+      ...(f.cursor ? { cursor: { id: f.cursor }, skip: 1 } : {}),
+    });
+  }
+  // ---- Menu "Tra cứu kết quả" (docs/DECISIONS.md #232) ----
+
+  /**
+   * Phiếu có ít nhất 1 dịch vụ thuộc nhóm đã được DUYỆT kết quả trong khoảng, của lượt khám ở chi nhánh `branchId` (chi nhánh khác không bao giờ xuất hiện). Mới nhất trước
+   * theo thời điểm chỉ định (`createdAt desc, id desc`), phân trang cursor theo id phiếu. Trả tối đa `limit + 1` phiếu, mỗi phiếu kèm các dịch vụ đủ điều kiện.
+   */
+  listForLookup(tx: Prisma.TransactionClient, tenantId: string, branchId: string, f: LookupFilter): Promise<LookupOrderRow[]> {
+    const itemWhere = lookupItemWhere(f);
+    const and: Prisma.ClinicalOrderWhereInput[] = [{ items: { some: itemWhere } }];
+    if (f.search) {
+      and.push({
+        OR: [
+          { orderNo: { contains: f.search.raw, mode: 'insensitive' } },
+          { encounter: { patient: { OR: [{ searchKey: { contains: f.search.normalized } }, { patientCode: { contains: f.search.raw, mode: 'insensitive' } }] } } },
+        ],
+      });
+    }
+    return tx.clinicalOrder.findMany({
+      where: { tenantId, deletedAt: null, encounter: { branchId, deletedAt: null }, AND: and },
+      include: LOOKUP_ORDER_INCLUDE(itemWhere),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: f.limit + 1,
+      ...(f.cursor ? { cursor: { id: f.cursor }, skip: 1 } : {}),
+    });
   }
 }

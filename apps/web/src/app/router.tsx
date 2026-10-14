@@ -4,7 +4,7 @@ import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { RequireAnyPermissionRoute, RequireDoctorQueueRoute, RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS, PRICE_LIST_ADMIN_PERMISSIONS, SYSTEM_CONFIG_PERMISSIONS } from '../features/auth/admin-permissions';
+import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, PARACLINICAL_LOOKUP_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS, PRICE_LIST_ADMIN_PERMISSIONS, SYSTEM_CONFIG_PERMISSIONS } from '../features/auth/admin-permissions';
 import { ChooseBranchPage } from '../features/branch/ChooseBranchPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { AppShell } from '../shared/layout/AppShell';
@@ -67,6 +67,9 @@ const EncounterConsultationPage = lazy(() =>
 );
 // Cận lâm sàng GĐ4 đợt 1 — Hàng đợi + nhập/duyệt kết quả (docs/DECISIONS.md #212).
 const ParaclinicalQueuePage = lazy(() => import('../features/paraclinical-result/ParaclinicalQueuePage').then((m) => ({ default: m.ParaclinicalQueuePage })));
+// Cận lâm sàng — 2 menu tra cứu (docs/DECISIONS.md #232): "Phiếu chỉ định" (sổ phiếu theo nhóm) và "Tra cứu kết quả" (kết quả đã duyệt, xem + in lại).
+const ClinicalOrderBookPage = lazy(() => import('../features/clinical-order/ClinicalOrderBookPage').then((m) => ({ default: m.ClinicalOrderBookPage })));
+const ParaclinicalResultLookupPage = lazy(() => import('../features/paraclinical-result/ParaclinicalResultLookupPage').then((m) => ({ default: m.ParaclinicalResultLookupPage })));
 const ParaclinicalResultPage = lazy(() => import('../features/paraclinical-result/ParaclinicalResultPage').then((m) => ({ default: m.ParaclinicalResultPage })));
 // Thu ngân cơ bản (Sprint 5/6, BIL-01→04).
 const InvoiceListPage = lazy(() => import('../features/billing/InvoiceListPage').then((m) => ({ default: m.InvoiceListPage })));
@@ -173,6 +176,8 @@ export const router = createBrowserRouter([
       { path: 'paraclinical/lab', element: <RequirePermissionRoute module="lab_result" action="read"><ParaclinicalQueuePage key="lab" group="lab" /></RequirePermissionRoute> },
       { path: 'paraclinical/lab/items/:itemId', element: <RequirePermissionRoute module="lab_result" action="read"><ParaclinicalResultPage key="lab" group="lab" /></RequirePermissionRoute> },
       { path: 'paraclinical/imaging', element: <RequirePermissionRoute module="imaging_result" action="read"><ParaclinicalQueuePage key="imaging" group="imaging" /></RequirePermissionRoute> },
+      { path: 'paraclinical/orders', element: <RequirePermissionRoute module="clinical_order" action="read"><ClinicalOrderBookPage /></RequirePermissionRoute> },
+      { path: 'paraclinical/results', element: <RequireAnyPermissionRoute permissions={PARACLINICAL_LOOKUP_PERMISSIONS}><ParaclinicalResultLookupPage /></RequireAnyPermissionRoute> },
       { path: 'paraclinical/imaging/items/:itemId', element: <RequirePermissionRoute module="imaging_result" action="read"><ParaclinicalResultPage key="imaging" group="imaging" /></RequirePermissionRoute> },
       // Thu ngân cơ bản (Sprint 5/6) — không có mục sidebar riêng cho chi tiết (cùng cách
       // patient/appointment/encounter detail không có mục sidebar riêng).

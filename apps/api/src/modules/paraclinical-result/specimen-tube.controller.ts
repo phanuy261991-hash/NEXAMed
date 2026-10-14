@@ -9,6 +9,7 @@ import {
   splitSpecimenTubeRequestSchema,
   uncollectSpecimenTubesRequestSchema,
 } from '@nexamed/shared';
+import { requireBranchId } from '../../common/branch-context';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -16,7 +17,7 @@ import { extractRequestMeta } from '../../common/request-meta';
 import type { ResultAccessScope } from './paraclinical-result.service';
 import { SpecimenTubeService } from './specimen-tube.service';
 
-const scopeOf = (req: Request): ResultAccessScope => ({ dataScope: req.dataScope!, kinds: PARACLINICAL_GROUP_KINDS.lab, permissionModule: PARACLINICAL_GROUP_PERMISSION_MODULE.lab });
+const scopeOf = (req: Request): ResultAccessScope => ({ dataScope: req.dataScope!, kinds: PARACLINICAL_GROUP_KINDS.lab, permissionModule: PARACLINICAL_GROUP_PERMISSION_MODULE.lab, branchId: requireBranchId(req.user!) });
 
 /**
  * Lấy mẫu xét nghiệm có ống mẫu, mã ống (SID) và tem mã vạch (docs/DECISIONS.md #220) — cùng menu "Xét nghiệm" nên cùng quyền `lab_result.*` (`enter` cho mọi thao tác ghi, `read` để tra mã ống).

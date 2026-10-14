@@ -52,7 +52,7 @@ export class ReceptionController {
   @RequirePermission('encounter', 'read')
   async doctorUnseenResults(@Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.receptionService.countDoctorUnseenResults(tenantId, userId);
+    return this.receptionService.countDoctorUnseenResults(tenantId, requireBranchId(req.user!), userId);
   }
 
   /** "Xuất Excel" — LUÔN toàn bộ trong ngày (bỏ qua tab/tìm kiếm đang chọn), cùng quyền `encounter.read`

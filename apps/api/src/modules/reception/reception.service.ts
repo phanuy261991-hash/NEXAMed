@@ -523,8 +523,8 @@ export class ReceptionService {
   }
 
   /** Chấm số ở menu "Hàng đợi khám" (#221) — số bệnh nhân đang khám của CHÍNH bác sĩ có kết quả cận lâm sàng mới chưa xem. */
-  async countDoctorUnseenResults(tenantId: string, actorId: string): Promise<{ patientCount: number }> {
-    return { patientCount: await this.paraclinicalProgress.countEncountersWithUnseenResults(tenantId, actorId) };
+  async countDoctorUnseenResults(tenantId: string, branchId: string, actorId: string): Promise<{ patientCount: number }> {
+    return { patientCount: await this.paraclinicalProgress.countEncountersWithUnseenResults(tenantId, branchId, actorId) };
   }
 
   /**

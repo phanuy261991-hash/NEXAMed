@@ -375,6 +375,10 @@ import {
   itemsByGroupsRequestSchema,
   listPriceableGroupsResponseSchema,
   amendParaclinicalResultRequestSchema,
+  listClinicalOrdersQuerySchema,
+  listClinicalOrdersResponseSchema,
+  listParaclinicalLookupQuerySchema,
+  listParaclinicalLookupResponseSchema,
   listParaclinicalQueueQuerySchema,
   listParaclinicalQueueResponseSchema,
   saveParaclinicalResultRequestSchema,
@@ -5083,6 +5087,23 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinical-orders',
+  tags: ['clinical-order'],
+  summary:
+    'Menu "Phiếu chỉ định" (#232) — sổ phiếu chỉ định cận lâm sàng của CHI NHÁNH đang làm việc theo nhóm (Xét nghiệm / CĐHA & Thăm dò chức năng / Chỉ định ra ngoài), khoảng ngày (mặc định hôm nay), tiến độ, bác sĩ, tìm kiếm; phân trang cursor',
+  security: [{ bearerAuth: [] }],
+  request: { query: listClinicalOrdersQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listClinicalOrdersResponseSchema)),
+    400: errorResponse('Tham số sai định dạng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinical_order.read'),
+    409: errorResponse('Chưa chọn chi nhánh làm việc (BRANCH_NOT_SELECTED)'),
+  },
+});
+
+registry.registerPath({
   method: 'put',
   path: '/api/v1/encounters/{encounterId}/clinical-orders',
   tags: ['clinical-order'],
@@ -5169,6 +5190,23 @@ for (const g of paraclinicalOpenApiGroups) {
       400: errorResponse('Tham số sai định dạng'),
       401: errorResponse('Thiếu hoặc sai access token'),
       403: errorResponse(`Không có quyền ${g.module}.read`),
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/paraclinical/${g.key}/results`,
+    tags: ['paraclinical-result'],
+    summary:
+      'Menu "Tra cứu kết quả" (#232) — kết quả ĐÃ DUYỆT của chi nhánh đang làm việc theo khoảng ngày duyệt (mặc định 7 ngày): xét nghiệm 1 dòng/phiếu kèm số chỉ số bất thường, CĐHA/thăm dò 1 dòng/dịch vụ; lọc trạng thái, chỉ bất thường, tìm kiếm; phân trang cursor',
+    security: [{ bearerAuth: [] }],
+    request: { query: listParaclinicalLookupQuerySchema },
+    responses: {
+      200: jsonResponse('Thành công', envelope(listParaclinicalLookupResponseSchema)),
+      400: errorResponse('Tham số sai định dạng'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.read`),
+      409: errorResponse('Chưa chọn chi nhánh làm việc (BRANCH_NOT_SELECTED)'),
     },
   });
 

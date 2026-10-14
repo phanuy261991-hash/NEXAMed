@@ -5,6 +5,7 @@ import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.m
 import { TechnicalServiceModule } from '../technical-service/technical-service.module';
 import { ImagingResultController } from './imaging-result.controller';
 import { LabResultController } from './lab-result.controller';
+import { ParaclinicalLookupService } from './paraclinical-lookup.service';
 import { ParaclinicalResultRepository } from './paraclinical-result.repository';
 import { ParaclinicalResultService } from './paraclinical-result.service';
 import { SpecimenTubeController } from './specimen-tube.controller';
@@ -19,7 +20,7 @@ import { SpecimenTubeService } from './specimen-tube.service';
 @Module({
   imports: [ClinicModule, ClinicalOrderModule, ReferenceCatalogModule, TechnicalServiceModule],
   controllers: [LabResultController, ImagingResultController, SpecimenTubeController],
-  providers: [ParaclinicalResultService, ParaclinicalResultRepository, SpecimenTubeService, SpecimenTubeRepository],
+  providers: [ParaclinicalResultService, ParaclinicalLookupService, ParaclinicalResultRepository, SpecimenTubeService, SpecimenTubeRepository],
   exports: [ParaclinicalResultRepository],
 })
 export class ParaclinicalResultModule {}

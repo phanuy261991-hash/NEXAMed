@@ -1,16 +1,18 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
 import { PARACLINICAL_GROUP_KINDS, PARACLINICAL_GROUP_PERMISSION_MODULE } from '@nexamed/core';
-import { amendParaclinicalResultRequestSchema, listParaclinicalQueueQuerySchema, saveParaclinicalResultRequestSchema } from '@nexamed/shared';
+import { amendParaclinicalResultRequestSchema, listParaclinicalLookupQuerySchema, listParaclinicalQueueQuerySchema, saveParaclinicalResultRequestSchema } from '@nexamed/shared';
 import { AuditView } from '../../common/audit-view.decorator';
+import { requireBranchId } from '../../common/branch-context';
 import { AuditViewInterceptor } from '../../common/audit-view.interceptor';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { ParaclinicalLookupService } from './paraclinical-lookup.service';
 import { ParaclinicalResultService, type ResultAccessScope } from './paraclinical-result.service';
 
-const scopeOf = (req: Request): ResultAccessScope => ({ dataScope: req.dataScope!, kinds: PARACLINICAL_GROUP_KINDS.lab, permissionModule: PARACLINICAL_GROUP_PERMISSION_MODULE.lab });
+const scopeOf = (req: Request): ResultAccessScope => ({ dataScope: req.dataScope!, kinds: PARACLINICAL_GROUP_KINDS.lab, permissionModule: PARACLINICAL_GROUP_PERMISSION_MODULE.lab, branchId: requireBranchId(req.user!) });
 
 /**
  * Menu "Xét nghiệm" — hàng đợi, lấy mẫu, nhập + duyệt kết quả xét nghiệm (Cận lâm sàng GĐ4, docs/DECISIONS.md #212; tách 2 menu #215). Quyền `lab_result.*`, chỉ phục vụ dịch vụ loại LAB.
@@ -20,7 +22,17 @@ const scopeOf = (req: Request): ResultAccessScope => ({ dataScope: req.dataScope
 @Controller('paraclinical/lab')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class LabResultController {
-  constructor(private readonly service: ParaclinicalResultService) {}
+  constructor(
+    private readonly service: ParaclinicalResultService,
+    private readonly lookupService: ParaclinicalLookupService,
+  ) {}
+
+  /** "Tra cứu kết quả" (docs/DECISIONS.md #232): kết quả ĐÃ DUYỆT của chi nhánh đang làm việc theo khoảng ngày — danh sách tóm tắt, không kèm nội dung chỉ số. */
+  @Get('results')
+  @RequirePermission('lab_result', 'read')
+  async lookup(@Query() query: unknown, @Req() req: Request) {
+    return this.lookupService.list(req.user!.tenantId, req.user!.userId, scopeOf(req), listParaclinicalLookupQuerySchema.parse(query));
+  }
 
   @Get('queue')
   @RequirePermission('lab_result', 'read')

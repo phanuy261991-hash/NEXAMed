@@ -22,7 +22,7 @@ export class ParaclinicalProgressReaderAdapter implements ParaclinicalProgressRe
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.orderRepository.resultCountsByEncounterIds(tx, tenantId, encounterIds));
   }
 
-  countEncountersWithUnseenResults(tenantId: string, doctorId: string): Promise<number> {
-    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.orderRepository.countEncountersWithUnseenResults(tx, tenantId, doctorId));
+  countEncountersWithUnseenResults(tenantId: string, branchId: string, doctorId: string): Promise<number> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.orderRepository.countEncountersWithUnseenResults(tx, tenantId, branchId, doctorId));
   }
 }

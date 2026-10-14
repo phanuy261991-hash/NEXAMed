@@ -2,6 +2,12 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-14
+
+### Hai menu mới: "Phiếu chỉ định" và "Tra cứu kết quả" (Cận lâm sàng) + trang "Không có quyền xem nội dung này" (`docs/DECISIONS.md` #232)
+
+**Phiếu chỉ định**: sổ mọi phiếu bác sĩ đã chỉ định theo ngày (mặc định hôm nay), chia 3 tab — Xét nghiệm / CĐHA & Thăm dò chức năng / Chỉ định ra ngoài; lọc theo khoảng ngày, bác sĩ, tiến độ (Chờ / Đang thực hiện / Đã có kết quả / Đã huỷ), tìm theo tên, mã bệnh nhân, mã phiếu; mở chi tiết phiếu (dịch vụ, nơi thực hiện, đơn giá, hoá đơn, tổng tiền) và in lại. **Tra cứu kết quả**: kết quả đã duyệt theo khoảng ngày (mặc định 7 ngày), tab theo quyền, lọc trạng thái (Đã duyệt / Đã đính chính), "chỉ kết quả có chỉ số bất thường", xem và in lại. Lễ tân chỉ xem danh sách và in (không mở nội dung kết quả); chẩn đoán trên phiếu chỉ định ẩn với tài khoản không có quyền xem lâm sàng. Cả hai theo chi nhánh đang làm việc. **Sửa lỗi lộ dữ liệu giữa chi nhánh**: hàng đợi, lấy mẫu, nhập/duyệt/in kết quả cận lâm sàng và chấm số "kết quả mới" của bác sĩ nay chỉ thấy lượt khám của chi nhánh đang làm việc (trước đây lẫn giữa các chi nhánh). Mở nội dung của chi nhánh khác hoặc không đủ quyền hiện trang "Không có quyền xem nội dung này" có nút "Quay lại trang trước" thay trang trống/404. Bảng Lịch sử khám ở hồ sơ bệnh nhân: mặc định đúng 8 cột như mockup, thêm "Cột hiển thị" cho mọi cột, và dòng lượt khám ở chi nhánh khác đồng màu. Không migration; môi trường khác: khởi động lại API.
+
 ## 2026-10-13
 
 ### Tầng chi nhánh — Đợt 1 "Nền" (`docs/DECISIONS.md` #231)

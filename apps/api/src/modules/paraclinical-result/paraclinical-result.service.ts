@@ -45,6 +45,7 @@ import {
   type StartParaclinicalItemsRequest,
   type StartParaclinicalItemsResponse,
 } from '@nexamed/shared';
+import { userBranchWhere } from '../../infrastructure/persistence/branch-membership.helper';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
@@ -65,6 +66,8 @@ export interface ResultAccessScope {
   kinds: readonly ParaclinicalServiceKind[];
   /** Module quyền của nhóm (`lab_result` | `imaging_result`) — dùng để liệt kê bác sĩ có quyền duyệt đúng nhóm. */
   permissionModule: string;
+  /** Chi nhánh đang làm việc của phiên (docs/DECISIONS.md #231): hàng đợi/kết quả chỉ thấy lượt khám của chi nhánh này, chi nhánh khác → 404. */
+  branchId: string;
 }
 
 const blank = (v: string | null | undefined): boolean => v === null || v === undefined || v.trim() === '';
@@ -119,7 +122,7 @@ export class ParaclinicalResultService {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const scopeDepartmentId = await this.resolveScopeDepartment(tx, tenantId, actorId, scope.dataScope);
       // Scope `department` mà actor chưa gán Khoa/Phòng thì không khớp phòng nào → hàng đợi rỗng (không lỗi).
-      const items = enrich(await this.orderRepository.listQueueItems(tx, tenantId, { from: startUtc, to: endUtc })).filter(
+      const items = enrich(await this.orderRepository.listQueueItems(tx, tenantId, scope.branchId, { from: startUtc, to: endUtc })).filter(
         (i) => scope.kinds.includes(i.serviceKind) && (scopeDepartmentId === undefined || (scopeDepartmentId !== null && i.row.technicalService?.departmentId === scopeDepartmentId)),
       );
       const groups = groupQueueItems(items);
@@ -247,7 +250,7 @@ export class ParaclinicalResultService {
     const allowBeforePayment = await this.clinicConfigReader.getParaclinicalBeforePaymentEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const ids = [...new Set(dto.itemIds)];
-      const items = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, ids));
+      const items = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, scope.branchId, ids));
       if (items.length !== ids.length) throw new NotFoundException();
       for (const item of items) await this.assertInDepartmentScope(tx, tenantId, actorId, scope, item);
       const orderId = items[0]!.clinicalOrderId;
@@ -532,12 +535,12 @@ export class ParaclinicalResultService {
 
   /** Nhóm dòng cùng màn nhập với `itemId`: xét nghiệm cùng phiếu + cùng trạng thái + cùng tình trạng thu tiền; dịch vụ khác loại thì đứng một mình. */
   private async resolveGroup(tx: Prisma.TransactionClient, tenantId: string, itemId: string, actorId: string, scope: ResultAccessScope): Promise<EnrichedItem[]> {
-    const [anchor] = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, [itemId]));
+    const [anchor] = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, scope.branchId, [itemId]));
     if (!anchor) throw new NotFoundException();
     if (anchor.status === 'CANCELLED') throw new NotFoundException();
     await this.assertInDepartmentScope(tx, tenantId, actorId, scope, anchor);
     if (anchor.serviceKind !== 'LAB') return [anchor];
-    const siblings = enrich(await this.orderRepository.findQueueItemsByOrder(tx, tenantId, anchor.clinicalOrderId));
+    const siblings = enrich(await this.orderRepository.findQueueItemsByOrder(tx, tenantId, scope.branchId, anchor.clinicalOrderId));
     return siblings.filter((s) => s.serviceKind === 'LAB' && s.status === anchor.status && s.paid === anchor.paid);
   }
 
@@ -594,7 +597,8 @@ export class ParaclinicalResultService {
 
     const signed = results.find((r) => r.signedAt !== null) ?? null;
     const firstResult = results[0] ?? null;
-    const approverRows = await this.userRepository.listActiveUsersWithPermission(tx, tenantId, scope.permissionModule, 'approve');
+    // Bác sĩ duyệt: chỉ người được làm việc ở chi nhánh đang xem (công ty 1 chi nhánh: không lọc).
+    const approverRows = await this.userRepository.listActiveUsersWithPermission(tx, tenantId, scope.permissionModule, 'approve', await userBranchWhere(tx, tenantId, scope.branchId));
     const amended = results.find((r) => r.supersedesId !== null) ?? null;
     const original = amended?.supersedesId ? await this.resultRepository.findByIdIncludingDeleted(tx, tenantId, amended.supersedesId) : null;
     const nameIds = [actorId, first.row.order.encounter.doctorId, firstResult?.performedBy, signed?.signedBy, original?.signedBy].filter((x): x is string => typeof x === 'string');

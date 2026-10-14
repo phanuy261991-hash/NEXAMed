@@ -234,3 +234,60 @@ export type AmendParaclinicalResultRequest = z.infer<typeof amendParaclinicalRes
 
 export const getParaclinicalResultResponseSchema = z.object({ form: paraclinicalResultFormSchema });
 export type GetParaclinicalResultResponse = z.infer<typeof getParaclinicalResultResponseSchema>;
+
+// ---------------------------------------------------------------------------------------------
+// Menu "Tra cứu kết quả" (docs/DECISIONS.md #232) — kết quả ĐÃ DUYỆT theo khoảng ngày, xem + in lại. Mỗi nhóm có endpoint + quyền riêng
+// (`lab_result.read` / `imaging_result.read`). Theo CHI NHÁNH của lượt khám. Xét nghiệm: 1 dòng/phiếu; CĐHA & thăm dò: 1 dòng/dịch vụ.
+// ---------------------------------------------------------------------------------------------
+
+export const paraclinicalLookupStatusSchema = z.enum(['APPROVED', 'AMENDED']);
+export type ParaclinicalLookupStatus = z.infer<typeof paraclinicalLookupStatusSchema>;
+
+/** Tóm tắt kết quả: xét nghiệm → có/không chỉ số bất thường; CĐHA/thăm dò → có kết luận hay chưa. */
+export const paraclinicalLookupSummarySchema = z.enum(['ABNORMAL', 'NORMAL', 'HAS_CONCLUSION', 'NONE']);
+export type ParaclinicalLookupSummary = z.infer<typeof paraclinicalLookupSummarySchema>;
+
+export const listParaclinicalLookupQuerySchema = z.object({
+  /** Khoảng ngày DUYỆT kết quả (giờ Việt Nam, YYYY-MM-DD, gồm cả hai đầu); bỏ trống = 7 ngày gần nhất. */
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  q: z.string().trim().max(100).optional(),
+  status: paraclinicalLookupStatusSchema.optional(),
+  /** Chỉ kết quả xét nghiệm có chỉ số bất thường (bỏ qua với CĐHA/thăm dò). */
+  abnormalOnly: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
+  cursor: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type ListParaclinicalLookupQuery = z.infer<typeof listParaclinicalLookupQuerySchema>;
+
+export const paraclinicalLookupRowSchema = z.object({
+  /** Id dòng chỉ định đầu tiên của dòng — tham số mở/in kết quả (`/items/:itemId/result`). */
+  key: z.string().uuid(),
+  itemIds: z.array(z.string().uuid()),
+  orderNo: z.string(),
+  encounterId: z.string().uuid(),
+  patientId: z.string().uuid(),
+  patientName: z.string(),
+  patientCode: z.string(),
+  ageYears: z.number().int().nullable(),
+  gender: z.enum(['male', 'female', 'other']).nullable(),
+  serviceNames: z.array(z.string()),
+  serviceCount: z.number().int().nonnegative(),
+  /** Lúc duyệt (ký) kết quả — "Thực hiện lúc". */
+  signedAt: z.string(),
+  signedByName: z.string().nullable(),
+  status: paraclinicalLookupStatusSchema,
+  summary: paraclinicalLookupSummarySchema,
+  /** Số chỉ số vượt khoảng tham chiếu (chỉ xét nghiệm). */
+  abnormalCount: z.number().int().nonnegative(),
+});
+export type ParaclinicalLookupRow = z.infer<typeof paraclinicalLookupRowSchema>;
+
+export const listParaclinicalLookupResponseSchema = z.object({
+  items: z.array(paraclinicalLookupRowSchema),
+  nextCursor: z.string().uuid().nullable(),
+});
+export type ListParaclinicalLookupResponse = z.infer<typeof listParaclinicalLookupResponseSchema>;

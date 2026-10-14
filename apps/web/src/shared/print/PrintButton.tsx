@@ -20,6 +20,7 @@ export function PrintButton({
   loading,
   disabled,
   className = '',
+  renderTrigger,
 }: {
   documentType: PrintDocumentType;
   onPrint: () => void;
@@ -28,6 +29,10 @@ export function PrintButton({
   loading?: boolean;
   disabled?: boolean;
   className?: string;
+  /**
+   * Nút bấm tuỳ biến (ví dụ nút icon trong hàng bảng) thay cho `Button` mặc định — vẫn đi qua đúng luồng chọn khổ giấy. `onClick` mở hộp thoại chọn khổ (hoặc in thẳng nếu chứng từ chỉ có 1 khổ).
+   */
+  renderTrigger?: (trigger: { onClick: () => void; loading?: boolean; disabled?: boolean }) => ReactNode;
 }) {
   const resolved = useResolvedPrintTemplate(documentType);
   const setChoice = usePrintPaperChoice((s) => s.setChoice);
@@ -40,19 +45,18 @@ export function PrintButton({
     onPrint();
   }
 
+  const handleClick = () => (options.length > 1 ? setOpen(true) : print(null));
+
   return (
     <>
-      <Button
-        type="button"
-        variant={variant}
-        loading={loading}
-        disabled={disabled}
-        className={className}
-        onClick={() => (options.length > 1 ? setOpen(true) : print(null))}
-      >
-        <Printer size={15} weight="bold" aria-hidden="true" />
-        {children}
-      </Button>
+      {renderTrigger ? (
+        renderTrigger({ onClick: handleClick, loading, disabled })
+      ) : (
+        <Button type="button" variant={variant} loading={loading} disabled={disabled} className={className} onClick={handleClick}>
+          <Printer size={15} weight="bold" aria-hidden="true" />
+          {children}
+        </Button>
+      )}
       {open && <PrintPaperDialog options={options} onConfirm={print} onCancel={() => setOpen(false)} />}
     </>
   );

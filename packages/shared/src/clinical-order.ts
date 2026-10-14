@@ -123,3 +123,70 @@ export type ClinicalOrderDetail = z.infer<typeof clinicalOrderDetailSchema>;
 
 export const getClinicalOrderResponseSchema = z.object({ order: clinicalOrderDetailSchema.nullable() });
 export type GetClinicalOrderResponse = z.infer<typeof getClinicalOrderResponseSchema>;
+
+// ---------------------------------------------------------------------------------------------
+// Menu "Phiếu chỉ định" (docs/DECISIONS.md #232) — sổ tra cứu MỌI phiếu chỉ định theo ngày, chia 3 nhóm: Xét nghiệm / CĐHA & Thăm dò chức năng / Chỉ định ra ngoài.
+// Theo CHI NHÁNH (kế thừa chi nhánh của lượt khám, không thêm cột): chỉ phiếu của chi nhánh đang làm việc. Chỉ xem + in lại; thực hiện/nhập kết quả ở hàng đợi.
+// ---------------------------------------------------------------------------------------------
+
+export const clinicalOrderListGroupSchema = z.enum(['LAB', 'IMAGING', 'EXTERNAL']);
+export type ClinicalOrderListGroup = z.infer<typeof clinicalOrderListGroupSchema>;
+
+/** Bộ lọc tiến độ (pill). Nhóm `EXTERNAL` không có tiến độ nên bỏ qua bộ lọc này. */
+export const clinicalOrderListProgressSchema = z.enum(['WAITING', 'IN_PROGRESS', 'DONE', 'CANCELLED']);
+export type ClinicalOrderListProgress = z.infer<typeof clinicalOrderListProgressSchema>;
+
+/** Tiến độ hiển thị của một dòng (phiếu × nhóm); `EXTERNAL` = chỉ định thực hiện ngoài phòng khám. */
+export const clinicalOrderRowProgressSchema = z.enum(['WAITING', 'IN_PROGRESS', 'DONE', 'CANCELLED', 'EXTERNAL']);
+export type ClinicalOrderRowProgress = z.infer<typeof clinicalOrderRowProgressSchema>;
+
+/** Thanh toán của các dịch vụ thuộc nhóm: `NOT_CHARGED` = không thu tiền (chỉ định ra ngoài / dịch vụ không có giá). */
+export const clinicalOrderRowPaymentSchema = z.enum(['PAID', 'UNPAID', 'REFUNDED', 'NOT_CHARGED']);
+export type ClinicalOrderRowPayment = z.infer<typeof clinicalOrderRowPaymentSchema>;
+
+const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const listClinicalOrdersQuerySchema = z.object({
+  group: clinicalOrderListGroupSchema.default('LAB'),
+  /** Khoảng ngày chỉ định (giờ Việt Nam, YYYY-MM-DD, gồm cả hai đầu); bỏ trống = hôm nay. */
+  dateFrom: dateOnlySchema.optional(),
+  dateTo: dateOnlySchema.optional(),
+  doctorId: z.string().uuid().optional(),
+  progress: clinicalOrderListProgressSchema.optional(),
+  /** Tìm theo tên, mã bệnh nhân, mã phiếu (không dấu). */
+  q: z.string().trim().max(100).optional(),
+  cursor: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type ListClinicalOrdersQuery = z.infer<typeof listClinicalOrdersQuerySchema>;
+
+export const clinicalOrderListRowSchema = z.object({
+  orderId: z.string().uuid(),
+  orderNo: z.string(),
+  encounterId: z.string().uuid(),
+  encounterNo: z.string().nullable(),
+  patientId: z.string().uuid(),
+  patientName: z.string(),
+  patientCode: z.string(),
+  patientDob: z.string(),
+  patientGender: z.string(),
+  patientPhone: z.string().nullable(),
+  ageYears: z.number().int().nullable(),
+  doctorName: z.string().nullable(),
+  /** Chẩn đoán chính của lượt khám — CHỈ khi tài khoản có `encounter.read_clinical` (máy chủ không gửi cho lễ tân/thu ngân); `null` nếu không có quyền hoặc chưa chẩn đoán. */
+  primaryDiagnosis: z.object({ code: z.string(), name: z.string() }).nullable(),
+  orderedAt: z.string(),
+  /** Tên các dịch vụ thuộc nhóm đang xem (không gồm dịch vụ của nhóm khác trong cùng phiếu). */
+  serviceNames: z.array(z.string()),
+  /** Số dịch vụ thuộc nhóm (không tính dòng đã huỷ, trừ khi tất cả đã huỷ). */
+  serviceCount: z.number().int().nonnegative(),
+  progress: z.object({ state: clinicalOrderRowProgressSchema, done: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
+  payment: clinicalOrderRowPaymentSchema,
+});
+export type ClinicalOrderListRow = z.infer<typeof clinicalOrderListRowSchema>;
+
+export const listClinicalOrdersResponseSchema = z.object({
+  items: z.array(clinicalOrderListRowSchema),
+  nextCursor: z.string().uuid().nullable(),
+});
+export type ListClinicalOrdersResponse = z.infer<typeof listClinicalOrdersResponseSchema>;
