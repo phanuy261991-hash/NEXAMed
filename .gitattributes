@@ -1,0 +1,2 @@
+# Script shell chay tren Linux/NAS/trong container phai dung xuong dong LF: neu bi doi sang CRLF (core.autocrlf tren Windows) bash bao loi "command not found" o moi dong.
+*.sh text eol=lf
