@@ -6,7 +6,7 @@ import { PrismaService } from './prisma.service';
 import { UnitOfWorkService } from './unit-of-work.service';
 import { seedPermissionCatalog } from './seed-permissions';
 import { seedDefaultRolesForTenant } from './seed-tenant-roles';
-import { syncRolePermissionsForAllTenants, syncRolePermissionsForTenant } from './sync-role-permissions';
+import { syncRolePermissionsForAllTenants, syncRolePermissionsForTenant, syncTenantFoundation } from './sync-role-permissions';
 
 // Xác minh cơ chế backfill role_permission cho tenant cũ (docs/CURRENT.md mục "Đang chờ",
 // chạy tự động lúc API khởi động — xem main.ts). Mô phỏng "tenant cũ thiếu permission mới"
@@ -183,8 +183,44 @@ describe('syncRolePermissionsForTenant / ForAllTenants', () => {
       where: { tenantId: tenantAId, roleId: nurseRoleA.id, permissionId: vitalSignPermission.id },
     });
 
-    const added = await syncRolePermissionsForAllTenants(appPrisma, unitOfWork, SYSTEM_ACTOR);
+    const added = await syncRolePermissionsForAllTenants(appPrisma, unitOfWork, SYSTEM_ACTOR, [tenantAId, tenantBId]);
     expect(added).toContain(`${tenantAId}/nurse/vital_sign.create`);
     expect(added.some((key) => key.startsWith(`${tenantBId}/`))).toBe(false);
+  });
+
+  it('bù kho + quỹ tiền mặt cho chi nhánh thiếu (tạo từ Đợt 1); chi nhánh đã có kho/quỹ tự thêm thì giữ nguyên; gọi lại không tạo trùng; không đụng tenant khác', async () => {
+    const bare = await privileged.branch.create({ data: { tenantId: tenantAId, code: 'ZZBF1', name: 'Chi nhánh thiếu', createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR } });
+    const custom = await privileged.branch.create({ data: { tenantId: tenantAId, code: 'ZZBF2', name: 'Chi nhánh đã tự thêm', createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR } });
+    const otherTenantBranch = await privileged.branch.create({ data: { tenantId: tenantBId, code: 'ZZBF3', name: 'Chi nhánh tenant B', createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR } });
+    // Chi nhánh "custom": người dùng đã tự thêm 1 kho (không phải mặc định) + 1 quỹ tiền mặt không mặc định → không được bù thêm bản mặc định.
+    await privileged.warehouse.create({ data: { tenantId: tenantAId, branchId: custom.id, code: 'ZZKH1', name: 'Kho tự thêm', isDefault: false, isActive: true, createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR } });
+    await privileged.cashAccount.create({
+      data: { tenantId: tenantAId, branchId: custom.id, code: 'ZZQU1', name: 'Quỹ tự thêm', type: 'CASH', openingBalance: 0n, openingBalanceAt: new Date(), isDefault: false, isActive: true, createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR },
+    });
+
+    // Chỉ đồng bộ đúng 2 tenant của spec này (CSDL test dùng chung: quét MỌI tenant sẽ tạo kho/quỹ cho chi nhánh của spec khác đang chạy song song, làm spec đó không dọn được).
+    for (let round = 0; round < 2; round += 1) {
+      for (const tenantId of [tenantAId, tenantBId]) {
+        await unitOfWork.runInTenantScope(tenantId, (tx) => syncTenantFoundation(tx, tenantId, SYSTEM_ACTOR));
+      }
+    }
+
+    const warehouses = (branchId: string) => privileged.warehouse.findMany({ where: { tenantId: branchId === otherTenantBranch.id ? tenantBId : tenantAId, branchId, deletedAt: null } });
+    const cashAccounts = (branchId: string) => privileged.cashAccount.findMany({ where: { tenantId: branchId === otherTenantBranch.id ? tenantBId : tenantAId, branchId, type: 'CASH', deletedAt: null } });
+
+    const bareWarehouses = await warehouses(bare.id);
+    const bareCash = await cashAccounts(bare.id);
+    expect(bareWarehouses).toHaveLength(1);
+    expect(bareWarehouses[0]).toMatchObject({ name: 'Kho Chi nhánh thiếu', isDefault: true });
+    expect(bareCash).toHaveLength(1);
+    expect(bareCash[0]).toMatchObject({ name: 'Quỹ tiền mặt Chi nhánh thiếu', isDefault: true });
+
+    expect(await warehouses(custom.id)).toHaveLength(1);
+    expect((await warehouses(custom.id))[0]!.name).toBe('Kho tự thêm');
+    expect(await cashAccounts(custom.id)).toHaveLength(1);
+
+    // Chi nhánh của tenant B cũng được bù đúng tenant của nó (không lẫn sang A).
+    expect(await warehouses(otherTenantBranch.id)).toHaveLength(1);
+    expect((await warehouses(otherTenantBranch.id))[0]!.tenantId).toBe(tenantBId);
   });
 });

@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-15
+
+### Tab "Kết quả cận lâm sàng" ở Hồ sơ bệnh nhân + diễn biến chỉ số (`docs/DECISIONS.md` #234)
+
+Tab thứ 5 ở hồ sơ bệnh nhân: mọi kết quả cận lâm sàng ĐÃ DUYỆT của bệnh nhân ở mọi chi nhánh (dòng chi nhánh khác nền xanh nhạt), hai tab con Xét nghiệm / CĐHA & Thăm dò chức năng, lọc khoảng thời gian + tìm + chỉ kết quả bất thường, xem và in lại. Xét nghiệm có thêm "Diễn biến chỉ số": chọn một chỉ số, biểu đồ đường qua các lần đo kèm dải khoảng tham chiếu, bấm điểm mở kết quả lần đó; chỉ số đổi đơn vị giữa các lần đo tách thành hai đường riêng. Chỉ tài khoản làm chuyên môn (có quyền Nhập hoặc Duyệt của nhóm) thấy tab — lễ tân không thấy và bị chặn cả ở máy chủ. Không migration; môi trường khác: khởi động lại API.
+
+### Việc treo của Đợt 2 chi nhánh
+
+Chi nhánh tạo từ Đợt 1 nay tự được bù 1 kho + 1 quỹ tiền mặt mặc định khi API khởi động (chỉ khi chi nhánh chưa có kho/quỹ nào). Hoàn tiền đồng thời: các lần hoàn cùng một hoá đơn xếp hàng nhau, request đến sau luôn nhận 409 (trước đây đôi khi 422); tiền không bao giờ bị hoàn đôi. Màn Kiểm nhận điều chuyển kho có huy hiệu "Cận hạn · còn N ngày" / "Hết hạn" theo ngưỡng cảnh báo hạn dùng của phòng khám; danh sách và trang phiếu có nhãn "Quá hạn xử lý · N ngày" cho phiếu chờ bên gửi xử lý chênh lệch quá 7 ngày. Tab Kết quả cận lâm sàng: dải số có chú thích phụ, thanh lọc xếp hàng riêng. Log sửa danh mục giữ vĩnh viễn (chốt). Gói on-prem `2026.10.14.2` đã dựng lại (gồm Đợt 2 và #220–#232). Chốt Đợt 3: xem tổng cả công ty qua quyền mới "Xem báo cáo toàn công ty" (chưa làm).
+
 ## 2026-10-14
 
 ### Hai menu mới: "Phiếu chỉ định" và "Tra cứu kết quả" (Cận lâm sàng) + trang "Không có quyền xem nội dung này" (`docs/DECISIONS.md` #232)

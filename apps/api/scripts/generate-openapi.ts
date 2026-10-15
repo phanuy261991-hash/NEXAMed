@@ -389,6 +389,11 @@ import {
   listClinicalOrdersResponseSchema,
   listParaclinicalLookupQuerySchema,
   listParaclinicalLookupResponseSchema,
+  listPatientIndicatorsResponseSchema,
+  listPatientParaclinicalResultsQuerySchema,
+  listPatientParaclinicalResultsResponseSchema,
+  patientIndicatorTrendQuerySchema,
+  patientIndicatorTrendResponseSchema,
   listParaclinicalQueueQuerySchema,
   listParaclinicalQueueResponseSchema,
   saveParaclinicalResultRequestSchema,
@@ -5271,6 +5276,8 @@ registry.registerPath({
 // Cận lâm sàng GĐ4 đợt 1 — Hàng đợi, lấy mẫu / gọi vào phòng, nhập + duyệt kết quả (docs/DECISIONS.md #212)
 // ---------------------------------------------------------------------------------------------
 const paraclinicalItemParams = z.object({ itemId: z.string().uuid() });
+const patientParaclinicalParams = z.object({ patientId: z.string().uuid() });
+const patientParaclinicalItemParams = z.object({ patientId: z.string().uuid(), itemId: z.string().uuid() });
 
 // Tách 2 menu (docs/DECISIONS.md #215): mỗi nhóm có đường dẫn + quyền riêng — Xét nghiệm `lab_result.*`, CĐHA & Thăm dò chức năng `imaging_result.*`.
 const paraclinicalOpenApiGroups = [
@@ -5311,6 +5318,86 @@ for (const g of paraclinicalOpenApiGroups) {
       409: errorResponse('Chưa chọn chi nhánh làm việc (BRANCH_NOT_SELECTED)'),
     },
   });
+
+  // Tab "Kết quả cận lâm sàng" ở Hồ sơ bệnh nhân (docs/DECISIONS.md #234): kết quả ĐÃ DUYỆT theo BỆNH NHÂN, mọi chi nhánh.
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/paraclinical/${g.key}/patients/{patientId}/results`,
+    tags: ['paraclinical-result'],
+    summary:
+      'Tab "Kết quả cận lâm sàng" ở hồ sơ bệnh nhân (#234) — mọi kết quả ĐÃ DUYỆT của bệnh nhân ở MỌI chi nhánh (mới nhất trước): xét nghiệm kèm các chỉ số bất thường, CĐHA/thăm dò kèm kết luận; lọc ngày/trạng thái/chỉ bất thường/tìm kiếm; kèm dải số tổng hợp; phân trang cursor. Ghi audit "xem hồ sơ bệnh nhân"',
+    security: [{ bearerAuth: [] }],
+    request: { params: patientParaclinicalParams, query: listPatientParaclinicalResultsQuerySchema },
+    responses: {
+      200: jsonResponse('Thành công', envelope(listPatientParaclinicalResultsResponseSchema)),
+      400: errorResponse('Tham số sai định dạng'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.read`),
+      409: errorResponse('Chưa chọn chi nhánh làm việc (BRANCH_NOT_SELECTED)'),
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/paraclinical/${g.key}/patients/{patientId}/items/{itemId}/result`,
+    tags: ['paraclinical-result'],
+    summary: 'Tab "Kết quả cận lâm sàng" (#234) — mở một kết quả ĐÃ DUYỆT của bệnh nhân ở bất kỳ chi nhánh nào (bỏ lọc chi nhánh nhưng phải đúng bệnh nhân và đã duyệt). Ghi audit "xem"',
+    security: [{ bearerAuth: [] }],
+    request: { params: patientParaclinicalItemParams },
+    responses: {
+      200: jsonResponse('Thành công', envelope(getParaclinicalResultResponseSchema)),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.read`),
+      404: errorResponse('Không tìm thấy kết quả của bệnh nhân này'),
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: `/api/v1/paraclinical/${g.key}/patients/{patientId}/items/{itemId}/result/print`,
+    tags: ['paraclinical-result'],
+    summary: 'Tab "Kết quả cận lâm sàng" (#234) — ghi audit in phiếu kết quả (web tự dựng bản in từ dữ liệu đã tải)',
+    security: [{ bearerAuth: [] }],
+    request: { params: patientParaclinicalItemParams },
+    responses: {
+      200: jsonResponse('Thành công', envelope(z.object({ ok: z.literal(true) }))),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(`Không có quyền ${g.module}.read`),
+      404: errorResponse('Không tìm thấy kết quả của bệnh nhân này'),
+    },
+  });
+
+  if (g.key === 'lab') {
+    registry.registerPath({
+      method: 'get',
+      path: '/api/v1/paraclinical/lab/patients/{patientId}/indicators',
+      tags: ['paraclinical-result'],
+      summary: 'Tab "Kết quả cận lâm sàng" (#234) — danh sách chỉ số xét nghiệm dạng số của bệnh nhân (gộp theo mã chỉ số + đơn vị), kèm số lần đo và giá trị gần nhất',
+      security: [{ bearerAuth: [] }],
+      request: { params: patientParaclinicalParams },
+      responses: {
+        200: jsonResponse('Thành công', envelope(listPatientIndicatorsResponseSchema)),
+        401: errorResponse('Thiếu hoặc sai access token'),
+        403: errorResponse('Không có quyền lab_result.read'),
+      },
+    });
+
+    registry.registerPath({
+      method: 'get',
+      path: '/api/v1/paraclinical/lab/patients/{patientId}/indicators/trend',
+      tags: ['paraclinical-result'],
+      summary: 'Tab "Kết quả cận lâm sàng" (#234) — diễn biến một chỉ số (cũ → mới): giá trị, cờ cao/thấp, khoảng tham chiếu đã áp từng lần, chi nhánh',
+      security: [{ bearerAuth: [] }],
+      request: { params: patientParaclinicalParams, query: patientIndicatorTrendQuerySchema },
+      responses: {
+        200: jsonResponse('Thành công', envelope(patientIndicatorTrendResponseSchema)),
+        400: errorResponse('Tham số sai định dạng'),
+        401: errorResponse('Thiếu hoặc sai access token'),
+        403: errorResponse('Không có quyền lab_result.read'),
+        404: errorResponse('Bệnh nhân chưa có lần đo nào của chỉ số này'),
+      },
+    });
+  }
 
   // Xét nghiệm không còn `POST start`: lấy mẫu đi qua ống mẫu (docs/DECISIONS.md #220) — xem các đường dẫn `specimen-tubes` bên dưới.
   if (g.key === 'imaging') registry.registerPath({

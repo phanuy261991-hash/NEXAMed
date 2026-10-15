@@ -270,19 +270,20 @@ export class ClinicalOrderRepository {
     });
   }
 
-  findQueueItemsByIds(tx: Prisma.TransactionClient, tenantId: string, branchId: string, ids: string[]): Promise<QueueItemRow[]> {
+  /** `branchId = null` = không lọc chi nhánh — CHỈ dùng khi mở kết quả qua hồ sơ bệnh nhân (kết quả đi theo người bệnh, docs/DECISIONS.md #234); mọi đường khác truyền chi nhánh đang làm việc. */
+  findQueueItemsByIds(tx: Prisma.TransactionClient, tenantId: string, branchId: string | null, ids: string[]): Promise<QueueItemRow[]> {
     if (ids.length === 0) return Promise.resolve([]);
     return tx.clinicalOrderItem.findMany({
-      where: { tenantId, id: { in: ids }, deletedAt: null, order: { deletedAt: null, encounter: { branchId } } },
+      where: { tenantId, id: { in: ids }, deletedAt: null, order: { deletedAt: null, encounter: branchId === null ? {} : { branchId } } },
       include: QUEUE_ITEM_INCLUDE,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
   }
 
   /** Các dòng chỉ định tại phòng khám CÙNG PHIẾU (dùng gom xét nghiệm cùng nhóm lúc mở màn nhập kết quả). */
-  findQueueItemsByOrder(tx: Prisma.TransactionClient, tenantId: string, branchId: string, clinicalOrderId: string): Promise<QueueItemRow[]> {
+  findQueueItemsByOrder(tx: Prisma.TransactionClient, tenantId: string, branchId: string | null, clinicalOrderId: string): Promise<QueueItemRow[]> {
     return tx.clinicalOrderItem.findMany({
-      where: { tenantId, clinicalOrderId, deletedAt: null, performance: 'IN_HOUSE', technicalServiceId: { not: null }, status: { not: 'CANCELLED' }, order: { encounter: { branchId } } },
+      where: { tenantId, clinicalOrderId, deletedAt: null, performance: 'IN_HOUSE', technicalServiceId: { not: null }, status: { not: 'CANCELLED' }, order: { encounter: branchId === null ? {} : { branchId } } },
       include: QUEUE_ITEM_INCLUDE,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });

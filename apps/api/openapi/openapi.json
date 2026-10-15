@@ -74793,6 +74793,22 @@
                                   "null"
                                 ]
                               },
+                              "expiryStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPIRED",
+                                  "EXPIRING_SOON"
+                                ]
+                              },
+                              "daysUntilExpiry": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
                               "quantityShipped": {
                                 "type": "integer"
                               },
@@ -74859,6 +74875,8 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "expiryStatus",
+                              "daysUntilExpiry",
                               "quantityShipped",
                               "quantityReceived",
                               "varianceNote",
@@ -75305,6 +75323,22 @@
                                   "null"
                                 ]
                               },
+                              "expiryStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPIRED",
+                                  "EXPIRING_SOON"
+                                ]
+                              },
+                              "daysUntilExpiry": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
                               "quantityShipped": {
                                 "type": "integer"
                               },
@@ -75371,6 +75405,8 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "expiryStatus",
+                              "daysUntilExpiry",
                               "quantityShipped",
                               "quantityReceived",
                               "varianceNote",
@@ -75818,6 +75854,22 @@
                                   "null"
                                 ]
                               },
+                              "expiryStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPIRED",
+                                  "EXPIRING_SOON"
+                                ]
+                              },
+                              "daysUntilExpiry": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
                               "quantityShipped": {
                                 "type": "integer"
                               },
@@ -75884,6 +75936,8 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "expiryStatus",
+                              "daysUntilExpiry",
                               "quantityShipped",
                               "quantityReceived",
                               "varianceNote",
@@ -76347,6 +76401,22 @@
                                   "null"
                                 ]
                               },
+                              "expiryStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPIRED",
+                                  "EXPIRING_SOON"
+                                ]
+                              },
+                              "daysUntilExpiry": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
                               "quantityShipped": {
                                 "type": "integer"
                               },
@@ -76413,6 +76483,8 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "expiryStatus",
+                              "daysUntilExpiry",
                               "quantityShipped",
                               "quantityReceived",
                               "varianceNote",
@@ -76881,6 +76953,22 @@
                                   "null"
                                 ]
                               },
+                              "expiryStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPIRED",
+                                  "EXPIRING_SOON"
+                                ]
+                              },
+                              "daysUntilExpiry": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
                               "quantityShipped": {
                                 "type": "integer"
                               },
@@ -76947,6 +77035,8 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "expiryStatus",
+                              "daysUntilExpiry",
                               "quantityShipped",
                               "quantityReceived",
                               "varianceNote",
@@ -77421,6 +77511,22 @@
                                   "null"
                                 ]
                               },
+                              "expiryStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPIRED",
+                                  "EXPIRING_SOON"
+                                ]
+                              },
+                              "daysUntilExpiry": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
                               "quantityShipped": {
                                 "type": "integer"
                               },
@@ -77487,6 +77593,8 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "expiryStatus",
+                              "daysUntilExpiry",
                               "quantityShipped",
                               "quantityReceived",
                               "varianceNote",
@@ -78315,6 +78423,22 @@
                                   "null"
                                 ]
                               },
+                              "expiryStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPIRED",
+                                  "EXPIRING_SOON"
+                                ]
+                              },
+                              "daysUntilExpiry": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
                               "quantityShipped": {
                                 "type": "integer"
                               },
@@ -78381,6 +78505,8 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "expiryStatus",
+                              "daysUntilExpiry",
                               "quantityShipped",
                               "quantityReceived",
                               "varianceNote",
@@ -78842,6 +78968,22 @@
                                   "null"
                                 ]
                               },
+                              "expiryStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPIRED",
+                                  "EXPIRING_SOON"
+                                ]
+                              },
+                              "daysUntilExpiry": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
                               "quantityShipped": {
                                 "type": "integer"
                               },
@@ -78908,6 +79050,8 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "expiryStatus",
+                              "daysUntilExpiry",
                               "quantityShipped",
                               "quantityReceived",
                               "varianceNote",
@@ -79403,6 +79547,22 @@
                                   "null"
                                 ]
                               },
+                              "expiryStatus": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "EXPIRED",
+                                  "EXPIRING_SOON"
+                                ]
+                              },
+                              "daysUntilExpiry": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
                               "quantityShipped": {
                                 "type": "integer"
                               },
@@ -79469,6 +79629,8 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "expiryStatus",
+                              "daysUntilExpiry",
                               "quantityShipped",
                               "quantityReceived",
                               "varianceNote",
@@ -94334,6 +94496,1721 @@
         }
       }
     },
+    "/api/v1/paraclinical/lab/patients/{patientId}/results": {
+      "get": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Tab \"Kết quả cận lâm sàng\" ở hồ sơ bệnh nhân (#234) — mọi kết quả ĐÃ DUYỆT của bệnh nhân ở MỌI chi nhánh (mới nhất trước): xét nghiệm kèm các chỉ số bất thường, CĐHA/thăm dò kèm kết luận; lọc ngày/trạng thái/chỉ bất thường/tìm kiếm; kèm dải số tổng hợp; phân trang cursor. Ghi audit \"xem hồ sơ bệnh nhân\"",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "dateFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "dateTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "APPROVED",
+                "AMENDED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "abnormalOnly",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "orderNo": {
+                                "type": "string"
+                              },
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "serviceName": {
+                                "type": "string"
+                              },
+                              "categoryName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "signedAt": {
+                                "type": "string"
+                              },
+                              "signedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "doctorName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "APPROVED",
+                                  "AMENDED"
+                                ]
+                              },
+                              "abnormals": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "valueText": {
+                                      "type": "string"
+                                    },
+                                    "unit": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "flag": {
+                                      "type": "string",
+                                      "enum": [
+                                        "LOW",
+                                        "HIGH",
+                                        "NORMAL",
+                                        "ABNORMAL"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "label",
+                                    "valueText",
+                                    "unit",
+                                    "flag"
+                                  ]
+                                }
+                              },
+                              "evaluatedCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "conclusionText": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "imageCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isOtherBranch": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "orderNo",
+                              "encounterId",
+                              "encounterNo",
+                              "serviceName",
+                              "categoryName",
+                              "signedAt",
+                              "signedByName",
+                              "doctorName",
+                              "status",
+                              "abnormals",
+                              "evaluatedCount",
+                              "conclusionText",
+                              "imageCount",
+                              "branchId",
+                              "branchName",
+                              "isOtherBranch"
+                            ]
+                          }
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "totalApproved": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "firstSignedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "latestSignedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "latestServiceNames": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "abnormalResults": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "trackableIndicators": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "byCategory": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "count"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "totalApproved",
+                            "firstSignedAt",
+                            "latestSignedAt",
+                            "latestServiceNames",
+                            "abnormalResults",
+                            "trackableIndicators",
+                            "byCategory"
+                          ]
+                        },
+                        "multiBranch": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor",
+                        "summary",
+                        "multiBranch"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số sai định dạng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Chưa chọn chi nhánh làm việc (BRANCH_NOT_SELECTED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/patients/{patientId}/items/{itemId}/result": {
+      "get": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Tab \"Kết quả cận lâm sàng\" (#234) — mở một kết quả ĐÃ DUYỆT của bệnh nhân ở bất kỳ chi nhánh nào (bỏ lọc chi nhánh nhưng phải đúng bệnh nhân và đã duyệt). Ghi audit \"xem\"",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "itemId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "form": {
+                          "type": "object",
+                          "properties": {
+                            "orderNo": {
+                              "type": "string"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "patientName": {
+                              "type": "string"
+                            },
+                            "patientCode": {
+                              "type": "string"
+                            },
+                            "patientGender": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "male",
+                                "female",
+                                "other"
+                              ]
+                            },
+                            "patientDob": {
+                              "type": "string"
+                            },
+                            "patientPhone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "ageYears": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "registeredAt": {
+                              "type": "string"
+                            },
+                            "doctorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "collectedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "bucket": {
+                              "type": "string",
+                              "enum": [
+                                "AWAITING_PAYMENT",
+                                "WAITING",
+                                "IN_PROGRESS",
+                                "PENDING_APPROVAL",
+                                "COMPLETED"
+                              ]
+                            },
+                            "sections": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "itemId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "technicalServiceId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "code": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "serviceKind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "LAB",
+                                      "IMAGING",
+                                      "FUNCTIONAL"
+                                    ]
+                                  },
+                                  "resultType": {
+                                    "type": "string",
+                                    "enum": [
+                                      "INDICATORS",
+                                      "NARRATIVE",
+                                      "BOTH"
+                                    ]
+                                  },
+                                  "specimenTypeName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "departmentName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "categoryName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "ORDERED",
+                                      "IN_PROGRESS",
+                                      "RESULTED",
+                                      "COMPLETED",
+                                      "CANCELLED"
+                                    ]
+                                  },
+                                  "indicators": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "indicatorId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "code": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "abbreviation": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "unit": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "valueType": {
+                                          "type": "string",
+                                          "enum": [
+                                            "NUMBER",
+                                            "TEXT",
+                                            "CHOICE"
+                                          ]
+                                        },
+                                        "decimals": {
+                                          "type": [
+                                            "integer",
+                                            "null"
+                                          ]
+                                        },
+                                        "choiceOptions": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "reference": {
+                                          "type": [
+                                            "object",
+                                            "null"
+                                          ],
+                                          "properties": {
+                                            "sex": {
+                                              "type": "string",
+                                              "enum": [
+                                                "ANY",
+                                                "MALE",
+                                                "FEMALE"
+                                              ]
+                                            },
+                                            "ageFromYears": {
+                                              "type": "integer"
+                                            },
+                                            "ageToYears": {
+                                              "type": [
+                                                "integer",
+                                                "null"
+                                              ]
+                                            },
+                                            "lowValue": {
+                                              "type": [
+                                                "number",
+                                                "null"
+                                              ]
+                                            },
+                                            "highValue": {
+                                              "type": [
+                                                "number",
+                                                "null"
+                                              ]
+                                            },
+                                            "lowInclusive": {
+                                              "type": "boolean"
+                                            },
+                                            "highInclusive": {
+                                              "type": "boolean"
+                                            },
+                                            "normalText": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            },
+                                            "displayText": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "sex",
+                                            "ageFromYears",
+                                            "ageToYears",
+                                            "lowValue",
+                                            "highValue",
+                                            "lowInclusive",
+                                            "highInclusive",
+                                            "normalText",
+                                            "displayText"
+                                          ]
+                                        },
+                                        "referenceText": {
+                                          "type": "string"
+                                        },
+                                        "valueText": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "note": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "interpretationText": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "flag": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ],
+                                          "enum": [
+                                            "LOW",
+                                            "HIGH",
+                                            "NORMAL",
+                                            "ABNORMAL"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "indicatorId",
+                                        "code",
+                                        "name",
+                                        "abbreviation",
+                                        "unit",
+                                        "valueType",
+                                        "decimals",
+                                        "choiceOptions",
+                                        "reference",
+                                        "referenceText",
+                                        "valueText",
+                                        "note",
+                                        "interpretationText",
+                                        "flag"
+                                      ]
+                                    }
+                                  },
+                                  "descriptionText": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "conclusionText": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "images": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "fileName": {
+                                          "type": "string"
+                                        },
+                                        "url": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "fileName",
+                                        "url"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "itemId",
+                                  "technicalServiceId",
+                                  "code",
+                                  "name",
+                                  "serviceKind",
+                                  "resultType",
+                                  "specimenTypeName",
+                                  "departmentName",
+                                  "categoryName",
+                                  "status",
+                                  "indicators",
+                                  "descriptionText",
+                                  "conclusionText",
+                                  "images"
+                                ]
+                              }
+                            },
+                            "performedById": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "performedByName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "resultedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "approverId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "approvers": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "fullName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "fullName"
+                                ]
+                              }
+                            },
+                            "signedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "signedByName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "amendment": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "reason": {
+                                  "type": "string"
+                                },
+                                "originalSignedAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "originalSignedByName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "reason",
+                                "originalSignedAt",
+                                "originalSignedByName"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "orderNo",
+                            "encounterId",
+                            "encounterNo",
+                            "patientName",
+                            "patientCode",
+                            "patientGender",
+                            "patientDob",
+                            "patientPhone",
+                            "ageYears",
+                            "registeredAt",
+                            "doctorName",
+                            "collectedAt",
+                            "bucket",
+                            "sections",
+                            "performedById",
+                            "performedByName",
+                            "resultedAt",
+                            "approverId",
+                            "approvers",
+                            "signedAt",
+                            "signedByName",
+                            "amendment"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "form"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy kết quả của bệnh nhân này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/patients/{patientId}/items/{itemId}/result/print": {
+      "post": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Tab \"Kết quả cận lâm sàng\" (#234) — ghi audit in phiếu kết quả (web tự dựng bản in từ dữ liệu đã tải)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "itemId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy kết quả của bệnh nhân này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/patients/{patientId}/indicators": {
+      "get": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Tab \"Kết quả cận lâm sàng\" (#234) — danh sách chỉ số xét nghiệm dạng số của bệnh nhân (gộp theo mã chỉ số + đơn vị), kèm số lần đo và giá trị gần nhất",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "groupName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "measureCount": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "latestValue": {
+                                "type": "number"
+                              },
+                              "latestValueText": {
+                                "type": "string"
+                              },
+                              "latestFlag": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "LOW",
+                                  "HIGH",
+                                  "NORMAL",
+                                  "ABNORMAL"
+                                ]
+                              },
+                              "latestSignedAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "unit",
+                              "name",
+                              "groupName",
+                              "measureCount",
+                              "latestValue",
+                              "latestValueText",
+                              "latestFlag",
+                              "latestSignedAt"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/lab/patients/{patientId}/indicators/trend": {
+      "get": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Tab \"Kết quả cận lâm sàng\" (#234) — diễn biến một chỉ số (cũ → mới): giá trị, cờ cao/thấp, khoảng tham chiếu đã áp từng lần, chi nhánh",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": true,
+            "name": "code",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 50
+            },
+            "required": false,
+            "name": "unit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "unit": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "points": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "orderNo": {
+                                "type": "string"
+                              },
+                              "signedAt": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "number"
+                              },
+                              "valueText": {
+                                "type": "string"
+                              },
+                              "flag": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "LOW",
+                                  "HIGH",
+                                  "NORMAL",
+                                  "ABNORMAL"
+                                ]
+                              },
+                              "referenceText": {
+                                "type": "string"
+                              },
+                              "low": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "high": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "branchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isOtherBranch": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "orderNo",
+                              "signedAt",
+                              "value",
+                              "valueText",
+                              "flag",
+                              "referenceText",
+                              "low",
+                              "high",
+                              "branchName",
+                              "isOtherBranch"
+                            ]
+                          }
+                        },
+                        "multiBranch": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "unit",
+                        "name",
+                        "points",
+                        "multiBranch"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số sai định dạng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền lab_result.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bệnh nhân chưa có lần đo nào của chỉ số này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/paraclinical/lab/items/{itemId}/result": {
       "get": {
         "tags": [
@@ -98861,6 +100738,1254 @@
           },
           "409": {
             "description": "Chưa chọn chi nhánh làm việc (BRANCH_NOT_SELECTED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/imaging/patients/{patientId}/results": {
+      "get": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Tab \"Kết quả cận lâm sàng\" ở hồ sơ bệnh nhân (#234) — mọi kết quả ĐÃ DUYỆT của bệnh nhân ở MỌI chi nhánh (mới nhất trước): xét nghiệm kèm các chỉ số bất thường, CĐHA/thăm dò kèm kết luận; lọc ngày/trạng thái/chỉ bất thường/tìm kiếm; kèm dải số tổng hợp; phân trang cursor. Ghi audit \"xem hồ sơ bệnh nhân\"",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "dateFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "dateTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "APPROVED",
+                "AMENDED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "abnormalOnly",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "orderNo": {
+                                "type": "string"
+                              },
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "serviceName": {
+                                "type": "string"
+                              },
+                              "categoryName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "signedAt": {
+                                "type": "string"
+                              },
+                              "signedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "doctorName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "APPROVED",
+                                  "AMENDED"
+                                ]
+                              },
+                              "abnormals": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "valueText": {
+                                      "type": "string"
+                                    },
+                                    "unit": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "flag": {
+                                      "type": "string",
+                                      "enum": [
+                                        "LOW",
+                                        "HIGH",
+                                        "NORMAL",
+                                        "ABNORMAL"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "label",
+                                    "valueText",
+                                    "unit",
+                                    "flag"
+                                  ]
+                                }
+                              },
+                              "evaluatedCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "conclusionText": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "imageCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isOtherBranch": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "orderNo",
+                              "encounterId",
+                              "encounterNo",
+                              "serviceName",
+                              "categoryName",
+                              "signedAt",
+                              "signedByName",
+                              "doctorName",
+                              "status",
+                              "abnormals",
+                              "evaluatedCount",
+                              "conclusionText",
+                              "imageCount",
+                              "branchId",
+                              "branchName",
+                              "isOtherBranch"
+                            ]
+                          }
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "totalApproved": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "firstSignedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "latestSignedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "latestServiceNames": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "abnormalResults": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "trackableIndicators": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "byCategory": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "count"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "totalApproved",
+                            "firstSignedAt",
+                            "latestSignedAt",
+                            "latestServiceNames",
+                            "abnormalResults",
+                            "trackableIndicators",
+                            "byCategory"
+                          ]
+                        },
+                        "multiBranch": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor",
+                        "summary",
+                        "multiBranch"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số sai định dạng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền imaging_result.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Chưa chọn chi nhánh làm việc (BRANCH_NOT_SELECTED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/imaging/patients/{patientId}/items/{itemId}/result": {
+      "get": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Tab \"Kết quả cận lâm sàng\" (#234) — mở một kết quả ĐÃ DUYỆT của bệnh nhân ở bất kỳ chi nhánh nào (bỏ lọc chi nhánh nhưng phải đúng bệnh nhân và đã duyệt). Ghi audit \"xem\"",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "itemId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "form": {
+                          "type": "object",
+                          "properties": {
+                            "orderNo": {
+                              "type": "string"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "patientName": {
+                              "type": "string"
+                            },
+                            "patientCode": {
+                              "type": "string"
+                            },
+                            "patientGender": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "male",
+                                "female",
+                                "other"
+                              ]
+                            },
+                            "patientDob": {
+                              "type": "string"
+                            },
+                            "patientPhone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "ageYears": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "registeredAt": {
+                              "type": "string"
+                            },
+                            "doctorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "collectedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "bucket": {
+                              "type": "string",
+                              "enum": [
+                                "AWAITING_PAYMENT",
+                                "WAITING",
+                                "IN_PROGRESS",
+                                "PENDING_APPROVAL",
+                                "COMPLETED"
+                              ]
+                            },
+                            "sections": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "itemId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "technicalServiceId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "code": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "serviceKind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "LAB",
+                                      "IMAGING",
+                                      "FUNCTIONAL"
+                                    ]
+                                  },
+                                  "resultType": {
+                                    "type": "string",
+                                    "enum": [
+                                      "INDICATORS",
+                                      "NARRATIVE",
+                                      "BOTH"
+                                    ]
+                                  },
+                                  "specimenTypeName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "departmentName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "categoryName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "ORDERED",
+                                      "IN_PROGRESS",
+                                      "RESULTED",
+                                      "COMPLETED",
+                                      "CANCELLED"
+                                    ]
+                                  },
+                                  "indicators": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "indicatorId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "code": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "abbreviation": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "unit": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "valueType": {
+                                          "type": "string",
+                                          "enum": [
+                                            "NUMBER",
+                                            "TEXT",
+                                            "CHOICE"
+                                          ]
+                                        },
+                                        "decimals": {
+                                          "type": [
+                                            "integer",
+                                            "null"
+                                          ]
+                                        },
+                                        "choiceOptions": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "reference": {
+                                          "type": [
+                                            "object",
+                                            "null"
+                                          ],
+                                          "properties": {
+                                            "sex": {
+                                              "type": "string",
+                                              "enum": [
+                                                "ANY",
+                                                "MALE",
+                                                "FEMALE"
+                                              ]
+                                            },
+                                            "ageFromYears": {
+                                              "type": "integer"
+                                            },
+                                            "ageToYears": {
+                                              "type": [
+                                                "integer",
+                                                "null"
+                                              ]
+                                            },
+                                            "lowValue": {
+                                              "type": [
+                                                "number",
+                                                "null"
+                                              ]
+                                            },
+                                            "highValue": {
+                                              "type": [
+                                                "number",
+                                                "null"
+                                              ]
+                                            },
+                                            "lowInclusive": {
+                                              "type": "boolean"
+                                            },
+                                            "highInclusive": {
+                                              "type": "boolean"
+                                            },
+                                            "normalText": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            },
+                                            "displayText": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "sex",
+                                            "ageFromYears",
+                                            "ageToYears",
+                                            "lowValue",
+                                            "highValue",
+                                            "lowInclusive",
+                                            "highInclusive",
+                                            "normalText",
+                                            "displayText"
+                                          ]
+                                        },
+                                        "referenceText": {
+                                          "type": "string"
+                                        },
+                                        "valueText": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "note": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "interpretationText": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "flag": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ],
+                                          "enum": [
+                                            "LOW",
+                                            "HIGH",
+                                            "NORMAL",
+                                            "ABNORMAL"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "indicatorId",
+                                        "code",
+                                        "name",
+                                        "abbreviation",
+                                        "unit",
+                                        "valueType",
+                                        "decimals",
+                                        "choiceOptions",
+                                        "reference",
+                                        "referenceText",
+                                        "valueText",
+                                        "note",
+                                        "interpretationText",
+                                        "flag"
+                                      ]
+                                    }
+                                  },
+                                  "descriptionText": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "conclusionText": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "images": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "fileName": {
+                                          "type": "string"
+                                        },
+                                        "url": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "fileName",
+                                        "url"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "itemId",
+                                  "technicalServiceId",
+                                  "code",
+                                  "name",
+                                  "serviceKind",
+                                  "resultType",
+                                  "specimenTypeName",
+                                  "departmentName",
+                                  "categoryName",
+                                  "status",
+                                  "indicators",
+                                  "descriptionText",
+                                  "conclusionText",
+                                  "images"
+                                ]
+                              }
+                            },
+                            "performedById": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "performedByName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "resultedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "approverId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "approvers": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "fullName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "fullName"
+                                ]
+                              }
+                            },
+                            "signedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "signedByName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "amendment": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "reason": {
+                                  "type": "string"
+                                },
+                                "originalSignedAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "originalSignedByName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "reason",
+                                "originalSignedAt",
+                                "originalSignedByName"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "orderNo",
+                            "encounterId",
+                            "encounterNo",
+                            "patientName",
+                            "patientCode",
+                            "patientGender",
+                            "patientDob",
+                            "patientPhone",
+                            "ageYears",
+                            "registeredAt",
+                            "doctorName",
+                            "collectedAt",
+                            "bucket",
+                            "sections",
+                            "performedById",
+                            "performedByName",
+                            "resultedAt",
+                            "approverId",
+                            "approvers",
+                            "signedAt",
+                            "signedByName",
+                            "amendment"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "form"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền imaging_result.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy kết quả của bệnh nhân này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paraclinical/imaging/patients/{patientId}/items/{itemId}/result/print": {
+      "post": {
+        "tags": [
+          "paraclinical-result"
+        ],
+        "summary": "Tab \"Kết quả cận lâm sàng\" (#234) — ghi audit in phiếu kết quả (web tự dựng bản in từ dữ liệu đã tải)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "itemId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền imaging_result.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy kết quả của bệnh nhân này",
             "content": {
               "application/json": {
                 "schema": {

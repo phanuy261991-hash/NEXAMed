@@ -45,6 +45,7 @@ Seed cụ thể nằm trong `apps/api/prisma/seed/permissions.seed.ts` (nguồn 
 | `leave_request.approve` / `.file_on_behalf` (#224, duyệt/từ chối/huỷ đơn đã duyệt, ghi nghỉ hộ) | none | none | none | global | none |
 | `work_shift_assignment.approve` (#225, duyệt/trả lại bảng đăng ký ca theo tháng) | none | none | none | global | none |
 | `shift_swap.read` / `.create` (#225, xem + gửi/xác nhận/từ chối/huỷ đổi ca) | personal | personal | personal | global (`read`) / personal (`create`) | none |
+| `lab_result.enter`/`.approve` và `imaging_result.enter`/`.approve` (#234, thêm vào `.read`: ĐIỀU KIỆN xem NỘI DUNG kết quả theo bệnh nhân ở tab "Kết quả cận lâm sàng" — máy chủ kiểm, lễ tân chỉ có `.read` nên 403) | none | global (`enter`) | global (`enter`, `approve`) | global | none |
 | `encounter.create` | global | none | none | global | none |
 | `encounter.update` | none | none | personal | none | none |
 | `encounter.cancel` | global | none | personal | global | none |

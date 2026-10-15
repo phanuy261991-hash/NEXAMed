@@ -58,6 +58,8 @@ export class InvoiceRefundService {
     ]);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      // Xếp hàng các lần hoàn cùng một hoá đơn TRƯỚC khi đọc — xem docstring `lockForRefund`.
+      await this.invoiceRepository.lockForRefund(tx, tenantId, dto.invoiceId);
       const invoice = await this.invoiceRepository.findByIdWithLines(tx, tenantId, branchId, dto.invoiceId);
       // Phải thuộc đúng lượt khám trên URL — không lộ hoá đơn của lượt khám/tenant khác (404).
       if (!invoice || invoice.encounterId !== encounterId) {
@@ -68,6 +70,11 @@ export class InvoiceRefundService {
       }
       if (invoice.status !== 'PAID') {
         throw new InvoiceNotRefundableError();
+      }
+      // Phiên bản cũ → 409 ngay, TRƯỚC các kiểm tra số lượng/số tiền: request đến sau một lần hoàn khác luôn nhận cùng một mã lỗi (CONCURRENT_MODIFICATION),
+      // không lúc 409 lúc 422 tuỳ thời điểm đọc. An toàn tiền vẫn do `WHERE version=?` ở bước ghi bên dưới bảo đảm.
+      if (invoice.version !== dto.version) {
+        throw new ConcurrentModificationError();
       }
 
       // ── Tiền hoàn từng dòng ──────────────────────────────────────────────────────────────────

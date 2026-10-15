@@ -1015,6 +1015,9 @@ export const stockTransferLineSchema = z.object({
   batchId: z.string().uuid().nullable(),
   batchNo: z.string().nullable(),
   expiryDate: z.string().nullable(),
+  /** Lô còn hạn trong ngưỡng cảnh báo của phòng khám (`EXPIRING_SOON`) hoặc đã hết hạn (`EXPIRED`) — huy hiệu "Cận hạn" ở màn Kiểm nhận; `null` nếu không có hạn dùng/còn xa. */
+  expiryStatus: z.enum(['EXPIRED', 'EXPIRING_SOON']).nullable(),
+  daysUntilExpiry: z.number().int().nullable(),
   quantityShipped: z.number().int(),
   /** `null` khi phiếu còn `DRAFT` (chưa Duyệt xuất) hoặc `IN_TRANSIT` (chưa Xác nhận nhận hàng). */
   quantityReceived: z.number().int().nullable(),

@@ -19,7 +19,7 @@ import { showBranchInfo } from '../branch/branch-visibility';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { useStockTransferPendingCountsQuery, useStockTransfersQuery } from './inventory.queries';
 import { StockTransferRejectDialog } from './StockTransferRejectDialog';
-import { nextTransferAction, TRANSFER_ACTION_LABEL, TRANSFER_STATUS_META, TRANSFER_STATUS_ORDER } from './stock-transfer-meta';
+import { nextTransferAction, TRANSFER_ACTION_LABEL, TRANSFER_STATUS_META, TRANSFER_STATUS_ORDER, varianceOverdueDays } from './stock-transfer-meta';
 
 type Direction = 'out' | 'in';
 
@@ -203,6 +203,7 @@ export function StockTransferListPage() {
                   const action = canApprove ? nextTransferAction(item, currentBranchId) : null;
                   const needsAction = action !== null;
                   const meta = TRANSFER_STATUS_META[item.status];
+                  const overdueDays = varianceOverdueDays(item, Date.now());
                   const sameBranch = item.fromBranchId === item.toBranchId;
                   return (
                     <div
@@ -240,8 +241,9 @@ export function StockTransferListPage() {
                         </div>
                       )}
 
-                      <div role="cell" className="flex justify-center">
+                      <div role="cell" className="flex flex-col items-center gap-0.5">
                         <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
+                        {overdueDays !== null && <StatusBadge tone="danger">Quá hạn xử lý · {overdueDays} ngày</StatusBadge>}
                       </div>
                       <div role="cell" className="text-center font-medium text-slate-600">{item.shippedAt ? formatDateShort(item.shippedAt) : item.status === 'DRAFT' ? '—' : formatDateShort(item.occurredAt)}</div>
                       <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{item.lineCount}</div>

@@ -81,6 +81,27 @@ export async function provisionBranchDefaults(tx: Prisma.TransactionClient, tena
   await ensureDefaultCashAccount(tx, tenantId, actorId, branchId, `Quỹ tiền mặt ${branchName}`);
 }
 
+/**
+ * Bù kho + quỹ tiền mặt mặc định cho các chi nhánh ĐANG THIẾU (chi nhánh tạo từ Đợt 1 #231, trước khi `provisionBranchDefaults` tồn tại). Chạy mỗi lần API khởi động
+ * (qua `syncRolePermissionsForAllTenants`), idempotent. Chỉ bù khi chi nhánh CHƯA có kho nào / chưa có quỹ tiền mặt nào — chi nhánh đã tự thêm kho/quỹ thì giữ nguyên, không tạo thêm bản mặc định.
+ * Chi nhánh mặc định không xử lý ở đây (đã có bước ensure riêng). Trả số kho + quỹ vừa tạo.
+ */
+export async function backfillBranchDefaults(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<number> {
+  const branches = await tx.branch.findMany({ where: { tenantId, isDefault: false, isActive: true, deletedAt: null }, select: { id: true, name: true }, orderBy: { createdAt: 'asc' } });
+  let created = 0;
+  for (const branch of branches) {
+    if ((await tx.warehouse.count({ where: { tenantId, branchId: branch.id, deletedAt: null } })) === 0) {
+      await ensureDefaultWarehouse(tx, tenantId, actorId, branch.id, `Kho ${branch.name}`);
+      created += 1;
+    }
+    if ((await tx.cashAccount.count({ where: { tenantId, branchId: branch.id, type: 'CASH', deletedAt: null } })) === 0) {
+      await ensureDefaultCashAccount(tx, tenantId, actorId, branch.id, `Quỹ tiền mặt ${branch.name}`);
+      created += 1;
+    }
+  }
+  return created;
+}
+
 /** Kho Thuốc & Vật tư y tế GĐ1 (docs/DECISIONS.md #146) — tiền tố mã `warehouse`, theo tenant,
  * đúng khuôn CASH_ACCOUNT_CODE_PREFIX ở trên. */
 const WAREHOUSE_CODE_PREFIX = 'KH';

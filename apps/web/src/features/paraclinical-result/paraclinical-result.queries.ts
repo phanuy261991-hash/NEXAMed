@@ -3,6 +3,7 @@ import type { AmendParaclinicalResultRequest, ListParaclinicalLookupQuery, ListP
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import type { ParaclinicalGroup } from './paraclinical-group';
+import { getPatientParaclinicalResult, recordPatientParaclinicalPrint } from './patient-paraclinical.api';
 import { amendParaclinicalResult, approveParaclinicalResult, cancelParaclinicalAmendment, deleteParaclinicalImage, getParaclinicalResult, listParaclinicalLookup, listParaclinicalQueue, recordParaclinicalResultPrint, saveParaclinicalResult, startParaclinicalItems, uploadParaclinicalImage } from './paraclinical-result.api';
 
 /** Cận lâm sàng GĐ4 — Hàng đợi & kết quả (docs/DECISIONS.md #212), tách 2 menu theo nhóm (#215). Cache key có `group` vì 2 nhóm là 2 hàng đợi độc lập. */
@@ -34,11 +35,15 @@ export function useParaclinicalLookupQuery(group: ParaclinicalGroup, params: Omi
   });
 }
 
-export function useParaclinicalResultQuery(group: ParaclinicalGroup, itemId: string) {
+/**
+ * `patientId` chỉ truyền khi mở kết quả từ tab "Kết quả cận lâm sàng" của hồ sơ bệnh nhân (#234): đi đường dẫn theo bệnh nhân, đọc được kết quả ở mọi chi nhánh.
+ * Cache key tách riêng để không lẫn với bản mở qua menu cận lâm sàng (hai đường kiểm quyền/chi nhánh khác nhau).
+ */
+export function useParaclinicalResultQuery(group: ParaclinicalGroup, itemId: string, patientId?: string) {
   const { tenantId } = useAppConfig();
   return useQuery({
-    queryKey: queryKey(tenantId, 'paraclinical', 'result', itemId),
-    queryFn: () => getParaclinicalResult(group, itemId),
+    queryKey: patientId ? queryKey(tenantId, 'paraclinical', 'result', itemId, 'patient', patientId) : queryKey(tenantId, 'paraclinical', 'result', itemId),
+    queryFn: () => (patientId ? getPatientParaclinicalResult(group, patientId, itemId) : getParaclinicalResult(group, itemId)),
   });
 }
 
@@ -95,8 +100,8 @@ export function useAmendParaclinicalMutations(group: ParaclinicalGroup, itemId: 
   return { amend, cancel };
 }
 
-export function usePrintParaclinicalResultMutation(group: ParaclinicalGroup, itemId: string) {
-  return useMutation({ mutationFn: () => recordParaclinicalResultPrint(group, itemId) });
+export function usePrintParaclinicalResultMutation(group: ParaclinicalGroup, itemId: string, patientId?: string) {
+  return useMutation({ mutationFn: () => (patientId ? recordPatientParaclinicalPrint(group, patientId, itemId) : recordParaclinicalResultPrint(group, itemId)) });
 }
 
 /** Thêm / gỡ ảnh đính kèm của màn nhập đang mở (`pageItemId`); form trả về thay luôn dữ liệu màn hình. */

@@ -1,7 +1,10 @@
 import { Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
+  CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
+  computeExpiryStatus,
+  toVietnamDateParts,
   StockTransferInsufficientStockError,
   StockTransferNotDraftError,
   StockTransferNotInTransitError,
@@ -11,6 +14,7 @@ import {
   StockTransferResolutionIncompleteError,
   StockTransferReturnQuantityInvalidError,
   StockTransferVarianceReasonRequiredError,
+  type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
 } from '@nexamed/core';
 import type {
@@ -86,6 +90,7 @@ export class StockTransferService {
     private readonly stockReceiptService: StockReceiptService,
     private readonly stockIssueService: StockIssueService,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
 
   async create(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, dto: CreateStockTransferRequest, meta: RequestMeta): Promise<StockTransferDetail> {
@@ -192,10 +197,10 @@ export class StockTransferService {
     for (const uid of [row.transfer.shippedBy, row.transfer.receivedBy, row.transfer.receiveRejectedBy, row.transfer.returnConfirmedBy, row.transfer.varianceResolvedBy]) {
       if (uid) ids.add(uid);
     }
-    const names = await this.doctorDirectory.getUserFullNames(tenantId, [...ids]);
+    const [names, expiryWarningDays] = await Promise.all([this.doctorDirectory.getUserFullNames(tenantId, [...ids]), this.clinicConfigReader.getExpiryWarningDays(tenantId)]);
     // Giá vốn CHỈ cho người ở chi nhánh GỬI (Q3).
     const canSeeCost = row.from?.branchId === branchId;
-    return this.toDetailDto(row.transfer, this.brief(row.from), this.brief(row.to), names, canSeeCost);
+    return this.toDetailDto(row.transfer, this.brief(row.from), this.brief(row.to), names, canSeeCost, expiryWarningDays);
   }
 
   async list(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, query: ListStockTransfersQuery): Promise<ListStockTransfersResponse> {
@@ -745,10 +750,16 @@ export class StockTransferService {
     to: { name: string; branchId: string; branchName: string },
     names: Map<string, string>,
     canSeeCost: boolean,
+    expiryWarningDays: number,
   ): StockTransferDetail {
+    const today = toVietnamDateParts(new Date());
+    const todayUtcMs = Date.UTC(today.year, today.month - 1, today.day);
     return {
       ...this.toSummaryDto(row, from, to, row.lines.length, names),
-      lines: row.lines.map((line) => ({
+      lines: row.lines.map((line) => {
+        // "Cận hạn" ở màn Kiểm nhận (mockup Đợt 2): lô còn hạn trong ngưỡng cảnh báo của phòng khám (hoặc đã hết hạn).
+        const expiry = line.batch?.expiryDate ? computeExpiryStatus(line.batch.expiryDate, todayUtcMs, expiryWarningDays) : null;
+        return {
         id: line.id,
         drugId: line.drugId,
         drugCode: line.drug.code,
@@ -757,6 +768,8 @@ export class StockTransferService {
         batchId: line.batchId,
         batchNo: line.batch?.batchNo ?? null,
         expiryDate: line.batch?.expiryDate ? line.batch.expiryDate.toISOString().slice(0, 10) : null,
+        expiryStatus: expiry?.status ?? null,
+        daysUntilExpiry: expiry?.daysUntilExpiry ?? null,
         quantityShipped: line.quantityShipped,
         quantityReceived: line.quantityReceived,
         varianceNote: line.varianceNote,
@@ -765,7 +778,8 @@ export class StockTransferService {
         quantityReturnedBack: line.quantityReturnedBack,
         returnVarianceNote: line.returnVarianceNote,
         unitCost: canSeeCost && line.unitCost !== null ? Number(line.unitCost) : null,
-      })),
+        };
+      }),
     };
   }
 }

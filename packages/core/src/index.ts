@@ -60,6 +60,7 @@ export * from './drug-import/parse-cells';
 export * from './lab/lab-reference';
 export * from './paraclinical/clinical-order-list';
 export * from './paraclinical/paraclinical-result';
+export * from './paraclinical/patient-indicators';
 export * from './specimen/plan-specimen-tubes';
 export * from './pricing/resolve-effective-price';
 export * from './leave/leave-window';

@@ -24,14 +24,16 @@ import { PatientEditDialog } from './PatientEditDialog';
 import { MedicalRecordExportDialog } from './MedicalRecordExportDialog';
 import { PatientWalletTab } from '../patient-wallet/PatientWalletTab';
 import { PatientEncounterHistoryTab } from './PatientEncounterHistoryTab';
+import { PatientParaclinicalResultsTab, useCanSeePatientParaclinicalTab } from './PatientParaclinicalResultsTab';
 
-type ProfileTabId = 'info' | 'wallet' | 'record' | 'history';
+type ProfileTabId = 'info' | 'wallet' | 'record' | 'history' | 'cls';
 
 const TABS: { id: ProfileTabId; label: string; comingSoon: boolean }[] = [
   { id: 'info', label: 'Thông tin cá nhân', comingSoon: false },
   { id: 'wallet', label: 'Ví tạm ứng', comingSoon: false },
   { id: 'record', label: 'Hồ sơ bệnh án', comingSoon: true },
   { id: 'history', label: 'Lịch sử khám', comingSoon: false },
+  { id: 'cls', label: 'Kết quả cận lâm sàng', comingSoon: false },
 ];
 
 /**
@@ -48,6 +50,9 @@ export function PatientDetailPage() {
   const canEdit = useHasPermission('patient', 'update');
   const canMerge = useHasPermission('patient', 'merge');
   const canExportMedicalRecord = useHasPermission('patient', 'export_medical_record');
+  // Tab "Kết quả cận lâm sàng" (#234) chỉ hiện cho người làm chuyên môn của ít nhất một nhóm (Nhập hoặc Duyệt) — lễ tân không thấy.
+  const canSeeParaclinicalTab = useCanSeePatientParaclinicalTab();
+  const visibleTabs = TABS.filter((tab) => tab.id !== 'cls' || canSeeParaclinicalTab);
 
   const [activeTab, setActiveTab] = useState<ProfileTabId>('info');
   const [editing, setEditing] = useState(false);
@@ -140,7 +145,7 @@ export function PatientDetailPage() {
       {summaryQuery.isError && <ErrorBanner message="Không tải được số liệu lâm sàng." onRetry={() => void summaryQuery.refetch()} />}
 
       <div className="flex gap-1.5">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -179,6 +184,7 @@ export function PatientDetailPage() {
         <EmptyState icon={IdentificationCard} title="Hồ sơ bệnh án — sắp ra mắt" description="Tổng hợp dị ứng, bệnh lý nền, chẩn đoán và đơn thuốc theo thời gian tại một chỗ." />
       )}
       {activeTab === 'history' && <PatientEncounterHistoryTab patientId={patient.id} mergedIntoId={patient.mergedIntoId} />}
+      {activeTab === 'cls' && canSeeParaclinicalTab && <PatientParaclinicalResultsTab patientId={patient.id} />}
 
       <PatientHistoryDialog
         open={historyDialogOpen}

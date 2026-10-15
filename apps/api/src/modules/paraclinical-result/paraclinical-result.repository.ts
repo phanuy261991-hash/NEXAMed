@@ -3,6 +3,9 @@ import { Prisma, type ParaclinicalResult, type ParaclinicalResultImage, type Par
 
 export type ResultWithValues = ParaclinicalResult & { values: ParaclinicalResultValue[] };
 
+/** Trần số kết quả đã duyệt đọc cho MỘT bệnh nhân ở tab "Kết quả cận lâm sàng" (mới nhất trước). */
+export const MAX_PATIENT_RESULTS = 2000;
+
 export interface ResultValueData {
   labIndicatorId: string;
   indicatorCode: string;
@@ -51,6 +54,43 @@ export class ParaclinicalResultRepository {
         },
         _count: { select: { images: { where: { deletedAt: null } } } },
       },
+    });
+  }
+
+  /**
+   * Kết quả ĐÃ KÝ còn hiệu lực của MỘT BỆNH NHÂN (tab "Kết quả cận lâm sàng" ở hồ sơ bệnh nhân, docs/DECISIONS.md #234): mọi lượt khám của bệnh nhân ở MỌI chi nhánh (kết quả đi theo người
+   * bệnh), chỉ dịch vụ làm tại phòng khám thuộc `kinds`, scope `department` giới hạn theo Khoa/Phòng thực hiện. Mới nhất trước. Giới hạn cứng `MAX_PATIENT_RESULTS` để một hồ sơ bất thường
+   * không kéo cả bảng; lọc theo ngày/trạng thái/từ khoá làm ở service (bộ chỉ số bất thường cần giá trị chỉ số nên không đẩy xuống SQL được).
+   */
+  listSignedForPatient(tx: Prisma.TransactionClient, tenantId: string, patientId: string, filter: { kinds: readonly ('LAB' | 'IMAGING' | 'FUNCTIONAL')[]; departmentId?: string }) {
+    return tx.paraclinicalResult.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        signedAt: { not: null },
+        orderItem: {
+          deletedAt: null,
+          status: { not: 'CANCELLED' },
+          performance: 'IN_HOUSE',
+          technicalService: { serviceKind: { in: [...filter.kinds] }, ...(filter.departmentId ? { departmentId: filter.departmentId } : {}) },
+          order: { deletedAt: null, encounter: { patientId, deletedAt: null } },
+        },
+      },
+      include: {
+        values: { where: { deletedAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+        orderItem: {
+          select: {
+            id: true,
+            name: true,
+            sortOrder: true,
+            technicalService: { select: { serviceKind: true, categoryCode: true } },
+            order: { select: { orderNo: true, encounter: { select: { id: true, encounterNo: true, branchId: true, doctorId: true } } } },
+          },
+        },
+        _count: { select: { images: { where: { deletedAt: null } } } },
+      },
+      orderBy: [{ signedAt: 'desc' }, { id: 'desc' }],
+      take: MAX_PATIENT_RESULTS,
     });
   }
 

@@ -200,6 +200,10 @@ Chủ dự án yêu cầu: form "Thêm mới" phải có thêm nút lưu xong KH
 
 `shared/ui/CheckTile.tsx` — dùng cho danh sách lựa chọn NGẮN mà người dùng được chọn nhiều mục (ví dụ "Hướng điều trị": Kê đơn thuốc / Chuyển viện / Hẹn tái khám / Cấp cứu). Không dùng checkbox mặc định của trình duyệt (mục 4.6): ô vuông tự vẽ, trạng thái đã chọn theo token "Lựa chọn" `brand-teal` (mục 2.1); `tone="danger"` đổi màu đã chọn sang đỏ cho mục cần nổi bật (Cấp cứu); `disabled` = chỉ xem. Chọn 1-trong-nhiều vẫn dùng thẻ chọn 1 mục (mục 12) hoặc `TwoOptionToggle` (mục 4.8).
 
+### 4.10. `TrendChart` + `StatCardRow.hint` — biểu đồ diễn biến và chú thích phụ của dải số (chốt 2026-10-15, `docs/DECISIONS.md` #234)
+
+`shared/ui/TrendChart.tsx` — biểu đồ đường theo thời gian cho MỘT đại lượng, vẽ tay bằng SVG (KHÔNG thêm thư viện chart). Nhận dữ liệu qua props (`points: {id, label, subLabel, value, valueLabel, tone: normal|high|low, description}`, `low`/`high` = khoảng tham chiếu, `onSelect` = bấm điểm có cả bàn phím) nên dùng lại được cho sinh hiệu/cân nặng; điểm tô màu theo token `brand-teal` (trong khoảng) / `rose-600` (cao) / `amber-500` (thấp), dải tham chiếu `emerald-500/15` có nét đứt. `StatCardRow` nhận thêm `hint?` (dòng chú thích nhỏ dưới con số) — tuỳ chọn, không truyền thì ô như cũ. Thanh công cụ của tab có nhiều bộ lọc: hàng 1 chọn nhóm/kiểu xem, hàng 2 bộ lọc (không để một hàng dài tự rớt dòng).
+
 ### 4.8. `TwoOptionToggle` — công tắc trượt chọn 1-trong-2 (chốt 2026-09-09)
 
 `shared/ui/TwoOptionToggle.tsx` — dùng cho MỌI trường hợp cần chọn 1-trong-2 gọn trong không gian hẹp (ví dụ chiết khấu %/Tiền, "Từng dịch vụ"/"Toàn hoá đơn" ở `InvoiceDetailPage.tsx`) — không viết toggle 2 nút tay mới. Hỗ trợ trạng thái CHƯA CHỌN GÌ (`value=null`, cả 2 nút chỉ hiện dạng chip xám chưa tô màu) — bấm lại đúng nút đang chọn để bỏ chọn (quay về `null`).

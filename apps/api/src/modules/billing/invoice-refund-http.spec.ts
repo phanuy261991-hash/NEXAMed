@@ -389,6 +389,7 @@ describe('HTTP e2e — POST /api/v1/billing/invoices/:encounterId/refund-items (
     const paid = await payCash(s.encounterId);
     const body = { invoiceId: s.invoiceId, reason: 'Đồng thời', version: paid.version, lines: [{ invoiceLineId: s.drugLineId, quantity: 15, restock: false }] };
     const [a, b] = await Promise.all([refundItems(s.encounterId, body), refundItems(s.encounterId, body)]);
+    // Request chồng nhau lúc đọc → thua ở `WHERE version=?`; request đến sau khi request kia đã ghi → thua ở bước so phiên bản đầu hàm. Cả hai đều 409.
     expect([a.status, b.status].sort()).toEqual([200, 409]);
     const loser = a.status === 409 ? a : b;
     expect(loser.body.error.code).toBe('CONCURRENT_MODIFICATION');

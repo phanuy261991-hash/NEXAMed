@@ -68,6 +68,11 @@ export interface ResultAccessScope {
   permissionModule: string;
   /** Chi nhánh đang làm việc của phiên (docs/DECISIONS.md #231): hàng đợi/kết quả chỉ thấy lượt khám của chi nhánh này, chi nhánh khác → 404. */
   branchId: string;
+  /**
+   * CHỈ đặt khi mở kết quả qua tab "Kết quả cận lâm sàng" của hồ sơ bệnh nhân (docs/DECISIONS.md #234): kết quả đi theo người bệnh nên bỏ lọc chi nhánh, nhưng dòng chỉ định phải thuộc đúng
+   * bệnh nhân này và đã được duyệt (`COMPLETED`) — ngoài ra 404. Không đặt ở mọi đường khác.
+   */
+  crossBranchPatientId?: string;
 }
 
 const blank = (v: string | null | undefined): boolean => v === null || v === undefined || v.trim() === '';
@@ -535,12 +540,14 @@ export class ParaclinicalResultService {
 
   /** Nhóm dòng cùng màn nhập với `itemId`: xét nghiệm cùng phiếu + cùng trạng thái + cùng tình trạng thu tiền; dịch vụ khác loại thì đứng một mình. */
   private async resolveGroup(tx: Prisma.TransactionClient, tenantId: string, itemId: string, actorId: string, scope: ResultAccessScope): Promise<EnrichedItem[]> {
-    const [anchor] = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, scope.branchId, [itemId]));
+    const lookupBranchId = scope.crossBranchPatientId ? null : scope.branchId;
+    const [anchor] = enrich(await this.orderRepository.findQueueItemsByIds(tx, tenantId, lookupBranchId, [itemId]));
     if (!anchor) throw new NotFoundException();
     if (anchor.status === 'CANCELLED') throw new NotFoundException();
+    if (scope.crossBranchPatientId && (anchor.row.order.encounter.patient.id !== scope.crossBranchPatientId || anchor.status !== 'COMPLETED')) throw new NotFoundException();
     await this.assertInDepartmentScope(tx, tenantId, actorId, scope, anchor);
     if (anchor.serviceKind !== 'LAB') return [anchor];
-    const siblings = enrich(await this.orderRepository.findQueueItemsByOrder(tx, tenantId, scope.branchId, anchor.clinicalOrderId));
+    const siblings = enrich(await this.orderRepository.findQueueItemsByOrder(tx, tenantId, lookupBranchId, anchor.clinicalOrderId));
     return siblings.filter((s) => s.serviceKind === 'LAB' && s.status === anchor.status && s.paid === anchor.paid);
   }
 

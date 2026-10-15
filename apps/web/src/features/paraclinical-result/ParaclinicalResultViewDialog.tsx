@@ -13,8 +13,8 @@ import { ParaclinicalResultPrintView } from './ParaclinicalResultPrintView';
  * (`ParaclinicalResultPrintView display="screen"`, theo bản mẫu in của phòng khám) nên bác sĩ thấy y như phiếu trả cho bệnh nhân, kể cả chỉ số vượt mức in đậm + gạch chân.
  * Không có nút in/sửa — nhập, duyệt, đính chính, in vẫn ở menu Cận lâm sàng. Đóng bằng nút X, nút "Đóng" hoặc phím Esc.
  */
-export function ParaclinicalResultViewDialog({ group, itemId, onClose }: { group: ParaclinicalGroup; itemId: string; onClose: () => void }) {
-  const query = useParaclinicalResultQuery(group, itemId);
+export function ParaclinicalResultViewDialog({ group, itemId, patientId, onClose }: { group: ParaclinicalGroup; itemId: string; /** Có khi mở từ tab "Kết quả cận lâm sàng" ở hồ sơ bệnh nhân — đọc kết quả ở mọi chi nhánh (#234). */ patientId?: string; onClose: () => void }) {
+  const query = useParaclinicalResultQuery(group, itemId, patientId);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {

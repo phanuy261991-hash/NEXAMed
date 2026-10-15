@@ -59,6 +59,8 @@ export interface StatCardItem {
   /** Số liệu "chốt hạ" của dải (ví dụ Chênh lệch/Số dư cuối kỳ) — cỡ chữ lớn hơn 1 nấc để nổi bật,
    * không đổi màu nền/viền. */
   emphasis?: boolean;
+  /** Dòng chú thích phụ nhỏ dưới con số (ví dụ "từ 12/01/2026 đến 08/10/2026") — tuỳ chọn, không truyền thì ô giữ nguyên như cũ. */
+  hint?: string;
 }
 
 export function StatCardRow({ items }: { items: StatCardItem[] }) {
@@ -75,6 +77,7 @@ export function StatCardRow({ items }: { items: StatCardItem[] }) {
             <span className={`tabular-nums font-bold leading-tight ${item.emphasis ? 'text-[26px]' : 'text-2xl'} ${TONE_VALUE_CLASS[item.tone]}`}>
               {item.value}
             </span>
+            {item.hint && <span className="max-w-full truncate text-xs font-medium text-slate-500" title={item.hint}>{item.hint}</span>}
           </div>
         </Fragment>
       ))}

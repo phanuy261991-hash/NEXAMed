@@ -68,3 +68,16 @@ export const TRANSFER_ACTION_LABEL: Record<Exclude<TransferNextAction, null>, st
   resolve: 'Xử lý chênh lệch',
   'confirm-return': 'Xác nhận đã nhận lại hàng',
 };
+
+/** Phiếu "chờ bên gửi xử lý chênh lệch" quá bấy nhiêu ngày thì hiện nhãn "Quá hạn xử lý" (mockup Đợt 2; nhắc ngay ở danh sách, không có thông báo đẩy). */
+export const VARIANCE_OVERDUE_DAYS = 7;
+
+/**
+ * Số ngày phiếu `VARIANCE_PENDING` đã chờ xử lý tính từ lúc kiểm nhận (`receivedAt`), nếu ĐÃ QUÁ hạn `VARIANCE_OVERDUE_DAYS` — `null` nếu chưa quá hạn / không ở trạng thái đó.
+ * Tính theo mốc thời gian tuyệt đối (24 giờ = 1 ngày), `nowMs` truyền vào để test được.
+ */
+export function varianceOverdueDays(transfer: Pick<StockTransferSummary, 'status' | 'receivedAt'>, nowMs: number): number | null {
+  if (transfer.status !== 'VARIANCE_PENDING' || !transfer.receivedAt) return null;
+  const days = Math.floor((nowMs - new Date(transfer.receivedAt).getTime()) / 86_400_000);
+  return days > VARIANCE_OVERDUE_DAYS ? days : null;
+}

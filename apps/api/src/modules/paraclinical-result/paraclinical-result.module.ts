@@ -8,6 +8,8 @@ import { LabResultController } from './lab-result.controller';
 import { ParaclinicalLookupService } from './paraclinical-lookup.service';
 import { ParaclinicalResultRepository } from './paraclinical-result.repository';
 import { ParaclinicalResultService } from './paraclinical-result.service';
+import { PatientImagingResultsController, PatientLabResultsController } from './patient-paraclinical-results.controller';
+import { PatientParaclinicalResultsService } from './patient-paraclinical-results.service';
 import { SpecimenTubeController } from './specimen-tube.controller';
 import { SpecimenTubeRepository } from './specimen-tube.repository';
 import { SpecimenTubeService } from './specimen-tube.service';
@@ -19,8 +21,8 @@ import { SpecimenTubeService } from './specimen-tube.service';
  */
 @Module({
   imports: [ClinicModule, ClinicalOrderModule, ReferenceCatalogModule, TechnicalServiceModule],
-  controllers: [LabResultController, ImagingResultController, SpecimenTubeController],
-  providers: [ParaclinicalResultService, ParaclinicalLookupService, ParaclinicalResultRepository, SpecimenTubeService, SpecimenTubeRepository],
+  controllers: [LabResultController, ImagingResultController, SpecimenTubeController, PatientLabResultsController, PatientImagingResultsController],
+  providers: [ParaclinicalResultService, ParaclinicalLookupService, PatientParaclinicalResultsService, ParaclinicalResultRepository, SpecimenTubeService, SpecimenTubeRepository],
   exports: [ParaclinicalResultRepository],
 })
 export class ParaclinicalResultModule {}

@@ -26,7 +26,7 @@ import { StockTransferPrintView } from './StockTransferPrintView';
 import { StockTransferReceivePanel } from './StockTransferReceivePanel';
 import { StockTransferRejectDialog } from './StockTransferRejectDialog';
 import { StockTransferResolvePanel } from './StockTransferResolvePanel';
-import { nextTransferAction, REJECT_RECEIPT_REASON_LABEL, TRANSFER_STATUS_META, transferSides, VARIANCE_REASON_LABEL, VARIANCE_RESOLUTION_LABEL } from './stock-transfer-meta';
+import { nextTransferAction, REJECT_RECEIPT_REASON_LABEL, TRANSFER_STATUS_META, transferSides, varianceOverdueDays, VARIANCE_REASON_LABEL, VARIANCE_RESOLUTION_LABEL } from './stock-transfer-meta';
 
 interface DraftLine {
   key: string;
@@ -325,6 +325,7 @@ export function StockTransferFormPage() {
         <div className="flex min-w-0 items-center gap-2.5">
           <h2 className="truncate text-lg font-bold text-slate-900">{isEdit && transfer ? transfer.transferNo : 'Tạo phiếu điều chuyển kho'}</h2>
           {transfer && <StatusBadge tone={TRANSFER_STATUS_META[transfer.status].tone}>{TRANSFER_STATUS_META[transfer.status].label}</StatusBadge>}
+          {transfer && varianceOverdueDays(transfer, Date.now()) !== null && <StatusBadge tone="danger">Quá hạn xử lý · {varianceOverdueDays(transfer, Date.now())} ngày</StatusBadge>}
         </div>
         <div className="flex flex-shrink-0 gap-2">
           {printable && (

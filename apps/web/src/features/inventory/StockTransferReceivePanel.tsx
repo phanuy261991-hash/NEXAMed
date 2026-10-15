@@ -4,6 +4,7 @@ import type { ReceiveStockTransferLineInput, StockTransferDetail, StockTransferV
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
+import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { useReceiveStockTransferMutation } from './inventory.queries';
 import { StockTransferRejectReceiptDialog } from './StockTransferRejectReceiptDialog';
 import { VARIANCE_REASON_LABEL } from './stock-transfer-meta';
@@ -109,6 +110,14 @@ export function StockTransferReceivePanel({ transfer, receiverName, onDone, onCa
                   </div>
                   <div role="cell" className="text-center text-xs font-medium text-slate-700">
                     {r.line.isBatchManaged ? `${r.line.batchNo ?? ''}${r.line.expiryDate ? ` · ${formatExpiry(r.line.expiryDate)}` : ''}` : '— (không quản lý lô)'}
+                    {/* Huy hiệu "Cận hạn" (mockup Đợt 2): lô trong ngưỡng cảnh báo hạn dùng của phòng khám, hoặc đã hết hạn. */}
+                    {r.line.expiryStatus && (
+                      <div className="mt-0.5">
+                        <StatusBadge tone={r.line.expiryStatus === 'EXPIRED' ? 'danger' : 'warning'}>
+                          {r.line.expiryStatus === 'EXPIRED' ? 'Hết hạn' : `Cận hạn · còn ${r.line.daysUntilExpiry} ngày`}
+                        </StatusBadge>
+                      </div>
+                    )}
                   </div>
                   <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{r.line.quantityShipped}</div>
                   <div role="cell" className="text-center">

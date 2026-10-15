@@ -268,6 +268,15 @@ export class InvoiceRepository {
   /** Kho Thuốc GĐ3 (#163, mở rộng #165) — hoá đơn CỤ THỂ theo `id`, bất kể loại (SERVICE/DRUG) —
    * dùng khi web truyền `?invoiceId=` (xem hoá đơn thuốc riêng, hoặc đúng ý bấm từ "Danh sách Thu
    * ngân"). Không lọc `invoiceType` — service tự kiểm `encounterId` khớp trước khi trả về. */
+  /**
+   * Khoá theo hoá đơn trong transaction hiện tại (tự nhả khi commit/rollback): các request hoàn tiền cùng một hoá đơn xếp hàng nối đuôi thay vì chạy chồng nhau. Cần thiết vì Prisma đọc hoá
+   * đơn và danh sách phiếu hoàn bằng NHIỀU câu lệnh riêng — request đến sau có thể thấy phiên bản cũ của hoá đơn nhưng đã thấy phiếu hoàn của request trước, dẫn tới lúc báo vượt số lượng
+   * lúc báo lệch phiên bản. Sau khi được khoá, request đọc lại trọn vẹn trạng thái đã commit và bị từ chối nhất quán bằng lệch phiên bản.
+   */
+  async lockForRefund(tx: Prisma.TransactionClient, tenantId: string, invoiceId: string): Promise<void> {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${tenantId}:invoice-refund:${invoiceId}`}, 0))`;
+  }
+
   findByIdWithLines(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string): Promise<InvoiceWithLines | null> {
     return tx.invoice
       .findFirst({

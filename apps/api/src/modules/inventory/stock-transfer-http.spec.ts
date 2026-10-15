@@ -76,14 +76,14 @@ describe('HTTP e2e — /api/v1/inventory/transfers (Điều chuyển kho GĐ4)',
     return res.body.data.id as string;
   }
 
-  async function createAndApproveReceipt(token: string, wh: string, drugId: string, quantity: number, unitCost: number, batchNo?: string) {
+  async function createAndApproveReceipt(token: string, wh: string, drugId: string, quantity: number, unitCost: number, batchNo?: string, expiryDate = '2028-01-01') {
     const created = await request(app.getHttpServer())
       .post('/api/v1/inventory/receipts')
       .set(authed(token))
       .send({
         warehouseId: wh,
         receiptType: 'OPENING_BALANCE',
-        lines: [{ drugId, unitCode: 'VIEN', quantity, unitCost, batchNo, expiryDate: batchNo ? '2028-01-01' : undefined }],
+        lines: [{ drugId, unitCode: 'VIEN', quantity, unitCost, batchNo, expiryDate: batchNo ? expiryDate : undefined }],
       });
     expect(created.status).toBe(200);
     const approved = await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${created.body.data.id}/approve`).set(authed(token)).send({ version: created.body.data.version });
@@ -252,6 +252,29 @@ describe('HTTP e2e — /api/v1/inventory/transfers (Điều chuyển kho GĐ4)',
     // Lô mới tại kho đích kế thừa ĐÚNG batchNo/giá vốn từ lô gốc bên kho nguồn (find-or-create).
     const destBatchesRes = await request(app.getHttpServer()).get(`/api/v1/inventory/drugs/${drugId}/balances`).set(authed(clinicAdminToken)).query({ warehouseId: toWarehouseId });
     expect(destBatchesRes.body.data.items[0]).toMatchObject({ batchNo, unitCost: 500, quantityOnHand: 50 });
+  });
+
+  it('dòng phiếu mang trạng thái hạn dùng: lô còn ≤ ngưỡng cảnh báo (mặc định 30 ngày) báo EXPIRING_SOON kèm số ngày còn lại; lô còn xa thì null (huy hiệu "Cận hạn" ở Kiểm nhận)', async () => {
+    const soon = new Date(Date.now() + 7 * 3_600_000 + 10 * 86_400_000).toISOString().slice(0, 10);
+    const nearDrug = await createDrug(clinicAdminToken, { name: 'Lo can han', isBatchManaged: true });
+    const farDrug = await createDrug(clinicAdminToken, { name: 'Lo con xa', isBatchManaged: true });
+    await createAndApproveReceipt(clinicAdminToken, fromWarehouseId, nearDrug, 20, 500, `NEAR-${randomUUID().slice(0, 6)}`, soon);
+    await createAndApproveReceipt(clinicAdminToken, fromWarehouseId, farDrug, 20, 500, `FAR-${randomUUID().slice(0, 6)}`);
+    const nearBatch = await getWarehouseBatchId(clinicAdminToken, nearDrug, fromWarehouseId);
+    const farBatch = await getWarehouseBatchId(clinicAdminToken, farDrug, fromWarehouseId);
+
+    const created = await createTransfer(clinicAdminToken, fromWarehouseId, toWarehouseId, {
+      lines: [
+        { drugId: nearDrug, batchId: nearBatch, quantityShipped: 5 },
+        { drugId: farDrug, batchId: farBatch, quantityShipped: 5 },
+      ],
+    });
+    const lines = created.body.data.lines as { drugId: string; expiryStatus: string | null; daysUntilExpiry: number | null }[];
+    const near = lines.find((l) => l.drugId === nearDrug)!;
+    expect(near.expiryStatus).toBe('EXPIRING_SOON');
+    expect(near.daysUntilExpiry).toBeGreaterThanOrEqual(9);
+    expect(near.daysUntilExpiry).toBeLessThanOrEqual(10);
+    expect(lines.find((l) => l.drugId === farDrug)).toMatchObject({ expiryStatus: null, daysUntilExpiry: null });
   });
 
   it('Kiểm nhận THIẾU không kèm lý do chênh lệch → 422; chọn "Khác" mà không ghi chú → 422', async () => {

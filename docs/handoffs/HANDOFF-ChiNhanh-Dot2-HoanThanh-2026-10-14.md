@@ -4,7 +4,7 @@
 
 ## 0. Trạng thái một câu
 
-Đợt 2 xong code + test + verify Chrome thật. **84 file đang thay đổi, CHƯA COMMIT** (commit `2fc9c00` cũ là bản wip). Việc còn lại duy nhất của Đợt 2: **commit + push, rồi dựng lại gói on-prem**. KHÔNG bật chi nhánh thứ 2 ở khách thật trước khi xong hai việc đó và chủ dự án duyệt.
+Đợt 2 xong code + test + verify Chrome thật. **Đã commit + push thẳng `master` (`73143c3`)**; việc commit ở mục 3.1 bên dưới đã làm xong. Việc còn lại duy nhất của Đợt 2: **dựng lại gói on-prem**. KHÔNG bật chi nhánh thứ 2 ở khách thật trước khi xong hai việc đó và chủ dự án duyệt.
 
 ## 1. Đã làm xong (tóm tắt, chi tiết ở `docs/DECISIONS.md` #233 mục "Cập nhật 14/10/2026 cuối phiên")
 

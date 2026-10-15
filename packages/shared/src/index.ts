@@ -41,6 +41,7 @@ export * from './technical-service';
 export * from './pricing';
 export * from './clinical-order';
 export * from './paraclinical-result';
+export * from './patient-paraclinical';
 export * from './specimen-tube';
 export * from './leave-request';
 export * from './work-schedule-submission';

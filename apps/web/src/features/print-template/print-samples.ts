@@ -369,6 +369,8 @@ export const SAMPLE_STOCK_TRANSFER: StockTransferDetail = {
       batchId: ID(811),
       batchNo: 'L2610A',
       expiryDate: '2028-09-30',
+      expiryStatus: null,
+      daysUntilExpiry: null,
       quantityShipped: 50,
       quantityReceived: 50,
       varianceNote: null,

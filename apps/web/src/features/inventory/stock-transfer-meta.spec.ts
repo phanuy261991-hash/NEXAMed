@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextTransferAction, TRANSFER_STATUS_META, TRANSFER_STATUS_ORDER, transferSides } from './stock-transfer-meta';
+import { nextTransferAction, TRANSFER_STATUS_META, TRANSFER_STATUS_ORDER, transferSides, varianceOverdueDays, VARIANCE_OVERDUE_DAYS } from './stock-transfer-meta';
 
 const A = 'branch-a';
 const B = 'branch-b';
@@ -34,5 +34,23 @@ describe('stock-transfer-meta', () => {
 
   it('nextTransferAction: cùng chi nhánh — IN_TRANSIT vẫn do chính chi nhánh đó kiểm nhận', () => {
     expect(nextTransferAction({ status: 'IN_TRANSIT', fromBranchId: A, toBranchId: A }, A)).toBe('receive');
+  });
+});
+
+describe('varianceOverdueDays (nhãn "Quá hạn xử lý" của phiếu chờ xử lý chênh lệch)', () => {
+  const DAY = 86_400_000;
+  const now = Date.parse('2026-10-20T00:00:00.000Z');
+  const received = (daysAgo: number) => new Date(now - daysAgo * DAY).toISOString();
+
+  it('quá hạn khi chờ lâu hơn ngưỡng; đúng ngưỡng hoặc ít hơn thì chưa', () => {
+    expect(varianceOverdueDays({ status: 'VARIANCE_PENDING', receivedAt: received(VARIANCE_OVERDUE_DAYS + 3) }, now)).toBe(VARIANCE_OVERDUE_DAYS + 3);
+    expect(varianceOverdueDays({ status: 'VARIANCE_PENDING', receivedAt: received(VARIANCE_OVERDUE_DAYS) }, now)).toBeNull();
+    expect(varianceOverdueDays({ status: 'VARIANCE_PENDING', receivedAt: received(1) }, now)).toBeNull();
+  });
+
+  it('chỉ áp cho phiếu đang chờ xử lý chênh lệch và có ngày kiểm nhận', () => {
+    expect(varianceOverdueDays({ status: 'COMPLETED', receivedAt: received(30) }, now)).toBeNull();
+    expect(varianceOverdueDays({ status: 'RETURNING', receivedAt: received(30) }, now)).toBeNull();
+    expect(varianceOverdueDays({ status: 'VARIANCE_PENDING', receivedAt: null }, now)).toBeNull();
   });
 });
