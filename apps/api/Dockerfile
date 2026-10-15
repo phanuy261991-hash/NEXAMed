@@ -27,6 +27,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
+# apps/setup (trình cài đặt, docs/DECISIONS.md #238) là thành viên workspace: pnpm cần package.json của nó để khớp pnpm-lock.yaml (không cài dependency của nó, vì --filter chỉ chọn gói này).
+COPY apps/setup/package.json apps/setup/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY packages/shared/package.json packages/shared/package.json
 # --filter "@nexamed/api..." — chỉ cài apps/api + dependency của nó (packages/core, packages/

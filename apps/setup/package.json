@@ -1,0 +1,20 @@
+{
+  "name": "@nexamed/setup",
+  "private": true,
+  "version": "0.9.0",
+  "description": "Trình cài đặt/nâng cấp NEXAMed dùng chung (trang web cục bộ trong container) — docs/DECISIONS.md #238",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-public.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "qrcode-generator": "^1.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.6",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

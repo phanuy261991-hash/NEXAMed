@@ -140,6 +140,22 @@ importers:
         specifier: ^2.1.4
         version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(terser@5.49.2)
 
+  apps/setup:
+    dependencies:
+      qrcode-generator:
+        specifier: ^1.4.4
+        version: 1.5.2
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.6
+        version: 20.19.43
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(terser@5.49.2)
+
   apps/web:
     dependencies:
       '@nexamed/shared':
@@ -3243,6 +3259,9 @@ packages:
   puppeteer-core@25.11.0:
     resolution: {integrity: sha512-Ujym7JbxoAqanaxGcHgmTomfhC01HfDCSuGZ8Hs9boHrDjzbNVMnFRJo2KtbDT9LCRgeJoFnkn9JQZ41eEUrLw==}
     engines: {node: '>=22.12.0'}
+
+  qrcode-generator@1.5.2:
+    resolution: {integrity: sha512-pItrW0Z9HnDBnFmgiNrY1uxRdri32Uh9EjNYLPVC2zZ3ZRIIEqBoDgm4DkvDwNNDHTK7FNkmr8zAa77BYc9xNw==}
 
   qs@6.14.2:
     resolution: {integrity: sha512-V/yCWTTF7VJ9hIh18Ugr2zhJMP01MY7c5kh4J870L7imm6/DIzBsNLTXzMwUA3yZ5b/KBqLx8Kp3uRvd7xSe3Q==}
@@ -7081,6 +7100,8 @@ snapshots:
       - proxy-agent
       - utf-8-validate
       - yauzl
+
+  qrcode-generator@1.5.2: {}
 
   qs@6.14.2:
     dependencies:

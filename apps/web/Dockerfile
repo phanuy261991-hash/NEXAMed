@@ -11,6 +11,8 @@ WORKDIR /repo
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY apps/api/package.json apps/api/package.json
+# apps/setup (trình cài đặt, docs/DECISIONS.md #238) là thành viên workspace: pnpm cần package.json của nó để khớp pnpm-lock.yaml (không cài dependency của nó, vì --filter chỉ chọn gói này).
+COPY apps/setup/package.json apps/setup/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/core/package.json packages/core/package.json
 # --filter "@nexamed/web..." — chỉ cài apps/web + dependency (packages/shared), KHÔNG cài
