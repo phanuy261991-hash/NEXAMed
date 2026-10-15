@@ -9,7 +9,7 @@ import { buildOtpAuthUri, generateTotpSecret } from '../src/infrastructure/crypt
  * Tạo tài khoản NGƯỜI VẬN HÀNH nền tảng SaaS (docs/DECISIONS.md #237) — người duy nhất đăng nhập được khu quản trị (`admin.<tên miền gốc>`). Không thuộc công ty nào.
  * Chạy bằng role đặc quyền (MIGRATE_DATABASE_URL), cần `ENCRYPTION_KEY` (mã hoá bí mật OTP trong DB) — cùng khoá với API.
  *
- * Dùng: OPERATOR_USERNAME="..." OPERATOR_FULL_NAME="..." [OPERATOR_PASSWORD="..."] pnpm --filter @nexamed/api run db:seed:platform-operator
+ * Dùng: OPERATOR_USERNAME="..." OPERATOR_FULL_NAME="..." [OPERATOR_PASSWORD="..."] [OPERATOR_TOTP_SECRET="..."] pnpm --filter @nexamed/api run db:seed:platform-operator
  * Không truyền OPERATOR_PASSWORD thì tự sinh mật khẩu và in ra ĐÚNG MỘT LẦN. Bí mật OTP + địa chỉ otpauth cũng chỉ in một lần: thêm vào ứng dụng xác thực (Google/Microsoft
  * Authenticator, Authy...) ngay. Mất cả hai thì chạy lại với tên đăng nhập khác (chưa có giao diện quản lý tài khoản vận hành).
  */
@@ -32,7 +32,8 @@ async function main() {
     if (await prisma.platformOperator.findUnique({ where: { username } })) {
       throw new Error(`Đã có người vận hành tên đăng nhập "${username}".`);
     }
-    const secret = generateTotpSecret();
+    // Trình cài đặt (#238) sinh sẵn bí mật để người vận hành quét QR và thử mã TRƯỚC khi tạo tài khoản; chạy tay thì tự sinh.
+    const secret = process.env.OPERATOR_TOTP_SECRET?.trim() || generateTotpSecret();
     await prisma.platformOperator.create({
       data: {
         username,
@@ -47,6 +48,7 @@ async function main() {
     console.log(generatedPassword ? `  Mật khẩu (tự sinh, CHỈ hiện một lần): ${generatedPassword}` : '  Mật khẩu      : (theo OPERATOR_PASSWORD đã truyền)');
     console.log(`  Bí mật OTP    : ${secret}   (CHỈ hiện một lần)`);
     console.log(`  otpauth       : ${buildOtpAuthUri(secret, username)}`);
+    console.log(`NEXAMED_RESULT ${JSON.stringify({ username, password: generatedPassword, totpSecret: secret })}`);
     console.log('\nThêm bí mật OTP vào ứng dụng xác thực trên điện thoại rồi đăng nhập ở địa chỉ quản trị (admin.<tên miền gốc>).');
   } finally {
     await prisma.$disconnect();

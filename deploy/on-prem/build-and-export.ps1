@@ -91,6 +91,14 @@ $images = @(
     @{ Name = 'nexamed-api'; Dockerfile = 'apps\api\Dockerfile'; VersionArgs = $true }
     @{ Name = 'nexamed-web'; Dockerfile = 'apps\web\Dockerfile'; VersionArgs = $true }
     @{ Name = 'nexamed-backup'; Dockerfile = 'deploy\on-prem\backup\Dockerfile'; VersionArgs = $false }
+    # Trình cài đặt/nâng cấp (docs/DECISIONS.md #238): chạy trên máy khách lúc cài/nâng cấp, điều khiển Docker qua docker.sock.
+    @{ Name = 'nexamed-setup'; Dockerfile = 'apps\setup\Dockerfile'; VersionArgs = $false }
+)
+
+# Ảnh bên thứ ba đi kèm gói để cài KHÔNG cần Internet: cơ sở dữ liệu và Caddy (HTTPS cho kiểu VPS/SaaS). Phải KHỚP tag trong docker-compose.yml.
+$thirdParty = @(
+    @{ Ref = 'postgres:18'; File = 'third-party-postgres' }
+    @{ Ref = 'caddy:2.8-alpine'; File = 'third-party-caddy' }
 )
 
 $useBuildx = $Platform -ne 'linux/amd64'
@@ -133,14 +141,36 @@ foreach ($img in $images) {
     Write-Host "$($img.Name)-$Version.tar.gz — $sizeMb MB"
 }
 
+foreach ($tp in $thirdParty) {
+    Write-Step "Xuất $($tp.Ref) -> package\images\$($tp.File).tar.gz"
+    & docker image inspect $tp.Ref *> $null
+    if ($LASTEXITCODE -ne 0) {
+        & docker pull --platform $Platform $tp.Ref
+        if (-not $?) { Write-Error "Không tải được ảnh $($tp.Ref) — cần Internet ở máy dựng gói." }
+    }
+    $tarPath = "$imagesDir\$($tp.File).tar"
+    $gzPath = "$tarPath.gz"
+    & docker save -o $tarPath $tp.Ref
+    if (-not $?) { Write-Error "docker save thất bại: $($tp.Ref)" }
+    $inStream = [System.IO.File]::OpenRead($tarPath)
+    $outStream = [System.IO.File]::Create($gzPath)
+    $gzipStream = New-Object System.IO.Compression.GZipStream($outStream, [System.IO.Compression.CompressionLevel]::Optimal)
+    $inStream.CopyTo($gzipStream)
+    $gzipStream.Dispose()
+    $outStream.Dispose()
+    $inStream.Dispose()
+    Remove-Item $tarPath
+    Write-Host "$($tp.File).tar.gz — $([math]::Round((Get-Item $gzPath).Length / 1MB, 1)) MB"
+}
+
 Write-Step "Gom file cài đặt vào $PackageDir"
 Copy-Item "$PSScriptRoot\docker-compose.yml" $PackageDir -Force
 Copy-Item "$PSScriptRoot\.env.example" $PackageDir -Force
 Copy-Item "$PSScriptRoot\config.example.json" $PackageDir -Force
-Copy-Item "$PSScriptRoot\install.ps1" $PackageDir -Force
-Copy-Item "$PSScriptRoot\install.cmd" $PackageDir -Force
-Copy-Item "$PSScriptRoot\install.sh" $PackageDir -Force
-Write-Host "Đã copy: docker-compose.yml, .env.example, config.example.json, install.ps1, install.cmd, install.sh"
+Copy-Item "$PSScriptRoot\nexamed-setup.ps1" $PackageDir -Force
+Copy-Item "$PSScriptRoot\nexamed-setup.cmd" $PackageDir -Force
+Copy-Item "$PSScriptRoot\nexamed-setup.sh" $PackageDir -Force
+Write-Host "Đã copy: docker-compose.yml, .env.example, config.example.json, nexamed-setup.ps1, nexamed-setup.cmd, nexamed-setup.sh"
 
 Write-Step "HOÀN TẤT"
 Write-Host "Thư mục sẵn sàng chép sang máy khách: $PackageDir" -ForegroundColor Green
@@ -149,4 +179,4 @@ Write-Host ""
 Write-Host "Bước tiếp theo:" -ForegroundColor Yellow
 Write-Host "  1. Nén thư mục $PackageDir thành 1 file .zip (chuột phải -> Send to -> Compressed folder), hoặc copy nguyên thư mục."
 Write-Host "  2. Chép file .zip (hoặc thư mục) sang máy khách qua USB/mạng nội bộ."
-Write-Host "  3. Tại máy khách: giải nén rồi double-click install.cmd (hoặc mở PowerShell trong thư mục đó, chạy .\install.cmd) — tránh lỗi Execution Policy chặn .ps1 chưa ký."
+Write-Host "  3. Tại máy khách: giải nén vào một thư mục cố định rồi double-click nexamed-setup.cmd (Windows) hoặc chạy ./nexamed-setup.sh (Linux/NAS). Trình cài đặt mở trang hướng dẫn trên trình duyệt; chạy lại đúng lệnh đó để nâng cấp."

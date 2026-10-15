@@ -40,6 +40,24 @@ export default tseslint.config(
     },
   },
   {
+    // Giao diện tĩnh của trình cài đặt (apps/setup/public) chạy trong trình duyệt, không qua bộ dựng — khai các biến toàn cục của trình duyệt.
+    files: ['apps/setup/public/**/*.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        fetch: 'readonly',
+        FileReader: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+      },
+    },
+  },
+  {
     files: ['packages/core/**/*.ts'],
     rules: {
       'no-restricted-imports': [

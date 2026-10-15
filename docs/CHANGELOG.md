@@ -4,6 +4,14 @@
 
 ## 2026-10-15
 
+### Đặt lại mật khẩu quản trị bằng dòng lệnh (`docs/Deploy.md` mục 2.3)
+
+Khi quản trị viên duy nhất của phòng khám quên mật khẩu (không ai còn đăng nhập để bấm "Đặt lại mật khẩu"), chạy trên máy chủ: `docker compose run --rm -e ADMIN_USERNAME=<tên> migrate pnpm run db:reset-admin-password`. Lệnh sinh mật khẩu tạm (hiện một lần, bắt đổi ở lần đăng nhập đầu), xoá khoá tạm, đăng xuất mọi phiên của tài khoản đó và ghi nhật ký; chạy bằng quyền ứng dụng trong phạm vi một công ty nên không chạm công ty khác. Môi trường khác: không migration; cần dựng lại gói để có lệnh.
+
+### Trình cài đặt/nâng cấp NEXAMed dùng chung (`docs/DECISIONS.md` #238)
+
+Một trình cài đặt dạng trang web thay hai script cũ: chạy `nexamed-setup` (Windows: `nexamed-setup.cmd`, Linux/NAS: `./nexamed-setup.sh`), mở trình duyệt, chọn một trong ba kiểu (tại phòng khám / VPS có HTTPS tự động / hệ thống SaaS), điền thông tin, hệ thống tự cài, kiểm tra và đưa ra thông tin bàn giao (mật khẩu tạm, file .txt). Kiểu SaaS có bước kích hoạt OTP cho người vận hành. Chạy lại lệnh trên gói mới để nâng cấp: tự sao lưu trước, kiểm tra sức khoẻ, tự quay về bản cũ nếu lỗi, và có nút quay lui sau khi nâng cấp. IP máy đổi (router không giữ IP cố định) ứng dụng vẫn chạy. Gói cài đặt thêm ảnh trình cài đặt, PostgreSQL và Caddy để cài không cần Internet. Hai script cũ `install.ps1/.cmd/.sh` đã BỎ: đây là cách cài và nâng cấp duy nhất (hướng dẫn dựng gói và cài ở `docs/Deploy.md` mục 2.3 và 2.3b). Môi trường khác: không migration; cần dựng lại gói để có trình cài đặt.
+
 ### Đợt 4 SaaS: tên miền phụ theo công ty + Khu quản trị nền tảng (`docs/DECISIONS.md` #237)
 
 Hệ thống SaaS tập trung: mỗi công ty có một tên miền phụ (`<mã>.tenmien.vn`), màn đăng nhập hiện tên công ty và báo khi công ty tạm ngưng; công ty chỉ vào được bằng đúng tên miền của mình. **Khu quản trị nền tảng** ở `admin.tenmien.vn` cho người vận hành (đăng nhập mật khẩu + mã OTP): danh sách công ty (tìm, lọc, số đếm), thêm công ty (kèm tài khoản quản trị đầu tiên, mật khẩu tạm hiện một lần), sửa liên hệ/ghi chú, khoá/mở khoá công ty (bắt buộc lý do, đăng xuất ngay mọi phiên đang mở), đặt lại mật khẩu quản trị, nhật ký vận hành. Không xem được dữ liệu bệnh nhân và không đăng nhập thay vào công ty. **Bản on-prem/VPS/NAS không đổi** (mặc định một công ty; các đường dẫn mới trả 404). Môi trường khác: `db:deploy` (1 migration cộng thêm); SaaS cần `DEPLOYMENT_MODE=saas` + `PLATFORM_BASE_DOMAIN` và `db:seed:platform-operator` để tạo người vận hành.

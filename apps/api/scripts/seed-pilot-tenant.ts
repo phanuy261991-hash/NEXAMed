@@ -100,6 +100,8 @@ async function main() {
       console.log('  Mật khẩu       : (theo giá trị ADMIN_PASSWORD đã truyền)');
     }
     console.log(`\nDán "${tenant.id}" vào apps/web/public/config.json (khoá tenantId) rồi khởi động web.`);
+    // Dòng đầu ra máy đọc được cho trình cài đặt (docs/DECISIONS.md #238) — đổi định dạng dòng này thì phải sửa apps/setup.
+    console.log(`NEXAMED_RESULT ${JSON.stringify({ tenantId: tenant.id, username: adminUsername, password: generatedPassword })}`);
   } finally {
     await prisma.$disconnect();
   }

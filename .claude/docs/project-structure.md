@@ -76,7 +76,8 @@ Adapter no-op **phải tồn tại và được đăng ký**, không để servi
 
 - Toàn bộ cấu hình đọc từ biến môi trường, validate bằng Zod ở `apps/api/src/config`. Không đọc `process.env` rải rác trong code.
 - Không hard-code đường dẫn tuyệt đối, tên máy chủ, hay giá trị đặc thù một phòng khám. Giá trị riêng theo phòng khám để ở bảng `tenant_setting`.
-- Bản on-prem chạy bằng `deploy/on-prem/docker-compose.yml`: api, web (nginx), postgres, dịch vụ backup. Không giả định máy chủ có internet.
+- Bản on-prem chạy bằng `deploy/on-prem/docker-compose.yml`: api, web (nginx), postgres, dịch vụ backup (cộng `caddy` khi `COMPOSE_PROFILES=https`). Không giả định máy chủ có internet.
+- `apps/setup` là trình cài đặt/nâng cấp (Node thuần, giao diện tĩnh ở `public/`, chạy trong container `nexamed-setup` điều khiển Docker qua docker.sock; logic ở `src/lib/*`, test bằng `FakeShell` ở `src/testing`). Không import `@nexamed/*`; script khởi động ở `deploy/on-prem/nexamed-setup.*`. Xem `docs/DECISIONS.md` #238.
 - Backup: script `pg_dump` theo lịch, ghi ra thư mục cấu hình được. Không dùng dịch vụ cloud ở v1.
 - Sẵn sàng cho triển khai tập trung: không lưu state trong RAM tiến trình (session, cache nghiệp vụ, bộ đếm). Cần state chia sẻ thì đi qua DB hoặc port riêng.
 

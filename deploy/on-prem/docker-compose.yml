@@ -7,12 +7,12 @@
 #
 # HAI GIAI ĐOẠN (docs/DECISIONS.md #098) — máy khách KHÔNG BAO GIỜ build, KHÔNG BAO GIỜ nhận
 # source code/`.git`/`docs`, kể cả lần cài đầu tiên:
-#   A. Máy dev/CI (có source đầy đủ): deploy/on-prem/build-and-export.ps1 build 3 ảnh
-#      (nexamed-api/nexamed-web/nexamed-backup) rồi `docker save` ra file .tar.gz.
-#   B. Máy khách (chỉ nhận file .tar.gz + thư mục deploy/on-prem/ đã lọc): install.ps1/install.sh
+#   A. Máy dev/CI (có source đầy đủ): deploy/on-prem/build-and-export.ps1 build 4 ảnh
+#      (nexamed-api/nexamed-web/nexamed-backup/nexamed-setup) rồi `docker save` ra file .tar.gz.
+#   B. Máy khách (chỉ nhận file .tar.gz + thư mục deploy/on-prem/ đã lọc): nexamed-setup (trình cài đặt, docs/DECISIONS.md #238)
 #      `docker load` các ảnh đó rồi `docker compose up -d` — không cần internet.
 #
-# Chạy ở máy khách: xem deploy/on-prem/install.ps1 (Windows PC) hoặc deploy/on-prem/install.sh
+# Chạy ở máy khách: nexamed-setup.cmd (Windows PC) hoặc nexamed-setup.sh
 # (Linux/NAS). Build ở máy dev: xem deploy/on-prem/build-and-export.ps1.
 
 services:
@@ -37,9 +37,9 @@ services:
   # phải service chạy dài hạn. Idempotent: `migrate deploy` bỏ qua migration đã áp, đổi mật khẩu
   # role app dùng cùng giá trị không đổi gì, seed danh mục dùng upsert — an toàn khi chạy lại.
   # KHÔNG tạo tenant/tài khoản pilot ở đây (cần Tên phòng khám/Tên đăng nhập cụ thể, việc một lần
-  # do người cài chủ động chạy tay — xem install.ps1 bước "Tạo phòng khám đầu tiên").
+  # do người cài chủ động chạy tay — trình cài đặt làm ở bước "Tạo phòng khám và quản trị viên").
   migrate:
-    image: nexamed-api:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay install.ps1/install.sh de nap anh Docker truoc}
+    image: nexamed-api:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay nexamed-setup de nap anh Docker truoc}
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,6 +47,8 @@ services:
       DATABASE_URL: postgresql://nexamed_app:${NEXAMED_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       MIGRATE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       NEXAMED_APP_DB_PASSWORD: ${NEXAMED_APP_DB_PASSWORD}
+      # Trình cài đặt (docs/DECISIONS.md #238) chạy db:seed:platform-operator qua service này: cần cùng khoá với API để mã hoá bí mật OTP trong cơ sở dữ liệu.
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     working_dir: /repo/apps/api
     command: >
       sh -c "pnpm run db:deploy &&
@@ -55,7 +57,7 @@ services:
     restart: 'no'
 
   api:
-    image: nexamed-api:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay install.ps1/install.sh de nap anh Docker truoc}
+    image: nexamed-api:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay nexamed-setup de nap anh Docker truoc}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -74,11 +76,15 @@ services:
       # hỏng không báo lỗi (bug thật phát hiện lúc verify S4-05). Đặt "true" trong .env CHỈ khi
       # đã có TLS thật trước nginx.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Chế độ triển khai (docs/DECISIONS.md #237): single = một công ty (mặc định, on-prem/VPS/NAS); saas = nhiều công ty theo tên miền phụ, cần PLATFORM_BASE_DOMAIN.
+      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-single}
+      PLATFORM_BASE_DOMAIN: ${PLATFORM_BASE_DOMAIN:-}
+      PLATFORM_ADMIN_SUBDOMAIN: ${PLATFORM_ADMIN_SUBDOMAIN:-admin}
       # S6-01 (docs/DECISIONS.md #141) — đọc trạng thái backup do container `backup` ghi ra, cùng
       # volume `backup_status_data` mount ở service đó (dưới), CHỈ ĐỌC ở đây.
       BACKUP_STATUS_FILE: /data/backup-status/backup-status.json
       # Chỉ để HIỂN THỊ thư mục đích sao lưu ở "Cấu hình hệ thống → Sao lưu dữ liệu" (#217).
-      BACKUP_HOST_DIR_DISPLAY: ${BACKUP_HOST_DIR:-./backup-data}
+      BACKUP_HOST_DIR_DISPLAY: ${BACKUP_DIR_DISPLAY:-${BACKUP_HOST_DIR:-./backup-data}}
       # Địa chỉ máy chủ phát hành để KIỂM TRA bản mới (docs/DECISIONS.md #236) — nhà cung cấp đặt lúc bàn giao, để trống = chưa cấu hình.
       RELEASE_SERVER_URL: ${RELEASE_SERVER_URL:-}
       # S6-06 (ADM-05) — Chromium cài qua apt trong apps/api/Dockerfile, luôn đúng đường dẫn này
@@ -91,20 +97,40 @@ services:
     restart: unless-stopped
 
   web:
-    image: nexamed-web:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay install.ps1/install.sh de nap anh Docker truoc}
+    image: nexamed-web:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay nexamed-setup de nap anh Docker truoc}
     depends_on:
       api:
         condition: service_healthy
     ports:
-      - '${WEB_HTTP_PORT:-80}:80'
+      # Mặc định mở ra mọi địa chỉ của máy; kiểu VPS/SaaS (có Caddy) và kiểu "chỉ trên máy này" đặt WEB_BIND_IP=127.0.0.1 để chỉ nơi nội bộ vào được web.
+      - '${WEB_BIND_IP:-0.0.0.0}:${WEB_HTTP_PORT:-80}:80'
     volumes:
-      # Cấu hình runtime (tenantId/apiBaseUrl) — file thật do install.ps1 sinh ra cạnh compose
+      # Cấu hình runtime (tenantId/apiBaseUrl) — file thật do trình cài đặt sinh ra cạnh compose
       # này, sửa trực tiếp không cần build lại ảnh (docs/DECISIONS.md #020).
       - ./config.json:/usr/share/nginx/html/config.json:ro
     restart: unless-stopped
 
+  # Cửa ngõ HTTPS cho kiểu VPS và SaaS (docs/DECISIONS.md #238) — chỉ chạy khi COMPOSE_PROFILES=https. Tự xin/gia hạn chứng chỉ (VPS) hoặc dùng chứng chỉ wildcard
+  # do người vận hành tải lên (SaaS, ./certs). Caddy giữ nguyên tiêu đề Host nên API nhận ra công ty theo tên miền.
+  caddy:
+    image: caddy:2.8-alpine
+    profiles: ['https']
+    depends_on:
+      web:
+        condition: service_started
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
   backup:
-    image: nexamed-backup:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay install.ps1/install.sh de nap anh Docker truoc}
+    image: nexamed-backup:${NEXAMED_VERSION:?NEXAMED_VERSION chua dat trong .env - chay nexamed-setup de nap anh Docker truoc}
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,6 +158,8 @@ services:
 volumes:
   postgres_data:
   api_storage:
+  caddy_data:
+  caddy_config:
   # S6-01 — nội bộ container, KHÔNG bind-mount ra host (khác `backup-data`/`postgres_data`): chỉ
   # 1 file JSON nhỏ trạng thái backup, không phải dữ liệu cần backup/khôi phục.
   backup_status_data:

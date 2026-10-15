@@ -4,7 +4,7 @@
 
 NEXAMed v1 triển khai **on-premise duy nhất**, tại từng phòng khám (`docs/product/prd.md`, `CLAUDE.md`). Cloud **không phải mục tiêu triển khai của v1** — kiến trúc port/adapter đảm bảo không phải làm lại nền tảng khi cần chuyển sang cloud sau này, nhưng hiện **chưa có** nhà cung cấp, mô hình, hay quy trình cloud nào được chốt.
 
-**S4-05 (đóng gói on-premise) đã xong** (2026-09-01, sửa lại mô hình phân phối ở `docs/DECISIONS.md` #098) — `deploy/on-prem/` có đủ `docker-compose.yml` (tham chiếu ảnh `image:`, không tự build), Dockerfile cho `api`/`web`/`backup`, script build+export `build-and-export.ps1` (chạy ở máy dev/CI), script cài đặt `install.ps1`/`install.sh` (chạy ở máy khách, chỉ nạp ảnh). Tài liệu này gồm hai phần: (1) cách chạy môi trường hiện có cho dev/thử nghiệm (xem `docs/demo.md`, khác hẳn Phần 2 dưới đây), và (2) hướng dẫn triển khai on-premise thật + kiến trúc cho khả năng lên cloud sau này.
+**S4-05 (đóng gói on-premise) đã xong** (2026-09-01, sửa lại mô hình phân phối ở `docs/DECISIONS.md` #098) — `deploy/on-prem/` có đủ `docker-compose.yml` (tham chiếu ảnh `image:`, không tự build), Dockerfile cho `api`/`web`/`backup`, script build+export `build-and-export.ps1` (chạy ở máy dev/CI), trình cài đặt/nâng cấp `nexamed-setup` (`.cmd`/`.ps1`/`.sh`, chạy ở máy khách, chỉ nạp ảnh; thay `install.*` cũ từ 15/10/2026). Tài liệu này gồm hai phần: (1) cách chạy môi trường hiện có cho dev/thử nghiệm (xem `docs/demo.md`, khác hẳn Phần 2 dưới đây), và (2) hướng dẫn triển khai on-premise thật + kiến trúc cho khả năng lên cloud sau này.
 
 Cập nhật tài liệu này ngay khi có thay đổi kiến trúc triển khai, hoặc khi có quyết định chính thức về cloud.
 
@@ -120,11 +120,15 @@ Theo Phần 0.2: "on-prem" gồm 3 kiểu máy chủ vật lý khác nhau nhưng
 | | **PC thường tại phòng khám** (chưa có server nội bộ) | **NAS/máy chủ chuyên dụng** |
 |---|---|---|
 | Hệ điều hành | Windows + Docker Desktop (WSL2 backend) | Linux (Container Manager Synology, Container Station QNAP, hoặc Docker Engine thuần) |
-| Script cài đặt | `deploy/on-prem/install.ps1` | `deploy/on-prem/install.sh` |
+| Lệnh cài đặt/nâng cấp | `deploy/on-prem/nexamed-setup.cmd` | `deploy/on-prem/nexamed-setup.sh` |
 | `docker-compose.yml`/Dockerfile | **Y hệt nhau** — không có bản riêng cho từng trường hợp | |
 | Tự chạy lại sau khi máy khởi động lại | Cần Docker Desktop tự khởi động — xem 2.4 (có đánh đổi bảo mật, KHÔNG tự động hoá bằng script) | Tự động hoàn toàn (Docker chạy như dịch vụ hệ thống) |
 
 Chọn theo phần cứng khách hàng thật đang có — không phải chọn kiến trúc code khác nhau.
+
+### 2.0b. Trình cài đặt/nâng cấp (từ 15/10/2026, `docs/DECISIONS.md` #238)
+
+Cách cài và nâng cấp DUY NHẤT (đã thay `install.ps1/.cmd/.sh` cũ — chi tiết từng bước ở mục 2.3 và 2.3b): giải nén gói vào một thư mục, rồi chạy **`nexamed-setup.cmd`** (Windows, double-click) hoặc **`./nexamed-setup.sh`** (Linux/NAS/VPS). Lệnh kiểm tra Docker, nạp ảnh `nexamed-setup`, bật trang hướng dẫn: Windows tự mở trình duyệt ở `http://localhost:8090`; Linux in link kèm mã dùng một lần (`http://<IP>:8090/?key=...`), hoặc `--tunnel` để chỉ mở trên máy và vào bằng đường hầm SSH (`ssh -L 8090:localhost:8090 <tài-khoản>@<IP>`). Trong trang: kiểm tra máy → chọn kiểu (tại phòng khám / VPS HTTPS / SaaS) → thông tin → sao lưu → xem lại → cài → trang kết quả (mật khẩu tạm hiện một lần, tick "đã lưu", tải file .txt bàn giao). **Nâng cấp** = giải nén gói mới ĐÈ lên thư mục cũ (giữ `.env`, `config.json`) rồi chạy lại lệnh trên: trang tự nhận ra hệ thống đang chạy, sao lưu vào `upgrade-backups/`, nâng cấp, kiểm tra, tự quay lui nếu lỗi; sau nâng cấp có nút "Quay lui về bản cũ". Lưu ý: IP máy đổi không làm ứng dụng hỏng (`config.json.apiBaseUrl` để trống) nhưng nhân viên phải mở địa chỉ mới — nên đặt IP tĩnh trên máy (trang có hướng dẫn). Kiểu VPS cần tên miền đã trỏ về máy và cổng 80/443 mở; kiểu SaaS cần file chứng chỉ wildcard (.crt/.key). **Chưa kiểm chứng**: Let's Encrypt thật, Linux/NAS, máy Windows sạch.
 
 ### 2.1. Kiến trúc — 5 service
 
@@ -144,85 +148,90 @@ Máy chủ đặt tại phòng khám **KHÔNG BAO GIỜ cần internet, kể c�
 
 **S6-06 (ADM-05, xuất bệnh án PDF)** — ảnh `nexamed-api` nay cài thêm `chromium` qua apt (Debian bookworm) để `puppeteer-core` render HTML→PDF (không dùng `puppeteer` đầy đủ tự tải Chromium bundled, tránh phụ thuộc mạng lúc build — xem `docs/DECISIONS.md`). `docker-compose.yml` đặt sẵn `CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` cho service `api` — người cài đặt không cần cấu hình gì thêm.
 
-### 2.1b. Hai giai đoạn — build ở máy dev/CI, chỉ nạp ảnh ở máy khách (`docs/DECISIONS.md` #098)
+### 2.1b. Hai giai đoạn — build ở máy dev/CI, chỉ nạp ảnh ở máy khách (`docs/DECISIONS.md` #098, #238)
 
 Mã nguồn `.ts`, lịch sử `.git`, và tài liệu nội bộ là tài sản trí tuệ, **tuyệt đối không được lộ cho máy khách**. Vì vậy triển khai on-prem đi qua đúng 2 giai đoạn tách biệt:
 
-- **Giai đoạn A — Build & export** (máy dev/CI, có source đầy đủ): `deploy/on-prem/build-and-export.ps1` build 3 ảnh (`nexamed-api`/`nexamed-web`/`nexamed-backup`), `docker save` ra `.tar.gz`, rồi **tự gom sẵn mọi file cần thiết vào 1 thư mục duy nhất `deploy/on-prem/package/`** — không phải tự nhặt file nào cả. KHÔNG chạy bước này ở máy khách.
-- **Giai đoạn B — Cài đặt tại máy khách**: chỉ cần chép NGUYÊN thư mục `package/` đó sang — `install.ps1`/`install.sh` bên trong tự `docker load` các ảnh rồi `docker compose up -d`. Máy khách **không có** bất kỳ file `.ts`/`.git`/`docs` nào trên đĩa — làm theo hướng dẫn từng bước ở mục 2.3.
+- **Giai đoạn A — Build & export** (máy dev/CI, có source đầy đủ): `deploy/on-prem/build-and-export.ps1` dựng 4 ảnh (`nexamed-api`, `nexamed-web`, `nexamed-backup`, `nexamed-setup`), lưu thêm ảnh bên thứ ba (`postgres:18`, `caddy:2.8-alpine`) để cài không cần Internet, nén tất cả thành `.tar.gz`, rồi **gom sẵn mọi file cần thiết vào 1 thư mục duy nhất** (`-PackageDir`) — không phải tự nhặt file nào. KHÔNG chạy bước này ở máy khách.
+- **Giai đoạn B — Cài đặt tại máy khách**: chép NGUYÊN thư mục gói sang, chạy `nexamed-setup` (trình cài đặt dạng trang web) — nó tự `docker load` các ảnh rồi `docker compose up -d`. Máy khách **không có** bất kỳ file `.ts`/`.git`/`docs` nào trên đĩa. Cùng một lệnh dùng cho cài mới và nâng cấp — xem mục 2.3 và 2.3b.
 
 ### 2.2. Bí mật & mật khẩu — luồng thật
 
 1. Migration tạo role `nexamed_app` với mật khẩu HARD-CODE (`docs/DECISIONS.md` #010) — chỉ dùng được cho dev.
 2. `migrate` chạy `pnpm run db:rotate-app-password` (`apps/api/scripts/rotate-app-role-password.ts`) ngay sau `db:deploy` — đổi mật khẩu role đó sang giá trị ngẫu nhiên mạnh đọc từ `NEXAMED_APP_DB_PASSWORD` trong `.env`.
-3. `install.ps1`/`install.sh` tự sinh `POSTGRES_PASSWORD`/`NEXAMED_APP_DB_PASSWORD`/`JWT_SECRET`/`ENCRYPTION_KEY` (hex ngẫu nhiên mạnh, `RandomNumberGenerator`/`openssl rand`) vào `.env` nếu file đó chưa tồn tại — không cần tự nghĩ/gõ tay.
-4. Tạo phòng khám (tenant) + tài khoản quản trị đầu tiên: `apps/api/scripts/seed-pilot-tenant.ts` (`db:seed:pilot-tenant`) — script sản xuất, KHÁC `seed-dev-tenant.ts` (chỉ dev, tên/mật khẩu hard-code). Không truyền `ADMIN_PASSWORD` thì tự sinh mật khẩu mạnh, in ra ĐÚNG MỘT LẦN, bắt đổi ngay lần đăng nhập đầu (`mustChangePassword`, đã có từ #063).
+3. Trình cài đặt `nexamed-setup` tự sinh `POSTGRES_PASSWORD`/`NEXAMED_APP_DB_PASSWORD`/`JWT_SECRET`/`ENCRYPTION_KEY` (hex ngẫu nhiên mạnh, `crypto.randomBytes`) vào `.env` nếu file đó chưa tồn tại; các lần chạy sau giữ nguyên (mất khoá mã hoá là mất dữ liệu đã mã hoá) — không cần tự nghĩ/gõ tay.
+4. Tạo phòng khám (tenant) + tài khoản quản trị đầu tiên: `apps/api/scripts/seed-pilot-tenant.ts` (`db:seed:pilot-tenant`) — script sản xuất, KHÁC `seed-dev-tenant.ts` (chỉ dev, tên/mật khẩu hard-code). Trình cài đặt sinh mật khẩu tạm (dạng `XXXX-XXXX-XXXX`) và truyền qua biến môi trường `ADMIN_PASSWORD` (không nằm trên dòng lệnh); script in thêm một dòng `NEXAMED_RESULT {json}` cho máy đọc. Mật khẩu hiện ĐÚNG MỘT LẦN ở trang kết quả, bắt đổi ngay lần đăng nhập đầu (`mustChangePassword`, đã có từ #063).
 
 `.env`/`config.json` (2 file thật, không commit — xem `.gitignore`) nằm cạnh `docker-compose.yml` tại `deploy/on-prem/`.
 
-### 2.3. Cách chạy — hướng dẫn từng bước (đã verify thật)
+### 2.3. Cách chạy — hướng dẫn từng bước (cách duy nhất, từ 15/10/2026, `docs/DECISIONS.md` #238)
+
+`install.ps1`/`install.cmd`/`install.sh` cũ đã BỎ — mọi cài đặt và nâng cấp đi qua trình cài đặt `nexamed-setup`. Đã kiểm chứng thật bằng Docker và Chrome: cài kiểu "Tại phòng khám" (Windows và từ container Linux), cài kiểu SaaS, nâng cấp, quay lui, tự quay lui khi nâng cấp lỗi. **Chưa kiểm chứng**: xin chứng chỉ Let's Encrypt thật (kiểu VPS), máy Linux/NAS thật, máy Windows sạch.
 
 #### PHẦN 1 — Trên máy DEV (đóng gói)
 
-**Bước 1.** Mở PowerShell, vào thư mục dự án:
+Cần: Docker Desktop đang chạy, Git, PowerShell, Internet (lần đầu, để tải `postgres:18` và `caddy`), khoảng 10 GB trống, 10 đến 20 phút.
+
+**Bước 1. Chốt phiên bản** (bản giao khách; dựng thử thì bỏ bước này và thêm `-AllowUnreleased` ở bước 2). Xem mục 2.3a:
+```powershell
+node scripts/release.mjs 0.9.0
+```
+
+**Bước 2. Dựng gói.** Chạy trong PowerShell hoặc Command Prompt của Windows (KHÔNG chạy trong Git Bash), từ thư mục `deploy\on-prem`, và luôn ghi rõ `-PackageDir`:
 ```powershell
 cd C:\Projects\NEXAMed\deploy\on-prem
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build-and-export.ps1 -Version 0.9.0 -PackageDir C:\NEXAMed-package
+```
+Bản giao khách bị từ chối nếu `-Version` khác `package.json`, chưa có tag `v0.9.0`, HEAD không phải commit của tag, hoặc cây git chưa sạch. Dựng thử: thêm `-AllowUnreleased` và dùng số bất kỳ (ví dụ `0.9.1-beta.1`). Đặt `-PackageDir` ngoài repo.
+
+Kết quả: thư mục gói gồm `images/` (6 file `.tar.gz`: api, web, backup, setup, postgres, caddy), `docker-compose.yml`, `.env.example`, `config.example.json`, `nexamed-setup.cmd`, `nexamed-setup.ps1`, `nexamed-setup.sh`. Không có source code.
+
+**Bước 3.** Nén thư mục gói thành `.zip` (chuột phải, Send to, Compressed folder) và chép sang máy khách (USB hoặc mạng nội bộ).
+
+#### PHẦN 2 — Trên máy KHÁCH, Windows (cài lần đầu)
+
+**Bước 1.** Cài **Docker Desktop** (docker.com), mở lên và đợi biểu tượng chạy ổn định. Máy chưa có Docker thì lệnh ở bước 3 in hướng dẫn cài rồi dừng.
+
+**Bước 2.** Giải nén `.zip` vào một thư mục CỐ ĐỊNH (ví dụ `C:\NEXAMed`), KHÔNG xoá thư mục này sau khi cài — `.env` (khoá hệ thống) và `config.json` nằm trong đó. Lưu ý Windows có thể tạo thêm một thư mục con trùng tên: gõ `dir` kiểm tra thấy `nexamed-setup.cmd` ngay trong thư mục đang đứng, nếu không thì `cd` vào thư mục con.
+
+**Bước 3.** Double-click **`nexamed-setup.cmd`**. Lệnh kiểm tra Docker, nạp ảnh trình cài đặt và tự mở trình duyệt ở `http://localhost:8090`. Giữ cửa sổ lệnh mở trong lúc cài.
+
+**Bước 4.** Làm theo trang: kiểm tra máy → chọn kiểu triển khai ("Tại phòng khám") → điền tên phòng khám, quản trị viên, địa chỉ truy cập → chọn thư mục sao lưu và giờ chạy → xem lại → Cài đặt.
+
+**Bước 5.** Trang kết quả hiện địa chỉ, tên đăng nhập và **mật khẩu tạm (chỉ hiện một lần)**. Tải file bàn giao `.txt`, tick "đã lưu", bấm Hoàn tất (trình cài đặt tự đóng). Người dùng bị bắt đổi mật khẩu ở lần đăng nhập đầu.
+
+**Bước 6.** Docker Desktop, Settings, General, bật "Start Docker Desktop when you sign in" để hệ thống tự chạy lại khi máy khởi động lại (xem mục 2.4).
+
+#### PHẦN 3 — Linux / NAS / VPS
+
+Giải nén gói, rồi chạy `chmod +x nexamed-setup.sh && ./nexamed-setup.sh`. Lệnh in link dạng `http://<IP>:8090/?key=<mã>` (cổng chỉ mở tạm, cần mã, tự đóng khi cài xong); mở link đó bằng trình duyệt trên máy tính của bạn rồi làm như Phần 2. Không muốn mở cổng ra ngoài: `./nexamed-setup.sh --tunnel`, rồi từ máy tính chạy `ssh -L 8090:localhost:8090 <tài-khoản>@<IP>` và vào `http://localhost:8090`. Tuỳ chọn: `--version <phiên bản>`, `--port <cổng>`.
+- **Kiểu "VPS"** cần tên miền đã trỏ về máy (bản ghi A) và cổng 80, 443 mở từ Internet; Caddy tự xin và gia hạn chứng chỉ HTTPS.
+- **Kiểu "SaaS"** cần file chứng chỉ wildcard `.crt` và `.key` (bao `*.tên-miền` và `tên-miền`), tải lên ngay trong trang; sau khi cài có bước kích hoạt OTP cho người vận hành.
+
+#### Quên mật khẩu quản trị (không còn ai đăng nhập được)
+
+Làm trên chính máy chủ, trong THƯ MỤC CÀI ĐẶT (nơi có `docker-compose.yml` và `.env`), khi hệ thống đang chạy. Mở Command Prompt/PowerShell (Windows) hoặc terminal (Linux/NAS) tại thư mục đó rồi chạy:
+
+```
+docker compose run --rm -e ADMIN_USERNAME=quantri migrate pnpm run db:reset-admin-password
 ```
 
-**Bước 2.** Chạy lệnh đóng gói (thay ngày hôm nay vào `-Version`):
-```powershell
-.\build-and-export.ps1 -Version 2026.09.02
-```
-Đợi vài phút (build lần đầu lâu hơn, lần sau có cache Docker nên nhanh). Xong sẽ có thư mục **`deploy\on-prem\package\`** chứa ĐẦY ĐỦ mọi thứ cần thiết — không cần tự tìm/gom file gì thêm.
+- Thay `quantri` bằng tên đăng nhập cần đặt lại (đúng chữ hoa/thường).
+- Lệnh in ra mật khẩu tạm dạng `XXXX-XXXX-XXXX` — **chỉ hiện một lần**, chép ngay. Đăng nhập bằng mật khẩu đó, hệ thống bắt đổi mật khẩu mới ngay lần đầu.
+- Muốn tự đặt mật khẩu: thêm `-e NEW_PASSWORD=<mật-khẩu-từ-12-ký-tự>` trước chữ `migrate` (mật khẩu hiện trong lịch sử lệnh; vẫn bị bắt đổi ở lần đăng nhập đầu).
+- Hệ thống có nhiều công ty (SaaS): thêm `-e TENANT_ID=<mã công ty>` (lệnh báo lỗi và liệt kê mã nếu thiếu).
+- Lệnh còn xoá khoá tạm do nhập sai nhiều lần, **đăng xuất mọi phiên đang mở** của tài khoản đó, và ghi vào nhật ký hoạt động (không có người thực hiện, vì làm tại máy chủ). Chỉ chạm đúng một tài khoản của một công ty.
+- Lỗi thường gặp: "Không có tài khoản ..." (sai tên đăng nhập); "đang bị vô hiệu hoá" (tài khoản đã bị tắt, cần quản trị viên khác bật lại, hoặc đặt lại cho tài khoản quản trị còn hoạt động).
+- An ninh: ai ngồi được tại máy chủ và chạy được Docker thì đặt lại được mật khẩu — đây là lý do máy chủ phải đặt nơi an toàn và hạn chế người có tài khoản quản trị hệ điều hành.
 
-**Bước 3.** Nén thư mục đó lại: chuột phải vào `package` → **Send to → Compressed (zipped) folder**.
+#### Xử lý sự cố thường gặp
 
-#### PHẦN 2 — Chuyển sang máy KHÁCH
-
-Chép file `package.zip` sang máy khách bằng USB hoặc qua mạng nội bộ.
-
-#### PHẦN 3 — Trên máy KHÁCH (cài lần đầu)
-
-**Bước 1.** Cài **Docker Desktop** (nếu máy chưa có) — tải tại docker.com, cài xong mở lên, đợi chạy ổn định (icon cá voi ở khay hệ thống).
-
-**Bước 2.** Giải nén `package.zip`. **Lưu ý**: có thể Windows tạo thêm 1 thư mục con trùng tên khi giải nén (`package\package\...`) — sau khi giải nén, gõ `dir` kiểm tra có thấy `install.ps1` ngay trong thư mục đang đứng không; nếu không thấy mà thấy 1 thư mục con thì `cd` thêm vào đó.
-
-**Bước 3.** Double-click **`install.cmd`** (khuyên dùng — tránh lỗi Execution Policy chặn `.ps1` chưa ký, xem mục "Xử lý sự cố thường gặp" nếu vẫn muốn gọi `.\install.ps1` trực tiếp). Nếu thích dùng dòng lệnh, mở PowerShell, vào đúng thư mục có `install.cmd` (xác nhận bằng `dir`), rồi chạy:
-```powershell
-.\install.cmd
-```
-
-**Bước 4.** Script hỏi lần lượt — trả lời rồi Enter:
-- *IP LAN của máy này* → Enter để bỏ qua nếu chỉ dùng ngay trên máy đó, hoặc gõ IP nếu muốn máy khác trong phòng khám cùng truy cập được.
-- *Tên phòng khám*
-- *Tên đăng nhập quản trị* (ví dụ `quantri`)
-- *Họ tên quản trị viên*
-
-**Bước 5.** Script tự chạy xong hết (nạp ảnh, khởi động, tạo tài khoản). Cuối cùng in ra:
-- `tenantId` — 1 dãy mã
-- **Mật khẩu** — chỉ hiện đúng 1 lần, **chụp màn hình hoặc chép lại ngay**
-
-**Bước 6.** Mở file `config.json` (cùng thư mục) bằng Notepad, dán `tenantId` vừa in ra vào, lưu lại. Rồi chạy:
-```powershell
-docker compose restart web
-```
-
-**Bước 7.** Mở trình duyệt, vào địa chỉ đã chọn ở Bước 4 (ví dụ `http://localhost`), đăng nhập bằng tài khoản + mật khẩu vừa tạo. Hệ thống bắt đổi mật khẩu ngay lần đầu.
-
-Linux/NAS: y hệt các bước trên, chỉ đổi `.\install.cmd` thành `./install.sh` (dùng `--tenant-name`/`--admin-username`... nếu muốn truyền sẵn, không cần trả lời tương tác).
-
-#### Xử lý sự cố thường gặp (đã gặp thật, không phải giả định)
-
-- **`.\install.ps1 : File ... cannot be loaded because running scripts is disabled on this system` (`PSSecurityException`)** → Execution Policy mặc định của Windows chặn `.ps1` chưa ký, KHÔNG phải lỗi trong script. Sửa (chọn 1 trong 2):
-  1. **Khuyên dùng**: chạy `.\install.cmd` thay vì `.\install.ps1` — file `.cmd` không bị Execution Policy kiểm soát, tự gọi PowerShell với `-ExecutionPolicy Bypass` chỉ cho đúng lần chạy đó.
-  2. Hoặc nới tạm chính sách cho cửa sổ PowerShell đang mở (không đổi chính sách toàn máy) rồi chạy lại: `Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force` rồi `.\install.ps1`.
-- **`.\install.ps1 : The term '.\install.ps1' is not recognized...`** → đang đứng sai thư mục, thường do giải nén `.zip` tạo thêm 1 lớp thư mục con trùng tên. Gõ `dir` xem có thư mục con nào không, `cd` vào đó rồi thử lại.
-- **`ports are not available: exposing port TCP 0.0.0.0:80 ... forbidden by its access permissions`** (lúc "Khởi động stack") → cổng 80 trên máy đó đang bị chương trình khác chiếm (rất phổ biến trên Windows, ví dụ IIS). Sửa:
-  1. Mở `.env` (Notepad), đổi `WEB_HTTP_PORT=80` thành `WEB_HTTP_PORT=8080`.
-  2. Mở `config.json` (Notepad), đổi `"apiBaseUrl"` thêm cổng mới, ví dụ `"http://localhost:8080"`.
-  3. **Chạy lại `.\install.cmd`** (KHÔNG chạy `docker compose up -d` trực tiếp — xem lý do ở mục ngay dưới).
-  4. Truy cập bằng địa chỉ có kèm cổng: `http://localhost:8080`.
-- **Đã lỡ chạy `docker compose up -d` trực tiếp (không qua `install.cmd`/`install.ps1`) để khắc phục sự cố ở trên, giờ không thấy `tenantId`/mật khẩu đâu cả** → bình thường, vì bước tạo tài khoản quản trị CHỈ nằm trong `install.ps1` (Bước 5), không nằm trong lệnh `docker compose up -d` thuần. Chạy lại `.\install.cmd` — vì `.env`/`config.json` đã có sẵn nên script tự bỏ qua phần tạo lại, chạy thẳng tới đúng bước hỏi tạo tài khoản.
+- **Cổng 80 bị chiếm** (rất phổ biến trên Windows, ví dụ IIS): bước "Kiểm tra máy" báo vàng và tự đề xuất cổng 8080; nhân viên gõ thêm `:8080` sau địa chỉ.
+- **Router không giữ được IP cố định cho máy:** ứng dụng vẫn chạy khi IP đổi (`config.json.apiBaseUrl` để trống), nhưng nhân viên phải mở địa chỉ IP mới. Nên đặt IP tĩnh trên máy; bước "Thông tin" có mục "Xem hướng dẫn" (tìm dải DHCP của router, chọn IP ngoài dải, đặt trong Windows).
+- **Cài lỗi giữa chừng:** trang hiện bước lỗi kèm nguyên nhân; sửa nguyên nhân rồi bấm **Thử lại** (tiếp tục từ bước lỗi, không làm lại bước đã xong, không sinh lại khoá hệ thống). Lỗi "phòng khám đã được tạo ở lần cài trước" nghĩa là lần cài trước đã chạy tới bước tạo phòng khám; muốn cài lại từ đầu phải xoá dữ liệu cũ (`docker compose down -v` trong thư mục cài đặt) rồi chạy lại.
+- **Lỡ đóng trang trước khi lưu mật khẩu tạm, hoặc quản trị viên quên mật khẩu:** mật khẩu cũ không xem lại được nhưng ĐẶT LẠI được, không cần cài lại. Có quản trị viên khác đăng nhập được thì đặt lại ở "Danh mục quản lý tài khoản"; không còn ai đăng nhập được thì dùng lệnh ở mục "Quên mật khẩu quản trị" ngay dưới.
+- **`nexamed-setup.cmd` báo chưa có Docker hoặc Docker chưa chạy:** làm theo 3 bước nó in ra (cài Docker Desktop, mở và đợi chạy, chạy lại lệnh).
+- **Chạy lại `nexamed-setup` trên thư mục đã cài:** trang tự chuyển sang chế độ nâng cấp (mục 2.3b), KHÔNG cài lại và không đụng dữ liệu.
 
 ### 2.3a. Phát hành một phiên bản (SemVer, từ 15/10/2026, `docs/DECISIONS.md` #236)
 
@@ -230,7 +239,7 @@ Số phiên bản người dùng thấy (hộp "Giới thiệu", chân trang đ�
 
 1. **Viết ghi chú phát hành** cho số sắp phát hành: `apps/api/release-notes/<phiên bản>.json` (nhóm `features` / `improvements` / `fixes`, viết cho người dùng cuối, không phải nhật ký kỹ thuật). Commit file này.
 2. **Chốt phiên bản:** `node scripts/release.mjs <major|minor|patch|beta|X.Y.Z[-beta.N]>` (cần `packages/core` và `packages/shared` đã build; thêm `--dry-run` để chỉ kiểm tra). Script từ chối nếu cây git chưa sạch, số mới không lớn hơn số cũ, đã có tag, hoặc thiếu/ sai ghi chú phát hành. Nó ghi cùng một số vào `package.json` gốc và 4 gói con, tạo commit `chore(release): vX.Y.Z` và tag `vX.Y.Z`. Lần đầu chốt chính số hiện có (chưa có tag) dùng `node scripts/release.mjs 0.9.0` (chỉ tạo tag). Không tự push: kiểm tra rồi `git push origin master --tags`.
-3. **Dựng gói:** `deploy/on-prem/build-and-export.ps1 -Version X.Y.Z` — chạy trực tiếp trong PowerShell hoặc qua `powershell -File` với `-PackageDir` tường minh. Script từ chối nếu `-Version` khác `package.json`, HEAD không phải commit của tag `vX.Y.Z`, hoặc cây git chưa sạch (dựng thử không phát hành: `-AllowUnreleased`). Số bản dựng = số commit của nhánh (`git rev-list --count HEAD`), cần clone đầy đủ lịch sử.
+3. **Dựng gói:** `deploy/on-prem/build-and-export.ps1 -Version X.Y.Z -PackageDir <thư mục>` — chạy trong PowerShell/Command Prompt (qua `powershell -File` thì `-PackageDir` bắt buộc ghi rõ). Lệnh đầy đủ ở mục 2.3 Phần 1. Script từ chối nếu `-Version` khác `package.json`, HEAD không phải commit của tag `vX.Y.Z`, hoặc cây git chưa sạch (dựng thử không phát hành: `-AllowUnreleased`). Số bản dựng = số commit của nhánh (`git rev-list --count HEAD`), cần clone đầy đủ lịch sử.
 4. Giao khách như mục 2.3b. Trong ứng dụng: hộp "Giới thiệu" hiện `X.Y.Z`, kênh (Ổn định/Thử nghiệm), ngày phát hành, ghi chú; thông tin kỹ thuật hiện `X.Y.Z · bản dựng N` và phiên bản cơ sở dữ liệu thật.
 
 Quy ước số: **patch** (`0.9.0 → 0.9.1`) chỉ sửa lỗi; **minor** (`→ 0.10.0`) thêm tính năng không phá vỡ; **major** (`→ 1.0.0`) bản chính thức hoặc thay đổi lớn; **beta** (`0.10.0-beta.1`) kênh thử nghiệm. Hiện `0.9.0`, lên `1.0.0` sau khi qua pilot. Máy dev hiển thị cùng số nhưng kênh "Phát triển" và không có số bản dựng.
@@ -239,46 +248,27 @@ Quy ước số: **patch** (`0.9.0 → 0.9.1`) chỉ sửa lỗi; **minor** (`�
 
 ### 2.3b. Cập nhật bản mới lên hệ thống đang chạy
 
-> **Đã diễn tập 15/10/2026** trên bản sao riêng (Docker project tách biệt, cổng 8088): cài mới `2026.10.14` → tạo chi nhánh thứ 2 + bệnh nhân bằng API → `pg_dump` → nâng `2026.10.14.2` (áp `20261015090000_branch_dot2` + `db:seed`, dữ liệu cũ còn nguyên) → nâng `2026.10.15` (không migration; chi nhánh 2 tự có 1 kho + 1 quỹ tiền mặt lúc API khởi động, tab Kết quả cận lâm sàng trả 200 cho quản trị / 403 cho lễ tân). Chưa cài thử trên máy Windows sạch thật. Lưu ý: `-WebOrigin` không đổi cổng publish — muốn chạy cổng khác 80 phải sửa `WEB_HTTP_PORT` trong `.env` rồi `docker compose up -d`; chạy `build-and-export.ps1` phải từ chính PowerShell (chạy qua Git Bash làm `$PSScriptRoot` rỗng, gói bị ghi ra `C:\package`).
+> **Đã kiểm chứng (15/10/2026, Docker thật + Chrome):** nâng cấp bản cũ lên bản mới bằng trình cài đặt (tự sao lưu `pg_dump` trước, nạp ảnh, đổi `NEXAMED_VERSION`, `compose up -d` để `migrate` áp thay đổi cấu trúc, kiểm tra sức khoẻ); nút "Quay lui về bản cũ" khôi phục đúng dữ liệu; bản mới báo sai phiên bản thì **tự quay lui**. Cũng đã diễn tập nâng cấp trên bản sao DB với gói cũ (`2026.10.14` → `2026.10.15`, dữ liệu nguyên vẹn). **Chưa diễn tập**: nâng cấp một hệ thống đã cài bằng `install.ps1/.sh` cũ (trình mới nhận ra qua `.env` và giữ nguyên tên dự án Docker nên về lý thuyết nhận được volume dữ liệu cũ) — lần đầu trên máy khách đã cài bằng cách cũ, **sao lưu tay trước** (Bước 2 bên dưới).
 
-**Trên máy DEV**
+**Trên máy DEV:** dựng gói với số phiên bản MỚI như mục 2.3 Phần 1 (KHÔNG dùng lại số cũ, để không nhầm với bản đang chạy), nén và chép sang máy khách.
 
-**Bước 1.** Đảm bảo code mới đã có trên máy dev (đã sửa/pull xong).
+**Trên máy KHÁCH:**
 
-**Bước 2.**
-```powershell
-cd C:\Projects\NEXAMed\deploy\on-prem
-.\build-and-export.ps1 -Version 2026.09.05
-```
-(đổi số ngày cho đúng — mỗi lần cập nhật nên đặt version mới, KHÔNG lặp lại version cũ, để tránh nhầm lẫn với bản đang chạy)
+**Bước 1.** Giải nén `.zip` mới **vào ĐÚNG thư mục đã cài** (nơi có sẵn `.env`, `config.json`), cho phép ghi đè khi được hỏi. An toàn: gói không chứa `.env`/`config.json` thật (chỉ có `.env.example`/`config.example.json` làm mẫu), nên mật khẩu, khoá hệ thống và `tenantId` hiện tại giữ nguyên.
 
-**Bước 3.** Nén thư mục `package` mới thành `.zip`.
-
-**Chuyển sang máy KHÁCH** — chép `.zip` sang máy khách như lần đầu (USB/mạng nội bộ).
-
-**Trên máy KHÁCH — áp dụng bản mới**
-
-**Bước 1.** Giải nén file `.zip` mới **vào ĐÚNG thư mục đã cài lần trước** (nơi đang có sẵn `.env`/`config.json`), cho phép ghi đè khi được hỏi. **An toàn** — file mới KHÔNG đụng tới `.env`/`config.json` thật (2 file này không nằm trong gói, chỉ có `.env.example`/`config.example.json` làm mẫu), nên mật khẩu/`tenantId` hiện tại giữ nguyên.
-
-**Từ `docs/DECISIONS.md` #100**: trước đây `install.ps1`/`install.sh` vẫn hỏi lại "Địa chỉ IP LAN của máy này" và ghi đè `WEB_ORIGIN`/`config.json.apiBaseUrl` ở MỌI lần chạy (kể cả lần cập nhật này) — nếu máy đó từng phải đổi cổng thủ công để né xung đột cổng 80 (mục "Xử lý sự cố thường gặp" ngay dưới), lần cập nhật sẽ ghi đè mất giá trị đã sửa, gây lỗi CORS dù mọi container vẫn `healthy`. Đã sửa: **giữ nguyên `WEB_ORIGIN`/`apiBaseUrl` ở mọi lần chạy sau lần cài đầu**, chỉ đổi khi truyền rõ `-WebOrigin`/`--web-origin`. Không cần làm gì thêm nếu dùng bản cài từ commit chứa #100 trở đi.
-
-**Bước 2.** (Khuyên làm trước khi cập nhật, đề phòng) — sao lưu tay 1 bản trước khi đổi:
+**Bước 2.** (Khuyên làm trước khi nâng cấp lần đầu, đề phòng) sao lưu tay một bản:
 ```powershell
 docker compose exec postgres pg_dump -U nexamed -d nexamed -Fc -f /tmp/truoc-cap-nhat.dump
 docker compose cp postgres:/tmp/truoc-cap-nhat.dump .\truoc-cap-nhat.dump
 ```
 
-**Bước 3.** Chạy lệnh cập nhật — **luôn chỉ định rõ `-Version`** (tránh máy tự đoán nhầm nếu còn giữ cả file ảnh phiên bản cũ):
-```powershell
-.\install.ps1 -Version 2026.09.05 -SkipTenantCreation
-```
-`-SkipTenantCreation` **bắt buộc** ở bước cập nhật — nếu quên, script sẽ hỏi tạo phòng khám mới, có thể tạo nhầm 1 tenant thứ hai.
+**Bước 3.** Chạy lại `nexamed-setup.cmd` (Windows) hoặc `./nexamed-setup.sh` (Linux/NAS). Trang tự nhận ra hệ thống đang chạy và hiện "Bản đang chạy và bản mới". Bấm **Nâng cấp**.
 
-**Bước 4.** Script tự: nạp ảnh mới → khởi động lại → **`migrate` tự áp mọi thay đổi cấu trúc dữ liệu mới** (nếu có) → đợi `api` healthy. Xong là dùng được ngay, không mất dữ liệu cũ.
+**Bước 4.** Trang tự làm: sao lưu vào thư mục `upgrade-backups/` (trong thư mục cài đặt) → nạp ảnh mới → áp thay đổi cấu trúc dữ liệu và khởi động lại → kiểm tra sức khoẻ. Nâng cấp mất vài phút, nhân viên không dùng được trong lúc này. Lỗi lúc khởi động bản mới hoặc ở bước kiểm tra sức khoẻ thì hệ thống tự quay về bản cũ và hiện nguyên nhân; sao lưu thất bại hoặc thiếu file ảnh thì dừng ngay, chưa đổi gì.
 
-**Bước 5.** Mở lại trình duyệt, F5 kiểm tra tính năng mới hoạt động đúng.
+**Bước 5.** Xong, trang báo "Đã nâng cấp lên bản X". Nếu sau đó phát hiện vấn đề, bấm **Quay lui về bản cũ** ở chính trang này (hoặc chạy lại `nexamed-setup`: màn "Bản đang chạy" vẫn có nút này cho lần nâng cấp gần nhất): khôi phục dữ liệu về lúc trước khi nâng cấp — dữ liệu nhập SAU lần nâng cấp sẽ mất. Cấu hình (`.env`, `config.json`) không đổi.
 
-**Lưu ý dọn dẹp**: sau vài lần cập nhật, thư mục `images\` trên máy khách có thể tồn đọng nhiều bản `.tar.gz` cũ — xoá bớt các file phiên bản cũ không dùng nữa (không ảnh hưởng gì, chỉ là file đã nạp xong rồi) để đỡ chiếm ổ đĩa.
+Quyền hạn mới và danh mục mặc định của bản mới được áp tự động: dịch vụ `migrate` chạy `db:deploy`, đổi mật khẩu role app và `db:seed` mỗi lần `compose up`, nên không cần chạy thêm lệnh nào.
 
 ### 2.3c. Sao lưu & khôi phục (backup/restore) — đã diễn tập thật (S6-02, `docs/DECISIONS.md` #099)
 
@@ -388,7 +378,7 @@ docker compose exec postgres psql -U nexamed -d nexamed -c "CREATE OR REPLACE FU
 | `docker compose stop <service>` / `start <service>` | Tắt/bật tạm 1 service, giữ nguyên container (không xoá) | Tắt `api`/`web` tạm thời lúc khôi phục dữ liệu (mục 2.3c) |
 | `docker compose exec <service> <lệnh>` | Chạy 1 lệnh BÊN TRONG container đang chạy | Chạy `psql`, `pg_dump`, `pg_restore` trực tiếp trong container `postgres` |
 | `docker compose cp <nguồn> <đích>` | Copy file giữa máy thật và container (2 chiều) | Đưa file backup vào container để restore, hoặc lấy file backup ra |
-| `docker load -i <file>.tar.gz` | Nạp 1 ảnh Docker đã build sẵn từ file `.tar.gz` | `install.ps1` tự làm — chỉ cần biết khi làm tay/gỡ lỗi |
+| `docker load -i <file>.tar.gz` | Nạp 1 ảnh Docker đã build sẵn từ file `.tar.gz` | `nexamed-setup` tự làm — chỉ cần biết khi làm tay/gỡ lỗi |
 | `docker images` | Liệt kê mọi ảnh Docker đang có trên máy | Kiểm tra đã nạp đúng ảnh/đúng phiên bản chưa |
 | `docker image inspect <tên>:<version>` | Xem chi tiết 1 ảnh — dùng để xác nhận đã nạp đúng | Nghi ngờ nạp sai/thiếu ảnh |
 | `docker ps -a` | Liệt kê MỌI container (kể cả đã dừng) trên máy, không riêng dự án này | Tìm container nào đó đã tắt, hoặc kiểm tra cổng bị chiếm |
@@ -397,7 +387,7 @@ docker compose exec postgres psql -U nexamed -d nexamed -c "CREATE OR REPLACE FU
 
 Container đều đặt `restart: unless-stopped` — MỘT KHI Docker Desktop đã chạy, cả stack tự khởi động lại theo đúng thứ tự (`depends_on`/`condition: service_healthy`), không cần bấm gì. Vấn đề còn lại CHỈ là: **làm sao Docker Desktop tự chạy sau khi PC khởi động lại**, vì Docker Desktop (khác Docker Engine trên Linux) thường cần một phiên đăng nhập Windows đang mở mới tự khởi động được.
 
-- **Bước an toàn, nên làm luôn**: Docker Desktop → Settings → General → bật "Start Docker Desktop when you sign in". `install.ps1` nhắc bước này ở cuối, KHÔNG tự động sửa file cấu hình nội bộ của Docker Desktop (khác phiên bản lưu khác chỗ, tự sửa dễ hỏng).
+- **Bước an toàn, nên làm luôn**: Docker Desktop → Settings → General → bật "Start Docker Desktop when you sign in". Trình cài đặt nhắc bước này ở trang kết quả ở cuối, KHÔNG tự động sửa file cấu hình nội bộ của Docker Desktop (khác phiên bản lưu khác chỗ, tự sửa dễ hỏng).
 - **Muốn PC tự đăng nhập Windows sau khi mất điện/khởi động lại (không cần nhân viên gõ mật khẩu Windows)**: dùng tính năng đăng nhập tự động của Windows (tài khoản Windows cục bộ riêng, không phải tài khoản Microsoft — cấu hình qua `netplwiz` hoặc registry `AutoAdminLogon`). **Đánh đổi bảo mật thật**: ai bật được nguồn điện/khởi động lại PC đó sẽ vào thẳng được màn hình đã đăng nhập Windows (không phải đăng nhập NEXAMed — ứng dụng vẫn yêu cầu JWT như bình thường, nhưng PC mất lớp bảo vệ đăng nhập Windows). **KHÔNG script hoá bước này** — nếu phòng khám chấp nhận đánh đổi, cấu hình thủ công + xác nhận rõ với chủ phòng khám trước khi bật, ưu tiên: (a) đặt PC ở khu vực có kiểm soát ra vào, (b) dùng tài khoản Windows cục bộ RIÊNG chỉ để chạy Docker Desktop (không phải tài khoản làm việc hằng ngày của nhân viên), (c) vẫn khoá màn hình bằng mật khẩu Windows sau khi không dùng máy dù đã auto-login lúc khởi động.
 
 ### 2.5. Còn treo — chưa làm ở phiên S4-05 này (thuộc S6-01/S6-02/S6-03/S6-04/S6-07)
@@ -435,6 +425,8 @@ Phần mã đã có; chưa dựng hạ tầng. **Bản on-prem/VPS riêng/NAS KH
 **Hạ tầng cấu hình MỘT lần** (cần chọn nhà cung cấp tên miền/máy chủ trong nước — chưa chọn): (1) DNS wildcard `*.tenmien.vn` trỏ về máy chủ; (2) chứng chỉ HTTPS wildcard `*.tenmien.vn` (thường xin bằng DNS-01, tự gia hạn); (3) reverse proxy (nginx) chuyển nguyên header `Host` và `/api` về API; web phục vụ cùng tên miền phụ.
 
 **Cấu hình ứng dụng**: `DEPLOYMENT_MODE=saas`, `PLATFORM_BASE_DOMAIN=tenmien.vn`, tuỳ chọn `PLATFORM_ADMIN_SUBDOMAIN` (mặc định `admin`), `COOKIE_SECURE=true`; `config.json` của web chỉ cần `{ "apiBaseUrl": "" }` (mẫu `apps/web/public/config.saas.example.json`). Chạy `db:deploy` + `db:seed`, rồi tạo người vận hành: `OPERATOR_USERNAME=... OPERATOR_FULL_NAME=... pnpm --filter @nexamed/api run db:seed:platform-operator` (in mật khẩu + bí mật OTP MỘT lần — thêm vào ứng dụng xác thực).
+
+**Thay chứng chỉ wildcard khi sắp hết hạn** (kiểu SaaS cài bằng `nexamed-setup`; chưa có màn hình riêng, làm tay 2 phút): (1) trong thư mục cài đặt, ghi đè hai file `certs/fullchain.crt` (chứng chỉ, gồm cả chuỗi trung gian) và `certs/privkey.key` (khoá riêng, không đặt mật khẩu) bằng bản mới — chứng chỉ mới vẫn phải bao `*.<tên miền gốc>` và `<tên miền gốc>`, khoá phải khớp; (2) chạy `docker compose restart caddy` trong thư mục đó (Caddy chỉ đọc file lúc khởi động; mất vài giây, các công ty bị gián đoạn rất ngắn); (3) kiểm tra bằng trình duyệt: mở `https://admin.<tên miền gốc>` xem ổ khoá và ngày hết hạn của chứng chỉ. Sai file thì Caddy không chạy: xem `docker compose logs caddy`, đặt lại bản cũ và restart lại. Kiểu VPS dùng Caddy tự xin và gia hạn chứng chỉ nên không cần làm gì.
 
 **Chạy thử trên máy phát triển**: API với `DEPLOYMENT_MODE=saas PLATFORM_BASE_DOMAIN=localhost COOKIE_SECURE=false`; web `VITE_DEV_API_PROXY=http://localhost:<cổng API> pnpm exec vite`; mở `http://admin.localhost:5173` (khu quản trị) và `http://<mã>.localhost:5173` (công ty).
 ### Kiến trúc đã chuẩn bị sẵn cho hướng này (không cần làm lại nền tảng khi tới lúc)

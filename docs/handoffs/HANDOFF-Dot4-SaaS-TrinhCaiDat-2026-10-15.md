@@ -1,5 +1,7 @@
 # HANDOFF — Cập nhật phần mềm (bước 2) XONG, tag v0.9.0 đã đẩy, Đợt 4 SaaS (tên miền phụ + Khu quản trị nền tảng) XONG, Trình cài đặt dùng chung ĐÃ DUYỆT mockup + ĐANG CODE dở — 2026-10-15
 
+> **CẬP NHẬT (cuối 15/10/2026): mục 2 (Trình cài đặt) trong file này ĐÃ XONG — đọc `HANDOFF-TrinhCaiDat-DatLaiMatKhau-2026-10-15.md` (mới nhất). File này giờ là lịch sử.**
+
 > Hội thoại luôn tiếng Việt. **Commit/push CHỈ khi chủ dự án bảo** (push thẳng `master`, không nhánh/PR). **KHÔNG dựng gói on-prem liên tục** — chỉ dựng khi chủ dự án nói sắp giao khách. Mockup mới phải được "duyệt"/"chốt mockup" rõ ràng trước khi code; mockup có N câu "cần chốt" thì hỏi đủ N (chia lượt nếu >4, dùng AskUserQuestion). Ảnh chụp kiểm tra để ở scratchpad, KHÔNG lưu vào repo (muốn cho chủ dự án xem thì đăng Artifact — chủ dự án đã yêu cầu xem giao diện trực quan). Sau mỗi đợt chạy lại TOÀN BỘ test và báo kết quả (kèm bước cô lập tenant/chi nhánh, báo ngay đầu tổng kết). Code dùng chung, không lặp. Phiên này tiếp nối `HANDOFF-PhienBan-CapNhatPhanMem-DotSaaS-2026-10-15.md` (file đó giờ là lịch sử; mục 2 của nó đã xong).
 
 ## 0. Trạng thái một câu
