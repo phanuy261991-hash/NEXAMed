@@ -100,6 +100,25 @@ describe('nâng cấp', () => {
   });
 });
 
+describe('quay lui về bản cũ chưa có /system/version (hệ thống cài trước 0.9)', () => {
+  it('vẫn thành công nếu api khoẻ và web mở được', async () => {
+    const first = make();
+    await first.job.run();
+    const record = (await readSetupState(workDir)).lastUpgrade!;
+    const second = make([(c) => (c.line.includes('/api/v1/system/version') ? { code: 1, stderr: 'wget: server returned error: HTTP/1.1 404 Not Found' } : undefined)]);
+    const job = new Job(buildManualRollbackSteps(record, second.deps));
+    await job.run();
+    expect(job.view().error).toBeNull();
+    expect(job.view().state).toBe('done');
+    expect(getEnvValue(await readFile(join(workDir, '.env'), 'utf8'), 'NEXAMED_VERSION')).toBe('0.9.0');
+  });
+  it('nhưng nâng cấp tiến (bản mới) vẫn BẮT BUỘC đường dẫn phiên bản trả đúng', async () => {
+    const { job } = make([(c) => (c.line.includes('/api/v1/system/version') ? { code: 1 } : undefined)]);
+    await job.run();
+    expect(job.view().state).toBe('failed');
+  });
+});
+
 describe('gói cài đặt', () => {
   it('so sánh phiên bản theo từng đoạn số (0.10.0 > 0.9.0, 2026.10.15.2 > 2026.10.15)', () => {
     expect(compareVersions('0.10.0', '0.9.0')).toBeGreaterThan(0);
@@ -110,6 +129,16 @@ describe('gói cài đặt', () => {
     await writeFile(join(workDir, 'images', 'nexamed-api-0.11.0.tar.gz'), 'x');
     const pkg = await discoverPackage(workDir);
     expect(pkg.versions).toEqual(['0.10.0', '0.9.0']);
+  });
+  it('file VERSION của gói thắng thứ tự số: ảnh kiểu ngày của bản cài cũ còn sót không bị coi là bản mới nhất', async () => {
+    for (const n of ['api', 'web', 'backup']) await writeFile(join(workDir, 'images', `nexamed-${n}-2026.10.15.tar.gz`), 'x');
+    expect((await discoverPackage(workDir)).versions[0]).toBe('2026.10.15'); // không có VERSION: chọn theo số, nhầm bản cũ
+    await writeFile(join(workDir, 'VERSION'), '0.9.0\n');
+    const pkg = await discoverPackage(workDir);
+    expect(pkg.versions[0]).toBe('0.9.0');
+    expect(pkg.versions).toContain('2026.10.15');
+    await writeFile(join(workDir, 'VERSION'), '7.7.7'); // khai báo bản không đủ ảnh thì bỏ qua
+    expect((await discoverPackage(workDir)).versions[0]).toBe('2026.10.15');
   });
   it('đọc phiên bản đang cài; giá trị mẫu hoặc chưa có .env coi là chưa cài', async () => {
     expect(await readInstalledVersion(workDir)).toBe('0.9.0');

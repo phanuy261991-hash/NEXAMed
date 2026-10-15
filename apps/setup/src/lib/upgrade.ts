@@ -62,13 +62,19 @@ async function dbIdentity(workDir: string): Promise<{ user: string; db: string }
   return { user: getEnvValue(text, 'POSTGRES_USER') ?? 'nexamed', db: getEnvValue(text, 'POSTGRES_DB') ?? 'nexamed' };
 }
 
-/** Kiểm tra web mở được và máy chủ trả đúng phiên bản mong muốn. */
-async function verifyRunning(docker: DockerClient, expectVersion: string): Promise<void> {
+/**
+ * Kiểm tra web mở được và máy chủ trả đúng phiên bản mong muốn. `lenient` (dùng khi QUAY LUI): bản cũ có thể chưa có đường dẫn `/system/version` (trước 0.9) — khi đó chỉ cần api khoẻ và
+ * web mở được; nếu đường dẫn có trả phiên bản thì vẫn phải khớp.
+ */
+async function verifyRunning(docker: DockerClient, expectVersion: string, lenient = false): Promise<void> {
   if (!(await docker.waitHealthy('api', 180_000))) throw new Error('Máy chủ ứng dụng chưa báo khoẻ sau 3 phút.');
   const page = await docker.compose(['exec', '-T', 'web', 'wget', '-q', '-O', '-', 'http://127.0.0.1/']);
   if (page.code !== 0) throw new Error('Không mở được trang giao diện.');
   const version = await docker.compose(['exec', '-T', 'web', 'wget', '-q', '-O', '-', 'http://127.0.0.1/api/v1/system/version']);
-  if (version.code !== 0) throw new Error('Giao diện không gọi được máy chủ ứng dụng.');
+  if (version.code !== 0) {
+    if (lenient) return;
+    throw new Error('Giao diện không gọi được máy chủ ứng dụng.');
+  }
   let reported = '';
   try {
     reported = String((JSON.parse(version.stdout) as { data?: { version?: string } }).data?.version ?? '');
@@ -104,7 +110,7 @@ export async function rollback(deps: UpgradeDeps, record: UpgradeRecord, log: (l
   }
   const all = await docker.compose(['up', '-d'], { onLine: log, timeoutMs: 20 * 60_000 });
   if (all.code !== 0) throw new Error(`Khởi động lại bản cũ thất bại: ${all.stderr.trim().split(/\r?\n/).pop()}`);
-  await verifyRunning(docker, record.from);
+  await verifyRunning(docker, record.from, true);
 }
 
 export function buildUpgradeSteps(from: string, to: string, deps: UpgradeDeps, state: { record?: UpgradeRecord }): StepDef[] {

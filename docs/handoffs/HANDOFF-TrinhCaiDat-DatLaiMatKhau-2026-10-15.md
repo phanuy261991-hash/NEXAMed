@@ -18,7 +18,7 @@ Trình cài đặt/nâng cấp (`apps/setup`, lệnh `nexamed-setup`) đã code 
 
 ## 2. Đã kiểm chứng thật
 
-- 73 test `apps/setup` (đã kiểm đột biến: bỏ quay lui, bỏ kiểm khoá chứng chỉ, đưa mật khẩu lên dòng lệnh → đỏ). **Toàn bộ workspace chạy lại cuối phiên, tất cả đạt**: API 1486 (92 file), core 434, shared 31, web 103, setup 73; lint toàn repo sạch, typecheck sạch.
+- 73 test `apps/setup` (đã kiểm đột biến: bỏ quay lui, bỏ kiểm khoá chứng chỉ, đưa mật khẩu lên dòng lệnh → đỏ). **Toàn bộ workspace chạy lại (lần commit đầu), tất cả đạt**: API 1486 (92 file), core 434, shared 31, web 103, setup 73 (sau đó thêm 3 test, `apps/setup` = 76, chạy lại riêng đạt); lint toàn repo sạch, typecheck sạch.
 - Docker thật + Chrome điều khiển wizard: cài LAN (đăng nhập được bằng mật khẩu tạm), nâng cấp 9.9.9→9.9.10 (tự sao lưu), quay lui bằng nút (dữ liệu về đúng), nâng cấp lỗi (bản mới báo sai phiên bản) tự quay lui, cài SaaS với chứng chỉ wildcard thử (Caddy phục vụ đúng chứng chỉ, tên miền lạ → `TENANT_NOT_FOUND`, người vận hành đăng nhập mật khẩu + OTP do wizard sinh), tải lại trang giữa chừng vẫn nối lại, tick "đã lưu" + Hoàn tất làm container tự thoát.
 - Dựng gói thật: `build-and-export.ps1 -Version 0.9.1-beta.1 -AllowUnreleased` ra gói 1,1 GB (6 ảnh + compose + script); xoá ảnh cùng phiên bản trên máy rồi chạy `nexamed-setup.sh` trong container Linux (alpine) → ảnh nạp từ `.tar.gz`, link `?key=` đúng, cài LAN xong (0.9.1-beta.1).
 - **Cô lập tenant**: không đổi truy vấn dữ liệu; lệnh đặt lại mật khẩu có test tài khoản trùng tên ở công ty khác không bị đổi; SaaS giữ test cô lập đợt #237.
@@ -27,8 +27,8 @@ Trình cài đặt/nâng cấp (`apps/setup`, lệnh `nexamed-setup`) đã code 
 
 1. **Let's Encrypt thật** (kiểu VPS): cần tên miền công khai + VPS thật; máy dev có cổng 80 bị dịch vụ hệ thống Windows chiếm (PID 4) nên cũng không thử được cổng 80/443 cục bộ.
 2. **Linux/NAS thật** (mới thử trong container Linux), **máy Windows sạch**.
-3. **Nâng cấp một hệ thống đã cài bằng script `install.*` cũ** (về lý thuyết nhận ra qua `.env`, giữ tên dự án = tên thư mục nên nhận volume cũ). Lần đầu trên máy khách đã cài cách cũ: dặn sao lưu tay trước.
-4. Lệnh `docker compose run ... db:reset-admin-password` trên ảnh thật (chỉ test spec; cùng cách gọi với bước tạo phòng khám đã chạy thật).
+3. ~~Nâng cấp hệ thống cài bằng `install.*` cũ~~ **ĐÃ KIỂM CHỨNG** (xem #238 "Kiểm chứng bổ sung 2": nâng cấp + quay lui đúng; sửa 2 lỗi: file `VERSION` của gói, quay lui về bản trước 0.9). Vẫn nên dặn khách sao lưu tay trước lần nâng cấp đầu.
+4. ~~Lệnh `db:reset-admin-password` trên ảnh thật~~ **ĐÃ KIỂM CHỨNG** (mật khẩu mới đăng nhập được + bắt đổi, mật khẩu cũ bị từ chối, audit đúng, các lỗi báo đúng).
 5. Thay chứng chỉ wildcard (`certs/*` + `docker compose restart caddy`): mới viết hướng dẫn, chưa thử.
 
 ## 4. Việc treo / chờ quyết định
@@ -47,6 +47,7 @@ Trình cài đặt/nâng cấp (`apps/setup`, lệnh `nexamed-setup`) đã code 
 - **Công cụ**: máy không có Python. **Heredoc/`node -e` qua công cụ Bash làm mất một nửa dấu `\` và hỏng chuỗi có `\n`/backtick** — sửa file có dấu gạch ngược bằng công cụ Edit/Write (hoặc viết file `.cjs` bằng Write rồi chạy). Tài liệu `docs/*.md`, `docker-compose.yml`, `.env.example` dùng CRLF (script vá phải đọc, đổi `\r\n`→`\n`, sửa, ghi lại đúng kiểu). `docs/CURRENT.md` (380 KB) và `docs/DECISIONS.md` quá lớn để Read cả file — dùng offset/limit hoặc Grep. `build-and-export.ps1` có BOM UTF-8.
 - **Cách kiểm Docker thật cho trình cài đặt** (script ở scratchpad sẽ mất): dựng ảnh thử `nexamed-setup/api/web:<số thử>` bằng `docker build` (cache nhanh), tag `nexamed-backup` từ bản sẵn có, tạo thư mục thử với `docker-compose.yml`, `.env.example`, `nexamed-setup.*` và file giả `images/nexamed-*-<số>.tar.gz`, chạy `nexamed-setup.ps1 -NoBrowser -Port 8091`, điều khiển wizard bằng `playwright-core@1.49.1` + Chrome `C:/Program Files/Google/Chrome/Application/chrome.exe` (ô nhập có id `f_<tên>`, nút theo chữ). Kiểu SaaS thử cục bộ: sửa cổng Caddy trong compose của thư mục thử sang 8880/8443, dùng chứng chỉ thử `apps/setup/src/testing/cert1.pem`+`key1.pem` (bao `example.test`, `*.example.test`) và `curl --resolve admin.example.test:8443:127.0.0.1 -k`. Xong dọn: `docker compose -p <tên> down -v`, `docker rmi` ảnh thử. KHÔNG đụng DB dev (cổng 5433) và container `nexamed-postgres-1`.
 - **Dòng `.sh` phải là LF**: máy Windows có `core.autocrlf=true` sẽ đổi `nexamed-setup.sh` thành CRLF khi checkout, gói dựng từ đó chạy hỏng trên Linux. Đã thêm `.gitattributes` (`*.sh text eol=lf`) và bit thực thi cho file này; nếu dựng gói từ bản checkout cũ, kiểm `file nexamed-setup.sh` không có "CRLF".
+- **File `VERSION` ở gốc gói** (do `build-and-export.ps1` ghi): trình cài đặt và 2 script khởi động dùng nó để chọn bản mới. Bắt buộc có vì số phiên bản kiểu ngày của bản cài cũ (`2026.10.15`) lớn hơn SemVer (`0.9.0`) khi so theo số, và giải nén đè lên thư mục cũ làm ảnh cũ còn sót. Gói dựng trước khi có file này (hiếm, chỉ gói thử) thì rơi về so theo số.
 - `apps/setup/src/testing/key1.pem` là khoá giả chỉ cho test (một khoá riêng + 3 chứng chỉ công khai) — công cụ quét bí mật nếu báo thì bỏ qua.
 - `apps/web` chỉ import KIỂU từ `@nexamed/shared`; `@nexamed/shared`/`core` phải `pnpm --filter … build` trước khi chạy test/typecheck API. Test API ~8 phút, không chạy Chrome/Docker song song.
 - **Sai lầm đã mắc phiên này (đừng lặp)**: trả lời câu hỏi của chủ dự án bằng hành động (sửa code) mà quên trả lời bằng chữ — phải trả lời thẳng câu hỏi trước; nói "3 file khoá" trong khi chỉ có 1 khoá riêng (nói sai khi chưa kiểm).

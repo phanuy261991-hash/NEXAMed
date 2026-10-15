@@ -48,6 +48,7 @@ Write-Host "OK - Docker $dockerVersion"
 # ---- 2. Nạp ảnh trình cài đặt ----
 Write-Step 'Chuẩn bị trình cài đặt'
 $imagesDir = Join-Path $here 'images'
+if (-not $Version -and (Test-Path (Join-Path $here 'VERSION'))) { $Version = (Get-Content (Join-Path $here 'VERSION') -Raw).Trim() }
 if (-not $Version) {
     $found = @()
     if (Test-Path $imagesDir) {

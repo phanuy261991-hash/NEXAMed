@@ -166,7 +166,7 @@ Mã nguồn `.ts`, lịch sử `.git`, và tài liệu nội bộ là tài sản
 
 ### 2.3. Cách chạy — hướng dẫn từng bước (cách duy nhất, từ 15/10/2026, `docs/DECISIONS.md` #238)
 
-`install.ps1`/`install.cmd`/`install.sh` cũ đã BỎ — mọi cài đặt và nâng cấp đi qua trình cài đặt `nexamed-setup`. Đã kiểm chứng thật bằng Docker và Chrome: cài kiểu "Tại phòng khám" (Windows và từ container Linux), cài kiểu SaaS, nâng cấp, quay lui, tự quay lui khi nâng cấp lỗi. **Chưa kiểm chứng**: xin chứng chỉ Let's Encrypt thật (kiểu VPS), máy Linux/NAS thật, máy Windows sạch.
+`install.ps1`/`install.cmd`/`install.sh` cũ đã BỎ — mọi cài đặt và nâng cấp đi qua trình cài đặt `nexamed-setup`. Đã kiểm chứng thật bằng Docker và Chrome: cài kiểu "Tại phòng khám" (Windows và từ container Linux), cài kiểu SaaS, nâng cấp, quay lui, tự quay lui khi nâng cấp lỗi. **Đã kiểm chứng thêm**: nâng cấp một hệ thống cài bằng script `install.*` CŨ (mục 2.3b) và lệnh đặt lại mật khẩu quản trị trên ảnh Docker thật. **Chưa kiểm chứng**: xin chứng chỉ Let's Encrypt thật (kiểu VPS), máy Linux/NAS thật, máy Windows sạch.
 
 #### PHẦN 1 — Trên máy DEV (đóng gói)
 
@@ -248,7 +248,7 @@ Quy ước số: **patch** (`0.9.0 → 0.9.1`) chỉ sửa lỗi; **minor** (`�
 
 ### 2.3b. Cập nhật bản mới lên hệ thống đang chạy
 
-> **Đã kiểm chứng (15/10/2026, Docker thật + Chrome):** nâng cấp bản cũ lên bản mới bằng trình cài đặt (tự sao lưu `pg_dump` trước, nạp ảnh, đổi `NEXAMED_VERSION`, `compose up -d` để `migrate` áp thay đổi cấu trúc, kiểm tra sức khoẻ); nút "Quay lui về bản cũ" khôi phục đúng dữ liệu; bản mới báo sai phiên bản thì **tự quay lui**. Cũng đã diễn tập nâng cấp trên bản sao DB với gói cũ (`2026.10.14` → `2026.10.15`, dữ liệu nguyên vẹn). **Chưa diễn tập**: nâng cấp một hệ thống đã cài bằng `install.ps1/.sh` cũ (trình mới nhận ra qua `.env` và giữ nguyên tên dự án Docker nên về lý thuyết nhận được volume dữ liệu cũ) — lần đầu trên máy khách đã cài bằng cách cũ, **sao lưu tay trước** (Bước 2 bên dưới).
+> **Đã kiểm chứng (15/10/2026, Docker thật + Chrome):** nâng cấp bản cũ lên bản mới bằng trình cài đặt (tự sao lưu `pg_dump` trước, nạp ảnh, đổi `NEXAMED_VERSION`, `compose up -d` để `migrate` áp thay đổi cấu trúc, kiểm tra sức khoẻ); nút "Quay lui về bản cũ" khôi phục đúng dữ liệu; bản mới báo sai phiên bản thì **tự quay lui**. Cũng đã diễn tập nâng cấp trên bản sao DB với gói cũ (`2026.10.14` → `2026.10.15`, dữ liệu nguyên vẹn). **Hệ thống cài bằng `install.ps1/.sh` cũ cũng nâng cấp được** (đã diễn tập 15/10/2026 với bản `2026.10.15` cài bằng script cũ, có tạo phòng khám: trình mới nhận ra qua `.env`, giữ nguyên tên dự án Docker nên nhận đúng dữ liệu cũ, đăng nhập bằng mật khẩu cũ vẫn được sau nâng cấp, nút Quay lui về bản cũ chạy đúng). Để chắc, lần đầu vẫn nên **sao lưu tay trước** (Bước 2 bên dưới). Gói có file `VERSION` ở gốc để trình cài đặt biết đâu là bản mới ngay cả khi file ảnh cũ còn sót trong `images/` (số phiên bản kiểu ngày `2026.10.15` của bản cài cũ lớn hơn SemVer `0.9.0` khi so theo số).
 
 **Trên máy DEV:** dựng gói với số phiên bản MỚI như mục 2.3 Phần 1 (KHÔNG dùng lại số cũ, để không nhầm với bản đang chạy), nén và chép sang máy khách.
 

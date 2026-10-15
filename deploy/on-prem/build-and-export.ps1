@@ -170,7 +170,9 @@ Copy-Item "$PSScriptRoot\config.example.json" $PackageDir -Force
 Copy-Item "$PSScriptRoot\nexamed-setup.ps1" $PackageDir -Force
 Copy-Item "$PSScriptRoot\nexamed-setup.cmd" $PackageDir -Force
 Copy-Item "$PSScriptRoot\nexamed-setup.sh" $PackageDir -Force
-Write-Host "Đã copy: docker-compose.yml, .env.example, config.example.json, nexamed-setup.ps1, nexamed-setup.cmd, nexamed-setup.sh"
+# Số phiên bản của gói: trình cài đặt dùng file này để biết bản mới (file ảnh cũ có thể còn sót khi giải nén đè lên thư mục cũ).
+Set-Content -Path "$PackageDir\VERSION" -Value $Version -NoNewline -Encoding ascii
+Write-Host "Đã copy: docker-compose.yml, .env.example, config.example.json, nexamed-setup.ps1, nexamed-setup.cmd, nexamed-setup.sh, VERSION"
 
 Write-Step "HOÀN TẤT"
 Write-Host "Thư mục sẵn sàng chép sang máy khách: $PackageDir" -ForegroundColor Green

@@ -46,6 +46,9 @@ echo "OK"
 # ---- 2. Nạp ảnh trình cài đặt ----
 step "Chuẩn bị trình cài đặt"
 IMAGES_DIR="$HERE/images"
+if [ -z "$VERSION" ] && [ -f "$HERE/VERSION" ]; then
+  VERSION="$(tr -d '[:space:]' < "$HERE/VERSION")"
+fi
 if [ -z "$VERSION" ] && [ -d "$IMAGES_DIR" ]; then
   VERSION="$(find "$IMAGES_DIR" -maxdepth 1 -name 'nexamed-setup-*.tar*' -exec basename {} \; 2>/dev/null \
     | sed -E 's/^nexamed-setup-//; s/\.tar(\.gz)?$//' | sort -V | tail -n 1)"

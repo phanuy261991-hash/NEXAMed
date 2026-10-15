@@ -67,11 +67,25 @@ export async function discoverPackage(workDir: string): Promise<PackageInfo> {
       }
     }
   }
-  const versions = [...byVersion.entries()]
+  let versions = [...byVersion.entries()]
     .filter(([, set]) => APP_IMAGES.every((img) => set.has(img)))
     .map(([v]) => v)
     .sort((a, b) => compareVersions(b, a));
+  // File `VERSION` ở gốc gói (do build-and-export.ps1 ghi) nói rõ bản của gói này. Cần vì giải nén gói mới ĐÈ lên thư mục cũ thì file ảnh cũ vẫn còn, và số phiên bản kiểu ngày
+  // của bản cài trước đây (`2026.10.15`) lớn hơn SemVer (`0.9.0`) — chọn theo thứ tự số sẽ nhầm bản cũ là bản mới nhất.
+  const declared = await readDeclaredVersion(workDir);
+  if (declared && versions.includes(declared)) versions = [declared, ...versions.filter((v) => v !== declared)];
   return { versions, files };
+}
+
+/** Phiên bản ghi trong file `VERSION` của gói (null nếu không có — gói dựng trước khi có file này). */
+export async function readDeclaredVersion(workDir: string): Promise<string | null> {
+  try {
+    const text = (await readFile(join(workDir, 'VERSION'), 'utf8')).trim();
+    return text || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function fileExists(path: string): Promise<boolean> {
