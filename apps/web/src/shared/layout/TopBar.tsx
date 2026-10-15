@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { CaretRight, Clock, GearSix, House, IdentificationBadge, Pause, Play, SignOut, WarningCircle } from '@phosphor-icons/react';
+import { CaretRight, Clock, GearSix, House, IdentificationBadge, Info, Pause, Play, SignOut, WarningCircle } from '@phosphor-icons/react';
 import { Link, useMatch, useNavigate } from 'react-router-dom';
 import { logout } from '../../features/auth/auth.api';
 import { useAuthStore } from '../../features/auth/auth.store';
@@ -13,6 +13,7 @@ import { useClosingTimeReminder } from '../../features/clinic/useClosingTimeRemi
 import { DOCTOR_ONLY_ROLES } from '../../features/auth/workflow-roles';
 import { getInitials } from '../format/initials';
 import { formatClockTime } from '../format/time';
+import { WEB_VERSION } from '../version/app-version';
 import { BranchSwitcher } from './BranchSwitcher';
 import { useBreadcrumbItems } from './breadcrumb.context';
 
@@ -49,6 +50,8 @@ const EndOfDayDialog = lazy(() => import('../ui/EndOfDayDialog').then((m) => ({ 
  * lý do các dialog phía trên.
  */
 const MyAccountDialog = lazy(() => import('../../features/user-account/MyAccountDialog').then((m) => ({ default: m.MyAccountDialog })));
+// Hộp "Giới thiệu" (phiên bản phần mềm, docs/DECISIONS.md #236) — lazy như MyAccountDialog: chỉ tải khi mở.
+const AboutDialog = lazy(() => import('../../features/system/AboutDialog').then((m) => ({ default: m.AboutDialog })));
 
 /**
  * Thanh trên cùng — thay thế user card ở chân sidebar (S1-08) và nút "← Quay lại" trên trang con
@@ -77,6 +80,7 @@ export function TopBar() {
 
   const [gearMenuOpen, setGearMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const gearRef = useRef<HTMLDivElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const [endShiftDialog, setEndShiftDialog] = useState<{ trigger?: 'SCHEDULED_END' } | null>(null);
@@ -325,6 +329,19 @@ export function TopBar() {
                 <IdentificationBadge size={16} weight="regular" aria-hidden="true" />
                 Thông tin tài khoản
               </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAccountMenuOpen(false);
+                  setAboutOpen(true);
+                }}
+                className="flex w-full items-center gap-2 px-2.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <Info size={16} weight="regular" aria-hidden="true" />
+                Giới thiệu
+                <span className="ml-auto text-xs font-semibold tabular-nums text-slate-500">v{WEB_VERSION}</span>
+              </button>
               <div className="my-1 h-px bg-slate-200" />
               <button
                 type="button"
@@ -342,6 +359,7 @@ export function TopBar() {
 
       <Suspense fallback={null}>
         {myAccountOpen && <MyAccountDialog onClose={() => setMyAccountOpen(false)} />}
+        {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
         {breakDialogOpen && user && (
           <DoctorBreakDialog doctorId={user.id} onDone={() => setBreakDialogOpen(false)} onClose={() => setBreakDialogOpen(false)} />
         )}

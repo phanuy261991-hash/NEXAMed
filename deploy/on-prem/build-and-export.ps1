@@ -28,7 +28,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$Version,
     [string]$PackageDir = "$PSScriptRoot\package",
-    [string]$Platform = 'linux/amd64'
+    [string]$Platform = 'linux/amd64',
+    [switch]$AllowUnreleased
 )
 
 $ErrorActionPreference = 'Stop'
@@ -50,10 +51,46 @@ Write-Host "OK — repo root: $repoRoot"
 $imagesDir = "$PackageDir\images"
 New-Item -ItemType Directory -Force -Path $imagesDir | Out-Null
 
+# Phiên bản phần mềm (docs/DECISIONS.md #236): SemVer, KHÔNG kèm "+thông tin bản dựng" (mã bản dựng tự sinh bên dưới). Kênh suy từ số: có "-beta." → beta, còn lại → stable.
+if ($Version -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$') {
+    Write-Error "-Version '$Version' không phải số phiên bản SemVer hợp lệ (ví dụ 0.9.0 hoặc 0.10.0-beta.1). Phát hành bằng: node scripts/release.mjs <major|minor|patch|beta>."
+}
+$channel = if ($Version -match '-beta\.') { 'beta' } else { 'stable' }
+
+# Số phiên bản dựng PHẢI trùng package.json gốc (nguồn sự thật, do `node scripts/release.mjs` ghi) và đã có tag v<phiên bản> — để số hiển thị trên giao diện luôn khớp đúng bản phát hành,
+# không phải số gõ tay ở dòng lệnh. Dựng thử không phát hành: thêm -AllowUnreleased.
+$rootVersion = ((Get-Content "$repoRoot\package.json" -Raw | ConvertFrom-Json).version)
+if (-not $AllowUnreleased) {
+    if ($Version -ne $rootVersion) {
+        Write-Error "-Version $Version khác phiên bản trong package.json gốc ($rootVersion). Phát hành trước bằng: node scripts/release.mjs <major|minor|patch|beta>, hoặc dựng thử bằng -AllowUnreleased."
+    }
+    $tagFound = (& git -C $repoRoot tag --list "v$Version" 2>$null)
+    if (-not $tagFound) {
+        Write-Error "Chưa có tag v$Version. Chốt phát hành trước bằng: node scripts/release.mjs $Version, hoặc dựng thử bằng -AllowUnreleased."
+    }
+}
+
+# Mã bản dựng = SỐ THỨ TỰ BẢN DỰNG = tổng số commit của nhánh hiện tại (`git rev-list --count HEAD`), ví dụ 127 → hiển thị "0.9.0 · bản dựng 127", SemVer đầy đủ 0.9.0+127 (docs/DECISIONS.md #236).
+# Cùng một commit luôn ra cùng một số (không cần bộ đếm riêng); số tăng dần nên đọc là biết bản nào mới hơn. Cần clone ĐẦY ĐỦ lịch sử (clone nông đếm sai).
+$shallow = (& git -C $repoRoot rev-parse --is-shallow-repository 2>$null)
+if ($shallow -eq 'true') { Write-Error "Kho git đang là bản clone nông (shallow) nên không đếm đúng số bản dựng. Chạy: git fetch --unshallow" }
+$buildId = (& git -C $repoRoot rev-list --count HEAD 2>$null)
+if (-not $buildId) { Write-Error "Không đếm được số commit để đánh số bản dựng — kiểm tra thư mục có phải kho git." }
+$dirty = (& git -C $repoRoot status --porcelain 2>$null)
+if ($dirty) { Write-Host "Cảnh báo: cây làm việc git còn thay đổi chưa commit — KHÔNG nên giao bản này cho khách." -ForegroundColor Yellow }
+if (-not $AllowUnreleased) {
+    # Bản giao khách phải dựng đúng từ commit đã gắn tag v<phiên bản> và cây sạch — số phiên bản ứng với đúng một commit (truy vết nguồn khi khách báo lỗi).
+    $tagCommit = (& git -C $repoRoot rev-list -n 1 "v$Version" 2>$null)
+    $headCommit = (& git -C $repoRoot rev-parse HEAD 2>$null)
+    if ($tagCommit -ne $headCommit) { Write-Error "HEAD không phải commit của tag v$Version — checkout đúng tag (git checkout v$Version) rồi dựng lại, hoặc dựng thử bằng -AllowUnreleased." }
+    if ($dirty) { Write-Error "Cây làm việc git chưa sạch — commit hoặc cất thay đổi rồi dựng lại, hoặc dựng thử bằng -AllowUnreleased." }
+}
+Write-Host "Phiên bản: $Version+$buildId (kênh $channel)"
+
 $images = @(
-    @{ Name = 'nexamed-api'; Dockerfile = 'apps\api\Dockerfile' }
-    @{ Name = 'nexamed-web'; Dockerfile = 'apps\web\Dockerfile' }
-    @{ Name = 'nexamed-backup'; Dockerfile = 'deploy\on-prem\backup\Dockerfile' }
+    @{ Name = 'nexamed-api'; Dockerfile = 'apps\api\Dockerfile'; VersionArgs = $true }
+    @{ Name = 'nexamed-web'; Dockerfile = 'apps\web\Dockerfile'; VersionArgs = $true }
+    @{ Name = 'nexamed-backup'; Dockerfile = 'deploy\on-prem\backup\Dockerfile'; VersionArgs = $false }
 )
 
 $useBuildx = $Platform -ne 'linux/amd64'
@@ -61,10 +98,14 @@ $useBuildx = $Platform -ne 'linux/amd64'
 foreach ($img in $images) {
     $tag = "$($img.Name):$Version"
     Write-Step "Build $tag ($($img.Dockerfile), platform=$Platform)"
+    $versionArgs = @()
+    if ($img.VersionArgs) {
+        $versionArgs = @('--build-arg', "APP_VERSION=$Version", '--build-arg', "BUILD_ID=$buildId", '--build-arg', "RELEASE_CHANNEL=$channel")
+    }
     if ($useBuildx) {
-        & docker buildx build --platform $Platform --load -f "$repoRoot\$($img.Dockerfile)" -t $tag $repoRoot
+        & docker buildx build --platform $Platform --load -f "$repoRoot\$($img.Dockerfile)" -t $tag @versionArgs $repoRoot
     } else {
-        & docker build -f "$repoRoot\$($img.Dockerfile)" -t $tag $repoRoot
+        & docker build -f "$repoRoot\$($img.Dockerfile)" -t $tag @versionArgs $repoRoot
     }
     if (-not $?) { Write-Error "Build thất bại: $tag — xem log phía trên. Dừng lại, KHÔNG export ảnh dở." }
 }

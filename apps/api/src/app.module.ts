@@ -44,6 +44,7 @@ import { CashBookReportModule } from './modules/cash-book/cash-book-report.modul
 import { PatientWalletModule } from './modules/patient-wallet/patient-wallet.module';
 import { SupplierDebtModule } from './modules/supplier-debt/supplier-debt.module';
 import { HealthModule } from './modules/health/health.module';
+import { SystemModule } from './modules/system/system.module';
 import { BackupStatusModule } from './modules/backup-status/backup-status.module';
 import { BackupConfigModule } from './modules/backup-config/backup-config.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
@@ -103,6 +104,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     PatientWalletModule,
     SupplierDebtModule,
     HealthModule,
+    SystemModule,
     BackupStatusModule,
     BackupConfigModule,
   ],

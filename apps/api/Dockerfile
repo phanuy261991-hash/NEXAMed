@@ -46,6 +46,14 @@ RUN pnpm --filter "@nexamed/api..." run build
 WORKDIR /repo/apps/api
 ENV NODE_ENV=production
 
+# Phiên bản phần mềm (docs/DECISIONS.md #236) — `deploy/on-prem/build-and-export.ps1` truyền `--build-arg` lúc dựng; đặt SAU các bước build để đổi số phiên bản không làm mất cache lớp trên.
+# `RELEASED_AT` không truyền ở đây: ngày phát hành lấy từ file ghi chú `release-notes/<phiên bản>.json` đi cùng ảnh.
+ARG APP_VERSION=0.0.0-dev
+ARG BUILD_ID=dev
+ARG RELEASE_CHANNEL=dev
+ENV APP_VERSION=$APP_VERSION BUILD_ID=$BUILD_ID RELEASE_CHANNEL=$RELEASE_CHANNEL
+LABEL org.opencontainers.image.title="nexamed-api" org.opencontainers.image.version=$APP_VERSION org.opencontainers.image.revision=$BUILD_ID
+
 EXPOSE 3000
 
 # Không cài thêm curl (ảnh slim) — dùng thẳng Node có sẵn để gọi GET /health (S4-05).

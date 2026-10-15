@@ -90,3 +90,7 @@ Yêu cầu thường trực của chủ dự án: **luôn đảm bảo hiệu su
 - Nhánh: `feat/<domain>-<mô tả ngắn>`, `fix/<domain>-<mô tả ngắn>`.
 - Commit theo Conventional Commits: `feat(encounter): ...`.
 - Một PR một mục đích. PR đụng vào schema phải kèm migration và cập nhật `.claude/docs/data-model.md` trong cùng PR.
+
+## Import từ `@nexamed/shared` ở `apps/web` (bài học 15/10/2026, `docs/DECISIONS.md` #235/#236)
+
+`apps/web` chỉ được import **KIỂU** (`import type`) từ `@nexamed/shared` — bản dist của gói là CommonJS nên Vite dev không nạp được giá trị (hằng số, schema Zod, hàm): trang trắng ở trình duyệt dù test, typecheck và build đều xanh, chỉ lộ khi chạy thật. Cần một hằng số/danh sách dùng ở web thì khai báo tại chỗ (`as const satisfies readonly Kiểu[]` để giữ khớp kiểu dùng chung), không import giá trị.

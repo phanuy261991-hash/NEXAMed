@@ -1,0 +1,16 @@
+{
+  "version": "0.9.0",
+  "releasedAt": "2026-10-15",
+  "features": [
+    "Báo cáo gộp nhiều chi nhánh (Báo cáo dòng tiền, Sổ quỹ, Nhập-Xuất-Tồn) cho người có quyền xem báo cáo toàn công ty.",
+    "Tab Kết quả cận lâm sàng và biểu đồ diễn biến chỉ số xét nghiệm ở hồ sơ bệnh nhân.",
+    "Hộp Giới thiệu hiển thị phiên bản phần mềm và thông tin hỗ trợ."
+  ],
+  "improvements": [
+    "Chi nhánh mới tự có sẵn một kho và một quỹ tiền mặt mặc định.",
+    "Điều chuyển kho hiển thị hàng cận hạn và phiếu quá hạn xử lý."
+  ],
+  "fixes": [
+    "Hoàn tiền đồng thời trên cùng một hoá đơn luôn trả về thông báo xung đột rõ ràng, tiền không bị hoàn hai lần."
+  ]
+}

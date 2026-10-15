@@ -4,6 +4,10 @@
 
 ## 2026-10-15
 
+### Quản lý phiên bản phần mềm (`docs/DECISIONS.md` #236)
+
+Phần mềm có số phiên bản chuyên nghiệp theo SemVer (xuất phát `0.9.0`, lên `1.0.0` sau pilot) và số bản dựng (`0.9.0 · bản dựng 127`). Có hộp **"Giới thiệu"** trong menu người dùng (phiên bản, kênh Ổn định/Thử nghiệm, ngày phát hành, chế độ triển khai, ghi chú phát hành, thông tin kỹ thuật, nút sao chép thông tin gửi hỗ trợ), số phiên bản ở chân trang đăng nhập, và thông báo "hệ thống vừa được cập nhật, hãy tải lại trang" khi máy chủ đổi phiên bản. Số phiên bản chỉ đổi khi chủ động phát hành bằng `node scripts/release.mjs` (tăng số, kiểm ghi chú phát hành, tạo commit và tag); script dựng gói kiểm khớp số và tag. Trang "Cập nhật phần mềm" và bộ cập nhật tự động là các bước sau. Môi trường khác: không migration, không `db:seed`; khởi động lại API.
+
 ### Đợt 3 chi nhánh: báo cáo gộp nhiều chi nhánh (`docs/DECISIONS.md` #235)
 
 Người có quyền mới **"Xem báo cáo toàn công ty"** (mặc định Quản trị phòng khám) có thêm bộ chọn **Phạm vi** (Chi nhánh đang làm / Tất cả chi nhánh / Chọn chi nhánh) ở ba báo cáo: **Báo cáo dòng tiền** (thêm bảng "Theo chi nhánh" và cột Chi nhánh ở "Theo Quỹ"), **Sổ quỹ** (chọn được quỹ của chi nhánh khác, chỉ xem) và **Nhập-Xuất-Tồn** (cột Chi nhánh, công tắc "Gộp theo mặt hàng"). Xuất Excel đúng phạm vi đang xem, nhật ký ghi danh sách chi nhánh đã xuất. Người không có quyền không thấy bộ chọn và máy chủ chặn (403) nếu tự gửi tham số; công ty 1 chi nhánh giao diện không đổi. Không phải báo cáo doanh số mới. Môi trường khác: `db:seed` (quyền mới) rồi khởi động lại API; không migration.

@@ -23,6 +23,11 @@ RUN pnpm install --frozen-lockfile --filter "@nexamed/web..."
 COPY apps/web apps/web
 COPY packages/shared packages/shared
 
+# Phiên bản phần mềm (docs/DECISIONS.md #236) — Vite nhúng vào gói web lúc build (`apps/web/vite.config.mts`); web so với phiên bản máy chủ để báo "hệ thống vừa được cập nhật".
+ARG APP_VERSION=0.0.0-dev
+ARG BUILD_ID=dev
+ENV VITE_APP_VERSION=$APP_VERSION VITE_BUILD_ID=$BUILD_ID
+
 RUN pnpm --filter "@nexamed/web..." run build
 
 # ---- Stage 2: nginx phục vụ static + reverse proxy /api ----

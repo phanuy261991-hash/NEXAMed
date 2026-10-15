@@ -618,6 +618,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Phiên bản phần mềm đang chạy (công khai, không cần đăng nhập) — phiên bản SemVer, mã bản dựng, kênh, chế độ triển khai, phiên bản cơ sở dữ liệu, ghi chú phát hành */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                version: string;
+                                build: string;
+                                /** @enum {string} */
+                                channel: "stable" | "beta" | "dev";
+                                releasedAt: string | null;
+                                /** @enum {string} */
+                                deploymentMode: "single" | "saas";
+                                schemaVersion: string | null;
+                                notes: {
+                                    version: string;
+                                    releasedAt: string;
+                                    features: string[];
+                                    improvements: string[];
+                                    fixes: string[];
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/branches/report-scope-options": {
         parameters: {
             query?: never;

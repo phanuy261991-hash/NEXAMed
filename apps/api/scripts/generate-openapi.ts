@@ -443,6 +443,7 @@ import {
   createBranchRequestSchema,
   listBranchesQuerySchema,
   listBranchesResponseSchema,
+  systemVersionSchema,
   switchBranchRequestSchema,
   switchBranchResponseSchema,
   updateBranchRequestSchema,
@@ -572,6 +573,16 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(listBranchesResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền branch.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/system/version',
+  tags: ['system'],
+  summary: 'Phiên bản phần mềm đang chạy (công khai, không cần đăng nhập) — phiên bản SemVer, mã bản dựng, kênh, chế độ triển khai, phiên bản cơ sở dữ liệu, ghi chú phát hành',
+  responses: {
+    200: jsonResponse('Thành công', envelope(systemVersionSchema)),
   },
 });
 

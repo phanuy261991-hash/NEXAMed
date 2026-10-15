@@ -54,6 +54,9 @@ const PUBLIC_ROUTES = new Set<string>([
   'POST /api/v1/auth/logout',
   'GET /api/v1/health',
   'GET /health',
+  // Phiên bản phần mềm đang chạy (docs/DECISIONS.md #236): trang đăng nhập cần số phiên bản khi chưa đăng nhập; chỉ trả số phiên bản/kênh/ghi chú phát hành, không cấu hình hay dữ liệu công ty
+  // (có test riêng `system-version-http.spec.ts` kiểm không lộ bí mật).
+  'GET /api/v1/system/version',
   // Tải file theo chữ ký URL có hạn (ảnh đại diện/logo/chữ ký) — xác thực bằng token ký trong URL, không bằng JWT;
   // token sai/hết hạn → 403 (xem signed-url.ts), không phải 401.
   'GET /api/v1/files/:token',

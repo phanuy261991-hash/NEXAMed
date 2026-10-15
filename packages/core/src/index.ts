@@ -64,3 +64,4 @@ export * from './paraclinical/patient-indicators';
 export * from './specimen/plan-specimen-tubes';
 export * from './pricing/resolve-effective-price';
 export * from './leave/leave-window';
+export * from './version/semver';

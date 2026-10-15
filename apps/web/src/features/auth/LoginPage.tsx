@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
+import { WEB_BUILD_ID, WEB_VERSION, formatDisplayVersion } from '../../shared/version/app-version';
 import { login } from './auth.api';
 import { useAuthStore } from './auth.store';
 
@@ -35,7 +36,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-slate-50 px-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-md" noValidate>
         <h1 className="mb-6 text-xl font-semibold text-slate-900">Đăng nhập NEXAMed</h1>
 
@@ -76,6 +77,8 @@ export function LoginPage() {
           Đăng nhập
         </Button>
       </form>
+      {/* Phiên bản của gói web đang chạy (docs/DECISIONS.md #236) — nhân viên đọc cho bộ phận hỗ trợ khi báo lỗi trước cả khi đăng nhập được. */}
+      <p className="mt-4 text-center text-xs font-medium tabular-nums text-slate-500">NEXAMed {formatDisplayVersion(WEB_VERSION, WEB_BUILD_ID)}</p>
     </div>
   );
 }

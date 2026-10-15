@@ -1,9 +1,23 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
+// Phiên bản phần mềm nhúng vào gói web (docs/DECISIONS.md #236): ảnh Docker truyền VITE_APP_VERSION/VITE_BUILD_ID lúc dựng; máy phát triển lấy phiên bản từ package.json gốc, mã bản dựng "dev".
+function readRootVersion(): string {
+  try {
+    return (JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version?: string }).version ?? '0.0.0-dev';
+  } catch {
+    return '0.0.0-dev';
+  }
+}
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION || readRootVersion()),
+    __BUILD_ID__: JSON.stringify(process.env.VITE_BUILD_ID || 'dev'),
+  },
   server: {
     port: 5173,
   },

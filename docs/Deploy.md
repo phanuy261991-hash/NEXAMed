@@ -224,6 +224,17 @@ Linux/NAS: y hệt các bước trên, chỉ đổi `.\install.cmd` thành `./in
   4. Truy cập bằng địa chỉ có kèm cổng: `http://localhost:8080`.
 - **Đã lỡ chạy `docker compose up -d` trực tiếp (không qua `install.cmd`/`install.ps1`) để khắc phục sự cố ở trên, giờ không thấy `tenantId`/mật khẩu đâu cả** → bình thường, vì bước tạo tài khoản quản trị CHỈ nằm trong `install.ps1` (Bước 5), không nằm trong lệnh `docker compose up -d` thuần. Chạy lại `.\install.cmd` — vì `.env`/`config.json` đã có sẵn nên script tự bỏ qua phần tạo lại, chạy thẳng tới đúng bước hỏi tạo tài khoản.
 
+### 2.3a. Phát hành một phiên bản (SemVer, từ 15/10/2026, `docs/DECISIONS.md` #236)
+
+Số phiên bản người dùng thấy (hộp "Giới thiệu", chân trang đăng nhập) chỉ đổi khi BẠN chủ động phát hành, không đổi theo commit hay lần dựng. Quy trình trên máy dev:
+
+1. **Viết ghi chú phát hành** cho số sắp phát hành: `apps/api/release-notes/<phiên bản>.json` (nhóm `features` / `improvements` / `fixes`, viết cho người dùng cuối, không phải nhật ký kỹ thuật). Commit file này.
+2. **Chốt phiên bản:** `node scripts/release.mjs <major|minor|patch|beta|X.Y.Z[-beta.N]>` (cần `packages/core` và `packages/shared` đã build; thêm `--dry-run` để chỉ kiểm tra). Script từ chối nếu cây git chưa sạch, số mới không lớn hơn số cũ, đã có tag, hoặc thiếu/ sai ghi chú phát hành. Nó ghi cùng một số vào `package.json` gốc và 4 gói con, tạo commit `chore(release): vX.Y.Z` và tag `vX.Y.Z`. Lần đầu chốt chính số hiện có (chưa có tag) dùng `node scripts/release.mjs 0.9.0` (chỉ tạo tag). Không tự push: kiểm tra rồi `git push origin master --tags`.
+3. **Dựng gói:** `deploy/on-prem/build-and-export.ps1 -Version X.Y.Z` — chạy trực tiếp trong PowerShell hoặc qua `powershell -File` với `-PackageDir` tường minh. Script từ chối nếu `-Version` khác `package.json`, HEAD không phải commit của tag `vX.Y.Z`, hoặc cây git chưa sạch (dựng thử không phát hành: `-AllowUnreleased`). Số bản dựng = số commit của nhánh (`git rev-list --count HEAD`), cần clone đầy đủ lịch sử.
+4. Giao khách như mục 2.3b. Trong ứng dụng: hộp "Giới thiệu" hiện `X.Y.Z`, kênh (Ổn định/Thử nghiệm), ngày phát hành, ghi chú; thông tin kỹ thuật hiện `X.Y.Z · bản dựng N` và phiên bản cơ sở dữ liệu thật.
+
+Quy ước số: **patch** (`0.9.0 → 0.9.1`) chỉ sửa lỗi; **minor** (`→ 0.10.0`) thêm tính năng không phá vỡ; **major** (`→ 1.0.0`) bản chính thức hoặc thay đổi lớn; **beta** (`0.10.0-beta.1`) kênh thử nghiệm. Hiện `0.9.0`, lên `1.0.0` sau khi qua pilot. Máy dev hiển thị cùng số nhưng kênh "Phát triển" và không có số bản dựng.
+
 ### 2.3b. Cập nhật bản mới lên hệ thống đang chạy
 
 > **Đã diễn tập 15/10/2026** trên bản sao riêng (Docker project tách biệt, cổng 8088): cài mới `2026.10.14` → tạo chi nhánh thứ 2 + bệnh nhân bằng API → `pg_dump` → nâng `2026.10.14.2` (áp `20261015090000_branch_dot2` + `db:seed`, dữ liệu cũ còn nguyên) → nâng `2026.10.15` (không migration; chi nhánh 2 tự có 1 kho + 1 quỹ tiền mặt lúc API khởi động, tab Kết quả cận lâm sàng trả 200 cho quản trị / 403 cho lễ tân). Chưa cài thử trên máy Windows sạch thật. Lưu ý: `-WebOrigin` không đổi cổng publish — muốn chạy cổng khác 80 phải sửa `WEB_HTTP_PORT` trong `.env` rồi `docker compose up -d`; chạy `build-and-export.ps1` phải từ chính PowerShell (chạy qua Git Bash làm `$PSScriptRoot` rỗng, gói bị ghi ra `C:\package`).

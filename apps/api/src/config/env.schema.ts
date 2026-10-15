@@ -30,6 +30,13 @@ export const envSchema = z.object({
   // apps/api/Dockerfile) — đủ cho container Docker. Máy dev Windows PHẢI đặt tường minh, trỏ tới
   // Chrome cài sẵn (vd C:\Program Files\Google\Chrome\Application\chrome.exe).
   CHROMIUM_EXECUTABLE_PATH: z.string().min(1).optional(),
+  // Quản lý phiên bản (docs/DECISIONS.md #236) — ảnh Docker truyền lúc dựng (`build-and-export.ps1`); để trống ở máy phát triển (phiên bản lấy từ package.json gốc, kênh `dev`).
+  APP_VERSION: z.string().min(1).optional(),
+  BUILD_ID: z.string().min(1).optional(),
+  RELEASE_CHANNEL: z.enum(['stable', 'beta', 'dev']).optional(),
+  RELEASED_AT: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  // `single` = một công ty trên một hệ thống riêng (on-prem/VPS/NAS, mặc định); `saas` = nhiều công ty dùng chung (Đợt 4). Một mã nguồn, hai chế độ.
+  DEPLOYMENT_MODE: z.enum(['single', 'saas']).default('single'),
 });
 
 export type Env = z.infer<typeof envSchema>;

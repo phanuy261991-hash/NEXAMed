@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, type ReactNode } from 'react';
 import { RoomSessionGate } from '../../features/clinic/RoomSessionGate';
+import { VersionMismatchBanner } from '../../features/system/VersionMismatchBanner';
 import { PageFallback } from '../ui/PageFallback';
 import { useClinicPrintHeaderQuery } from '../print/clinic-print-header.queries';
 import { usePrintPaperChoice } from '../print/print-paper-choice';
@@ -57,6 +58,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Suspense fallback={null}>
               <BackupStatusBanner />
             </Suspense>
+            {/* Máy chủ vừa được cập nhật mà trình duyệt còn gói web cũ (docs/DECISIONS.md #236) — tự ẩn khi hai bên cùng phiên bản. */}
+            <VersionMismatchBanner />
             {/* Suspense bọc RIÊNG vùng nội dung (không bọc cả app) — Sidebar/TopBar vẫn hiện
                 nguyên trong lúc chunk JS của route lazy đang tải, không nháy cả màn hình. */}
             <main className="flex-1 overflow-y-auto">
