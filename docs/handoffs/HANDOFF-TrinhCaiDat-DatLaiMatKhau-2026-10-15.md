@@ -4,7 +4,7 @@
 
 ## 0. Trạng thái một câu
 
-Trình cài đặt/nâng cấp (`apps/setup`, lệnh `nexamed-setup`) đã code xong phần chính, đã kiểm chứng bằng Docker thật + Chrome (cài LAN, cài SaaS, nâng cấp, quay lui, tự quay lui khi lỗi, chạy `nexamed-setup.sh` trong container Linux từ gói dựng thật); hai script cũ `install.ps1/.cmd/.sh` đã BỎ; `docs/Deploy.md` mục 2.3/2.3b viết lại; thêm lệnh `db:reset-admin-password`. Đã commit + push `master` (xem `git log`). Việc làm tiếp: các mục chưa kiểm chứng ở mục 3 và quyết định ở mục 4.
+Trình cài đặt/nâng cấp (`apps/setup`, lệnh `nexamed-setup`) đã code xong phần chính, đã kiểm chứng bằng Docker thật + Chrome (cài LAN, cài SaaS, nâng cấp, quay lui, tự quay lui khi lỗi, chạy `nexamed-setup.sh` trong container Linux từ gói dựng thật); hai script cũ `install.ps1/.cmd/.sh` đã BỎ; `docs/Deploy.md` mục 2.3/2.3b viết lại; thêm lệnh `db:reset-admin-password`. Đã commit + push `master`: `ed814dc` (trình cài đặt + đặt lại mật khẩu), `5543a00` (ép LF cho `.sh`), `5814f2a` (file `VERSION` của gói + quay lui về bản trước 0.9 + kiểm chứng nâng cấp từ hệ thống cài bằng script cũ và `db:reset-admin-password` trên ảnh thật), `e5d90b7` (chốt `1.0.0` sau pilot + khung so sánh nhà cung cấp SaaS). Cây làm việc sạch lúc chuyển phiên. Việc làm tiếp: mục 7 (các giai đoạn còn lại + đề xuất bước kế tiếp).
 
 ## 1. Đã làm (chi tiết ở `docs/DECISIONS.md` #238 + phần bổ sung)
 
@@ -36,7 +36,8 @@ Trình cài đặt/nâng cấp (`apps/setup`, lệnh `nexamed-setup`) đã code 
 - **"Chế độ bảo trì"** trong trình cài đặt (thay chứng chỉ, đặt lại mật khẩu bằng giao diện): chủ dự án hỏi "có cần không" — đã tư vấn KHÔNG cần ngay (thay chứng chỉ làm tay 2 phút, đặt lại mật khẩu đã có lệnh). Chờ chốt.
 - Tên máy (`http://TEN-MAY`): chủ dự án quyết KHÔNG làm.
 - Nút "Cập nhật ngay" trong ứng dụng vẫn tắt (không tự bật được trình cài đặt — cần tiến trình nền, chờ chủ dự án).
-- SaaS tự gia hạn chứng chỉ (Caddy xin riêng từng tên miền phụ, hoặc API DNS) — phụ thuộc nhà cung cấp tên miền/máy chủ trong nước, **chưa chọn, chưa lập bảng so sánh** (việc nợ chặn gói SaaS thật).
+- **Chọn nhà cung cấp máy chủ/tên miền trong nước cho SaaS**: đã lập khung so sánh `docs/product/saas-hosting-comparison.md` (nhu cầu hạ tầng, dữ liệu đã kiểm, mẫu 8 câu yêu cầu báo giá, điểm pháp lý, gợi ý DNS tách khỏi máy chủ + certbot tự gia hạn ghi vào `certs/`). **Chỉ có giá Viettel IDC** (4 vCPU/8 GB: 799.000 đ gói T1.Base 05, 1.200.000 đ gói T2.Gen 02, theo whtop.com, kiểm lại); VNPT/FPT/CMC/hosting khác tra không ra — CHỜ chủ dự án gửi mẫu báo giá cho 3 đến 4 nhà cung cấp rồi đưa lại để điền bảng thật. Chặn gói SaaS thật. Điểm pháp lý (dữ liệu sức khoẻ ra nước ngoài, Luật BVDLCN 91/2025/QH15 hiệu lực 1/1/2026) mới tra một phần, cần luật sư.
+- **Phát hành `1.0.0` (chủ dự án chốt 15/10/2026: SAU pilot)**: giữ `0.9.0`; chỉ chạy `node scripts/release.mjs 1.0.0` khi pilot ngừng dùng sổ giấy, S6-02 và S6-04 đạt, gói cài đã kiểm trên máy khách thật; cần ghi chú phát hành `apps/api/release-notes/1.0.0.json`. Chi tiết `docs/DECISIONS.md` #238 phần "Chốt".
 - Khu quản trị: menu "Tài khoản vận hành" (hiện tạo bằng script), nhật ký chưa phân trang, phiên không refresh, chưa chống dùng lại OTP trong 30 giây; bước 3 cập nhật phần mềm (máy chủ phát hành); CSP Report-Only; S6-02/S6-04; BHYT (S2-04). Chủ dự án bảo BỎ QUA việc bật chi nhánh 2 ở khách thật.
 - Dọn tay (không phải của dự án): 5 container dừng `package-*` + `modest_leakey` từ các lần thử cũ trên máy dev (`docker rm ...`), volume `package_*` chưa xoá vì chưa chắc có dữ liệu cần giữ.
 
@@ -52,6 +53,18 @@ Trình cài đặt/nâng cấp (`apps/setup`, lệnh `nexamed-setup`) đã code 
 - `apps/web` chỉ import KIỂU từ `@nexamed/shared`; `@nexamed/shared`/`core` phải `pnpm --filter … build` trước khi chạy test/typecheck API. Test API ~8 phút, không chạy Chrome/Docker song song.
 - **Sai lầm đã mắc phiên này (đừng lặp)**: trả lời câu hỏi của chủ dự án bằng hành động (sửa code) mà quên trả lời bằng chữ — phải trả lời thẳng câu hỏi trước; nói "3 file khoá" trong khi chỉ có 1 khoá riêng (nói sai khi chưa kiểm).
 
+## 7. Các giai đoạn còn lại (tổng hợp theo `docs/TASK.md`, `docs/CURRENT.md`) và đề xuất bước kế tiếp
+
+Sprint 1–6 và mọi phần mở rộng ngoài kế hoạch (kho thuốc, công nợ NCC, cận lâm sàng, chi nhánh, SaaS nền, trình cài đặt) ĐÃ XONG. Còn:
+
+- **A. Cần phòng khám pilot thật (chặn GA)**: S6-02 diễn tập phục hồi trên máy chủ pilot; S6-04 đo hiệu năng p95 (< 500 ms, 10 người dùng) trên máy chủ pilot; thử máy in tem + súng quét mã vạch thật.
+- **B. Nợ phát hành/cài đặt**: Let's Encrypt thật (VPS), Linux/NAS thật, máy Windows sạch, thử thay chứng chỉ wildcard, chốt `1.0.0` sau pilot.
+- **C. Chờ quyết định/nhà cung cấp**: nhà cung cấp hạ tầng SaaS (mục 4); bước 3 cập nhật phần mềm (máy chủ phát hành, ký số; nút "Cập nhật ngay" đang tắt); "chế độ bảo trì" (đã tư vấn chưa cần); bật chi nhánh 2 ở khách thật (chủ dự án bảo bỏ qua).
+- **D. Chức năng chưa làm**: **S2-04 Lưu thẻ BHYT** (mã hoá số thẻ bằng `pii-encryption.ts`, hiển thị, không tính chi trả; cần hỏi chốt quy trình + mockup được duyệt trước khi code); trường VTYT riêng (phân loại rủi ro NĐ 98/2021, tái sử dụng, nhóm VTYT, số đăng ký, model) và trường thuốc chưa quyết (`national_pharmacy_code`, `vat_rate`); khu quản trị SaaS còn thiếu menu "Tài khoản vận hành", phân trang nhật ký, refresh phiên, chống dùng lại OTP 30 giây; chuyển CSP từ Report-Only sang chặn sau khi pilot sạch cảnh báo; script/giao diện đặt lại mật khẩu đã có (lệnh), không còn nợ.
+- **E. Ngoài phạm vi v1**: viện phí đa đối tượng, BHYT đầy đủ, báo cáo doanh thu theo kỳ, công nợ/trả góp bệnh nhân, LIS/PACS, PWA offline toàn diện.
+
+**Đề xuất bước kế tiếp (theo thứ tự)**: (1) chủ dự án gửi mẫu báo giá hạ tầng → khi có báo giá, điền `saas-hosting-comparison.md` thành bảng thật và đề xuất nhà cung cấp; (2) chọn phòng khám pilot để làm nhóm A; (3) S2-04 BHYT nếu pilot cần (hỏi chốt quy trình theo quy tắc "xác nhận workflow trước mỗi tính năng", rồi mockup, chờ "duyệt").
+
 ## 6. Tài liệu/memory đã cập nhật phiên này
 
-`docs/DECISIONS.md` #238 (tiến độ + bổ sung đặt lại mật khẩu), `docs/CHANGELOG.md`, `docs/TASK.md`, `docs/CURRENT.md`, `docs/Deploy.md`, `CLAUDE.md`, `.claude/docs/project-structure.md`. Memory: `project_installer_wizard_mockup.md` (đã xong), dòng bàn giao trong `MEMORY.md`.
+`docs/DECISIONS.md` #238 (tiến độ + bổ sung đặt lại mật khẩu + kiểm chứng bổ sung 2 + chốt `1.0.0` sau pilot), `docs/product/saas-hosting-comparison.md` (mới), `docs/CHANGELOG.md`, `docs/TASK.md`, `docs/CURRENT.md`, `docs/Deploy.md`, `CLAUDE.md`, `.claude/docs/project-structure.md`. Memory: `project_installer_wizard_mockup.md` (đã xong), `project_release_and_saas_hosting.md` (mới: chốt 1.0.0 sau pilot + chờ báo giá SaaS), dòng bàn giao trong `MEMORY.md`.
