@@ -226,6 +226,8 @@ Linux/NAS: y hệt các bước trên, chỉ đổi `.\install.cmd` thành `./in
 
 ### 2.3b. Cập nhật bản mới lên hệ thống đang chạy
 
+> **Đã diễn tập 15/10/2026** trên bản sao riêng (Docker project tách biệt, cổng 8088): cài mới `2026.10.14` → tạo chi nhánh thứ 2 + bệnh nhân bằng API → `pg_dump` → nâng `2026.10.14.2` (áp `20261015090000_branch_dot2` + `db:seed`, dữ liệu cũ còn nguyên) → nâng `2026.10.15` (không migration; chi nhánh 2 tự có 1 kho + 1 quỹ tiền mặt lúc API khởi động, tab Kết quả cận lâm sàng trả 200 cho quản trị / 403 cho lễ tân). Chưa cài thử trên máy Windows sạch thật. Lưu ý: `-WebOrigin` không đổi cổng publish — muốn chạy cổng khác 80 phải sửa `WEB_HTTP_PORT` trong `.env` rồi `docker compose up -d`; chạy `build-and-export.ps1` phải từ chính PowerShell (chạy qua Git Bash làm `$PSScriptRoot` rỗng, gói bị ghi ra `C:\package`).
+
 **Trên máy DEV**
 
 **Bước 1.** Đảm bảo code mới đã có trên máy dev (đã sửa/pull xong).
