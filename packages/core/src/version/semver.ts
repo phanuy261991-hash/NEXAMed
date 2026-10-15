@@ -1,3 +1,5 @@
+import { SEMVER_PATTERN } from '@nexamed/shared';
+
 /**
  * Phiên bản phần mềm theo SemVer 2.0 (docs/DECISIONS.md #236): `MAJOR.MINOR.PATCH[-tiền-phát-hành][+thông-tin-bản-dựng]`. Hàm thuần, KHÔNG phụ thuộc framework — dùng ở script phát hành
  * (tăng số), máy chủ (so sánh với bản mới nhất ở khung kiểm tra cập nhật, bước sau) và test. Không dùng thư viện ngoài vì chỉ cần đúng các phép dưới đây.
@@ -11,9 +13,6 @@ export interface SemVer {
   /** Thông tin bản dựng sau dấu `+` (không tham gia so sánh), ví dụ `20261015.e97a27c`. */
   build: string | null;
 }
-
-const SEMVER_PATTERN =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
 /** Trả `null` nếu chuỗi không đúng SemVer (không ném lỗi — nơi gọi quyết định xử lý). */
 export function parseSemver(input: string): SemVer | null {

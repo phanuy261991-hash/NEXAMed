@@ -197,6 +197,7 @@ const ACTION_LABELS: Record<string, string> = {
   'stock_transfer.variance_resolved': 'Xử lý chênh lệch hàng điều chuyển',
   'stock_transfer.rejected': 'Từ chối phiếu điều chuyển kho',
   'stock_ledger_report.exported': 'Xuất báo cáo Nhập-Xuất-Tồn ra Excel',
+  'software_update.checked': 'Kiểm tra cập nhật phần mềm',
   'supplier.created': 'Thêm nhà cung cấp',
   'supplier.updated': 'Sửa nhà cung cấp',
   'warehouse.created': 'Thêm kho',

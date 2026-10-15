@@ -132,6 +132,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // Cấu hình sao lưu dữ liệu (#217) — cấu hình của CẢ MÁY CHỦ on-premise: chỉ quản trị hệ thống + quản lý phòng khám bản cài tại chỗ (máy không có container sao lưu thì mục này ẩn).
   { module: 'system_backup', action: 'read', description: 'Xem cấu hình và trạng thái sao lưu dữ liệu' },
   { module: 'system_backup', action: 'manage', description: 'Sửa cấu hình sao lưu dữ liệu và bấm "Sao lưu ngay"' },
+  // Cập nhật phần mềm (docs/DECISIONS.md #236, bước 2) — XEM và KIỂM TRA bản mới; cùng nhóm quyền với sao lưu (cấu hình của cả máy chủ). `apply` (áp dụng cập nhật) thêm khi làm bộ cập nhật thật.
+  { module: 'software_update', action: 'read', description: 'Xem trạng thái và kiểm tra cập nhật phần mềm' },
   // Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — không có `invoice.create` riêng: phiếu thu luôn tạo
   // tự động kèm `encounter.create` (check-in/tiếp nhận trực tiếp), không có endpoint tạo riêng.
   { module: 'invoice', action: 'read', description: 'Xem phiếu thu' },
@@ -516,6 +518,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'imaging_result.approve': 'global',
     'system_backup.read': 'global',
     'system_backup.manage': 'global',
+    'software_update.read': 'global',
     'technical_service.create': 'global',
     'technical_service.update': 'global',
     'service_package.create': 'global',
@@ -607,6 +610,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
   system_admin: {
     'system_backup.read': 'global',
     'system_backup.manage': 'global',
+    'software_update.read': 'global',
     'user_account.read': 'global',
     'user_account.manage': 'global',
     'audit_log.read': 'global',

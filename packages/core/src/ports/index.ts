@@ -14,6 +14,7 @@ export * from './encounter-reader.port';
 export * from './work-shift-assignment-reader.port';
 export * from './cashier-shift-reader.port';
 export * from './backup-status.port';
+export * from './update-check.port';
 export * from './backup-control.port';
 export * from './pdf-renderer.port';
 export * from './clinical-order-cancellation.port';

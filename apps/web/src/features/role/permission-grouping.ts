@@ -38,6 +38,8 @@ export const MODULE_LABELS: Record<string, string> = {
   branch: 'Chi nhánh',
   // Đợt 3 chi nhánh (#235) — nhãn thêm NGAY lúc tạo quyền; `permission-grouping.spec.ts` chặn nếu thiếu.
   company_report: 'Báo cáo toàn công ty',
+  // Cập nhật phần mềm (#236, bước 2) — nhãn thêm NGAY lúc tạo quyền (`permission-grouping.spec.ts` chặn nếu thiếu).
+  software_update: 'Cập nhật phần mềm',
   shift_swap: 'Đổi ca',
   cashier_shift: 'Chốt ca',
   // "Thu chi tại quầy" GĐ1 (2026-09-05) — cùng lỗ hổng đã ghi chú ở trên: module mới thêm permission
@@ -92,7 +94,7 @@ const SECTIONS: { label: string; modules: string[] }[] = [
   { label: 'Đặt lịch hẹn', modules: ['appointment'] },
   { label: 'Tiếp nhận & Lượt khám', modules: ['encounter', 'vital_sign', 'diagnosis'] },
   { label: 'Khám bệnh & Kê đơn', modules: ['clinical_note', 'prescription', 'prescription_template', 'advice_template'] },
-  { label: 'Cấu hình & Quản trị', modules: ['clinic_config', 'user_account', 'role_permission', 'audit_log', 'system_backup'] },
+  { label: 'Cấu hình & Quản trị', modules: ['clinic_config', 'user_account', 'role_permission', 'audit_log', 'system_backup', 'software_update'] },
   { label: 'Danh mục dùng chung', modules: ['reference_catalog'] },
   {
     label: 'Cận lâm sàng',

@@ -47,3 +47,4 @@ export * from './leave-request';
 export * from './work-schedule-submission';
 export * from './shift-swap';
 export * from './system-version';
+export * from './software-update';

@@ -63,6 +63,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   stock_count: 'Phiếu kiểm kê',
   stock_transfer: 'Phiếu điều chuyển kho',
   stock_ledger_report: 'Báo cáo Nhập-Xuất-Tồn',
+  software_update: 'Cập nhật phần mềm',
   cash_account: 'Quỹ',
   cash_voucher: 'Phiếu thu/chi',
   cash_book_export: 'Báo cáo dòng tiền',
