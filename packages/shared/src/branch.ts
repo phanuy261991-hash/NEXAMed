@@ -75,3 +75,36 @@ export const allBranchesQuerySchema = z
   .optional()
   .default(false)
   .transform((v) => (typeof v === 'string' ? v === 'true' : v));
+
+/**
+ * Phạm vi chi nhánh của BÁO CÁO TỔNG HỢP (Đợt 3 chi nhánh, docs/DECISIONS.md #235) — Báo cáo dòng tiền, Sổ quỹ, Nhập-Xuất-Tồn.
+ * `current` (mặc định) = chi nhánh đang làm việc; `all` = MỌI chi nhánh của công ty; `pick` = các chi nhánh trong `branchIds` (chuỗi id cách nhau bằng dấu phẩy).
+ * `all`/`pick` chỉ dùng được khi có quyền `company_report.read` — máy chủ từ chối (403) nếu thiếu, kể cả khi client tự gửi tham số.
+ */
+export const REPORT_SCOPES = ['current', 'all', 'pick'] as const;
+export const reportScopeSchema = z.enum(REPORT_SCOPES);
+export type ReportScope = z.infer<typeof reportScopeSchema>;
+
+export const reportScopeFields = {
+  scope: reportScopeSchema.optional().default('current'),
+  branchIds: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v.split(',').map((x) => x.trim()).filter((x) => x.length > 0) : []))
+    .pipe(z.array(z.string().uuid()).max(50)),
+};
+
+/** Dựng schema query của một báo cáo: các trường riêng + `scope`/`branchIds`; `pick` bắt buộc có ít nhất 1 chi nhánh. */
+export function withReportScope<T extends z.ZodRawShape>(shape: T) {
+  return z.object({ ...shape, ...reportScopeFields }).superRefine((value, ctx) => {
+    const v = value as unknown as { scope: ReportScope; branchIds: string[] };
+    if (v.scope === 'pick' && v.branchIds.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['branchIds'], message: 'Chọn ít nhất 1 chi nhánh.' });
+    }
+  });
+}
+
+export interface ReportScopeSelection {
+  scope: ReportScope;
+  branchIds: string[];
+}

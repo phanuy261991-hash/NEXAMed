@@ -50,6 +50,7 @@ import type {
   VoidStockReceiptRequest,
 } from '@nexamed/shared';
 import { downloadFile, getApiClient, unwrap } from '../../shared/api/client';
+import { toQueryString, toReportScopeApiQuery } from '../branch/report-scope';
 
 export async function getStockReceipts(query: ListStockReceiptsQuery): Promise<ListStockReceiptsResponse> {
   return unwrap(await getApiClient().GET('/api/v1/inventory/receipts', { params: { query } })) as ListStockReceiptsResponse;
@@ -208,7 +209,7 @@ export async function receiveStockTransfer(id: string, body: ReceiveStockTransfe
 // ============ Kho Thuốc GĐ4 — "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170) ============
 
 export async function getStockLedgerReport(query: GetStockLedgerReportQuery): Promise<GetStockLedgerReportResponse> {
-  return unwrap(await getApiClient().GET('/api/v1/inventory/reports/stock-ledger', { params: { query } })) as GetStockLedgerReportResponse;
+  return unwrap(await getApiClient().GET('/api/v1/inventory/reports/stock-ledger', { params: { query: toReportScopeApiQuery(query) } })) as GetStockLedgerReportResponse;
 }
 
 /** Xuất Excel — tải file thô qua `downloadFile()` (fetch trực tiếp), KHÔNG qua client sinh từ
@@ -222,10 +223,8 @@ export async function exportStockTransferShrinkage(query: GetStockTransferShrink
 }
 
 export async function exportStockLedgerReport(query: GetStockLedgerReportQuery): Promise<void> {
-  const params = new URLSearchParams({ from: query.from, to: query.to });
-  if (query.warehouseId) params.set('warehouseId', query.warehouseId);
-  if (query.drugId) params.set('drugId', query.drugId);
-  await downloadFile(`/api/v1/inventory/reports/stock-ledger/export?${params.toString()}`, `nhap-xuat-ton-${query.from}_${query.to}.xlsx`);
+  // Xuất ĐÚNG phạm vi chi nhánh đang xem (Đợt 3, #235).
+  await downloadFile(`/api/v1/inventory/reports/stock-ledger/export?${toQueryString(toReportScopeApiQuery(query))}`, `nhap-xuat-ton-${query.from}_${query.to}.xlsx`);
 }
 
 // ============ Đợt 2 chi nhánh (docs/DECISIONS.md #233) — kiểm nhận / từ chối nhận / xử lý chênh lệch điều chuyển kho ============

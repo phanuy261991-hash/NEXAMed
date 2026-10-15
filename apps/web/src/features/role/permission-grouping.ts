@@ -36,6 +36,8 @@ export const MODULE_LABELS: Record<string, string> = {
   // không hiện tên module thô.
   leave_request: 'Đơn xin nghỉ',
   branch: 'Chi nhánh',
+  // Đợt 3 chi nhánh (#235) — nhãn thêm NGAY lúc tạo quyền; `permission-grouping.spec.ts` chặn nếu thiếu.
+  company_report: 'Báo cáo toàn công ty',
   shift_swap: 'Đổi ca',
   cashier_shift: 'Chốt ca',
   // "Thu chi tại quầy" GĐ1 (2026-09-05) — cùng lỗ hổng đã ghi chú ở trên: module mới thêm permission

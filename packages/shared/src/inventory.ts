@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { invoiceTypeSchema, discountTypeSchema } from './billing';
+import { withReportScope } from './branch';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146, kế hoạch
@@ -1147,7 +1148,7 @@ export type GetStockTransferShrinkageResponse = z.infer<typeof getStockTransferS
 // `stock_receipt.read` như đề xuất ban đầu trong kế hoạch (đã chốt lại qua AskUserQuestion lúc duyệt
 // mockup). ============
 
-export const getStockLedgerReportQuerySchema = z.object({
+export const getStockLedgerReportQuerySchema = withReportScope({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   warehouseId: z.string().uuid().optional(),
@@ -1166,6 +1167,9 @@ export const stockLedgerReportItemSchema = z.object({
   unitCode: z.string().nullable(),
   warehouseId: z.string().uuid(),
   warehouseName: z.string(),
+  /** Chi nhánh của kho (Đợt 3) — web chỉ hiện cột khi báo cáo gộp từ 2 chi nhánh trở lên. */
+  branchId: z.string().uuid(),
+  branchName: z.string(),
   openingQuantity: z.number().int(),
   totalIn: z.number().int(),
   totalOut: z.number().int(),
@@ -1175,6 +1179,10 @@ export type StockLedgerReportItem = z.infer<typeof stockLedgerReportItemSchema>;
 
 export const getStockLedgerReportResponseSchema = z.object({
   items: z.array(stockLedgerReportItemSchema),
+  /** Số chi nhánh trong phạm vi báo cáo (Đợt 3) — từ 2 trở lên thì web/Excel hiện cột Chi nhánh; KHÔNG suy từ `items` (chi nhánh không phát sinh vẫn tính). */
+  branchCount: z.number().int(),
+  /** Mọi kho trong phạm vi báo cáo (không phụ thuộc bộ lọc `warehouseId`) — nguồn cho ô lọc "Kho" của báo cáo gộp nhiều chi nhánh. */
+  warehouses: z.array(z.object({ id: z.string().uuid(), name: z.string(), branchId: z.string().uuid(), branchName: z.string() })),
   totalOpeningQuantity: z.number().int(),
   totalIn: z.number().int(),
   totalOut: z.number().int(),

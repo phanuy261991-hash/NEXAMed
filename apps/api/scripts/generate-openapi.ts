@@ -93,6 +93,7 @@ import {
   listCashVouchersQuerySchema,
   listCashVouchersResponseSchema,
   getCashBookLedgerQuerySchema,
+  cashBookLedgerAccountsQuerySchema,
   cashBookLedgerResponseSchema,
   cashFlowReportQuerySchema,
   cashFlowReportResponseSchema,
@@ -571,6 +572,19 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(listBranchesResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền branch.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/branches/report-scope-options',
+  tags: ['branch'],
+  summary: 'Chi nhánh để chọn ở bộ chọn Phạm vi của báo cáo tổng hợp — mọi chi nhánh của công ty, kể cả đã ngưng',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listBranchesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền company_report.read'),
   },
 });
 
@@ -3821,6 +3835,20 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền cash_voucher.read'),
     404: errorResponse('Không tìm thấy quỹ (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cash-book/ledger/accounts',
+  tags: ['cash-book'],
+  summary: 'Các quỹ chọn được ở Sổ quỹ — chi nhánh đang làm, hoặc ?scope=all = mọi chi nhánh (cần company_report.read)',
+  security: [{ bearerAuth: [] }],
+  request: { query: cashBookLedgerAccountsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listCashAccountsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền cash_voucher.read, hoặc scope=all mà thiếu company_report.read'),
   },
 });
 

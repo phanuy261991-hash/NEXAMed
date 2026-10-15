@@ -11,8 +11,10 @@ import { StatCardRow } from '../../shared/ui/StatCard';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
-import { useCashAccountsQuery } from './cash-account.queries';
-import { useCashBookLedgerQuery, useExportCashBookLedgerMutation } from './cash-book-ledger.queries';
+import { BranchChip, useIsOtherBranch } from '../branch/BranchChip';
+import { useReportScope } from '../branch/useReportScope';
+import { useAuthStore } from '../auth/auth.store';
+import { useCashBookLedgerAccountsQuery, useCashBookLedgerQuery, useExportCashBookLedgerMutation } from './cash-book-ledger.queries';
 
 const GRID_COLUMNS = '130px 1.4fr 2fr 160px 160px';
 const TABLE_MIN_WIDTH_PX = 900;
@@ -22,6 +24,11 @@ function formatDateShort(iso: string): string {
   const d = new Date(iso);
   const vn = new Date(d.getTime() + 7 * 60 * 60_000);
   return `${String(vn.getUTCDate()).padStart(2, '0')}/${String(vn.getUTCMonth() + 1).padStart(2, '0')}/${vn.getUTCFullYear()}`;
+}
+
+/** Chi nhánh của quỹ đang chọn trong danh sách quỹ (rỗng nếu chưa chọn). */
+function ledgerBranchIdOf(accounts: { id: string; branchId: string }[], cashAccountId: string): string | undefined {
+  return accounts.find((a) => a.id === cashAccountId)?.branchId;
 }
 
 function monthStartDateString(): string {
@@ -50,7 +57,10 @@ const ENTRY_TYPE_META: Record<string, { label: string; icon: typeof ArrowCircleD
 export function CashBookPage() {
   useBreadcrumb([{ label: 'Sổ quỹ & Thu chi' }, { label: 'Sổ quỹ' }]);
 
-  const cashAccountsQuery = useCashAccountsQuery();
+  // Người có quyền "Xem báo cáo toàn công ty" chọn được quỹ của chi nhánh khác (chỉ xem) — Đợt 3, #235. Người khác chỉ thấy quỹ chi nhánh đang làm như trước.
+  const reportScope = useReportScope();
+  const currentBranchId = useAuthStore((s) => s.user?.currentBranchId ?? null);
+  const cashAccountsQuery = useCashBookLedgerAccountsQuery(reportScope.canChoose ? 'all' : 'current');
   const accounts = useMemo(() => cashAccountsQuery.data?.items.filter((a) => a.isActive) ?? [], [cashAccountsQuery.data]);
 
   const [cashAccountId, setCashAccountId] = useState('');
@@ -59,9 +69,16 @@ export function CashBookPage() {
 
   useEffect(() => {
     if (cashAccountId === '' && accounts.length > 0) {
-      setCashAccountId(accounts.find((a) => a.isDefault && a.type === 'CASH')?.id ?? accounts[0]!.id);
+      // Ưu tiên quỹ tiền mặt mặc định của CHI NHÁNH ĐANG LÀM (danh sách gộp có thể xếp chi nhánh khác lên trước).
+      const own = accounts.filter((a) => a.branchId === currentBranchId);
+      const pool = own.length > 0 ? own : accounts;
+      setCashAccountId(pool.find((a) => a.isDefault && a.type === 'CASH')?.id ?? pool[0]!.id);
     }
-  }, [accounts, cashAccountId]);
+  }, [accounts, cashAccountId, currentBranchId]);
+
+  // Từ 2 chi nhánh trở lên trong danh sách quỹ thì ghi tên chi nhánh cạnh tên quỹ.
+  const multiBranch = new Set(accounts.map((a) => a.branchId)).size > 1;
+  const viewingOtherBranch = useIsOtherBranch(ledgerBranchIdOf(accounts, cashAccountId));
 
   const ledgerQuery = useCashBookLedgerQuery({ cashAccountId, from: dateFrom, to: dateTo }, cashAccountId !== '');
   const exportMutation = useExportCashBookLedgerMutation();
@@ -78,10 +95,10 @@ export function CashBookPage() {
               id="cb-account"
               value={cashAccountId}
               onChange={setCashAccountId}
-              className="min-w-[220px]"
+              className={multiBranch ? 'min-w-[340px]' : 'min-w-[220px]'}
               options={accounts.map((a) => ({
                 value: a.id,
-                label: `${a.name}${a.type === 'DRAWER' && a.ownerUserName ? ` — Két riêng của ${a.ownerUserName}` : ''}`,
+                label: `${a.name}${a.type === 'DRAWER' && a.ownerUserName ? ` — Két riêng của ${a.ownerUserName}` : ''}${multiBranch ? ` · ${a.branchName}` : ''}`,
               }))}
             />
           </div>
@@ -109,6 +126,18 @@ export function CashBookPage() {
           Xuất Excel
         </Button>
       </div>
+
+      {multiBranch && ledgerQuery.isSuccess && (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+          <span className="font-medium">Quỹ đang xem thuộc:</span>
+          <BranchChip name={ledgerQuery.data.branchName} otherBranch={viewingOtherBranch} />
+        </div>
+      )}
+      {viewingOtherBranch && ledgerQuery.isSuccess && (
+        <div role="status" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+          Bạn đang xem quỹ của {ledgerQuery.data.branchName}. Chỉ xem số phiếu và số tiền, không mở được phiếu của chi nhánh này.
+        </div>
+      )}
 
       {/* Dải KPI dùng chung `shared/ui/StatCard.tsx#StatCardRow` — "Số dư cuối kỳ" là số liệu thật
           sự cần chú ý nên `emphasis`, "Số dư đầu kỳ" giữ tông trung tính. */}

@@ -1,7 +1,7 @@
 import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { getStockLedgerReportQuerySchema } from '@nexamed/shared';
-import { requireBranchId } from '../../common/branch-context';
+import { ReportBranchScopeService } from '../../common/report-branch-scope.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -20,26 +20,33 @@ export class StockLedgerReportController {
   constructor(
     private readonly reportService: StockLedgerReportService,
     private readonly exportService: StockLedgerReportExportService,
+    private readonly reportBranchScope: ReportBranchScopeService,
   ) {}
 
   @Get('stock-ledger')
   @RequirePermission('stock_receipt', 'report')
   async report(@Query() query: unknown, @Req() req: Request) {
-    const dto = getStockLedgerReportQuerySchema.parse(query);
-    const { tenantId } = req.user!;
-    return this.reportService.getReport(tenantId, requireBranchId(req.user!), dto);
+    return (await this.loadReport(query, req)).report;
   }
 
   @Get('stock-ledger/export')
   @RequirePermission('stock_receipt', 'report')
   async exportReport(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
-    const dto = getStockLedgerReportQuerySchema.parse(query);
+    const { dto, scope, report } = await this.loadReport(query, req);
     const { userId, tenantId } = req.user!;
-    const report = await this.reportService.getReport(tenantId, requireBranchId(req.user!), dto);
     const buffer = await this.exportService.buildStockLedgerReportExcel(dto.from, dto.to, report);
-    await this.reportService.recordExportAudit(tenantId, userId, dto, extractRequestMeta(req));
+    // Audit ghi cả phạm vi người dùng chọn lẫn danh sách chi nhánh thật đã xuất (Đợt 3 #235).
+    await this.reportService.recordExportAudit(tenantId, userId, { ...dto, resolvedBranchIds: scope.branchIds }, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
     res.setHeader('Content-Disposition', `attachment; filename="nhap-xuat-ton-${dto.from}_${dto.to}.xlsx"`);
     res.send(buffer);
+  }
+
+  /** Dùng chung cho xem + xuất Excel: parse query, kiểm phạm vi chi nhánh theo quyền (`company_report.read` nếu không phải `current`), rồi dựng báo cáo. */
+  private async loadReport(query: unknown, req: Request) {
+    const dto = getStockLedgerReportQuerySchema.parse(query);
+    const scope = await this.reportBranchScope.resolve(req.user!, dto);
+    const report = await this.reportService.getReport(req.user!.tenantId, scope, dto);
+    return { dto, scope, report };
   }
 }

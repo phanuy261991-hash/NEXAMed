@@ -170,7 +170,7 @@ export class PaymentRepository {
   listForReport(tx: Prisma.TransactionClient, tenantId: string, branchIds: string[], from: Date, to: Date) {
     return tx.payment.findMany({
       where: { tenantId, deletedAt: null, paidAt: { gte: from, lte: to }, invoice: { encounter: { branchId: { in: branchIds } } } },
-      select: { type: true, amount: true, cashAccountId: true },
+      select: { type: true, amount: true, cashAccountId: true, invoice: { select: { encounter: { select: { branchId: true } } } } },
     });
   }
 

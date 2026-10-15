@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { referenceCatalogDirectionSchema } from './reference-catalog';
 import { paymentMethodSchema } from './billing';
-import { allBranchesQuerySchema } from './branch';
+import { allBranchesQuerySchema, reportScopeSchema, withReportScope } from './branch';
 
 /**
  * "Thu chi tại quầy" (Sổ quỹ & Thu chi, Giai đoạn 1) — module `cash-book`. Mockup Artifact duyệt
@@ -247,6 +247,9 @@ export type GetCashBookLedgerQuery = z.infer<typeof getCashBookLedgerQuerySchema
 export const cashBookLedgerResponseSchema = z.object({
   cashAccountId: z.string().uuid(),
   cashAccountName: z.string(),
+  /** Chi nhánh của quỹ đang xem (Đợt 3) — quỹ chi nhánh khác chỉ xem được khi có `company_report.read`. */
+  branchId: z.string().uuid(),
+  branchName: z.string(),
   openingBalance: z.number().int(),
   closingBalance: z.number().int(),
   entries: z.array(cashBookLedgerEntrySchema),
@@ -259,11 +262,18 @@ export type CashBookLedgerResponse = z.infer<typeof cashBookLedgerResponseSchema
  * phạm vi v1, xem CLAUDE.md). `byAccount[].closingBalance` CÓ tính cả 2 chiều Chuyển quỹ (đúng
  * tồn quỹ thật của riêng quỹ đó).
  */
-export const cashFlowReportQuerySchema = z.object({
+export const cashFlowReportQuerySchema = withReportScope({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 export type CashFlowReportQuery = z.infer<typeof cashFlowReportQuerySchema>;
+
+/**
+ * Các quỹ chọn được ở "Sổ quỹ" (Đợt 3 chi nhánh, docs/DECISIONS.md #235): `scope=current` (mặc định) = quỹ của chi nhánh đang làm; `scope=all` = quỹ MỌI
+ * chi nhánh (cần quyền `company_report.read`, ô Quỹ nhóm theo chi nhánh, chỉ xem).
+ */
+export const cashBookLedgerAccountsQuerySchema = z.object({ scope: reportScopeSchema.optional().default('current') });
+export type CashBookLedgerAccountsQuery = z.infer<typeof cashBookLedgerAccountsQuerySchema>;
 
 export const cashFlowReportGroupSchema = z.object({
   key: z.string(),
@@ -275,13 +285,26 @@ export type CashFlowReportGroup = z.infer<typeof cashFlowReportGroupSchema>;
 
 export const cashFlowReportAccountGroupSchema = cashFlowReportGroupSchema.extend({
   closingBalance: z.number().int(),
+  /** Chi nhánh của quỹ (Đợt 3) — web chỉ hiện cột khi báo cáo gộp từ 2 chi nhánh trở lên. */
+  branchId: z.string().uuid(),
+  branchName: z.string(),
 });
 export type CashFlowReportAccountGroup = z.infer<typeof cashFlowReportAccountGroupSchema>;
+
+/** Tổng thu/chi theo từng chi nhánh trong phạm vi báo cáo (Đợt 3) — cùng quy tắc `byType`: LOẠI TRỪ phiếu Chuyển quỹ, nên tổng các dòng = `totalIncome`/`totalExpense`. */
+export const cashFlowReportBranchGroupSchema = z.object({
+  branchId: z.string().uuid(),
+  branchName: z.string(),
+  totalIncome: z.number().int(),
+  totalExpense: z.number().int(),
+});
+export type CashFlowReportBranchGroup = z.infer<typeof cashFlowReportBranchGroupSchema>;
 
 export const cashFlowReportResponseSchema = z.object({
   totalIncome: z.number().int(),
   totalExpense: z.number().int(),
   byType: z.array(cashFlowReportGroupSchema),
   byAccount: z.array(cashFlowReportAccountGroupSchema),
+  byBranch: z.array(cashFlowReportBranchGroupSchema),
 });
 export type CashFlowReportResponse = z.infer<typeof cashFlowReportResponseSchema>;

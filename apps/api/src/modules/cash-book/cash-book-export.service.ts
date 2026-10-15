@@ -52,18 +52,34 @@ export class CashBookExportService {
     byTypeSheet.getColumn(2).numFmt = '#,##0';
     byTypeSheet.getColumn(3).numFmt = '#,##0';
 
+    // Đợt 3 chi nhánh (#235): báo cáo gộp từ 2 chi nhánh trở lên thì thêm sheet "Theo chi nhánh" và cột Chi nhánh ở "Theo Quỹ" — công ty/phạm vi 1 chi nhánh giữ nguyên file như cũ.
+    const multiBranch = report.byBranch.length > 1;
+    if (multiBranch) {
+      const byBranchSheet = workbook.addWorksheet('Theo chi nhánh');
+      byBranchSheet.addRow(['Chi nhánh', 'Tổng thu', 'Tổng chi', 'Chênh lệch']);
+      for (const g of report.byBranch) {
+        byBranchSheet.addRow([g.branchName, g.totalIncome, g.totalExpense, g.totalIncome - g.totalExpense]);
+      }
+      byBranchSheet.addRow(['Cộng', report.totalIncome, report.totalExpense, report.totalIncome - report.totalExpense]);
+      byBranchSheet.getColumn(1).width = 28;
+      for (const col of [2, 3, 4]) {
+        byBranchSheet.getColumn(col).width = 16;
+        byBranchSheet.getColumn(col).numFmt = '#,##0';
+      }
+    }
+
     const byAccountSheet = workbook.addWorksheet('Theo Quỹ');
-    byAccountSheet.addRow(['Quỹ', 'Tổng thu', 'Tổng chi', 'Tồn quỹ']);
+    byAccountSheet.addRow(multiBranch ? ['Quỹ', 'Chi nhánh', 'Tổng thu', 'Tổng chi', 'Tồn quỹ'] : ['Quỹ', 'Tổng thu', 'Tổng chi', 'Tồn quỹ']);
     for (const g of report.byAccount) {
-      byAccountSheet.addRow([g.label, g.totalIncome, g.totalExpense, g.closingBalance]);
+      byAccountSheet.addRow(multiBranch ? [g.label, g.branchName, g.totalIncome, g.totalExpense, g.closingBalance] : [g.label, g.totalIncome, g.totalExpense, g.closingBalance]);
     }
     byAccountSheet.getColumn(1).width = 24;
-    byAccountSheet.getColumn(2).width = 16;
-    byAccountSheet.getColumn(3).width = 16;
-    byAccountSheet.getColumn(4).width = 16;
-    byAccountSheet.getColumn(2).numFmt = '#,##0';
-    byAccountSheet.getColumn(3).numFmt = '#,##0';
-    byAccountSheet.getColumn(4).numFmt = '#,##0';
+    const moneyStart = multiBranch ? 3 : 2;
+    if (multiBranch) byAccountSheet.getColumn(2).width = 24;
+    for (const col of [moneyStart, moneyStart + 1, moneyStart + 2]) {
+      byAccountSheet.getColumn(col).width = 16;
+      byAccountSheet.getColumn(col).numFmt = '#,##0';
+    }
 
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer as unknown as Uint8Array);

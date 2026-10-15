@@ -1201,6 +1201,164 @@
         }
       }
     },
+    "/api/v1/branches/report-scope-options": {
+      "get": {
+        "tags": [
+          "branch"
+        ],
+        "summary": "Chi nhánh để chọn ở bộ chọn Phạm vi của báo cáo tổng hợp — mọi chi nhánh của công ty, kể cả đã ngưng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "address": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
+                              "phone": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "staffCount": {
+                                "type": "integer"
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "address",
+                              "isDefault",
+                              "phone",
+                              "isActive",
+                              "staffCount",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/branches/{id}": {
       "patch": {
         "tags": [
@@ -61601,6 +61759,13 @@
                         "cashAccountName": {
                           "type": "string"
                         },
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "branchName": {
+                          "type": "string"
+                        },
                         "openingBalance": {
                           "type": "integer"
                         },
@@ -61658,6 +61823,8 @@
                       "required": [
                         "cashAccountId",
                         "cashAccountName",
+                        "branchId",
+                        "branchName",
                         "openingBalance",
                         "closingBalance",
                         "entries"
@@ -61772,6 +61939,217 @@
         }
       }
     },
+    "/api/v1/cash-book/ledger/accounts": {
+      "get": {
+        "tags": [
+          "cash-book"
+        ],
+        "summary": "Các quỹ chọn được ở Sổ quỹ — chi nhánh đang làm, hoặc ?scope=all = mọi chi nhánh (cần company_report.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "CASH",
+                                  "BANK",
+                                  "DRAWER"
+                                ]
+                              },
+                              "bankName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "bankAccountNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "openingBalance": {
+                                "type": "integer"
+                              },
+                              "openingBalanceAt": {
+                                "type": "string"
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "ownerUserId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "ownerUserName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "name",
+                              "branchId",
+                              "branchName",
+                              "type",
+                              "bankName",
+                              "bankAccountNo",
+                              "openingBalance",
+                              "openingBalanceAt",
+                              "isDefault",
+                              "isActive",
+                              "ownerUserId",
+                              "ownerUserName",
+                              "version"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền cash_voucher.read, hoặc scope=all mà thiếu company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cash-book/cash-flow-report": {
       "get": {
         "tags": [
@@ -61800,6 +62178,28 @@
             },
             "required": true,
             "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
             "in": "query"
           }
         ],
@@ -61865,6 +62265,13 @@
                               },
                               "closingBalance": {
                                 "type": "integer"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -61872,7 +62279,36 @@
                               "label",
                               "totalIncome",
                               "totalExpense",
-                              "closingBalance"
+                              "closingBalance",
+                              "branchId",
+                              "branchName"
+                            ]
+                          }
+                        },
+                        "byBranch": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": "string"
+                              },
+                              "totalIncome": {
+                                "type": "integer"
+                              },
+                              "totalExpense": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "branchId",
+                              "branchName",
+                              "totalIncome",
+                              "totalExpense"
                             ]
                           }
                         }
@@ -61881,7 +62317,8 @@
                         "totalIncome",
                         "totalExpense",
                         "byType",
-                        "byAccount"
+                        "byAccount",
+                        "byBranch"
                       ]
                     },
                     "meta": {
@@ -79864,6 +80301,28 @@
             "required": false,
             "name": "drugId",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
           }
         ],
         "responses": {
@@ -79905,6 +80364,13 @@
                               "warehouseName": {
                                 "type": "string"
                               },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": "string"
+                              },
                               "openingQuantity": {
                                 "type": "integer"
                               },
@@ -79925,10 +80391,43 @@
                               "unitCode",
                               "warehouseId",
                               "warehouseName",
+                              "branchId",
+                              "branchName",
                               "openingQuantity",
                               "totalIn",
                               "totalOut",
                               "closingQuantity"
+                            ]
+                          }
+                        },
+                        "branchCount": {
+                          "type": "integer"
+                        },
+                        "warehouses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "branchId",
+                              "branchName"
                             ]
                           }
                         },
@@ -79947,6 +80446,8 @@
                       },
                       "required": [
                         "items",
+                        "branchCount",
+                        "warehouses",
                         "totalOpeningQuantity",
                         "totalIn",
                         "totalOut",

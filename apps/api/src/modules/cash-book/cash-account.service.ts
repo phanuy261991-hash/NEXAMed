@@ -72,6 +72,11 @@ export class CashAccountService {
 
   async list(tenantId: string, actorId: string, currentBranchId: string, allBranches: boolean): Promise<ListCashAccountsResponse> {
     const branchIds = await resolveBranchScope(this.branchDirectory, tenantId, actorId, currentBranchId, allBranches);
+    return this.listForBranches(tenantId, branchIds);
+  }
+
+  /** Danh sách quỹ của các chi nhánh ĐÃ được kiểm quyền — dùng chung cho màn quản trị quỹ và ô "Quỹ" của Sổ quỹ (Đợt 3, `ReportBranchScopeService`). */
+  async listForBranches(tenantId: string, branchIds: string[]): Promise<ListCashAccountsResponse> {
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashAccountRepository.list(tx, tenantId, branchIds));
     const ownerIds = [...new Set(rows.map((r) => r.ownerUserId).filter((id): id is string => id !== null))];
     const names = ownerIds.length > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, ownerIds) : new Map<string, string>();

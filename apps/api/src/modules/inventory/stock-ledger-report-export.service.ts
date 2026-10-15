@@ -13,21 +13,21 @@ export class StockLedgerReportExportService {
     const sheet = workbook.addWorksheet('Nhập-Xuất-Tồn');
     sheet.addRow([`Báo cáo Nhập-Xuất-Tồn — Từ ${from} đến ${to}`]);
     sheet.addRow([]);
-    sheet.addRow(['Mã', 'Tên mặt hàng', 'ĐVT', 'Kho', 'Đầu kỳ', 'Nhập', 'Xuất', 'Cuối kỳ']);
+    // Đợt 3 chi nhánh (#235): phạm vi từ 2 chi nhánh trở lên thì thêm cột Chi nhánh trước cột Kho; phạm vi 1 chi nhánh giữ nguyên file như cũ.
+    const multiBranch = report.branchCount > 1;
+    const lead = multiBranch ? ['Chi nhánh'] : [];
+    sheet.addRow(['Mã', 'Tên mặt hàng', 'ĐVT', ...lead, 'Kho', 'Đầu kỳ', 'Nhập', 'Xuất', 'Cuối kỳ']);
     for (const item of report.items) {
-      sheet.addRow([item.drugCode, item.drugName, item.unitCode ?? '', item.warehouseName, item.openingQuantity, item.totalIn, item.totalOut, item.closingQuantity]);
+      sheet.addRow([item.drugCode, item.drugName, item.unitCode ?? '', ...(multiBranch ? [item.branchName] : []), item.warehouseName, item.openingQuantity, item.totalIn, item.totalOut, item.closingQuantity]);
     }
     sheet.addRow([]);
-    sheet.addRow(['', '', '', 'Tổng cộng', report.totalOpeningQuantity, report.totalIn, report.totalOut, report.totalClosingQuantity]);
+    sheet.addRow(['', '', '', ...(multiBranch ? [''] : []), 'Tổng cộng', report.totalOpeningQuantity, report.totalIn, report.totalOut, report.totalClosingQuantity]);
 
-    sheet.getColumn(1).width = 14;
-    sheet.getColumn(2).width = 32;
-    sheet.getColumn(3).width = 10;
-    sheet.getColumn(4).width = 20;
-    for (const col of [5, 6, 7, 8]) {
-      sheet.getColumn(col).width = 14;
-      sheet.getColumn(col).numFmt = '#,##0';
-    }
+    const widths = multiBranch ? [14, 32, 10, 24, 20, 14, 14, 14, 14] : [14, 32, 10, 20, 14, 14, 14, 14];
+    widths.forEach((width, i) => {
+      sheet.getColumn(i + 1).width = width;
+    });
+    for (let col = widths.length - 3; col <= widths.length; col++) sheet.getColumn(col).numFmt = '#,##0';
 
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer as unknown as Uint8Array);

@@ -37,6 +37,6 @@ import { CashVoucherRepository } from './cash-voucher.repository';
   imports: [IamModule, ClinicModule, forwardRef(() => CashierShiftModule), forwardRef(() => SupplierDebtModule)],
   controllers: [CashAccountController, CashVoucherController],
   providers: [CashAccountService, CashAccountRepository, CashVoucherService, CashVoucherRepository],
-  exports: [CashAccountRepository, CashVoucherRepository, CashVoucherService],
+  exports: [CashAccountRepository, CashAccountService, CashVoucherRepository, CashVoucherService],
 })
 export class CashBookModule {}

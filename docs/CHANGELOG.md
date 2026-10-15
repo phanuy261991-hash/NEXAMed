@@ -4,6 +4,10 @@
 
 ## 2026-10-15
 
+### Đợt 3 chi nhánh: báo cáo gộp nhiều chi nhánh (`docs/DECISIONS.md` #235)
+
+Người có quyền mới **"Xem báo cáo toàn công ty"** (mặc định Quản trị phòng khám) có thêm bộ chọn **Phạm vi** (Chi nhánh đang làm / Tất cả chi nhánh / Chọn chi nhánh) ở ba báo cáo: **Báo cáo dòng tiền** (thêm bảng "Theo chi nhánh" và cột Chi nhánh ở "Theo Quỹ"), **Sổ quỹ** (chọn được quỹ của chi nhánh khác, chỉ xem) và **Nhập-Xuất-Tồn** (cột Chi nhánh, công tắc "Gộp theo mặt hàng"). Xuất Excel đúng phạm vi đang xem, nhật ký ghi danh sách chi nhánh đã xuất. Người không có quyền không thấy bộ chọn và máy chủ chặn (403) nếu tự gửi tham số; công ty 1 chi nhánh giao diện không đổi. Không phải báo cáo doanh số mới. Môi trường khác: `db:seed` (quyền mới) rồi khởi động lại API; không migration.
+
 ### Tab "Kết quả cận lâm sàng" ở Hồ sơ bệnh nhân + diễn biến chỉ số (`docs/DECISIONS.md` #234)
 
 Tab thứ 5 ở hồ sơ bệnh nhân: mọi kết quả cận lâm sàng ĐÃ DUYỆT của bệnh nhân ở mọi chi nhánh (dòng chi nhánh khác nền xanh nhạt), hai tab con Xét nghiệm / CĐHA & Thăm dò chức năng, lọc khoảng thời gian + tìm + chỉ kết quả bất thường, xem và in lại. Xét nghiệm có thêm "Diễn biến chỉ số": chọn một chỉ số, biểu đồ đường qua các lần đo kèm dải khoảng tham chiếu, bấm điểm mở kết quả lần đó; chỉ số đổi đơn vị giữa các lần đo tách thành hai đường riêng. Chỉ tài khoản làm chuyên môn (có quyền Nhập hoặc Duyệt của nhóm) thấy tab — lễ tân không thấy và bị chặn cả ở máy chủ. Không migration; môi trường khác: khởi động lại API.

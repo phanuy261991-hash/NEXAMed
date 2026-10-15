@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Archive, ArrowCircleDown, ArrowCircleUp, DownloadSimple, Scales } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -9,9 +9,14 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatCardRow } from '../../shared/ui/StatCard';
+import { SegmentedToggle } from '../../shared/ui/SegmentedToggle';
 import { TabBar } from '../../shared/ui/TabBar';
 import { ApiError } from '../../shared/api/client';
-import { useWarehousesQuery } from '../drug/warehouse.queries';
+import { BranchChip } from '../branch/BranchChip';
+import { ReportScopeControl, ReportScopeSummary } from '../branch/ReportScopeControl';
+import { isMultiBranchScope } from '../branch/report-scope';
+import { useReportScope } from '../branch/useReportScope';
+import { toStockLedgerDisplayRows } from './stock-ledger-rows';
 import { useExportStockLedgerReportMutation, useStockLedgerReportQuery } from './inventory.queries';
 import { StockTransferShrinkageReport } from './StockTransferShrinkageReportPage';
 
@@ -34,17 +39,30 @@ function StockLedgerTab() {
   const [dateFrom, setDateFrom] = useState(monthStartDateString());
   const [dateTo, setDateTo] = useState(getVietnamTodayDateString());
   const [warehouseId, setWarehouseId] = useState('');
-  const warehousesQuery = useWarehousesQuery();
+  // "Gộp theo mặt hàng" (Đợt 3, #235) — chỉ có nghĩa khi báo cáo gộp từ 2 chi nhánh trở lên; cộng các kho ở phía web, không gọi lại máy chủ.
+  const [gather, setGather] = useState(false);
+  const scope = useReportScope();
 
-  const reportQuery = useStockLedgerReportQuery({ from: dateFrom, to: dateTo, warehouseId: warehouseId || undefined });
+  const reportQuery = useStockLedgerReportQuery({ from: dateFrom, to: dateTo, warehouseId: warehouseId || undefined, ...scope.selection });
   const exportMutation = useExportStockLedgerReportMutation();
 
-  const items = reportQuery.data?.items ?? [];
+  const multiBranch = isMultiBranchScope(reportQuery.data?.branchCount ?? 0);
+  const warehouses = reportQuery.data?.warehouses;
+  // Kho đã chọn có thể nằm ngoài phạm vi mới (đổi Phạm vi) — quay về "Tất cả kho" thay vì để bộ lọc trỏ vào kho không còn trong báo cáo.
+  useEffect(() => {
+    if (warehouses && warehouseId !== '' && !warehouses.some((w) => w.id === warehouseId)) setWarehouseId('');
+  }, [warehouses, warehouseId]);
+  const rows = useMemo(() => toStockLedgerDisplayRows(reportQuery.data?.items ?? [], multiBranch && gather), [reportQuery.data, multiBranch, gather]);
+  const items = rows;
+  // Có cột Chi nhánh thì thêm một cột lưới; tiêu đề và dòng dữ liệu dùng CHUNG gridTemplateColumns (quy tắc mục 14 ui-guidelines).
+  const gridColumns = multiBranch ? '110px 1.6fr 90px 170px 170px 110px 110px 110px 110px' : '110px 1.6fr 90px 180px 120px 120px 120px 120px';
+  const tableMinWidth = multiBranch ? 1100 : 900;
 
   return (
     <div className="flex min-h-0 flex-col gap-4">
       <div className="flex flex-shrink-0 flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
+          <ReportScopeControl scope={scope} />
           <div className="flex flex-col gap-1.5">
             <label htmlFor="slr-from" className="text-sm font-semibold text-slate-800">
               Từ ngày
@@ -61,13 +79,31 @@ function StockLedgerTab() {
             <label htmlFor="slr-warehouse" className="text-sm font-semibold text-slate-800">
               Kho
             </label>
-            <Combobox id="slr-warehouse" value={warehouseId} onChange={setWarehouseId} options={[{ value: '', label: 'Tất cả kho' }, ...(warehousesQuery.data?.items ?? []).map((w) => ({ value: w.id, label: w.name }))]} />
+            <Combobox id="slr-warehouse" value={warehouseId} onChange={setWarehouseId} options={[{ value: '', label: 'Tất cả kho' }, ...(warehouses ?? []).map((w) => ({ value: w.id, label: multiBranch ? `${w.name} · ${w.branchName}` : w.name }))]} />
           </div>
         </div>
-        <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ from: dateFrom, to: dateTo, warehouseId: warehouseId || undefined })}>
+        <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ from: dateFrom, to: dateTo, warehouseId: warehouseId || undefined, ...scope.selection })}>
           <DownloadSimple size={16} weight="bold" aria-hidden="true" />
           Xuất Excel
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ReportScopeSummary scope={scope} />
+        {multiBranch && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-800">Xem theo</span>
+            <SegmentedToggle
+              items={[
+                { id: 'warehouse', label: 'Từng kho' },
+                { id: 'drug', label: 'Gộp theo mặt hàng' },
+              ]}
+              value={gather ? 'drug' : 'warehouse'}
+              onChange={(v) => setGather(v === 'drug')}
+              ariaLabel="Cách xem Nhập-Xuất-Tồn khi gộp nhiều chi nhánh"
+            />
+          </div>
+        )}
       </div>
 
       {reportQuery.isError && (
@@ -100,15 +136,16 @@ function StockLedgerTab() {
           ) : (
             <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               <div role="table" aria-label="Báo cáo Nhập-Xuất-Tồn" className="scroll-hover h-full overflow-x-auto">
-                <div className="flex h-full flex-col" style={{ minWidth: 900 }}>
+                <div className="flex h-full flex-col" style={{ minWidth: tableMinWidth }}>
                   <div
                     role="row"
-                    style={{ gridTemplateColumns: '110px 1.6fr 90px 180px 120px 120px 120px 120px' }}
+                    style={{ gridTemplateColumns: gridColumns }}
                     className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
                   >
                     <div role="columnheader" className="py-2.5 text-center">Mã</div>
                     <div role="columnheader" className="py-2.5 text-left">Tên mặt hàng</div>
                     <div role="columnheader" className="py-2.5 text-center">ĐVT</div>
+                    {multiBranch && <div role="columnheader" className="py-2.5 text-left">Chi nhánh</div>}
                     <div role="columnheader" className="py-2.5 text-left">Kho</div>
                     <div role="columnheader" className="py-2.5 text-center">Đầu kỳ</div>
                     <div role="columnheader" className="py-2.5 text-center">Nhập</div>
@@ -118,15 +155,20 @@ function StockLedgerTab() {
                   <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
                     {items.map((item) => (
                       <div
-                        key={`${item.drugId}:${item.warehouseId}`}
+                        key={item.key}
                         role="row"
-                        style={{ gridTemplateColumns: '110px 1.6fr 90px 180px 120px 120px 120px 120px', minHeight: 52 }}
+                        style={{ gridTemplateColumns: gridColumns, minHeight: 52 }}
                         className="grid items-center border-b border-slate-100 px-4 text-sm"
                       >
                         <div role="cell" className="min-w-0 truncate text-center font-semibold text-slate-800" title={item.drugCode}>{item.drugCode}</div>
                         <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900">{item.drugName}</div>
                         <div role="cell" className="text-center font-medium text-slate-600">{item.unitCode ?? '—'}</div>
-                        <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-600">{item.warehouseName}</div>
+                        {multiBranch && (
+                          <div role="cell" className="min-w-0 text-left">
+                            {item.branchId ? <BranchChip name={item.branchLabel} /> : <span className="font-medium text-slate-600">{item.branchLabel}</span>}
+                          </div>
+                        )}
+                        <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-600">{item.warehouseLabel}</div>
                         <div role="cell" className="text-center font-medium tabular-nums text-slate-900">{item.openingQuantity.toLocaleString('vi-VN')}</div>
                         <div role="cell" className="text-center font-medium tabular-nums text-emerald-700">{item.totalIn > 0 ? `+${item.totalIn.toLocaleString('vi-VN')}` : '—'}</div>
                         <div role="cell" className="text-center font-medium tabular-nums text-rose-700">{item.totalOut > 0 ? `-${item.totalOut.toLocaleString('vi-VN')}` : '—'}</div>

@@ -60,6 +60,9 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // "Chi nhánh" (docs/DECISIONS.md #231) — danh sách/thêm/sửa/ngưng chi nhánh của công ty và gán chi nhánh cho tài khoản; mặc định CHỈ clinic_admin.
   { module: 'branch', action: 'read', description: 'Xem danh sách chi nhánh' },
   { module: 'branch', action: 'manage', description: 'Thêm/sửa/ngưng chi nhánh' },
+  // "Báo cáo toàn công ty" (Đợt 3 chi nhánh, docs/DECISIONS.md #235) — gộp Báo cáo dòng tiền / Sổ quỹ / Nhập-Xuất-Tồn của MỌI chi nhánh (kể cả chi nhánh chưa được gán). Chỉ mở rộng PHẠM VI;
+  // vẫn phải có quyền xem của chính báo cáo đó (cash_voucher.report/read, stock_receipt.report). Mặc định CHỈ clinic_admin.
+  { module: 'company_report', action: 'read', description: 'Xem báo cáo toàn công ty (gộp mọi chi nhánh)' },
   { module: 'clinic_config', action: 'read', description: 'Xem cấu hình phòng khám' },
   { module: 'clinic_config', action: 'update', description: 'Sửa cấu hình phòng khám' },
   { module: 'user_account', action: 'read', description: 'Xem tài khoản người dùng' },
@@ -487,6 +490,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'encounter.reassign': 'global',
     'branch.read': 'global',
     'branch.manage': 'global',
+    'company_report.read': 'global',
     'clinic_config.read': 'global',
     'clinic_config.update': 'global',
     'user_account.read': 'global',

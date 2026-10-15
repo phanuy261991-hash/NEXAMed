@@ -15,3 +15,8 @@ export async function createBranch(body: CreateBranchRequest): Promise<BranchSum
 export async function updateBranch(id: string, body: UpdateBranchRequest): Promise<BranchSummary> {
   return unwrap(await getApiClient().PATCH('/api/v1/branches/{id}', { params: { path: { id } }, body })) as BranchSummary;
 }
+
+/** Chi nhánh cho bộ chọn "Phạm vi" của báo cáo tổng hợp (Đợt 3, #235) — mọi chi nhánh của công ty, cần `company_report.read` (KHÔNG cần `branch.read`). */
+export async function listReportScopeBranches(): Promise<ListBranchesResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/branches/report-scope-options')) as ListBranchesResponse;
+}

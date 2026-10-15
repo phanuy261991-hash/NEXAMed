@@ -618,6 +618,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/branches/report-scope-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi nhánh để chọn ở bộ chọn Phạm vi của báo cáo tổng hợp — mọi chi nhánh của công ty, kể cả đã ngưng */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    address: string | null;
+                                    isDefault: boolean;
+                                    phone: string | null;
+                                    isActive: boolean;
+                                    staffCount: number;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/branches/{id}": {
         parameters: {
             query?: never;
@@ -24302,6 +24384,9 @@ export interface paths {
                                 /** Format: uuid */
                                 cashAccountId: string;
                                 cashAccountName: string;
+                                /** Format: uuid */
+                                branchId: string;
+                                branchName: string;
                                 openingBalance: number;
                                 closingBalance: number;
                                 entries: {
@@ -24375,6 +24460,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cash-book/ledger/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Các quỹ chọn được ở Sổ quỹ — chi nhánh đang làm, hoặc ?scope=all = mọi chi nhánh (cần company_report.read) */
+        get: {
+            parameters: {
+                query?: {
+                    scope?: "current" | "all" | "pick";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    code: string;
+                                    name: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                    /** @enum {string} */
+                                    type: "CASH" | "BANK" | "DRAWER";
+                                    bankName: string | null;
+                                    bankAccountNo: string | null;
+                                    openingBalance: number;
+                                    openingBalanceAt: string;
+                                    isDefault: boolean;
+                                    isActive: boolean;
+                                    /** Format: uuid */
+                                    ownerUserId: string | null;
+                                    ownerUserName: string | null;
+                                    version: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền cash_voucher.read, hoặc scope=all mà thiếu company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cash-book/cash-flow-report": {
         parameters: {
             query?: never;
@@ -24388,6 +24566,8 @@ export interface paths {
                 query: {
                     from: string;
                     to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
                 };
                 header?: never;
                 path?: never;
@@ -24417,6 +24597,16 @@ export interface paths {
                                     totalIncome: number;
                                     totalExpense: number;
                                     closingBalance: number;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                }[];
+                                byBranch: {
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                    totalIncome: number;
+                                    totalExpense: number;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -30846,6 +31036,8 @@ export interface paths {
                     to: string;
                     warehouseId?: string;
                     drugId?: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
                 };
                 header?: never;
                 path?: never;
@@ -30870,10 +31062,22 @@ export interface paths {
                                     /** Format: uuid */
                                     warehouseId: string;
                                     warehouseName: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
                                     openingQuantity: number;
                                     totalIn: number;
                                     totalOut: number;
                                     closingQuantity: number;
+                                }[];
+                                branchCount: number;
+                                warehouses: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
                                 }[];
                                 totalOpeningQuantity: number;
                                 totalIn: number;

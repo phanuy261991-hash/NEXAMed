@@ -9,6 +9,10 @@ import { StatCardRow } from '../../shared/ui/StatCard';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
+import { BranchChip } from '../branch/BranchChip';
+import { ReportScopeControl, ReportScopeSummary } from '../branch/ReportScopeControl';
+import { isMultiBranchScope } from '../branch/report-scope';
+import { useReportScope } from '../branch/useReportScope';
 import { useCashFlowReportQuery, useExportCashFlowReportMutation } from './cash-flow-report.queries';
 
 function monthStartDateString(): string {
@@ -28,13 +32,17 @@ export function CashFlowReportPage() {
   const [dateFrom, setDateFrom] = useState(monthStartDateString());
   const [dateTo, setDateTo] = useState(getVietnamTodayDateString());
 
-  const reportQuery = useCashFlowReportQuery({ from: dateFrom, to: dateTo });
+  const scope = useReportScope();
+  const reportQuery = useCashFlowReportQuery({ from: dateFrom, to: dateTo, ...scope.selection });
   const exportMutation = useExportCashFlowReportMutation();
+  // Báo cáo gộp từ 2 chi nhánh trở lên (Đợt 3, #235): thêm bảng "Theo chi nhánh" và cột Chi nhánh ở "Theo Quỹ". Phạm vi 1 chi nhánh: giao diện y như trước.
+  const multiBranch = isMultiBranchScope(reportQuery.data?.byBranch.length ?? 0);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-6">
       <div className="flex flex-shrink-0 flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
+          <ReportScopeControl scope={scope} />
           <div className="flex flex-col gap-1.5">
             <label htmlFor="cfr-from" className="text-sm font-semibold text-slate-800">
               Từ ngày
@@ -48,11 +56,13 @@ export function CashFlowReportPage() {
             <DateInput id="cfr-to" value={dateTo} onChange={setDateTo} dense />
           </div>
         </div>
-        <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ from: dateFrom, to: dateTo })}>
+        <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ from: dateFrom, to: dateTo, ...scope.selection })}>
           <DownloadSimple size={16} weight="bold" aria-hidden="true" />
           Xuất Excel
         </Button>
       </div>
+
+      <ReportScopeSummary scope={scope} />
 
       {reportQuery.isError && (
         <ErrorBanner message={reportQuery.error instanceof ApiError ? reportQuery.error.message : 'Không tải được báo cáo dòng tiền.'} onRetry={() => void reportQuery.refetch()} />
@@ -85,7 +95,41 @@ export function CashFlowReportPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {multiBranch && (
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-800">Theo chi nhánh</div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wide text-slate-600">
+                    <th className="px-4 py-2 text-left">Chi nhánh</th>
+                    <th className="px-4 py-2 text-right">Tổng thu</th>
+                    <th className="px-4 py-2 text-right">Tổng chi</th>
+                    <th className="px-4 py-2 text-right">Chênh lệch</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportQuery.data.byBranch.map((g) => (
+                    <tr key={g.branchId} className="border-b border-slate-50">
+                      <td className="px-4 py-2 text-left">
+                        <BranchChip name={g.branchName} />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums text-emerald-700">{formatVnd(g.totalIncome)}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums text-rose-700">{formatVnd(g.totalExpense)}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-bold tabular-nums text-slate-900">{formatVnd(g.totalIncome - g.totalExpense)}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-50 font-bold">
+                    <td className="px-4 py-2 text-left text-slate-800">Cộng {reportQuery.data.byBranch.length} chi nhánh</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-900">{formatVnd(reportQuery.data.totalIncome)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-900">{formatVnd(reportQuery.data.totalExpense)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums text-slate-900">{formatVnd(reportQuery.data.totalIncome - reportQuery.data.totalExpense)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className={`grid grid-cols-1 gap-4 ${multiBranch ? '' : 'lg:grid-cols-2'}`}>
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-800">Theo Loại thu chi</div>
               <table className="w-full text-sm">
@@ -100,8 +144,8 @@ export function CashFlowReportPage() {
                   {reportQuery.data.byType.map((g) => (
                     <tr key={g.key} className="border-b border-slate-50 last:border-0">
                       <td className="px-4 py-2 font-medium text-slate-800">{g.label}</td>
-                      <td className="px-4 py-2 text-right font-medium tabular-nums text-emerald-700">{g.totalIncome > 0 ? formatVnd(g.totalIncome) : '—'}</td>
-                      <td className="px-4 py-2 text-right font-medium tabular-nums text-rose-700">{g.totalExpense > 0 ? formatVnd(g.totalExpense) : '—'}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums text-emerald-700">{g.totalIncome > 0 ? formatVnd(g.totalIncome) : '—'}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums text-rose-700">{g.totalExpense > 0 ? formatVnd(g.totalExpense) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -114,6 +158,7 @@ export function CashFlowReportPage() {
                 <thead>
                   <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wide text-slate-600">
                     <th className="px-4 py-2 text-left">Quỹ</th>
+                    {multiBranch && <th className="px-4 py-2 text-left">Chi nhánh</th>}
                     <th className="px-4 py-2 text-right">Tổng thu</th>
                     <th className="px-4 py-2 text-right">Tổng chi</th>
                     <th className="px-4 py-2 text-right">Tồn quỹ</th>
@@ -123,9 +168,14 @@ export function CashFlowReportPage() {
                   {reportQuery.data.byAccount.map((g) => (
                     <tr key={g.key} className="border-b border-slate-50 last:border-0">
                       <td className="px-4 py-2 font-medium text-slate-800">{g.label}</td>
-                      <td className="px-4 py-2 text-right font-medium tabular-nums text-emerald-700">{g.totalIncome > 0 ? formatVnd(g.totalIncome) : '—'}</td>
-                      <td className="px-4 py-2 text-right font-medium tabular-nums text-rose-700">{g.totalExpense > 0 ? formatVnd(g.totalExpense) : '—'}</td>
-                      <td className="px-4 py-2 text-right font-bold tabular-nums text-slate-900">{formatVnd(g.closingBalance)}</td>
+                      {multiBranch && (
+                        <td className="px-4 py-2 text-left">
+                          <BranchChip name={g.branchName} />
+                        </td>
+                      )}
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums text-emerald-700">{g.totalIncome > 0 ? formatVnd(g.totalIncome) : '—'}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums text-rose-700">{g.totalExpense > 0 ? formatVnd(g.totalExpense) : '—'}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-bold tabular-nums text-slate-900">{formatVnd(g.closingBalance)}</td>
                     </tr>
                   ))}
                 </tbody>

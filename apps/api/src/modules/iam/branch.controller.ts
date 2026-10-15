@@ -21,6 +21,16 @@ export class BranchController {
     return this.branchService.list(tenantId, includeInactive);
   }
 
+  /**
+   * Chi nhánh để chọn ở bộ chọn "Phạm vi" của báo cáo tổng hợp (Đợt 3 #235): MỌI chi nhánh của công ty (kể cả đã ngưng — số liệu quá khứ vẫn xem được). Dành cho người có
+   * `company_report.read`, KHÔNG đòi `branch.read` (một tài khoản có thể được xem báo cáo toàn công ty mà không quản lý chi nhánh).
+   */
+  @Get('report-scope-options')
+  @RequirePermission('company_report', 'read')
+  async reportScopeOptions(@Req() req: Request) {
+    return this.branchService.list(req.user!.tenantId, true);
+  }
+
   @Post()
   @RequirePermission('branch', 'manage')
   @HttpCode(200)

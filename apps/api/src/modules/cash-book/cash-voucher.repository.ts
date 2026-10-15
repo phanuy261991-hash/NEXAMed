@@ -225,7 +225,7 @@ export class CashVoucherRepository {
   listPostedForReport(tx: Prisma.TransactionClient, tenantId: string, branchIds: string[], from: Date, to: Date) {
     return tx.cashVoucher.findMany({
       where: { tenantId, deletedAt: null, status: 'POSTED', occurredAt: { gte: from, lte: to }, cashAccount: { branchId: { in: branchIds } } },
-      select: { direction: true, amount: true, cashAccountId: true, counterAccountId: true, incomeExpenseTypeCode: true },
+      select: { direction: true, amount: true, cashAccountId: true, counterAccountId: true, incomeExpenseTypeCode: true, cashAccount: { select: { branchId: true } } },
     });
   }
 

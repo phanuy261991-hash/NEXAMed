@@ -1,7 +1,8 @@
 import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { cashFlowReportQuerySchema, getCashBookLedgerQuerySchema, listCashVouchersQuerySchema } from '@nexamed/shared';
+import { cashBookLedgerAccountsQuerySchema, cashFlowReportQuerySchema, getCashBookLedgerQuerySchema, listCashVouchersQuerySchema } from '@nexamed/shared';
 import { requireBranchId } from '../../common/branch-context';
+import { ReportBranchScopeService } from '../../common/report-branch-scope.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
@@ -22,14 +23,21 @@ export class CashBookReportController {
   constructor(
     private readonly reportService: CashBookReportService,
     private readonly exportService: CashBookExportService,
+    private readonly reportBranchScope: ReportBranchScopeService,
   ) {}
+
+  /** Ô "Quỹ" của Sổ quỹ: quỹ chi nhánh đang làm, hoặc `?scope=all` = quỹ MỌI chi nhánh (cần `company_report.read`, Đợt 3 #235). */
+  @Get('ledger/accounts')
+  @RequirePermission('cash_voucher', 'read')
+  async ledgerAccounts(@Query() query: unknown, @Req() req: Request) {
+    return this.reportService.listLedgerAccounts(req.user!, cashBookLedgerAccountsQuerySchema.parse(query));
+  }
 
   @Get('ledger')
   @RequirePermission('cash_voucher', 'read')
   async ledger(@Query() query: unknown, @Req() req: Request) {
     const dto = getCashBookLedgerQuerySchema.parse(query);
-    const { tenantId } = req.user!;
-    return this.reportService.getLedger(tenantId, requireBranchId(req.user!), dto.cashAccountId, dto.from, dto.to);
+    return this.reportService.getLedger(req.user!, dto.cashAccountId, dto.from, dto.to);
   }
 
   /** "Xuất Excel" cho "Sổ quỹ" — cùng quyền `cash_voucher.read` với `ledger()` (tra cứu vận hành
@@ -40,7 +48,7 @@ export class CashBookReportController {
   async exportLedger(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
     const dto = getCashBookLedgerQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    const ledger = await this.reportService.getLedger(tenantId, requireBranchId(req.user!), dto.cashAccountId, dto.from, dto.to);
+    const ledger = await this.reportService.getLedger(req.user!, dto.cashAccountId, dto.from, dto.to);
     const buffer = await this.exportService.buildCashBookLedgerExcel(ledger, dto.from, dto.to);
     await this.reportService.recordExportAudit(tenantId, userId, 'cash_book_ledger.exported', dto, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
@@ -66,21 +74,27 @@ export class CashBookReportController {
   @Get('cash-flow-report')
   @RequirePermission('cash_voucher', 'report')
   async cashFlowReport(@Query() query: unknown, @Req() req: Request) {
-    const dto = cashFlowReportQuerySchema.parse(query);
-    const { tenantId } = req.user!;
-    return this.reportService.getCashFlowReport(tenantId, [requireBranchId(req.user!)], dto.from, dto.to);
+    return (await this.loadCashFlowReport(query, req)).report;
   }
 
   @Get('cash-flow-report/export')
   @RequirePermission('cash_voucher', 'report')
   async exportCashFlowReport(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
-    const dto = cashFlowReportQuerySchema.parse(query);
+    const { dto, scope, report } = await this.loadCashFlowReport(query, req);
     const { userId, tenantId } = req.user!;
-    const report = await this.reportService.getCashFlowReport(tenantId, [requireBranchId(req.user!)], dto.from, dto.to);
     const buffer = await this.exportService.buildCashFlowReportExcel(dto.from, dto.to, report);
-    await this.reportService.recordExportAudit(tenantId, userId, 'cash_flow_report.exported', dto, extractRequestMeta(req));
+    // Audit ghi cả phạm vi người dùng chọn lẫn danh sách chi nhánh thật đã xuất — để truy vết "ai xuất dữ liệu chi nhánh nào".
+    await this.reportService.recordExportAudit(tenantId, userId, 'cash_flow_report.exported', { ...dto, resolvedBranchIds: scope.branchIds }, extractRequestMeta(req));
     res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
     res.setHeader('Content-Disposition', `attachment; filename="bao-cao-dong-tien-${dto.from}_${dto.to}.xlsx"`);
     res.send(buffer);
+  }
+
+  /** Dùng chung cho xem + xuất Excel: parse query, kiểm phạm vi chi nhánh theo quyền (`company_report.read` nếu không phải `current`), rồi dựng báo cáo. */
+  private async loadCashFlowReport(query: unknown, req: Request) {
+    const dto = cashFlowReportQuerySchema.parse(query);
+    const scope = await this.reportBranchScope.resolve(req.user!, dto);
+    const report = await this.reportService.getCashFlowReport(req.user!.tenantId, scope, dto.from, dto.to);
+    return { dto, scope, report };
   }
 }

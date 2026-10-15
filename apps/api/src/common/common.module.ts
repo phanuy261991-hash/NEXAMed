@@ -4,6 +4,7 @@ import { TenantContextMiddleware } from './tenant-context.middleware';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { AuditViewInterceptor } from './audit-view.interceptor';
 import { PermissionGuard } from './permission.guard';
+import { ReportBranchScopeService } from './report-branch-scope.service';
 
 /**
  * Hạ tầng dùng chung xuyên module: middleware set tenant context từ JWT, guard xác thực tối
@@ -20,7 +21,7 @@ import { PermissionGuard } from './permission.guard';
 @Global()
 @Module({
   imports: [JwtModule.register({})],
-  providers: [TenantContextMiddleware, JwtAuthGuard, PermissionGuard, AuditViewInterceptor],
-  exports: [TenantContextMiddleware, JwtAuthGuard, PermissionGuard, AuditViewInterceptor, JwtModule],
+  providers: [TenantContextMiddleware, JwtAuthGuard, PermissionGuard, AuditViewInterceptor, ReportBranchScopeService],
+  exports: [TenantContextMiddleware, JwtAuthGuard, PermissionGuard, AuditViewInterceptor, ReportBranchScopeService, JwtModule],
 })
 export class CommonModule {}

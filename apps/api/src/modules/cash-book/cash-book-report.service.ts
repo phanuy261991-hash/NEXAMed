@@ -1,11 +1,13 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { REFERENCE_CATALOG_READER_PORT, type ReferenceCatalogReaderPort } from '@nexamed/core';
-import type { CashBookLedgerResponse, CashFlowReportResponse, CashVoucher, ListCashVouchersQuery } from '@nexamed/shared';
+import type { CashBookLedgerAccountsQuery, CashBookLedgerResponse, CashFlowReportResponse, CashVoucher, ListCashVouchersQuery } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
+import { ReportBranchScopeService, type ReportBranchScope } from '../../common/report-branch-scope.service';
 import { CashAccountRepository } from './cash-account.repository';
+import { CashAccountService } from './cash-account.service';
 import { CashVoucherRepository } from './cash-voucher.repository';
 import { CashVoucherService } from './cash-voucher.service';
 import { PaymentRepository } from '../billing/payment.repository';
@@ -31,6 +33,9 @@ function vnDateKey(d: Date): string {
   return new Date(d.getTime() + 7 * 60 * 60_000).toISOString().slice(0, 10);
 }
 
+/** Phiên người xem (`req.user`) — chỉ các trường cần để kiểm phạm vi chi nhánh. */
+type LedgerActor = { tenantId: string; userId: string; branchId: string | null };
+
 /**
  * "Sổ quỹ & Thu chi" Giai đoạn 2 — Sổ quỹ (liệt kê chứng từ + số dư luỹ kế theo 1 quỹ) + Báo cáo
  * dòng tiền (tổng hợp toàn phòng khám). Gộp dữ liệu từ CẢ `payment` (tiền lượt khám, module
@@ -43,6 +48,8 @@ function vnDateKey(d: Date): string {
 export class CashBookReportService {
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
+    private readonly reportBranchScope: ReportBranchScopeService,
+    private readonly cashAccountService: CashAccountService,
     private readonly cashAccountRepository: CashAccountRepository,
     private readonly cashVoucherRepository: CashVoucherRepository,
     private readonly cashVoucherService: CashVoucherService,
@@ -80,16 +87,28 @@ export class CashBookReportService {
     );
   }
 
-  async getLedger(tenantId: string, branchId: string, cashAccountId: string, from?: string, to?: string): Promise<CashBookLedgerResponse> {
+  /** Các quỹ chọn được ở ô "Quỹ" của Sổ quỹ: chi nhánh đang làm (mặc định) hoặc MỌI chi nhánh (cần `company_report.read`, cùng bộ kiểm quyền với báo cáo). */
+  async listLedgerAccounts(actor: LedgerActor, query: CashBookLedgerAccountsQuery) {
+    const scope = await this.reportBranchScope.resolve(actor, { scope: query.scope, branchIds: [] });
+    return this.cashAccountService.listForBranches(actor.tenantId, scope.branchIds);
+  }
+
+  /**
+   * Quỹ của chi nhánh KHÁC chỉ xem được khi có `company_report.read` (Đợt 3 #235) — kiểm ở `ReportBranchScopeService.assertCanReadBranch` (thiếu quyền → 404,
+   * không lộ quỹ có tồn tại). Sổ quỹ chỉ XEM: chứng từ chi nhánh khác không có đường mở phiếu.
+   */
+  async getLedger(actor: LedgerActor, cashAccountId: string, from?: string, to?: string): Promise<CashBookLedgerResponse> {
+    const { tenantId } = actor;
     const fromAt = from ? startOfDayVn(from) : undefined;
     const toAt = to ? endOfDayVn(to) : undefined;
 
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const account = await this.cashAccountRepository.findById(tx, tenantId, branchId, cashAccountId);
-      if (!account) {
-        throw new NotFoundException();
-      }
+    const account = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.cashAccountRepository.findByIdAnyBranch(tx, tenantId, cashAccountId));
+    if (!account) {
+      throw new NotFoundException();
+    }
+    await this.reportBranchScope.assertCanReadBranch(actor, account.branchId);
 
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       let openingBalance = Number(account.openingBalance);
       if (fromAt) {
         const [voucherBefore, paymentBefore] = await Promise.all([
@@ -176,6 +195,8 @@ export class CashBookReportService {
       return {
         cashAccountId: account.id,
         cashAccountName: account.name,
+        branchId: account.branchId,
+        branchName: account.branch.name,
         openingBalance,
         closingBalance: runningBalance,
         entries: dtoEntries,
@@ -216,10 +237,11 @@ export class CashBookReportService {
   }
 
   /**
-   * Đợt 2 chi nhánh (docs/DECISIONS.md #233): nhận DANH SÁCH chi nhánh được đọc — Đợt 2 chỉ truyền `[chi nhánh đang làm]`; Đợt 3 (tổng hợp nhiều chi
-   * nhánh) chỉ cần truyền thêm các chi nhánh người xem được gán, không đổi truy vấn.
+   * Nhận phạm vi chi nhánh đã được `ReportBranchScopeService` kiểm quyền (Đợt 2 #233: chi nhánh đang làm; Đợt 3 #235: gộp nhiều chi nhánh) — truy vấn
+   * không đổi, chỉ thêm phân rã `byBranch` và chi nhánh của từng quỹ.
    */
-  async getCashFlowReport(tenantId: string, branchIds: string[], from: string, to: string): Promise<CashFlowReportResponse> {
+  async getCashFlowReport(tenantId: string, scope: ReportBranchScope, from: string, to: string): Promise<CashFlowReportResponse> {
+    const { branchIds, names } = scope;
     const fromAt = startOfDayVn(from);
     const toAt = endOfDayVn(to);
     const afterToAt = new Date(toAt.getTime() + 1);
@@ -236,12 +258,19 @@ export class CashBookReportService {
       // byType — "Thu tiền khám"/"Hoàn tiền khám" (payment) + mỗi Loại thu chi (voucher KHÔNG PHẢI
       // Chuyển quỹ — counterAccountId=null). Chuyển quỹ (counterAccountId có giá trị) loại trừ hoàn
       // toàn khỏi byType/tổng toàn phòng khám — không phải doanh thu/chi phí thật.
+      // byBranch (Đợt 3) — cùng quy tắc byType: loại trừ Chuyển quỹ. Mọi chi nhánh trong phạm vi đều có dòng (kể cả chưa phát sinh gì).
+      const byBranchMap = new Map(branchIds.map((id) => [id, { totalIncome: 0, totalExpense: 0 }]));
+      const addToBranch = (branchId: string, kind: 'totalIncome' | 'totalExpense', amount: number) => {
+        const bucket = byBranchMap.get(branchId);
+        if (bucket) bucket[kind] += amount;
+      };
       const byTypeMap = new Map<string, { label: string; totalIncome: number; totalExpense: number }>();
       byTypeMap.set('INVOICE', { label: 'Thu tiền khám', totalIncome: 0, totalExpense: 0 });
       for (const row of paymentRows) {
         const bucket = byTypeMap.get('INVOICE')!;
-        if (row.type === 'PAYMENT') bucket.totalIncome += Number(row.amount);
-        else bucket.totalExpense += Number(row.amount);
+        const kind = row.type === 'PAYMENT' ? 'totalIncome' : 'totalExpense';
+        bucket[kind] += Number(row.amount);
+        addToBranch(row.invoice.encounter.branchId, kind, Number(row.amount));
       }
       for (const row of voucherRows) {
         if (row.counterAccountId) continue; // Chuyển quỹ — không tính vào byType/tổng toàn phòng khám.
@@ -250,8 +279,9 @@ export class CashBookReportService {
           byTypeMap.set(key, { label: typeLabelByCode.get(key) ?? key, totalIncome: 0, totalExpense: 0 });
         }
         const bucket = byTypeMap.get(key)!;
-        if (row.direction === 'INCOME') bucket.totalIncome += Number(row.amount);
-        else bucket.totalExpense += Number(row.amount);
+        const kind = row.direction === 'INCOME' ? 'totalIncome' : 'totalExpense';
+        bucket[kind] += Number(row.amount);
+        addToBranch(row.cashAccount.branchId, kind, Number(row.amount));
       }
       const byType = [...byTypeMap.entries()].map(([key, v]) => ({ key, ...v }));
       const totalIncome = byType.reduce((sum, g) => sum + g.totalIncome, 0);
@@ -292,11 +322,20 @@ export class CashBookReportService {
             Number(voucherBefore.asSourceIncome - voucherBefore.asSourceExpense + voucherBefore.asCounter) +
             Number(paymentBefore.paymentAmount - paymentBefore.refundAmount);
           const bucket = byAccountMap.get(account.id) ?? { totalIncome: 0, totalExpense: 0 };
-          return { key: account.id, label: account.name, totalIncome: bucket.totalIncome, totalExpense: bucket.totalExpense, closingBalance };
+          return {
+            key: account.id,
+            label: account.name,
+            totalIncome: bucket.totalIncome,
+            totalExpense: bucket.totalExpense,
+            closingBalance,
+            branchId: account.branchId,
+            branchName: names.get(account.branchId) ?? account.branch.name,
+          };
         }),
       );
 
-      return { totalIncome, totalExpense, byType, byAccount };
+      const byBranch = branchIds.map((branchId) => ({ branchId, branchName: names.get(branchId) ?? '', ...byBranchMap.get(branchId)! }));
+      return { totalIncome, totalExpense, byType, byAccount, byBranch };
     });
   }
 }
