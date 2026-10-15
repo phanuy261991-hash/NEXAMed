@@ -4,7 +4,8 @@
   "features": [
     "Báo cáo gộp nhiều chi nhánh (Báo cáo dòng tiền, Sổ quỹ, Nhập-Xuất-Tồn) cho người có quyền xem báo cáo toàn công ty.",
     "Tab Kết quả cận lâm sàng và biểu đồ diễn biến chỉ số xét nghiệm ở hồ sơ bệnh nhân.",
-    "Hộp Giới thiệu hiển thị phiên bản phần mềm và thông tin hỗ trợ."
+    "Hộp Giới thiệu hiển thị phiên bản phần mềm và thông tin hỗ trợ.",
+    "Trang Cập nhật phần mềm trong Cấu hình hệ thống: kiểm tra bản mới và xem ghi chú phát hành."
   ],
   "improvements": [
     "Chi nhánh mới tự có sẵn một kho và một quỹ tiền mặt mặc định.",
