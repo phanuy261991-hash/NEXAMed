@@ -60,6 +60,20 @@ const PUBLIC_ROUTES = new Set<string>([
   // Tải file theo chữ ký URL có hạn (ảnh đại diện/logo/chữ ký) — xác thực bằng token ký trong URL, không bằng JWT;
   // token sai/hết hạn → 403 (xem signed-url.ts), không phải 401.
   'GET /api/v1/files/:token',
+  // Chỉ có ở chế độ SaaS (docs/DECISIONS.md #237): tra công ty theo tên miền phụ (công khai có chủ đích) và khu quản trị nền tảng (xác thực bằng token người vận hành RIÊNG, không phải JWT phòng khám).
+  // Ở chế độ một công ty (chế độ của spec này) mọi đường dẫn này trả 404; phân quyền/cô lập của chúng có spec riêng `platform-saas-http.spec.ts`.
+  'GET /api/v1/public/tenant-context',
+  'POST /api/v1/platform/auth/login',
+  'POST /api/v1/platform/auth/verify-otp',
+  'GET /api/v1/platform/auth/me',
+  'GET /api/v1/platform/tenants',
+  'POST /api/v1/platform/tenants',
+  'GET /api/v1/platform/tenants/:id',
+  'PATCH /api/v1/platform/tenants/:id',
+  'POST /api/v1/platform/tenants/:id/suspend',
+  'POST /api/v1/platform/tenants/:id/unsuspend',
+  'POST /api/v1/platform/tenants/:id/reset-admin-password',
+  'GET /api/v1/platform/audit-logs',
 ]);
 
 /**

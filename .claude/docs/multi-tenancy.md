@@ -40,3 +40,10 @@ Bảng `tenant_setting (tenant_id, key, value_json)` cho: giờ làm việc, th�
 ## Test bắt buộc
 
 Mỗi endpoint chạm dữ liệu bệnh nhân phải có ít nhất một integration test: đăng nhập bằng tenant A, gọi tới ID thuộc tenant B, kỳ vọng `404` (không phải `403` — tránh lộ sự tồn tại của bản ghi).
+
+## Chế độ SaaS: nhận biết công ty theo tên miền phụ (Đợt 4, `docs/DECISIONS.md` #237)
+
+- Hai chế độ cùng một mã nguồn: `DEPLOYMENT_MODE=single` (mặc định, on-prem/VPS/NAS — KHÔNG đổi) và `saas`. Ở `saas`, công ty lấy từ nhãn đầu của header `Host` (`<mã>.<PLATFORM_BASE_DOMAIN>`, `tenant.code`), qua `TenantHostService`; web gọi `GET /public/tenant-context` khi `config.json` không có `tenantId`.
+- Cô lập thêm MỘT lớp trên RLS: đăng nhập/làm mới phiên chỉ đúng công ty của tên miền; token của công ty này bị từ chối (401) ở tên miền của công ty khác; cookie làm mới là host-only. Công ty tạm ngưng (`tenant.suspended_at`) → không đăng nhập/làm mới (403 `TENANT_SUSPENDED`), token đang cầm bị chặn.
+- Khu quản trị nền tảng (`modules/platform`, chỉ `admin.<gốc>` của SaaS) KHÔNG có `tenant_id` và không đọc dữ liệu bệnh nhân; số đếm vận hành đọc TRONG phạm vi RLS của từng công ty (`runInTenantScope`), không dùng role đặc quyền quét chéo. Hai bảng của nó (`platform_operator`, `platform_audit_log`) là ngoại lệ có chủ đích, khai ở `rls-coverage.spec.ts`.
+- Test bắt buộc cho thay đổi liên quan: `platform-saas-http.spec.ts` (hai công ty cùng hệ thống, token chéo tên miền, khoá/mở khoá, chế độ một công ty không đổi).

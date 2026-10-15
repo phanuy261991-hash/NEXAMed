@@ -4,6 +4,10 @@
 
 ## 2026-10-15
 
+### Đợt 4 SaaS: tên miền phụ theo công ty + Khu quản trị nền tảng (`docs/DECISIONS.md` #237)
+
+Hệ thống SaaS tập trung: mỗi công ty có một tên miền phụ (`<mã>.tenmien.vn`), màn đăng nhập hiện tên công ty và báo khi công ty tạm ngưng; công ty chỉ vào được bằng đúng tên miền của mình. **Khu quản trị nền tảng** ở `admin.tenmien.vn` cho người vận hành (đăng nhập mật khẩu + mã OTP): danh sách công ty (tìm, lọc, số đếm), thêm công ty (kèm tài khoản quản trị đầu tiên, mật khẩu tạm hiện một lần), sửa liên hệ/ghi chú, khoá/mở khoá công ty (bắt buộc lý do, đăng xuất ngay mọi phiên đang mở), đặt lại mật khẩu quản trị, nhật ký vận hành. Không xem được dữ liệu bệnh nhân và không đăng nhập thay vào công ty. **Bản on-prem/VPS/NAS không đổi** (mặc định một công ty; các đường dẫn mới trả 404). Môi trường khác: `db:deploy` (1 migration cộng thêm); SaaS cần `DEPLOYMENT_MODE=saas` + `PLATFORM_BASE_DOMAIN` và `db:seed:platform-operator` để tạo người vận hành.
+
 ### Trang "Cập nhật phần mềm" (bước 2 quản lý phiên bản, `docs/DECISIONS.md` #236)
 
 Ở Cấu hình hệ thống có thêm mục **"Cập nhật phần mềm"** (chỉ hệ thống một công ty, người có quyền mới của Quản trị phòng khám): xem phiên bản đang chạy, kênh, ngày phát hành, bấm **"Kiểm tra cập nhật"** để hỏi máy chủ phát hành xem có bản mới không (ghi chú phát hành, cảnh báo có thay đổi cơ sở dữ liệu, bản trung gian nếu quá cũ) và bảng 5 lần kiểm tra gần đây. Máy chủ tự kiểm ~30 giây sau khi khởi động và mỗi 6 giờ; có bản mới thì avatar hiện chấm xanh và menu có nhãn "Mới". Nút "Cập nhật ngay" đang tắt — cập nhật tự động chưa hỗ trợ. Địa chỉ máy chủ phát hành do nhà cung cấp đặt (`RELEASE_SERVER_URL`), chưa đặt thì trang báo chưa cấu hình. Bản SaaS không có mục này. Môi trường khác: `db:seed` (quyền mới `software_update.read`) rồi khởi động lại API; không migration.

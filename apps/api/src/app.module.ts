@@ -48,6 +48,8 @@ import { SystemModule } from './modules/system/system.module';
 import { BackupStatusModule } from './modules/backup-status/backup-status.module';
 import { BackupConfigModule } from './modules/backup-config/backup-config.module';
 import { SoftwareUpdateModule } from './modules/software-update/software-update.module';
+import { TenantContextModule } from './modules/tenant-context/tenant-context.module';
+import { PlatformModule } from './modules/platform/platform.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -109,6 +111,8 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     BackupStatusModule,
     BackupConfigModule,
     SoftwareUpdateModule,
+    TenantContextModule,
+    PlatformModule,
   ],
 })
 export class AppModule implements NestModule {

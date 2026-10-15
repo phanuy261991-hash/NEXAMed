@@ -31,7 +31,7 @@ export class JwtAuthGuard implements CanActivate {
         secret: this.configService.getOrThrow<string>('JWT_SECRET'),
       });
       const parsed = jwtPayloadSchema.safeParse(decoded);
-      if (!parsed.success || parsed.data.typ !== 'access') {
+      if (!parsed.success || parsed.data.typ !== 'access' || request.tenantRejected) {
         throw new UnauthorizedException();
       }
       request.user = { userId: parsed.data.sub, tenantId: parsed.data.tenantId, branchId: parsed.data.bid ?? null };

@@ -426,6 +426,17 @@ Container đều đặt `restart: unless-stopped` — MỘT KHI Docker Desktop �
 - Nhu cầu thực tế: theo `docs/product/prd.md` phần Appendix A, cloud/đa tenant tập trung chỉ tính tới ở phase v3+, "khi có khách hàng chuỗi".
 - `docs/Hybrid Authorization.md` là tài liệu định hướng phân quyền cho giai đoạn platform/đa module (Centralized Identity + Module-Specific Authorization) — **chỉ tham khảo**, chưa triển khai.
 
+### 3.0. Chế độ SaaS — đã code (15/10/2026, `docs/DECISIONS.md` #237), CHƯA có hạ tầng thật
+
+Phần mã đã có; chưa dựng hạ tầng. **Bản on-prem/VPS riêng/NAS KHÔNG bị ảnh hưởng và không đổi bước triển khai nào** (mặc định `DEPLOYMENT_MODE=single`, `config.json` có `tenantId`).
+
+**Cách hoạt động**: mỗi công ty một tên miền phụ `<mã>.<tên miền gốc>`; khu quản trị ở `admin.<tên miền gốc>`. Thêm khách mới = tạo công ty ở khu quản trị (thêm một dòng trong DB) — KHÔNG phải tạo DNS/chứng chỉ riêng.
+
+**Hạ tầng cấu hình MỘT lần** (cần chọn nhà cung cấp tên miền/máy chủ trong nước — chưa chọn): (1) DNS wildcard `*.tenmien.vn` trỏ về máy chủ; (2) chứng chỉ HTTPS wildcard `*.tenmien.vn` (thường xin bằng DNS-01, tự gia hạn); (3) reverse proxy (nginx) chuyển nguyên header `Host` và `/api` về API; web phục vụ cùng tên miền phụ.
+
+**Cấu hình ứng dụng**: `DEPLOYMENT_MODE=saas`, `PLATFORM_BASE_DOMAIN=tenmien.vn`, tuỳ chọn `PLATFORM_ADMIN_SUBDOMAIN` (mặc định `admin`), `COOKIE_SECURE=true`; `config.json` của web chỉ cần `{ "apiBaseUrl": "" }` (mẫu `apps/web/public/config.saas.example.json`). Chạy `db:deploy` + `db:seed`, rồi tạo người vận hành: `OPERATOR_USERNAME=... OPERATOR_FULL_NAME=... pnpm --filter @nexamed/api run db:seed:platform-operator` (in mật khẩu + bí mật OTP MỘT lần — thêm vào ứng dụng xác thực).
+
+**Chạy thử trên máy phát triển**: API với `DEPLOYMENT_MODE=saas PLATFORM_BASE_DOMAIN=localhost COOKIE_SECURE=false`; web `VITE_DEV_API_PROXY=http://localhost:<cổng API> pnpm exec vite`; mở `http://admin.localhost:5173` (khu quản trị) và `http://<mã>.localhost:5173` (công ty).
 ### Kiến trúc đã chuẩn bị sẵn cho hướng này (không cần làm lại nền tảng khi tới lúc)
 
 - Mọi phụ thuộc hạ tầng (lưu file, gửi tin nhắn, ký số, cổng BHYT, phân giải danh tính bệnh nhân) đi qua port khai báo trong `packages/core/ports`; chuyển sang cloud chỉ cần thay adapter ở `apps/api/src/infrastructure/*` (ví dụ `StoragePort`: disk cục bộ → S3/MinIO; `EventBusPort`: in-memory → RabbitMQ/Kafka), không sửa service.

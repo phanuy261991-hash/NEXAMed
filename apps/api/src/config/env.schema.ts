@@ -39,6 +39,13 @@ export const envSchema = z.object({
   DEPLOYMENT_MODE: z.enum(['single', 'saas']).default('single'),
   // Địa chỉ máy chủ phát hành (nơi đặt `manifest.json`) để KIỂM TRA bản mới (#236, bước 2). Do nhà cung cấp đặt lúc bàn giao — không có endpoint/giao diện cho khách nhập. Chuỗi rỗng (docker-compose truyền `${…:-}`) coi như chưa đặt.
   RELEASE_SERVER_URL: z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.string().url().optional()),
+  // Chế độ SaaS (#237): tên miền gốc (mỗi công ty là một tên miền phụ `<mã>.<tên miền gốc>`, khu quản trị ở `<PLATFORM_ADMIN_SUBDOMAIN>.<tên miền gốc>`). Bắt buộc khi DEPLOYMENT_MODE=saas; chế độ một công ty bỏ qua.
+  PLATFORM_BASE_DOMAIN: z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.string().trim().min(3).optional()),
+  PLATFORM_ADMIN_SUBDOMAIN: z.string().trim().min(1).default('admin'),
+}).superRefine((env, ctx) => {
+  if (env.DEPLOYMENT_MODE === 'saas' && !env.PLATFORM_BASE_DOMAIN) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['PLATFORM_BASE_DOMAIN'], message: 'PLATFORM_BASE_DOMAIN là bắt buộc khi DEPLOYMENT_MODE=saas' });
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;

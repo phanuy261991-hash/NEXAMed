@@ -5,6 +5,7 @@ import type { Request, Response } from 'express';
 import { changePasswordRequestSchema, loginRequestSchema, switchBranchRequestSchema } from '@nexamed/shared';
 import { RefreshTokenInvalidError } from '@nexamed/core';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
+import { TenantHostService } from '../tenant-context/tenant-host.service';
 import { AuthService, type RequestMeta } from './auth.service';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -15,6 +16,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
+    private readonly tenantHost: TenantHostService,
   ) {}
 
   @Post('login')
@@ -22,6 +24,8 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const dto = loginRequestSchema.parse(body);
+    // Chế độ SaaS: tenantId gửi lên phải là công ty của tên miền phụ đang truy cập (#237).
+    await this.tenantHost.assertRequestTenant(req, dto.tenantId);
     const result = await this.authService.login(dto, this.requestMeta(req));
     this.setRefreshCookie(res, result.refreshToken, result.refreshExpiresIn);
     return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user };
@@ -34,7 +38,7 @@ export class AuthController {
     if (!token) {
       throw new RefreshTokenInvalidError();
     }
-    const result = await this.authService.refresh(token, this.requestMeta(req));
+    const result = await this.authService.refresh(token, this.requestMeta(req), await this.tenantHost.requireRequestTenantId(req));
     this.setRefreshCookie(res, result.refreshToken, result.refreshExpiresIn);
     return { accessToken: result.accessToken, expiresIn: result.expiresIn };
   }

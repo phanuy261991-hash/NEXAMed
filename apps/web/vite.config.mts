@@ -20,6 +20,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Chạy thử chế độ SaaS trên máy phát triển (docs/DECISIONS.md #237): đặt VITE_DEV_API_PROXY=http://localhost:3001 để /api đi qua CÙNG địa chỉ với giao diện (vd http://saomai.localhost:5173),
+    // giữ nguyên header Host để máy chủ nhận ra công ty theo tên miền phụ. Không đặt thì hành vi cũ.
+    ...(process.env.VITE_DEV_API_PROXY ? { proxy: { '/api': { target: process.env.VITE_DEV_API_PROXY, changeOrigin: false } } } : {}),
   },
   build: {
     rollupOptions: {

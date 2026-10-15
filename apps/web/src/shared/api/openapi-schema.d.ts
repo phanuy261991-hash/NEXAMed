@@ -901,6 +901,983 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/tenant-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tra công ty theo tên miền phụ đang truy cập (công khai, chỉ chế độ SaaS) — web gọi trước màn đăng nhập khi config.json không có tenantId. Chế độ một công ty: 404 */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                kind: "tenant";
+                                /** Format: uuid */
+                                tenantId: string;
+                                name: string;
+                                code: string;
+                                suspended: boolean;
+                            } | {
+                                /** @enum {string} */
+                                kind: "platform";
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tên miền không ứng với công ty nào (TENANT_NOT_FOUND) hoặc đang ở chế độ một công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đăng nhập người vận hành, bước 1: mật khẩu → mã tạm cho bước OTP (chỉ trên tên miền quản trị SaaS) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        username: string;
+                        password: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                mfaToken: string;
+                                expiresIn: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Sai tên đăng nhập hoặc mật khẩu */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không phải tên miền quản trị */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Tài khoản bị khoá tạm do nhập sai nhiều lần */
+                423: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/auth/verify-otp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đăng nhập người vận hành, bước 2: mã OTP 6 số → access token riêng (60 phút, không có refresh) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        mfaToken: string;
+                        code: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                accessToken: string;
+                                expiresIn: number;
+                                operator: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    username: string;
+                                    fullName: string;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Mã tạm hoặc mã OTP không đúng/hết hạn */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không phải tên miền quản trị */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Tài khoản bị khoá tạm */
+                423: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Người vận hành hiện tại */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                username: string;
+                                fullName: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai token người vận hành */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không phải tên miền quản trị của hệ thống SaaS */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách công ty khách hàng + số đếm vận hành (tài khoản, chi nhánh, đăng nhập gần nhất) — KHÔNG có dữ liệu bệnh nhân */
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    status?: "all" | "active" | "suspended";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    code: string | null;
+                                    loginUrl: string | null;
+                                    /** @enum {string} */
+                                    status: "active" | "suspended";
+                                    contactName: string | null;
+                                    contactPhone: string | null;
+                                    contactEmail: string | null;
+                                    createdAt: string;
+                                    activeUserCount: number;
+                                    branchCount: number;
+                                    lastLoginAt: string | null;
+                                }[];
+                                stats: {
+                                    total: number;
+                                    active: number;
+                                    suspended: number;
+                                    createdLast30Days: number;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai token người vận hành */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không phải tên miền quản trị của hệ thống SaaS */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Tạo công ty (mã = tên miền phụ, đặt một lần) + tài khoản quản trị đầu tiên với mật khẩu tạm tự sinh (chỉ hiện một lần) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        code: string;
+                        contactName: string;
+                        contactPhone: string;
+                        contactEmail?: string;
+                        adminFullName: string;
+                        adminUsername: string;
+                        operatorNote?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                tenant: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    code: string | null;
+                                    loginUrl: string | null;
+                                    /** @enum {string} */
+                                    status: "active" | "suspended";
+                                    contactName: string | null;
+                                    contactPhone: string | null;
+                                    contactEmail: string | null;
+                                    createdAt: string;
+                                    activeUserCount: number;
+                                    branchCount: number;
+                                    lastLoginAt: string | null;
+                                    version: number;
+                                    operatorNote: string | null;
+                                    suspendedAt: string | null;
+                                    suspendedReason: string | null;
+                                    suspendedByName: string | null;
+                                };
+                                adminUsername: string;
+                                temporaryPassword: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Mã công ty đã được dùng (PLATFORM_TENANT_CODE_TAKEN) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Mã công ty sai định dạng hoặc dành riêng cho hệ thống */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết một công ty (thông tin vận hành, trạng thái, số đếm) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string | null;
+                                loginUrl: string | null;
+                                /** @enum {string} */
+                                status: "active" | "suspended";
+                                contactName: string | null;
+                                contactPhone: string | null;
+                                contactEmail: string | null;
+                                createdAt: string;
+                                activeUserCount: number;
+                                branchCount: number;
+                                lastLoginAt: string | null;
+                                version: number;
+                                operatorNote: string | null;
+                                suspendedAt: string | null;
+                                suspendedReason: string | null;
+                                suspendedByName: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Không có công ty này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa thông tin liên hệ + ghi chú nội bộ (khoá lạc quan theo version; không sửa được mã công ty) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        contactName: string;
+                        contactPhone: string;
+                        contactEmail?: string;
+                        operatorNote?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string | null;
+                                loginUrl: string | null;
+                                /** @enum {string} */
+                                status: "active" | "suspended";
+                                contactName: string | null;
+                                contactPhone: string | null;
+                                contactEmail: string | null;
+                                createdAt: string;
+                                activeUserCount: number;
+                                branchCount: number;
+                                lastLoginAt: string | null;
+                                version: number;
+                                operatorNote: string | null;
+                                suspendedAt: string | null;
+                                suspendedReason: string | null;
+                                suspendedByName: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu đã đổi (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Khoá công ty: bắt buộc lý do; chặn đăng nhập mới và đăng xuất ngay mọi phiên đang mở; dữ liệu giữ nguyên */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string | null;
+                                loginUrl: string | null;
+                                /** @enum {string} */
+                                status: "active" | "suspended";
+                                contactName: string | null;
+                                contactPhone: string | null;
+                                contactEmail: string | null;
+                                createdAt: string;
+                                activeUserCount: number;
+                                branchCount: number;
+                                lastLoginAt: string | null;
+                                version: number;
+                                operatorNote: string | null;
+                                suspendedAt: string | null;
+                                suspendedReason: string | null;
+                                suspendedByName: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Đã tạm ngưng hoặc dữ liệu đã đổi */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{id}/unsuspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mở khoá công ty */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                code: string | null;
+                                loginUrl: string | null;
+                                /** @enum {string} */
+                                status: "active" | "suspended";
+                                contactName: string | null;
+                                contactPhone: string | null;
+                                contactEmail: string | null;
+                                createdAt: string;
+                                activeUserCount: number;
+                                branchCount: number;
+                                lastLoginAt: string | null;
+                                version: number;
+                                operatorNote: string | null;
+                                suspendedAt: string | null;
+                                suspendedReason: string | null;
+                                suspendedByName: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Công ty đang hoạt động hoặc dữ liệu đã đổi */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{id}/reset-admin-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đặt lại mật khẩu tài khoản quản trị đầu tiên của công ty: mật khẩu tạm hiện một lần, buộc đổi khi đăng nhập, đăng xuất các phiên cũ */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                adminUsername: string;
+                                adminFullName: string;
+                                temporaryPassword: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Công ty chưa có tài khoản quản trị đang hoạt động */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Nhật ký vận hành nền tảng (toàn bộ hoặc theo công ty), mới nhất trước, phân trang con trỏ */
+        get: {
+            parameters: {
+                query?: {
+                    tenantId?: string;
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    occurredAt: string;
+                                    operatorName: string | null;
+                                    action: string;
+                                    actionLabel: string;
+                                    /** Format: uuid */
+                                    targetTenantId: string | null;
+                                    targetTenantName: string | null;
+                                    note: string | null;
+                                }[];
+                                /** Format: uuid */
+                                nextCursor: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai token người vận hành */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không phải tên miền quản trị của hệ thống SaaS */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/branches/report-scope-options": {
         parameters: {
             query?: never;

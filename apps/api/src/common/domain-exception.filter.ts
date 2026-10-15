@@ -16,6 +16,14 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   AUTH_ACCOUNT_DISABLED: HttpStatus.FORBIDDEN,
   AUTH_REFRESH_TOKEN_INVALID: HttpStatus.UNAUTHORIZED,
   AUTH_REFRESH_TOKEN_REUSED: HttpStatus.UNAUTHORIZED,
+  // Đợt 4 SaaS (docs/DECISIONS.md #237) — công ty tạm ngưng (403), không có công ty ứng với địa chỉ (404), mã công ty trùng/đã tạm ngưng/đang hoạt động là xung đột trạng thái (409); mã sai định dạng rơi về 422.
+  TENANT_SUSPENDED: HttpStatus.FORBIDDEN,
+  TENANT_NOT_FOUND: HttpStatus.NOT_FOUND,
+  PLATFORM_TENANT_CODE_TAKEN: HttpStatus.CONFLICT,
+  PLATFORM_TENANT_ALREADY_SUSPENDED: HttpStatus.CONFLICT,
+  PLATFORM_TENANT_NOT_SUSPENDED: HttpStatus.CONFLICT,
+  PLATFORM_OTP_INVALID: HttpStatus.UNAUTHORIZED,
+  PLATFORM_TENANT_ADMIN_NOT_FOUND: HttpStatus.CONFLICT,
   // Xung đột với trạng thái hiện có (trùng CCCD, mất optimistic lock) — 409, không phải 422
   // (422 dành cho vi phạm quy tắc nghiệp vụ không liên quan tới trạng thái đồng thời).
   PATIENT_DUPLICATE_NATIONAL_ID: HttpStatus.CONFLICT,

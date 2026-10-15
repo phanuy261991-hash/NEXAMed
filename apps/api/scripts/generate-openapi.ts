@@ -445,6 +445,23 @@ import {
   listBranchesResponseSchema,
   systemVersionSchema,
   softwareUpdateStatusSchema,
+  tenantContextResponseSchema,
+  platformLoginRequestSchema,
+  platformLoginResponseSchema,
+  platformVerifyOtpRequestSchema,
+  platformSessionResponseSchema,
+  platformOperatorSchema,
+  listPlatformTenantsQuerySchema,
+  listPlatformTenantsResponseSchema,
+  platformTenantDetailSchema,
+  createPlatformTenantRequestSchema,
+  createPlatformTenantResponseSchema,
+  updatePlatformTenantRequestSchema,
+  suspendPlatformTenantRequestSchema,
+  unsuspendPlatformTenantRequestSchema,
+  resetTenantAdminPasswordResponseSchema,
+  listPlatformAuditQuerySchema,
+  listPlatformAuditResponseSchema,
   switchBranchRequestSchema,
   switchBranchResponseSchema,
   updateBranchRequestSchema,
@@ -612,6 +629,165 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền software_update.read'),
     404: errorResponse('Hệ thống đang chạy chế độ SaaS'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/public/tenant-context',
+  tags: ['public'],
+  summary: "Tra công ty theo tên miền phụ đang truy cập (công khai, chỉ chế độ SaaS) — web gọi trước màn đăng nhập khi config.json không có tenantId. Chế độ một công ty: 404",
+  responses: {
+    200: jsonResponse('Thành công', envelope(tenantContextResponseSchema)),
+    404: errorResponse('Tên miền không ứng với công ty nào (TENANT_NOT_FOUND) hoặc đang ở chế độ một công ty'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/platform/auth/login',
+  tags: ['platform'],
+  summary: "Đăng nhập người vận hành, bước 1: mật khẩu → mã tạm cho bước OTP (chỉ trên tên miền quản trị SaaS)",
+  request: { body: { content: { 'application/json': { schema: platformLoginRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(platformLoginResponseSchema)),
+    401: errorResponse('Sai tên đăng nhập hoặc mật khẩu'),
+    423: errorResponse('Tài khoản bị khoá tạm do nhập sai nhiều lần'),
+    404: errorResponse('Không phải tên miền quản trị'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/platform/auth/verify-otp',
+  tags: ['platform'],
+  summary: "Đăng nhập người vận hành, bước 2: mã OTP 6 số → access token riêng (60 phút, không có refresh)",
+  request: { body: { content: { 'application/json': { schema: platformVerifyOtpRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(platformSessionResponseSchema)),
+    401: errorResponse('Mã tạm hoặc mã OTP không đúng/hết hạn'),
+    423: errorResponse('Tài khoản bị khoá tạm'),
+    404: errorResponse('Không phải tên miền quản trị'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/platform/auth/me',
+  tags: ['platform'],
+  summary: "Người vận hành hiện tại",
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(platformOperatorSchema)),
+    401: errorResponse('Thiếu hoặc sai token người vận hành'),
+    404: errorResponse('Không phải tên miền quản trị của hệ thống SaaS'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/platform/tenants',
+  tags: ['platform'],
+  summary: "Danh sách công ty khách hàng + số đếm vận hành (tài khoản, chi nhánh, đăng nhập gần nhất) — KHÔNG có dữ liệu bệnh nhân",
+  security: [{ bearerAuth: [] }],
+  request: { query: listPlatformTenantsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listPlatformTenantsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai token người vận hành'),
+    404: errorResponse('Không phải tên miền quản trị của hệ thống SaaS'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/platform/tenants',
+  tags: ['platform'],
+  summary: "Tạo công ty (mã = tên miền phụ, đặt một lần) + tài khoản quản trị đầu tiên với mật khẩu tạm tự sinh (chỉ hiện một lần)",
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createPlatformTenantRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(createPlatformTenantResponseSchema)),
+    409: errorResponse('Mã công ty đã được dùng (PLATFORM_TENANT_CODE_TAKEN)'),
+    422: errorResponse('Mã công ty sai định dạng hoặc dành riêng cho hệ thống'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/platform/tenants/{id}',
+  tags: ['platform'],
+  summary: "Chi tiết một công ty (thông tin vận hành, trạng thái, số đếm)",
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Thành công', envelope(platformTenantDetailSchema)),
+    404: errorResponse('Không có công ty này'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/platform/tenants/{id}',
+  tags: ['platform'],
+  summary: "Sửa thông tin liên hệ + ghi chú nội bộ (khoá lạc quan theo version; không sửa được mã công ty)",
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }), body: { content: { 'application/json': { schema: updatePlatformTenantRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(platformTenantDetailSchema)),
+    409: errorResponse('Dữ liệu đã đổi (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/platform/tenants/{id}/suspend',
+  tags: ['platform'],
+  summary: "Khoá công ty: bắt buộc lý do; chặn đăng nhập mới và đăng xuất ngay mọi phiên đang mở; dữ liệu giữ nguyên",
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }), body: { content: { 'application/json': { schema: suspendPlatformTenantRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(platformTenantDetailSchema)),
+    409: errorResponse('Đã tạm ngưng hoặc dữ liệu đã đổi'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/platform/tenants/{id}/unsuspend',
+  tags: ['platform'],
+  summary: "Mở khoá công ty",
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }), body: { content: { 'application/json': { schema: unsuspendPlatformTenantRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(platformTenantDetailSchema)),
+    409: errorResponse('Công ty đang hoạt động hoặc dữ liệu đã đổi'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/platform/tenants/{id}/reset-admin-password',
+  tags: ['platform'],
+  summary: "Đặt lại mật khẩu tài khoản quản trị đầu tiên của công ty: mật khẩu tạm hiện một lần, buộc đổi khi đăng nhập, đăng xuất các phiên cũ",
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Thành công', envelope(resetTenantAdminPasswordResponseSchema)),
+    409: errorResponse('Công ty chưa có tài khoản quản trị đang hoạt động'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/platform/audit-logs',
+  tags: ['platform'],
+  summary: "Nhật ký vận hành nền tảng (toàn bộ hoặc theo công ty), mới nhất trước, phân trang con trỏ",
+  security: [{ bearerAuth: [] }],
+  request: { query: listPlatformAuditQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listPlatformAuditResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai token người vận hành'),
+    404: errorResponse('Không phải tên miền quản trị của hệ thống SaaS'),
   },
 });
 

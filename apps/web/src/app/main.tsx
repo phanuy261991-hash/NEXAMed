@@ -1,9 +1,13 @@
-import { StrictMode } from 'react';
+import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import { App } from './App';
-import { loadAppConfig } from './config';
+import { CompanyNotFoundPage } from './CompanyNotFoundPage';
+import { resolveBootstrap } from './config';
 import { configureApiClient } from '../shared/api/client';
+
+// Khu quản trị nền tảng (chỉ tên miền quản trị của hệ thống SaaS) — lazy để bản phòng khám không tải mã của nó.
+const PlatformApp = lazy(() => import('../features/platform/PlatformApp').then((m) => ({ default: m.PlatformApp })));
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,12 +16,27 @@ if (!rootElement) {
 
 async function bootstrap(root: HTMLElement) {
   try {
-    const config = await loadAppConfig();
-    configureApiClient(config);
+    const result = await resolveBootstrap();
 
+    if (result.kind === 'platform') {
+      createRoot(root).render(
+        <StrictMode>
+          <Suspense fallback={null}>
+            <PlatformApp apiBaseUrl={result.apiBaseUrl} />
+          </Suspense>
+        </StrictMode>,
+      );
+      return;
+    }
+    if (result.kind === 'company_not_found') {
+      createRoot(root).render(<CompanyNotFoundPage />);
+      return;
+    }
+
+    configureApiClient(result.config);
     createRoot(root).render(
       <StrictMode>
-        <App config={config} />
+        <App config={result.config} />
       </StrictMode>,
     );
   } catch (err) {

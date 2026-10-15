@@ -57,6 +57,17 @@ model Tenant {
   bankAccountNumber        String? @map("bank_account_number")
   bankName                 String? @map("bank_name")
 
+  // Đợt 4 SaaS (docs/DECISIONS.md #237): `code` = mã công ty cũng là tên miền phụ (chữ thường/số/gạch ngang, 3-30 ký tự, đặt một lần không đổi; công ty cũ chưa có thì NULL — chế độ một công ty không cần).
+  // Tạm ngưng = `suspended_at` khác NULL (kèm lý do + người vận hành). Thông tin liên hệ + ghi chú là của NHÀ VẬN HÀNH, tách khỏi phone/email của phòng khám ở trên.
+  code            String?   @unique
+  suspendedAt     DateTime? @map("suspended_at") @db.Timestamptz(6)
+  suspendedReason String?   @map("suspended_reason")
+  suspendedBy     String?   @map("suspended_by") @db.Uuid
+  contactName     String?   @map("contact_name")
+  contactPhone    String?   @map("contact_phone")
+  contactEmail    String?   @map("contact_email")
+  operatorNote    String?   @map("operator_note")
+
   // 8 cột bắt buộc (trừ tenant_id — bảng này là gốc của tenant)
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -2679,33 +2690,33 @@ enum StockCountStatus {
 // nhận hàng là MỘT LẦN DUY NHẤT, không hỗ trợ nhận nhiều đợt — lệch phát hiện sau đó xử lý bằng
 // Kiểm kê riêng ở kho đích, không quay lại sửa phiếu điều chuyển.
 model StockTransfer {
-  id              String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId        String              @map("tenant_id") @db.Uuid
-  transferNo      String              @map("transfer_no")
-  fromWarehouseId String              @map("from_warehouse_id") @db.Uuid
-  toWarehouseId   String              @map("to_warehouse_id") @db.Uuid
-  status          StockTransferStatus @default(DRAFT)
+  id                      String              @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                String              @map("tenant_id") @db.Uuid
+  transferNo              String              @map("transfer_no")
+  fromWarehouseId         String              @map("from_warehouse_id") @db.Uuid
+  toWarehouseId           String              @map("to_warehouse_id") @db.Uuid
+  status                  StockTransferStatus @default(DRAFT)
   // Ngày điều chuyển do người dùng khai — khác createdAt (mốc tạo bản ghi).
-  occurredAt      DateTime            @map("occurred_at") @db.Timestamptz(6)
-  note            String?
-  shippedBy       String?             @map("shipped_by") @db.Uuid
-  shippedAt       DateTime?           @map("shipped_at") @db.Timestamptz(6)
-  receivedBy      String?             @map("received_by") @db.Uuid
-  receivedAt      DateTime?           @map("received_at") @db.Timestamptz(6)
+  occurredAt              DateTime            @map("occurred_at") @db.Timestamptz(6)
+  note                    String?
+  shippedBy               String?             @map("shipped_by") @db.Uuid
+  shippedAt               DateTime?           @map("shipped_at") @db.Timestamptz(6)
+  receivedBy              String?             @map("received_by") @db.Uuid
+  receivedAt              DateTime?           @map("received_at") @db.Timestamptz(6)
   // Bắt buộc khi status=REJECTED, NULL các trạng thái khác.
-  rejectionReason String?             @map("rejection_reason")
+  rejectionReason         String?             @map("rejection_reason")
   // Đợt 2 chi nhánh (#233) — từ chối NHẬN cả phiếu khi đang IN_TRANSIT (khác `rejectionReason`: bên GỬI từ chối lúc Nháp).
-  receiveRejectReasonCode String?     @map("receive_reject_reason_code")
-  receiveRejectNote       String?     @map("receive_reject_note")
-  receiveRejectedBy       String?     @map("receive_rejected_by") @db.Uuid
-  receiveRejectedAt       DateTime?   @map("receive_rejected_at") @db.Timestamptz(6)
+  receiveRejectReasonCode String?             @map("receive_reject_reason_code")
+  receiveRejectNote       String?             @map("receive_reject_note")
+  receiveRejectedBy       String?             @map("receive_rejected_by") @db.Uuid
+  receiveRejectedAt       DateTime?           @map("receive_rejected_at") @db.Timestamptz(6)
   // Bên gửi xác nhận đã nhận lại hàng bị từ chối (RETURNING→RETURNED).
-  returnConfirmedBy       String?     @map("return_confirmed_by") @db.Uuid
-  returnConfirmedAt       DateTime?   @map("return_confirmed_at") @db.Timestamptz(6)
+  returnConfirmedBy       String?             @map("return_confirmed_by") @db.Uuid
+  returnConfirmedAt       DateTime?           @map("return_confirmed_at") @db.Timestamptz(6)
   // Bên gửi xử lý xong phần nhận thiếu (VARIANCE_PENDING→COMPLETED).
-  varianceResolvedBy      String?     @map("variance_resolved_by") @db.Uuid
-  varianceResolvedAt      DateTime?   @map("variance_resolved_at") @db.Timestamptz(6)
-  varianceResolutionNote  String?     @map("variance_resolution_note")
+  varianceResolvedBy      String?             @map("variance_resolved_by") @db.Uuid
+  varianceResolvedAt      DateTime?           @map("variance_resolved_at") @db.Timestamptz(6)
+  varianceResolutionNote  String?             @map("variance_resolution_note")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2756,15 +2767,15 @@ enum StockTransferStatus {
 // `quantityReceived`/`varianceNote` NULL tới khi Xác nhận nhận hàng — `varianceNote` bắt buộc (Service
 // kiểm) khi `quantityReceived < quantityShipped`, CHẶN CỨNG (CHECK DB) khi `quantityReceived > quantityShipped`.
 model StockTransferLine {
-  id               String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId         String  @map("tenant_id") @db.Uuid
-  transferId       String  @map("transfer_id") @db.Uuid
-  drugId           String  @map("drug_id") @db.Uuid
-  batchId          String? @map("batch_id") @db.Uuid
-  quantityShipped  Int     @map("quantity_shipped")
-  unitCost         BigInt? @map("unit_cost")
-  quantityReceived Int?    @map("quantity_received")
-  varianceNote     String? @map("variance_note")
+  id                   String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId             String  @map("tenant_id") @db.Uuid
+  transferId           String  @map("transfer_id") @db.Uuid
+  drugId               String  @map("drug_id") @db.Uuid
+  batchId              String? @map("batch_id") @db.Uuid
+  quantityShipped      Int     @map("quantity_shipped")
+  unitCost             BigInt? @map("unit_cost")
+  quantityReceived     Int?    @map("quantity_received")
+  varianceNote         String? @map("variance_note")
   // Đợt 2 chi nhánh (#233): lý do lệch bên nhận chọn (SHORTAGE/DAMAGED/EXPIRED/WRONG_ITEM/OTHER), cách bên gửi xử lý phần thiếu
   // (RETURN_TO_SOURCE/WRITE_OFF), và số thực nhận lại ở kho gửi khi bên nhận từ chối cả phiếu (phần còn thiếu = hao hụt).
   varianceReasonCode   String? @map("variance_reason_code")
@@ -4727,6 +4738,42 @@ model ParaclinicalResultImage {
 
   @@unique([tenantId, id])
   @@map("paraclinical_result_image")
+}
+
+// Đợt 4 SaaS (docs/DECISIONS.md #237) — người VẬN HÀNH nền tảng, KHÔNG thuộc công ty nào (không tenant_id, không RLS; ngoại lệ có chủ đích như icd10_catalog/permission).
+// Đăng nhập mật khẩu + OTP (TOTP, bí mật mã hoá AES-256-GCM). Chỉ dùng ở chế độ SaaS; tạo bằng script, chưa có giao diện quản lý.
+model PlatformOperator {
+  id                String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  username          String    @unique
+  fullName          String    @map("full_name")
+  passwordHash      String    @map("password_hash")
+  totpSecretEnc     String    @map("totp_secret_enc")
+  isActive          Boolean   @default(true) @map("is_active")
+  failedLoginCount  Int       @default(0) @map("failed_login_count")
+  lastFailedLoginAt DateTime? @map("last_failed_login_at") @db.Timestamptz(6)
+  lockedUntil       DateTime? @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt       DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  version           Int       @default(1)
+
+  @@map("platform_operator")
+}
+
+// Nhật ký vận hành nền tảng — append-only (app role không UPDATE/DELETE). `target_tenant_id` không có khoá ngoại để nhật ký tồn tại độc lập với công ty.
+model PlatformAuditLog {
+  id             String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  operatorId     String?  @map("operator_id") @db.Uuid
+  action         String
+  targetTenantId String?  @map("target_tenant_id") @db.Uuid
+  detailJson     Json?    @map("detail_json") @db.JsonB
+  ip             String?
+  userAgent      String?  @map("user_agent")
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([targetTenantId, occurredAt(sort: Desc)])
+  @@index([occurredAt(sort: Desc)])
+  @@map("platform_audit_log")
 }
 
 // "Chi nhánh" (docs/DECISIONS.md #231, mô hình B của #075) — `tenant` = CÔNG TY, chi nhánh nằm BÊN TRONG tenant.

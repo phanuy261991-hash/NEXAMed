@@ -16,6 +16,8 @@ export interface TenantFixtureRef {
 export interface TwoTenantFixture {
   tenantA: TenantFixtureRef;
   tenantB: TenantFixtureRef;
+  /** Đưa thêm một công ty do chính test tạo (ví dụ qua khu quản trị nền tảng) vào phạm vi `cleanup()`. */
+  trackTenant(id: string): void;
   cleanup(): Promise<void>;
 }
 
@@ -41,6 +43,9 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
   return {
     tenantA: { id: tenantA.id },
     tenantB: { id: tenantB.id },
+    trackTenant(id: string) {
+      tenantIds.push(id);
+    },
     async cleanup() {
       // Thứ tự xoá theo FK: bảng con trước bảng cha. deleteMany trên bảng không có dòng nào
       // khớp là no-op an toàn — không cần biết trước caller có seed role/session hay không.

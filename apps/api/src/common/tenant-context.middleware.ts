@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { jwtPayloadSchema } from '@nexamed/shared';
 import { tenantContextStorage } from '../infrastructure/persistence/tenant-context.store';
+import { TenantHostService } from '../modules/tenant-context/tenant-host.service';
 
 /**
  * S1-04: đọc tenantId/actorId từ access token JWT đã xác thực (Authorization: Bearer), thay
@@ -21,9 +22,10 @@ export class TenantContextMiddleware implements NestMiddleware {
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly tenantHost: TenantHostService,
   ) {}
 
-  use(req: Request, _res: Response, next: NextFunction) {
+  async use(req: Request, _res: Response, next: NextFunction) {
     const header = req.header('authorization');
     const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : undefined;
 
@@ -42,6 +44,16 @@ export class TenantContextMiddleware implements NestMiddleware {
         }
       } catch {
         // Token sai/hết hạn — bỏ qua, coi như không có tenant context (fail closed ở RLS/guard).
+      }
+    }
+
+    // Chế độ SaaS (docs/DECISIONS.md #237): token chỉ có giá trị trên ĐÚNG tên miền phụ của công ty đó, và công ty tạm ngưng thì mọi token coi như không có (fail closed → 401). Chế độ một công ty: bỏ qua.
+    if (tenantId && this.tenantHost.isSaas()) {
+      const hostTenant = await this.tenantHost.resolveTenant(req);
+      if (!hostTenant || hostTenant.tenantId !== tenantId || hostTenant.suspended) {
+        tenantId = undefined;
+        actorId = undefined;
+        req.tenantRejected = true;
       }
     }
 

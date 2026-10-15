@@ -223,14 +223,19 @@ describe('HTTP e2e — Cập nhật phần mềm (chưa cấu hình / cấu hìn
 
 describe('HTTP e2e — Cập nhật phần mềm (chế độ SaaS)', () => {
   it('mọi đường dẫn trả 404, kể cả với quản trị viên và khi chưa đăng nhập', async () => {
-    const ctx = await bootstrap({ APP_VERSION: '0.9.0', DEPLOYMENT_MODE: 'saas', RELEASE_SERVER_URL: 'http://127.0.0.1:9' }, 'Software update saas e2e');
+    const ctx = await bootstrap({ APP_VERSION: '0.9.0', DEPLOYMENT_MODE: 'saas', PLATFORM_BASE_DOMAIN: 'nexamed.test', RELEASE_SERVER_URL: 'http://127.0.0.1:9' }, 'Software update saas e2e');
     try {
-      const token = await ctx.tokenFor(ctx.fixture.tenantA.id, 'clinic_admin');
-      const auth = { Authorization: `Bearer ${token}` };
+      // Ở SaaS đăng nhập phải đi qua tên miền phụ của công ty (docs/DECISIONS.md #237): gán mã công ty và dùng header Host tương ứng.
+      const host = `swu-${Date.now().toString(36)}.nexamed.test`;
+      await ctx.privileged.tenant.update({ where: { id: ctx.fixture.tenantA.id }, data: { code: host.split('.')[0] } });
+      const user = await ctx.helpers.createUser(ctx.fixture.tenantA.id, { name: 'clinic_admin' }, 'swupdate-saas');
       const http = () => request(ctx.app.getHttpServer());
+      const login = await http().post('/api/v1/auth/login').set('Host', host).send({ tenantId: ctx.fixture.tenantA.id, username: user.username, password: ctx.helpers.password });
+      expect(login.status, JSON.stringify(login.body)).toBe(200);
+      const auth = { Authorization: `Bearer ${login.body.data.accessToken}`, Host: host };
       expect((await http().get('/api/v1/system/update/status').set(auth)).status).toBe(404);
       expect((await http().post('/api/v1/system/update/check').set(auth)).status).toBe(404);
-      expect((await http().get('/api/v1/system/update/status')).status).toBe(404);
+      expect((await http().get('/api/v1/system/update/status').set('Host', host)).status).toBe(404);
       // Phiên bản vẫn công khai ở chế độ SaaS (hộp "Giới thiệu").
       expect((await http().get('/api/v1/system/version')).status).toBe(200);
     } finally {

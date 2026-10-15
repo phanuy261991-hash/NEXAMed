@@ -13,7 +13,8 @@ import { PrismaClient } from '@prisma/client';
 // Danh mục dùng chung CÓ CHỦ ĐÍCH, chỉ đọc lúc chạy: ICD-10 (BYT), quyền hệ thống, đơn vị hành chính, và chính bảng `tenant`.
 // `reference_catalog`, `allergen`, `allergen_group`, `global_code_sequence` KHÔNG còn ở đây: từ docs/DECISIONS.md #230 danh mục riêng
 // theo tenant (mỗi phòng khám/công ty một bản).
-const SHARED_TABLES = ['icd10_catalog', 'permission', 'province', 'tenant', 'ward'];
+// Cộng thêm 2 bảng của khu quản trị nền tảng SaaS (#237): người vận hành không thuộc công ty nào, nhật ký vận hành không theo công ty.
+const SHARED_TABLES = ['icd10_catalog', 'permission', 'platform_audit_log', 'platform_operator', 'province', 'tenant', 'ward'];
 
 describe('Cô lập tenant — kiểm tra toàn lược đồ', () => {
   let prisma: PrismaClient;

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import {
   AccountDisabledError,
@@ -7,9 +7,12 @@ import {
   InvalidCredentialsError,
   RefreshTokenInvalidError,
   RefreshTokenReuseDetectedError,
+  TENANT_ACCESS_PORT,
+  TenantSuspendedError,
   isAccountLocked,
   recordFailedLogin,
   resolveBranchId,
+  type TenantAccessPort,
 } from '@nexamed/core';
 import type { BranchLite, ChangePasswordRequest, DataScope, LoginRequest, SwitchBranchRequest } from '@nexamed/shared';
 import type { Prisma, UserSession } from '@prisma/client';
@@ -89,9 +92,12 @@ export class AuthService {
     private readonly sessionRepository: SessionRepository,
     private readonly tokenService: TokenService,
     private readonly branchAccess: BranchAccessService,
+    @Inject(TENANT_ACCESS_PORT) private readonly tenantAccess: TenantAccessPort,
   ) {}
 
   async login(request: LoginRequest, meta: RequestMeta): Promise<LoginResult> {
+    // Công ty tạm ngưng (#237): chặn trước mọi thao tác khác. Công ty không tồn tại thì không báo gì riêng — rơi xuống luồng "sai thông tin" như cũ.
+    if (await this.tenantAccess.isSuspended(request.tenantId)) throw new TenantSuspendedError();
     const outcome = await this.unitOfWork.runInTenantScope<LoginOutcome>(request.tenantId, async (tx) => {
       const user = await this.userAccountAuthRepository.findByUsername(tx, request.tenantId, request.username);
       if (!user) {
@@ -183,11 +189,16 @@ export class AuthService {
     }
   }
 
-  async refresh(rawRefreshToken: string, meta: RequestMeta): Promise<RefreshResult> {
+  async refresh(rawRefreshToken: string, meta: RequestMeta, expectedTenantId?: string): Promise<RefreshResult> {
     const payload = this.tokenService.verify(rawRefreshToken);
     if (!payload || payload.typ !== 'refresh') {
       throw new RefreshTokenInvalidError();
     }
+    // Chế độ SaaS: phiên chỉ làm mới được trên đúng tên miền phụ của công ty (#237). Công ty tạm ngưng thì không cấp token mới.
+    if (expectedTenantId && payload.tenantId !== expectedTenantId) {
+      throw new RefreshTokenInvalidError();
+    }
+    if (await this.tenantAccess.isSuspended(payload.tenantId)) throw new TenantSuspendedError();
 
     const outcome = await this.unitOfWork.runInTenantScope<RefreshOutcome>(payload.tenantId, async (tx) => {
       const hash = this.tokenService.hashRefreshToken(rawRefreshToken);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Info } from '@phosphor-icons/react';
 import type { ReleaseNotes } from '@nexamed/shared';
+import { copyText } from '../../shared/format/clipboard';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Button } from '../../shared/ui/Button';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
@@ -17,27 +18,6 @@ const NOTE_GROUPS: { key: keyof Pick<ReleaseNotes, 'features' | 'improvements' |
   { key: 'improvements', title: 'Cải tiến' },
   { key: 'fixes', title: 'Sửa lỗi' },
 ];
-
-/** Sao chép văn bản: ưu tiên Clipboard API, dự phòng chọn-và-copy khi trình duyệt/khung nhúng từ chối. */
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const area = document.createElement('textarea');
-    area.value = text;
-    area.setAttribute('readonly', '');
-    area.style.position = 'fixed';
-    area.style.opacity = '0';
-    document.body.appendChild(area);
-    area.select();
-    try {
-      return document.execCommand('copy');
-    } finally {
-      document.body.removeChild(area);
-    }
-  }
-}
 
 /**
  * Hộp "Giới thiệu" — phiên bản phần mềm đang chạy (docs/DECISIONS.md #236, mockup đã duyệt): phiên bản, kênh, ngày phát hành, chế độ triển khai, ghi chú phát hành của bản này, và mục "Thông tin kỹ thuật"

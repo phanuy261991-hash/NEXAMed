@@ -12,6 +12,8 @@ const inputClassName =
 
 export function LoginPage() {
   const config = useAppConfig();
+  const company = config.company;
+  const suspended = company?.suspended === true;
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
 
@@ -39,6 +41,19 @@ export function LoginPage() {
     <div className="flex min-h-dvh flex-col items-center justify-center bg-slate-50 px-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-md" noValidate>
         <h1 className="mb-6 text-xl font-semibold text-slate-900">Đăng nhập NEXAMed</h1>
+
+        {/* Chế độ SaaS (#237): công ty nhận từ tên miền phụ — hiện tên công ty thay cho ô "Mã công ty", và báo rõ khi công ty đang tạm ngưng. */}
+        {company && (
+          <div className="mb-5">
+            <p className="mb-1 inline-block rounded border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500">{window.location.host}</p>
+            <p className="text-lg font-bold text-slate-900">{company.name}</p>
+            {suspended && (
+              <p role="alert" className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+                Công ty đang tạm ngưng sử dụng. Vui lòng liên hệ nhà cung cấp để được hỗ trợ.
+              </p>
+            )}
+          </div>
+        )}
 
         <label className="mb-1 block text-sm font-semibold text-slate-800" htmlFor="username">
           Tên đăng nhập <span className="text-rose-500">*</span>
@@ -73,7 +88,7 @@ export function LoginPage() {
           </p>
         )}
 
-        <Button type="submit" loading={submitting} className="w-full">
+        <Button type="submit" loading={submitting} disabled={suspended} className="w-full">
           Đăng nhập
         </Button>
       </form>

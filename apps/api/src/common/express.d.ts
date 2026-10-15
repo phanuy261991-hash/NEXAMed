@@ -18,6 +18,13 @@ declare global {
        * không có khái niệm chủ sở hữu nên mọi scope khác `none` đều coi như `global`).
        */
       dataScope?: DataScope;
+      /**
+       * Chế độ SaaS (docs/DECISIONS.md #237): `TenantContextMiddleware` đặt `true` khi request mang access token nhưng token KHÔNG thuộc công ty của tên miền phụ đang truy cập, hoặc công ty đang tạm ngưng.
+       * `JwtAuthGuard` coi đó là chưa xác thực (401). Không bao giờ đặt ở chế độ một công ty.
+       */
+      tenantRejected?: boolean;
+      /** Người vận hành nền tảng đã xác thực (`PlatformAuthGuard`, docs/DECISIONS.md #237) — chỉ có trên khu quản trị nền tảng, tách hẳn `user` của phòng khám. */
+      platformOperator?: { id: string; username: string; fullName: string };
     }
   }
 }

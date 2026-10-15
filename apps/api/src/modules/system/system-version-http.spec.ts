@@ -15,7 +15,7 @@ describe('HTTP e2e — Phiên bản phần mềm', () => {
   let app: INestApplication;
   let privileged: PrismaClient;
   const saved: Record<string, string | undefined> = {};
-  const ENV = { APP_VERSION: '0.9.0', BUILD_ID: '127', RELEASE_CHANNEL: 'beta', RELEASED_AT: '2026-10-15', DEPLOYMENT_MODE: 'saas' } as const;
+  const ENV = { APP_VERSION: '0.9.0', BUILD_ID: '127', RELEASE_CHANNEL: 'beta', RELEASED_AT: '2026-10-15', DEPLOYMENT_MODE: 'saas', PLATFORM_BASE_DOMAIN: 'nexamed.test' } as const;
 
   beforeAll(async () => {
     for (const [key, value] of Object.entries(ENV)) {

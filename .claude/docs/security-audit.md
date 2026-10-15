@@ -99,6 +99,7 @@ Nguyên tắc chung: quyền kiểm ở tầng service/repository (guard đọc 
 - Khoá tài khoản tạm sau 5 lần đăng nhập sai trong 15 phút.
 - Đổi vai trò hoặc chuyển tenant thu hồi toàn bộ phiên đang mở.
 - JWT chứa `tenantId`; middleware set `app.current_tenant_id` cho phiên DB từ giá trị này (xem `multi-tenancy.md`).
+- **Người vận hành nền tảng SaaS** (docs/DECISIONS.md #237) tách hẳn tài khoản phòng khám: bảng `platform_operator`, đăng nhập mật khẩu Argon2id + OTP TOTP (bí mật mã hoá AES-256-GCM), token riêng `typ: platform_access` 60 phút không refresh, khoá tạm 5 lần sai (cả OTP), chỉ trên tên miền quản trị; không xem dữ liệu bệnh nhân, không đăng nhập thay; mọi thao tác ghi `platform_audit_log` (append-only).
 
 ## Dữ liệu định danh
 

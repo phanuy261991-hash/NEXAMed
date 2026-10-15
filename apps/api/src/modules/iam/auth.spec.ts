@@ -16,6 +16,7 @@ import { PrismaService } from '../../infrastructure/persistence/prisma.service';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-permissions';
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
+import { TenantDirectoryRepository } from '../tenant-context/tenant-directory.repository';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
 import { SessionRepository } from './session.repository';
@@ -47,7 +48,7 @@ describe('AuthService — login/refresh/logout', () => {
   const tokenService = new TokenService(new JwtService({}), fakeConfigService());
   const sessionRepository = new SessionRepository();
   const userAccountAuthRepository = new UserAccountAuthRepository();
-  const authService = new AuthService(unitOfWork, userAccountAuthRepository, sessionRepository, tokenService, new BranchAccessService(new BranchRepository()));
+  const authService = new AuthService(unitOfWork, userAccountAuthRepository, sessionRepository, tokenService, new BranchAccessService(new BranchRepository()), new TenantDirectoryRepository(appPrisma));
 
   let tenantAId: string;
   let tenantBId: string;

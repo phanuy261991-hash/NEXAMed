@@ -42,6 +42,9 @@ const EXEMPTIONS = {
   // Bảng đếm số thuần hạ tầng cho mã ngắn của danh mục toàn hệ thống (docs/DECISIONS.md #113) —
   // không phải dữ liệu nghiệp vụ hiển thị, cùng lý do miễn trừ như Permission.
   GlobalCodeSequence: [...APPEND_ONLY_EXEMPT, 'tenant_id'],
+  // Khu quản trị nền tảng SaaS (docs/DECISIONS.md #237): người vận hành KHÔNG thuộc công ty nào (không tenant_id, không soft-delete — khoá bằng is_active); nhật ký vận hành append-only, không khoá ngoại tới công ty.
+  PlatformOperator: ['tenant_id', 'deleted_at', 'created_by', 'updated_by'],
+  PlatformAuditLog: [...APPEND_ONLY_EXEMPT, 'tenant_id'],
 };
 
 const schema = readFileSync(SCHEMA_PATH, 'utf8');
