@@ -2,6 +2,8 @@
 
 > Hội thoại luôn tiếng Việt. **Commit/push CHỈ khi chủ dự án bảo** (push thẳng `master`, không nhánh/PR). **KHÔNG dựng gói on-prem liên tục** — chỉ dựng khi chủ dự án nói sắp giao khách (đã bị nhắc; gói `2026.10.15` dựng trước Đợt 3 và gói `2026.10.15.2` dựng lỗi/bỏ). Mockup mới phải được "duyệt" rõ ràng trước khi code; mockup có N câu "cần chốt" thì hỏi đủ N (chia lượt nếu >4, dùng AskUserQuestion). Ảnh chụp kiểm tra để ở scratchpad, KHÔNG lưu vào repo. Sau mỗi đợt chạy lại TOÀN BỘ test và báo kết quả (kèm bước cô lập tenant/chi nhánh). Chủ dự án nhắc nhiều lần: **code dùng chung, không lặp** (một service/hook/component cho cả nhóm báo cáo, tái dùng component có sẵn). Phiên này tiếp nối `HANDOFF-CLS-TabKetQua-ViecTreoDot2-2026-10-15.md` (file đó giờ là lịch sử).
 
+> **CẬP NHẬT cuối ngày 15/10/2026: bước 2 (mục 2) ĐÃ XONG** — đủ 7 việc, test + Chrome thật đạt, chi tiết ở `docs/DECISIONS.md` #236 (đoạn "Bước 2"). Còn lại từ mục 3: chốt phát hành `0.9.0`, Đợt 4 SaaS. Mục 2 bên dưới giữ làm lịch sử.
+
 ## 0. Trạng thái một câu
 
 Tất cả đã **commit + push `master`** (`2ce5ea8`, `e97a27c`, `4731d08`) TRỪ phần nền của **bước 2** đang làm dở (8 file chưa commit, liệt kê ở mục 2) — cây làm việc đang xanh (typecheck, test core 415, web role 6). Việc làm ngay: **hoàn tất bước 2 "Cập nhật phần mềm"** (mục 3), rồi chốt phát hành `0.9.0`, rồi **Đợt 4 SaaS**.

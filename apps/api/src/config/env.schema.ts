@@ -37,6 +37,8 @@ export const envSchema = z.object({
   RELEASED_AT: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   // `single` = một công ty trên một hệ thống riêng (on-prem/VPS/NAS, mặc định); `saas` = nhiều công ty dùng chung (Đợt 4). Một mã nguồn, hai chế độ.
   DEPLOYMENT_MODE: z.enum(['single', 'saas']).default('single'),
+  // Địa chỉ máy chủ phát hành (nơi đặt `manifest.json`) để KIỂM TRA bản mới (#236, bước 2). Do nhà cung cấp đặt lúc bàn giao — không có endpoint/giao diện cho khách nhập. Chuỗi rỗng (docker-compose truyền `${…:-}`) coi như chưa đặt.
+  RELEASE_SERVER_URL: z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.string().url().optional()),
 });
 
 export type Env = z.infer<typeof envSchema>;

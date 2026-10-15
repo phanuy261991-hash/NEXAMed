@@ -1,5 +1,6 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Buildings, CalendarBlank, CalendarCheck, Clock, CreditCard, Database as DatabaseIcon, MapPinLine, SlidersHorizontal, TreeStructure, Vault } from '@phosphor-icons/react';
+import { useLocation } from 'react-router-dom';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -7,6 +8,8 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
 import { useHasPermission } from '../auth/usePermission';
 import { BranchPane } from '../branch/BranchPane';
+import { SoftwareUpdatePane } from '../system/SoftwareUpdatePane';
+import { useSoftwareUpdateVisible } from '../system/software-update.queries';
 import { CashAccountPane } from '../cash-book/CashAccountPane';
 import { AppointmentConfigPane } from './AppointmentConfigPane';
 import { BackupConfigPane } from './BackupConfigPane';
@@ -77,6 +80,14 @@ const BRANCH_ITEM = { key: 'branches', label: 'Chi nhánh', icon: TreeStructure 
 /** Pill "Sao lưu dữ liệu" (docs/DECISIONS.md #217) — dựng động: chỉ thêm vào khi actor có quyền xem VÀ máy có container sao lưu. */
 const BACKUP_PILL: ConfigScreenPill = { key: 'backup', label: 'Sao lưu dữ liệu' };
 
+/** Pill "Cập nhật phần mềm" (docs/DECISIONS.md #236, bước 2) — dựng động: chỉ thêm vào khi actor có `software_update.read` VÀ hệ thống phục vụ một công ty (ở SaaS không có). */
+export const SOFTWARE_UPDATE_PILL: ConfigScreenPill = { key: 'software-update', label: 'Cập nhật phần mềm' };
+
+/** Trạng thái điều hướng (`navigate(..., { state })`) để mở thẳng một pill của trang này — dùng ở menu người dùng ("Cập nhật phần mềm"). */
+export interface ClinicConfigLocationState {
+  pillKey?: string;
+}
+
 /**
  * Trang "Cấu hình hệ thống" (`/admin/system-config`) — mục sidebar riêng trong nhóm "Quản trị",
  * tách khỏi trang "Danh mục" theo yêu cầu chủ dự án (docs/DECISIONS.md #040). Dùng chung khung
@@ -87,13 +98,18 @@ const BACKUP_PILL: ConfigScreenPill = { key: 'backup', label: 'Sao lưu dữ li�
 export function ClinicConfigPage() {
   // Vai trò chỉ có quyền sao lưu (`system_admin`) không có `clinic_config.update` → chỉ thấy pill "Sao lưu dữ liệu", các pill cấu hình phòng khám bị ẩn.
   const canConfigureClinic = useHasPermission('clinic_config', 'update');
-  const [activePillKey, setActivePillKey] = useState(canConfigureClinic ? FIRST_PILL.key : BACKUP_PILL.key);
-  const [activeItemKey, setActiveItemKey] = useState(canConfigureClinic ? FIRST_PILL.items![0]!.key : '');
+  const location = useLocation();
+  const locationKey = location.key;
+  const requestedPillKey = (location.state as ClinicConfigLocationState | null)?.pillKey;
+  const appliedRequestRef = useRef<string | null>(null);
+  const [activePillKey, setActivePillKey] = useState(requestedPillKey ?? (canConfigureClinic ? FIRST_PILL.key : BACKUP_PILL.key));
+  const [activeItemKey, setActiveItemKey] = useState(!requestedPillKey && canConfigureClinic ? FIRST_PILL.items![0]!.key : '');
 
   // Máy dev/cloud không có container sao lưu (`available=false`) → ẩn hẳn pill, không gọi API khi thiếu quyền (tránh 403).
   const canReadBackup = useHasPermission('system_backup', 'read');
   const backupConfigQuery = useBackupConfigQuery(canReadBackup);
   const showBackupPill = canReadBackup && backupConfigQuery.data?.available === true;
+  const showSoftwareUpdatePill = useSoftwareUpdateVisible();
   // Mục "Chi nhánh" (docs/DECISIONS.md #231) — chỉ hiện với actor có `branch.read` (mặc định clinic_admin). Hiện cả khi công ty mới có 1 chi nhánh: đó là cách thêm chi nhánh thứ hai.
   const canReadBranch = useHasPermission('branch', 'read');
   const PILLS = useMemo(() => {
@@ -102,8 +118,19 @@ export function ClinicConfigPage() {
         ? { ...pill, items: [pill.items[0]!, BRANCH_ITEM, ...pill.items.slice(1)] }
         : pill,
     );
-    return [...(canConfigureClinic ? basePills : []), ...(showBackupPill ? [BACKUP_PILL] : [])];
-  }, [canConfigureClinic, canReadBranch, showBackupPill]);
+    return [...(canConfigureClinic ? basePills : []), ...(showBackupPill ? [BACKUP_PILL] : []), ...(showSoftwareUpdatePill ? [SOFTWARE_UPDATE_PILL] : [])];
+  }, [canConfigureClinic, canReadBranch, showBackupPill, showSoftwareUpdatePill]);
+
+  // Menu người dùng ("Cập nhật phần mềm") mở trang này, kể cả khi đã đang ở đây: chọn đúng pill được yêu cầu MỘT lần cho mỗi lượt điều hướng (không ghim, để người dùng vẫn đổi pill được).
+  // Pill dựng động có thể chưa có lúc mới vào — chờ tới khi xuất hiện. Pill đang chọn không còn trong danh sách (ví dụ máy không có dịch vụ sao lưu) thì về pill đầu tiên.
+  useEffect(() => {
+    const requestPending = Boolean(requestedPillKey) && appliedRequestRef.current !== locationKey;
+    const target = requestPending ? PILLS.find((p) => p.key === requestedPillKey) : PILLS.some((p) => p.key === activePillKey) ? undefined : PILLS[0];
+    if (!target) return;
+    if (requestPending) appliedRequestRef.current = locationKey;
+    setActivePillKey(target.key);
+    setActiveItemKey(target.items?.[0]?.key ?? '');
+  }, [requestedPillKey, locationKey, PILLS, activePillKey]);
 
   const activePill = PILLS.find((p) => p.key === activePillKey);
   // Pill phẳng (không `items`, ví dụ "Cấu hình thanh toán") thì đoạn cuối lấy đúng nhãn của pill.
@@ -155,6 +182,7 @@ export function ClinicConfigPage() {
       {activePillKey === 'payment' && activeItemKey === 'cash-accounts' && <CashAccountPane />}
       {activePillKey === 'exam' && <ExamConfigPane />}
       {activePillKey === 'backup' && showBackupPill && <BackupConfigPane />}
+      {activePillKey === 'software-update' && showSoftwareUpdatePill && <SoftwareUpdatePane />}
       {activePillKey === 'code-templates' && (
         <Suspense fallback={null}>
           <BusinessCodeTemplatePane />

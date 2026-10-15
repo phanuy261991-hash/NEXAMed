@@ -17,5 +17,7 @@ import { SystemLogPurgeJob } from './system-log-purge.job';
   imports: [PatientModule, EncounterModule],
   controllers: [AuditLogController],
   providers: [AuditLogService, AuditLogRepository, SystemLogPurgeJob],
+  // Chỉ để module khác ĐỌC lịch sử một hành động cụ thể (vd `software-update`, #236) — ghi vẫn qua `writeAuditLog()`.
+  exports: [AuditLogRepository],
 })
 export class AuditModule {}

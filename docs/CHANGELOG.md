@@ -4,6 +4,10 @@
 
 ## 2026-10-15
 
+### Trang "Cập nhật phần mềm" (bước 2 quản lý phiên bản, `docs/DECISIONS.md` #236)
+
+Ở Cấu hình hệ thống có thêm mục **"Cập nhật phần mềm"** (chỉ hệ thống một công ty, người có quyền mới của Quản trị phòng khám): xem phiên bản đang chạy, kênh, ngày phát hành, bấm **"Kiểm tra cập nhật"** để hỏi máy chủ phát hành xem có bản mới không (ghi chú phát hành, cảnh báo có thay đổi cơ sở dữ liệu, bản trung gian nếu quá cũ) và bảng 5 lần kiểm tra gần đây. Máy chủ tự kiểm ~30 giây sau khi khởi động và mỗi 6 giờ; có bản mới thì avatar hiện chấm xanh và menu có nhãn "Mới". Nút "Cập nhật ngay" đang tắt — cập nhật tự động chưa hỗ trợ. Địa chỉ máy chủ phát hành do nhà cung cấp đặt (`RELEASE_SERVER_URL`), chưa đặt thì trang báo chưa cấu hình. Bản SaaS không có mục này. Môi trường khác: `db:seed` (quyền mới `software_update.read`) rồi khởi động lại API; không migration.
+
 ### Quản lý phiên bản phần mềm (`docs/DECISIONS.md` #236)
 
 Phần mềm có số phiên bản chuyên nghiệp theo SemVer (xuất phát `0.9.0`, lên `1.0.0` sau pilot) và số bản dựng (`0.9.0 · bản dựng 127`). Có hộp **"Giới thiệu"** trong menu người dùng (phiên bản, kênh Ổn định/Thử nghiệm, ngày phát hành, chế độ triển khai, ghi chú phát hành, thông tin kỹ thuật, nút sao chép thông tin gửi hỗ trợ), số phiên bản ở chân trang đăng nhập, và thông báo "hệ thống vừa được cập nhật, hãy tải lại trang" khi máy chủ đổi phiên bản. Số phiên bản chỉ đổi khi chủ động phát hành bằng `node scripts/release.mjs` (tăng số, kiểm ghi chú phát hành, tạo commit và tag); script dựng gói kiểm khớp số và tag. Trang "Cập nhật phần mềm" và bộ cập nhật tự động là các bước sau. Môi trường khác: không migration, không `db:seed`; khởi động lại API.

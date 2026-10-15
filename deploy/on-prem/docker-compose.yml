@@ -79,6 +79,8 @@ services:
       BACKUP_STATUS_FILE: /data/backup-status/backup-status.json
       # Chỉ để HIỂN THỊ thư mục đích sao lưu ở "Cấu hình hệ thống → Sao lưu dữ liệu" (#217).
       BACKUP_HOST_DIR_DISPLAY: ${BACKUP_HOST_DIR:-./backup-data}
+      # Địa chỉ máy chủ phát hành để KIỂM TRA bản mới (docs/DECISIONS.md #236) — nhà cung cấp đặt lúc bàn giao, để trống = chưa cấu hình.
+      RELEASE_SERVER_URL: ${RELEASE_SERVER_URL:-}
       # S6-06 (ADM-05) — Chromium cài qua apt trong apps/api/Dockerfile, luôn đúng đường dẫn này
       # trong container, không cần người cài đặt tự sửa.
       CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium

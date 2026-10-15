@@ -68,6 +68,7 @@ nexamed/
 | `NotificationPort` | no-op, ghi log nhắc lịch | SMS / Zalo OA / email |
 | `PatientIdentityPort` | trả chính `patient.id` của tenant | master patient index liên tenant |
 | `PdfRendererPort` (S6-06, xuất bệnh án PDF) | `puppeteer-core` + Chromium hệ thống | không đổi — chỉ thay adapter nếu đổi engine render |
+| `UpdateCheckPort` (#236, kiểm tra bản mới) | đọc `manifest.json` từ `RELEASE_SERVER_URL` qua HTTPS (chỉ kiểm tra, không tải) | kho ảnh / đối tượng lưu trữ có ký số, kèm cổng riêng cho bộ cập nhật (bước 3) |
 
 Adapter no-op **phải tồn tại và được đăng ký**, không để service gọi vào `undefined`. Khi triển khai thật, chỉ thay đăng ký DI trong module, không sửa service.
 

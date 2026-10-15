@@ -444,6 +444,7 @@ import {
   listBranchesQuerySchema,
   listBranchesResponseSchema,
   systemVersionSchema,
+  softwareUpdateStatusSchema,
   switchBranchRequestSchema,
   switchBranchResponseSchema,
   updateBranchRequestSchema,
@@ -583,6 +584,34 @@ registry.registerPath({
   summary: 'Phiên bản phần mềm đang chạy (công khai, không cần đăng nhập) — phiên bản SemVer, mã bản dựng, kênh, chế độ triển khai, phiên bản cơ sở dữ liệu, ghi chú phát hành',
   responses: {
     200: jsonResponse('Thành công', envelope(systemVersionSchema)),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/system/update/status',
+  tags: ['system'],
+  summary: 'Trạng thái cập nhật phần mềm (#236, bước 2) — kết quả lần kiểm tra bản mới gần nhất, 5 lần kiểm tra gần đây. Chỉ có ở hệ thống một công ty (SaaS trả 404)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(softwareUpdateStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền software_update.read'),
+    404: errorResponse('Hệ thống đang chạy chế độ SaaS'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/system/update/check',
+  tags: ['system'],
+  summary: '"Kiểm tra ngay" — hỏi máy chủ phát hành xem có bản mới không; ghi audit software_update.checked. Chưa cấu hình máy chủ phát hành thì chỉ trả trạng thái hiện tại',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(softwareUpdateStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền software_update.read'),
+    404: errorResponse('Hệ thống đang chạy chế độ SaaS'),
   },
 });
 

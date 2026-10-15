@@ -10,6 +10,8 @@ export interface ListAuditLogParams {
   patientId?: string;
   encounterIdsForPatient?: string[];
   actorId?: string;
+  /** Chỉ lấy đúng một hành động (vd lịch sử kiểm tra cập nhật phần mềm, #236). */
+  action?: string;
   occurredFrom?: Date;
   occurredTo?: Date;
 }
@@ -30,6 +32,9 @@ export class AuditLogRepository {
     const where: Prisma.AuditLogWhereInput = { tenantId };
     if (params.actorId) {
       where.actorId = params.actorId;
+    }
+    if (params.action) {
+      where.action = params.action;
     }
     if (params.occurredFrom || params.occurredTo) {
       where.occurredAt = {

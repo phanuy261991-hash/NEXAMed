@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { BACKUP_CONTROL_PORT, BACKUP_STATUS_PORT, E_PRESCRIPTION_GATEWAY_PORT, EVENT_BUS_PORT, INSURANCE_GATEWAY_PORT, PATIENT_IDENTITY_PORT, PDF_RENDERER_PORT, SIGNATURE_PORT, STORAGE_PORT } from '@nexamed/core';
+import { BACKUP_CONTROL_PORT, BACKUP_STATUS_PORT, E_PRESCRIPTION_GATEWAY_PORT, EVENT_BUS_PORT, INSURANCE_GATEWAY_PORT, PATIENT_IDENTITY_PORT, PDF_RENDERER_PORT, SIGNATURE_PORT, STORAGE_PORT, UPDATE_CHECK_PORT } from '@nexamed/core';
 import { LocalDiskStorageAdapter } from './storage/local-disk.adapter';
 import { InMemoryEventBusAdapter } from './eventbus/in-memory.adapter';
 import { NoopSignatureAdapter } from './signature/noop.adapter';
@@ -9,6 +9,7 @@ import { SameTenantPatientIdentityAdapter } from './patient-identity/same-tenant
 import { LocalFileBackupStatusAdapter } from './backup-status/local-file.adapter';
 import { LocalFileBackupControlAdapter } from './backup-control/local-file.adapter';
 import { PuppeteerPdfRendererAdapter } from './pdf/puppeteer-pdf-renderer.adapter';
+import { HttpReleaseServerAdapter } from './update/http-release-server.adapter';
 
 /**
  * Đăng ký DI cho 5 port còn lại của S1-06 (Storage/EventBus/Signature/Insurance/
@@ -37,7 +38,8 @@ import { PuppeteerPdfRendererAdapter } from './pdf/puppeteer-pdf-renderer.adapte
     { provide: BACKUP_STATUS_PORT, useClass: LocalFileBackupStatusAdapter },
     { provide: BACKUP_CONTROL_PORT, useClass: LocalFileBackupControlAdapter },
     { provide: PDF_RENDERER_PORT, useClass: PuppeteerPdfRendererAdapter },
+    { provide: UPDATE_CHECK_PORT, useClass: HttpReleaseServerAdapter },
   ],
-  exports: [STORAGE_PORT, EVENT_BUS_PORT, SIGNATURE_PORT, INSURANCE_GATEWAY_PORT, E_PRESCRIPTION_GATEWAY_PORT, PATIENT_IDENTITY_PORT, BACKUP_STATUS_PORT, BACKUP_CONTROL_PORT, PDF_RENDERER_PORT],
+  exports: [STORAGE_PORT, EVENT_BUS_PORT, SIGNATURE_PORT, INSURANCE_GATEWAY_PORT, E_PRESCRIPTION_GATEWAY_PORT, PATIENT_IDENTITY_PORT, BACKUP_STATUS_PORT, BACKUP_CONTROL_PORT, PDF_RENDERER_PORT, UPDATE_CHECK_PORT],
 })
 export class PortsModule {}

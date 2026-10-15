@@ -235,6 +235,8 @@ Số phiên bản người dùng thấy (hộp "Giới thiệu", chân trang đ�
 
 Quy ước số: **patch** (`0.9.0 → 0.9.1`) chỉ sửa lỗi; **minor** (`→ 0.10.0`) thêm tính năng không phá vỡ; **major** (`→ 1.0.0`) bản chính thức hoặc thay đổi lớn; **beta** (`0.10.0-beta.1`) kênh thử nghiệm. Hiện `0.9.0`, lên `1.0.0` sau khi qua pilot. Máy dev hiển thị cùng số nhưng kênh "Phát triển" và không có số bản dựng.
 
+**Kiểm tra bản mới trong ứng dụng (bước 2, #236):** đặt `RELEASE_SERVER_URL` trong `.env` (địa chỉ HTTPS của máy chủ phát hành, nơi đặt `manifest.json`) rồi khởi động lại `api`; để trống thì trang "Cập nhật phần mềm" báo chưa cấu hình. Chỉ kiểm tra và hiển thị — chưa tự cập nhật; cập nhật vẫn theo mục 2.3b. Cần `db:seed` một lần để có quyền `software_update.read`.
+
 ### 2.3b. Cập nhật bản mới lên hệ thống đang chạy
 
 > **Đã diễn tập 15/10/2026** trên bản sao riêng (Docker project tách biệt, cổng 8088): cài mới `2026.10.14` → tạo chi nhánh thứ 2 + bệnh nhân bằng API → `pg_dump` → nâng `2026.10.14.2` (áp `20261015090000_branch_dot2` + `db:seed`, dữ liệu cũ còn nguyên) → nâng `2026.10.15` (không migration; chi nhánh 2 tự có 1 kho + 1 quỹ tiền mặt lúc API khởi động, tab Kết quả cận lâm sàng trả 200 cho quản trị / 403 cho lễ tân). Chưa cài thử trên máy Windows sạch thật. Lưu ý: `-WebOrigin` không đổi cổng publish — muốn chạy cổng khác 80 phải sửa `WEB_HTTP_PORT` trong `.env` rồi `docker compose up -d`; chạy `build-and-export.ps1` phải từ chính PowerShell (chạy qua Git Bash làm `$PSScriptRoot` rỗng, gói bị ghi ra `C:\package`).

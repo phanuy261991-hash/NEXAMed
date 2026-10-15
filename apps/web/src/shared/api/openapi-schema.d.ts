@@ -673,6 +673,234 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/update/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trạng thái cập nhật phần mềm (#236, bước 2) — kết quả lần kiểm tra bản mới gần nhất, 5 lần kiểm tra gần đây. Chỉ có ở hệ thống một công ty (SaaS trả 404) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                state: "not_configured" | "never_checked" | "up_to_date" | "update_available" | "error";
+                                configured: boolean;
+                                releaseServerUrl: string | null;
+                                /** @enum {string} */
+                                channel: "stable" | "beta";
+                                currentVersion: string;
+                                latest: {
+                                    version: string;
+                                    releasedAt: string;
+                                    notes: {
+                                        features: string[];
+                                        improvements: string[];
+                                        fixes: string[];
+                                    };
+                                    /** @default false */
+                                    requiresMigration: boolean;
+                                    minimumFromVersion?: string;
+                                } | null;
+                                needsIntermediateVersion: boolean;
+                                lastCheckedAt: string | null;
+                                errorMessage: string | null;
+                                history: {
+                                    at: string;
+                                    byName: string | null;
+                                    /** @enum {string} */
+                                    result: "up_to_date" | "update_available" | "error";
+                                    latestVersion: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền software_update.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Hệ thống đang chạy chế độ SaaS */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/update/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Kiểm tra ngay" — hỏi máy chủ phát hành xem có bản mới không; ghi audit software_update.checked. Chưa cấu hình máy chủ phát hành thì chỉ trả trạng thái hiện tại */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                state: "not_configured" | "never_checked" | "up_to_date" | "update_available" | "error";
+                                configured: boolean;
+                                releaseServerUrl: string | null;
+                                /** @enum {string} */
+                                channel: "stable" | "beta";
+                                currentVersion: string;
+                                latest: {
+                                    version: string;
+                                    releasedAt: string;
+                                    notes: {
+                                        features: string[];
+                                        improvements: string[];
+                                        fixes: string[];
+                                    };
+                                    /** @default false */
+                                    requiresMigration: boolean;
+                                    minimumFromVersion?: string;
+                                } | null;
+                                needsIntermediateVersion: boolean;
+                                lastCheckedAt: string | null;
+                                errorMessage: string | null;
+                                history: {
+                                    at: string;
+                                    byName: string | null;
+                                    /** @enum {string} */
+                                    result: "up_to_date" | "update_available" | "error";
+                                    latestVersion: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền software_update.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Hệ thống đang chạy chế độ SaaS */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/branches/report-scope-options": {
         parameters: {
             query?: never;

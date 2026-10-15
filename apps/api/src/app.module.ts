@@ -47,6 +47,7 @@ import { HealthModule } from './modules/health/health.module';
 import { SystemModule } from './modules/system/system.module';
 import { BackupStatusModule } from './modules/backup-status/backup-status.module';
 import { BackupConfigModule } from './modules/backup-config/backup-config.module';
+import { SoftwareUpdateModule } from './modules/software-update/software-update.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -107,6 +108,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     SystemModule,
     BackupStatusModule,
     BackupConfigModule,
+    SoftwareUpdateModule,
   ],
 })
 export class AppModule implements NestModule {

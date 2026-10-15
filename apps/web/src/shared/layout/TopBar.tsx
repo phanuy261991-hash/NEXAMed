@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { CaretRight, Clock, GearSix, House, IdentificationBadge, Info, Pause, Play, SignOut, WarningCircle } from '@phosphor-icons/react';
+import { ArrowCircleUp, CaretRight, Clock, GearSix, House, IdentificationBadge, Info, Pause, Play, SignOut, WarningCircle } from '@phosphor-icons/react';
 import { Link, useMatch, useNavigate } from 'react-router-dom';
 import { logout } from '../../features/auth/auth.api';
 import { useAuthStore } from '../../features/auth/auth.store';
@@ -10,6 +10,8 @@ import {
   useSoloClinicWorkflowEnabledQuery,
 } from '../../features/clinic/clinic.queries';
 import { useClosingTimeReminder } from '../../features/clinic/useClosingTimeReminder';
+import { useSoftwareUpdateVisible, useUpdateAvailable } from '../../features/system/software-update.queries';
+import type { ClinicConfigLocationState } from '../../features/clinic/ClinicConfigPage';
 import { DOCTOR_ONLY_ROLES } from '../../features/auth/workflow-roles';
 import { getInitials } from '../format/initials';
 import { formatClockTime } from '../format/time';
@@ -81,6 +83,9 @@ export function TopBar() {
   const [gearMenuOpen, setGearMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  // Trang "Cập nhật phần mềm" (#236, bước 2): menu chỉ hiện cho tài khoản có quyền (hệ thống một công ty); chấm xanh + nhãn "Mới" khi máy chủ phát hành có bản mới.
+  const showSoftwareUpdate = useSoftwareUpdateVisible();
+  const updateAvailable = useUpdateAvailable();
   const gearRef = useRef<HTMLDivElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const [endShiftDialog, setEndShiftDialog] = useState<{ trigger?: 'SCHEDULED_END' } | null>(null);
@@ -306,10 +311,11 @@ export function TopBar() {
             }}
             aria-haspopup="menu"
             aria-expanded={accountMenuOpen}
-            aria-label="Menu tài khoản"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-xs font-bold text-blue-600 hover:bg-blue-100"
+            aria-label={updateAvailable ? 'Menu tài khoản (có phiên bản phần mềm mới)' : 'Menu tài khoản'}
+            className="relative flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-xs font-bold text-blue-600 hover:bg-blue-100"
           >
             {getInitials(user.displayName ?? user.fullName)}
+            {updateAvailable && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />}
           </button>
 
           {accountMenuOpen && (
@@ -342,6 +348,21 @@ export function TopBar() {
                 Giới thiệu
                 <span className="ml-auto text-xs font-semibold tabular-nums text-slate-500">v{WEB_VERSION}</span>
               </button>
+              {showSoftwareUpdate && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    navigate('/admin/system-config', { state: { pillKey: 'software-update' } satisfies ClinicConfigLocationState });
+                  }}
+                  className="flex w-full items-center gap-2 px-2.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  <ArrowCircleUp size={16} weight="regular" aria-hidden="true" />
+                  Cập nhật phần mềm
+                  {updateAvailable && <span className="ml-auto rounded-full bg-emerald-500 px-2 py-0.5 text-[11px] font-semibold text-white">Mới</span>}
+                </button>
+              )}
               <div className="my-1 h-px bg-slate-200" />
               <button
                 type="button"
