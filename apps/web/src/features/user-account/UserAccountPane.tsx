@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowCounterClockwise, LockKeyOpen, MagnifyingGlass, PencilSimple, Plus, Prohibit } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Key, LockKeyOpen, MagnifyingGlass, PencilSimple, Plus, Prohibit } from '@phosphor-icons/react';
 import type { UserAccountSummary } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
@@ -390,12 +390,41 @@ function ResetPasswordDialog({
   const [error, setError] = useState<string | null>(null);
   const resetMutation = useResetUserPasswordMutation();
 
+  function submit() {
+    if (newPassword.length < 8) return;
+    setError(null);
+    resetMutation.mutate(
+      { id: item.id, body: { newPassword, mustChangePassword, version: item.version } },
+      { onSuccess: onDone, onError: (err) => setError(errorMessage(err)) },
+    );
+  }
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-        <h3 className="text-[15px] font-semibold text-slate-900">Đặt lại mật khẩu — {item.fullName}</h3>
-        {error && <p className="mt-2 text-xs font-medium text-rose-600">{error}</p>}
-        <div className="mt-4 flex flex-col gap-1.5">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+    >
+      <ConfirmDialog
+        icon={Key}
+        title="Đặt lại mật khẩu"
+        rows={[{ label: 'Tài khoản', value: item.fullName, sub: item.username }]}
+        note="Đăng xuất mọi phiên đang mở của tài khoản này."
+        error={error}
+        onClose={onCancel}
+        actions={
+          <>
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              Huỷ
+            </Button>
+            <Button type="submit" loading={resetMutation.isPending} disabled={newPassword.length < 8}>
+              Đặt lại mật khẩu
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-1.5">
           <label htmlFor="reset-new-password" className="text-sm font-semibold text-slate-800">
             Mật khẩu mới
           </label>
@@ -405,27 +434,8 @@ function ResetPasswordDialog({
           <input type="checkbox" checked={mustChangePassword} onChange={(e) => setMustChangePassword(e.target.checked)} />
           Thay đổi mật khẩu lần đầu
         </label>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onCancel}>
-            Huỷ
-          </Button>
-          <Button
-            type="button"
-            loading={resetMutation.isPending}
-            disabled={newPassword.length < 8}
-            onClick={() => {
-              setError(null);
-              resetMutation.mutate(
-                { id: item.id, body: { newPassword, mustChangePassword, version: item.version } },
-                { onSuccess: onDone, onError: (err) => setError(errorMessage(err)) },
-              );
-            }}
-          >
-            Đặt lại mật khẩu
-          </Button>
-        </div>
-      </div>
-    </div>
+      </ConfirmDialog>
+    </form>
   );
 }
 

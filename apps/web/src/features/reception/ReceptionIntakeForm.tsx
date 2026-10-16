@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarCheck, CheckCircle, DotsThreeVertical, Plus, Trash, UserPlus } from '@phosphor-icons/react';
+import { CalendarCheck, CalendarX, CheckCircle, DotsThreeVertical, Plus, Prohibit, Trash, UserPlus, Warning } from '@phosphor-icons/react';
 import type { EncounterServiceItemInput, PatientDetail, PatientSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
@@ -8,6 +8,7 @@ import { isDateRangeActiveToday } from '../../shared/format/date';
 import { formatClockTime } from '../../shared/format/time';
 import { makeDraftId } from '../../shared/make-draft-id';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { Combobox, withLegacyValueOption } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { DoctorBreakDialog } from '../../shared/ui/DoctorBreakDialog';
@@ -1236,18 +1237,18 @@ export function ReceptionIntakeForm({
       )}
 
       {leaveConfirmDoctorId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-base font-semibold text-slate-900">{doctorCards.find((d) => d.id === leaveConfirmDoctorId)?.fullName ?? 'Bác sĩ này'} đang nghỉ</p>
-            <p className="mt-1 text-sm text-slate-600">
-              {(() => {
-                const leave = doctorCards.find((d) => d.id === leaveConfirmDoctorId)?.leaveToday;
-                return leave
-                  ? `Bác sĩ được duyệt nghỉ hôm nay (${formatLeaveWindow(leave)}). Vẫn chuyển bệnh nhân vào hàng đợi của bác sĩ này?`
-                  : 'Bác sĩ được duyệt nghỉ. Vẫn chuyển bệnh nhân vào hàng đợi của bác sĩ này?';
-              })()}
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={CalendarX}
+          tone="danger"
+          title="Bác sĩ đang nghỉ"
+          rows={[{ label: 'Bác sĩ', value: doctorCards.find((d) => d.id === leaveConfirmDoctorId)?.fullName ?? 'Bác sĩ này' }]}
+          note={(() => {
+            const leave = doctorCards.find((d) => d.id === leaveConfirmDoctorId)?.leaveToday;
+            return leave ? `Được duyệt nghỉ hôm nay (${formatLeaveWindow(leave)}). Vẫn chuyển bệnh nhân vào hàng đợi của bác sĩ này?` : 'Được duyệt nghỉ. Vẫn chuyển bệnh nhân vào hàng đợi của bác sĩ này?';
+          })()}
+          onClose={() => setLeaveConfirmDoctorId(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setLeaveConfirmDoctorId(null)}>
                 Chọn bác sĩ khác
               </Button>
@@ -1260,41 +1261,36 @@ export function ReceptionIntakeForm({
               >
                 Vẫn chọn
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
 
       {noShiftBlockedDoctorId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="alertdialog" aria-modal="true">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">
-              {doctorCards.find((d) => d.id === noShiftBlockedDoctorId)?.fullName ?? 'Bác sĩ này'} không có ca làm việc hôm nay
-            </p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Phòng khám đang chặn tiếp nhận bác sĩ không có ca. Hãy chọn bác sĩ có ca, chọn &quot;Theo Khoa&quot;, hoặc nhờ quản lý
-              xếp ca cho bác sĩ này.
-            </p>
-            <div className="mt-4 flex justify-end">
-              <Button type="button" onClick={() => setNoShiftBlockedDoctorId(null)}>
-                Đã hiểu
-              </Button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          icon={Prohibit}
+          tone="danger"
+          title="Không có ca làm việc hôm nay"
+          rows={[{ label: 'Bác sĩ', value: doctorCards.find((d) => d.id === noShiftBlockedDoctorId)?.fullName ?? 'Bác sĩ này' }]}
+          note='Phòng khám đang chặn tiếp nhận bác sĩ không có ca. Chọn bác sĩ có ca, chọn "Theo Khoa" hoặc nhờ quản lý xếp ca.'
+          onClose={() => setNoShiftBlockedDoctorId(null)}
+          actions={
+            <Button type="button" onClick={() => setNoShiftBlockedDoctorId(null)}>
+              Đã hiểu
+            </Button>
+          }
+        />
       )}
 
       {unregisteredShiftConfirmDoctorId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">
-              {doctorCards.find((d) => d.id === unregisteredShiftConfirmDoctorId)?.fullName ?? 'Bác sĩ này'} chưa đăng ký ca làm việc hôm
-              nay
-            </p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Vẫn chọn được nếu bác sĩ thực sự đang có mặt — chỉ là lời nhắc, không chặn thao tác của bạn.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={Warning}
+          title="Chưa đăng ký ca hôm nay"
+          rows={[{ label: 'Bác sĩ', value: doctorCards.find((d) => d.id === unregisteredShiftConfirmDoctorId)?.fullName ?? 'Bác sĩ này' }]}
+          note="Vẫn chọn được nếu bác sĩ đang có mặt, đây chỉ là lời nhắc."
+          onClose={() => setUnregisteredShiftConfirmDoctorId(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setUnregisteredShiftConfirmDoctorId(null)}>
                 Huỷ
               </Button>
@@ -1307,9 +1303,9 @@ export function ReceptionIntakeForm({
               >
                 Vẫn chọn
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );

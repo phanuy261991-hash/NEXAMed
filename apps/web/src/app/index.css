@@ -26,6 +26,19 @@
 }
 
 /**
+ * CHỮ TRONG Ô BẢNG DANH SÁCH nhẹ hơn (ui-guidelines mục 16, chủ dự án 16/10/2026: "tên trong các danh sách quá đậm nét"). Phát hiện khi đo bằng Chrome thật trên Windows: font hệ thống
+ * Segoe UI KHÔNG có bậc 500 nên `font-medium` (500) hiển thị GIỐNG HỆT `font-semibold` (600) — thang 3 mức chỉ còn 2 mức nhìn thấy (400 và ≥500), khiến cả bảng nhìn đặc. Nên
+ * ô bảng dùng 400 cho chữ TRUNG TÍNH (tên, mã, SĐT, ngày...); phân cấp bằng MÀU (tên slate-900 so với giá trị thường slate-600) và cỡ chữ, đúng nguyên tắc "nhấn bằng màu/cỡ, không bằng độ đậm".
+ * KHÔNG áp cho: số tiền/số liệu (`tabular-nums`), badge (nền màu/`rounded`), chữ viết hoa nhỏ (`uppercase`), nút (`button`). Chỉ trên màn hình — bản in giữ nguyên.
+ */
+@media screen {
+  :is([role='cell'], td):is(.font-medium, .font-semibold):is([class*='text-slate-'], [class*='text-blue-']):not([class*='tabular-nums'], [class*='uppercase'], [class*='rounded'], button),
+  :is([role='cell'], td) :is(.font-medium, .font-semibold):is([class*='text-slate-'], [class*='text-blue-']):not([class*='tabular-nums'], [class*='uppercase'], [class*='rounded'], button) {
+    font-weight: 400;
+  }
+}
+
+/**
  * Brand phụ — màu nhấn cho các thành phần LỰA CHỌN (chip/thẻ chọn 1-trong-nhiều: Nguồn đặt lịch,
  * chọn Bác sĩ, và các trường hợp tương tự sau này) — tách khỏi `blue-600` (brand chính, dành cho
  * điều hướng/hành động chính) để đỡ lạm dụng một màu xanh cho mọi trạng thái "đang chọn". Chốt

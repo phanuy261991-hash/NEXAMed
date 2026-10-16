@@ -108,7 +108,8 @@ export function PatientListPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
+    // Trần 1800px căn giữa: màn siêu rộng (3440px) không để cột Họ tên/Địa chỉ giãn xa dữ liệu (docs/DECISIONS.md #240).
+    <div className="mx-auto flex h-full w-full max-w-[1800px] flex-col gap-3 p-4">
       <h1 className="sr-only">Danh sách bệnh nhân</h1>
 
       <div className="flex-shrink-0 px-1">

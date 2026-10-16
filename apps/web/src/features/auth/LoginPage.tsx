@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Lock, LockKey, Warning, WifiSlash } from '@phosphor-icons/react';
+import { Check, CloudSun, Lock, LockKey, MoonStars, Sun, SunHorizon, Warning, WifiSlash } from '@phosphor-icons/react';
 import { useAppConfig } from '../../app/AppConfigProvider';
+import { getVietnamDayPeriod, getVietnamGreeting, type DayPeriod } from '../../shared/format/greeting';
 import { Button } from '../../shared/ui/Button';
 import { WEB_BUILD_ID, WEB_VERSION, formatDisplayVersion } from '../../shared/version/app-version';
 import { login } from './auth.api';
@@ -15,6 +16,15 @@ import { classifyLoginError, formatCountdown, secondsRemaining, type LoginFailur
  * điện thoại là màn đầy đủ không nền, header gọn chỉ logo + tên + "Phần mềm quản lý phòng khám". Khung lỗi theo `.claude/docs/ui-guidelines.md` mục 4.3 (inline, viền màu). Khoá tạm có đếm lùi
  * (docs/DECISIONS.md #239). Chưa làm: ảnh nền do phòng khám tự tải lên (mockup câu 7, làm sau).
  */
+/** Biểu tượng theo buổi: bình minh (sáng), mặt trời (trưa), mây nắng (chiều), trăng sao (tối). */
+function GreetingIcon({ period }: { period: DayPeriod }) {
+  const props = { size: 24, weight: 'fill' as const };
+  if (period === 'morning') return <SunHorizon {...props} />;
+  if (period === 'noon') return <Sun {...props} />;
+  if (period === 'afternoon') return <CloudSun {...props} />;
+  return <MoonStars {...props} />;
+}
+
 const JOURNEY: ReadonlyArray<{ title: string; hint: string }> = [
   { title: 'Đặt lịch', hint: 'Lịch hẹn theo bác sĩ, không trùng giờ' },
   { title: 'Tiếp nhận', hint: 'Hàng đợi khám và sinh hiệu' },
@@ -44,6 +54,12 @@ export function LoginPage() {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
 
+  // Câu chào đổi theo khung giờ (giờ Việt Nam), cập nhật mỗi phút để trang mở lâu vẫn chào đúng buổi.
+  const [greeting, setGreeting] = useState(() => ({ text: getVietnamGreeting(), period: getVietnamDayPeriod() }));
+  useEffect(() => {
+    const id = window.setInterval(() => setGreeting({ text: getVietnamGreeting(), period: getVietnamDayPeriod() }), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -190,7 +206,15 @@ export function LoginPage() {
           <p className="hidden text-xs tabular-nums text-slate-700 desktop:block">{version}</p>
         </aside>
 
-        <main className="flex flex-col items-center px-6 pb-[calc(18px+env(safe-area-inset-bottom,0px))] pt-6 desktop:px-12 desktop:pb-6 desktop:pt-7">
+        <main className="flex flex-col items-center px-6 pb-[calc(18px+env(safe-area-inset-bottom,0px))] pt-6 desktop:px-12 desktop:pb-6 desktop:pt-9">
+          {/* Câu chào theo giờ: nằm trên cùng cột form, ngang hàng với logo ở panel trái (cùng mép trên py-9, cùng ô 36px). */}
+          <div className="mb-3 flex w-full max-w-[420px] items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-teal-tint text-brand-teal-active desktop:h-9 desktop:w-9" aria-hidden="true">
+              <GreetingIcon period={greeting.period} />
+            </span>
+            <p className="text-xl font-semibold tracking-tight text-brand-teal-active">{greeting.text}</p>
+          </div>
+
           {/* Chế độ SaaS (#237): tên miền phụ + tên công ty nhận từ địa chỉ truy cập. */}
           {company && (
             <div className="mb-3 hidden w-full max-w-[420px] justify-end desktop:flex">
@@ -207,8 +231,8 @@ export function LoginPage() {
               </div>
             )}
 
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 desktop:text-[26px]">Đăng nhập</h1>
-            <p className="mb-5 mt-1.5 text-sm text-slate-600">Dùng tài khoản do quản trị viên phòng khám cấp.</p>
+            <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900 desktop:text-[26px]">Đăng nhập</h1>
+            <p className="mb-5 mt-1.5 text-center text-sm text-slate-600">Nhập thông tin tài khoản của bạn</p>
 
             {suspended && (
               <AlertBox tone="amber" icon={<Warning size={18} weight="bold" aria-hidden="true" />}>

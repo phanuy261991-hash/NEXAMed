@@ -13,7 +13,7 @@ node scripts/ui-audit/layout-audit.cjs     # ~53 trang × 10 cỡ màn hình: cu
 ONLY=inventory/transfers,suppliers node scripts/ui-audit/layout-audit.cjs   # chỉ vài trang (không có / đầu)
 node scripts/ui-audit/weight-audit.cjs     # font-weight THẬT theo vai trò (tiêu đề, đầu cột, ô bảng, nhãn, nút): mong đợi KHÔNG có giá trị >= 700
 ```
-Biến môi trường: `UI_AUDIT_WEB`, `UI_AUDIT_API`, `UI_AUDIT_TENANT`, `UI_AUDIT_USER`, `UI_AUDIT_PASS`, `UI_AUDIT_OUT`. Chạy TUẦN TỰ một phiên đăng nhập (refresh token xoay vòng — không chạy hai bản cùng lúc). Mặc định dùng tài khoản dev của tenant test cố định.
+Biến môi trường: `UI_AUDIT_EXTRA` (thêm trang cần dữ liệu riêng, dạng `/nhan|/duong-dan,...`), `UI_AUDIT_WEB`, `UI_AUDIT_API`, `UI_AUDIT_TENANT`, `UI_AUDIT_USER`, `UI_AUDIT_PASS`, `UI_AUDIT_OUT`. Chạy TUẦN TỰ một phiên đăng nhập (refresh token xoay vòng — không chạy hai bản cùng lúc). Mặc định dùng tài khoản dev của tenant test cố định.
 
 ## Phạm vi chưa phủ
 Tab/pill con trong trang, hộp thoại, trạng thái có dữ liệu lớn, trang cần dữ liệu riêng chưa có ở tenant dev.

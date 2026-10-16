@@ -145,7 +145,7 @@ export function TopBar() {
 
   return (
     <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5">
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm">
+      <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1 pr-3 text-sm">
         <Link
           to="/"
           aria-label="Về Tổng quan"
@@ -157,12 +157,12 @@ export function TopBar() {
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
           return (
-            <span key={`${item.label}-${index}`} className="flex items-center gap-1">
+            <span key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-1">
               <CaretRight size={11} weight="bold" className="text-slate-300" aria-hidden="true" />
               {!isLast && item.to ? (
                 <Link
                   to={item.to}
-                  className="rounded-md px-2 py-1 font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+                  className="truncate rounded-md px-2 py-1 font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
                 >
                   {item.label}
                 </Link>
@@ -170,8 +170,8 @@ export function TopBar() {
                 <span
                   className={
                     isLast
-                      ? 'rounded-md bg-blue-50 px-2 py-1 font-semibold text-blue-700'
-                      : 'rounded-md px-2 py-1 font-medium text-slate-500'
+                      ? 'truncate rounded-md bg-blue-50 px-2 py-1 font-semibold text-blue-700'
+                      : 'truncate rounded-md px-2 py-1 font-medium text-slate-500'
                   }
                 >
                   {item.label}
@@ -182,7 +182,7 @@ export function TopBar() {
         })}
       </nav>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-shrink-0 items-center gap-3">
         {isOnEncounterPage && isDoctor && (
           <Suspense fallback={null}>
             <DoctorQueueButton />

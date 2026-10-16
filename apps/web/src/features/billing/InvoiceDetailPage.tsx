@@ -5,6 +5,7 @@ import type { CombinedInvoicePrintResponse, DiscountType, PaymentMethod } from '
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { PrintButton } from '../../shared/print/PrintButton';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { CashTenderPills } from '../../shared/ui/CashTenderPills';
@@ -1029,74 +1030,58 @@ export function InvoiceDetailPage() {
         </div>
       )}
 
-      {/* Đồng bộ khuôn với `CancelEncounterDialog.tsx` (overlay /45, p-4 ngoài/p-5 trong, rounded-lg,
-          shadow-xl theo .claude/docs/ui-guidelines.md mục 2.2, <form> để Enter submit được — mục
-          4.4 — và huy hiệu tròn nổi bật số tiền thay khung chữ thuần, đúng khuôn #095). */}
+      {/* Hoàn tiền toàn phần khi huỷ lượt khám — `ConfirmDialog` dùng chung (ui-guidelines mục 15b), <form> để Enter xác nhận (mục 4.4). */}
       {refundOpen && invoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="refund-title">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <form onSubmit={(e) => void handleRefund(e)}>
-              <p id="refund-title" className="text-sm font-semibold text-slate-900">
-                Hoàn tiền?
-              </p>
-              <p className="mt-1.5 text-xs text-slate-500">Lượt khám này đã huỷ. Chỉ hoàn TOÀN PHẦN, không sửa lại được.</p>
-
-              <div className="mt-3 flex items-center gap-3 rounded-md bg-violet-50/70 py-2.5 pl-2.5 pr-3">
-                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-violet-500 text-white">
-                  <ArrowCounterClockwise size={16} weight="bold" aria-hidden="true" />
-                </div>
-                <p className="text-xs leading-snug text-slate-700">
-                  Trả lại <span className="text-sm font-semibold text-slate-900">{formatVnd(invoice.dueAmount)}</span> cho khách.
-                </p>
-              </div>
-
-              <div className="mt-3.5">
-                <label htmlFor="refund-reason" className="mb-1 block text-sm font-semibold text-slate-800">
-                  Lý do <span className="text-rose-500">*</span>
-                </label>
-                <textarea
-                  id="refund-reason"
-                  rows={3}
-                  required
-                  value={refundReason}
-                  onChange={(e) => setRefundReason(e.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  placeholder="Ví dụ: khách bỏ về, chưa dùng dịch vụ nào"
-                />
-              </div>
-
-              <div className="mt-4 flex justify-end gap-2">
+        <form onSubmit={(e) => void handleRefund(e)}>
+          <ConfirmDialog
+            icon={ArrowCounterClockwise}
+            tone="danger"
+            title="Hoàn tiền"
+            rows={[{ label: 'Trả lại khách', value: formatVnd(invoice.dueAmount) }]}
+            note="Lượt khám đã huỷ. Chỉ hoàn toàn phần, không sửa lại được."
+            onClose={() => setRefundOpen(false)}
+            actions={
+              <>
                 <Button type="button" variant="secondary" onClick={() => setRefundOpen(false)}>
                   Đóng
                 </Button>
                 <Button type="submit" variant="danger" disabled={refundReason.trim() === ''} loading={refundMutation.isPending}>
                   Xác nhận hoàn tiền
                 </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+              </>
+            }
+          >
+            <label htmlFor="refund-reason" className="mb-1 block text-sm font-semibold text-slate-800">
+              Lý do <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              id="refund-reason"
+              rows={3}
+              required
+              autoFocus
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              placeholder="Ví dụ: khách bỏ về, chưa dùng dịch vụ nào"
+            />
+          </ConfirmDialog>
+        </form>
       )}
 
       {quickTopUpAmount !== null && invoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="quick-topup-title">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p id="quick-topup-title" className="text-sm font-semibold text-slate-900">
-              Nạp tiền &amp; thu ngay?
-            </p>
-            <p className="mt-1.5 text-xs text-slate-500">Số tiền nạp sẽ trừ ngay vào ví rồi thu luôn phiếu này — không sửa lại được sau khi xác nhận.</p>
-
-            <div className="mt-3 flex items-center gap-3 rounded-md bg-emerald-50/70 py-2.5 pl-2.5 pr-3">
-              <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-emerald-600 text-white">
-                <Wallet size={16} weight="fill" aria-hidden="true" />
-              </div>
-              <p className="text-xs leading-snug text-slate-700">
-                Nạp <span className="text-sm font-semibold text-slate-900">{formatVnd(quickTopUpAmount)}</span> vào ví, thu đủ{' '}
-                <span className="text-sm font-semibold text-slate-900">{formatVnd(invoice.dueAmount)}</span> cho phiếu {invoice.invoiceNo}.
-              </p>
-            </div>
-
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={Wallet}
+          title="Nạp tiền & thu ngay"
+          rows={[
+            { label: 'Nạp vào ví', value: formatVnd(quickTopUpAmount) },
+            { label: 'Thu phiếu', value: formatVnd(invoice.dueAmount), sub: invoice.invoiceNo },
+          ]}
+          note="Tiền nạp trừ ngay vào ví rồi thu luôn phiếu này, không sửa lại được."
+          onClose={() => {
+            if (!topUpAndPayMutation.isPending) setQuickTopUpAmount(null);
+          }}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setQuickTopUpAmount(null)} disabled={topUpAndPayMutation.isPending}>
                 Huỷ
               </Button>
@@ -1113,11 +1098,11 @@ export function InvoiceDetailPage() {
                   }
                 }}
               >
-                Xác nhận nạp &amp; thu
+                Xác nhận nạp & thu
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
 
       {cancelOpen && invoice && (

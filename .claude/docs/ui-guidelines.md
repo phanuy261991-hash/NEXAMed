@@ -434,4 +434,8 @@ Mẫu sai đã gặp 2 lần liên tiếp ở `WaitingCard`/`InProgressCard` (`a
 | Số liệu nổi bật (KPI, tổng tiền) | `text-xl`–`text-2xl` + `tabular-nums` | semibold | `text-slate-900` |
 | Đoạn mô tả, ghi chú, trợ giúp | `text-sm`/`text-xs` | normal | `text-slate-600`/`text-slate-500` |
 
+**Lưu ý hiển thị thật (phát hiện 16/10/2026, đo bằng Chrome thật trên Windows)**: font hệ thống Segoe UI KHÔNG có bậc 500, nên `font-medium` (500) hiển thị GIỐNG HỆT `font-semibold` (600) — chỉ còn 2 mức nhìn thấy (400 và ≥500). Vì thế **chữ trong ô bảng danh sách dùng 400** (tên, mã, SĐT, ngày...; `app/index.css` có luật `@media screen` hạ mọi `font-medium/semibold` màu slate/blue trong `[role=cell]`/`td` về 400, trừ số liệu `tabular-nums`, badge `rounded`, chữ `uppercase`, `button`), phân cấp bằng MÀU (tên `text-slate-900`, giá trị thường `text-slate-600`) và cỡ chữ; số tiền giữ semibold. Chủ dự án: "tên trong các danh sách quá đậm nét".
+
+**Thẻ KPI** (vd `ReceptionListPage.tsx`): nền trắng + viền `slate-200` mảnh, KHÔNG đổ bóng, KHÔNG nền pha màu mờ (`bg-*-50/30`); màu chỉ ở ô biểu tượng nền ĐẶC (`bg-amber-500`... chữ trắng), con số `text-slate-900`.
+
 **Kiểm tra**: đo độ đậm THẬT bằng `getComputedStyle` (script `weight-audit`: gom `font-weight` theo vai trò — tiêu đề, đầu cột, ô bảng, nhãn, nút — trên các trang chính); kết quả mong đợi: KHÔNG có giá trị ≥ 700 ngoài bản in. Lần đo đầu 16/10/2026 trước khi chuẩn hoá: 220 ô bảng và 155 đầu cột ở 700; sau chuẩn hoá: tối đa 600. UI mới phải đối chiếu bảng trên trước khi báo xong — không tự chọn độ đậm theo cảm tính.

@@ -3,6 +3,7 @@ import { ArrowCounterClockwise } from '@phosphor-icons/react';
 import type { ComboboxOption } from '../../shared/ui/Combobox';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { Combobox } from '../../shared/ui/Combobox';
 import { formatVnd } from '../../shared/format/currency';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
@@ -64,62 +65,43 @@ export function SettleWalletDialog({ patientId, balance, onClose }: { patientId:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="settle-wallet-title">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-        <form onSubmit={(e) => void handleSubmit(e)}>
-          <p id="settle-wallet-title" className="text-sm font-semibold text-slate-900">
-            Tất toán ví tạm ứng?
-          </p>
-          <p className="mt-1.5 text-xs text-slate-500">Khoá ví lại — không nạp/trừ được nữa sau khi xác nhận.</p>
-
-          <div className="mt-3 flex items-center gap-3 rounded-md bg-violet-50/70 py-2.5 pl-2.5 pr-3">
-            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-violet-500 text-white">
-              <ArrowCounterClockwise size={16} weight="bold" aria-hidden="true" />
-            </div>
-            <p className="text-xs leading-snug text-slate-700">
-              {balance > 0 ? (
-                <>
-                  Hoàn lại <span className="text-sm font-semibold text-slate-900">{formatVnd(balance)}</span> cho khách.
-                </>
-              ) : (
-                'Số dư ví đang là 0đ — không cần hoàn tiền, chỉ khoá ví.'
-              )}
-            </p>
-          </div>
-
-          {error && (
-            <p role="alert" className="mt-3 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
-              {error}
-            </p>
-          )}
-
-          {needsMethod && (
-            <div className="mt-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex flex-col gap-1">
-                <label htmlFor="settle-method" className="text-sm font-semibold text-slate-800">
-                  Hình thức hoàn <span className="text-rose-500">*</span>
-                </label>
-                <Combobox id="settle-method" value={paymentMethodCode} options={paymentMethodOptions} onChange={setPaymentMethodCode} />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="settle-account" className="text-sm font-semibold text-slate-800">
-                  Quỹ xuất tiền <span className="text-rose-500">*</span>
-                </label>
-                <Combobox id="settle-account" value={cashAccountId} options={cashAccountOptions} onChange={setCashAccountId} />
-              </div>
-            </div>
-          )}
-
-          <div className="mt-4 flex justify-end gap-2">
+    <form onSubmit={(e) => void handleSubmit(e)}>
+      <ConfirmDialog
+        icon={ArrowCounterClockwise}
+        tone="danger"
+        title="Tất toán ví tạm ứng"
+        rows={[{ label: needsMethod ? 'Hoàn lại khách' : 'Số dư ví', value: formatVnd(balance) }]}
+        note={needsMethod ? 'Khoá ví, không nạp/trừ được nữa sau khi xác nhận.' : 'Số dư 0đ nên chỉ khoá ví, không nạp/trừ được nữa.'}
+        error={error}
+        onClose={onClose}
+        actions={
+          <>
             <Button type="button" variant="secondary" onClick={onClose}>
               Đóng
             </Button>
             <Button type="submit" variant="danger" disabled={!isValid} loading={settleMutation.isPending}>
               Xác nhận tất toán
             </Button>
+          </>
+        }
+      >
+        {needsMethod && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="settle-method" className="text-sm font-semibold text-slate-800">
+                Hình thức hoàn <span className="text-rose-500">*</span>
+              </label>
+              <Combobox id="settle-method" value={paymentMethodCode} options={paymentMethodOptions} onChange={setPaymentMethodCode} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="settle-account" className="text-sm font-semibold text-slate-800">
+                Quỹ xuất tiền <span className="text-rose-500">*</span>
+              </label>
+              <Combobox id="settle-account" value={cashAccountId} options={cashAccountOptions} onChange={setCashAccountId} />
+            </div>
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+      </ConfirmDialog>
+    </form>
   );
 }

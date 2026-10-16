@@ -514,6 +514,8 @@ export function StockReceiptFormPage() {
   // rộng hơn mức cần thiết như `minWidth` cố định cũ (gây lệch, đẩy cột phải ra ngoài màn hình) —
   // bảng tự vừa khít khi đủ chỗ, chỉ cuộn ngang khi thật sự không đủ 180px cho cột tên.
   const lineGridCols = ['minmax(180px, 1.8fr)', '100px', '110px', '130px', '130px', '130px', ...(showLineDiscountCol ? ['110px'] : []), '130px', ...(!readOnly ? ['50px'] : [])].join(' ');
+  // Tổng bề ngang TỐI THIỂU của mọi cột + lề `px-4` — khung bảng nhỏ hơn mức này thì CUỘN NGANG cả tiêu đề lẫn thân bảng (thân có `overflow-x-hidden` nên trước đây cắt mất cột "Thành tiền" ở màn ≤1024px).
+  const lineMinWidth = 180 + 100 + 110 + 130 * 3 + (showLineDiscountCol ? 110 : 0) + 130 + (!readOnly ? 50 : 0) + 32;
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
@@ -631,7 +633,7 @@ export function StockReceiptFormPage() {
                 phải cuộn"). `minmax(180px, 1.8fr)` ở `lineGridCols` đã tự đảm bảo cột tên không bị
                 bóp — bảng tự vừa khít khi đủ chỗ, CHỈ cuộn ngang khi khung thật sự hẹp hơn tổng độ
                 rộng tối thiểu của mọi cột cộng lại (CSS Grid tự tính, không cần khai tay ở đây). */}
-            <div className="flex h-full flex-col">
+            <div className="flex h-full flex-col" style={{ minWidth: lineMinWidth }}>
               <div
                 role="row"
                 style={{ gridTemplateColumns: lineGridCols }}

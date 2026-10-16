@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ArrowsClockwise, Warning } from '@phosphor-icons/react';
+import { ArrowsClockwise, Prohibit, Warning } from '@phosphor-icons/react';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { Textarea } from '../../shared/ui/Textarea';
 
@@ -77,27 +78,25 @@ export function CancelAmendmentDialog({ onConfirm, onClose }: { onConfirm: () =>
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="cancel-amend-title">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-        <p id="cancel-amend-title" className="text-sm font-semibold text-slate-900">
-          Huỷ đính chính?
-        </p>
-        <p className="mt-1.5 text-xs leading-relaxed text-slate-500">Các thay đổi đang soạn sẽ bị bỏ và kết quả đã duyệt trước đó được khôi phục nguyên vẹn.</p>
-        {error && (
-          <div role="alert" className="mt-3 flex items-start gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">
-            <Warning size={15} weight="fill" className="mt-0.5 flex-none" aria-hidden="true" />
-            {error}
-          </div>
-        )}
-        <div className="mt-4 flex justify-end gap-2.5">
+    <ConfirmDialog
+      icon={Prohibit}
+      tone="danger"
+      title="Huỷ đính chính"
+      note="Thay đổi đang soạn bị bỏ, kết quả đã duyệt trước đó được khôi phục nguyên vẹn."
+      error={error}
+      onClose={() => {
+        if (!busy) onClose();
+      }}
+      actions={
+        <>
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
             Quay lại
           </Button>
           <Button type="button" variant="danger" loading={busy} onClick={() => void confirm()}>
             Huỷ đính chính
           </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }

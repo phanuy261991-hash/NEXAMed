@@ -63,7 +63,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             {/* Suspense bọc RIÊNG vùng nội dung (không bọc cả app) — Sidebar/TopBar vẫn hiện
                 nguyên trong lúc chunk JS của route lazy đang tải, không nháy cả màn hình. */}
             <main className="flex-1 overflow-y-auto">
-              <Suspense fallback={<PageFallback />}>{children}</Suspense>
+              {/* Trần bề ngang nội dung ~2200px, căn giữa: màn siêu rộng (3440px) không để bảng giãn hết ngang, cột Họ tên/Địa chỉ cách xa dữ liệu (docs/DECISIONS.md #240, ui-guidelines mục 15). */}
+              <div className="mx-auto h-full w-full max-w-[2200px]">
+                <Suspense fallback={<PageFallback />}>{children}</Suspense>
+              </div>
             </main>
           </div>
         </div>

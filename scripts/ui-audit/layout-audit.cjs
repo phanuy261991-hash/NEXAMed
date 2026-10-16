@@ -126,6 +126,12 @@ function measure() {
   await pick('/suppliers?limit=1', '/suppliers/:id', '/suppliers/:id');
   await pick('/price-lists?limit=1', '/admin/price-lists/:id', '/admin/price-lists/:priceListId');
 
+  // Trang cần dữ liệu riêng chưa có sẵn (vd phiếu nhập sinh từ điều chuyển): UI_AUDIT_EXTRA='/nhan|/duong-dan,/nhan2|/duong-dan2'.
+  for (const spec of (process.env.UI_AUDIT_EXTRA || '').split(',').filter(Boolean)) {
+    const [label, url] = spec.split('|');
+    if (label && url) routes.push([label, url]);
+  }
+
   console.log('Số trang kiểm:', routes.length, '| cỡ màn hình:', VIEWPORTS.length);
   const report = {};
   let n = 0;

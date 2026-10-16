@@ -163,20 +163,15 @@ export function ReceptionListPage() {
     { key: 'done', label: 'Đã hoàn tất', value: kpi.done, icon: CheckCircle, tone: 'blue' },
     { key: 'cancelled', label: 'Đã huỷ', value: kpi.cancelled, icon: Prohibit, tone: 'violet' },
   ];
-  const KPI_TONE_CLASSES: Record<KpiTone, { border: string; bg: string; label: string; value: string; iconBg: string; iconText: string }> = {
-    slate: { border: 'border-slate-200', bg: 'bg-white', label: 'text-slate-500', value: 'text-slate-800', iconBg: 'bg-slate-100', iconText: 'text-slate-500' },
-    amber: { border: 'border-amber-200', bg: 'bg-amber-50/30', label: 'text-amber-700', value: 'text-amber-600', iconBg: 'bg-amber-100', iconText: 'text-amber-600' },
-    emerald: {
-      border: 'border-emerald-200',
-      bg: 'bg-emerald-50/30',
-      label: 'text-emerald-700',
-      value: 'text-emerald-600',
-      iconBg: 'bg-emerald-100',
-      iconText: 'text-emerald-600',
-    },
-    rose: { border: 'border-rose-200', bg: 'bg-rose-50/30', label: 'text-rose-700', value: 'text-rose-600', iconBg: 'bg-rose-100', iconText: 'text-rose-600' },
-    blue: { border: 'border-blue-200', bg: 'bg-blue-50/30', label: 'text-blue-700', value: 'text-blue-600', iconBg: 'bg-blue-100', iconText: 'text-blue-600' },
-    violet: { border: 'border-violet-200', bg: 'bg-violet-50/30', label: 'text-violet-700', value: 'text-violet-600', iconBg: 'bg-violet-100', iconText: 'text-violet-600' },
+  // Thẻ KPI phẳng, KHÔNG đổ bóng, KHÔNG nền pha màu mờ (chủ dự án 16/10/2026: "bóng mờ màu sắc nhìn không hiện đại, không sắc nét"): nền trắng + viền slate mảnh, màu CHỈ nằm ở ô biểu tượng
+  // nền ĐẶC (đúng token tín hiệu ở ui-guidelines mục 2.1a) — con số luôn slate-900 cho nét đậm, dễ đọc.
+  const KPI_TONE_CLASSES: Record<KpiTone, { iconBg: string }> = {
+    slate: { iconBg: 'bg-slate-700' },
+    amber: { iconBg: 'bg-amber-500' },
+    emerald: { iconBg: 'bg-emerald-500' },
+    rose: { iconBg: 'bg-rose-500' },
+    blue: { iconBg: 'bg-blue-600' },
+    violet: { iconBg: 'bg-violet-500' },
   };
 
   /** Panel "Tải theo Bác sĩ" — bác sĩ đã đóng ca (ENDED) nhưng còn bệnh nhân đang chờ gán lên đầu
@@ -271,12 +266,12 @@ export function ReceptionListPage() {
             {KPI_ITEMS.map((kpiItem) => {
               const tone = KPI_TONE_CLASSES[kpiItem.tone];
               return (
-                <div key={kpiItem.key} className={`flex items-center justify-between gap-2 rounded-xl border ${tone.border} ${tone.bg} p-4 shadow-sm`}>
+                <div key={kpiItem.key} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-4">
                   <div>
-                    <p className={`text-xs font-semibold uppercase tracking-wider ${tone.label}`}>{kpiItem.label}</p>
-                    <p className={`mt-1 text-3xl font-semibold tabular-nums ${tone.value}`}>{kpiItem.value}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">{kpiItem.label}</p>
+                    <p className="mt-1 text-3xl font-semibold tabular-nums text-slate-900">{kpiItem.value}</p>
                   </div>
-                  <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg ${tone.iconBg} ${tone.iconText}`}>
+                  <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-white ${tone.iconBg}`}>
                     <kpiItem.icon size={22} weight="bold" aria-hidden="true" />
                   </div>
                 </div>
