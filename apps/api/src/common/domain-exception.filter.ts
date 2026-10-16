@@ -239,7 +239,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
       // Kho Thuốc GĐ5 — `PrescriptionStockInsufficientError` mang theo danh sách thuốc thiếu tồn để
       // FE hiện đúng dòng nào vượt tồn bao nhiêu, cùng cơ chế duck-type với `lockedUntil`/`shortfall`.
       const details = 'lockedUntil' in exception
-        ? { lockedUntil: (exception as { lockedUntil: Date }).lockedUntil, retryAfterMinutes: (exception as { retryAfterMinutes?: number }).retryAfterMinutes }
+        ? { lockedUntil: (exception as { lockedUntil: Date }).lockedUntil, retryAfterMinutes: (exception as { retryAfterMinutes?: number }).retryAfterMinutes, retryAfterSeconds: (exception as { retryAfterSeconds?: number }).retryAfterSeconds }
         : 'shortfall' in exception
           ? (() => {
               const e = exception as unknown as { balance: number; due: number; shortfall: number };

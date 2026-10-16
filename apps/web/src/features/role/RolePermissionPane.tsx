@@ -7,6 +7,7 @@ import { fetchOneFromList } from '../../shared/api/fetch-one-from-list';
 import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -142,7 +143,7 @@ export function RolePermissionPane() {
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-[15px] font-bold text-slate-900">Vai trò &amp; Phân quyền</h2>
+          <h2 className="text-[15px] font-semibold text-slate-900">Vai trò &amp; Phân quyền</h2>
           <p className="mt-0.5 text-xs text-slate-500">
             Chọn một vai trò bên trái, cấu hình quyền theo từng phân hệ ở bảng bên phải. Dấu &quot;—&quot; nghĩa là tính năng đó
             không có loại quyền này trong hệ thống (không phải ô có thể chọn).
@@ -180,7 +181,7 @@ export function RolePermissionPane() {
                 }`}
               >
                 <div
-                  className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-[11px] font-bold ${
+                  className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-[11px] font-semibold ${
                     role.isSystemDefault ? 'bg-slate-100 text-slate-600' : 'bg-brand-teal-tint text-brand-teal'
                   }`}
                 >
@@ -297,13 +298,15 @@ export function RolePermissionPane() {
       )}
 
       {hideTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">Ẩn vai trò &quot;{hideTarget.name}&quot;?</p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Chỉ ẩn được vai trò không còn tài khoản nào đang gán. Có thể tạo lại đúng tên này sau nếu cần.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={EyeSlash}
+          tone="danger"
+          title="Ẩn vai trò"
+          rows={[{ label: 'Vai trò', value: hideTarget.name }]}
+          note="Chỉ ẩn được khi không còn tài khoản gán"
+          onClose={() => setHideTarget(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setHideTarget(null)}>
                 Huỷ
               </Button>
@@ -329,9 +332,9 @@ export function RolePermissionPane() {
               >
                 Ẩn vai trò
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );

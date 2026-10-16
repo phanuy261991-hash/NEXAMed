@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Trash, TreeStructure } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Prohibit, Trash, TreeStructure } from '@phosphor-icons/react';
 import type { BranchSummary } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
@@ -124,7 +125,7 @@ export function BranchPane() {
           <div className="scroll-hover h-full overflow-y-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="w-28 px-4 py-2.5 text-left">Mã</th>
                   <th className="px-4 py-2.5 text-left">Tên chi nhánh</th>
                   <th className="px-4 py-2.5 text-left">Địa chỉ</th>
@@ -142,7 +143,7 @@ export function BranchPane() {
                   >
                     <td className="px-4 py-2 text-left text-sm font-semibold text-slate-800">{b.code}</td>
                     <td className="px-4 py-2 text-left">
-                      <div className="max-w-[320px] truncate font-bold text-slate-900" title={b.name}>{b.name}</div>
+                      <div className="max-w-[320px] truncate font-semibold text-slate-900" title={b.name}>{b.name}</div>
                       {b.isDefault && <div className="text-xs font-medium text-slate-500">Mặc định</div>}
                     </td>
                     <td className="max-w-[360px] truncate px-4 py-2 text-left text-slate-600" title={b.address ?? undefined}>{b.address ?? '—'}</td>
@@ -198,13 +199,15 @@ export function BranchPane() {
       )}
 
       {deactivateTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="break-words text-sm font-semibold text-slate-900">Ngưng chi nhánh &quot;{deactivateTarget.name}&quot;?</p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Chi nhánh bị ẩn khỏi danh sách chọn; lượt khám, lịch hẹn và dữ liệu cũ giữ nguyên. Nhân viên đang làm ở đây cần chọn chi nhánh khác ở lần đăng nhập sau. Có thể khôi phục sau.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={Prohibit}
+          tone="danger"
+          title="Ngưng chi nhánh"
+          rows={[{ label: 'Chi nhánh', value: deactivateTarget.name }]}
+          note="Dữ liệu cũ giữ nguyên"
+          onClose={() => setDeactivateTarget(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
                 Huỷ
               </Button>
@@ -228,9 +231,9 @@ export function BranchPane() {
               >
                 Ngưng dùng
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );

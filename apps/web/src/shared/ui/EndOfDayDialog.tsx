@@ -85,7 +85,7 @@ export function EndOfDayDialog({
             <div className="mx-auto flex h-[52px] w-[52px] items-center justify-center rounded-full bg-amber-100 text-amber-600">
               <Warning size={24} weight="fill" aria-hidden="true" />
             </div>
-            <h2 id="eod-noshift-title" className="mt-4 text-[17px] font-bold text-slate-900">
+            <h2 id="eod-noshift-title" className="mt-4 text-[17px] font-semibold text-slate-900">
               Chưa có ca thu ngân đang mở
             </h2>
             <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
@@ -194,7 +194,7 @@ function EndOfDayWizard({
         <div className="flex-shrink-0 border-b border-slate-100 px-6 pt-6 pb-4">
           <div className="flex items-start justify-between gap-6">
             <div>
-              <h2 id="eod-title" className="text-lg font-bold text-slate-900">
+              <h2 id="eod-title" className="text-lg font-semibold text-slate-900">
                 Kết thúc ngày làm việc
               </h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
@@ -202,7 +202,7 @@ function EndOfDayWizard({
               </p>
             </div>
             {!closedShift && (
-              <span className="flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-brand-teal/25 bg-brand-teal-panel px-3 py-1.5 text-xs font-bold text-brand-teal-active">
+              <span className="flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-brand-teal/25 bg-brand-teal-panel px-3 py-1.5 text-xs font-semibold text-brand-teal-active">
                 <CalendarBlank size={13} weight="bold" aria-hidden="true" />
                 {formatTodayChipLabel(today)}
               </span>
@@ -250,7 +250,7 @@ function EndOfDayWizard({
 
                   {pendingCount > 0 && (
                     <div className="mt-4 flex items-center gap-3 rounded-md bg-amber-50/70 py-2 pl-2.5 pr-3">
-                      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-amber-400 text-[15px] font-bold text-white">{pendingCount}</div>
+                      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-amber-400 text-[15px] font-semibold text-white">{pendingCount}</div>
                       <p className="text-xs leading-snug text-slate-700">
                         <span className="font-semibold text-slate-900">lượt khám chưa xử lý</span> — tự động chuyển về hàng chờ chung của Khoa.
                       </p>
@@ -260,7 +260,7 @@ function EndOfDayWizard({
                   <div className="mt-5 flex items-center gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5">
                     <CheckCircle size={20} weight="fill" className="flex-shrink-0 text-blue-600" aria-hidden="true" />
                     <p className="text-[13.5px] leading-snug">
-                      <span className="font-bold text-blue-800">Có ca thu ngân đang mở</span>
+                      <span className="font-semibold text-blue-800">Có ca thu ngân đang mở</span>
                       <span className="font-medium text-blue-600"> — sẽ gộp Chốt ca ngay sau bước này</span>
                     </p>
                   </div>
@@ -353,7 +353,7 @@ function EndOfDayWizard({
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="eod-receipt-title">
         <div className="flex max-h-[92vh] w-full max-w-[620px] flex-col rounded-xl bg-white shadow-xl">
           <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-6 pt-6 pb-4">
-            <h2 id="eod-receipt-title" className="text-lg font-bold text-slate-900">
+            <h2 id="eod-receipt-title" className="text-lg font-semibold text-slate-900">
               Phiếu bàn giao ca
             </h2>
             <button type="button" onClick={() => setReceiptOpen(false)} className="text-slate-400 hover:text-slate-700" aria-label="Đóng">
@@ -376,7 +376,7 @@ function ChecklistRow({ children }: { children: React.ReactNode }) {
       <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
         <CheckCircle size={17} weight="fill" aria-hidden="true" />
       </span>
-      <span className="text-[14.5px] font-bold text-emerald-800">{children}</span>
+      <span className="text-[14.5px] font-semibold text-emerald-800">{children}</span>
     </div>
   );
 }

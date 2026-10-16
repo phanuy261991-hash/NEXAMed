@@ -200,7 +200,7 @@ export function ClinicalOrderPanel({
         setAdding(false);
       }
       if (unitPrice === null) {
-        setLocalError(`"${service.name}" chưa có đơn giá hiệu lực — khai đơn giá ở Danh mục cận lâm sàng hoặc chỉ định ra ngoài.`);
+        setLocalError(`"${service.name}" chưa có đơn giá hiệu lực — khai đơn giá ở Danh mục Cận lâm sàng hoặc chỉ định ra ngoài.`);
         return;
       }
     }
@@ -406,7 +406,7 @@ export function ClinicalOrderPanel({
           <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3.5 py-2.5">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" aria-hidden="true" />
-              <h3 className="text-[13.5px] font-bold text-slate-900">Làm tại phòng khám</h3>
+              <h3 className="text-[13.5px] font-semibold text-slate-900">Làm tại phòng khám</h3>
               <span className="text-xs text-slate-500">{inHouseCount} dịch vụ · tính tiền, vào hàng đợi, nhập kết quả tại đây</span>
             </div>
             <span className="text-xs font-semibold text-slate-700">
@@ -415,7 +415,7 @@ export function ClinicalOrderPanel({
           </div>
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <th className="w-12 px-2 py-2.5 text-center">TT</th>
                 <th className="w-28 px-2 py-2.5 text-center">Mã</th>
                 <th className="px-2 py-2.5 text-center">Tên dịch vụ</th>
@@ -454,7 +454,7 @@ export function ClinicalOrderPanel({
                     )}
                   </td>
                   <td className="px-2.5 py-2.5 text-right font-medium tabular-nums text-slate-700">{item.unitPrice === null ? '—' : formatVnd(item.unitPrice)}</td>
-                  <td className="px-2.5 py-2.5 text-right font-bold tabular-nums text-slate-900">{item.unitPrice === null ? '—' : formatVnd(item.unitPrice * item.quantity)}</td>
+                  <td className="px-2.5 py-2.5 text-right font-semibold tabular-nums text-slate-900">{item.unitPrice === null ? '—' : formatVnd(item.unitPrice * item.quantity)}</td>
                   <td className="px-2 py-2.5 text-center">
                     <RowTail locked={item.locked} canEdit={canEdit} label={item.name} onRemove={() => setDraft((p) => ({ ...p, items: p.items.filter((i) => i.key !== item.key) }))} />
                   </td>
@@ -477,12 +477,12 @@ export function ClinicalOrderPanel({
         <section className="overflow-hidden rounded-lg border border-amber-300 bg-white" aria-label="Chỉ định ra ngoài làm">
           <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-3.5 py-2.5">
             <span className="h-2.5 w-2.5 rounded-full bg-amber-600" aria-hidden="true" />
-            <h3 className="text-[13.5px] font-bold text-slate-900">Chỉ định ra ngoài làm</h3>
+            <h3 className="text-[13.5px] font-semibold text-slate-900">Chỉ định ra ngoài làm</h3>
             <span className="text-xs text-amber-900">{externalItems.length} dịch vụ · không tính tiền, không vào hàng đợi — chỉ in phiếu cho bệnh nhân mang đi</span>
           </div>
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <th className="w-12 px-2 py-2.5 text-center">TT</th>
                 <th className="w-28 px-2 py-2.5 text-center">Mã</th>
                 <th className="px-2 py-2.5 text-center">Tên dịch vụ</th>
@@ -495,7 +495,7 @@ export function ClinicalOrderPanel({
                 <tr key={item.key} className="border-b border-slate-100">
                   <td className="px-2 py-2.5 text-center font-medium text-slate-600">{index + 1}</td>
                   <td className="px-2 py-2.5 text-center">
-                    {item.code ? <span className="font-semibold text-slate-800">{item.code}</span> : <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[10.5px] font-bold text-slate-600">Tự do</span>}
+                    {item.code ? <span className="font-semibold text-slate-800">{item.code}</span> : <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-600">Tự do</span>}
                   </td>
                   <td className="px-2 py-2.5 text-left font-medium text-slate-900">
                     {item.name}
@@ -605,7 +605,7 @@ function PackageRowsView({ pkg, canEdit, onRemove }: { pkg: DraftPackage; canEdi
         <td className="px-2 py-2.5" />
         <td className="px-2 py-2.5 text-center font-medium text-slate-700">1</td>
         <td className="px-2.5 py-2.5 text-right font-medium tabular-nums text-slate-700">{formatVnd(pkg.unitPrice)}</td>
-        <td className="px-2.5 py-2.5 text-right font-bold tabular-nums text-slate-900">{formatVnd(pkg.unitPrice)}</td>
+        <td className="px-2.5 py-2.5 text-right font-semibold tabular-nums text-slate-900">{formatVnd(pkg.unitPrice)}</td>
         <td className="px-2 py-2.5 text-center">
           <RowTail locked={pkg.locked} canEdit={canEdit} label={pkg.name} onRemove={onRemove} />
         </td>

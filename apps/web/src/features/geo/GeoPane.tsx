@@ -130,7 +130,7 @@ function GeoTable({ rows, emptyLabel }: { rows: { code: string; name: string }[]
     <div className="scroll-hover flex-1 overflow-auto rounded-lg border border-slate-200 bg-white">
       <table className="w-full border-collapse text-sm">
         <thead className="sticky top-0 z-10">
-          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <th className="w-28 px-4 py-2.5 text-center">Mã</th>
             <th className="px-4 py-2.5 text-left">Tên</th>
           </tr>
@@ -138,7 +138,7 @@ function GeoTable({ rows, emptyLabel }: { rows: { code: string; name: string }[]
         <tbody>
           {rows.map((r) => (
             <tr key={r.code} className="border-b border-slate-200 last:border-0">
-              <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{r.code}</td>
+              <td className="px-4 py-2 text-center text-sm font-semibold text-slate-800">{r.code}</td>
               <td className="px-4 py-2 text-left font-medium text-slate-900">{r.name}</td>
             </tr>
           ))}

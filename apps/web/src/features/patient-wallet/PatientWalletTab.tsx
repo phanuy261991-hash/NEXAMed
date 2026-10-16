@@ -85,11 +85,11 @@ export function PatientWalletTab({ patientId }: { patientId: string }) {
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[minmax(260px,1.1fr)_repeat(3,minmax(120px,0.75fr))]">
         <div className="flex flex-col justify-between gap-3.5 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
           <div>
-            <div className="flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-wide text-emerald-700">
+            <div className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide text-emerald-700">
               <Wallet size={14} weight="fill" aria-hidden="true" />
               Số dư khả dụng
             </div>
-            <div className="text-[30px] font-bold leading-tight tabular-nums text-emerald-700">{formatVnd(wallet?.balance ?? 0)}</div>
+            <div className="text-[30px] font-semibold leading-tight tabular-nums text-emerald-700">{formatVnd(wallet?.balance ?? 0)}</div>
             {wallet && (
               <p className="mt-1 text-[13px] text-emerald-700">
                 {isActive ? 'Ví đang hoạt động' : 'Ví đã khoá (đã tất toán)'}
@@ -119,25 +119,25 @@ export function PatientWalletTab({ patientId }: { patientId: string }) {
         </div>
 
         <div className="flex flex-col justify-center gap-1.5 rounded-[10px] border border-slate-200 bg-white p-3.5 shadow-sm">
-          <span className="text-[13px] font-bold uppercase tracking-wide text-slate-500">Tổng đã nạp</span>
-          <span className="text-[19px] font-bold tabular-nums text-slate-900">{formatVnd(wallet?.totalToppedUp ?? 0)}</span>
+          <span className="text-[13px] font-semibold uppercase tracking-wide text-slate-500">Tổng đã nạp</span>
+          <span className="text-[19px] font-semibold tabular-nums text-slate-900">{formatVnd(wallet?.totalToppedUp ?? 0)}</span>
           <span className="text-sm font-medium text-slate-600">{wallet?.topUpCount ?? 0} lần nạp</span>
         </div>
         <div className="flex flex-col justify-center gap-1.5 rounded-[10px] border border-slate-200 bg-white p-3.5 shadow-sm">
-          <span className="text-[13px] font-bold uppercase tracking-wide text-slate-500">Đã sử dụng</span>
-          <span className="text-[19px] font-bold tabular-nums text-slate-900">{formatVnd(wallet?.totalUsed ?? 0)}</span>
+          <span className="text-[13px] font-semibold uppercase tracking-wide text-slate-500">Đã sử dụng</span>
+          <span className="text-[19px] font-semibold tabular-nums text-slate-900">{formatVnd(wallet?.totalUsed ?? 0)}</span>
           <span className="text-sm font-medium text-slate-600">{wallet?.deductCount ?? 0} lượt khám</span>
         </div>
         <div className="flex flex-col justify-center gap-1.5 rounded-[10px] border border-slate-200 bg-white p-3.5 shadow-sm">
-          <span className="text-[13px] font-bold uppercase tracking-wide text-slate-500">Giao dịch gần nhất</span>
-          <span className="text-[19px] font-bold text-slate-900">{wallet?.lastTransactionAt ? formatWalletDate(wallet.lastTransactionAt) : '—'}</span>
+          <span className="text-[13px] font-semibold uppercase tracking-wide text-slate-500">Giao dịch gần nhất</span>
+          <span className="text-[19px] font-semibold text-slate-900">{wallet?.lastTransactionAt ? formatWalletDate(wallet.lastTransactionAt) : '—'}</span>
           <span className="truncate text-sm font-medium text-slate-600">{transactions[0] ? walletTransactionDescription(transactions[0]) : 'Chưa có giao dịch'}</span>
         </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-          <span className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
             <Receipt size={16} weight="fill" className="text-blue-600" aria-hidden="true" />
             Lịch sử giao dịch ví
           </span>
@@ -149,7 +149,7 @@ export function PatientWalletTab({ patientId }: { patientId: string }) {
           <div className="scroll-hover overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="px-3 py-2.5 text-center">Thời gian</th>
                   <th className="px-3 py-2.5 text-center">Chứng từ</th>
                   <th className="px-3 py-2.5 text-center">Loại</th>
@@ -173,11 +173,11 @@ export function PatientWalletTab({ patientId }: { patientId: string }) {
                         <StatusBadge tone={BADGE_TONE_MAP[meta.badgeTone]}>{meta.label}</StatusBadge>
                       </td>
                       <td className="px-3 py-3 text-left text-slate-700">{walletTransactionDescription(tx)}</td>
-                      <td className={`whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums ${isCredit ? 'text-emerald-700' : 'text-rose-600'}`}>
+                      <td className={`whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums ${isCredit ? 'text-emerald-700' : 'text-rose-600'}`}>
                         {isCredit ? '+' : '−'}
                         {formatVnd(tx.amount)}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums text-slate-900">{formatVnd(tx.balanceAfter)}</td>
+                      <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-slate-900">{formatVnd(tx.balanceAfter)}</td>
                       <td className="whitespace-nowrap px-3 py-3 text-left text-slate-700">{tx.createdByName}</td>
                     </tr>
                   );

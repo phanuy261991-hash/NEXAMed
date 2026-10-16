@@ -156,11 +156,11 @@ export function MyAccountDialog({ onClose }: { onClose: () => void }) {
         {/* Header — avatar + tên + dòng meta (username/vai trò/khoa phòng/trạng thái) gộp 1 khối, không lặp lại. */}
         <div className="flex flex-shrink-0 items-center justify-between gap-4 border-b border-slate-200 px-6 py-4">
           <div className="flex min-w-0 items-center gap-3.5">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[15px] font-bold text-blue-600">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[15px] font-semibold text-blue-600">
               {getInitials(currentUser.displayName ?? currentUser.fullName)}
             </div>
             <div className="min-w-0">
-              <h2 id="my-account-title" className="truncate text-lg font-bold text-slate-900">
+              <h2 id="my-account-title" className="truncate text-lg font-semibold text-slate-900">
                 {currentUser.displayName ?? currentUser.fullName}
               </h2>
               <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[13px] text-slate-500">

@@ -167,7 +167,7 @@ function NavItem({ to, label, icon: IconComponent, end, collapsed, indent, badge
             <IconComponent size={collapsed ? 20 : 18} weight={isActive ? 'fill' : 'regular'} aria-hidden="true" className="flex-shrink-0" />
             {!collapsed && <span className="truncate">{label}</span>}
             {!collapsed && Boolean(badge) && (
-              <span className={`ml-auto flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ${badgeTone === 'emerald' ? 'bg-emerald-500' : 'bg-amber-500'}`}>{badge}</span>
+              <span className={`ml-auto flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white ${badgeTone === 'emerald' ? 'bg-emerald-500' : 'bg-amber-500'}`}>{badge}</span>
             )}
           </>
         )}
@@ -232,7 +232,7 @@ export function Sidebar() {
   // patient.read (họ đều có), sai tinh thần "chỉ Quản trị" của cả nhóm — theo BẤT KỲ quyền quản
   // trị nào thay vì permission route thật sự dùng, xem comment ADMIN_ANY_PERMISSIONS phía trên.
   const canSeeCatalogClinical = isAdmin;
-  // "Danh mục cận lâm sàng" (#212) — gate theo ĐÚNG quyền của route guard (`PARACLINICAL_CATALOG_PERMISSIONS`).
+  // "Danh mục Cận lâm sàng" (#212) — gate theo ĐÚNG quyền của route guard (`PARACLINICAL_CATALOG_PERMISSIONS`).
   const canSeeCatalogParaclinical = useHasAnyPermission(PARACLINICAL_CATALOG_PERMISSIONS);
   const canSeeCatalogPharmacy = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
   // "Bảng giá" (#212 GĐ2) — gate theo ĐÚNG quyền của route guard (`PRICE_LIST_ADMIN_PERMISSIONS`); `price_list.read` một mình không đủ.
@@ -331,10 +331,10 @@ export function Sidebar() {
       }`}
     >
       <div className="flex h-14 flex-shrink-0 items-center gap-2.5 border-b border-slate-800 px-4">
-        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-extrabold">
+        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-semibold">
           NX
         </div>
-        {!collapsed && <span className="truncate text-[15px] font-bold">NEXAMed</span>}
+        {!collapsed && <span className="truncate text-[15px] font-semibold">NEXAMed</span>}
       </div>
 
       <nav className="scroll-hover flex-1 overflow-y-auto p-2.5" aria-label="Điều hướng chính">
@@ -799,7 +799,7 @@ export function Sidebar() {
                   )}
                   {canSeeCatalogClinical && <NavItem to="/admin/catalog-clinical" label="Danh mục Chuyên môn" icon={GraduationCap} collapsed={false} indent />}
                   {canSeeCatalogParaclinical && (
-                    <NavItem to="/admin/catalog-paraclinical" label="Danh mục cận lâm sàng" icon={Flask} collapsed={false} indent />
+                    <NavItem to="/admin/catalog-paraclinical" label="Danh mục Cận lâm sàng" icon={Flask} collapsed={false} indent />
                   )}
                   {/* "Danh mục kho" — chuyển từ nhóm "Quản lý kho" xuống đây theo yêu cầu chủ dự án
                       (16/09/2026, docs/DECISIONS.md #157), route/quyền giữ nguyên. */}

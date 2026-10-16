@@ -95,7 +95,7 @@ export function StockIssueHeaderDialog({
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="issue-header-dialog-title">
       <div className="w-full max-w-2xl rounded-lg bg-white p-5 shadow-xl">
-        <p id="issue-header-dialog-title" className="text-base font-bold text-slate-900">
+        <p id="issue-header-dialog-title" className="text-base font-semibold text-slate-900">
           Thông tin phiếu xuất kho
         </p>
 

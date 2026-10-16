@@ -66,7 +66,7 @@ export function ResultTemplatePane() {
         </div>
         {servicesQuery.isError && <ErrorBanner message="Không tải được danh sách dịch vụ." onRetry={() => servicesQuery.refetch()} />}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <div className="flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-800">Dịch vụ kỹ thuật</div>
+          <div className="flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-800">Dịch vụ kỹ thuật</div>
           <div className="scroll-hover min-h-0 flex-1 overflow-y-auto">
             {servicesQuery.isLoading && (
               <div className="space-y-2 p-3">
@@ -100,7 +100,7 @@ export function ResultTemplatePane() {
           </Button>
         )}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <div className="flex-shrink-0 truncate border-b-2 border-blue-600 bg-slate-100 px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <div className="flex-shrink-0 truncate border-b-2 border-blue-600 bg-slate-100 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-800">
             {selectedService ? `Mẫu của ${selectedService.name}` : 'Mẫu của dịch vụ'}
           </div>
           <div className="scroll-hover min-h-0 flex-1 overflow-y-auto">
@@ -118,9 +118,9 @@ export function ResultTemplatePane() {
                   className={`block w-full border-b border-slate-100 px-3 py-2.5 text-left ${active ? 'bg-blue-50' : 'hover:bg-slate-50'} ${t.isActive ? '' : 'opacity-50'}`}
                 >
                   <span className="flex items-center gap-2">
-                    <span className={`min-w-0 truncate text-[13px] ${active ? 'font-bold text-blue-700' : 'font-medium text-slate-900'}`}>{t.name}</span>
-                    {t.isDefault && <span className="flex-shrink-0 rounded-md bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white">Mặc định</span>}
-                    {!t.isActive && <span className="flex-shrink-0 rounded-md bg-slate-300 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">Đã ẩn</span>}
+                    <span className={`min-w-0 truncate text-[13px] ${active ? 'font-semibold text-blue-700' : 'font-medium text-slate-900'}`}>{t.name}</span>
+                    {t.isDefault && <span className="flex-shrink-0 rounded-md bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">Mặc định</span>}
+                    {!t.isActive && <span className="flex-shrink-0 rounded-md bg-slate-300 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">Đã ẩn</span>}
                   </span>
                   <span className="mt-0.5 block truncate text-[11.5px] text-slate-400">{preview}</span>
                 </button>
@@ -162,12 +162,12 @@ function ServiceButton({ service, active, count, onClick }: { service: Technical
       className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2.5 text-left ${active ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
     >
       <span className="min-w-0">
-        <span className={`block truncate text-[13px] ${active ? 'font-bold text-blue-700' : 'font-medium text-slate-900'}`}>{service.name}</span>
+        <span className={`block truncate text-[13px] ${active ? 'font-semibold text-blue-700' : 'font-medium text-slate-900'}`}>{service.name}</span>
         <span className="block text-[11px] text-slate-400">
           {service.code} · {TECHNICAL_SERVICE_KIND_LABELS[service.serviceKind]}
         </span>
       </span>
-      <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-bold ${count === 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{count}</span>
+      <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${count === 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{count}</span>
     </button>
   );
 }
@@ -243,7 +243,7 @@ function TemplateEditor({
     >
       <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5">
         <div className="min-w-0">
-          <h2 className="truncate text-[15.5px] font-bold text-slate-900">{template ? template.name : 'Mẫu mới'}</h2>
+          <h2 className="truncate text-[15.5px] font-semibold text-slate-900">{template ? template.name : 'Mẫu mới'}</h2>
           <p className="mt-0.5 text-xs text-slate-500">
             {service.name} ({service.code}) · dùng chung toàn phòng khám
           </p>

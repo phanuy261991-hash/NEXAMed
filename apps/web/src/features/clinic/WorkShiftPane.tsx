@@ -3,6 +3,7 @@ import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Trash } fro
 import type { WorkShiftItem } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -128,7 +129,7 @@ export function WorkShiftPane() {
           <div className="scroll-hover h-full overflow-y-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="w-10 px-4 py-2.5 text-center">
                     <SelectionCheckbox
                       checked={rowSelection.allLoadedSelected}
@@ -151,7 +152,7 @@ export function WorkShiftPane() {
                     <td className="px-4 py-2 text-center">
                       <SelectionCheckbox checked={rowSelection.isSelected(item.id)} onChange={() => rowSelection.toggle(item.id)} ariaLabel={`Chọn ${item.name}`} />
                     </td>
-                    <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
+                    <td className="px-4 py-2 text-center text-sm font-semibold text-slate-800">{item.code}</td>
                     <td className="px-4 py-2 text-left">
                       <span className="flex items-center gap-2 font-medium text-slate-900">
                         <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: WORK_SHIFT_COLOR_HEX[item.color] }} />
@@ -208,11 +209,15 @@ export function WorkShiftPane() {
       )}
 
       {deactivateTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">Xoá &quot;{deactivateTarget.name}&quot; khỏi danh mục?</p>
-            <p className="mt-1.5 text-xs text-slate-500">Có thể khôi phục lại sau. Ca đã dùng để đăng ký lịch làm việc trước đó sẽ không bị thay đổi.</p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={Trash}
+          tone="danger"
+          title="Xoá ca làm việc"
+          rows={[{ label: 'Ca', value: deactivateTarget.name }]}
+          note="Có thể khôi phục lại sau"
+          onClose={() => setDeactivateTarget(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
                 Huỷ
               </Button>
@@ -236,9 +241,9 @@ export function WorkShiftPane() {
               >
                 Xoá
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );

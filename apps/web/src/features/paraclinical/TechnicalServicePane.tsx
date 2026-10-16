@@ -30,7 +30,7 @@ const KIND_FILTERS: { key: TechnicalServiceKind | 'ALL'; label: string }[] = [
 type DialogState = { mode: 'create' } | { mode: 'view' | 'edit'; id: string } | null;
 
 /**
- * Pill "Dịch vụ kỹ thuật" của "Danh mục cận lâm sàng" (Cận lâm sàng GĐ1, docs/DECISIONS.md #212, mockup màn 1) — khung
+ * Pill "Dịch vụ kỹ thuật" của "Danh mục Cận lâm sàng" (Cận lâm sàng GĐ1, docs/DECISIONS.md #212, mockup màn 1) — khung
  * "Nhóm dịch vụ" bên trái (Tất cả/Xét nghiệm/CĐHA/Thăm dò chức năng kèm số lượng) + thanh tìm kiếm + bảng. Dịch vụ phòng khám
  * không tự làm hiện nhãn "Gửi ra ngoài" thay cho Nơi thực hiện.
  */
@@ -55,7 +55,7 @@ export function TechnicalServicePane() {
   return (
     <div className="flex h-full min-h-0 gap-3.5">
       <aside aria-label="Nhóm dịch vụ" className="flex w-52 flex-shrink-0 flex-col gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-2">
-        <h2 className="px-2 pb-2 pt-1 text-[10.5px] font-bold uppercase tracking-wider text-slate-700">Nhóm dịch vụ</h2>
+        <h2 className="px-2 pb-2 pt-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-700">Nhóm dịch vụ</h2>
         {KIND_FILTERS.map((f) => {
           const active = kind === f.key;
           return (
@@ -103,7 +103,7 @@ export function TechnicalServicePane() {
             <div className="flex h-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
               <div
                 role="row"
-                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-bold uppercase tracking-wide text-slate-800"
+                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-semibold uppercase tracking-wide text-slate-800"
                 style={{ gridTemplateColumns: GRID_COLUMNS }}
               >
                 {['Mã', 'Tên dịch vụ', 'Nhóm', 'Nơi thực hiện', 'Mẫu bệnh phẩm', 'Giá hiện hành', 'Chỉ số', 'Trạng thái', 'Thao tác'].map((h) => (

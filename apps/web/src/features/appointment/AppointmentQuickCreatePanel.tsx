@@ -133,7 +133,7 @@ export function AppointmentQuickCreatePanel({
         }`}
       >
         <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3.5">
-          <h2 className="text-[15px] font-bold text-slate-900">Đặt lịch nhanh</h2>
+          <h2 className="text-[15px] font-semibold text-slate-900">Đặt lịch nhanh</h2>
           <button type="button" onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:text-slate-600">
             <X size={17} weight="bold" />
           </button>
@@ -352,7 +352,7 @@ function BookingConfirmDialog({ appointment, date, onConfirm }: { appointment: A
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 px-4">
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
-        <h3 className="mb-2 text-base font-bold text-slate-900">Đặt lịch thành công</h3>
+        <h3 className="mb-2 text-base font-semibold text-slate-900">Đặt lịch thành công</h3>
         <p className="mb-5 text-sm text-slate-700">
           Đã đặt lịch thành công cho khách hàng <span className="font-semibold">{appointment.fullName}</span> vào lúc{' '}
           <span className="font-semibold">

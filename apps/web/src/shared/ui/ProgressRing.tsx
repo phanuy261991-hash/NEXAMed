@@ -27,7 +27,7 @@ export function ProgressRing({ percent, size = 56, strokeWidth = 6 }: { percent:
           className="text-blue-600 transition-[stroke-dashoffset] duration-300"
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold tabular-nums text-slate-800">{Math.round(clamped)}%</span>
+      <span className="absolute inset-0 flex items-center justify-center text-[13px] font-semibold tabular-nums text-slate-800">{Math.round(clamped)}%</span>
     </div>
   );
 }

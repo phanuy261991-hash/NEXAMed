@@ -67,7 +67,7 @@ export function GroupLabel({
 }) {
   const styles = GROUP_LABEL_STYLES[variant];
   return (
-    <div className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm ${styles}`}>
+    <div className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm ${styles}`}>
       <IconComponent size={13} weight="bold" aria-hidden="true" />
       {children}
       <span className="ml-auto rounded-full bg-white/25 px-1.5 py-0.5 text-[10px]">{count}</span>
@@ -150,8 +150,8 @@ export function WaitingCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 truncate">
-          <span className="text-[15px] font-bold text-slate-900">{item.fullName}</span>
-          <span className="ml-1.5 text-[11px] font-bold text-slate-500">{item.patientCode}</span>
+          <span className="text-[15px] font-semibold text-slate-900">{item.fullName}</span>
+          <span className="ml-1.5 text-[11px] font-semibold text-slate-500">{item.patientCode}</span>
         </div>
         {criticalState === 'overdue' && (
           <span className="badge-urgent-pulse flex flex-shrink-0 items-center gap-1 rounded-full bg-rose-600 px-2.5 py-1 text-[11px] font-semibold text-white">
@@ -160,7 +160,7 @@ export function WaitingCard({
           </span>
         )}
         {criticalState === 'priority' && (
-          <span className="flex flex-shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10.5px] font-bold text-white">
+          <span className="flex flex-shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10.5px] font-semibold text-white">
             <Star size={12} weight="fill" aria-hidden="true" />
             Ưu tiên
           </span>
@@ -168,18 +168,18 @@ export function WaitingCard({
       </div>
       {item.chiefComplaint && (
         <p className="mt-1 truncate text-[12.5px] text-slate-700">
-          <span className="font-bold text-slate-900">Lý do: </span>
+          <span className="font-semibold text-slate-900">Lý do: </span>
           {item.chiefComplaint}
         </p>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px]">
         {item.appointmentId && (
-          <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-bold text-blue-700">
+          <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">
             <CalendarCheck size={11} weight="bold" aria-hidden="true" />
             Đặt lịch trước
           </span>
         )}
-        <span className={`rounded-full px-2 py-0.5 font-bold ${pool ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>
+        <span className={`rounded-full px-2 py-0.5 font-semibold ${pool ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>
           {pool ? 'Chưa gán bác sĩ' : 'Của tôi'}
         </span>
         <span className="flex items-center gap-1 font-semibold text-slate-600">

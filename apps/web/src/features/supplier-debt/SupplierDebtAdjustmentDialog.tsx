@@ -85,7 +85,7 @@ export function SupplierDebtAdjustmentDialog({ supplierId, supplierName, onClose
         <div className="flex-shrink-0 px-6 pt-6">
           <ModalHeader icon={ClipboardText} title="Lập phiếu điều chỉnh công nợ" subtitle={supplierName} onClose={onClose} />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4">
           {error && <ErrorBanner message={error} />}
           <div className="my-4 flex flex-col gap-4">
             <BoxedSection badge="Điều chỉnh">

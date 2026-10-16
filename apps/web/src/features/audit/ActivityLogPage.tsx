@@ -258,7 +258,7 @@ export function ActivityLogPage() {
               <div
                 role="row"
                 style={{ gridTemplateColumns: GRID_COLUMNS }}
-                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
+                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800"
               >
                 <div role="columnheader" className="py-2.5 text-center">Thời gian</div>
                 <div role="columnheader" className="py-2.5 text-center">Người thực hiện</div>

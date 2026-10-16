@@ -199,7 +199,7 @@ export function ClinicHoursPane() {
                     <Combobox id="slot-duration" value={slotDuration} onChange={setSlotDuration} options={SLOT_DURATION_OPTIONS} />
                   </div>
                 ) : (
-                  <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
+                  <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-semibold text-blue-700">
                     {query.data.slotDurationMinutes} phút
                   </span>
                 )}

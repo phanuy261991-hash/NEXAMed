@@ -42,7 +42,7 @@ export function BackupStatusBanner() {
     <div className="flex flex-shrink-0 items-center gap-3 bg-rose-600 px-5 py-2.5 text-white">
       <Warning size={18} weight="bold" aria-hidden="true" className="shrink-0" />
       <div className="flex flex-col">
-        <span className="text-sm font-bold">Sao lưu dữ liệu đang gặp vấn đề</span>
+        <span className="text-sm font-semibold">Sao lưu dữ liệu đang gặp vấn đề</span>
         <span className="text-xs font-medium text-rose-100">{message}</span>
       </div>
     </div>

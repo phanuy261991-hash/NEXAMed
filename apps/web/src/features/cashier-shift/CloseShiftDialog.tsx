@@ -83,7 +83,7 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
         <div className="flex-shrink-0 border-b border-slate-100 px-6 pt-6 pb-4">
           <div className="flex items-start justify-between">
             <div>
-              <h2 id="close-shift-title" className="text-lg font-bold text-slate-900">
+              <h2 id="close-shift-title" className="text-lg font-semibold text-slate-900">
                 Chốt ca
               </h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
@@ -106,7 +106,7 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
                   <CheckCircle size={13} weight="bold" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="text-[13.5px] font-bold text-emerald-700">Đã chốt ca thành công</p>
+                  <p className="text-[13.5px] font-semibold text-emerald-700">Đã chốt ca thành công</p>
                   <p className="text-[11.5px] font-medium text-slate-500">Dữ liệu đã khoá — đối chiếu số liệu bên dưới trước khi bàn giao.</p>
                 </div>
               </div>
@@ -114,8 +114,8 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
               <div className="mt-4 grid grid-cols-[210px_1fr] items-start gap-6">
                 <div className="flex flex-col gap-3.5">
                   <div className="rounded-lg bg-brand-teal-panel p-4">
-                    <p className="text-[10.5px] font-bold uppercase tracking-wide text-brand-teal-active">Tổng doanh thu ca</p>
-                    <p className="mt-0.5 text-[26px] font-bold tabular-nums text-slate-900">{formatVnd(computeCashierShiftTotalRevenue(closedShift))}</p>
+                    <p className="text-[10.5px] font-semibold uppercase tracking-wide text-brand-teal-active">Tổng doanh thu ca</p>
+                    <p className="mt-0.5 text-[26px] font-semibold tabular-nums text-slate-900">{formatVnd(computeCashierShiftTotalRevenue(closedShift))}</p>
                   </div>
                   <div className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3">
                     <ShiftMetaRow label="Ca" value={closedShift.shiftLabel} />
@@ -145,8 +145,8 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
                     <ShiftSummaryCell label="Để lại vốn ca sau" value={formatVnd(closedShift.keepForNextAmount ?? 0)} />
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-brand-teal-tint px-4 py-3">
-                    <span className="text-[13px] font-bold text-slate-900">Nộp về</span>
-                    <span className="text-[18px] font-bold tabular-nums text-blue-700">{formatVnd(closedShift.submittedAmount ?? 0)}</span>
+                    <span className="text-[13px] font-semibold text-slate-900">Nộp về</span>
+                    <span className="text-[18px] font-semibold tabular-nums text-blue-700">{formatVnd(closedShift.submittedAmount ?? 0)}</span>
                   </div>
                 </div>
               </div>
@@ -236,7 +236,7 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="close-shift-receipt-title">
           <div className="flex max-h-[92vh] w-full max-w-[620px] flex-col rounded-xl bg-white shadow-xl">
             <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-6 pt-6 pb-4">
-              <h2 id="close-shift-receipt-title" className="text-lg font-bold text-slate-900">
+              <h2 id="close-shift-receipt-title" className="text-lg font-semibold text-slate-900">
                 Phiếu bàn giao ca
               </h2>
               <button type="button" onClick={() => setReceiptOpen(false)} className="text-slate-400 hover:text-slate-700" aria-label="Đóng">
@@ -257,7 +257,7 @@ export function CloseShiftDialog({ shift, onClose }: { shift: CashierShiftDetail
 function ShiftMetaRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
-      <span className="whitespace-nowrap text-[10.5px] font-bold uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="whitespace-nowrap text-[10.5px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
       <span className="truncate text-[12.5px] font-semibold text-slate-900">{value}</span>
     </div>
   );
@@ -267,8 +267,8 @@ function ShiftMetaRow({ label, value }: { label: string; value: string }) {
 function ShiftSummaryCell({ label, value, negative = false, className = '' }: { label: string; value: string; negative?: boolean; className?: string }) {
   return (
     <div className={`p-3 ${className}`}>
-      <p className="text-[10.5px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-0.5 text-[14.5px] font-bold tabular-nums ${negative ? 'text-rose-600' : 'text-slate-900'}`}>{value}</p>
+      <p className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className={`mt-0.5 text-[14.5px] font-semibold tabular-nums ${negative ? 'text-rose-600' : 'text-slate-900'}`}>{value}</p>
     </div>
   );
 }

@@ -58,7 +58,7 @@ export function ShiftSwapHistoryPane() {
           <div className="scroll-hover min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm">
             <table className="w-full min-w-[900px] text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="px-3 py-2.5 text-center">Gửi lúc</th>
                   <th className="px-3 py-2.5 text-center">Người gửi</th>
                   <th className="px-3 py-2.5 text-center">Ca đưa</th>
@@ -77,17 +77,17 @@ export function ShiftSwapHistoryPane() {
                         {formatShortDateTimeVn(item.createdAt).replace(' ', ' · ')}
                         {isNew && (
                           <div className="mt-0.5">
-                            <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">Mới</span>
+                            <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Mới</span>
                           </div>
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-center font-medium">{item.requesterName}</td>
                       <td className="px-3 py-2.5 text-center">
-                        <span className="font-bold tabular-nums text-brand-teal">{ddmm(item.requesterAssignment.workDate)}</span> · {item.requesterAssignment.workShiftName}
+                        <span className="font-semibold tabular-nums text-brand-teal">{ddmm(item.requesterAssignment.workDate)}</span> · {item.requesterAssignment.workShiftName}
                       </td>
                       <td className="px-3 py-2.5 text-center font-medium">{item.counterpartName}</td>
                       <td className="px-3 py-2.5 text-center">
-                        <span className="font-bold tabular-nums text-brand-teal">{ddmm(item.counterpartAssignment.workDate)}</span> · {item.counterpartAssignment.workShiftName}
+                        <span className="font-semibold tabular-nums text-brand-teal">{ddmm(item.counterpartAssignment.workDate)}</span> · {item.counterpartAssignment.workShiftName}
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>

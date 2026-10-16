@@ -105,7 +105,7 @@ export function StockReceiptHeaderDialog({
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="receipt-header-dialog-title">
       <div className="w-full max-w-2xl rounded-lg bg-white p-5 shadow-xl">
-        <p id="receipt-header-dialog-title" className="text-base font-bold text-slate-900">
+        <p id="receipt-header-dialog-title" className="text-base font-semibold text-slate-900">
           Thông tin phiếu nhập kho
         </p>
 

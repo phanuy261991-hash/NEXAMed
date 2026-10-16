@@ -37,7 +37,7 @@ export function PatientHistorySummaryCard({
   return (
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-5 py-3">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
           <ClipboardText size={16} weight="fill" className="text-blue-600" aria-hidden="true" />
           Tiền sử bản thân & gia đình
         </h2>
@@ -46,7 +46,7 @@ export function PatientHistorySummaryCard({
       <div className="p-5">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
-            <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-700">Bệnh lý nền</div>
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-700">Bệnh lý nền</div>
             <div className="flex flex-wrap gap-1.5">
               {diseaseConditions.map((c) => (
                 <span key={c.icd10Code} className="rounded-full border border-slate-300 bg-white px-3 py-1 text-sm font-medium text-slate-700">
@@ -57,7 +57,7 @@ export function PatientHistorySummaryCard({
             </div>
           </div>
           <div>
-            <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-700">Thói quen / lối sống</div>
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-700">Thói quen / lối sống</div>
             <div className="flex flex-wrap gap-1.5">
               {habitConditions.map((c) => (
                 <span key={c.icd10Code} className="rounded-full border border-amber-500 bg-amber-500 px-3 py-1 text-sm font-medium text-white">
@@ -71,15 +71,15 @@ export function PatientHistorySummaryCard({
 
         <div className="h-5" />
 
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-700">Tiền sử gia đình</div>
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-700">Tiền sử gia đình</div>
         {familyHistoryRows.length > 0 && (
           <div className="mb-2 overflow-x-auto rounded-md border border-slate-200">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-slate-600">Quan hệ</th>
-                  <th className="px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-slate-600">Bệnh</th>
-                  <th className="px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-slate-600">Tuổi khởi phát</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Quan hệ</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Bệnh</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Tuổi khởi phát</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -100,7 +100,7 @@ export function PatientHistorySummaryCard({
 
         <div className="h-5" />
 
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-700">Ghi chú tiền sử bản thân</div>
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-700">Ghi chú tiền sử bản thân</div>
         <p className={`rounded-md bg-slate-50 p-3 text-sm leading-relaxed ${personalHistory ? 'font-medium text-slate-800' : 'text-slate-400'}`}>
           {personalHistory || 'Chưa ghi nhận.'}
         </p>

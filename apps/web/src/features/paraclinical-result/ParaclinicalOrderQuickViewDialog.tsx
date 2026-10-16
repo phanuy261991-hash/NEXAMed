@@ -56,7 +56,7 @@ export function ParaclinicalOrderQuickViewDialog({ row, group, onClose }: { row:
           </dl>
 
           <section aria-label="Dịch vụ trong phiếu" className="overflow-hidden rounded-lg border border-slate-200">
-            <div className="border-b-2 border-blue-600 bg-slate-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-800">Dịch vụ chỉ định ({row.serviceNames.length})</div>
+            <div className="border-b-2 border-blue-600 bg-slate-100 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-800">Dịch vụ chỉ định ({row.serviceNames.length})</div>
             <ol className="divide-y divide-slate-100">
               {row.serviceNames.map((name, index) => (
                 <li key={`${index}-${name}`} className="flex gap-3 px-3 py-1.5 text-sm">

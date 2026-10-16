@@ -45,7 +45,7 @@ export function AllergyBanner({ allergens }: { allergens: PatientAllergenItem[] 
       onMouseEnter={() => hiddenCount > 0 && setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <span className="flex items-center gap-1 whitespace-nowrap text-xs font-bold text-rose-700">
+      <span className="flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-rose-700">
         <Warning size={13} weight="fill" aria-hidden="true" />
         CẢNH BÁO DỊ ỨNG:
       </span>
@@ -58,14 +58,14 @@ export function AllergyBanner({ allergens }: { allergens: PatientAllergenItem[] 
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-label={`Xem thêm ${hiddenCount} dị ứng khác`}
-          className="whitespace-nowrap rounded-full border border-rose-300 bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700 hover:bg-rose-200"
+          className="whitespace-nowrap rounded-full border border-rose-300 bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700 hover:bg-rose-200"
         >
           +{hiddenCount}
         </button>
       )}
       {open && hiddenCount > 0 && (
         <div className="scroll-hover absolute left-0 top-full z-20 mt-1.5 max-h-64 w-72 overflow-y-auto rounded-lg border border-rose-200 bg-white p-3 shadow-lg">
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-rose-700">Toàn bộ dị ứng ({allergens.length})</p>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-rose-700">Toàn bộ dị ứng ({allergens.length})</p>
           <div className="flex flex-wrap gap-1.5">
             {allergens.map((a) => (
               <AllergenChip key={a.id} allergen={a} />
@@ -86,7 +86,7 @@ export function HistoryBoxCard({ title, onAdd, children }: { title: string; onAd
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">{title}</h3>
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">{title}</h3>
         <button
           type="button"
           onClick={onAdd}

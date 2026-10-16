@@ -155,7 +155,7 @@ export function ReceptionDoctorQueuePage() {
             <Stethoscope size={20} weight="bold" aria-hidden="true" />
           </div>
           <div>
-            <div className="text-[14px] font-bold text-slate-900">
+            <div className="text-[14px] font-semibold text-slate-900">
               {currentUser?.displayName ?? currentUser?.fullName}
               {selfDepartmentName ? ` · ${selfDepartmentName}` : ''}
             </div>
@@ -168,7 +168,7 @@ export function ReceptionDoctorQueuePage() {
           </div>
         </div>
         <div className="flex items-center gap-2.5">
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{totalHandledToday} lượt khám hôm nay</span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{totalHandledToday} lượt khám hôm nay</span>
           {multiRoomActive && mySessionQuery.data && (
             <Button type="button" onClick={() => setChangingRoom(true)}>
               <ArrowsClockwise size={15} weight="bold" aria-hidden="true" />
@@ -283,13 +283,13 @@ export function ReceptionDoctorQueuePage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate text-[15px] font-bold text-slate-900">{item.fullName}</div>
+                    <div className="truncate text-[15px] font-semibold text-slate-900">{item.fullName}</div>
                     <div className="text-[11.5px] font-semibold text-slate-500">
                       {item.patientCode} · Bắt đầu lúc {item.startedAt ? formatTime(item.startedAt) : '—'}
                     </div>
                   </div>
                   {item.startedAt && (
-                    <span className="flex flex-shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white">
+                    <span className="flex flex-shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-semibold text-white">
                       <Clock size={12} weight="bold" aria-hidden="true" />
                       {waitMinutes(item.startedAt)} phút
                     </span>
@@ -297,7 +297,7 @@ export function ReceptionDoctorQueuePage() {
                 </div>
                 {item.chiefComplaint && (
                   <p className="mt-1.5 truncate text-[12.5px] text-slate-700">
-                    <span className="font-bold text-slate-900">Lý do: </span>
+                    <span className="font-semibold text-slate-900">Lý do: </span>
                     {item.chiefComplaint}
                   </p>
                 )}
@@ -357,14 +357,14 @@ export function ReceptionDoctorQueuePage() {
                 <div className="flex min-w-0 items-center gap-2">
                   <CheckCircle size={16} weight="fill" className="flex-shrink-0 text-emerald-500" aria-hidden="true" />
                   <div className="min-w-0">
-                    <div className="truncate text-[13.5px] font-bold text-slate-900">{item.fullName}</div>
+                    <div className="truncate text-[13.5px] font-semibold text-slate-900">{item.fullName}</div>
                     <div className="text-[11px] font-semibold text-slate-500">{item.encounterNo}</div>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => navigate(`/encounters/${item.encounterId}`)}
-                  className="flex-shrink-0 text-xs font-bold text-blue-600 hover:text-blue-700"
+                  className="flex-shrink-0 text-xs font-semibold text-blue-600 hover:text-blue-700"
                 >
                   Xem lại
                 </button>
@@ -435,12 +435,12 @@ function QueueColumn({
   return (
     <section className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-t-[3px] border-slate-200 bg-white shadow-sm ${accent}`}>
       <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-3.5 py-2.5">
-        <span className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-800">
+        <span className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-800">
           <IconComponent size={18} weight="bold" className={iconClassName} aria-hidden="true" />
           {title}
         </span>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-bold text-white">{count}</span>
+          <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-semibold text-white">{count}</span>
           <button
             type="button"
             onClick={onToggleSearch}

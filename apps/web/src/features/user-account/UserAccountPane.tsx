@@ -5,6 +5,7 @@ import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../
 import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -252,7 +253,7 @@ export function UserAccountPane() {
         <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white scroll-hover">
           <table className="w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10">
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <th className="w-10 px-4 py-2.5 text-center">
                   <SelectionCheckbox
                     checked={rowSelection.allLoadedSelected}
@@ -352,22 +353,24 @@ export function UserAccountPane() {
       {unlockTarget && <UnlockDialog item={unlockTarget} onCancel={() => setUnlockTarget(null)} onDone={() => setUnlockTarget(null)} />}
 
       {deactivateTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">Vô hiệu hoá tài khoản &quot;{deactivateTarget.fullName}&quot;?</p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Tài khoản sẽ không đăng nhập được nữa và mọi phiên đang mở bị đăng xuất ngay lập tức. Có thể kích hoạt lại sau.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={Prohibit}
+          tone="danger"
+          title="Vô hiệu hoá tài khoản"
+          rows={[{ label: 'Tài khoản', value: deactivateTarget.fullName, sub: deactivateTarget.username }]}
+          note="Đăng xuất mọi phiên ngay"
+          onClose={() => setDeactivateTarget(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
                 Huỷ
               </Button>
               <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => handleDeactivate(deactivateTarget)}>
                 Vô hiệu hoá
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );
@@ -427,43 +430,42 @@ function ResetPasswordDialog({
 }
 
 /**
- * Xác nhận "Mở khoá" (docs/DECISIONS.md #239) — bọc <form> để Enter xác nhận (ui-guidelines mục 4.4). Lỗi hiện inline ngay trong hộp thoại
- * (mục 4.3): 404 = tài khoản ngoài phạm vi chi nhánh của người mở, 409 = có người vừa sửa tài khoản này.
+ * Xác nhận "Mở khoá" (docs/DECISIONS.md #239) — dùng `ConfirmDialog` dùng chung (gọn, ít chữ). Lỗi 404 = tài khoản ngoài phạm vi chi nhánh của người mở, 409 = có người vừa sửa tài khoản này.
  */
 function UnlockDialog({ item, onCancel, onDone }: { item: UserAccountSummary; onCancel: () => void; onDone: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const unlockMutation = useUnlockUserAccountMutation();
-  const permanent = item.lockStatus === 'PERMANENT';
+  const lock = getLockBadge(item, new Date());
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
-      <form
-        className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setError(null);
-          unlockMutation.mutate({ id: item.id, body: { version: item.version } }, { onSuccess: onDone, onError: (err) => setError(errorMessage(err)) });
-        }}
-      >
-        <h3 className="text-[15px] font-semibold text-slate-900">Mở khoá tài khoản &quot;{item.fullName}&quot;?</h3>
-        <p className="mt-1.5 text-xs text-slate-500">
-          {permanent ? 'Tài khoản đang bị khoá vĩnh viễn do đăng nhập sai nhiều lần. ' : 'Tài khoản đang bị khoá tạm thời do đăng nhập sai nhiều lần. '}
-          Sau khi mở khoá, người dùng đăng nhập lại ngay bằng mật khẩu hiện tại. Nếu nghi ngờ mật khẩu bị lộ, hãy dùng &quot;Đặt lại mật khẩu&quot; thay vì mở khoá.
-        </p>
-        {error && (
-          <p role="alert" className="mt-3 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
-            {error}
-          </p>
-        )}
-        <div className="mt-4 flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onCancel}>
-            Huỷ
-          </Button>
-          <Button type="submit" variant="amber" loading={unlockMutation.isPending}>
-            Mở khoá
-          </Button>
-        </div>
-      </form>
-    </div>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        unlockMutation.mutate({ id: item.id, body: { version: item.version } }, { onSuccess: onDone, onError: (err) => setError(errorMessage(err)) });
+      }}
+    >
+      <ConfirmDialog
+        icon={LockKeyOpen}
+        title="Mở khoá tài khoản"
+        rows={[
+          { label: 'Tài khoản', value: item.fullName, sub: item.username },
+          { label: 'Tình trạng', value: lock ? <StatusBadge tone={lock.tone}>{lock.text}</StatusBadge> : 'Đã hết khoá' },
+        ]}
+        note="Mật khẩu giữ nguyên"
+        error={error}
+        onClose={onCancel}
+        actions={
+          <>
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              Huỷ
+            </Button>
+            <Button type="submit" loading={unlockMutation.isPending}>
+              Mở khoá
+            </Button>
+          </>
+        }
+      />
+    </form>
   );
 }

@@ -320,7 +320,7 @@ export function UserAccountFormDialog({
             <span className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-blue-600 text-white">
               <UserCircle size={20} weight="fill" aria-hidden="true" />
             </span>
-            <h2 className="text-[17px] font-bold text-slate-900">{mode === 'create' ? 'Thêm tài khoản' : 'Sửa tài khoản'}</h2>
+            <h2 className="text-[17px] font-semibold text-slate-900">{mode === 'create' ? 'Thêm tài khoản' : 'Sửa tài khoản'}</h2>
           </div>
           <nav className="mt-3 flex gap-1" role="tablist" aria-label="Nhóm thông tin tài khoản">
             {TABS.map((tab) => (

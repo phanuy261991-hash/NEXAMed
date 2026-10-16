@@ -17,7 +17,7 @@ export const PARACLINICAL_LOOKUP_PERMISSIONS: ReadonlyArray<readonly [string, st
   ['imaging_result', 'read'],
 ];
 
-/** "Danh mục cận lâm sàng" (docs/DECISIONS.md #212) — thêm/sửa dịch vụ kỹ thuật + chỉ số xét nghiệm (`technical_service`), hoặc quản lý mẫu
+/** "Danh mục Cận lâm sàng" (docs/DECISIONS.md #212) — thêm/sửa dịch vụ kỹ thuật + chỉ số xét nghiệm (`technical_service`), hoặc quản lý mẫu
  * kết quả (`result_template.manage`, bác sĩ cũng có). Dùng chung cho route guard (`router.tsx`) và ẩn/hiện menu (`Sidebar.tsx`). */
 export const PARACLINICAL_CATALOG_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
   ['technical_service', 'create'],
@@ -47,7 +47,7 @@ export const SYSTEM_CONFIG_PERMISSIONS: ReadonlyArray<readonly [string, string]>
  * "Quản trị" nói chung — hiện khi actor có BẤT KỲ quyền quản trị nào. Cũng là fallback cho 2 mục
  * con KHÔNG có permission "manage" riêng: ICD-10 (`/admin/catalog-clinical`) tái dùng
  * `patient.read` ở backend (mọi vai trò lâm sàng đều có, gate riêng theo `.read` sẽ lộ menu này
- * cho bác sĩ/điều dưỡng/lễ tân — sai tinh thần "chỉ Quản trị"). "Danh mục cận lâm sàng" đã có permission riêng
+ * cho bác sĩ/điều dưỡng/lễ tân — sai tinh thần "chỉ Quản trị"). "Danh mục Cận lâm sàng" đã có permission riêng
  * (`PARACLINICAL_CATALOG_PERMISSIONS`, #212) nên gộp vào đây để người chỉ được quản lý mẫu kết quả vẫn thấy nhóm Quản trị.
  */
 export const ADMIN_ANY_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [

@@ -194,7 +194,7 @@ export function StockIssueListPage() {
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div role="table" aria-label="Danh sách phiếu xuất kho" className="scroll-hover h-full overflow-x-auto">
             <div className="flex h-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
-              <div role="row" style={{ gridTemplateColumns: GRID_COLUMNS }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <div role="row" style={{ gridTemplateColumns: GRID_COLUMNS }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <div role="columnheader" className="py-2.5 text-center">Số phiếu</div>
                 <div role="columnheader" className="py-2.5 text-center">Loại phiếu</div>
                 <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
@@ -281,8 +281,9 @@ export function StockIssueListPage() {
       )}
       {voidRequestTarget && (
         <ReasonConfirmDialog
-          title="Đề nghị huỷ phiếu xuất kho?"
-          description={`Gửi đề nghị huỷ phiếu ${voidRequestTarget.issueNo} tới người có quyền duyệt công nợ — chỉ huỷ thật khi được duyệt.`}
+          title="Đề nghị huỷ phiếu xuất kho"
+          rows={[{ label: 'Phiếu', value: voidRequestTarget.issueNo }]}
+          note="Chỉ huỷ thật khi người có quyền duyệt đồng ý."
           confirmLabel="Gửi đề nghị"
           confirmVariant="danger"
           onConfirm={(reason) =>
@@ -294,8 +295,9 @@ export function StockIssueListPage() {
       )}
       {rejectTarget && (
         <ReasonConfirmDialog
-          title="Từ chối phiếu xuất kho?"
-          description={`Phiếu ${rejectTarget.issueNo} sẽ chuyển sang trạng thái Từ chối, không đụng tồn kho.`}
+          title="Từ chối phiếu xuất kho"
+          rows={[{ label: 'Phiếu', value: rejectTarget.issueNo }]}
+          note="Không đụng tồn kho."
           confirmLabel="Xác nhận từ chối"
           confirmVariant="danger"
           onConfirm={(reason) => rejectMutation.mutateAsync({ id: rejectTarget.id, body: { reason, version: rejectTarget.version } })}

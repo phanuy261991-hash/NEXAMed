@@ -65,7 +65,7 @@ export function PrintPaperDialog({
                   autoFocus={checked}
                   className="sr-only"
                 />
-                <span className="flex items-center justify-between gap-2 text-sm font-bold">
+                <span className="flex items-center justify-between gap-2 text-sm font-semibold">
                   <span className="min-w-0 truncate">{o.label}</span>
                   {o.isDefault && (
                     <span className={`inline-flex flex-shrink-0 items-center gap-1 text-xs font-semibold ${checked ? 'text-white' : 'text-brand-teal-active'}`}>

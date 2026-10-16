@@ -161,7 +161,7 @@ export function PatientDetailPage() {
           >
             {tab.label}
             {tab.comingSoon && (
-              <span className="ml-1.5 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">Sắp có</span>
+              <span className="ml-1.5 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">Sắp có</span>
             )}
           </button>
         ))}

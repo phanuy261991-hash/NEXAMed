@@ -118,7 +118,7 @@ export function ClinicalOrderDetailDialog({ row, onClose }: { row: ClinicalOrder
               <div className="scroll-hover overflow-x-auto">
                 <table className="w-full text-sm" style={{ minWidth: 720 }}>
                   <thead>
-                    <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                    <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                       <th className="px-3 py-2.5 text-left">Dịch vụ</th>
                       <th className="px-3 py-2.5 text-center">Loại</th>
                       <th className="px-3 py-2.5 text-center">Nơi thực hiện</th>
@@ -184,7 +184,7 @@ export function ClinicalOrderDetailDialog({ row, onClose }: { row: ClinicalOrder
                   })}
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-medium text-slate-500">Tổng cộng</span> <span className="ml-2 text-2xl font-bold tabular-nums text-slate-900">{formatVnd(order.inHouseTotal)}</span>
+                  <span className="text-sm font-medium text-slate-500">Tổng cộng</span> <span className="ml-2 text-2xl font-semibold tabular-nums text-slate-900">{formatVnd(order.inHouseTotal)}</span>
                 </div>
               </div>
             </div>

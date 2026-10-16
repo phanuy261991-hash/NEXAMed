@@ -42,7 +42,7 @@ export function TabBar<T extends string>({
           >
             {t.label}
             {t.badge !== undefined && t.badge > 0 && (
-              <span className="rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white">{t.badge}</span>
+              <span className="rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">{t.badge}</span>
             )}
           </button>
         ))}
@@ -64,7 +64,7 @@ export function TabBar<T extends string>({
         >
           {t.label}
           {t.badge !== undefined && t.badge > 0 && (
-            <span className="rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white">{t.badge}</span>
+            <span className="rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">{t.badge}</span>
           )}
         </button>
       ))}

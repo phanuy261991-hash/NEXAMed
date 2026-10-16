@@ -175,7 +175,7 @@ export function CashBookPage() {
               <div
                 role="row"
                 style={{ gridTemplateColumns: GRID_COLUMNS }}
-                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
+                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800"
               >
                 <div role="columnheader" className="flex items-center justify-center py-2.5">Ngày</div>
                 <div role="columnheader" className="flex items-center justify-center py-2.5">Loại chứng từ</div>
@@ -204,11 +204,11 @@ export function CashBookPage() {
                       <div role="cell" className="min-w-0 truncate font-medium text-slate-900" title={entry.description}>
                         {entry.description} <span className="text-xs text-slate-400">· {entry.referenceNo}</span>
                       </div>
-                      <div role="cell" className={`text-center font-bold tabular-nums ${isPositive ? 'text-emerald-700' : 'text-rose-700'}`}>
+                      <div role="cell" className={`text-center font-semibold tabular-nums ${isPositive ? 'text-emerald-700' : 'text-rose-700'}`}>
                         {isPositive ? '+' : '−'}
                         {formatVnd(Math.abs(entry.amountSigned))}
                       </div>
-                      <div role="cell" className="text-center font-bold tabular-nums text-slate-900">{formatVnd(entry.runningBalance)}</div>
+                      <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{formatVnd(entry.runningBalance)}</div>
                     </div>
                   );
                 })}

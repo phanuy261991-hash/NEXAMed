@@ -58,7 +58,7 @@ export function BreakGlassDialog({
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-100/60">
             <LockKeyOpen size={22} weight="fill" className="text-amber-600" />
           </div>
-          <h2 id="break-glass-title" className="text-[16px] font-bold text-slate-900">
+          <h2 id="break-glass-title" className="text-[16px] font-semibold text-slate-900">
             Xin vượt quyền tạm thời
           </h2>
           <p className="mt-1 text-[13px] leading-relaxed text-slate-500">

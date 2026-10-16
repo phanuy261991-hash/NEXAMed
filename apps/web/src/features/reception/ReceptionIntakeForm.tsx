@@ -832,20 +832,20 @@ export function ReceptionIntakeForm({
                             <CheckCircle size={18} weight="fill" className="flex-shrink-0 text-white" aria-hidden="true" />
                           )}
                           <div className="min-w-0">
-                            <div className={`truncate text-[13.5px] font-bold ${active && availabilityStatus === 'ACTIVE' ? 'text-white' : 'text-slate-900'}`}>
+                            <div className={`truncate text-[13.5px] font-semibold ${active && availabilityStatus === 'ACTIVE' ? 'text-white' : 'text-slate-900'}`}>
                               {doctor.fullName}
                             </div>
                             <div className={`truncate text-xs ${active && availabilityStatus === 'ACTIVE' ? 'text-white/80' : 'text-slate-500'}`}>
                               {[doctor.departmentName, doctor.roomName].filter(Boolean).join(' · ') || '—'}
                             </div>
                             {doctor.leaveToday && (
-                              <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[10.5px] font-bold text-white">
+                              <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[10.5px] font-semibold text-white">
                                 {describeLeaveToday(doctor.leaveToday)}
                               </div>
                             )}
                             {doctor.hasShiftToday && !doctor.leaveToday && (
                               <div
-                                className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${
+                                className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${
                                   active && availabilityStatus === 'ACTIVE'
                                     ? 'border-white/40 bg-white/10 text-white'
                                     : 'border-brand-teal/40 bg-brand-teal-tint text-brand-teal'
@@ -856,13 +856,13 @@ export function ReceptionIntakeForm({
                               </div>
                             )}
                             {blockWhenNoShift && !doctor.hasShiftToday && !doctor.leaveToday && (
-                              <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[10.5px] font-bold text-slate-600">
+                              <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-600">
                                 Không có ca hôm nay
                               </div>
                             )}
                             {doctor.availability && availabilityStatus !== 'ACTIVE' && (
                               <div
-                                className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${
+                                className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${
                                   availabilityStatus === 'BREAK' ? 'border-amber-300 bg-white text-amber-700' : 'border-slate-300 bg-white text-slate-600'
                                 }`}
                               >
@@ -872,7 +872,7 @@ export function ReceptionIntakeForm({
                           </div>
                         </div>
                         <span
-                          className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+                          className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
                             active && availabilityStatus === 'ACTIVE' ? 'bg-white text-brand-teal' : 'bg-slate-100 text-slate-700'
                           }`}
                         >
@@ -956,14 +956,14 @@ export function ReceptionIntakeForm({
                       <div className="flex min-w-0 items-center gap-2">
                         {active && <CheckCircle size={18} weight="fill" className="flex-shrink-0 text-white" aria-hidden="true" />}
                         <div className="min-w-0">
-                          <div className={`truncate text-[13.5px] font-bold ${active ? 'text-white' : 'text-slate-900'}`}>{dept.name} (chung)</div>
+                          <div className={`truncate text-[13.5px] font-semibold ${active ? 'text-white' : 'text-slate-900'}`}>{dept.name} (chung)</div>
                           <div className={`truncate text-xs ${active ? 'text-white/80' : 'text-slate-500'}`}>
                             {dept.doctorCount > 0 ? `${dept.doctorCount} bác sĩ đang trực · chưa cần chọn ai` : 'Chưa có bác sĩ nào — vẫn tiếp nhận được'}
                           </div>
                         </div>
                       </div>
                       <span
-                        className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+                        className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
                           active ? 'bg-white text-blue-700' : dept.waitingCount > 0 ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'
                         }`}
                       >
@@ -1028,8 +1028,8 @@ export function ReceptionIntakeForm({
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-blue-100 bg-blue-50 px-5 py-3.5">
-          <p className="text-[12.5px] font-bold uppercase tracking-wide text-blue-700">Chỉ số khối cơ thể (BMI)</p>
-          <div className="flex-none text-[28px] font-extrabold leading-none text-blue-700">{bmi !== null ? bmi.toFixed(1) : '—'}</div>
+          <p className="text-[12.5px] font-semibold uppercase tracking-wide text-blue-700">Chỉ số khối cơ thể (BMI)</p>
+          <div className="flex-none text-[28px] font-semibold leading-none text-blue-700">{bmi !== null ? bmi.toFixed(1) : '—'}</div>
         </div>
       </div>
 
@@ -1125,7 +1125,7 @@ export function ReceptionIntakeForm({
         <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-bold uppercase tracking-wide text-slate-800">
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <th className="px-3 py-2.5">Mã dịch vụ</th>
                 <th className="px-3 py-2.5 text-left">Tên dịch vụ</th>
                 <th className="px-3 py-2.5">Số lượng</th>
@@ -1150,11 +1150,11 @@ export function ReceptionIntakeForm({
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-center font-bold text-slate-800">
+                    <td className="px-3 py-3 text-center font-semibold text-slate-800">
                       {line.examTypePrice !== undefined ? formatVnd(line.examTypePrice * line.quantity) : '—'}
                     </td>
                     <td className="px-3 py-3 text-center">
-                      <span className="rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-white">Chờ thực hiện</span>
+                      <span className="rounded-full bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white">Chờ thực hiện</span>
                     </td>
                     <td className="px-3 py-3 text-center">
                       <button
@@ -1169,10 +1169,10 @@ export function ReceptionIntakeForm({
                   </tr>
                 ))}
                 <tr className="bg-slate-50">
-                  <td colSpan={4} className="px-3 py-2.5 text-right font-bold text-slate-800">
+                  <td colSpan={4} className="px-3 py-2.5 text-right font-semibold text-slate-800">
                     Tổng cộng{serviceLinesHasUnpriced ? ' (chưa gồm dịch vụ thiếu đơn giá)' : ''}
                   </td>
-                  <td className="px-3 py-2.5 text-center font-bold text-slate-800">{formatVnd(serviceLinesTotal)}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold text-slate-800">{formatVnd(serviceLinesTotal)}</td>
                   <td colSpan={2} />
                 </tr>
               </tbody>
@@ -1211,7 +1211,7 @@ export function ReceptionIntakeForm({
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 px-4">
           <div className="w-full max-w-sm rounded-lg bg-white p-8 text-center shadow-2xl">
             <CheckCircle size={56} weight="fill" className="mx-auto mb-4 text-emerald-500" aria-hidden="true" />
-            <h3 className="mb-1 text-lg font-bold uppercase tracking-wide text-emerald-600">Thành công</h3>
+            <h3 className="mb-1 text-lg font-semibold uppercase tracking-wide text-emerald-600">Thành công</h3>
             <p className="mb-6 text-sm text-slate-700">Tiếp nhận thành công</p>
             <Button
               type="button"
@@ -1238,7 +1238,7 @@ export function ReceptionIntakeForm({
       {leaveConfirmDoctorId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true">
           <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-base font-bold text-slate-900">{doctorCards.find((d) => d.id === leaveConfirmDoctorId)?.fullName ?? 'Bác sĩ này'} đang nghỉ</p>
+            <p className="text-base font-semibold text-slate-900">{doctorCards.find((d) => d.id === leaveConfirmDoctorId)?.fullName ?? 'Bác sĩ này'} đang nghỉ</p>
             <p className="mt-1 text-sm text-slate-600">
               {(() => {
                 const leave = doctorCards.find((d) => d.id === leaveConfirmDoctorId)?.leaveToday;

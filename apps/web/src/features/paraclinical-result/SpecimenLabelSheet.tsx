@@ -92,7 +92,7 @@ export function SpecimenLabelSheet({ labels, printedAt, display = 'print' }: { l
             }}
           >
             <div className="flex items-baseline justify-between gap-1" style={{ fontSize: `${metrics.nameSize}pt` }}>
-              <span className="min-w-0 flex-1 truncate font-bold">{label.patientName.toLocaleUpperCase('vi-VN')}</span>
+              <span className="min-w-0 flex-1 truncate font-semibold">{label.patientName.toLocaleUpperCase('vi-VN')}</span>
               {paper === 'LABEL_50X30' && (
                 <span className="flex-none font-semibold" style={{ fontSize: `${metrics.infoSize + 1}pt` }}>
                   {infoParts.join(' · ')}
@@ -115,7 +115,7 @@ export function SpecimenLabelSheet({ labels, printedAt, display = 'print' }: { l
               </div>
             )}
             <Code128Barcode value={label.sid} className="w-full flex-none" style={{ height: `${metrics.barcodeMm}mm` }} title={`Mã ống ${label.sid}`} />
-            <div className="flex items-baseline justify-between gap-1 font-bold" style={{ fontSize: `${metrics.sidSize}pt` }}>
+            <div className="flex items-baseline justify-between gap-1 font-semibold" style={{ fontSize: `${metrics.sidSize}pt` }}>
               <span className="tabular-nums tracking-wider">{label.sid}</span>
               {paper === 'LABEL_50X30' ? (
                 options.showDate && <span className="flex-none font-semibold" style={{ fontSize: `${metrics.infoSize + 1}pt` }}>{dateText}</span>

@@ -82,7 +82,7 @@ export function AppointmentConfigPane() {
         <span className={sectionBadgeClassName}>Tự động đánh dấu Không đến</span>
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Bật tự động đánh dấu &quot;Không đến&quot;</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Bật tự động đánh dấu &quot;Không đến&quot;</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Bật để hệ thống tự động cập nhật lịch hẹn quá giờ thành &quot;Không đến&quot;. Tắt để người dùng tự thao tác
               thủ công.
@@ -104,7 +104,7 @@ export function AppointmentConfigPane() {
 
         <div className={`mt-3 flex items-center justify-between gap-5 border-t border-slate-100 pt-3 ${!enabled ? 'opacity-50' : ''}`}>
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Ngưỡng tính &quot;Không đến&quot;</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Ngưỡng tính &quot;Không đến&quot;</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Lịch đã đặt quá giờ hẹn cộng thêm số phút cấu hình mà chưa tiếp nhận sẽ tự động chuyển thành &quot;Không
               đến&quot;. Tắt để người dùng tự thao tác thủ công.
@@ -126,7 +126,7 @@ export function AppointmentConfigPane() {
                 <span className="text-sm text-slate-500">phút</span>
               </>
             ) : (
-              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
+              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-semibold text-blue-700">
                 {query.data.noShowThresholdMinutes} phút
               </span>
             )}
@@ -153,7 +153,7 @@ export function AppointmentConfigPane() {
         <span className={sectionBadgeClassName}>Quy tắc đặt lịch theo ca</span>
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Chặn đặt lịch ngoài ca đã đăng ký</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Chặn đặt lịch ngoài ca đã đăng ký</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Bật: Chỉ cho phép đặt lịch theo ca làm việc bác sĩ đã đăng ký. Nếu chưa đăng ký ca, áp dụng giờ làm việc chung của
               phòng khám. Tắt (mặc định): Áp dụng giờ làm việc chung của phòng khám.
@@ -175,7 +175,7 @@ export function AppointmentConfigPane() {
 
         <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Chặn cả khi bác sĩ không có ca nào trong ngày</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Chặn cả khi bác sĩ không có ca nào trong ngày</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Bật: ngày phòng khám đã có bác sĩ đăng ký ca thì bác sĩ KHÔNG có ca nào hôm đó không đặt lịch hẹn và
               không tiếp nhận được (chặn cứng cả Lịch hẹn lẫn Tiếp nhận). Ngày không bác sĩ nào đăng ký ca thì

@@ -46,7 +46,7 @@ export function EncounterParaclinicalSection({ encounterId }: { encounterId: str
         <div className="scroll-hover overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <th scope="col" className="px-3 py-2 text-center">Dịch vụ</th>
                 <th scope="col" className="px-3 py-2 text-center">Nhóm</th>
                 <th scope="col" className="px-3 py-2 text-center">Trạng thái</th>
@@ -65,7 +65,7 @@ export function EncounterParaclinicalSection({ encounterId }: { encounterId: str
                   <tr key={item.id}>
                     <td className="px-3 py-2.5 text-left font-medium text-slate-900">
                       {item.name}
-                      {outside && <span className="ml-1.5 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">Ra ngoài</span>}
+                      {outside && <span className="ml-1.5 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">Ra ngoài</span>}
                     </td>
                     <td className="px-3 py-2.5 text-center font-medium text-slate-600">{item.serviceKind ? TECHNICAL_SERVICE_KIND_LABELS[item.serviceKind] : '—'}</td>
                     <td className="px-3 py-2.5 text-center">{outside ? <StatusBadge tone="neutral">Chỉ định ra ngoài</StatusBadge> : <StatusBadge tone={status.tone}>{status.label}</StatusBadge>}</td>

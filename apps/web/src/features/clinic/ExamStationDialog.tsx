@@ -53,7 +53,7 @@ export function ExamStationDialog({ room, onClose }: { room: RoomSummary; onClos
             <X size={16} weight="bold" />
           </button>
 
-          <h2 id="exam-station-title" className="text-[16px] font-bold text-slate-900">
+          <h2 id="exam-station-title" className="text-[16px] font-semibold text-slate-900">
             Bàn khám / Ghế
           </h2>
           <p className="mt-1 text-[13px] text-slate-500">Phòng: {room.name}</p>

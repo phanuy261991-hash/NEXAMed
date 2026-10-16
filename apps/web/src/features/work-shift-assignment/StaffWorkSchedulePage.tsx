@@ -287,7 +287,7 @@ function StaffMonthScheduleView() {
             <Button
               type="button"
               variant="secondary"
-              className="px-3.5 py-1.5 text-xs font-bold transition-colors active:bg-amber-100 active:text-amber-800"
+              className="px-3.5 py-1.5 text-xs font-semibold transition-colors active:bg-amber-100 active:text-amber-800"
               onClick={() => setUnlockedForEditing(true)}
             >
               Sửa
@@ -304,7 +304,7 @@ function StaffMonthScheduleView() {
           <Button
             type="button"
             variant="secondary"
-            className="px-3.5 py-1.5 text-xs font-bold transition-colors active:bg-slate-200 active:text-slate-900"
+            className="px-3.5 py-1.5 text-xs font-semibold transition-colors active:bg-slate-200 active:text-slate-900"
             onClick={() => setUnlockedForEditing(false)}
           >
             Khoá lại
@@ -321,11 +321,11 @@ function StaffMonthScheduleView() {
         <div className="flex flex-shrink-0 flex-wrap items-center gap-2 px-1">
           {workShifts.length > 0 && (
             <>
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Chú thích ca:</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Chú thích ca:</span>
               {workShifts.map((s) => (
                 <span
                   key={s.id}
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-bold text-white shadow-sm"
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-semibold text-white shadow-sm"
                   style={{ background: WORK_SHIFT_COLOR_HEX[s.color] }}
                 >
                   {s.name}
@@ -384,7 +384,7 @@ function StaffMonthScheduleView() {
               <thead className="sticky top-0 z-20">
                 <tr className="bg-slate-100">
                   <th
-                    className="sticky left-0 z-30 border-b-2 border-r border-blue-600 bg-slate-100 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-slate-800"
+                    className="sticky left-0 z-30 border-b-2 border-r border-blue-600 bg-slate-100 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-800"
                     style={{ width: NAME_COL_WIDTH, minWidth: NAME_COL_WIDTH }}
                   >
                     Nhân viên
@@ -402,7 +402,7 @@ function StaffMonthScheduleView() {
                             {WEEKDAY_FULL_LABELS[weekdayLabelIndex(day)]}
                           </span>
                           <span
-                            className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${
+                            className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[12px] font-semibold ${
                               isToday ? 'bg-blue-600 text-white' : 'text-slate-700'
                             }`}
                           >
@@ -467,7 +467,7 @@ function StaffMonthScheduleView() {
                               {dayItems.map((item) => (
                                 <div
                                   key={item.id}
-                                  className="flex items-center gap-1 rounded-md px-2 py-2 text-[11px] font-bold text-white shadow-sm"
+                                  className="flex items-center gap-1 rounded-md px-2 py-2 text-[11px] font-semibold text-white shadow-sm"
                                   style={{ background: WORK_SHIFT_COLOR_HEX[item.workShiftColor] }}
                                 >
                                   {(!item.canEdit || monthLocked) && (

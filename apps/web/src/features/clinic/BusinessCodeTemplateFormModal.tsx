@@ -124,7 +124,7 @@ export function BusinessCodeTemplateFormModal({
               {!parseResult.ok && <p className="mt-1 text-xs font-medium text-rose-600">{parseResult.error}</p>}
               {preview !== null && (
                 <p className="mt-1 text-xs text-slate-500">
-                  Mã kế tiếp minh hoạ: <span className="font-mono font-bold text-slate-800">{preview}</span>
+                  Mã kế tiếp minh hoạ: <span className="font-mono font-semibold text-slate-800">{preview}</span>
                 </p>
               )}
             </div>

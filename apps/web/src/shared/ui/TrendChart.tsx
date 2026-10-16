@@ -103,7 +103,7 @@ export function TrendChart({
             <title>{p.description}</title>
           </circle>
           {(i % valueStep === 0 || i === points.length - 1) && (
-            <text x={x(i)} y={y(p.value) - 11} textAnchor="middle" fontSize={12} fontWeight={700} className={TONE_TEXT[p.tone]}>
+            <text x={x(i)} y={y(p.value) - 11} textAnchor="middle" fontSize={12} fontWeight={600} className={TONE_TEXT[p.tone]}>
               {p.valueLabel}
             </text>
           )}

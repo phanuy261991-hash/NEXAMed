@@ -127,7 +127,7 @@ export function LeaveRequestsPane() {
         <div className="scroll-hover min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full min-w-[960px] text-sm">
             <thead className="sticky top-0 z-10">
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <th className="px-3 py-2.5 text-center">Nhân viên</th>
                 <th className="px-3 py-2.5 text-center">Ngày nghỉ</th>
                 <th className="px-3 py-2.5 text-center">Ca</th>
@@ -149,7 +149,7 @@ export function LeaveRequestsPane() {
                       {item.departmentName && <div className="text-xs text-slate-500">{item.departmentName}</div>}
                     </td>
                     <td className="px-3 py-2.5 text-center">
-                      <div className="font-bold tabular-nums text-brand-teal">{formatDdMmYyyy(item.leaveDate)}</div>
+                      <div className="font-semibold tabular-nums text-brand-teal">{formatDdMmYyyy(item.leaveDate)}</div>
                       <div className="text-xs text-slate-500">{weekday}</div>
                     </td>
                     <td className="px-3 py-2.5 text-center font-medium">
@@ -221,7 +221,8 @@ export function LeaveRequestsPane() {
       {rejecting && (
         <ReasonConfirmDialog
           title="Từ chối đơn nghỉ"
-          description={`${rejecting.userFullName} · ${formatDdMmYyyy(rejecting.leaveDate)} · ${rejecting.workShiftName ?? 'Cả ngày'}. Lý do sẽ hiện cho người xin nghỉ.`}
+          rows={[{ label: 'Đơn nghỉ', value: rejecting.userFullName, sub: `${formatDdMmYyyy(rejecting.leaveDate)} · ${rejecting.workShiftName ?? 'Cả ngày'}` }]}
+          note="Lý do hiện cho người xin nghỉ."
           confirmLabel="Từ chối đơn"
           confirmVariant="danger"
           onConfirm={(reason) => rejectMutation.mutateAsync({ id: rejecting.id, version: rejecting.version, reason })}
@@ -234,8 +235,9 @@ export function LeaveRequestsPane() {
       )}
       {cancelling && (
         <ReasonConfirmDialog
-          title="Huỷ đơn nghỉ đã duyệt"
-          description={`${cancelling.userFullName} · ${formatDdMmYyyy(cancelling.leaveDate)} · ${cancelling.workShiftName ?? 'Cả ngày'}. Khung giờ này sẽ mở lại bình thường.`}
+          title="Huỷ đơn nghỉ"
+          rows={[{ label: 'Đơn nghỉ', value: cancelling.userFullName, sub: `${formatDdMmYyyy(cancelling.leaveDate)} · ${cancelling.workShiftName ?? 'Cả ngày'}` }]}
+          note="Khung giờ này mở lại bình thường."
           confirmLabel="Huỷ đơn"
           confirmVariant="danger"
           onConfirm={(reason) => cancelMutation.mutateAsync({ id: cancelling.id, version: cancelling.version, reason })}

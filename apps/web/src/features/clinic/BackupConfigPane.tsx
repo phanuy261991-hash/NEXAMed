@@ -15,7 +15,7 @@ import { useBackupConfigQuery, useRunBackupNowMutation, useUpdateBackupConfigMut
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-4 pt-6';
 const sectionBadgeClassName =
   'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
-const valueChipClassName = 'rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700';
+const valueChipClassName = 'rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-semibold text-blue-700';
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => {
   const label = `${String(h).padStart(2, '0')}:00`;
@@ -40,7 +40,7 @@ function ConfigRow({ title, description, children, divider = true }: { title: st
   return (
     <div className={`flex items-start justify-between gap-5 ${divider ? 'border-t border-slate-100 pt-4' : ''}`}>
       <div>
-        <p className="text-[14.5px] font-bold text-slate-900">{title}</p>
+        <p className="text-[14.5px] font-semibold text-slate-900">{title}</p>
         {description && <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">{description}</p>}
       </div>
       <div className="flex flex-shrink-0 items-center gap-2">{children}</div>
@@ -74,7 +74,7 @@ function StatusBlock({ data, canManage }: { data: BackupConfigResponse; canManag
         <div>
           <div className="flex items-center gap-2.5">
             {badge}
-            <p className="text-[14.5px] font-bold text-slate-900">{detail}</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">{detail}</p>
           </div>
           {status.lastRunOk === false && status.lastSuccessAt && (
             <p className="mt-1.5 text-[13px] text-slate-500">Lần thành công gần nhất: {formatDateTimeVn(status.lastSuccessAt)}</p>

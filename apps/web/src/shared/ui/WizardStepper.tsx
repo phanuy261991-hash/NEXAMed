@@ -23,7 +23,7 @@ export function WizardStepper({ labels, currentStep }: { labels: readonly string
             {i > 0 && <div className={`absolute left-0 right-1/2 top-3.75 h-0.5 ${step <= currentStep ? 'bg-emerald-600' : 'bg-slate-200'}`} />}
             {i < labels.length - 1 && <div className={`absolute left-1/2 right-0 top-3.75 h-0.5 ${isDone ? 'bg-emerald-600' : 'bg-slate-200'}`} />}
             <div
-              className={`relative z-10 flex h-7.5 w-7.5 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${
+              className={`relative z-10 flex h-7.5 w-7.5 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-semibold ${
                 isDone ? 'bg-emerald-600 text-white' : isActive ? 'bg-emerald-600 text-white ring-4 ring-emerald-100' : 'bg-slate-200 text-slate-500'
               }`}
             >

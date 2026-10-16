@@ -10,7 +10,7 @@ export function AuditTable({ items, showTenant }: { items: PlatformAuditEntry[];
       <thead className="border-b-2 border-blue-600 bg-slate-100">
         <tr>
           {headers.map((header) => (
-            <th key={header} className="whitespace-nowrap px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-slate-700">
+            <th key={header} className="whitespace-nowrap px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-700">
               {header}
             </th>
           ))}

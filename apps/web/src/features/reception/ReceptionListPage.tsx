@@ -273,8 +273,8 @@ export function ReceptionListPage() {
               return (
                 <div key={kpiItem.key} className={`flex items-center justify-between gap-2 rounded-xl border ${tone.border} ${tone.bg} p-4 shadow-sm`}>
                   <div>
-                    <p className={`text-xs font-bold uppercase tracking-wider ${tone.label}`}>{kpiItem.label}</p>
-                    <p className={`mt-1 text-3xl font-bold tabular-nums ${tone.value}`}>{kpiItem.value}</p>
+                    <p className={`text-xs font-semibold uppercase tracking-wider ${tone.label}`}>{kpiItem.label}</p>
+                    <p className={`mt-1 text-3xl font-semibold tabular-nums ${tone.value}`}>{kpiItem.value}</p>
                   </div>
                   <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg ${tone.iconBg} ${tone.iconText}`}>
                     <kpiItem.icon size={22} weight="bold" aria-hidden="true" />
@@ -294,7 +294,7 @@ export function ReceptionListPage() {
                       key={tab.key}
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
-                      className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
                         activeTab === tab.key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
@@ -329,7 +329,7 @@ export function ReceptionListPage() {
                       <div
                         role="row"
                         style={{ gridTemplateColumns: GRID_COLUMNS }}
-                        className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
+                        className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800"
                       >
                         <div role="columnheader" className="flex items-center justify-center py-2.5">
                           <SelectionCheckbox
@@ -371,7 +371,7 @@ export function ReceptionListPage() {
                                 />
                               </div>
                               <div role="cell" className="min-w-0 truncate">
-                                <div className={`truncate font-bold ${dimmed ? 'text-slate-600' : 'text-slate-800'}`}>{item.encounterNo}</div>
+                                <div className={`truncate font-semibold ${dimmed ? 'text-slate-600' : 'text-slate-800'}`}>{item.encounterNo}</div>
                                 <div className={`truncate text-[13px] font-semibold ${dimmed ? 'text-slate-500' : 'text-slate-600'}`}>
                                   {item.fullName} <span className="font-medium text-slate-400">· {item.dob.slice(0, 4)} · {computeAgeLabel(item.dob)}</span>
                                 </div>
@@ -380,7 +380,7 @@ export function ReceptionListPage() {
                               <div role="cell" className="min-w-0 text-center">
                                 {item.doctorId ? (
                                   <>
-                                    <div className={`truncate text-sm font-bold ${dimmed ? 'text-slate-600' : 'text-slate-700'}`}>
+                                    <div className={`truncate text-sm font-semibold ${dimmed ? 'text-slate-600' : 'text-slate-700'}`}>
                                       {doctorNameById.get(item.doctorId) ?? '—'}
                                     </div>
                                     {doctorEnded ? (
@@ -390,7 +390,7 @@ export function ReceptionListPage() {
                                     )}
                                   </>
                                 ) : (
-                                  <span className="inline-flex max-w-full items-center truncate rounded-full bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700">
+                                  <span className="inline-flex max-w-full items-center truncate rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
                                     Chưa gán · {departmentNameById.get(item.departmentId) ?? ''}
                                   </span>
                                 )}
@@ -399,7 +399,7 @@ export function ReceptionListPage() {
                                 <div className={`tabular-nums font-semibold ${dimmed ? 'text-slate-500' : 'text-slate-600'}`}>{formatDateTime(item.checkedInAt)}</div>
                                 {item.status === 'CHECKED_IN' &&
                                   (overdue ? (
-                                    <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                                    <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-semibold text-white">
                                       <Warning size={10} weight="fill" aria-hidden="true" />
                                       Chờ lâu · {minutes} phút
                                     </div>
@@ -449,7 +449,7 @@ export function ReceptionListPage() {
             {/* RIGHT: panel "Tải theo Bác sĩ" */}
             <aside className="flex min-h-0 flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
-                <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
                   Tải theo Bác sĩ
                 </h2>
@@ -480,12 +480,12 @@ export function ReceptionListPage() {
                       <div className="mb-1 flex items-center justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-1.5">
                           <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${dotClass}`} aria-hidden="true" title={badge.label} />
-                          <span className="truncate text-[15px] font-bold text-slate-800">{doctorDisplayName(doctor)}</span>
+                          <span className="truncate text-[15px] font-semibold text-slate-800">{doctorDisplayName(doctor)}</span>
                         </div>
                         {waitingItems.length > 0 ? (
-                          <span className="flex-shrink-0 rounded px-2 py-0.5 text-xs font-bold bg-amber-500 text-white">Chờ: {waitingItems.length} BN</span>
+                          <span className="flex-shrink-0 rounded px-2 py-0.5 text-xs font-semibold bg-amber-500 text-white">Chờ: {waitingItems.length} BN</span>
                         ) : (
-                          status !== 'ACTIVE' && <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${badge.className}`}>{badge.label}</span>
+                          status !== 'ACTIVE' && <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
                         )}
                       </div>
                       <div className="mb-2 truncate text-xs font-medium text-slate-500">
@@ -493,7 +493,7 @@ export function ReceptionListPage() {
                         {doctor.currentRoomName && (
                           <>
                             {' '}
-                            · Phòng <span className="font-bold text-slate-700">{doctor.currentRoomName}</span>
+                            · Phòng <span className="font-semibold text-slate-700">{doctor.currentRoomName}</span>
                           </>
                         )}
                       </div>
@@ -502,10 +502,10 @@ export function ReceptionListPage() {
                         <div className="space-y-1">
                           {inProgressItems.map((item) => (
                             <div key={item.encounterId} className="rounded border border-slate-200 bg-white p-2 text-xs">
-                              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Đang khám</div>
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Đang khám</div>
                               <div className="flex items-center justify-between font-semibold text-slate-800">
                                 <span className="truncate">{item.fullName}</span>
-                                <span className="tabular-nums flex-shrink-0 font-bold text-emerald-600">{waitMinutes(item.startedAt ?? item.checkedInAt)} phút</span>
+                                <span className="tabular-nums flex-shrink-0 font-semibold text-emerald-600">{waitMinutes(item.startedAt ?? item.checkedInAt)} phút</span>
                               </div>
                             </div>
                           ))}

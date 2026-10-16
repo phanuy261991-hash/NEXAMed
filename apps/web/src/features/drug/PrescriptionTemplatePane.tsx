@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Prohibit, Stack, X } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, EyeSlash, MagnifyingGlass, PencilSimple, Plus, Prohibit, Stack, X } from '@phosphor-icons/react';
 import type { PrescriptionTemplate, PrescriptionTemplateItem } from '@nexamed/shared';
 import { computePrescriptionQuantityPreview as computePrescriptionQuantity } from '../encounter/prescription-dose-preview';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
@@ -9,6 +9,7 @@ import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -169,7 +170,7 @@ export function PrescriptionTemplatePane() {
           <div className="scroll-hover h-full overflow-y-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="px-4 py-2.5 text-left">Tên mẫu</th>
                   <th className="w-28 px-4 py-2.5 text-center">Số thuốc</th>
                   <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>
@@ -224,20 +225,24 @@ export function PrescriptionTemplatePane() {
       )}
 
       {deactivateTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">Ẩn đơn thuốc mẫu &quot;{deactivateTarget.name}&quot;?</p>
-            <p className="mt-1.5 text-xs text-slate-500">Sẽ không chọn được mẫu này ở popup &quot;Đơn mẫu&quot; lúc kê đơn nữa. Có thể kích hoạt lại sau.</p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={EyeSlash}
+          tone="danger"
+          title="Ẩn đơn thuốc mẫu"
+          rows={[{ label: 'Đơn mẫu', value: deactivateTarget.name }]}
+          note="Có thể kích hoạt lại sau"
+          onClose={() => setDeactivateTarget(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
                 Huỷ
               </Button>
               <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => handleDeactivate(deactivateTarget)}>
                 Ẩn
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );
@@ -354,14 +359,14 @@ function PrescriptionTemplateFormDialog({
                 <div className="w-14">
                   <LineInput dense label="Tối" type="number" value={line.doseEvening} onChange={(v) => updateLine(line.key, { doseEvening: v })} />
                 </div>
-                <span className="pb-1.5 text-lg font-bold text-slate-300">×</span>
+                <span className="pb-1.5 text-lg font-semibold text-slate-300">×</span>
                 <div className="w-16">
                   <LineInput dense label="Số ngày" type="number" value={line.durationDays} onChange={(v) => updateLine(line.key, { durationDays: v })} />
                 </div>
-                <span className="pb-1.5 text-lg font-bold text-slate-300">=</span>
+                <span className="pb-1.5 text-lg font-semibold text-slate-300">=</span>
                 <div className="rounded-md bg-brand-teal-tint px-3 py-1.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Tổng số</div>
-                  <div className="text-[15px] font-bold text-blue-700">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tổng số</div>
+                  <div className="text-[15px] font-semibold text-blue-700">
                     {draftLineTotal(line)} {line.unitCode ? unitLabel(unitNameByCode, line.unitCode) : ''}
                   </div>
                 </div>

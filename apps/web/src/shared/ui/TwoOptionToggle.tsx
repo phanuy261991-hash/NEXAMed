@@ -60,7 +60,7 @@ export function TwoOptionToggle<T extends string>({
           type="button"
           disabled={disabled}
           onClick={() => onChange(value === option.value ? null : option.value)}
-          className={`relative z-10 flex flex-1 items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-bold transition-colors disabled:cursor-not-allowed ${
+          className={`relative z-10 flex flex-1 items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
             value === option.value ? 'text-white' : 'text-slate-600 hover:text-slate-900'
           }`}
         >

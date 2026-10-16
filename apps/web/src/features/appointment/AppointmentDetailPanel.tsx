@@ -184,7 +184,7 @@ export function AppointmentDetailPanel({
         className={`fixed inset-y-0 right-0 z-50 flex w-[380px] flex-col bg-white shadow-2xl transition-transform ${open ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3.5">
-          <h2 className="text-[15px] font-bold text-slate-900">{panelTitle}</h2>
+          <h2 className="text-[15px] font-semibold text-slate-900">{panelTitle}</h2>
           <button type="button" onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:text-slate-600">
             <X size={17} weight="bold" />
           </button>
@@ -478,7 +478,7 @@ function MarkNoShowConfirmDialog({
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="mark-no-show-title">
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
-        <h3 id="mark-no-show-title" className="text-base font-bold text-slate-900">
+        <h3 id="mark-no-show-title" className="text-base font-semibold text-slate-900">
           Đánh dấu Không đến?
         </h3>
         <p className="mt-1.5 text-sm text-slate-600">
@@ -518,7 +518,7 @@ function RescheduleConfirmDialog({
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 px-4">
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
-        <h3 className="mb-2 text-base font-bold text-slate-900">Dời lịch thành công</h3>
+        <h3 className="mb-2 text-base font-semibold text-slate-900">Dời lịch thành công</h3>
         <p className="mb-5 text-sm text-slate-700">
           Lịch hẹn <span className="font-semibold">{oldBookingCode}</span> đã chuyển sang trạng thái{' '}
           <span className="font-semibold">Đã dời lịch</span>. Lịch mới vào lúc{' '}

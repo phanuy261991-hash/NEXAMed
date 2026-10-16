@@ -102,7 +102,7 @@ export function BranchSwitcher() {
       {open && (
         // Panel cùng mép phải với nút, rộng tối thiểu bằng nút (không lệch ra trái) và co giãn theo tên chi nhánh dài nhất; mọi dòng cùng cỡ chữ/độ đậm/lề — chỉ dòng đang chọn có nền teal + dấu ✓.
         <div role="menu" className="absolute right-0 top-10 z-30 w-max min-w-full max-w-sm rounded-md border border-slate-200 bg-white py-1 shadow-lg">
-          <div className="px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Chuyển chi nhánh</div>
+          <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Chuyển chi nhánh</div>
           {error && (
             <p role="alert" className="px-3 py-1 text-xs font-semibold text-rose-600">
               {error}
@@ -138,7 +138,7 @@ export function BranchSwitcher() {
             <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3">
               <WarningCircle size={20} weight="fill" className="mt-0.5 flex-shrink-0 text-amber-600" aria-hidden="true" />
               <div>
-                <p id="branch-switch-confirm-title" className="break-words text-sm font-bold text-slate-900">
+                <p id="branch-switch-confirm-title" className="break-words text-sm font-semibold text-slate-900">
                   {isOnEncounterPage ? <>Đổi sang &quot;{confirmTarget.name}&quot; khi đang ở màn khám?</> : <>Tiếp tục đổi sang &quot;{confirmTarget.name}&quot;?</>}
                 </p>
                 {isOnEncounterPage && (

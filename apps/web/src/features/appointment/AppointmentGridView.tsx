@@ -149,7 +149,7 @@ export function AppointmentGridView({
             >
               <div className="flex items-center gap-2.5">
                 <div
-                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                     onLeave ? 'bg-rose-100 text-rose-700' : 'bg-blue-50 text-blue-600'
                   }`}
                 >
@@ -170,14 +170,14 @@ export function AppointmentGridView({
                 <div className="pl-[42px] text-[10.5px] font-semibold text-slate-400">Chưa đăng ký ca — theo giờ chung</div>
               )}
               {onLeave && (
-                <div className="pl-[42px] text-[10.5px] font-bold text-rose-600">
+                <div className="pl-[42px] text-[10.5px] font-semibold text-rose-600">
                   Nghỉ {approvedLeaves.map((l) => (l.isWholeDay ? 'cả ngày' : (l.workShiftName ?? 'ca'))).join(', ')}
                   {needHandling > 0 && ` · ${needHandling} lịch cần xử lý`}
                 </div>
               )}
               {pendingLeaves.length > 0 && (
                 <div className="pl-[42px]">
-                  <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                     Chờ duyệt nghỉ {pendingLeaves.map((l) => (l.isWholeDay ? 'cả ngày' : (l.workShiftName ?? 'ca'))).join(', ')}
                   </span>
                 </div>
@@ -217,7 +217,7 @@ export function AppointmentGridView({
           {nowTop !== null && (
             <div className="pointer-events-none absolute inset-x-0 z-20" style={{ top: nowTop }}>
               <span className="absolute right-0 top-1/2 h-2 w-2 translate-x-1/2 -translate-y-1/2 rounded-full bg-rose-600 ring-2 ring-white" />
-              <span className="absolute -top-2.5 left-0.5 whitespace-nowrap rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              <span className="absolute -top-2.5 left-0.5 whitespace-nowrap rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                 {minutesToLabel(nowMinutes)}
               </span>
             </div>
@@ -341,10 +341,10 @@ export function AppointmentGridView({
                     } ${a.status === 'CANCELLED' || a.status === 'RESCHEDULED' ? 'opacity-60 line-through' : ''}`}
                     style={{ top: start * ROW_HEIGHT_PX + 2, height: (a.durationMinutes / GRID_STEP_MINUTES) * ROW_HEIGHT_PX - 4 }}
                   >
-                    <div className={`flex items-center gap-1 text-[10.5px] font-bold tabular-nums ${late ? 'text-amber-700' : countdown ? countdown.text : meta.text}`}>
+                    <div className={`flex items-center gap-1 text-[10.5px] font-semibold tabular-nums ${late ? 'text-amber-700' : countdown ? countdown.text : meta.text}`}>
                       {late && <Clock size={10} weight="bold" aria-hidden="true" />}
                       {minutesToLabel(vnTimeOfDayMinutes(a.scheduledAt))}–{minutesToLabel(vnTimeOfDayMinutes(a.scheduledAt) + a.durationMinutes)}
-                      {needsHandling && <span className="ml-auto rounded bg-rose-600 px-1.5 text-[10px] font-bold leading-4 text-white">Cần xử lý</span>}
+                      {needsHandling && <span className="ml-auto rounded bg-rose-600 px-1.5 text-[10px] font-semibold leading-4 text-white">Cần xử lý</span>}
                     </div>
                     <div className="truncate text-xs font-semibold text-slate-900">
                       {a.fullName}

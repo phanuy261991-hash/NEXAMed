@@ -37,7 +37,7 @@ function ReleaseNotes({ entry }: { entry: ReleaseEntry }) {
     <div className="space-y-3">
       {groups.map((g) => (
         <div key={g.key}>
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-700">{g.title}</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-700">{g.title}</h3>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm font-medium text-slate-800">
             {entry.notes[g.key].map((line) => (
               <li key={line}>{line}</li>
@@ -66,7 +66,7 @@ function ResultBlock({ status, checking, onCheck }: { status: SoftwareUpdateStat
     return (
       <BoxedSection badge="Máy chủ phát hành">
         <div className="space-y-3">
-          <p className="text-base font-bold text-slate-900">Chưa cấu hình máy chủ phát hành</p>
+          <p className="text-base font-semibold text-slate-900">Chưa cấu hình máy chủ phát hành</p>
           <p className="max-w-3xl text-sm font-medium text-slate-600">
             Địa chỉ máy chủ phát hành do nhà cung cấp cấu hình khi bàn giao, không nhập được trên giao diện này. Hiện bản cài đặt của bạn chưa được cấu hình; cập nhật bằng gói cài đặt như hiện nay.
           </p>
@@ -100,7 +100,7 @@ function ResultBlock({ status, checking, onCheck }: { status: SoftwareUpdateStat
           <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
             <div>
               <dt className="text-sm font-medium text-slate-500">Phiên bản mới</dt>
-              <dd className="text-3xl font-bold tabular-nums text-slate-900">{latest.version}</dd>
+              <dd className="text-3xl font-semibold tabular-nums text-slate-900">{latest.version}</dd>
             </div>
             <Field label="Ngày phát hành">{formatReleaseDate(latest.releasedAt)}</Field>
             <Field label="Loại cập nhật">{latest.requiresMigration ? <StatusBadge tone="warning">Có thay đổi cơ sở dữ liệu</StatusBadge> : <StatusBadge tone="neutral">Không đổi cơ sở dữ liệu</StatusBadge>}</Field>
@@ -128,12 +128,12 @@ function ResultBlock({ status, checking, onCheck }: { status: SoftwareUpdateStat
     <BoxedSection badge="Kết quả kiểm tra">
       <div className="space-y-3">
         {status.state === 'up_to_date' ? (
-          <p className="flex items-center gap-2.5 text-base font-bold text-slate-900">
+          <p className="flex items-center gap-2.5 text-base font-semibold text-slate-900">
             <StatusBadge tone="success">Mới nhất</StatusBadge>
             Bạn đang dùng phiên bản mới nhất của kênh {RELEASE_CHANNEL_LABELS[status.channel]}.
           </p>
         ) : (
-          <p className="text-base font-bold text-slate-900">Chưa kiểm tra lần nào kể từ khi máy chủ khởi động.</p>
+          <p className="text-base font-semibold text-slate-900">Chưa kiểm tra lần nào kể từ khi máy chủ khởi động.</p>
         )}
         {lastChecked}
         <Button type="button" variant="secondary" loading={checking} onClick={onCheck}>
@@ -147,16 +147,16 @@ function ResultBlock({ status, checking, onCheck }: { status: SoftwareUpdateStat
 function HistoryTable({ history }: { history: SoftwareUpdateStatus['history'] }) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200">
-      <h3 className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900">Lịch sử kiểm tra gần đây</h3>
+      <h3 className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900">Lịch sử kiểm tra gần đây</h3>
       {history.length === 0 ? (
         <p className="px-4 py-4 text-sm font-medium text-slate-500">Chưa có lần kiểm tra nào.</p>
       ) : (
         <table className="w-full text-sm">
           <thead className="border-b-2 border-blue-600 bg-slate-100">
             <tr>
-              <th className="px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-slate-700">Thời gian</th>
-              <th className="px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-slate-700">Người thực hiện</th>
-              <th className="px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-slate-700">Kết quả</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-700">Thời gian</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-700">Người thực hiện</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-700">Kết quả</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -197,7 +197,7 @@ export function SoftwareUpdatePane() {
         <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
           <div>
             <dt className="text-sm font-medium text-slate-500">Phiên bản</dt>
-            <dd className="text-3xl font-bold tabular-nums text-slate-900">{status.currentVersion}</dd>
+            <dd className="text-3xl font-semibold tabular-nums text-slate-900">{status.currentVersion}</dd>
           </div>
           <Field label="Kênh theo dõi">
             <StatusBadge tone={CHANNEL_TONE[versionQuery.data?.channel ?? 'stable']}>{RELEASE_CHANNEL_LABELS[versionQuery.data?.channel ?? status.channel]}</StatusBadge>

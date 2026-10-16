@@ -6,6 +6,7 @@ import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -141,7 +142,7 @@ export function SupplierPane() {
           <div className="scroll-hover h-full overflow-y-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="w-10 px-4 py-2.5 text-center">
                     <SelectionCheckbox
                       checked={rowSelection.allLoadedSelected}
@@ -169,7 +170,7 @@ export function SupplierPane() {
                     <td className="px-4 py-2 text-center">
                       <SelectionCheckbox checked={rowSelection.isSelected(supplier.id)} onChange={() => rowSelection.toggle(supplier.id)} ariaLabel={`Chọn ${supplier.name}`} />
                     </td>
-                    <td className="px-4 py-2 text-center font-bold text-slate-800">{supplier.code}</td>
+                    <td className="px-4 py-2 text-center font-semibold text-slate-800">{supplier.code}</td>
                     <td className="px-4 py-2 text-left font-medium text-slate-900">{supplier.name}</td>
                     <td className="px-4 py-2 text-center text-slate-600">{supplier.taxCode ?? '—'}</td>
                     <td className="px-4 py-2 text-center text-slate-600">{supplier.phone ?? '—'}</td>
@@ -180,11 +181,11 @@ export function SupplierPane() {
                         {!debt || debt.balance === 0 ? (
                           <span className="font-semibold text-emerald-600">{debt ? 'Đã tất toán' : '—'}</span>
                         ) : debt.balance < 0 ? (
-                          <span className="font-bold text-blue-700">
+                          <span className="font-semibold text-blue-700">
                             {formatVnd(Math.abs(debt.balance))} <span className="block text-[11px] font-semibold">NCC nợ lại</span>
                           </span>
                         ) : (
-                          <span className="font-bold text-slate-900">{formatVnd(debt.balance)}</span>
+                          <span className="font-semibold text-slate-900">{formatVnd(debt.balance)}</span>
                         )}
                       </td>
                     )}
@@ -236,20 +237,24 @@ export function SupplierPane() {
       )}
 
       {deactivateTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">Ngưng sử dụng nhà cung cấp &quot;{deactivateTarget.name}&quot;?</p>
-            <p className="mt-1.5 text-xs text-slate-500">Sẽ không chọn được nhà cung cấp này khi lập Phiếu nhập kho mới. Có thể kích hoạt lại sau.</p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={Prohibit}
+          tone="danger"
+          title="Ngưng sử dụng nhà cung cấp"
+          rows={[{ label: 'Nhà cung cấp', value: deactivateTarget.name }]}
+          note="Có thể kích hoạt lại sau"
+          onClose={() => setDeactivateTarget(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
                 Huỷ
               </Button>
               <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => handleDeactivate(deactivateTarget)}>
                 Ngưng sử dụng
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );

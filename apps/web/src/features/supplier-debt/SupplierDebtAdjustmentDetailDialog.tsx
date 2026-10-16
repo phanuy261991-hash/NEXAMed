@@ -89,7 +89,7 @@ export function SupplierDebtAdjustmentDetailDialog({ adjustment, onClose }: { ad
           {adjustment.amount !== null && (
             <div>
               <span className="text-slate-500">Số tiền</span>
-              <p className="font-bold text-slate-900">{formatVnd(adjustment.amount)}</p>
+              <p className="font-semibold text-slate-900">{formatVnd(adjustment.amount)}</p>
             </div>
           )}
           {targetLabel && (
@@ -108,7 +108,7 @@ export function SupplierDebtAdjustmentDetailDialog({ adjustment, onClose }: { ad
               <p className="font-semibold text-slate-900">
                 {adjustment.approvedByName}
                 {adjustment.selfApproved && adjustment.status === 'APPROVED' && (
-                  <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">Tự duyệt</span>
+                  <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">Tự duyệt</span>
                 )}
               </p>
               {adjustment.approvedAt && <p className="text-xs text-slate-400">{formatDateTime(adjustment.approvedAt)}</p>}

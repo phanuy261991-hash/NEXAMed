@@ -10,7 +10,7 @@ import { usePatientByNationalIdQuery, usePatientsQuery, useRecentPatientsQuery }
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
-const thClassName = 'border-b-2 border-blue-600 px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-slate-800';
+const thClassName = 'border-b-2 border-blue-600 px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-800';
 const thClassNameLeft = `${thClassName} text-left`;
 const SKELETON_ROW_COUNT = 5;
 
@@ -81,7 +81,7 @@ export function PatientSearchDialog({
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/55 p-4 py-10" role="dialog" aria-modal="true" aria-labelledby="patient-search-title">
       <div className="w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-6 py-4">
-          <h2 id="patient-search-title" className="text-[16px] font-bold uppercase tracking-wide text-slate-900">
+          <h2 id="patient-search-title" className="text-[16px] font-semibold uppercase tracking-wide text-slate-900">
             Tìm kiếm khách hàng
           </h2>
           <button type="button" onClick={onClose} aria-label="Đóng cửa sổ" className="flex h-8 w-8 flex-none items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-50">

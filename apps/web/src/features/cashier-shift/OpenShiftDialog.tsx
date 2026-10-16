@@ -60,7 +60,7 @@ export function OpenShiftDialog({
         <form onSubmit={(e) => void handleSubmit(e)}>
           <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-slate-100">
             <div>
-              <h2 id="open-shift-title" className="text-lg font-bold text-slate-900">
+              <h2 id="open-shift-title" className="text-lg font-semibold text-slate-900">
                 Mở ca làm việc
               </h2>
               <p className="mt-1 text-sm font-medium text-slate-500">Kiểm đếm tiền mặt trong két trước khi bắt đầu thu ngân.</p>
@@ -86,8 +86,8 @@ export function OpenShiftDialog({
                   <Wallet size={20} weight="regular" aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Vốn đầu ca</div>
-                  <div className="text-xl font-bold text-slate-900">{formatVnd(suggested)}</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Vốn đầu ca</div>
+                  <div className="text-xl font-semibold text-slate-900">{formatVnd(suggested)}</div>
                   <div
                     className="truncate text-xs font-medium text-slate-500"
                     title={
@@ -136,7 +136,7 @@ export function OpenShiftDialog({
 
             {previousClosedShift?.handoverNote && (
               <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
-                <div className="text-[11px] font-bold uppercase tracking-wide text-blue-500">Ghi chú bàn giao từ ca trước</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-500">Ghi chú bàn giao từ ca trước</div>
                 <p className="mt-1 whitespace-pre-wrap text-sm font-medium text-blue-900">{previousClosedShift.handoverNote}</p>
               </div>
             )}

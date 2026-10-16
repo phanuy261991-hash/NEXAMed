@@ -55,7 +55,7 @@ export function PlatformLoginPage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow-md">
-        <span className="mb-3 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-extrabold tracking-widest text-slate-900">NỀN TẢNG</span>
+        <span className="mb-3 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold tracking-widest text-slate-900">NỀN TẢNG</span>
         <h1 className="mb-6 text-xl font-semibold text-slate-900">Đăng nhập khu quản trị</h1>
 
         {step === 'password' ? (

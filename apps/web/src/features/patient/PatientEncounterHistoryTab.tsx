@@ -220,7 +220,7 @@ export function PatientEncounterHistoryTab({ patientId, mergedIntoId }: { patien
                       key={c.key}
                       scope="col"
                       // Tiêu đề canh theo cột (đúng mockup Màn 4): cột chữ dài canh trái cả tiêu đề lẫn nội dung — tránh tiêu đề giữa, nội dung trái nhìn như lệch cột.
-                      className={`border-b-2 border-blue-600 bg-slate-100 px-3 py-2.5 ${c.align === 'left' ? 'text-left' : 'text-center'} text-xs font-bold uppercase tracking-wide text-slate-800 ${
+                      className={`border-b-2 border-blue-600 bg-slate-100 px-3 py-2.5 ${c.align === 'left' ? 'text-left' : 'text-center'} text-xs font-semibold uppercase tracking-wide text-slate-800 ${
                         c.sticky === 'left' ? 'sticky left-0 z-20' : c.sticky === 'right' ? 'sticky right-0 z-20' : ''
                       }`}
                     >
@@ -277,13 +277,13 @@ function renderCell(key: string, item: PatientEncounterHistoryItem, receptionTyp
     case 'date':
       return (
         <>
-          <div className="font-bold tabular-nums text-brand-teal">{formatDateStringVi(toVietnamDateString(item.checkedInAt))}</div>
+          <div className="font-semibold tabular-nums text-brand-teal">{formatDateStringVi(toVietnamDateString(item.checkedInAt))}</div>
           <div className="text-xs font-medium tabular-nums text-slate-500">{vietnamTime(item.checkedInAt)}</div>
         </>
       );
     case 'branch':
       return item.isOtherBranch ? (
-        <span className="whitespace-nowrap rounded-md bg-blue-600 px-2 py-1 text-xs font-bold text-white" title={item.branchName ?? undefined}>
+        <span className="whitespace-nowrap rounded-md bg-blue-600 px-2 py-1 text-xs font-semibold text-white" title={item.branchName ?? undefined}>
           {item.branchName ?? 'Chi nhánh khác'}
         </span>
       ) : item.branchName ? (
@@ -297,7 +297,7 @@ function renderCell(key: string, item: PatientEncounterHistoryItem, receptionTyp
       return (
         <>
           <div className="font-medium text-slate-900">{item.examTypeName ?? '—'}</div>
-          {receptionTypeName && <span className="mt-0.5 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">{receptionTypeName}</span>}
+          {receptionTypeName && <span className="mt-0.5 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700">{receptionTypeName}</span>}
         </>
       );
     case 'doctor':
@@ -319,7 +319,7 @@ function renderCell(key: string, item: PatientEncounterHistoryItem, receptionTyp
       return clinical?.primaryDiagnosisCode ? (
         <>
           <div className="line-clamp-2 font-medium text-slate-900" title={clinical.primaryDiagnosisName ?? undefined}>
-            <strong className="font-bold">{clinical.primaryDiagnosisCode}</strong> — {clinical.primaryDiagnosisName}
+            <strong className="font-semibold">{clinical.primaryDiagnosisCode}</strong> — {clinical.primaryDiagnosisName}
           </div>
           {clinical.otherDiagnosisCount > 0 && <div className="text-xs font-semibold text-blue-600">+{clinical.otherDiagnosisCount} chẩn đoán kèm theo</div>}
         </>

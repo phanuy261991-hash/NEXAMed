@@ -166,7 +166,7 @@ export function ParaclinicalResultLookupPage() {
               ))}
             </colgroup>
             <thead className="sticky top-0 z-10">
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <th className="px-3 py-2.5 text-center">Mã phiếu</th>
                 <th className="px-3 py-2.5 text-left">Bệnh nhân</th>
                 <th className="px-3 py-2.5 text-left">Dịch vụ</th>

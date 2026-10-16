@@ -297,14 +297,14 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-white">
               <CheckCircle size={24} weight="fill" aria-hidden="true" />
             </div>
-            <p className="text-base font-bold text-slate-900">Đã phát thuốc thành công</p>
+            <p className="text-base font-semibold text-slate-900">Đã phát thuốc thành công</p>
             <p className="text-sm text-slate-500">
               Phiếu <span className="font-semibold text-slate-700">{success.issueNo}</span>
             </p>
             {success.attachedInvoice && (
               <div className="w-full rounded-md bg-blue-50 px-3.5 py-2.5 text-sm text-blue-900">
-                Đã cộng <span className="font-bold">{formatVnd(success.totalAmount)}</span> vào{' '}
-                <span className="font-bold">
+                Đã cộng <span className="font-semibold">{formatVnd(success.totalAmount)}</span> vào{' '}
+                <span className="font-semibold">
                   {success.attachedInvoice.invoiceType === 'DRUG' ? 'hoá đơn thuốc riêng' : 'hoá đơn khám'} {success.attachedInvoice.invoiceNo}
                 </span>
                 .
@@ -349,7 +349,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                     nhất trong khối — đây là thứ dược sĩ cần xác nhận ĐẦU TIÊN trước khi phát. */}
                 <div className="mb-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5">
                   <span className="text-sm font-semibold text-blue-900">Bệnh nhân:</span>
-                  <span className="text-[15px] font-bold text-blue-950">{statusQuery.data.patientFullName}</span>
+                  <span className="text-[15px] font-semibold text-blue-950">{statusQuery.data.patientFullName}</span>
                   <span className="text-sm font-semibold text-blue-700">({statusQuery.data.patientCode})</span>
                 </div>
 
@@ -357,20 +357,20 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                   <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-slate-800">Mã đơn thuốc</span>
-                      <span className="font-bold text-teal-600">{statusQuery.data.prescriptionNo ?? '—'}</span>
+                      <span className="font-semibold text-teal-600">{statusQuery.data.prescriptionNo ?? '—'}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-slate-800">BS Kê đơn</span>
-                      <span className="truncate font-bold text-slate-900">{statusQuery.data.signedByName ?? '—'}</span>
+                      <span className="truncate font-semibold text-slate-900">{statusQuery.data.signedByName ?? '—'}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-slate-800">Ngày kê</span>
-                      <span className="font-bold text-slate-900">{signedAtLabel ?? '—'}</span>
+                      <span className="font-semibold text-slate-900">{signedAtLabel ?? '—'}</span>
                     </div>
                   </div>
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5">
                     <p className="text-sm font-semibold text-amber-900">Chẩn đoán lâm sàng</p>
-                    <p className="mt-1.5 text-[15px] font-bold text-amber-950">{statusQuery.data.diagnosisLabel ?? '—'}</p>
+                    <p className="mt-1.5 text-[15px] font-semibold text-amber-950">{statusQuery.data.diagnosisLabel ?? '—'}</p>
                   </div>
                 </div>
               </div>
@@ -395,7 +395,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                     <p className="text-xs font-medium text-slate-500">
                       Bỏ chọn dòng khách <span className="font-semibold text-slate-700">chưa lấy hôm nay</span>.
                     </p>
-                    <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+                    <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
                       {selectedPrescribedCount}/{selectablePrescribedLines.length} loại đang chọn
                     </span>
                   </div>
@@ -423,16 +423,16 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                               )}
                               {line.maxQuantity !== null && (
                                 <p className="text-xs font-semibold text-slate-600">
-                                  Đã kê đơn <span className="font-bold text-slate-900">{line.prescribedQuantity}</span> · Còn lại{' '}
-                                  <span className="font-bold text-slate-900">{line.maxQuantity}</span>
+                                  Đã kê đơn <span className="font-semibold text-slate-900">{line.prescribedQuantity}</span> · Còn lại{' '}
+                                  <span className="font-semibold text-slate-900">{line.maxQuantity}</span>
                                   {line.isBatchManaged && allocated !== line.maxQuantity && (
-                                    <span className="ml-1 font-bold text-amber-600">(đang chọn {allocated})</span>
+                                    <span className="ml-1 font-semibold text-amber-600">(đang chọn {allocated})</span>
                                   )}
                                   {line.warehouseStockOnHand !== null && (
                                     <>
                                       {' '}
                                       · Tồn kho{' '}
-                                      <span className={`font-bold ${line.warehouseStockOnHand < line.maxQuantity ? 'text-rose-600' : 'text-slate-900'}`}>
+                                      <span className={`font-semibold ${line.warehouseStockOnHand < line.maxQuantity ? 'text-rose-600' : 'text-slate-900'}`}>
                                         {line.warehouseStockOnHand}
                                       </span>
                                     </>
@@ -559,7 +559,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                 )}
 
                 <div className="mt-4 rounded-lg border-2 border-dashed border-indigo-200 p-3.5">
-                  <label htmlFor="dispense-otc-search" className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700">
+                  <label htmlFor="dispense-otc-search" className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-700">
                     <Plus size={12} weight="bold" aria-hidden="true" /> Thêm hàng không theo đơn (khách mua thêm)
                   </label>
                   <input
@@ -594,8 +594,8 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
 
             <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Tổng tiền</p>
-                <p className="text-xl font-bold tabular-nums text-slate-900">{formatVnd(totalAmount)}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tổng tiền</p>
+                <p className="text-xl font-semibold tabular-nums text-slate-900">{formatVnd(totalAmount)}</p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <p className="hidden max-w-[200px] text-[11px] text-slate-400 sm:block">Cộng vào hoá đơn, thu tiền xử lý ở Thu ngân.</p>

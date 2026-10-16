@@ -85,7 +85,7 @@ export const DiagnosisSuggestionPanel = forwardRef<
       className="mb-3 rounded-lg border border-blue-100 bg-blue-50/40 px-3 pb-3 pt-2.5"
     >
       <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-blue-700">
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-blue-700">
           <Sparkle size={14} weight="fill" aria-hidden="true" />
           Gợi ý từ ô Chẩn đoán
         </div>
@@ -151,10 +151,10 @@ export const DiagnosisSuggestionPanel = forwardRef<
                               : 'border-slate-300 bg-white hover:border-blue-400 hover:bg-brand-teal-tint focus-visible:border-blue-500'
                           }`}
                         >
-                          <span className="w-12 flex-shrink-0 text-[13.5px] font-bold tabular-nums text-slate-900">{item.icd10Code}</span>
+                          <span className="w-12 flex-shrink-0 text-[13.5px] font-semibold tabular-nums text-slate-900">{item.icd10Code}</span>
                           <span className="min-w-0 flex-1 text-[13.5px] text-slate-800">{item.icd10Name}</span>
                           <ReasonChip item={item} />
-                          <span className={`flex flex-shrink-0 items-center gap-1 text-xs font-bold ${added ? 'text-emerald-700' : 'text-blue-600'}`}>
+                          <span className={`flex flex-shrink-0 items-center gap-1 text-xs font-semibold ${added ? 'text-emerald-700' : 'text-blue-600'}`}>
                             {added ? <Check size={13} weight="bold" aria-hidden="true" /> : <Plus size={13} weight="bold" aria-hidden="true" />}
                             {added ? 'Đã thêm' : 'Thêm'}
                           </span>

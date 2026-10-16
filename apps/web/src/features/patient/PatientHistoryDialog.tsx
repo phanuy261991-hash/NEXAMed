@@ -62,7 +62,7 @@ function makeDraftId(): string {
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-5 pt-7';
 const sectionBadgeClassName =
   'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
-const subLabelClassName = 'mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-700';
+const subLabelClassName = 'mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700';
 
 function chipClassName(selected: boolean, tone: 'teal' | 'rose' | 'amber' = 'teal'): string {
   if (!selected) {
@@ -190,7 +190,7 @@ export function PatientHistoryDialog({
       <div className="w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-6 py-4">
           <div>
-            <h2 id="history-dialog-title" className="text-[16px] font-bold text-slate-900">
+            <h2 id="history-dialog-title" className="text-[16px] font-semibold text-slate-900">
               Tiền sử bệnh nhân
             </h2>
             <p className="mt-0.5 text-[13px] text-slate-500">Bệnh lý nền, tiền sử gia đình và dị ứng — dùng chung mọi lượt khám.</p>
@@ -338,7 +338,7 @@ export function PatientHistoryDialog({
               <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 px-3.5 py-3">
                 <Warning size={18} weight="fill" className="mt-0.5 flex-none text-amber-500" />
                 <div className="text-[13px]">
-                  <p className="font-bold text-amber-800">Phát hiện yếu tố lặp lại trong gia đình</p>
+                  <p className="font-semibold text-amber-800">Phát hiện yếu tố lặp lại trong gia đình</p>
                   {repeatedFamilyConditions.map((entry) => (
                     <p key={entry.icd10Code} className="text-amber-800">
                       Có <b>{entry.relationLabels.join(', ')}</b> cùng mắc <b>{entry.icd10Name}</b> — cân nhắc trao đổi thêm với bác sĩ.
@@ -419,7 +419,7 @@ export function PatientHistoryDialog({
                 )}
                 {quickAllergensByGroup.map(({ group, totalCount, shown }) => (
                   <div key={group.id}>
-                    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-700">{group.name}</p>
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-700">{group.name}</p>
                     <div className="flex flex-wrap items-center gap-2">
                       {shown.map((allergen) => (
                         <button

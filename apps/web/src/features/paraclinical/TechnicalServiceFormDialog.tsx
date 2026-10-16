@@ -100,10 +100,10 @@ export function TechnicalServiceFormDialog({
               <Flask size={20} weight="fill" aria-hidden="true" />
             </span>
             <div>
-              <h2 id="ts-dialog-title" className="text-[17px] font-bold text-slate-900">
+              <h2 id="ts-dialog-title" className="text-[17px] font-semibold text-slate-900">
                 {title}
               </h2>
-              <span className="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">Danh mục cận lâm sàng</span>
+              <span className="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">Danh mục Cận lâm sàng</span>
             </div>
           </div>
           <button
@@ -333,7 +333,7 @@ function ServiceForm({
                       }`}
                     >
                       <input type="radio" name="ts-kind" className="sr-only" checked={selected} disabled={!isCreate} onChange={() => pickKind(card.kind)} />
-                      <span className={`block text-[13.5px] font-bold ${selected ? '' : 'text-slate-900'}`}>{TECHNICAL_SERVICE_KIND_LABELS[card.kind]}</span>
+                      <span className={`block text-[13.5px] font-semibold ${selected ? '' : 'text-slate-900'}`}>{TECHNICAL_SERVICE_KIND_LABELS[card.kind]}</span>
                       <span className={`mt-0.5 block text-[11.5px] ${selected ? 'opacity-90' : 'text-slate-500'}`}>{card.hint}</span>
                     </label>
                   );
@@ -381,7 +381,7 @@ function ServiceForm({
           <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5">
             <input type="checkbox" checked={inHouse} onChange={(e) => setInHouse(e.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600" />
             <span>
-              <span className="block text-[13.5px] font-bold text-emerald-900">Phòng khám tự thực hiện dịch vụ này</span>
+              <span className="block text-[13.5px] font-semibold text-emerald-900">Phòng khám tự thực hiện dịch vụ này</span>
               <span className="mt-0.5 block text-xs text-emerald-800">
                 Bỏ chọn nếu phòng khám không làm được — bác sĩ vẫn chỉ định được, nhưng dịch vụ chỉ in trên phiếu cho bệnh nhân ra ngoài làm, không tính tiền và không vào hàng đợi.
               </span>
@@ -428,7 +428,7 @@ function ServiceForm({
                 <div className="scroll-hover overflow-x-auto">
                   <table className="w-full min-w-[760px] border-collapse text-sm">
                     <thead>
-                      <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                      <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                         <th className="px-2 py-2.5 text-center">Loại giá dịch vụ</th>
                         <th className="w-40 px-2 py-2.5 text-center">Đơn giá</th>
                         <th className="w-36 px-2 py-2.5 text-center">Đơn vị tính</th>
@@ -538,7 +538,7 @@ function ServiceForm({
             <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                     <th className="w-14 px-2 py-2.5 text-center">TT</th>
                     <th className="w-32 px-2 py-2.5 text-center">Mã</th>
                     <th className="px-2 py-2.5 text-center">Tên chỉ số</th>

@@ -21,7 +21,8 @@ const WEB_RESTRICTED_MESSAGE =
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/build/**', '**/node_modules/**', '**/coverage/**'],
+    // scripts/ui-audit: công cụ kiểm giao diện chạy tay bằng Node + Playwright (không phải mã sản phẩm).
+    ignores: ['**/dist/**', '**/build/**', '**/node_modules/**', '**/coverage/**', 'scripts/ui-audit/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -94,6 +95,29 @@ export default tseslint.config(
       // rà soát tác động, ngoài phạm vi việc này.
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
+  {
+    // CHUẨN ĐỘ ĐẬM CHỮ (chủ dự án chốt 16/10/2026, .claude/docs/ui-guidelines.md mục 16): giao diện màn hình TỐI ĐA font-semibold (600) — ưu tiên nét chữ sắc, chữ quá đậm bị
+    // "vỡ nét" nhất là tiếng Việt có dấu ở cỡ nhỏ. Phân cấp bằng cỡ chữ và màu, không bằng độ đậm. Bản in (chứng từ in, vd. chỉ số xét nghiệm vượt mức phải in đậm) được loại trừ.
+    files: ['apps/web/**/*.ts', 'apps/web/**/*.tsx'],
+    ignores: ['**/*PrintView.tsx', 'apps/web/src/shared/print/PrintDocument.tsx', 'apps/web/src/features/print-template/PrintDocumentPreview.tsx', '**/*.spec.ts', '**/*.spec.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/\\bfont-(bold|extrabold|black)\\b/]',
+          message: 'Không dùng font-bold/extrabold/black — độ đậm tối đa là font-semibold (ui-guidelines mục 16). Cần nhấn mạnh hơn thì tăng cỡ chữ/đổi màu.',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/\\bfont-(bold|extrabold|black)\\b/]',
+          message: 'Không dùng font-bold/extrabold/black — độ đậm tối đa là font-semibold (ui-guidelines mục 16).',
+        },
+        {
+          selector: "JSXAttribute[name.name='fontWeight'] Literal[value>=700]",
+          message: 'fontWeight tối đa 600 (ui-guidelines mục 16).',
+        },
+      ],
     },
   },
   eslintConfigPrettier,

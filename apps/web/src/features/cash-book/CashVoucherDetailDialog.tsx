@@ -241,8 +241,8 @@ export function CashVoucherDetailDialog({ voucherId, onClose }: { voucherId: str
             <div
               className={`flex items-center justify-between rounded-lg px-4 py-3 ${voucher.direction === 'INCOME' ? 'bg-emerald-50' : 'bg-rose-50'}`}
             >
-              <span className="font-bold text-slate-900">Số tiền</span>
-              <span className={`text-lg font-bold ${voucher.direction === 'INCOME' ? 'text-emerald-700' : 'text-rose-700'}`}>
+              <span className="font-semibold text-slate-900">Số tiền</span>
+              <span className={`text-lg font-semibold ${voucher.direction === 'INCOME' ? 'text-emerald-700' : 'text-rose-700'}`}>
                 {formatVnd(voucher.amount)}
               </span>
             </div>

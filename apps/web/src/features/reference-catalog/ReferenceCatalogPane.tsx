@@ -3,6 +3,7 @@ import { ArrowCounterClockwise, ListBullets, MagnifyingGlass, PencilSimple, Plus
 import type { ReferenceCatalogCategory, ReferenceCatalogDirection, ReferenceCatalogItem, SpecimenCapColor } from '@nexamed/shared';
 import { useHasPermission } from '../auth/usePermission';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
@@ -259,7 +260,7 @@ export function ReferenceCatalogPane({
           <div className="scroll-hover h-full overflow-y-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="w-10 px-4 py-2.5 text-center">
                     <SelectionCheckbox
                       checked={rowSelection.allLoadedSelected}
@@ -288,7 +289,7 @@ export function ReferenceCatalogPane({
                     <td className="px-4 py-2 text-center">
                       <SelectionCheckbox checked={rowSelection.isSelected(item.id)} onChange={() => rowSelection.toggle(item.id)} ariaLabel={`Chọn ${item.name}`} />
                     </td>
-                    <td className="px-4 py-2 text-center text-sm font-bold text-slate-800">{item.code}</td>
+                    <td className="px-4 py-2 text-center text-sm font-semibold text-slate-800">{item.code}</td>
                     {showBytColumns && <td className="px-4 py-2 text-center font-medium text-slate-600">{item.bytCode ?? '—'}</td>}
                     <td className="px-4 py-2 text-left font-medium text-slate-900">
                       {item.name}
@@ -316,7 +317,7 @@ export function ReferenceCatalogPane({
                         )}
                       </td>
                     )}
-                    {category === 'TECH_SERVICE_CATEGORY' && <td className="px-4 py-2 text-center font-bold text-slate-800">{item.abbreviation ?? <span className="font-medium text-slate-400">—</span>}</td>}
+                    {category === 'TECH_SERVICE_CATEGORY' && <td className="px-4 py-2 text-center font-semibold text-slate-800">{item.abbreviation ?? <span className="font-medium text-slate-400">—</span>}</td>}
                     {category === 'EXAM_TYPE' && (
                       <td className="px-4 py-2 text-center font-medium text-slate-600">
                         {item.prices && item.prices.length > 0 ? (
@@ -417,14 +418,15 @@ export function ReferenceCatalogPane({
       )}
 
       {deactivateTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">Xoá &quot;{deactivateTarget.name}&quot; khỏi danh mục?</p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Hồ sơ bệnh nhân đã lưu giá trị này trước đó sẽ không bị thay đổi. Có thể khôi phục lại sau qua &quot;Hiện cả
-              mục đã ẩn&quot;.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={Trash}
+          tone="danger"
+          title="Xoá khỏi danh mục"
+          rows={[{ label: 'Mục', value: deactivateTarget.name }]}
+          note="Hồ sơ cũ không đổi"
+          onClose={() => setDeactivateTarget(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
                 Huỷ
               </Button>
@@ -448,9 +450,9 @@ export function ReferenceCatalogPane({
               >
                 Xoá
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );

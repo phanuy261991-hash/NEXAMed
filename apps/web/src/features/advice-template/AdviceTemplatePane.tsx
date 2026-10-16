@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArrowCounterClockwise, FileText, MagnifyingGlass, PencilSimple, Plus, Prohibit } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, EyeSlash, FileText, MagnifyingGlass, PencilSimple, Plus, Prohibit } from '@phosphor-icons/react';
 import type { AdviceTemplate } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { fetchOneFromList } from '../../shared/api/fetch-one-from-list';
@@ -8,6 +8,7 @@ import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { useSaveFlash } from '../../shared/hooks/useSaveFlash';
 import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
@@ -145,7 +146,7 @@ export function AdviceTemplatePane() {
           <div className="scroll-hover h-full overflow-y-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="w-10 px-4 py-2.5 text-center">
                     <SelectionCheckbox checked={rowSelection.allLoadedSelected} indeterminate={rowSelection.someLoadedSelected} onChange={rowSelection.toggleAll} ariaLabel="Chọn tất cả" />
                   </th>
@@ -207,20 +208,24 @@ export function AdviceTemplatePane() {
       )}
 
       {hideTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">Ẩn mẫu &quot;{hideTarget.name}&quot;?</p>
-            <p className="mt-1.5 text-xs text-slate-500">Bác sĩ sẽ không chọn được mẫu này ở màn khám nữa. Có thể kích hoạt lại sau.</p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={EyeSlash}
+          tone="danger"
+          title="Ẩn mẫu"
+          rows={[{ label: 'Mẫu', value: hideTarget.name }]}
+          note="Có thể kích hoạt lại sau"
+          onClose={() => setHideTarget(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setHideTarget(null)}>
                 Huỷ
               </Button>
               <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => handleHide(hideTarget)}>
                 Ẩn mẫu
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );

@@ -54,7 +54,7 @@ export function PatientMatchDialog({
             <tone.Icon size={22} weight="fill" className={tone.iconColor} />
           </div>
 
-          <h2 id="patient-match-title" className="text-[16px] font-bold text-slate-900">
+          <h2 id="patient-match-title" className="text-[16px] font-semibold text-slate-900">
             {title}
           </h2>
           <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{description}</p>

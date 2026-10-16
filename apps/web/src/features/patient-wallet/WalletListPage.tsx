@@ -93,7 +93,7 @@ export function WalletListPage() {
           <div className="scroll-hover h-full overflow-y-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="px-3 py-2.5 text-center">Mã bệnh nhân</th>
                   <th className="px-3 py-2.5 text-left">Họ tên</th>
                   <th className="px-3 py-2.5 text-center">Số điện thoại</th>
@@ -113,7 +113,7 @@ export function WalletListPage() {
                     </td>
                     <td className="px-3 py-3 text-left text-slate-900">{item.fullName}</td>
                     <td className="whitespace-nowrap px-3 py-3 text-center text-slate-700">{item.phone ?? '—'}</td>
-                    <td className="whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums text-slate-900">{formatVnd(item.balance)}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-slate-900">{formatVnd(item.balance)}</td>
                     <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-slate-700">{formatVnd(item.totalToppedUp)}</td>
                     <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-slate-700">{formatVnd(item.totalUsed)}</td>
                     <td className="whitespace-nowrap px-3 py-3 text-center text-slate-600">{item.lastTransactionAt ? formatWalletDate(item.lastTransactionAt) : '—'}</td>

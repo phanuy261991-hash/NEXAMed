@@ -53,7 +53,7 @@ export function WorkShiftPickerModal({
             <X size={16} weight="bold" />
           </button>
 
-          <h2 id="work-shift-picker-title" className="text-[16px] font-bold text-slate-900">
+          <h2 id="work-shift-picker-title" className="text-[16px] font-semibold text-slate-900">
             Đăng ký ca làm việc
           </h2>
           <p className="mt-1 text-[13px] text-slate-500">{subtitle}</p>

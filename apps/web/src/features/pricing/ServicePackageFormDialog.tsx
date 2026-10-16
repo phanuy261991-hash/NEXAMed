@@ -94,10 +94,10 @@ export function ServicePackageFormDialog({
               <Package size={20} weight="fill" aria-hidden="true" />
             </span>
             <div>
-              <h2 id="sp-dialog-title" className="text-[17px] font-bold text-slate-900">
+              <h2 id="sp-dialog-title" className="text-[17px] font-semibold text-slate-900">
                 {title}
               </h2>
-              <span className="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">Danh mục cận lâm sàng</span>
+              <span className="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">Danh mục Cận lâm sàng</span>
             </div>
           </div>
           <button
@@ -308,7 +308,7 @@ function PackageForm({
                   }`}
                 >
                   <input type="radio" name="sp-mode" className="sr-only" checked={selected} disabled={readOnly} onChange={() => setPricingMode(card.mode)} />
-                  <span className={`block text-[13.5px] font-bold ${selected ? '' : 'text-slate-900'}`}>{SERVICE_PACKAGE_PRICING_MODE_LABELS[card.mode]}</span>
+                  <span className={`block text-[13.5px] font-semibold ${selected ? '' : 'text-slate-900'}`}>{SERVICE_PACKAGE_PRICING_MODE_LABELS[card.mode]}</span>
                   <span className={`mt-0.5 block text-[11.5px] ${selected ? 'opacity-90' : 'text-slate-500'}`}>{card.hint}</span>
                 </label>
               );
@@ -372,7 +372,7 @@ function PackageForm({
             </div>
             <div className="pb-0.5">
               <span className="block text-xs text-slate-500">{pricingMode === 'FIXED' ? 'Tổng giá lẻ các dịch vụ con' : 'Giá gói sau chiết khấu'}</span>
-              <span className="mt-0.5 block text-base font-bold tabular-nums text-slate-900">
+              <span className="mt-0.5 block text-base font-semibold tabular-nums text-slate-900">
                 {pricingMode === 'FIXED' ? formatVnd(retailTotal) : packagePrice === null ? '—' : formatVnd(packagePrice)}
               </span>
               {saving !== null && retailTotal > 0 && (
@@ -429,7 +429,7 @@ function PackageForm({
             <div className="scroll-hover overflow-x-auto">
               <table className="w-full min-w-[820px] border-collapse text-sm">
                 <thead>
-                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                     <th className="w-12 px-2 py-2.5 text-center">TT</th>
                     <th className="w-32 px-2 py-2.5 text-center">Loại</th>
                     <th className="w-28 px-2 py-2.5 text-center">Mã</th>
@@ -452,7 +452,7 @@ function PackageForm({
                     <tr key={`${row.itemKind}:${row.ref}`} className="border-b border-slate-100 last:border-0">
                       <td className="px-2 py-2.5 text-center font-medium text-slate-600">{index + 1}</td>
                       <td className="px-2 py-2.5 text-center">
-                        <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">{row.itemKind === 'EXAM_TYPE' ? 'Dịch vụ khám' : 'Dịch vụ KT'}</span>
+                        <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">{row.itemKind === 'EXAM_TYPE' ? 'Dịch vụ khám' : 'Dịch vụ KT'}</span>
                       </td>
                       <td className="px-2 py-2.5 text-center font-semibold text-slate-800">{row.code}</td>
                       <td className="px-2.5 py-2.5 text-left font-medium text-slate-900">{row.name}</td>
@@ -492,7 +492,7 @@ function PackageForm({
             </div>
             <div className="flex items-center justify-end gap-7 border-t border-slate-200 bg-slate-50 px-4 py-2.5">
               <span className="text-[13px] font-semibold text-slate-700">Tổng {rows.length} dịch vụ</span>
-              <span className="text-base font-bold tabular-nums text-slate-900">{formatVnd(retailTotal)}</span>
+              <span className="text-base font-semibold tabular-nums text-slate-900">{formatVnd(retailTotal)}</span>
             </div>
           </div>
           {unpricedCount > 0 && (

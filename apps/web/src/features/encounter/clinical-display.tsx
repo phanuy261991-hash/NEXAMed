@@ -76,7 +76,7 @@ export function VitalChip({
         <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${TIER_DOT_CLASS[effectiveTier]}`} aria-hidden="true" />
         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
       </span>
-      <span className={`whitespace-nowrap text-sm font-bold ${TIER_TEXT_CLASS[effectiveTier]}`}>
+      <span className={`whitespace-nowrap text-sm font-semibold ${TIER_TEXT_CLASS[effectiveTier]}`}>
         {value ?? '—'}
         {hasValue && unit && <span className="ml-1 text-xs font-normal text-slate-500">{unit}</span>}
         {hasValue && sublabel && <span className="ml-1.5 text-xs font-semibold">{sublabel}</span>}

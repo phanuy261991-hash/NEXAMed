@@ -95,13 +95,13 @@ export function DoctorQueueButton() {
         <UsersThree size={16} weight="bold" aria-hidden="true" />
         Hàng chờ
         {totalCount > 0 && (
-          <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] font-bold text-white">
+          <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] font-semibold text-white">
             {totalCount > 99 ? '99+' : totalCount}
           </span>
         )}
         {unseenResultPatients > 0 && (
           <span
-            className="inline-flex h-[18px] items-center justify-center gap-0.5 rounded-full bg-emerald-500 px-1.5 text-[11px] font-bold text-white"
+            className="inline-flex h-[18px] items-center justify-center gap-0.5 rounded-full bg-emerald-500 px-1.5 text-[11px] font-semibold text-white"
             title={`${unseenResultPatients} bệnh nhân có kết quả cận lâm sàng mới`}
             aria-label={`${unseenResultPatients} bệnh nhân có kết quả cận lâm sàng mới`}
           >
@@ -118,7 +118,7 @@ export function DoctorQueueButton() {
           <div role="dialog" aria-modal="true" aria-label="Hàng chờ khám" className="fixed right-0 top-0 z-50 flex h-full w-[388px] flex-col border-l border-slate-200 bg-white shadow-xl">
             <div className="flex-shrink-0 border-b border-slate-200 p-4">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-[14.5px] font-bold text-slate-900">
+                <span className="flex items-center gap-2 text-[14.5px] font-semibold text-slate-900">
                   <UsersThree size={16} weight="bold" className="text-blue-600" aria-hidden="true" />
                   Hàng chờ khám
                 </span>
@@ -219,7 +219,7 @@ export function DoctorQueueButton() {
                   setOpen(false);
                   navigate('/reception/doctor-queue');
                 }}
-                className="flex items-center gap-1 text-[11.5px] font-bold text-blue-600 hover:text-blue-700"
+                className="flex items-center gap-1 text-[11.5px] font-semibold text-blue-600 hover:text-blue-700"
               >
                 Xem đầy đủ Hàng đợi khám
                 <ArrowRight size={11} weight="bold" aria-hidden="true" />
@@ -251,11 +251,11 @@ function InProgressCard({ item, onContinue, onRelease }: { item: ReceptionListIt
     <article className={`rounded-lg border-2 border-l-4 border-slate-200 p-3 shadow-sm ${hasNewResult ? 'border-l-emerald-500 bg-emerald-50/40' : 'border-l-amber-500 bg-amber-50/50'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 truncate">
-          <span className="text-[15px] font-bold text-slate-900">{item.fullName}</span>
-          <span className="ml-1.5 text-[11px] font-bold text-slate-500">{item.patientCode}</span>
+          <span className="text-[15px] font-semibold text-slate-900">{item.fullName}</span>
+          <span className="ml-1.5 text-[11px] font-semibold text-slate-500">{item.patientCode}</span>
         </div>
         {item.startedAt && (
-          <span className="flex flex-shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[11px] font-bold text-white">
+          <span className="flex flex-shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[11px] font-semibold text-white">
             <Clock size={11} weight="bold" aria-hidden="true" />
             {waitMinutes(item.startedAt)} phút
           </span>
@@ -263,7 +263,7 @@ function InProgressCard({ item, onContinue, onRelease }: { item: ReceptionListIt
       </div>
       {item.chiefComplaint && (
         <p className="mt-1 truncate text-[12.5px] text-slate-700">
-          <span className="font-bold text-slate-900">Lý do: </span>
+          <span className="font-semibold text-slate-900">Lý do: </span>
           {item.chiefComplaint}
         </p>
       )}

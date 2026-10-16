@@ -61,7 +61,7 @@ export function ShiftSwapDialog({ source, onClose, onDone }: { source: SwapSourc
         <form className="flex flex-col gap-4" onSubmit={(e) => void handleSubmit(e)}>
           <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bạn đưa ca</span>
-            <div className="font-bold">
+            <div className="font-semibold">
               {source.workShiftName} · {formatWeekdayDate(source.workDate)}/{source.workDate.slice(0, 4)}{' '}
               <span className="font-medium text-slate-500">
                 {source.startTime} – {source.endTime}

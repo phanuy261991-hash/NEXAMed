@@ -209,7 +209,7 @@ export function InvoiceListPage() {
               <Wallet size={20} weight="bold" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-bold">Chưa mở ca hôm nay</span>
+              <span className="text-sm font-semibold">Chưa mở ca hôm nay</span>
               <span className="text-xs font-medium text-blue-100">
                 {shiftRequired ? 'Cần mở ca trước khi thu tiền hoặc chốt ca.' : 'Mở ca nếu muốn đối soát tiền mặt theo ca (không bắt buộc).'}
               </span>
@@ -233,7 +233,7 @@ export function InvoiceListPage() {
               <Warning size={20} weight="bold" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-bold">Ca thu ngân mở quá lâu — Chưa chốt</span>
+              <span className="text-sm font-semibold">Ca thu ngân mở quá lâu — Chưa chốt</span>
               <span className="text-xs font-medium text-rose-100">Mở từ {formatDateTime(openShift.openedAt)}. Vui lòng kiểm tra và chốt ca.</span>
             </div>
           </div>
@@ -285,7 +285,7 @@ export function InvoiceListPage() {
               <div
                 role="row"
                 style={{ gridTemplateColumns: GRID_COLUMNS }}
-                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
+                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800"
               >
                 <div role="columnheader" className="flex items-center justify-center py-2.5">
                   <SelectionCheckbox
@@ -332,10 +332,10 @@ export function InvoiceListPage() {
                     <div role="cell" className="truncate text-center font-medium text-slate-600">{item.departmentName}</div>
                     {/* Chiết khấu — hiện đúng số tiền THẬT thu/hoàn (`dueAmount`, sau chiết khấu),
                         KHÔNG phải `totalAmount` (gross, trước chiết khấu). */}
-                    <div role="cell" className="text-center font-bold tabular-nums text-slate-900">{formatVnd(item.dueAmount)}</div>
+                    <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{formatVnd(item.dueAmount)}</div>
                     {/* #203 — `refundedAmount` (tổng dòng payment REFUND) đúng cho cả hoàn TOÀN PHẦN
                         (#085, REFUNDED) lẫn hoàn MỘT PHẦN theo dòng thuốc (phiếu vẫn PAID). */}
-                    <div role="cell" className="text-center font-bold tabular-nums text-violet-700">
+                    <div role="cell" className="text-center font-semibold tabular-nums text-violet-700">
                       {item.refundedAmount > 0 ? `-${formatVnd(item.refundedAmount)}` : <span className="text-slate-300">—</span>}
                     </div>
                     <div role="cell" className="flex flex-col items-center gap-1 text-center">
@@ -375,8 +375,8 @@ export function InvoiceListPage() {
               <Wallet size={20} weight="bold" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Đã thu hôm nay</span>
-              <span className="text-xl font-bold tabular-nums text-slate-900">{formatVnd(listQuery.data.paidTotalAmount)}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Đã thu hôm nay</span>
+              <span className="text-xl font-semibold tabular-nums text-slate-900">{formatVnd(listQuery.data.paidTotalAmount)}</span>
             </div>
           </div>
           {/* #085 — tách riêng "Đã hoàn"/"Thực thu" (paidTotalAmount VẪN gồm cả phiếu đã hoàn — xem
@@ -389,8 +389,8 @@ export function InvoiceListPage() {
               <ArrowCounterClockwise size={20} weight="bold" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Đã hoàn ({listQuery.data.refundedCount})</span>
-              <span className="text-xl font-bold tabular-nums text-violet-700">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Đã hoàn ({listQuery.data.refundedCount})</span>
+              <span className="text-xl font-semibold tabular-nums text-violet-700">
                 {listQuery.data.refundedTotalAmount > 0 ? `-${formatVnd(listQuery.data.refundedTotalAmount)}` : formatVnd(0)}
               </span>
             </div>
@@ -403,8 +403,8 @@ export function InvoiceListPage() {
               <Bank size={20} weight="bold" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Thực thu</span>
-              <span className="text-xl font-bold tabular-nums text-slate-900">{formatVnd(listQuery.data.netTotalAmount)}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Thực thu</span>
+              <span className="text-xl font-semibold tabular-nums text-slate-900">{formatVnd(listQuery.data.netTotalAmount)}</span>
             </div>
           </div>
           {/* Cố ý tô nền đặc (khác các khối trên) — đây là mục CẦN HÀNH ĐỘNG (còn phiếu chưa thu),
@@ -416,8 +416,8 @@ export function InvoiceListPage() {
               <Clock size={18} weight="bold" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-amber-50">Còn chờ thu</span>
-              <span className="whitespace-nowrap text-xl font-bold tabular-nums">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-50">Còn chờ thu</span>
+              <span className="whitespace-nowrap text-xl font-semibold tabular-nums">
                 {listQuery.data.unpaidCount} phiếu · {formatVnd(listQuery.data.unpaidTotalAmount)}
               </span>
             </div>

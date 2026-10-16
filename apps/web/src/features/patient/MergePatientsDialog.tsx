@@ -38,7 +38,7 @@ export function MergePatientsDialog(props: MergePatientsDialogProps) {
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-2xl">
         {!resolved && props.mode === 'choose' && (
           <>
-            <h3 id="merge-patients-title" className="text-base font-bold text-slate-900">
+            <h3 id="merge-patients-title" className="text-base font-semibold text-slate-900">
               Chọn hồ sơ giữ lại
             </h3>
             <p className="mt-1.5 text-sm font-medium text-slate-700">
@@ -75,7 +75,7 @@ export function MergePatientsDialog(props: MergePatientsDialogProps) {
 
         {resolved && (
           <>
-            <h3 id="merge-patients-title" className="text-base font-bold text-slate-900">
+            <h3 id="merge-patients-title" className="text-base font-semibold text-slate-900">
               Xác nhận gộp hồ sơ
             </h3>
             <p className="mt-1.5 text-sm text-slate-600">

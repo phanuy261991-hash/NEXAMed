@@ -84,7 +84,7 @@ export function ExamConfigPane() {
 
         <div className="flex items-center justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Ngưỡng thời gian tính &quot;chờ lâu&quot;</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Ngưỡng thời gian tính &quot;chờ lâu&quot;</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Khách chờ khám vượt quá số phút quy định, tính từ thời điểm tiếp nhận, sẽ được đánh dấu &quot;Chờ
               lâu&quot; trong Hàng đợi khám để bác sĩ ưu tiên xử lý.
@@ -105,7 +105,7 @@ export function ExamConfigPane() {
                 <span className="text-sm text-slate-500">phút</span>
               </>
             ) : (
-              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
+              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-semibold text-blue-700">
                 {query.data.overdueWaitWarningMinutes} phút
               </span>
             )}
@@ -131,7 +131,7 @@ export function ExamConfigPane() {
 
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Cho phép bác sĩ đóng ca khẩn cấp</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Cho phép bác sĩ đóng ca khẩn cấp</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Bác sĩ tự bấm &quot;Đóng ca hôm nay&quot; bất kỳ lúc nào (đóng đột xuất, ngoài kế hoạch). Tắt thì bác sĩ
               chỉ còn &quot;Tạm nghỉ&quot; — vẫn được nhắc đóng ca tự động đúng giờ đóng cửa phòng khám như bình
@@ -154,7 +154,7 @@ export function ExamConfigPane() {
 
         <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Cho phép lễ tân đóng ca hộ bác sĩ</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Cho phép lễ tân đóng ca hộ bác sĩ</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Lễ tân thấy nút thao tác hộ ở khu vực điều phối, cho tạm nghỉ/đóng ca hộ khi bác sĩ rời đi gấp không
               kịp thao tác. Tắt thì lễ tân chỉ xem được trạng thái, không thao tác được.
@@ -180,7 +180,7 @@ export function ExamConfigPane() {
 
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Gợi ý mã ICD-10 từ ô Chẩn đoán</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Gợi ý mã ICD-10 từ ô Chẩn đoán</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): màn khám giữ nguyên, bác sĩ tự tìm mã ở ô ICD-10.
               <br />
@@ -205,7 +205,7 @@ export function ExamConfigPane() {
 
         <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
           <div>
-            <p className={`text-[14.5px] font-bold ${query.data.icd10SuggestionEnabled ? 'text-slate-900' : 'text-slate-400'}`}>
+            <p className={`text-[14.5px] font-semibold ${query.data.icd10SuggestionEnabled ? 'text-slate-900' : 'text-slate-400'}`}>
               Học từ lịch sử chọn mã
             </p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">

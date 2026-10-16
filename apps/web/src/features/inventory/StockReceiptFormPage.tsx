@@ -521,7 +521,7 @@ export function StockReceiptFormPage() {
 
       <div className="flex flex-shrink-0 items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-lg font-bold text-slate-900">{readOnly ? receiptQuery.data!.receiptNo : isEdit ? 'Sửa phiếu Nháp' : 'Tạo phiếu nhập kho'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{readOnly ? receiptQuery.data!.receiptNo : isEdit ? 'Sửa phiếu Nháp' : 'Tạo phiếu nhập kho'}</h2>
           {isEdit && receiptQuery.data && <StatusBadge tone={STATUS_META[receiptQuery.data.status]!.tone}>{STATUS_META[receiptQuery.data.status]!.label}</StatusBadge>}
           {isEdit && receiptQuery.data && receiptQuery.data.voided && <StatusBadge tone="neutral">Đã huỷ</StatusBadge>}
           {isEdit && receiptQuery.data && Boolean(receiptQuery.data.supplierId) && (
@@ -635,7 +635,7 @@ export function StockReceiptFormPage() {
               <div
                 role="row"
                 style={{ gridTemplateColumns: lineGridCols }}
-                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
+                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800"
               >
                 <div role="columnheader" className="py-2.5 text-left">Thuốc / vật tư</div>
                 <div role="columnheader" className="py-2.5 text-center">Đơn vị</div>
@@ -805,7 +805,7 @@ export function StockReceiptFormPage() {
           <div className="flex min-h-0 flex-col gap-5 overflow-y-auto overflow-x-hidden scroll-hover">
             <div className="flex-shrink-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="mb-2 flex items-center gap-3">
-                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Chiết khấu</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Chiết khấu</span>
                 {!readOnly && <TwoOptionToggle options={DISCOUNT_MODE_OPTIONS} value={discountMode} onChange={setDiscountMode} />}
                 {readOnly && discountMode && <span className="text-xs font-semibold text-slate-600">{DISCOUNT_MODE_OPTIONS.find((o) => o.value === discountMode)?.label}</span>}
               </div>
@@ -873,14 +873,14 @@ export function StockReceiptFormPage() {
                         <button
                           type="button"
                           onClick={() => setPrepaidAmount(0)}
-                          className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
+                          className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
                         >
                           Không trả (ghi nợ hết)
                         </button>
                         <button
                           type="button"
                           onClick={() => setPrepaidAmount(netAmount)}
-                          className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
+                          className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
                         >
                           Trả hết {formatVnd(netAmount)}
                         </button>
@@ -918,7 +918,7 @@ export function StockReceiptFormPage() {
                 <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
                   <div className="flex items-baseline justify-between gap-3 font-semibold text-blue-900">
                     <span>Ghi vào công nợ NCC</span>
-                    <span className="whitespace-nowrap text-lg font-bold">{formatVnd(Math.max(remainingToDebt, 0))}</span>
+                    <span className="whitespace-nowrap text-lg font-semibold">{formatVnd(Math.max(remainingToDebt, 0))}</span>
                   </div>
                   {/* 2 dòng riêng, mỗi dòng 1 cặp nhãn/giá trị ngắn (phản hồi trực tiếp) — thay câu
                       dài "Công nợ hiện tại... → sau khi Duyệt phiếu" từng chạy chữ khi khung hẹp
@@ -926,11 +926,11 @@ export function StockReceiptFormPage() {
                   <div className="mt-1.5 space-y-1 border-t border-blue-200 pt-1.5 text-xs font-medium text-blue-800">
                     <div className="flex items-baseline justify-between gap-2">
                       <span>Công nợ hiện tại</span>
-                      <span className="whitespace-nowrap font-bold">{formatVnd(currentDebtBalance)}</span>
+                      <span className="whitespace-nowrap font-semibold">{formatVnd(currentDebtBalance)}</span>
                     </div>
                     <div className="flex items-baseline justify-between gap-2">
                       <span>Công nợ sau khi duyệt</span>
-                      <span className="whitespace-nowrap font-bold">{formatVnd(currentDebtBalance + Math.max(remainingToDebt, 0))}</span>
+                      <span className="whitespace-nowrap font-semibold">{formatVnd(currentDebtBalance + Math.max(remainingToDebt, 0))}</span>
                     </div>
                   </div>
                 </div>
@@ -952,13 +952,13 @@ export function StockReceiptFormPage() {
               <span className="font-semibold text-rose-600">-{formatVnd(discountAmount)}</span>
             </div>
             <div className="mt-0.5 flex justify-between gap-6 border-t border-slate-200 pt-0.5">
-              <span className="font-bold text-slate-900">Thành tiền</span>
-              <span className="text-lg font-bold text-slate-900">{formatVnd(netAmount)}</span>
+              <span className="font-semibold text-slate-900">Thành tiền</span>
+              <span className="text-lg font-semibold text-slate-900">{formatVnd(netAmount)}</span>
             </div>
           </div>
         ) : (
           <div className="text-sm font-semibold text-slate-600">
-            Tổng cộng: <span className="ml-1 text-lg font-bold text-slate-900">{formatVnd(totalAmount)}</span>
+            Tổng cộng: <span className="ml-1 text-lg font-semibold text-slate-900">{formatVnd(totalAmount)}</span>
           </div>
         )}
         {formError && <p className="text-sm font-medium text-rose-600">{formError}</p>}

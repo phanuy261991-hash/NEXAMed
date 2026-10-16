@@ -67,10 +67,10 @@ export function StockBalancePage() {
           <Warning size={20} weight="fill" className="mt-0.5 flex-shrink-0 text-amber-500" aria-hidden="true" />
           <div className="flex-1 text-sm">
             <p className="font-semibold text-amber-900">
-              {expiringSoonCount > 0 && <span className="font-bold">{expiringSoonCount} lô</span>}
+              {expiringSoonCount > 0 && <span className="font-semibold">{expiringSoonCount} lô</span>}
               {expiringSoonCount > 0 && ' sắp hết hạn trong 30 ngày tới'}
               {expiringSoonCount > 0 && expiredCount > 0 && ' · '}
-              {expiredCount > 0 && <span className="font-bold text-rose-700">{expiredCount} lô</span>}
+              {expiredCount > 0 && <span className="font-semibold text-rose-700">{expiredCount} lô</span>}
               {expiredCount > 0 && ' đã hết hạn'}
             </p>
             <p className="text-xs font-medium text-amber-700">Ngưỡng cảnh báo hiện cố định 30 ngày.</p>
@@ -174,7 +174,7 @@ function BalanceByItemTable({
     <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div role="table" aria-label="Tồn kho theo mặt hàng" className="scroll-hover h-full overflow-x-auto">
         <div className="flex h-full flex-col" style={{ minWidth: 900 }}>
-          <div role="row" style={{ gridTemplateColumns: '130px 1.6fr 110px 1fr 90px 130px 150px 130px 90px' }} className="grid flex-shrink-0 gap-x-3 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <div role="row" style={{ gridTemplateColumns: '130px 1.6fr 110px 1fr 90px 130px 150px 130px 90px' }} className="grid flex-shrink-0 gap-x-3 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <div role="columnheader" className="py-2.5 text-center">Mã</div>
             <div role="columnheader" className="py-2.5 text-left">Tên thuốc / vật tư</div>
             <div role="columnheader" className="py-2.5 text-center">Loại</div>
@@ -188,14 +188,14 @@ function BalanceByItemTable({
           <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
             {items.map((item) => (
               <div key={`${item.drugId}-${item.warehouseName}`} role="row" style={{ gridTemplateColumns: '130px 1.6fr 110px 1fr 90px 130px 150px 130px 90px', minHeight: 56 }} className="grid items-center gap-x-3 border-b border-slate-100 px-4 text-sm hover:bg-slate-50">
-                <div role="cell" className="min-w-0 truncate text-center font-bold text-slate-800" title={item.drugCode}>{item.drugCode}</div>
+                <div role="cell" className="min-w-0 truncate text-center font-semibold text-slate-800" title={item.drugCode}>{item.drugCode}</div>
                 <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900" title={item.drugName}>{item.drugName}</div>
                 <div role="cell" className="text-center">
                   <DrugItemTypeBadge itemType={item.itemType} />
                 </div>
                 <div role="cell" className="truncate text-center font-medium text-slate-700">{item.warehouseName}</div>
                 <div role="cell" className="text-center font-medium text-slate-700">{item.unitCode ? unitLabel(unitNameByCode, item.unitCode) : '—'}</div>
-                <div role="cell" className={`text-center text-base font-bold ${item.status === 'OUT' ? 'text-rose-600' : item.status === 'LOW' || item.status === 'HIGH' ? 'text-amber-600' : 'text-slate-900'}`}>
+                <div role="cell" className={`text-center text-base font-semibold ${item.status === 'OUT' ? 'text-rose-600' : item.status === 'LOW' || item.status === 'HIGH' ? 'text-amber-600' : 'text-slate-900'}`}>
                   {item.quantityOnHand.toLocaleString('vi-VN')}
                 </div>
                 <div role="cell" className="text-center font-medium text-slate-500">
@@ -247,7 +247,7 @@ function ExpiryWarningTable({
     <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div role="table" aria-label="Cảnh báo hạn dùng" className="scroll-hover h-full overflow-x-auto">
         <div className="flex h-full flex-col" style={{ minWidth: 900 }}>
-          <div role="row" style={{ gridTemplateColumns: '130px 1.6fr 130px 1fr 100px 140px' }} className="grid flex-shrink-0 gap-x-3 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <div role="row" style={{ gridTemplateColumns: '130px 1.6fr 130px 1fr 100px 140px' }} className="grid flex-shrink-0 gap-x-3 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <div role="columnheader" className="py-2.5 text-center">Số lô</div>
             <div role="columnheader" className="py-2.5 text-left">Thuốc / vật tư</div>
             <div role="columnheader" className="py-2.5 text-center">Kho</div>

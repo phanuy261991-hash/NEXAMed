@@ -177,7 +177,7 @@ export function ExamTypeFormModal({
               <Stethoscope size={20} weight="fill" aria-hidden="true" />
             </span>
             <div>
-              <h2 id="exam-type-modal-title" className="text-[17px] font-bold text-slate-900">
+              <h2 id="exam-type-modal-title" className="text-[17px] font-semibold text-slate-900">
                 {mode === 'create' ? 'Thêm mới Dịch vụ khám' : 'Sửa Dịch vụ khám'}
               </h2>
               <span className="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
@@ -307,7 +307,7 @@ export function ExamTypeFormModal({
               <div className="scroll-hover overflow-x-auto">
                 <table className="w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                    <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                       <th className="px-4 py-2.5 text-left">Loại giá dịch vụ</th>
                       <th className="px-4 py-2.5 text-center">Đơn giá</th>
                       <th className="px-4 py-2.5 text-center">Đơn vị tính</th>
@@ -327,7 +327,7 @@ export function ExamTypeFormModal({
                       rows.map((row) => (
                         <tr key={row.draftId} className="border-b border-slate-200 last:border-0">
                           <td className="px-4 py-2 text-left font-semibold text-slate-900">{priceTypeLabel.get(row.priceTypeCode) ?? row.priceTypeCode}</td>
-                          <td className="px-4 py-2 text-center font-bold text-slate-900">{formatVnd(row.amount)}</td>
+                          <td className="px-4 py-2 text-center font-semibold text-slate-900">{formatVnd(row.amount)}</td>
                           <td className="px-4 py-2 text-center font-medium text-slate-600">{unitLabel.get(row.unitCode) ?? row.unitCode}</td>
                           <td className="px-4 py-2 text-center font-medium text-slate-600">{row.effectiveFrom}</td>
                           <td className="px-4 py-2 text-center font-medium text-slate-600">{row.effectiveTo ?? '—'}</td>

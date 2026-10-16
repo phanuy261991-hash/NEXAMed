@@ -533,13 +533,13 @@ export function PrescriptionPanel({
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-slate-900">{line.drugName}</p>
                       {line.drugId === null && (
-                        <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                        <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                           Ngoài danh mục
                         </span>
                       )}
                       {line.drugId !== null && showStock && onHandByDrugId[line.drugId] !== undefined && (
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] font-bold text-white ${
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${
                             onHandByDrugId[line.drugId]! > 0 ? 'bg-emerald-500' : 'bg-rose-500'
                           }`}
                         >
@@ -560,14 +560,14 @@ export function PrescriptionPanel({
                       <div className="w-14">
                         <LineInput dense label="Tối" type="number" value={line.doseEvening} onBlurCommit={(v) => persistDraft(draftLines.map((l) => (l.key === line.key ? { ...l, doseEvening: v } : l)))} onChange={(v) => updateLine(line.key, { doseEvening: v })} disabled={!canEdit} />
                       </div>
-                      <span className="pb-1.5 text-lg font-bold text-slate-300">×</span>
+                      <span className="pb-1.5 text-lg font-semibold text-slate-300">×</span>
                       <div className="w-16">
                         <LineInput dense label="Số ngày" type="number" value={line.durationDays} onBlurCommit={(v) => persistDraft(draftLines.map((l) => (l.key === line.key ? { ...l, durationDays: v } : l)))} onChange={(v) => updateLine(line.key, { durationDays: v })} disabled={!canEdit} />
                       </div>
-                      <span className="pb-1.5 text-lg font-bold text-slate-300">=</span>
+                      <span className="pb-1.5 text-lg font-semibold text-slate-300">=</span>
                       <div className="rounded-md bg-brand-teal-tint px-3 py-1.5">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Tổng số</div>
-                        <div className="text-[15px] font-bold text-blue-700">
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tổng số</div>
+                        <div className="text-[15px] font-semibold text-blue-700">
                           {draftLineTotal(line)} {line.unitCode ? unitLabel(unitNameByCode, line.unitCode) : ''}
                         </div>
                       </div>
@@ -667,7 +667,7 @@ export function PrescriptionPanel({
                     <p className="flex items-center gap-2 text-sm font-medium text-slate-900">
                       {line.drugName}
                       {line.drugId === null && (
-                        <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                        <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                           Ngoài danh mục
                         </span>
                       )}
@@ -689,14 +689,14 @@ export function PrescriptionPanel({
                     <div className="w-14">
                       <LineInput dense label="Tối" type="number" value={line.doseEvening} onChange={(v) => setAmendLines((prev) => prev.map((l) => (l.key === line.key ? { ...l, doseEvening: v } : l)))} />
                     </div>
-                    <span className="pb-1.5 text-lg font-bold text-slate-300">×</span>
+                    <span className="pb-1.5 text-lg font-semibold text-slate-300">×</span>
                     <div className="w-16">
                       <LineInput dense label="Số ngày" type="number" value={line.durationDays} onChange={(v) => setAmendLines((prev) => prev.map((l) => (l.key === line.key ? { ...l, durationDays: v } : l)))} />
                     </div>
-                    <span className="pb-1.5 text-lg font-bold text-slate-300">=</span>
+                    <span className="pb-1.5 text-lg font-semibold text-slate-300">=</span>
                     <div className="rounded-md bg-brand-teal-tint px-3 py-1.5">
-                      <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Tổng số</div>
-                      <div className="text-[15px] font-bold text-blue-700">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tổng số</div>
+                      <div className="text-[15px] font-semibold text-blue-700">
                         {draftLineTotal(line)} {line.unitCode ? unitLabel(unitNameByCode, line.unitCode) : ''}
                       </div>
                     </div>
@@ -773,7 +773,7 @@ function PrescriptionInfoHeader({
         </dl>
       </div>
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3.5">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800">Chẩn đoán lâm sàng</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">Chẩn đoán lâm sàng</p>
         <p className="mt-0.5 text-sm font-semibold text-slate-900">{diagnosisLabel || 'Chưa có chẩn đoán'}</p>
       </div>
     </div>
@@ -867,11 +867,11 @@ function PrescriptionTemplateModal({
                       <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-blue-50 text-blue-600 group-hover:bg-blue-100">
                         <Stack size={16} weight="fill" aria-hidden="true" />
                       </span>
-                      <p className="min-w-0 flex-1 truncate pt-1.5 text-sm font-bold text-slate-900">{t.name}</p>
+                      <p className="min-w-0 flex-1 truncate pt-1.5 text-sm font-semibold text-slate-900">{t.name}</p>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{t.items.length} thuốc</span>
-                      <span className="flex items-center gap-1 text-xs font-bold text-blue-600">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-blue-600">
                         Dùng mẫu
                         <ArrowRight size={12} weight="bold" className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                       </span>
@@ -970,7 +970,7 @@ export function LineInput({
         onKeyDown={onKeyDown}
         className={
           isUnderline
-            ? `w-full border-0 border-b-2 border-slate-300 bg-transparent px-0 py-1 text-sm ${dense ? 'font-bold' : 'font-medium'} text-slate-900 focus:border-blue-500 focus:outline-none disabled:text-slate-400 ${dense ? 'text-center' : ''}`
+            ? `w-full border-0 border-b-2 border-slate-300 bg-transparent px-0 py-1 text-sm ${dense ? 'font-semibold' : 'font-medium'} text-slate-900 focus:border-blue-500 focus:outline-none disabled:text-slate-400 ${dense ? 'text-center' : ''}`
             : 'rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50'
         }
       />
@@ -986,7 +986,7 @@ export function PrescriptionItemsTable({ items }: { items: PrescriptionItem[] })
   return (
     <table className="w-full border-collapse text-sm">
       <thead>
-        <tr className="border-b border-slate-200 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+        <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <th className="py-2">Tên thuốc</th>
           <th className="py-2">Liều dùng theo buổi</th>
           <th className="py-2 text-center">Số ngày</th>
@@ -1000,7 +1000,7 @@ export function PrescriptionItemsTable({ items }: { items: PrescriptionItem[] })
             <td className="py-2 font-medium text-slate-900">
               {item.drugName}
               {item.drugId === null && (
-                <span className="ml-1.5 rounded-full border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                <span className="ml-1.5 rounded-full border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
                   Ngoài danh mục
                 </span>
               )}

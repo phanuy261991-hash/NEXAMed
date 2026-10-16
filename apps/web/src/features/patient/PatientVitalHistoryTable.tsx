@@ -33,7 +33,7 @@ export function PatientVitalHistoryTable({ vitalSigns }: { vitalSigns: PatientVi
   return (
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
           <Heartbeat size={16} weight="fill" className="text-blue-600" aria-hidden="true" />
           Sinh hiệu theo lượt khám
         </h2>
@@ -47,14 +47,14 @@ export function PatientVitalHistoryTable({ vitalSigns }: { vitalSigns: PatientVi
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-slate-600">Ngày khám</th>
-                <th className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-slate-600">Cân nặng</th>
-                <th className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-slate-600">Chiều cao</th>
-                <th className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-slate-600">BMI</th>
-                <th className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-slate-600">Huyết áp</th>
-                <th className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-slate-600">Nhiệt độ</th>
-                <th className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-slate-600">Mạch</th>
-                <th className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-slate-600">SpO2</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Ngày khám</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Cân nặng</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Chiều cao</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">BMI</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Huyết áp</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Nhiệt độ</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Mạch</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">SpO2</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

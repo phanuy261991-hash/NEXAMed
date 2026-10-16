@@ -61,7 +61,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
               <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
                 <div>
                   <dt className="text-sm font-medium text-slate-500">Phiên bản</dt>
-                  <dd className="text-3xl font-bold tabular-nums text-slate-900">{server.version}</dd>
+                  <dd className="text-3xl font-semibold tabular-nums text-slate-900">{server.version}</dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-slate-500">Kênh</dt>
@@ -94,7 +94,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
                 <div className="space-y-3">
                   {NOTE_GROUPS.filter((g) => notes[g.key].length > 0).map((g) => (
                     <div key={g.key}>
-                      <h3 className="text-xs font-bold uppercase tracking-wide text-slate-700">{g.title}</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-700">{g.title}</h3>
                       <ul className="mt-1 list-disc space-y-1 pl-5 text-sm font-medium text-slate-800">
                         {notes[g.key].map((line) => (
                           <li key={line}>{line}</li>
@@ -110,7 +110,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
           )}
 
           <details>
-            <summary className="cursor-pointer text-sm font-bold text-slate-700">Thông tin kỹ thuật</summary>
+            <summary className="cursor-pointer text-sm font-semibold text-slate-700">Thông tin kỹ thuật</summary>
             <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
               <div>
                 <dt className="text-sm font-medium text-slate-500">Số bản dựng (máy chủ)</dt>

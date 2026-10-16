@@ -89,7 +89,7 @@ export function SupplierPaymentListPage() {
 
       {listQuery.isSuccess && listQuery.data.pendingApprovalCount > 0 && (
         <div className="flex flex-shrink-0 items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-white">
-          <span className="text-sm font-bold">{listQuery.data.pendingApprovalCount} phiếu chờ duyệt — duyệt tại trang "Phiếu thu / Phiếu chi"</span>
+          <span className="text-sm font-semibold">{listQuery.data.pendingApprovalCount} phiếu chờ duyệt — duyệt tại trang "Phiếu thu / Phiếu chi"</span>
         </div>
       )}
 
@@ -112,7 +112,7 @@ export function SupplierPaymentListPage() {
           <div className="scroll-hover h-full overflow-y-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="px-4 py-2.5 text-center">Mã phiếu</th>
                   <th className="px-4 py-2.5 text-left">Nhà cung cấp</th>
                   {showBranch && <th className="px-4 py-2.5 text-center">Chi nhánh</th>}
@@ -138,7 +138,7 @@ export function SupplierPaymentListPage() {
                     )}
                     <td className="px-4 py-2 text-center text-slate-600">{formatDateShort(p.occurredAt)}</td>
                     <td className="px-4 py-2 text-left text-slate-700">{p.description}</td>
-                    <td className={`px-4 py-2 text-center font-bold tabular-nums ${p.direction === 'INCOME' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    <td className={`px-4 py-2 text-center font-semibold tabular-nums ${p.direction === 'INCOME' ? 'text-emerald-700' : 'text-rose-700'}`}>
                       {p.direction === 'INCOME' ? '+' : '−'}
                       {formatVnd(p.amount)}
                     </td>

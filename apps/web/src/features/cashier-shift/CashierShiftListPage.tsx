@@ -127,7 +127,7 @@ export function CashierShiftListPage() {
           <div role="table" aria-label="Danh sách phiếu chốt ca" className="scroll-hover h-full overflow-y-auto">
             <div
               role="row"
-              className="grid grid-cols-[140px_130px_1fr_120px_140px_140px_130px_130px_100px] border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
+              className="grid grid-cols-[140px_130px_1fr_120px_140px_140px_130px_130px_100px] border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800"
             >
               <div className="py-2.5 text-center">Mã phiếu</div>
               <div className="py-2.5 text-center">Ngày / Giờ chốt</div>
@@ -151,8 +151,8 @@ export function CashierShiftListPage() {
                 <div role="cell" className="truncate font-medium text-slate-900">{item.cashierName}</div>
                 <div role="cell" className="text-center font-medium text-slate-600">{item.shiftLabel}</div>
                 <div role="cell" className="text-center font-medium text-slate-700">{item.expectedCashAmount !== null ? formatVnd(item.expectedCashAmount) : '—'}</div>
-                <div role="cell" className="text-center font-bold text-slate-900">{item.countedCashAmount !== null ? formatVnd(item.countedCashAmount) : '—'}</div>
-                <div role="cell" className={`text-center font-bold ${item.cashDiscrepancyAmount === 0 ? 'text-slate-300' : 'text-rose-600'}`}>
+                <div role="cell" className="text-center font-semibold text-slate-900">{item.countedCashAmount !== null ? formatVnd(item.countedCashAmount) : '—'}</div>
+                <div role="cell" className={`text-center font-semibold ${item.cashDiscrepancyAmount === 0 ? 'text-slate-300' : 'text-rose-600'}`}>
                   {item.cashDiscrepancyAmount === 0 ? '—' : formatVnd(item.cashDiscrepancyAmount)}
                 </div>
                 <div role="cell" className="text-center">
@@ -175,8 +175,8 @@ export function CashierShiftListPage() {
               <Receipt size={20} weight="regular" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Tổng số ca</span>
-              <span className="text-xl font-bold tabular-nums text-slate-900">{listQuery.data.totalCount} ca</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Tổng số ca</span>
+              <span className="text-xl font-semibold tabular-nums text-slate-900">{listQuery.data.totalCount} ca</span>
             </div>
           </div>
           <div className="flex min-w-[170px] flex-1 items-center justify-center gap-3 border-l border-slate-100 px-5 py-3.5">
@@ -184,8 +184,8 @@ export function CashierShiftListPage() {
               <CurrencyCircleDollar size={20} weight="regular" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Tổng tiền mặt nộp về</span>
-              <span className="text-xl font-bold tabular-nums text-slate-900">{formatVnd(listQuery.data.totalSubmittedAmount)}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Tổng tiền mặt nộp về</span>
+              <span className="text-xl font-semibold tabular-nums text-slate-900">{formatVnd(listQuery.data.totalSubmittedAmount)}</span>
             </div>
           </div>
           <div className="flex min-w-[170px] flex-1 items-center justify-center gap-3 border-l border-slate-100 px-5 py-3.5">
@@ -193,8 +193,8 @@ export function CashierShiftListPage() {
               <Clock size={20} weight="regular" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Chờ duyệt</span>
-              <span className="text-xl font-bold tabular-nums text-slate-900">{listQuery.data.pendingApprovalCount} ca</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Chờ duyệt</span>
+              <span className="text-xl font-semibold tabular-nums text-slate-900">{listQuery.data.pendingApprovalCount} ca</span>
             </div>
           </div>
           <div className="flex flex-none items-center gap-3 self-stretch bg-rose-600 px-5 py-3.5 text-white">
@@ -202,8 +202,8 @@ export function CashierShiftListPage() {
               <Warning size={18} weight="fill" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-rose-100">Có chênh lệch — cần xử lý</span>
-              <span className="text-xl font-bold tabular-nums">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-100">Có chênh lệch — cần xử lý</span>
+              <span className="text-xl font-semibold tabular-nums">
                 {listQuery.data.discrepancyCount} ca · {formatVnd(listQuery.data.discrepancyTotalAmount)}
               </span>
             </div>

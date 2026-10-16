@@ -120,10 +120,10 @@ export function StockReceiptListPage() {
           <Warning size={20} weight="fill" className="mt-0.5 flex-shrink-0 text-amber-500" aria-hidden="true" />
           <div className="flex-1 text-sm">
             <p className="font-semibold text-amber-900">
-              {expiringSoonCount > 0 && <span className="font-bold">{expiringSoonCount} lô</span>}
+              {expiringSoonCount > 0 && <span className="font-semibold">{expiringSoonCount} lô</span>}
               {expiringSoonCount > 0 && ' sắp hết hạn trong 30 ngày tới'}
               {expiringSoonCount > 0 && expiredCount > 0 && ' · '}
-              {expiredCount > 0 && <span className="font-bold text-rose-700">{expiredCount} lô</span>}
+              {expiredCount > 0 && <span className="font-semibold text-rose-700">{expiredCount} lô</span>}
               {expiredCount > 0 && ' đã hết hạn'}
             </p>
             <p className="text-xs font-medium text-amber-700">Kiểm tra kỹ trước khi bán hoặc sử dụng cho bệnh nhân.</p>
@@ -214,7 +214,7 @@ export function StockReceiptListPage() {
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div role="table" aria-label="Danh sách phiếu nhập kho" className="scroll-hover h-full overflow-x-auto">
             <div className="flex h-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
-              <div role="row" style={{ gridTemplateColumns: GRID_COLUMNS }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <div role="row" style={{ gridTemplateColumns: GRID_COLUMNS }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <div role="columnheader" className="py-2.5 text-center">Số phiếu</div>
                 <div role="columnheader" className="py-2.5 text-center">Loại phiếu</div>
                 <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
@@ -299,8 +299,9 @@ export function StockReceiptListPage() {
 
       {rejectTarget && (
         <ReasonConfirmDialog
-          title="Từ chối phiếu nhập kho?"
-          description={`Phiếu ${rejectTarget.receiptNo} sẽ chuyển sang trạng thái Từ chối, không cộng vào tồn kho.`}
+          title="Từ chối phiếu nhập kho"
+          rows={[{ label: 'Phiếu', value: rejectTarget.receiptNo }]}
+          note="Không cộng vào tồn kho."
           confirmLabel="Xác nhận từ chối"
           confirmVariant="danger"
           onConfirm={(reason) => rejectMutation.mutateAsync({ id: rejectTarget.id, body: { reason, version: rejectTarget.version } })}
@@ -310,8 +311,9 @@ export function StockReceiptListPage() {
       )}
       {voidTarget && (
         <ReasonConfirmDialog
-          title="Huỷ phiếu nhập kho đã duyệt?"
-          description={`Phiếu ${voidTarget.receiptNo} sẽ bị huỷ — tồn kho đã cộng từ phiếu này sẽ bị trừ ngược lại.`}
+          title="Huỷ phiếu nhập kho"
+          rows={[{ label: 'Phiếu', value: voidTarget.receiptNo }]}
+          note="Tồn kho đã cộng từ phiếu này sẽ bị trừ lại."
           confirmLabel="Xác nhận huỷ"
           confirmVariant="danger"
           onConfirm={(reason) => voidMutation.mutateAsync({ id: voidTarget.id, body: { reason, version: voidTarget.version } })}
@@ -321,8 +323,9 @@ export function StockReceiptListPage() {
       )}
       {voidRequestTarget && (
         <ReasonConfirmDialog
-          title="Đề nghị huỷ phiếu nhập kho?"
-          description={`Gửi đề nghị huỷ phiếu ${voidRequestTarget.receiptNo} tới người có quyền duyệt công nợ (${'supplier_debt.approve'}) — chỉ huỷ thật khi được duyệt.`}
+          title="Đề nghị huỷ phiếu nhập kho"
+          rows={[{ label: 'Phiếu', value: voidRequestTarget.receiptNo }]}
+          note="Chỉ huỷ thật khi người có quyền duyệt đồng ý."
           confirmLabel="Gửi đề nghị"
           confirmVariant="danger"
           onConfirm={(reason) =>

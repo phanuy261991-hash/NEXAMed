@@ -111,7 +111,7 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
 
             <div className="mt-3 flex items-center justify-between px-1">
               <span className="text-sm font-semibold text-slate-600">{issue.issueType === 'RETURN_TO_SUPPLIER' ? 'Giá trị trừ công nợ' : 'Tổng tiền'}</span>
-              <span className="text-base font-bold text-slate-900">{formatVnd(issue.totalAmount)}</span>
+              <span className="text-base font-semibold text-slate-900">{formatVnd(issue.totalAmount)}</span>
             </div>
 
             {issue.note && <p className="mt-2 px-1 text-xs text-slate-500">{issue.prescriptionId ? 'Ghi chú' : 'Lý do'}: {issue.note}</p>}

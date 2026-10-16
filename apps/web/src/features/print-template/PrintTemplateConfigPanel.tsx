@@ -42,7 +42,7 @@ const MARGIN_FIELDS: { key: MarginKey; label: string }[] = [
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="overflow-hidden rounded-lg border border-slate-200">
-      <h3 className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">{title}</h3>
+      <h3 className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">{title}</h3>
       <div className="p-3">{children}</div>
     </section>
   );

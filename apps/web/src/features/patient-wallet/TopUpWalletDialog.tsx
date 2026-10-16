@@ -127,7 +127,7 @@ export function TopUpWalletDialog({ patientId, defaultAmount, onClose }: { patie
           <ModalHeader icon={PlusCircle} title="Nạp tạm ứng" subtitle={patientQuery.data ? `Ví: ${patientQuery.data.fullName}` : undefined} onClose={onClose} />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-4">
           {error && (
             <p role="alert" className="mb-3 rounded-md border border-rose-300 bg-rose-50 px-3 py-2.5 text-sm font-semibold text-rose-700">
               {error}
@@ -181,8 +181,8 @@ export function TopUpWalletDialog({ patientId, defaultAmount, onClose }: { patie
           </div>
 
           <div className="mt-4 flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3.5 py-2.5">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Số dư sau khi nạp</span>
-            <span className="text-lg font-bold tabular-nums text-emerald-700">{formatVnd(balanceAfterPreview)}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Số dư sau khi nạp</span>
+            <span className="text-lg font-semibold tabular-nums text-emerald-700">{formatVnd(balanceAfterPreview)}</span>
           </div>
 
           {printing && receipt && patientQuery.data && (

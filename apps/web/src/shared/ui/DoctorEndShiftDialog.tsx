@@ -76,14 +76,14 @@ export function DoctorEndShiftDialog({
         <form onSubmit={(e) => void handleSubmit(e)}>
           <div className="flex items-start justify-between gap-6">
             <div>
-              <p id="doctor-end-shift-title" className="text-xl font-bold text-slate-900">
+              <p id="doctor-end-shift-title" className="text-xl font-semibold text-slate-900">
                 {isScheduled ? 'Đã hết giờ làm việc hôm nay' : 'Đóng ca hôm nay?'}
               </p>
               <p className="mt-1 max-w-[50ch] text-sm font-medium text-slate-500">
                 {isScheduled ? 'Xác nhận để hệ thống ngừng điều phối ca khám mới cho bạn.' : 'Bạn sẽ ngừng nhận bệnh cho tới hết ngày.'}
               </p>
             </div>
-            <span className="flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-brand-teal/25 bg-brand-teal-panel px-3 py-1.5 text-xs font-bold text-brand-teal-active">
+            <span className="flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-brand-teal/25 bg-brand-teal-panel px-3 py-1.5 text-xs font-semibold text-brand-teal-active">
               <CalendarBlank size={13} weight="bold" aria-hidden="true" />
               {formatTodayChipLabel(today)}
             </span>
@@ -100,7 +100,7 @@ export function DoctorEndShiftDialog({
 
           {pendingCount > 0 && (
             <div className="mt-[18px] flex items-center gap-3 rounded-md bg-amber-50/70 py-2 pl-2.5 pr-3">
-              <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-amber-400 text-[15px] font-bold text-white">
+              <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-amber-400 text-[15px] font-semibold text-white">
                 {pendingCount}
               </div>
               <p className="text-xs leading-snug text-slate-700">
@@ -155,11 +155,11 @@ export function DoctorShiftSummaryPanel({ doctorId }: { doctorId: string }) {
   return (
     <div className="mt-6 rounded-2xl border border-brand-teal/20 bg-brand-teal-panel px-5 py-[18px]">
       <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-full border-[1.5px] border-brand-teal/30 bg-white text-[13px] font-bold text-brand-teal-active">
+        <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-full border-[1.5px] border-brand-teal/30 bg-white text-[13px] font-semibold text-brand-teal-active">
           {getInitials(doctorName)}
         </div>
         <div className="flex min-w-0 flex-col gap-px">
-          <span className="text-[15px] font-bold text-slate-900">{doctorName}</span>
+          <span className="text-[15px] font-semibold text-slate-900">{doctorName}</span>
           <span className="text-[12.5px] font-medium text-brand-teal-active">đã hoàn thành ngày làm việc hôm nay với:</span>
         </div>
       </div>
@@ -213,8 +213,8 @@ export function ShiftStatTile({
         <Icon size={17} weight="bold" className={iconColor} aria-hidden="true" />
       </div>
       <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-[11px] font-bold uppercase leading-tight tracking-wide text-slate-600">{label}</span>
-        <span className={`text-[20px] font-bold leading-tight tabular-nums ${attention ? 'text-rose-700' : 'text-slate-900'}`}>
+        <span className="text-[11px] font-semibold uppercase leading-tight tracking-wide text-slate-600">{label}</span>
+        <span className={`text-[20px] font-semibold leading-tight tabular-nums ${attention ? 'text-rose-700' : 'text-slate-900'}`}>
           {value ?? '—'}
           {value !== null && <span className="ml-0.5 text-[12px] font-semibold text-slate-500">{unit}</span>}
         </span>

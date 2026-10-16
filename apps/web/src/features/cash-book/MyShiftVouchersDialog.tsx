@@ -139,7 +139,7 @@ export function MyShiftVouchersDialog({ shift, onClose }: { shift: CashierShiftD
                 <div
                   role="row"
                   style={{ gridTemplateColumns: GRID_COLUMNS }}
-                  className="sticky top-0 z-10 grid gap-x-4 border-b-2 border-blue-600 bg-slate-100 px-5 text-xs font-bold uppercase tracking-wide text-slate-800"
+                  className="sticky top-0 z-10 grid gap-x-4 border-b-2 border-blue-600 bg-slate-100 px-5 text-xs font-semibold uppercase tracking-wide text-slate-800"
                 >
                   <div role="columnheader" className="py-3 text-center">Giờ</div>
                   <div role="columnheader" className="py-3 text-left">Loại</div>
@@ -171,7 +171,7 @@ export function MyShiftVouchersDialog({ shift, onClose }: { shift: CashierShiftD
                       <p className="truncate text-sm font-semibold text-slate-900">{row.label}</p>
                       {row.subLabel && <p className="truncate text-xs text-slate-500">{row.subLabel}</p>}
                     </div>
-                    <div role="cell" className={`text-right text-sm font-bold tabular-nums ${row.positive ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    <div role="cell" className={`text-right text-sm font-semibold tabular-nums ${row.positive ? 'text-emerald-700' : 'text-rose-700'}`}>
                       {row.positive ? '+' : '−'}
                       {formatVnd(row.amount)}
                     </div>

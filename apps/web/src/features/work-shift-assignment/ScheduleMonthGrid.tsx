@@ -36,7 +36,7 @@ export function ScheduleMonthGrid({
       <div className="min-w-[560px]">
         <div className="grid grid-cols-7 gap-1.5">
           {WEEKDAY_HEADS.map((d, i) => (
-            <div key={d} className={`py-1 text-center text-[11px] font-bold uppercase tracking-wide ${i >= 5 ? 'text-slate-300' : 'text-slate-400'}`}>
+            <div key={d} className={`py-1 text-center text-[11px] font-semibold uppercase tracking-wide ${i >= 5 ? 'text-slate-300' : 'text-slate-400'}`}>
               {d}
             </div>
           ))}
@@ -48,10 +48,10 @@ export function ScheduleMonthGrid({
             const shifts = byDay.get(day) ?? [];
             return (
               <div key={day} className="flex min-h-[64px] flex-col items-start gap-1 rounded-lg border border-slate-200 bg-white p-1.5">
-                <span className={`text-[12px] font-bold ${shifts.length > 0 ? 'text-slate-900' : 'text-slate-300'}`}>{day}</span>
+                <span className={`text-[12px] font-semibold ${shifts.length > 0 ? 'text-slate-900' : 'text-slate-300'}`}>{day}</span>
                 <span className="flex flex-wrap gap-1">
                   {shifts.map((name, idx) => (
-                    <span key={idx} className={`max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-inset ${SCHEDULE_CHIP_TONE[tone]}`} title={name}>
+                    <span key={idx} className={`max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${SCHEDULE_CHIP_TONE[tone]}`} title={name}>
                       {name}
                     </span>
                   ))}

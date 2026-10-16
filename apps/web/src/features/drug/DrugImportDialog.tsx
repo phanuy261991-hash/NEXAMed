@@ -143,7 +143,7 @@ export function DrugImportDialog({ onClose }: { onClose: () => void }) {
                   ) : (
                     <table className="w-full border-collapse text-sm">
                       <thead className="sticky top-0 z-10">
-                        <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                        <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                           <th className={TH}>Sheet</th>
                           <th className={`${TH} w-16`}>Dòng</th>
                           <th className={TH}>Mã</th>
@@ -172,7 +172,7 @@ export function DrugImportDialog({ onClose }: { onClose: () => void }) {
                       </p>
                       <table className="w-full border-collapse text-sm">
                         <thead className="sticky top-0 z-10">
-                          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                             <th className={TH}>Danh mục</th>
                             <th className={TH}>Tên sẽ tạo</th>
                           </tr>
@@ -216,7 +216,7 @@ function ItemTable({ rows, accent, empty }: { rows: DrugImportPreviewResponse['v
   return (
     <table className="w-full border-collapse text-sm">
       <thead className="sticky top-0 z-10">
-        <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+        <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
           <th className={`${TH} w-16`}>Dòng</th>
           <th className={TH}>Mã</th>
           <th className={TH}>Tên</th>

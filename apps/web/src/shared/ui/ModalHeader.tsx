@@ -14,9 +14,12 @@ export function ModalHeader({
   subtitle,
   right,
   onClose,
+  tone = 'primary',
 }: {
   icon: Icon;
   title: string;
+  /** `danger` = biểu tượng đỏ cho hành động huỷ/xoá/ngưng (`ConfirmDialog`); mặc định xanh thương hiệu. */
+  tone?: 'primary' | 'danger';
   /** Ví dụ "Danh mục: Dân tộc" — hiện dạng pill xám thay vì dòng chữ nhạt cũ. */
   subtitle?: string;
   /** Nội dung phụ bên phải (ví dụ badge "Mã: CA00001" — mã tự sinh, chỉ đọc) — đặt trước nút đóng. */
@@ -27,11 +30,11 @@ export function ModalHeader({
   return (
     <div className="mb-5 flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-blue-600 text-white">
+        <span className={`flex h-10 w-10 flex-none items-center justify-center rounded-lg text-white ${tone === 'danger' ? 'bg-rose-600' : 'bg-blue-600'}`}>
           <IconComponent size={20} weight="fill" aria-hidden="true" />
         </span>
         <div>
-          <h2 className="text-[17px] font-bold text-slate-900">{title}</h2>
+          <h2 className="text-[17px] font-semibold text-slate-900">{title}</h2>
           {subtitle && (
             <span className="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">{subtitle}</span>
           )}

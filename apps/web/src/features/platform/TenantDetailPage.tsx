@@ -162,15 +162,15 @@ function ResetAdminPasswordDialog({ tenant, onClose }: { tenant: PlatformTenantD
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="reset-title">
       <form onSubmit={handleConfirm} className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
-        <h2 id="reset-title" className="text-base font-bold text-slate-900">
+        <h2 id="reset-title" className="text-base font-semibold text-slate-900">
           Đặt lại mật khẩu quản trị của "{tenant.name}"?
         </h2>
         {result ? (
           <div className="mt-3 space-y-3">
             <p className="text-sm font-medium text-slate-700">
-              Đã đặt lại mật khẩu cho <span className="font-bold">{result.adminFullName}</span> ({result.adminUsername}). Mật khẩu chỉ hiện một lần; người dùng bị buộc đổi ở lần đăng nhập đầu, mọi phiên cũ đã bị đăng xuất.
+              Đã đặt lại mật khẩu cho <span className="font-semibold">{result.adminFullName}</span> ({result.adminUsername}). Mật khẩu chỉ hiện một lần; người dùng bị buộc đổi ở lần đăng nhập đầu, mọi phiên cũ đã bị đăng xuất.
             </p>
-            <p className="rounded-md border border-emerald-500 bg-emerald-50 px-3 py-2 text-lg font-extrabold tracking-wide text-slate-900">{result.temporaryPassword}</p>
+            <p className="rounded-md border border-emerald-500 bg-emerald-50 px-3 py-2 text-lg font-semibold tracking-wide text-slate-900">{result.temporaryPassword}</p>
             <div className="flex items-center justify-between gap-2">
               <span role="status" aria-live="polite" className={`text-sm font-semibold ${copied === 'failed' ? 'text-rose-700' : 'text-emerald-700'}`}>
                 {copied === 'ok' ? 'Đã sao chép' : copied === 'failed' ? 'Không sao chép được' : ''}
@@ -251,9 +251,9 @@ export function TenantDetailPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">{tenant.name}</h1>
+          <h1 className="text-xl font-semibold text-slate-900">{tenant.name}</h1>
           <p className="text-sm font-medium text-slate-500">
-            Mã: <span className="font-bold text-slate-800">{tenant.code ?? '—'}</span> · {loginHostOf(tenant.loginUrl) ?? 'chưa có tên miền phụ'}
+            Mã: <span className="font-semibold text-slate-800">{tenant.code ?? '—'}</span> · {loginHostOf(tenant.loginUrl) ?? 'chưa có tên miền phụ'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -296,14 +296,15 @@ export function TenantDetailPage() {
       </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <h3 className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900">Nhật ký vận hành của công ty này</h3>
+        <h3 className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900">Nhật ký vận hành của công ty này</h3>
         {auditQuery.isPending ? <Skeleton className="m-4 h-16" /> : auditQuery.isError ? <p className="px-4 py-4 text-sm font-medium text-rose-600">Không tải được nhật ký.</p> : <AuditTable items={auditQuery.data.items} showTenant={false} />}
       </div>
 
       {suspendOpen && (
         <ReasonConfirmDialog
-          title={`Khoá công ty "${tenant.name}"?`}
-          description="Mọi người dùng của công ty sẽ bị đăng xuất ngay và không đăng nhập được. Dữ liệu được giữ nguyên."
+          title="Khoá công ty"
+          rows={[{ label: 'Công ty', value: tenant.name }]}
+          note="Mọi người dùng bị đăng xuất ngay. Dữ liệu giữ nguyên."
           confirmLabel="Khoá công ty"
           confirmVariant="danger"
           onConfirm={(reason) => suspend.mutateAsync({ version: tenant.version, reason: reason.trim() })}

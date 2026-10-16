@@ -169,7 +169,7 @@ export function ScheduleSubmissionsPane() {
         <div className="scroll-hover min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full min-w-[820px] text-sm">
             <thead className="sticky top-0 z-10">
-              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <th className="px-3 py-2.5 text-center">Nhân viên</th>
                 <th className="px-3 py-2.5 text-center">Tháng</th>
                 <th className="px-3 py-2.5 text-center">Số ca</th>
@@ -188,7 +188,7 @@ export function ScheduleSubmissionsPane() {
                       {item.userFullName}
                       {item.departmentName && <div className="text-xs text-slate-500">{item.departmentName}</div>}
                     </td>
-                    <td className="px-3 py-2.5 text-center font-bold tabular-nums text-brand-teal">{item.month.slice(5)}/{item.month.slice(0, 4)}</td>
+                    <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-brand-teal">{item.month.slice(5)}/{item.month.slice(0, 4)}</td>
                     <td className="px-3 py-2.5 text-center tabular-nums">{item.shiftCount}</td>
                     <td className="px-3 py-2.5 text-center tabular-nums">{formatMinutesAsHours(item.totalMinutes)}</td>
                     {showStatusColumn && (
@@ -242,8 +242,9 @@ export function ScheduleSubmissionsPane() {
       )}
       {returning && (
         <ReasonConfirmDialog
-          title={`Trả lại đăng ký ${formatMonthLabel(returning.month).toLowerCase()}`}
-          description={`${returning.userFullName} sẽ thấy lý do và sửa lại được.`}
+          title="Trả lại đăng ký"
+          rows={[{ label: 'Nhân viên', value: returning.userFullName, sub: formatMonthLabel(returning.month) }]}
+          note="Người đó thấy lý do và sửa lại được."
           confirmLabel="Trả lại"
           confirmVariant="danger"
           onConfirm={(reason) => returnMutation.mutateAsync({ id: returning.id, version: returning.version, reason })}

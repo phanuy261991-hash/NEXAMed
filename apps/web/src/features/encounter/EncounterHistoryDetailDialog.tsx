@@ -135,9 +135,9 @@ function DialogContent({
     <>
       <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-6 py-4">
         <div className="min-w-0">
-          <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">Chi tiết đợt khám</p>
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Chi tiết đợt khám</p>
           <div className="flex flex-wrap items-center gap-2">
-            <h2 id="history-detail-title" className="flex items-center gap-1.5 text-lg font-bold text-slate-900">
+            <h2 id="history-detail-title" className="flex items-center gap-1.5 text-lg font-semibold text-slate-900">
               <CalendarBlank size={16} weight="bold" className="text-slate-400" aria-hidden="true" />
               {formatVisitDateTime(encounter.checkedInAt)}
             </h2>
@@ -148,20 +148,20 @@ function DialogContent({
               {statusMeta.label}
             </span>
             {receptionTypeName && (
-              <span className="whitespace-nowrap rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-blue-700">
+              <span className="whitespace-nowrap rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
                 {receptionTypeName}
               </span>
             )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
             <span>
-              Bác sĩ: <strong className="font-bold text-slate-900">{doctorName ?? '—'}</strong>
+              Bác sĩ: <strong className="font-semibold text-slate-900">{doctorName ?? '—'}</strong>
             </span>
             {signedAt && (
               <>
                 <span className="text-slate-300">|</span>
                 <span>
-                  Đã ký lúc: <strong className="font-bold text-slate-900">{new Date(signedAt).toLocaleString('vi-VN')}</strong>
+                  Đã ký lúc: <strong className="font-semibold text-slate-900">{new Date(signedAt).toLocaleString('vi-VN')}</strong>
                   {amended && <span className="ml-1 font-semibold text-blue-600">(bản đính chính)</span>}
                 </span>
               </>
@@ -207,7 +207,7 @@ function DialogContent({
               Thông tin khám lâm sàng
             </span>
 
-            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-700">Thăm khám</h3>
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">Thăm khám</h3>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {(Object.keys(CLINICAL_SECTION_LABEL) as ClinicalKey[]).filter((key) => key !== 'plan' && key !== 'doctorAdvice').map((key) => (
                 <div key={key}>
@@ -228,7 +228,7 @@ function DialogContent({
 
             {/* Điều trị & Hẹn tái khám (#222) — chỉ xem. */}
             <div className="mb-2 mt-4 border-t border-dashed border-slate-200 pt-3">
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">Điều trị</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">Điều trị</h3>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {[
@@ -250,7 +250,7 @@ function DialogContent({
             </div>
 
             <div className="mb-2 mt-4 border-t border-dashed border-slate-200 pt-3">
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">Chẩn đoán bệnh (ICD-10)</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">Chẩn đoán bệnh (ICD-10)</h3>
             </div>
             <div className="flex flex-col gap-1.5">
               {diagnoses.length === 0 && <p className="text-xs text-slate-400">Chưa có chẩn đoán nào.</p>}

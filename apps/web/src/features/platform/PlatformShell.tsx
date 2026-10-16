@@ -33,10 +33,10 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh bg-slate-50">
       <aside className="flex w-56 flex-none flex-col bg-slate-900 px-2.5 py-4 text-slate-300">
-        <Link to="/" className="px-2.5 text-base font-extrabold text-white">
+        <Link to="/" className="px-2.5 text-base font-semibold text-white">
           NEXAMed
         </Link>
-        <span className="mx-2.5 mb-4 mt-1 self-start rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-extrabold tracking-widest text-slate-900">NỀN TẢNG</span>
+        <span className="mx-2.5 mb-4 mt-1 self-start rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold tracking-widest text-slate-900">NỀN TẢNG</span>
         <nav className="flex flex-col gap-0.5" aria-label="Menu nền tảng">
           {NAV_ITEMS.map((item) => (
             <NavLink
@@ -68,9 +68,9 @@ export function PlatformShell({ children }: { children: ReactNode }) {
           </nav>
           <div className="flex items-center gap-3 text-sm text-slate-600">
             <span>
-              Xin chào, <span className="font-bold text-slate-900">{operator?.fullName}</span> (vận hành)
+              Xin chào, <span className="font-semibold text-slate-900">{operator?.fullName}</span> (vận hành)
             </span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-xs font-bold text-blue-600" aria-hidden="true">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-xs font-semibold text-blue-600" aria-hidden="true">
               {getInitials(operator?.fullName ?? '')}
             </span>
             <button type="button" onClick={handleLogout} aria-label="Đăng xuất" className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">

@@ -68,12 +68,12 @@ export function PatientProfileHeader({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 border-b-2 border-b-blue-100 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white ring-4 ring-blue-50">
+          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-semibold text-white ring-4 ring-blue-50">
             {initials || '?'}
           </div>
           <div>
-            <div className="mb-0.5 text-[11px] font-bold uppercase tracking-wide text-blue-600">Hồ sơ bệnh nhân</div>
-            <h1 className="text-lg font-bold leading-tight text-slate-900">{patient.fullName}</h1>
+            <div className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-600">Hồ sơ bệnh nhân</div>
+            <h1 className="text-lg font-semibold leading-tight text-slate-900">{patient.fullName}</h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <IdentityPill icon={IdentificationBadge} accent>
                 {patient.patientCode}

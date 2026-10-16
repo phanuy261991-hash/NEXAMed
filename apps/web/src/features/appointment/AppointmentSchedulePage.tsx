@@ -139,17 +139,17 @@ export function AppointmentSchedulePage() {
               aria-live="polite"
               className="ml-1.5 flex h-8 items-stretch overflow-hidden rounded-md border border-blue-600 bg-blue-50 text-[13px]"
             >
-              <span className="flex min-w-9 items-center justify-center bg-blue-600 px-2.5 text-sm font-bold tabular-nums text-white">
+              <span className="flex min-w-9 items-center justify-center bg-blue-600 px-2.5 text-sm font-semibold tabular-nums text-white">
                 {dayAppointments.length}
               </span>
-              <span className="flex items-center gap-1.5 px-3 font-bold text-blue-700">
+              <span className="flex items-center gap-1.5 px-3 font-semibold text-blue-700">
                 <CalendarBlank size={15} weight="bold" aria-hidden="true" />
                 Lịch hẹn trong ngày
               </span>
             </div>
           )}
           {dayQuery.isSuccess && needAttention.length > 0 && (
-            <Button type="button" variant="danger" className="px-3 py-1.5 text-[13px] font-bold" onClick={() => setAttentionOpen((o) => !o)} aria-expanded={attentionOpen}>
+            <Button type="button" variant="danger" className="px-3 py-1.5 text-[13px] font-semibold" onClick={() => setAttentionOpen((o) => !o)} aria-expanded={attentionOpen}>
               <Warning size={14} weight="fill" aria-hidden="true" />
               {needAttention.length} lịch hẹn cần xử lý
             </Button>

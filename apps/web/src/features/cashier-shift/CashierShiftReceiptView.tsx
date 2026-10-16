@@ -17,7 +17,7 @@ export function computeCashierShiftTotalRevenue(shift: CashierShiftDetail): numb
 
 function Row({ label, value, bold, className }: { label: string; value: string; bold?: boolean; className?: string }) {
   return (
-    <div className={`flex justify-between ${bold ? 'font-bold' : ''} ${className ?? ''}`}>
+    <div className={`flex justify-between ${bold ? 'font-semibold' : ''} ${className ?? ''}`}>
       <span>{label}</span>
       <span>{value}</span>
     </div>
@@ -121,8 +121,8 @@ function FormalBody({ shift, diff, totalRevenue }: { shift: CashierShiftDetail; 
       <table className="w-full">
         <tbody>
           <tr className="border-b-2 border-slate-300">
-            <td className="py-2 font-bold">Tổng doanh thu ca</td>
-            <td className="py-2 text-right text-base font-bold">{formatVnd(totalRevenue)}</td>
+            <td className="py-2 font-semibold">Tổng doanh thu ca</td>
+            <td className="py-2 text-right text-base font-semibold">{formatVnd(totalRevenue)}</td>
           </tr>
           <tr className="border-b border-slate-200">
             <td className="py-1.5 text-slate-600">Vốn đầu ca</td>
@@ -138,7 +138,7 @@ function FormalBody({ shift, diff, totalRevenue }: { shift: CashierShiftDetail; 
           </tr>
           <tr className="border-b border-slate-300">
             <td className="py-1.5 font-semibold">Tổng tiền mặt thực đếm</td>
-            <td className="py-1.5 text-right font-bold">{formatVnd(shift.countedCashAmount ?? 0)}</td>
+            <td className="py-1.5 text-right font-semibold">{formatVnd(shift.countedCashAmount ?? 0)}</td>
           </tr>
           <tr className="border-b border-slate-200">
             <td className="py-1.5 text-slate-600">Chênh lệch</td>
@@ -149,8 +149,8 @@ function FormalBody({ shift, diff, totalRevenue }: { shift: CashierShiftDetail; 
             <td className="py-1.5 text-right font-semibold">{formatVnd(shift.keepForNextAmount ?? 0)}</td>
           </tr>
           <tr>
-            <td className="py-2 font-bold">Tiền mặt nộp về</td>
-            <td className="py-2 text-right text-base font-bold">{formatVnd(shift.submittedAmount ?? 0)}</td>
+            <td className="py-2 font-semibold">Tiền mặt nộp về</td>
+            <td className="py-2 text-right text-base font-semibold">{formatVnd(shift.submittedAmount ?? 0)}</td>
           </tr>
         </tbody>
       </table>

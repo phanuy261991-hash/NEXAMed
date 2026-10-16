@@ -85,7 +85,7 @@ export function Icd10Pane() {
           {/* Cột 1 — Chương */}
           <div className="flex w-56 flex-shrink-0 flex-col rounded-lg border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-3 py-2.5">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Chương</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Chương</span>
             </div>
             {chaptersQuery.isError && (
               <div className="p-2">
@@ -112,7 +112,7 @@ export function Icd10Pane() {
                           selected ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'
                         }`}
                       >
-                        <span className="font-bold">{chapter.chapterCode}</span> — {chapter.chapterName}
+                        <span className="font-semibold">{chapter.chapterCode}</span> — {chapter.chapterName}
                       </button>
                     </li>
                   );
@@ -124,7 +124,7 @@ export function Icd10Pane() {
           {/* Cột 2 — Nhóm (gộp theo Khối làm tiêu đề phụ) */}
           <div className="flex w-64 flex-shrink-0 flex-col rounded-lg border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-3 py-2.5">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Nhóm bệnh</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Nhóm bệnh</span>
             </div>
             {selectedChapterCode === null && (
               <p className="px-3 py-3 text-xs text-slate-400">Chọn Chương ở cột bên trái.</p>
@@ -160,7 +160,7 @@ export function Icd10Pane() {
                                 selected ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'
                               }`}
                             >
-                              <span className="font-bold">{group.groupCode}</span> {group.groupName}
+                              <span className="font-semibold">{group.groupCode}</span> {group.groupName}
                             </button>
                           </li>
                         );
@@ -233,7 +233,7 @@ function Icd10Table({ items, emptyLabel }: { items: Icd10CodeItem[]; emptyLabel:
     <div className="scroll-hover flex-1 overflow-auto rounded-lg border border-slate-200 bg-white">
       <table className="w-full border-collapse text-sm">
         <thead className="sticky top-0 z-10">
-          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <th className="w-28 px-4 py-2.5 text-center">Mã</th>
             <th className="px-4 py-2.5 text-left">Tên bệnh</th>
             <th className="px-4 py-2.5 text-left">Tên tiếng Anh</th>
@@ -243,7 +243,7 @@ function Icd10Table({ items, emptyLabel }: { items: Icd10CodeItem[]; emptyLabel:
         <tbody>
           {items.map((item) => (
             <tr key={item.code} className="border-b border-slate-200 last:border-0 align-top">
-              <td className="px-4 py-2 text-center font-bold text-slate-800">{item.code}</td>
+              <td className="px-4 py-2 text-center font-semibold text-slate-800">{item.code}</td>
               <td className="px-4 py-2 text-left font-medium text-slate-900">{item.nameVi}</td>
               <td className="px-4 py-2 text-left font-medium text-slate-600">{item.nameEn ?? '—'}</td>
               <td className="px-4 py-2 text-center">

@@ -22,7 +22,7 @@ export function LeaveAttentionPanel({
   return (
     <aside className="w-[340px] flex-shrink-0 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm" aria-label="Lịch hẹn cần xử lý">
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-        <div className="text-sm font-bold text-slate-900">Lịch hẹn cần xử lý</div>
+        <div className="text-sm font-semibold text-slate-900">Lịch hẹn cần xử lý</div>
         <button type="button" onClick={onClose} aria-label="Đóng" className="text-slate-400 hover:text-slate-600">
           <X size={16} weight="bold" />
         </button>

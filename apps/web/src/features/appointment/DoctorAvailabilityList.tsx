@@ -99,9 +99,9 @@ export function DoctorAvailabilityList({
         </span>
         {!blocking &&
           (busyUntil ? (
-            <span className="flex-shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-[10.5px] font-bold text-white">Bận tới {busyUntil}</span>
+            <span className="flex-shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-[10.5px] font-semibold text-white">Bận tới {busyUntil}</span>
           ) : (
-            <span className="flex-shrink-0 rounded-full bg-emerald-500 px-2 py-0.5 text-[10.5px] font-bold text-white">Trống</span>
+            <span className="flex-shrink-0 rounded-full bg-emerald-500 px-2 py-0.5 text-[10.5px] font-semibold text-white">Trống</span>
           ))}
       </button>
     );

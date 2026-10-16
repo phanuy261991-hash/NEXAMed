@@ -54,7 +54,7 @@ export function PatientEditDialog({ patient, onClose }: { patient: PatientDetail
           />
         </div>
 
-        <div className="scroll-hover flex-1 overflow-y-auto px-6">
+        <div className="scroll-hover flex-1 overflow-y-auto px-6 pt-4">
           <RecordFormNotice stale={stale} saveError={saveError} onReload={reload} />
           <PatientFormFields
             values={formValues}

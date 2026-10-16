@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EMPTY_LIST } from '../../shared/empty-list';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, DownloadSimple, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, Eye, FirstAidKit, UploadSimple, X } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, DownloadSimple, Eye, EyeSlash, FirstAidKit, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, UploadSimple, X } from '@phosphor-icons/react';
 import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory, StockLedgerEntry } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
 import { useDrugBatchBalancesQuery, useDrugLedgerQuery } from '../inventory/inventory.queries';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { Textarea } from '../../shared/ui/Textarea';
@@ -375,7 +376,7 @@ export function DrugCatalogPane() {
           <div className="scroll-hover h-full overflow-auto">
             <table className="w-full min-w-[880px] border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="w-10 px-3 py-3">
                     <SelectionCheckbox checked={rowSelection.allLoadedSelected} indeterminate={rowSelection.someLoadedSelected} onChange={rowSelection.toggleAll} ariaLabel="Chọn tất cả" />
                   </th>
@@ -412,7 +413,7 @@ export function DrugCatalogPane() {
                     <td className="px-1 py-2.5 text-center">
                       <Eye size={15} weight="regular" className={selectedId === d.id ? 'text-blue-600' : 'text-slate-400'} aria-hidden="true" />
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-center font-bold tabular-nums text-slate-800">{d.code}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-center font-semibold tabular-nums text-slate-800">{d.code}</td>
                     <td className="px-3 py-2.5 text-left">
                       <div className="flex items-center font-medium text-slate-900">
                         {d.name}
@@ -475,7 +476,7 @@ export function DrugCatalogPane() {
                 <Pill size={18} weight="regular" aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="truncate text-[15px] font-bold text-slate-900">{selectedItem.name}</h2>
+                <h2 className="truncate text-[15px] font-semibold text-slate-900">{selectedItem.name}</h2>
                 <p className="truncate text-xs font-medium text-slate-500">
                   {selectedItem.code} · {ITEM_TYPE_LABEL[selectedItem.itemType]}
                 </p>
@@ -624,22 +625,24 @@ export function DrugCatalogPane() {
       )}
 
       {deactivateTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">Ẩn &quot;{deactivateTarget.name}&quot; khỏi danh mục đang dùng?</p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Mặt hàng sẽ không còn chọn được khi lập Phiếu nhập/Xuất kho hoặc kê đơn mới. Dữ liệu tồn kho/thẻ kho cũ vẫn giữ nguyên. Có thể kích hoạt lại sau.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={EyeSlash}
+          tone="danger"
+          title="Ẩn mặt hàng"
+          rows={[{ label: 'Mặt hàng', value: deactivateTarget.name }]}
+          note="Tồn kho cũ giữ nguyên"
+          onClose={() => setDeactivateTarget(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
                 Huỷ
               </Button>
               <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => handleDeactivate(deactivateTarget)}>
                 Ẩn
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );
@@ -692,11 +695,11 @@ function DrugBatchBalanceTab({ drugId }: { drugId: string }) {
   }
   return (
     <div className="scroll-hover min-h-0 flex-1 overflow-y-auto px-5 py-4">
-      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-700">Tồn kho theo lô</p>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-700">Tồn kho theo lô</p>
       <div className="overflow-hidden rounded-lg border border-slate-200">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b-2 border-blue-600 bg-slate-100 text-[11px] font-bold uppercase text-slate-800">
+            <tr className="border-b-2 border-blue-600 bg-slate-100 text-[11px] font-semibold uppercase text-slate-800">
               <th className="px-3 py-2 text-left">Số lô</th>
               <th className="px-3 py-2 text-center">Kho</th>
               <th className="px-3 py-2 text-center">Hạn dùng</th>
@@ -719,10 +722,10 @@ function DrugBatchBalanceTab({ drugId }: { drugId: string }) {
           </tbody>
           <tfoot>
             <tr className="border-t border-slate-200 bg-slate-50">
-              <td className="px-3 py-2 font-bold text-slate-800" colSpan={3}>
+              <td className="px-3 py-2 font-semibold text-slate-800" colSpan={3}>
                 Tổng tồn
               </td>
-              <td className="px-3 py-2 text-center text-base font-bold text-slate-900">{query.data!.totalQuantityOnHand.toLocaleString('vi-VN')}</td>
+              <td className="px-3 py-2 text-center text-base font-semibold text-slate-900">{query.data!.totalQuantityOnHand.toLocaleString('vi-VN')}</td>
             </tr>
           </tfoot>
         </table>
@@ -771,11 +774,11 @@ function DrugLedgerTab({ drugId, mode }: { drugId: string; mode: 'ledger' | 'his
   return (
     <div className="scroll-hover min-h-0 flex-1 overflow-y-auto px-5 py-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-700">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">
           {mode === 'ledger' ? `Thẻ kho · ${totalCount} giao dịch` : `Lịch sử giao dịch (theo chứng từ) · ${totalCount}`}
         </p>
         {hasMore && (
-          <button type="button" onClick={() => setFullViewOpen(true)} className="text-xs font-bold text-blue-600 hover:underline">
+          <button type="button" onClick={() => setFullViewOpen(true)} className="text-xs font-semibold text-blue-600 hover:underline">
             Xem tất cả {totalCount} giao dịch
           </button>
         )}
@@ -803,7 +806,7 @@ function LedgerTable({ items, mode }: { items: StockLedgerEntry[]; mode: 'ledger
     <div className="overflow-hidden rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-blue-600 bg-slate-100 text-[11px] font-bold uppercase text-slate-800">
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-[11px] font-semibold uppercase text-slate-800">
             <th className="px-2.5 py-2 text-center">Ngày</th>
             {mode === 'ledger' ? (
               <>

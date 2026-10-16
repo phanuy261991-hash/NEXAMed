@@ -131,7 +131,7 @@ export function SupplierDetailPage() {
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-xl font-bold text-slate-900">{supplier.name}</h1>
+                <h1 className="truncate text-xl font-semibold text-slate-900">{supplier.name}</h1>
                 <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">{supplier.code}</span>
                 <StatusBadge tone={supplier.isActive ? 'success' : 'neutral'}>{supplier.isActive ? 'Đang dùng' : 'Ngưng'}</StatusBadge>
               </div>
@@ -274,7 +274,7 @@ function ReceiptsTab({ supplierId }: { supplierId: string }) {
     <div className="overflow-hidden rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <th className="px-3 py-2.5 text-center">Mã phiếu</th>
             {showBranch && <th className="px-3 py-2.5 text-center">Chi nhánh</th>}
             <th className="px-3 py-2.5 text-center">Ngày nhập</th>
@@ -302,7 +302,7 @@ function ReceiptsTab({ supplierId }: { supplierId: string }) {
                 <td className="px-3 py-2 text-center text-slate-600">{receipt ? formatDateShort(receipt.occurredAt) : '—'}</td>
                 <td className="px-3 py-2 text-center font-semibold text-slate-900">{formatVnd(item.originalAmount)}</td>
                 <td className="px-3 py-2 text-center text-slate-700">{item.paidAmount > 0 ? formatVnd(item.paidAmount) : '—'}</td>
-                <td className={`px-3 py-2 text-center font-bold ${item.dueAmount > 0 ? 'text-slate-900' : 'text-emerald-600'}`}>{formatVnd(item.dueAmount)}</td>
+                <td className={`px-3 py-2 text-center font-semibold ${item.dueAmount > 0 ? 'text-slate-900' : 'text-emerald-600'}`}>{formatVnd(item.dueAmount)}</td>
                 <td className="px-3 py-2 text-center">
                   <StatusBadge tone={statusInfo.tone}>{statusInfo.label}</StatusBadge>
                 </td>
@@ -353,7 +353,7 @@ function ReturnsTab({ supplierId }: { supplierId: string }) {
     <div className="overflow-hidden rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <th className="px-3 py-2.5 text-center">Mã phiếu</th>
             <th className="px-3 py-2.5 text-center">Ngày</th>
             <th className="px-3 py-2.5 text-center">Phiếu nhập gốc</th>
@@ -370,7 +370,7 @@ function ReturnsTab({ supplierId }: { supplierId: string }) {
               <td className="px-3 py-2 text-center text-slate-600">{formatDateShort(it.occurredAt)}</td>
               <td className="px-3 py-2 text-center text-slate-600">{it.sourceReceiptNo ?? '—'}</td>
               <td className="px-3 py-2 text-left font-medium text-slate-700">{it.note ?? '—'}</td>
-              <td className="px-3 py-2 text-center font-bold text-slate-900">{formatVnd(it.totalAmount)}</td>
+              <td className="px-3 py-2 text-center font-semibold text-slate-900">{formatVnd(it.totalAmount)}</td>
               <td className="px-3 py-2 text-center">
                 <StatusBadge tone={ISSUE_STATUS_LABEL[it.status].tone}>{ISSUE_STATUS_LABEL[it.status].label}</StatusBadge>
               </td>
@@ -405,7 +405,7 @@ function LedgerTab({ supplierId }: { supplierId: string }) {
     <div className="overflow-hidden rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <th className="px-3 py-2.5 text-center">Ngày chứng từ</th>
             <th className="px-3 py-2.5 text-center">Ghi sổ lúc</th>
             <th className="px-3 py-2.5 text-center">Loại</th>
@@ -434,7 +434,7 @@ function LedgerTab({ supplierId }: { supplierId: string }) {
               )}
               <td className="px-3 py-2 text-center font-semibold text-amber-700">{e.amountChange > 0 ? `+${formatVnd(e.amountChange)}` : ''}</td>
               <td className="px-3 py-2 text-center font-semibold text-emerald-700">{e.amountChange < 0 ? `−${formatVnd(Math.abs(e.amountChange))}` : ''}</td>
-              <td className="px-3 py-2 text-center font-bold text-slate-900">{formatVnd(e.balanceAfter)}</td>
+              <td className="px-3 py-2 text-center font-semibold text-slate-900">{formatVnd(e.balanceAfter)}</td>
               <td className="px-3 py-2 text-left font-medium text-slate-600">{e.createdByName}</td>
             </tr>
           ))}
@@ -488,7 +488,7 @@ function PaymentsTab({ supplierId }: { supplierId: string }) {
     <div className="overflow-hidden rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <th className="px-3 py-2.5 text-center">Mã phiếu</th>
             {showBranch && <th className="px-3 py-2.5 text-center">Chi nhánh</th>}
             <th className="px-3 py-2.5 text-center">Ngày</th>
@@ -512,7 +512,7 @@ function PaymentsTab({ supplierId }: { supplierId: string }) {
               )}
               <td className="px-3 py-2 text-center text-slate-600">{formatDateShort(p.occurredAt)}</td>
               <td className="px-3 py-2 text-left font-medium text-slate-900">{p.description}</td>
-              <td className="px-3 py-2 text-center font-bold text-emerald-700">−{formatVnd(p.amount)}</td>
+              <td className="px-3 py-2 text-center font-semibold text-emerald-700">−{formatVnd(p.amount)}</td>
               <td className="px-3 py-2 text-center">
                 <StatusBadge tone={PAYMENT_STATUS_LABEL[p.status].tone}>{PAYMENT_STATUS_LABEL[p.status].label}</StatusBadge>
               </td>
@@ -564,7 +564,7 @@ function AdjustmentsTab({ supplierId }: { supplierId: string }) {
     <div className="overflow-hidden rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <th className="px-3 py-2.5 text-center">Mã phiếu</th>
             <th className="px-3 py-2.5 text-center">Loại</th>
             <th className="px-3 py-2.5 text-center">Số tiền</th>
@@ -581,11 +581,11 @@ function AdjustmentsTab({ supplierId }: { supplierId: string }) {
               <td className="px-3 py-2 text-center">
                 <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{ADJUSTMENT_KIND_LABEL[a.kind]}</span>
               </td>
-              <td className="px-3 py-2 text-center font-bold text-slate-900">{a.amount !== null ? formatVnd(a.amount) : '—'}</td>
+              <td className="px-3 py-2 text-center font-semibold text-slate-900">{a.amount !== null ? formatVnd(a.amount) : '—'}</td>
               <td className="px-3 py-2 text-left font-medium text-slate-600">{a.createdByName}</td>
               <td className="px-3 py-2 text-left font-medium text-slate-600">
                 {a.approvedByName ?? '—'}
-                {a.selfApproved && a.status === 'APPROVED' && <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">Tự duyệt</span>}
+                {a.selfApproved && a.status === 'APPROVED' && <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">Tự duyệt</span>}
               </td>
               <td className="px-3 py-2 text-center">
                 <StatusBadge tone={ADJUSTMENT_STATUS_LABEL[a.status].tone}>{ADJUSTMENT_STATUS_LABEL[a.status].label}</StatusBadge>
@@ -660,7 +660,7 @@ function ReconciliationsTab({ supplierId }: { supplierId: string }) {
     <div className="overflow-hidden rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <th className="px-3 py-2.5 text-center">Mã biên bản</th>
             <th className="px-3 py-2.5 text-center">Ngày đối chiếu</th>
             <th className="px-3 py-2.5 text-center">Số hệ thống</th>
@@ -677,7 +677,7 @@ function ReconciliationsTab({ supplierId }: { supplierId: string }) {
               <td className="px-3 py-2 text-center text-slate-600">{formatDateShort(r.asOfDate)}</td>
               <td className="px-3 py-2 text-center font-medium text-slate-700">{formatVnd(r.systemBalance)}</td>
               <td className="px-3 py-2 text-center font-medium text-slate-700">{formatVnd(r.confirmedBalance)}</td>
-              <td className={`px-3 py-2 text-center font-bold ${r.differenceAmount === 0 ? 'text-emerald-600' : 'text-amber-700'}`}>
+              <td className={`px-3 py-2 text-center font-semibold ${r.differenceAmount === 0 ? 'text-emerald-600' : 'text-amber-700'}`}>
                 {r.differenceAmount === 0 ? 'Khớp' : formatVnd(r.differenceAmount)}
               </td>
               <td className="px-3 py-2 text-center">
@@ -827,13 +827,13 @@ function PaymentDialog({ supplierId, supplierName, balance, onClose }: { supplie
         <div className="flex-shrink-0 px-6 pt-6">
           <ModalHeader icon={HandCoins} title="Thanh toán công nợ" subtitle={supplierName} onClose={onClose} />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4">
           {error && <ErrorBanner message={error} />}
           <div className="my-4 flex flex-col gap-4">
             <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-slate-600">Công nợ hiện tại</span>
-                <span className="font-bold text-slate-900">{formatVnd(balance)}</span>
+                <span className="font-semibold text-slate-900">{formatVnd(balance)}</span>
               </div>
             </div>
 
@@ -853,7 +853,7 @@ function PaymentDialog({ supplierId, supplierName, balance, onClose }: { supplie
                     <button
                       type="button"
                       onClick={() => setAmount(balance)}
-                      className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
+                      className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
                     >
                       Trả hết {formatVnd(balance)}
                     </button>
@@ -909,7 +909,7 @@ function PaymentDialog({ supplierId, supplierName, balance, onClose }: { supplie
               <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
                 <div className="flex justify-between gap-3 font-semibold text-blue-900">
                   <span>Công nợ sau khi thanh toán</span>
-                  <span className="text-lg font-bold">{formatVnd(balance - amount)}</span>
+                  <span className="text-lg font-semibold">{formatVnd(balance - amount)}</span>
                 </div>
               </div>
             )}
@@ -970,13 +970,13 @@ function RefundDialog({ supplierId, supplierName, balance, onClose }: { supplier
         <div className="flex-shrink-0 px-6 pt-6">
           <ModalHeader icon={ArrowUUpLeft} title="Thu tiền NCC hoàn lại" subtitle={supplierName} onClose={onClose} />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4">
           {error && <ErrorBanner message={error} />}
           <div className="my-4 flex flex-col gap-4">
             <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-blue-800">Nhà cung cấp đang nợ lại phòng khám</span>
-                <span className="font-bold text-blue-700">{formatVnd(maxRefundable)}</span>
+                <span className="font-semibold text-blue-700">{formatVnd(maxRefundable)}</span>
               </div>
             </div>
 
@@ -996,7 +996,7 @@ function RefundDialog({ supplierId, supplierName, balance, onClose }: { supplier
                     <button
                       type="button"
                       onClick={() => setAmount(maxRefundable)}
-                      className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
+                      className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
                     >
                       Toàn bộ {formatVnd(maxRefundable)}
                     </button>
@@ -1052,7 +1052,7 @@ function RefundDialog({ supplierId, supplierName, balance, onClose }: { supplier
               <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
                 <div className="flex justify-between gap-3 font-semibold text-blue-900">
                   <span>Còn nợ lại sau khi thu</span>
-                  <span className="text-lg font-bold">{formatVnd(maxRefundable - amount)}</span>
+                  <span className="text-lg font-semibold">{formatVnd(maxRefundable - amount)}</span>
                 </div>
               </div>
             )}

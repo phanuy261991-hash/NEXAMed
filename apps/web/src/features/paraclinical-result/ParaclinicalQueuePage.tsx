@@ -273,7 +273,7 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
           <div className="flex min-h-full flex-col" style={{ minWidth: columns.minWidth }}>
             <div
               role="row"
-              className="sticky top-0 z-10 grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-bold uppercase tracking-wide text-slate-800"
+              className="sticky top-0 z-10 grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-semibold uppercase tracking-wide text-slate-800"
               style={{ gridTemplateColumns: columns.grid }}
             >
               {columns.headers.map((h) => (
@@ -314,7 +314,7 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
                       )}
                     </div>
                     <div className="min-w-0 px-2.5 py-1.5 text-left">
-                      <div className="truncate font-bold text-slate-900" title={row.patientName}>
+                      <div className="truncate font-semibold text-slate-900" title={row.patientName}>
                         {row.patientName}
                       </div>
                       <div className="text-[11.5px] text-slate-500">
@@ -334,7 +334,7 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
                               {tube.capLabel ?? 'Ống'}
                               {!tube.sid && tube.specimenName ? ` · ${tube.specimenName}` : ''}
                             </span>
-                            {tube.sid && <span className="flex-none font-bold tabular-nums text-slate-900">{tube.sid}</span>}
+                            {tube.sid && <span className="flex-none font-semibold tabular-nums text-slate-900">{tube.sid}</span>}
                           </div>
                         ))}
                       </div>
@@ -343,7 +343,7 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
                         <div className="flex min-w-0 flex-col items-start gap-1 px-3 py-1.5 text-left">
                           {row.tubes.length === 0 && <span className="text-slate-400">—</span>}
                           {row.tubes.map((tube, index) => (
-                            <div key={tube.id ?? index} className="flex items-center gap-1.5 text-[12.5px] font-bold tabular-nums text-slate-900">
+                            <div key={tube.id ?? index} className="flex items-center gap-1.5 text-[12.5px] font-semibold tabular-nums text-slate-900">
                               <CapColorDot color={tube.capColor} size={12} />
                               {tube.sid}
                             </div>
@@ -368,7 +368,7 @@ export function ParaclinicalQueuePage({ group }: { group: ParaclinicalGroup }) {
                     ) : (
                       <>
                         <div className="px-2">
-                          <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">{row.serviceKind === 'FUNCTIONAL' ? 'Thăm dò CN' : 'CĐHA'}</span>
+                          <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">{row.serviceKind === 'FUNCTIONAL' ? 'Thăm dò CN' : 'CĐHA'}</span>
                         </div>
                         <div className="px-2 font-medium text-slate-600">{row.departmentName ?? '—'}</div>
                       </>

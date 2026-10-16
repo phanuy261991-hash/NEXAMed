@@ -90,7 +90,7 @@ export function PriceListImportDialog({ onApply, onClose }: { onApply: (rows: Pr
 
               {preview.errors.length > 0 && (
                 <section aria-label="Dòng lỗi" className="overflow-hidden rounded-md border border-rose-200">
-                  <h3 className="border-b border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-rose-800">Dòng lỗi</h3>
+                  <h3 className="border-b border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-rose-800">Dòng lỗi</h3>
                   <ul className="max-h-40 overflow-y-auto divide-y divide-rose-100 text-[13px]">
                     {preview.errors.map((e) => (
                       <li key={`${e.rowNumber}-${e.message}`} className="flex gap-3 px-3 py-1.5">
@@ -104,10 +104,10 @@ export function PriceListImportDialog({ onApply, onClose }: { onApply: (rows: Pr
 
               {preview.rows.length > 0 && (
                 <section aria-label="Dòng hợp lệ" className="overflow-hidden rounded-md border border-slate-200">
-                  <h3 className="border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-700">Dòng hợp lệ</h3>
+                  <h3 className="border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-700">Dòng hợp lệ</h3>
                   <div className="max-h-56 overflow-y-auto">
                     <table className="w-full text-[13px]">
-                      <thead className="sticky top-0 bg-white text-xs font-bold uppercase tracking-wide text-slate-600">
+                      <thead className="sticky top-0 bg-white text-xs font-semibold uppercase tracking-wide text-slate-600">
                         <tr className="border-b border-slate-200">
                           <th className="px-3 py-1.5 text-left">Loại</th>
                           <th className="px-3 py-1.5 text-left">Mã</th>

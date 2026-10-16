@@ -90,7 +90,7 @@ export function LabIndicatorPane() {
         </div>
         {listQuery.isError && <ErrorBanner message="Không tải được danh sách chỉ số." onRetry={() => listQuery.refetch()} />}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <div className="grid flex-shrink-0 grid-cols-[92px_minmax(0,1fr)_72px] border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-bold uppercase tracking-wide text-slate-800">
+          <div className="grid flex-shrink-0 grid-cols-[92px_minmax(0,1fr)_72px] border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-semibold uppercase tracking-wide text-slate-800">
             <div className="px-1.5 py-2.5">Mã</div>
             <div className="px-1.5 py-2.5">Tên chỉ số</div>
             <div className="px-1.5 py-2.5">Đơn vị</div>
@@ -115,7 +115,7 @@ export function LabIndicatorPane() {
                   className={`grid h-12 w-full grid-cols-[92px_minmax(0,1fr)_72px] items-center border-b border-slate-100 text-center text-[13px] ${active ? 'bg-blue-50' : 'hover:bg-slate-50'} ${item.isActive ? '' : 'opacity-50'}`}
                 >
                   <span className="px-1.5 font-semibold text-slate-800">{item.code}</span>
-                  <span className={`min-w-0 truncate px-2 text-left ${active ? 'font-bold text-blue-700' : 'font-medium text-slate-900'}`} title={item.name}>
+                  <span className={`min-w-0 truncate px-2 text-left ${active ? 'font-semibold text-blue-700' : 'font-medium text-slate-900'}`} title={item.name}>
                     {item.name}
                   </span>
                   <span className="px-1.5 font-medium text-slate-600">{item.unit ?? '—'}</span>
@@ -322,7 +322,7 @@ function IndicatorForm({
     >
       <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5">
         <div className="min-w-0">
-          <h2 className="truncate text-base font-bold text-slate-900">{detail ? `${detail.abbreviation ? `${detail.abbreviation} — ` : ''}${detail.name}` : 'Thêm chỉ số xét nghiệm'}</h2>
+          <h2 className="truncate text-base font-semibold text-slate-900">{detail ? `${detail.abbreviation ? `${detail.abbreviation} — ` : ''}${detail.name}` : 'Thêm chỉ số xét nghiệm'}</h2>
           <p className="mt-0.5 text-[12.5px] text-slate-500">
             {detail ? `Dùng trong ${detail.serviceCount} dịch vụ · Mã ${detail.code}${detail.isActive ? '' : ' · Đang ngưng dùng'}` : 'Mã sẽ tự sinh khi lưu'}
           </p>
@@ -416,7 +416,7 @@ function IndicatorForm({
             <div className="scroll-hover overflow-x-auto">
               <table className="w-full min-w-[700px] border-collapse text-sm">
                 <thead>
-                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                     <th className="w-28 px-1.5 py-2.5 text-center">Giới tính</th>
                     <th className="w-20 px-1.5 py-2.5 text-center">Tuổi từ</th>
                     <th className="w-20 px-1.5 py-2.5 text-center">Tuổi đến</th>

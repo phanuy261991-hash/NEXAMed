@@ -78,7 +78,7 @@ export function QuickSetupDialog({
           {error && <ErrorBanner message={error} />}
 
           <section>
-            <h3 className="mb-2 text-sm font-bold text-slate-800">1. Phòng khám dùng khổ giấy nào?</h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-800">1. Phòng khám dùng khổ giấy nào?</h3>
             <div role="radiogroup" aria-label="Khổ giấy" className="grid gap-2.5 sm:grid-cols-3">
               {PRESETS.map((p) => (
                 <button
@@ -89,7 +89,7 @@ export function QuickSetupDialog({
                   onClick={() => setPreset(p.value)}
                   className={`rounded-lg border px-3 py-2.5 text-left ${preset === p.value ? 'border-brand-teal bg-brand-teal text-white' : 'border-slate-300 hover:border-blue-400 hover:bg-brand-teal-tint'}`}
                 >
-                  <span className="block text-sm font-bold">{p.title}</span>
+                  <span className="block text-sm font-semibold">{p.title}</span>
                   <span className={`mt-0.5 block text-xs ${preset === p.value ? 'opacity-90' : 'text-slate-500'}`}>{p.hint}</span>
                 </button>
               ))}
@@ -97,7 +97,7 @@ export function QuickSetupDialog({
           </section>
 
           <section>
-            <h3 className="mb-2 text-sm font-bold text-slate-800">2. Đầu trang hiện những gì?</h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-800">2. Đầu trang hiện những gì?</h3>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-lg border border-slate-200 px-3.5 py-3 sm:grid-cols-3">
               {headerToggles.map((t) => (
                 <label key={t.key} className="flex items-center gap-2 text-sm text-slate-700">
@@ -119,7 +119,7 @@ export function QuickSetupDialog({
           </section>
 
           <section>
-            <h3 className="mb-2 text-sm font-bold text-slate-800">3. Áp cho những chứng từ nào?</h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-800">3. Áp cho những chứng từ nào?</h3>
             <div className="overflow-hidden rounded-lg border border-slate-200">
               <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3.5 py-2">
                 <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">

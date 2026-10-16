@@ -90,7 +90,7 @@ export function ReassignDoctorDialog({
         <div className="scroll-hover min-h-0 flex-1 overflow-y-auto pr-1">
           <p className="mb-3 text-sm text-slate-600">Chỉ áp dụng khi lượt khám chưa vào khám (còn "Đã tiếp nhận").</p>
 
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Bác sĩ phụ trách</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Bác sĩ phụ trách</p>
           {doctorsQuery.isPending && <p className="text-sm text-slate-400">Đang tải danh sách bác sĩ...</p>}
           {!doctorsQuery.isPending && doctors.length === 0 && <p className="text-sm text-slate-500">Không có bác sĩ nào khác để chọn.</p>}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -100,10 +100,10 @@ export function ReassignDoctorDialog({
               return (
                 <button key={d.id} type="button" onClick={() => selectDoctor(d.id)} className={`${CHOICE_BASE} ${selected ? CHOICE_SELECTED : CHOICE_UNSELECTED}`}>
                   <span className="min-w-0">
-                    <span className={`block truncate text-sm font-bold ${selected ? 'text-white' : 'text-slate-800'}`}>{d.displayName ?? d.fullName}</span>
+                    <span className={`block truncate text-sm font-semibold ${selected ? 'text-white' : 'text-slate-800'}`}>{d.displayName ?? d.fullName}</span>
                     {d.currentRoomName && <span className={`block truncate text-xs ${selected ? 'text-white/90' : 'text-slate-500'}`}>Phòng {d.currentRoomName}</span>}
                   </span>
-                  <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${selected ? 'bg-white/20 text-white' : badge.className}`}>{badge.label}</span>
+                  <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${selected ? 'bg-white/20 text-white' : badge.className}`}>{badge.label}</span>
                 </button>
               );
             })}
@@ -123,7 +123,7 @@ export function ReassignDoctorDialog({
               return (
                 <button key={d.id} type="button" onClick={() => selectDepartment(d.id)} className={`${CHOICE_BASE} justify-start ${selected ? CHOICE_SELECTED : CHOICE_UNSELECTED}`}>
                   <Buildings size={18} weight={selected ? 'fill' : 'regular'} className={`flex-shrink-0 ${selected ? 'text-white' : 'text-slate-400'}`} aria-hidden="true" />
-                  <span className={`min-w-0 truncate text-sm font-bold ${selected ? 'text-white' : 'text-slate-800'}`}>{d.name}</span>
+                  <span className={`min-w-0 truncate text-sm font-semibold ${selected ? 'text-white' : 'text-slate-800'}`}>{d.name}</span>
                 </button>
               );
             })}

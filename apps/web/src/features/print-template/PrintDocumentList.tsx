@@ -46,7 +46,7 @@ export function PrintDocumentList({
         {groups.length === 0 && <p className="px-3 py-6 text-center text-sm text-slate-500">Không có chứng từ nào khớp.</p>}
         {groups.map(({ group, items }) => (
           <div key={group}>
-            <div className="px-2 pb-1 pt-3 text-[10.5px] font-bold uppercase tracking-wider text-slate-400 first:pt-1">{group}</div>
+            <div className="px-2 pb-1 pt-3 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 first:pt-1">{group}</div>
             {items.map((d) => {
               const own = templates.filter((t) => t.documentType === d.documentType);
               const active = d.documentType === selected;

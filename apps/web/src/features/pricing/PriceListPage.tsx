@@ -88,7 +88,7 @@ export function PriceListPage() {
               <div className="flex h-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
                 <div
                   role="row"
-                  className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-bold uppercase tracking-wide text-slate-800"
+                  className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-semibold uppercase tracking-wide text-slate-800"
                   style={{ gridTemplateColumns: GRID_COLUMNS }}
                 >
                   {['Mã', 'Tên bảng giá', 'Hiệu lực', 'Ưu tiên', 'Mặt hàng', 'Trạng thái', 'Thao tác'].map((h) => (
@@ -156,7 +156,7 @@ function GeneralRow({ general }: { general: GeneralPriceList }) {
       <div role="cell" className="px-2 font-medium text-slate-600">
         Không thời hạn
       </div>
-      <div role="cell" className="px-2 font-bold text-slate-900">
+      <div role="cell" className="px-2 font-semibold text-slate-900">
         {general.priority}
       </div>
       <div role="cell" className="px-2 font-medium text-slate-600">
@@ -186,7 +186,7 @@ function PriceListRow({ item, onView }: { item: PriceListSummary; onView: () => 
       <div role="cell" className="px-2 text-[13px] font-medium text-slate-600">
         {formatDateVn(item.effectiveFrom)} – {formatDateVn(item.effectiveTo)}
       </div>
-      <div role="cell" className="px-2 font-bold text-slate-900">
+      <div role="cell" className="px-2 font-semibold text-slate-900">
         {item.priority}
       </div>
       <div role="cell" className="px-2 font-medium text-slate-600">

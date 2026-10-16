@@ -87,7 +87,7 @@ export function PatientIndicatorTrend({
           {grouped.length === 0 && <p className="px-3 py-6 text-center text-sm text-slate-500">Không có chỉ số nào khớp.</p>}
           {grouped.map(([groupName, list]) => (
             <div key={groupName}>
-              <div className="border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">{groupName}</div>
+              <div className="border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{groupName}</div>
               {list.map((i) => {
                 const active = keyOf(i) === selectedKey;
                 return (
@@ -101,7 +101,7 @@ export function PatientIndicatorTrend({
                     }`}
                   >
                     <span className="break-words text-[13.5px] font-semibold text-slate-900">{i.name}</span>
-                    <span className={`text-right text-[13.5px] font-bold tabular-nums ${i.latestFlag === 'HIGH' ? 'text-rose-600' : i.latestFlag === 'LOW' ? 'text-amber-600' : 'text-slate-900'}`}>
+                    <span className={`text-right text-[13.5px] font-semibold tabular-nums ${i.latestFlag === 'HIGH' ? 'text-rose-600' : i.latestFlag === 'LOW' ? 'text-amber-600' : 'text-slate-900'}`}>
                       {comma(i.latestValueText)} {i.unit && <span className="text-[11.5px] font-medium text-slate-500">{i.unit}</span>}
                     </span>
                     <span className="col-span-2 text-xs font-medium text-slate-500">
@@ -151,7 +151,7 @@ function TrendPanel({ name, unit, points, multiBranch, onOpenResult }: { name: s
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-slate-200 px-4 py-3">
-        <h3 className="text-[15px] font-bold text-slate-900">
+        <h3 className="text-[15px] font-semibold text-slate-900">
           {name} {unit && <span className="font-medium text-slate-500">({unit})</span>}
         </h3>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-slate-500">
@@ -187,7 +187,7 @@ function TrendPanel({ name, unit, points, multiBranch, onOpenResult }: { name: s
             <col style={{ width: 80 }} />
           </colgroup>
           <thead className="sticky top-0 z-10">
-            <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+            <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
               <th className="px-3 py-2.5 text-center">Ngày</th>
               <th className="px-3 py-2.5 text-center">Giá trị</th>
               <th className="px-3 py-2.5 text-center">Khoảng tham chiếu</th>
@@ -199,8 +199,8 @@ function TrendPanel({ name, unit, points, multiBranch, onOpenResult }: { name: s
           <tbody>
             {[...points].reverse().map((p) => (
               <tr key={p.itemId} className={`border-b border-slate-100 hover:bg-slate-50 ${multiBranch && p.isOtherBranch ? 'bg-blue-50' : ''}`}>
-                <td className="px-3 py-2 text-center font-bold tabular-nums text-brand-teal">{formatDateStringVi(toVietnamDateString(p.signedAt))}</td>
-                <td className={`px-3 py-2 text-center font-bold tabular-nums ${p.flag === 'HIGH' ? 'text-rose-600' : p.flag === 'LOW' ? 'text-amber-600' : 'text-slate-900'}`}>
+                <td className="px-3 py-2 text-center font-semibold tabular-nums text-brand-teal">{formatDateStringVi(toVietnamDateString(p.signedAt))}</td>
+                <td className={`px-3 py-2 text-center font-semibold tabular-nums ${p.flag === 'HIGH' ? 'text-rose-600' : p.flag === 'LOW' ? 'text-amber-600' : 'text-slate-900'}`}>
                   {comma(p.valueText)} {unit && <span className="font-medium text-slate-500">{unit}</span>}
                 </td>
                 <td className="px-3 py-2 text-center font-medium tabular-nums text-slate-700">{p.referenceText || <span className="text-slate-400">—</span>}</td>

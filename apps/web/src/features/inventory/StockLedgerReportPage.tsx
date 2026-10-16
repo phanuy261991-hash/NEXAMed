@@ -140,7 +140,7 @@ function StockLedgerTab() {
                   <div
                     role="row"
                     style={{ gridTemplateColumns: gridColumns }}
-                    className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
+                    className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800"
                   >
                     <div role="columnheader" className="py-2.5 text-center">Mã</div>
                     <div role="columnheader" className="py-2.5 text-left">Tên mặt hàng</div>

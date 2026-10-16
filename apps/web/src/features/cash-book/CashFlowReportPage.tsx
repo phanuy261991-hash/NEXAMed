@@ -97,10 +97,10 @@ export function CashFlowReportPage() {
 
           {multiBranch && (
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-800">Theo chi nhánh</div>
+              <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-800">Theo chi nhánh</div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wide text-slate-600">
+                  <tr className="border-b border-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600">
                     <th className="px-4 py-2 text-left">Chi nhánh</th>
                     <th className="px-4 py-2 text-right">Tổng thu</th>
                     <th className="px-4 py-2 text-right">Tổng chi</th>
@@ -115,10 +115,10 @@ export function CashFlowReportPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums text-emerald-700">{formatVnd(g.totalIncome)}</td>
                       <td className="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums text-rose-700">{formatVnd(g.totalExpense)}</td>
-                      <td className="whitespace-nowrap px-4 py-2 text-right font-bold tabular-nums text-slate-900">{formatVnd(g.totalIncome - g.totalExpense)}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums text-slate-900">{formatVnd(g.totalIncome - g.totalExpense)}</td>
                     </tr>
                   ))}
-                  <tr className="bg-slate-50 font-bold">
+                  <tr className="bg-slate-50 font-semibold">
                     <td className="px-4 py-2 text-left text-slate-800">Cộng {reportQuery.data.byBranch.length} chi nhánh</td>
                     <td className="px-4 py-2 text-right tabular-nums text-slate-900">{formatVnd(reportQuery.data.totalIncome)}</td>
                     <td className="px-4 py-2 text-right tabular-nums text-slate-900">{formatVnd(reportQuery.data.totalExpense)}</td>
@@ -131,10 +131,10 @@ export function CashFlowReportPage() {
 
           <div className={`grid grid-cols-1 gap-4 ${multiBranch ? '' : 'lg:grid-cols-2'}`}>
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-800">Theo Loại thu chi</div>
+              <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-800">Theo Loại thu chi</div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wide text-slate-600">
+                  <tr className="border-b border-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600">
                     <th className="px-4 py-2 text-left">Loại thu chi</th>
                     <th className="px-4 py-2 text-right">Tổng thu</th>
                     <th className="px-4 py-2 text-right">Tổng chi</th>
@@ -153,10 +153,10 @@ export function CashFlowReportPage() {
             </div>
 
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-800">Theo Quỹ</div>
+              <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-800">Theo Quỹ</div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wide text-slate-600">
+                  <tr className="border-b border-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600">
                     <th className="px-4 py-2 text-left">Quỹ</th>
                     {multiBranch && <th className="px-4 py-2 text-left">Chi nhánh</th>}
                     <th className="px-4 py-2 text-right">Tổng thu</th>
@@ -175,7 +175,7 @@ export function CashFlowReportPage() {
                       )}
                       <td className="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums text-emerald-700">{g.totalIncome > 0 ? formatVnd(g.totalIncome) : '—'}</td>
                       <td className="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums text-rose-700">{g.totalExpense > 0 ? formatVnd(g.totalExpense) : '—'}</td>
-                      <td className="whitespace-nowrap px-4 py-2 text-right font-bold tabular-nums text-slate-900">{formatVnd(g.closingBalance)}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums text-slate-900">{formatVnd(g.closingBalance)}</td>
                     </tr>
                   ))}
                 </tbody>

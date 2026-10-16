@@ -323,7 +323,7 @@ export function StockTransferFormPage() {
 
       <div className="flex flex-shrink-0 items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
-          <h2 className="truncate text-lg font-bold text-slate-900">{isEdit && transfer ? transfer.transferNo : 'Tạo phiếu điều chuyển kho'}</h2>
+          <h2 className="truncate text-lg font-semibold text-slate-900">{isEdit && transfer ? transfer.transferNo : 'Tạo phiếu điều chuyển kho'}</h2>
           {transfer && <StatusBadge tone={TRANSFER_STATUS_META[transfer.status].tone}>{TRANSFER_STATUS_META[transfer.status].label}</StatusBadge>}
           {transfer && varianceOverdueDays(transfer, Date.now()) !== null && <StatusBadge tone="danger">Quá hạn xử lý · {varianceOverdueDays(transfer, Date.now())} ngày</StatusBadge>}
         </div>
@@ -471,7 +471,7 @@ export function StockTransferFormPage() {
           ) : isDraftEditable ? (
             <div role="table" aria-label="Dòng hàng điều chuyển" className="scroll-hover h-full overflow-x-auto">
               <div className="flex h-full flex-col" style={{ minWidth: 820 }}>
-                <div role="row" style={{ gridTemplateColumns: '1.8fr 150px 150px 50px' }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <div role="row" style={{ gridTemplateColumns: '1.8fr 150px 150px 50px' }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <div role="columnheader" className="py-2.5 text-left">Lô / Hạn sử dụng (tại kho nguồn)</div>
                   <div role="columnheader" className="py-2.5 text-right">Tồn khả dụng</div>
                   <div role="columnheader" className="py-2.5 text-center">SL dự kiến chuyển</div>
@@ -559,7 +559,7 @@ function ReadOnlyLines({ transfer, showCost }: { transfer: StockTransferDetail; 
   return (
     <div className="scroll-hover h-full overflow-auto">
       <div role="table" aria-label="Dòng hàng điều chuyển" style={{ minWidth: showCost ? 1040 : 900 }}>
-        <div role="row" style={{ gridTemplateColumns: grid }} className="grid gap-x-2 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+        <div role="row" style={{ gridTemplateColumns: grid }} className="grid gap-x-2 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
           <div role="columnheader" className="py-2.5 text-left">Mặt hàng / Lô</div>
           <div role="columnheader" className="py-2.5 text-center">SL đã xuất</div>
           <div role="columnheader" className="py-2.5 text-center">SL thực nhận</div>
@@ -572,7 +572,7 @@ function ReadOnlyLines({ transfer, showCost }: { transfer: StockTransferDetail; 
           return (
             <div key={l.id} role="row" style={{ gridTemplateColumns: grid, minHeight: 56 }} className={`grid items-center gap-x-2 border-b border-slate-100 px-4 text-sm ${shortage > 0 ? 'bg-amber-50/50' : ''}`}>
               <div role="cell" className="min-w-0 py-2">
-                <p className="truncate font-bold text-slate-900" title={l.drugName}>{l.drugName}</p>
+                <p className="truncate font-semibold text-slate-900" title={l.drugName}>{l.drugName}</p>
                 <p className="truncate text-xs font-medium text-slate-400">{l.isBatchManaged ? `Lô ${l.batchNo}${l.expiryDate ? ` · HSD ${l.expiryDate.split('-').reverse().join('/')}` : ''}` : '— (không quản lý lô)'}</p>
               </div>
               <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{l.quantityShipped}</div>

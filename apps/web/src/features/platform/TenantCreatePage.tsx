@@ -40,7 +40,7 @@ function CreatedResult({ result, loginHost }: { result: CreatePlatformTenantResp
 
   return (
     <div className="rounded-lg border border-emerald-500 bg-emerald-50 p-5">
-      <p className="flex items-center gap-2 text-base font-bold text-slate-900">
+      <p className="flex items-center gap-2 text-base font-semibold text-slate-900">
         <CheckCircle size={20} weight="fill" className="text-emerald-600" aria-hidden="true" />
         Đã tạo công ty "{result.tenant.name}"
       </p>
@@ -48,15 +48,15 @@ function CreatedResult({ result, loginHost }: { result: CreatePlatformTenantResp
       <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <dt className="text-sm font-medium text-slate-500">Địa chỉ đăng nhập</dt>
-          <dd className="break-all text-base font-bold text-blue-700">{loginUrl}</dd>
+          <dd className="break-all text-base font-semibold text-blue-700">{loginUrl}</dd>
         </div>
         <div>
           <dt className="text-sm font-medium text-slate-500">Tên đăng nhập quản trị</dt>
-          <dd className="text-base font-bold text-slate-900">{result.adminUsername}</dd>
+          <dd className="text-base font-semibold text-slate-900">{result.adminUsername}</dd>
         </div>
         <div className="sm:col-span-2">
           <dt className="text-sm font-medium text-slate-500">Mật khẩu tạm</dt>
-          <dd className="text-lg font-extrabold tracking-wide text-slate-900">{result.temporaryPassword}</dd>
+          <dd className="text-lg font-semibold tracking-wide text-slate-900">{result.temporaryPassword}</dd>
         </div>
       </dl>
       <div className="mt-4 flex flex-wrap items-center gap-2">

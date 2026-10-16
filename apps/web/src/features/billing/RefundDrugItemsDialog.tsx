@@ -115,7 +115,7 @@ export function RefundDrugItemsDialog({ invoice, onClose }: { invoice: Invoice; 
             <div className="overflow-hidden rounded-lg border border-slate-200">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                     <th className="w-10 py-2.5 pl-3 text-left">
                       <SelectionCheckbox checked={allSelected} indeterminate={!allSelected && someSelected} onChange={toggleAll} ariaLabel="Chọn tất cả dòng thuốc" />
                     </th>
@@ -197,8 +197,8 @@ export function RefundDrugItemsDialog({ invoice, onClose }: { invoice: Invoice; 
                   )}
                 </div>
                 <div className="text-right">
-                  <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Tổng hoàn</div>
-                  <div className="text-2xl font-bold tabular-nums text-violet-700">{formatVnd(previewTotal)}</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tổng hoàn</div>
+                  <div className="text-2xl font-semibold tabular-nums text-violet-700">{formatVnd(previewTotal)}</div>
                 </div>
               </div>
             </div>

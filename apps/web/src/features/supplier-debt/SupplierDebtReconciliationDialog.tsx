@@ -78,7 +78,7 @@ export function SupplierDebtReconciliationDialog({ supplierId, supplierName, onC
         <div className="flex-shrink-0 px-6 pt-6">
           <ModalHeader icon={Scales} title="Lập biên bản đối chiếu" subtitle={supplierName} onClose={onClose} />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4">
           {error && <ErrorBanner message={error} />}
           <div className="my-4 flex flex-col gap-4">
             <BoxedSection badge="Đối chiếu">
@@ -122,15 +122,15 @@ export function SupplierDebtReconciliationDialog({ supplierId, supplierName, onC
               <div className={`rounded-md border px-4 py-3 text-sm ${preview.differenceAmount === 0 ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
                 <div className="flex justify-between gap-3">
                   <span className="font-medium text-slate-600">Số hệ thống tại {asOfDate}</span>
-                  <span className="font-bold text-slate-900">{formatVnd(preview.systemBalance)}</span>
+                  <span className="font-semibold text-slate-900">{formatVnd(preview.systemBalance)}</span>
                 </div>
                 <div className="mt-1 flex justify-between gap-3">
                   <span className="font-medium text-slate-600">NCC xác nhận</span>
-                  <span className="font-bold text-slate-900">{formatVnd(preview.confirmedBalance)}</span>
+                  <span className="font-semibold text-slate-900">{formatVnd(preview.confirmedBalance)}</span>
                 </div>
                 <div className="mt-2 flex justify-between gap-3 border-t border-slate-200 pt-2">
                   <span className="font-semibold text-slate-700">Chênh lệch</span>
-                  <span className={`text-lg font-bold ${preview.differenceAmount === 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  <span className={`text-lg font-semibold ${preview.differenceAmount === 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
                     {preview.differenceAmount === 0 ? 'Khớp' : formatVnd(preview.differenceAmount)}
                   </span>
                 </div>

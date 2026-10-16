@@ -65,7 +65,7 @@ export function CashierShiftDetailDialog({ id, onClose }: { id: string; onClose:
         <div className="flex flex-shrink-0 items-start justify-between border-b border-slate-100 px-6 pt-6 pb-4">
           <div>
             <div className="flex items-center gap-2">
-              <h2 id="cashier-shift-detail-title" className="text-lg font-bold text-slate-900">
+              <h2 id="cashier-shift-detail-title" className="text-lg font-semibold text-slate-900">
                 {shift ? `Phiếu chốt ca — ${shift.shiftNo}` : 'Phiếu chốt ca'}
               </h2>
               {shift?.editedAt && <StatusBadge tone="info">Đã chỉnh sửa</StatusBadge>}
@@ -115,14 +115,14 @@ export function CashierShiftDetailDialog({ id, onClose }: { id: string; onClose:
 
               {diff !== 0 && (
                 <div>
-                  <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">Lý do chênh lệch (thu ngân giải trình)</div>
+                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Lý do chênh lệch (thu ngân giải trình)</div>
                   <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-medium text-slate-700">{shift.cashDiscrepancyReason || '(chưa có giải trình)'}</p>
                 </div>
               )}
 
               {diff !== 0 && canManage && (
                 <div className="rounded-lg border border-slate-200 p-4">
-                  <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">Xử lý chênh lệch (Quản lý)</div>
+                  <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Xử lý chênh lệch (Quản lý)</div>
                   {shift.resolutionMethod ? (
                     <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-3">
                       <p className="text-sm font-semibold text-emerald-700">
@@ -199,8 +199,8 @@ function StatCard({ label, value, tone }: { label: string; value: string; tone?:
   const valueColor = tone === 'emerald' ? 'text-emerald-700' : tone === 'rose' ? 'text-rose-700' : 'text-slate-900';
   return (
     <div className={`rounded-lg border p-3 ${border}`}>
-      <div className={`text-[10px] font-bold uppercase tracking-wide ${labelColor}`}>{label}</div>
-      <div className={`mt-1 text-sm font-bold ${valueColor}`}>{value}</div>
+      <div className={`text-[10px] font-semibold uppercase tracking-wide ${labelColor}`}>{label}</div>
+      <div className={`mt-1 text-sm font-semibold ${valueColor}`}>{value}</div>
     </div>
   );
 }
@@ -247,7 +247,7 @@ function EditShiftPanel({ shiftId, onDone }: { shiftId: string; onDone: () => vo
 
   return (
     <div className="rounded-lg border-2 border-amber-300 bg-amber-50/40 p-4">
-      <div className="mb-3 text-[11px] font-bold uppercase tracking-wide text-amber-700">Sửa phiếu đã chốt (Quản lý)</div>
+      <div className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-amber-700">Sửa phiếu đã chốt (Quản lý)</div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>

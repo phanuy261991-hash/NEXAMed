@@ -432,7 +432,7 @@ export function StockCountFormPage() {
 
       <div className="flex flex-shrink-0 items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-lg font-bold text-slate-900">{readOnly ? countQuery.data!.countNo : isEdit ? 'Sửa phiếu Nháp' : 'Tạo phiếu kiểm kê'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{readOnly ? countQuery.data!.countNo : isEdit ? 'Sửa phiếu Nháp' : 'Tạo phiếu kiểm kê'}</h2>
           {isEdit && countQuery.data && <StatusBadge tone={STATUS_META[countQuery.data.status]!.tone}>{STATUS_META[countQuery.data.status]!.label}</StatusBadge>}
         </div>
         <Button type="button" variant="secondary" onClick={() => navigate('/inventory/counts')}>
@@ -536,14 +536,14 @@ export function StockCountFormPage() {
           {groupPanelOpen && (
             <div className="flex flex-col gap-3.5 rounded-lg border border-blue-200 bg-blue-50/40 p-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-900">Thêm nhiều mặt hàng cùng lúc theo Loại / Nhóm thuốc</span>
+                <span className="text-sm font-semibold text-slate-900">Thêm nhiều mặt hàng cùng lúc theo Loại / Nhóm thuốc</span>
                 <button type="button" onClick={() => setGroupPanelOpen(false)} aria-label="Đóng" className="text-slate-400 hover:text-slate-600">
                   <X size={18} aria-hidden="true" />
                 </button>
               </div>
 
               <div>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Loại mặt hàng</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Loại mặt hàng</span>
                 <div className="flex gap-2">
                   {TYPE_FILTER_OPTIONS.map((t) => (
                     <button
@@ -563,7 +563,7 @@ export function StockCountFormPage() {
 
               {groupFilterType !== 'SUPPLY' && (
                 <div>
-                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Nhóm thuốc (chỉ áp dụng cho Thuốc)</span>
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Nhóm thuốc (chỉ áp dụng cho Thuốc)</span>
                   <div className="flex flex-wrap gap-2">
                     {groupOptions.map((g) => {
                       const active = selectedGroups.includes(g.code);
@@ -602,7 +602,7 @@ export function StockCountFormPage() {
         ) : (
           <div role="table" aria-label="Dòng đếm" className="scroll-hover h-full overflow-x-auto">
             <div className="flex h-full flex-col" style={{ minWidth: 820 }}>
-              <div role="row" style={{ gridTemplateColumns: columns }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <div role="row" style={{ gridTemplateColumns: columns }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <div role="columnheader" className="py-2.5 text-left">Lô / Hạn sử dụng</div>
                 <div role="columnheader" className="py-2.5 text-right">Tồn hệ thống</div>
                 <div role="columnheader" className="py-2.5 text-center">Số đếm thực tế</div>
@@ -691,7 +691,7 @@ export function StockCountFormPage() {
                               )}
                             </div>
                             <div role="cell" className="text-center">
-                              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${meta.className}`}>{meta.label}</span>
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
                             </div>
                             {!readOnly && (
                               <div role="cell" className="text-center">
@@ -714,9 +714,9 @@ export function StockCountFormPage() {
 
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center gap-3.5 text-sm font-semibold text-slate-700">
-          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">{surplusCount} dòng dư</span>
-          <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-700">{shortageCount} dòng thiếu</span>
-          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700">{matchCount} dòng khớp</span>
+          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">{surplusCount} dòng dư</span>
+          <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700">{shortageCount} dòng thiếu</span>
+          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700">{matchCount} dòng khớp</span>
         </div>
         {formError && <p className="text-sm font-medium text-rose-600">{formError}</p>}
         {!readOnly && (

@@ -91,7 +91,7 @@ export function StockTransferReceivePanel({ transfer, receiverName, onDone, onCa
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="scroll-hover h-full overflow-auto">
             <div role="table" aria-label="Kiểm nhận hàng" style={{ minWidth: 1130 }}>
-              <div role="row" style={{ gridTemplateColumns: GRID }} className="grid gap-x-2 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <div role="row" style={{ gridTemplateColumns: GRID }} className="grid gap-x-2 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <div role="columnheader" className="py-2.5 text-center">#</div>
                 <div role="columnheader" className="py-2.5 text-left">Thuốc / vật tư</div>
                 <div role="columnheader" className="py-2.5 text-center">Lô · Hạn dùng</div>
@@ -105,7 +105,7 @@ export function StockTransferReceivePanel({ transfer, receiverName, onDone, onCa
                 <div key={r.line.id} role="row" style={{ gridTemplateColumns: GRID, minHeight: 60 }} className={`grid items-center gap-x-2 border-b border-slate-100 px-4 text-sm ${r.short ? 'bg-amber-50/60' : ''}`}>
                   <div role="cell" className="text-center text-slate-500">{index + 1}</div>
                   <div role="cell" className="min-w-0 py-2">
-                    <p className="truncate font-bold text-slate-900" title={r.line.drugName}>{r.line.drugName}</p>
+                    <p className="truncate font-semibold text-slate-900" title={r.line.drugName}>{r.line.drugName}</p>
                     <p className="truncate text-xs font-medium text-slate-400">{r.line.drugCode}</p>
                   </div>
                   <div role="cell" className="text-center text-xs font-medium text-slate-700">
@@ -128,7 +128,7 @@ export function StockTransferReceivePanel({ transfer, receiverName, onDone, onCa
                       aria-label={`Thực nhận ${r.line.drugName}`}
                       value={r.input.quantityReceived}
                       onChange={(e) => update(r.line.id, { quantityReceived: e.target.value })}
-                      className={`w-20 rounded-md border px-1.5 py-1.5 text-center text-sm font-bold ${r.short || r.over || r.invalid ? 'border-rose-400 bg-rose-50 text-rose-900' : 'border-slate-300 text-slate-900'}`}
+                      className={`w-20 rounded-md border px-1.5 py-1.5 text-center text-sm font-semibold ${r.short || r.over || r.invalid ? 'border-rose-400 bg-rose-50 text-rose-900' : 'border-slate-300 text-slate-900'}`}
                     />
                   </div>
                   <div role="cell" className="text-center font-semibold tabular-nums">

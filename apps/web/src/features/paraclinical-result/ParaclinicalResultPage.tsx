@@ -428,7 +428,7 @@ function InfoBlock({ label, primary, secondary }: { label: string; primary: stri
   return (
     <div className="min-w-0">
       <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-0.5 max-w-[26rem] truncate text-[15px] font-bold text-slate-900" title={primary}>
+      <div className="mt-0.5 max-w-[26rem] truncate text-[15px] font-semibold text-slate-900" title={primary}>
         {primary}
       </div>
       <div className="max-w-[26rem] truncate text-xs text-slate-500" title={secondary}>
@@ -508,8 +508,8 @@ function SectionCard({
     <section aria-label={section.name} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className="text-[13.5px] font-bold text-slate-900">{showName || !wantsIndicators ? section.name : 'Kết quả theo chỉ số'}</h2>
-          <span className="rounded bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">{SERVICE_KIND_LABELS[section.serviceKind]}</span>
+          <h2 className="text-[13.5px] font-semibold text-slate-900">{showName || !wantsIndicators ? section.name : 'Kết quả theo chỉ số'}</h2>
+          <span className="rounded bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700">{SERVICE_KIND_LABELS[section.serviceKind]}</span>
           {section.code && <span className="text-xs font-semibold text-slate-500">{section.code}</span>}
           {section.specimenTypeName && <span className="text-xs text-slate-500">· {section.specimenTypeName}</span>}
         </div>
@@ -519,14 +519,14 @@ function SectionCard({
       {wantsIndicators && (
         <div className="scroll-hover overflow-x-auto">
           <div style={{ minWidth: 900 }}>
-            <div role="row" className="grid border-b-2 border-blue-600 bg-slate-100 px-2 text-center text-xs font-bold uppercase tracking-wide text-slate-800" style={{ gridTemplateColumns: INDICATOR_COLUMNS }}>
+            <div role="row" className="grid border-b-2 border-blue-600 bg-slate-100 px-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-800" style={{ gridTemplateColumns: INDICATOR_COLUMNS }}>
               {['TT', 'Mã', 'Tên chỉ số', 'Kết quả', 'Đơn vị', 'Khoảng tham chiếu', 'Đánh giá', 'Ghi chú'].map((h) => (
                 <div key={h} role="columnheader" className="px-2 py-2.5">
                   {h}
                 </div>
               ))}
             </div>
-            {section.indicators.length === 0 && <p className="px-4 py-6 text-center text-sm italic text-slate-400">Dịch vụ này chưa gắn chỉ số nào — khai ở Danh mục cận lâm sàng.</p>}
+            {section.indicators.length === 0 && <p className="px-4 py-6 text-center text-sm italic text-slate-400">Dịch vụ này chưa gắn chỉ số nào — khai ở Danh mục Cận lâm sàng.</p>}
             {section.indicators.map((ind, index) => {
               const value = draft.values[ind.indicatorId]!;
               const flag = previewFlag(ind.valueType, value.valueText, ind.reference);
@@ -558,7 +558,7 @@ function SectionCard({
                         inputMode={ind.valueType === 'NUMBER' ? 'decimal' : 'text'}
                         onChange={(e) => onValue(section, ind.indicatorId, { valueText: e.target.value })}
                         onKeyDown={focusNext}
-                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-[15px] font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
                       />
                     )}
                   </div>

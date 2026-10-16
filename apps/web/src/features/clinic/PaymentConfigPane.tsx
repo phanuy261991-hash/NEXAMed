@@ -54,7 +54,7 @@ export function PaymentConfigPane() {
 
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Bật cho phép &quot;Thanh toán sau&quot;</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Bật cho phép &quot;Thanh toán sau&quot;</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Bật để cho phép thực hiện dịch vụ trước khi thanh toán. Lễ tân có thể bỏ chọn để thu tiền ngay. Tắt để
               bắt buộc thanh toán trước khi thực hiện dịch vụ.
@@ -80,7 +80,7 @@ export function PaymentConfigPane() {
 
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Yêu cầu mở ca trước khi thu tiền</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Yêu cầu mở ca trước khi thu tiền</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Bật (mặc định): Phải mở ca trước khi thu tiền, phù hợp phòng khám có nhiều người thay ca và cần đối
               soát.
@@ -105,7 +105,7 @@ export function PaymentConfigPane() {
 
         <div className="mt-4 flex items-start justify-between gap-5 border-t border-dashed border-slate-200 pt-4">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Đối soát độc lập</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Đối soát độc lập</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Bật (mặc định): Ẩn số tiền dự kiến cho đến khi nhập số tiền thực tế, giúp đối soát khách quan và hạn
               chế sai lệch.
@@ -129,7 +129,7 @@ export function PaymentConfigPane() {
 
         <div className="mt-4 flex items-start justify-between gap-5 border-t border-dashed border-slate-200 pt-4">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Nhiều thu ngân cùng lúc</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Nhiều thu ngân cùng lúc</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): Cả phòng khám dùng chung 1 két, chỉ mở được 1 ca tại một thời điểm.
               <br />
@@ -164,7 +164,7 @@ export function PaymentConfigPane() {
             dialog nhỏ hiện tại — xem `EndOfDayDialog.tsx`. */}
         <div className="mt-4 flex items-start justify-between gap-5 rounded-lg border border-brand-teal/20 bg-brand-teal-tint p-3.5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Chế độ xử lý nhanh</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Chế độ xử lý nhanh</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): Đóng ca, Chốt ca thu ngân và Duyệt phiếu được thực hiện riêng biệt.
               <br />
@@ -198,7 +198,7 @@ export function PaymentConfigPane() {
 
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Phiếu chi phải được duyệt</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Phiếu chi phải được duyệt</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): Thu ngân tự lập phiếu chi, có hiệu lực ngay.
               <br />
@@ -226,7 +226,7 @@ export function PaymentConfigPane() {
             MULTI_CASHIER) nếu lỡ bật sai thứ tự. */}
         <div className="mt-4 flex items-start justify-between gap-5 border-t border-dashed border-slate-200 pt-4">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Thủ quỹ riêng</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Thủ quỹ riêng</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): Tiền thu khám bằng tiền mặt vào chung Quỹ tiền mặt của phòng khám.
               <br />
@@ -258,7 +258,7 @@ export function PaymentConfigPane() {
 
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Cho phép thanh toán hỗn hợp</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Cho phép thanh toán hỗn hợp</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): Ví tạm ứng chỉ trừ được khi đủ 100% số tiền cần thu, thiếu thì phải nạp thêm trước.
               <br />
@@ -285,7 +285,7 @@ export function PaymentConfigPane() {
 
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Tách hoá đơn tiền thuốc riêng</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Tách hoá đơn tiền thuốc riêng</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): Phát thuốc cộng thẳng tiền vào hoá đơn dịch vụ khám đang mở của lượt khám.
               <br />
@@ -309,7 +309,7 @@ export function PaymentConfigPane() {
 
         <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Có kho thuốc</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Có kho thuốc</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Bật (mặc định): màn Kê đơn hiện tồn kho, cảnh báo/chặn kê vượt tồn, nút &quot;Phát thuốc&quot;.
               <br />
@@ -333,7 +333,7 @@ export function PaymentConfigPane() {
 
         <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
           <div>
-            <p className={`text-[14.5px] font-bold ${pharmacyStockTrackingEnabled ? 'text-slate-900' : 'text-slate-400'}`}>Chặn kê vượt tồn</p>
+            <p className={`text-[14.5px] font-semibold ${pharmacyStockTrackingEnabled ? 'text-slate-900' : 'text-slate-400'}`}>Chặn kê vượt tồn</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): kê vượt tổng tồn kho toàn phòng khám chỉ cảnh báo mềm, bác sĩ vẫn ký được.
               <br />
@@ -357,7 +357,7 @@ export function PaymentConfigPane() {
 
         <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Cho phép kê thuốc ngoài danh mục</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Cho phép kê thuốc ngoài danh mục</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): bác sĩ chỉ kê được thuốc có sẵn trong danh mục.
               <br />
@@ -381,7 +381,7 @@ export function PaymentConfigPane() {
 
         <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Cho thực hiện cận lâm sàng trước khi thu tiền</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Cho thực hiện cận lâm sàng trước khi thu tiền</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): dịch vụ cận lâm sàng phải thu tiền xong mới lấy mẫu / gọi vào phòng được; chưa thu nằm ở tab &quot;Chờ thu tiền&quot;.
               <br />
@@ -404,7 +404,7 @@ export function PaymentConfigPane() {
 
         <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
           <div>
-            <p className="text-[14.5px] font-bold text-slate-900">Bắt buộc quét đủ ống trước khi xác nhận lấy mẫu</p>
+            <p className="text-[14.5px] font-semibold text-slate-900">Bắt buộc quét đủ ống trước khi xác nhận lấy mẫu</p>
             <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
               Tắt (mặc định): ô &quot;Đã lấy&quot; của từng ống tích tay hoặc quét tem đều được.
               <br />

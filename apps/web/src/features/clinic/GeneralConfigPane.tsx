@@ -154,7 +154,7 @@ export function GeneralConfigPane() {
 
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-[14.5px] font-bold text-slate-900">Cho phép nhân viên tự đăng ký ca</p>
+          <p className="text-[14.5px] font-semibold text-slate-900">Cho phép nhân viên tự đăng ký ca</p>
           <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
             Bật (mặc định): nhân viên tự đăng ký/xoá ca của mình trên &quot;Lịch làm việc của tôi&quot;. Tắt: ẩn hết
             thao tác tự đăng ký, trang chỉ còn xem lịch đã được phân công từ &quot;Lịch làm việc nhân viên&quot;.
@@ -170,7 +170,7 @@ export function GeneralConfigPane() {
 
       <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
         <div>
-          <p className="text-[14.5px] font-bold text-slate-900">Số ngày được phép chỉnh sửa lịch của tháng trước</p>
+          <p className="text-[14.5px] font-semibold text-slate-900">Số ngày được phép chỉnh sửa lịch của tháng trước</p>
           <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
             Cho phép chỉnh sửa lịch làm việc của tháng trước trong số ngày đầu tháng. Hết thời hạn, lịch sẽ tự động
             khoá và chỉ người có quyền &quot;Sửa lịch đã khoá&quot; mới được chỉnh sửa.
@@ -206,7 +206,7 @@ export function GeneralConfigPane() {
             </>
           ) : (
             <>
-              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
+              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-semibold text-blue-700">
                 {settingsQuery.data.workShiftAssignmentLockGraceDays} ngày
               </span>
               <EditIconButton onClick={() => setEditingGraceDays(true)} />
@@ -217,7 +217,7 @@ export function GeneralConfigPane() {
 
       <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
         <div>
-          <p className="text-[14.5px] font-bold text-slate-900">Số ngày nghỉ tối thiểu mỗi tuần</p>
+          <p className="text-[14.5px] font-semibold text-slate-900">Số ngày nghỉ tối thiểu mỗi tuần</p>
           <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
             Khi nhân viên Gửi duyệt đăng ký ca cả tháng, mỗi tuần (Thứ Hai–Chủ nhật, trọn trong tháng) phải còn ít
             nhất số ngày nghỉ này, nếu không sẽ bị chặn và báo rõ tuần nào. Ngày không có ca được tính là ngày nghỉ.
@@ -247,7 +247,7 @@ export function GeneralConfigPane() {
             </>
           ) : (
             <>
-              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
+              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-semibold text-blue-700">
                 {settingsQuery.data.minWeeklyDaysOff === 0 ? 'Không áp quota' : `${settingsQuery.data.minWeeklyDaysOff} ngày/tuần`}
               </span>
               <EditIconButton onClick={() => setEditingMinDaysOff(true)} />
@@ -262,7 +262,7 @@ export function GeneralConfigPane() {
 
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-[14.5px] font-bold text-slate-900">Tự động thu gọn menu khi chuyển trang</p>
+          <p className="text-[14.5px] font-semibold text-slate-900">Tự động thu gọn menu khi chuyển trang</p>
           <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
             Bật: mỗi khi điều hướng sang trang khác, menu bên trái tự thu gọn lại để mở rộng không gian làm việc.
             Tắt (mặc định): menu giữ nguyên trạng thái người dùng tự chọn. Không ảnh hưởng màn hình khám (luôn tự
@@ -283,7 +283,7 @@ export function GeneralConfigPane() {
 
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-[14.5px] font-bold text-slate-900">Ngưỡng cảnh báo hạn dùng sắp hết</p>
+          <p className="text-[14.5px] font-semibold text-slate-900">Ngưỡng cảnh báo hạn dùng sắp hết</p>
           <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
             Số ngày trước hạn dùng để bắt đầu hiển thị cảnh báo lô sắp hết hạn trong &quot;Tồn kho theo lô&quot; và
             &quot;Cảnh báo hạn dùng&quot;.
@@ -323,7 +323,7 @@ export function GeneralConfigPane() {
             </>
           ) : (
             <>
-              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-bold text-blue-700">
+              <span className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-base font-semibold text-blue-700">
                 {settingsQuery.data.expiryWarningDays} ngày
               </span>
               <EditIconButton onClick={() => setEditingExpiryWarningDays(true)} />

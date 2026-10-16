@@ -856,7 +856,7 @@ export function EncounterConsultationPage() {
       <div className="flex flex-shrink-0 items-center justify-between gap-6 border-b border-slate-200 bg-white px-5 py-3 shadow-sm">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="truncate text-lg font-bold text-slate-900">{patient.fullName}</h1>
+            <h1 className="truncate text-lg font-semibold text-slate-900">{patient.fullName}</h1>
             <span className="whitespace-nowrap rounded-full bg-brand-teal-tint px-2.5 py-0.5 text-[11px] font-semibold text-brand-teal-active">
               {encounter.encounterNo}
             </span>
@@ -870,24 +870,24 @@ export function EncounterConsultationPage() {
           </div>
           <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
             <span>
-              Mã BN: <strong className="font-bold text-slate-900">{patient.patientCode}</strong>
+              Mã BN: <strong className="font-semibold text-slate-900">{patient.patientCode}</strong>
             </span>
             <span className="text-slate-300">|</span>
             <span>
-              Tuổi: <strong className="font-bold text-slate-900">{computeAgeLabel(patient.dob)}</strong>
+              Tuổi: <strong className="font-semibold text-slate-900">{computeAgeLabel(patient.dob)}</strong>
             </span>
             <span className="text-slate-300">|</span>
             <span>
-              Giới: <strong className="font-bold text-slate-900">{GENDER_LABEL[patient.gender] ?? patient.gender}</strong>
+              Giới: <strong className="font-semibold text-slate-900">{GENDER_LABEL[patient.gender] ?? patient.gender}</strong>
             </span>
             <span className="text-slate-300">|</span>
             <span>
-              SĐT: <strong className="font-bold text-slate-900">{patient.phone}</strong>
+              SĐT: <strong className="font-semibold text-slate-900">{patient.phone}</strong>
             </span>
             {receptionTypeName && (
               <>
                 <span className="text-slate-300">|</span>
-                <span className="whitespace-nowrap rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-blue-700">
+                <span className="whitespace-nowrap rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
                   {receptionTypeName}
                 </span>
               </>
@@ -969,7 +969,7 @@ export function EncounterConsultationPage() {
             <button
               type="button"
               onClick={() => setHistoryPanelTab('personal')}
-              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 text-xs font-bold uppercase tracking-wide ${
+              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 text-xs font-semibold uppercase tracking-wide ${
                 historyPanelTab === 'personal' ? 'border-blue-600 bg-blue-50/60 text-blue-700' : 'border-transparent text-slate-500 hover:text-blue-600'
               }`}
             >
@@ -979,7 +979,7 @@ export function EncounterConsultationPage() {
             <button
               type="button"
               onClick={() => setHistoryPanelTab('visits')}
-              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 text-xs font-bold uppercase tracking-wide ${
+              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 text-xs font-semibold uppercase tracking-wide ${
                 historyPanelTab === 'visits' ? 'border-blue-600 bg-blue-50/60 text-blue-700' : 'border-transparent text-slate-500 hover:text-blue-600'
               }`}
             >
@@ -1051,10 +1051,10 @@ export function EncounterConsultationPage() {
                 <tab.icon size={15} weight={activeTabId === tab.id ? 'fill' : 'bold'} aria-hidden="true" />
                 {tab.label}
                 {tab.id === 'section-chidinh' && clinicalOrderCount > 0 && (
-                  <span className={`rounded-full px-1.5 text-[10.5px] font-bold ${activeTabId === tab.id ? 'bg-white text-blue-700' : 'bg-blue-600 text-white'}`}>{clinicalOrderCount}</span>
+                  <span className={`rounded-full px-1.5 text-[10.5px] font-semibold ${activeTabId === tab.id ? 'bg-white text-blue-700' : 'bg-blue-600 text-white'}`}>{clinicalOrderCount}</span>
                 )}
                 {tab.id === 'section-ketqua' && resultReadyCount > 0 && (
-                  <span className={`rounded-full px-1.5 text-[10.5px] font-bold ${activeTabId === tab.id ? 'bg-white text-emerald-700' : 'bg-emerald-500 text-white'}`}>{resultReadyCount}</span>
+                  <span className={`rounded-full px-1.5 text-[10.5px] font-semibold ${activeTabId === tab.id ? 'bg-white text-emerald-700' : 'bg-emerald-500 text-white'}`}>{resultReadyCount}</span>
                 )}
                 {tab.id === 'section-kham' && diagnoses.some((d) => d.type === 'PRIMARY') && (
                   <CheckCircle size={13} weight="fill" className={activeTabId === tab.id ? 'text-white' : 'text-emerald-500'} aria-label="Đã có chẩn đoán chính" />
@@ -1079,7 +1079,7 @@ export function EncounterConsultationPage() {
                     (3 khung riêng, có nút "+ Thêm" mở `PatientHistoryDialog`) — không còn hiện ở
                     đây, tránh trùng lặp 2 nơi cùng đọc chung một dữ liệu (theo yêu cầu chủ dự án). */}
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-700">Thăm khám</h3>
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">Thăm khám</h3>
                   {isCompleted && editingCompleted && (
                     <button type="button" onClick={openClinicalAmend} className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">
                       <PencilSimple size={13} weight="bold" aria-hidden="true" />
@@ -1173,7 +1173,7 @@ export function EncounterConsultationPage() {
                     thanh tiêu đề đặc (chủ dự án không thích). Ô tìm giữ cỡ vừa; trạng thái trống dùng hổ phách (còn thiếu). */}
                 <div className="mt-4 rounded-lg border border-l-4 border-blue-200 border-l-blue-600 bg-blue-50/70 p-3">
                 <div className="mb-2.5 flex items-center justify-between">
-                  <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-blue-800">
+                  <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-blue-800">
                     <Stethoscope size={16} weight="bold" className="text-blue-600" aria-hidden="true" />
                     Chẩn đoán bệnh (ICD-10) <span className="text-rose-500">*</span>
                   </h3>
@@ -1204,7 +1204,7 @@ export function EncounterConsultationPage() {
                     <div className="flex items-center gap-2.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5">
                       <Warning size={18} weight="fill" className="flex-shrink-0 text-amber-500" aria-hidden="true" />
                       <p className="text-sm text-amber-900">
-                        <span className="font-bold">Chưa chọn chẩn đoán nào.</span> Tìm và bấm chọn mã ICD-10 ở ô trên — cần đúng 1 chẩn đoán chính để hoàn tất khám.
+                        <span className="font-semibold">Chưa chọn chẩn đoán nào.</span> Tìm và bấm chọn mã ICD-10 ở ô trên — cần đúng 1 chẩn đoán chính để hoàn tất khám.
                       </p>
                     </div>
                   )}
@@ -1310,7 +1310,7 @@ export function EncounterConsultationPage() {
             <div className="flex flex-col gap-4">
               {diagnoses.length > 0 && (
                 <div className="sticky top-0 z-10 -mx-4 -mt-4 flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-700">Chẩn đoán</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">Chẩn đoán</span>
                   {diagnoses.map((d) => (
                     <span
                       key={d.icd10Code}
@@ -1483,7 +1483,7 @@ export function EncounterConsultationPage() {
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 px-4">
           <div className="w-full max-w-sm rounded-lg bg-white p-8 text-center shadow-2xl">
             <CheckCircle size={56} weight="fill" className="mx-auto mb-4 text-emerald-500" aria-hidden="true" />
-            <h3 className="mb-1 text-lg font-bold uppercase tracking-wide text-emerald-600">Thành công</h3>
+            <h3 className="mb-1 text-lg font-semibold uppercase tracking-wide text-emerald-600">Thành công</h3>
             <p className="mb-6 text-sm text-slate-700">Hoàn tất khám thành công</p>
             <Button type="button" autoFocus className="w-full" onClick={() => navigate('/reception/doctor-queue')}>
               Về Hàng đợi khám
@@ -1587,7 +1587,7 @@ export function EncounterConsultationPage() {
 }
 
 function SectionLabel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-700 ${className}`}>{children}</div>;
+  return <div className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-700 ${className}`}>{children}</div>;
 }
 
 
@@ -1612,7 +1612,7 @@ function HistoryCard({ item, highlighted = false, onOpen }: { item: EncounterHis
       {/* Panel chỉ rộng 280px — ngày + tên bác sĩ KHÔNG đủ chỗ chung 1 hàng (vỡ dòng xấu khi tên
           bác sĩ dài), xuống 2 dòng riêng thay vì `justify-between` trên cùng 1 hàng. */}
       <div className="mb-1.5">
-        <span className={`flex items-center gap-1.5 font-bold ${highlighted ? 'text-[13px] text-blue-700' : 'text-xs text-blue-600'}`}>
+        <span className={`flex items-center gap-1.5 font-semibold ${highlighted ? 'text-[13px] text-blue-700' : 'text-xs text-blue-600'}`}>
           <CalendarBlank size={highlighted ? 13 : 12} weight="bold" aria-hidden="true" />
           {formatHistoryDate(item.checkedInAt)}
           {highlighted && <span className="text-[11px] font-medium text-slate-400">({formatRelativeTime(item.checkedInAt)})</span>}
@@ -1620,13 +1620,13 @@ function HistoryCard({ item, highlighted = false, onOpen }: { item: EncounterHis
         {item.doctorName && <div className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">{item.doctorName}</div>}
         {/* Tên chi nhánh CHỈ ghi khi lượt đó khác chi nhánh đang làm việc (docs/DECISIONS.md #231) — cùng chi nhánh/công ty 1 chi nhánh: `branchName` là null, không hiện gì. */}
         {item.branchName && (
-          <span className="mt-1 inline-block max-w-full truncate rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white" title={item.branchName}>
+          <span className="mt-1 inline-block max-w-full truncate rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white" title={item.branchName}>
             {item.branchName}
           </span>
         )}
       </div>
       {item.primaryDiagnosisName && (
-        <div className={`mb-1 font-bold text-slate-900 ${highlighted ? 'text-[13.5px]' : 'text-[12.5px]'}`}>{item.primaryDiagnosisName}</div>
+        <div className={`mb-1 font-semibold text-slate-900 ${highlighted ? 'text-[13.5px]' : 'text-[12.5px]'}`}>{item.primaryDiagnosisName}</div>
       )}
       {item.chiefComplaint && (
         <p className={`leading-relaxed text-slate-600 ${highlighted ? 'text-[12.5px]' : 'truncate text-[11.5px]'}`}>
@@ -1634,7 +1634,7 @@ function HistoryCard({ item, highlighted = false, onOpen }: { item: EncounterHis
           {item.chiefComplaint}
         </p>
       )}
-      <span className="pointer-events-none absolute bottom-2.5 right-3 flex items-center gap-0.5 text-[10px] font-bold text-blue-600 opacity-0 transition-opacity group-hover:opacity-100">
+      <span className="pointer-events-none absolute bottom-2.5 right-3 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 opacity-0 transition-opacity group-hover:opacity-100">
         Xem chi tiết
         <CaretRight size={9} weight="bold" aria-hidden="true" />
       </span>

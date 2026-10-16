@@ -5,6 +5,7 @@ import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../
 import { useHasAnyPermission } from '../auth/usePermission';
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
@@ -134,7 +135,7 @@ export function WarehousePane() {
           <div className="scroll-hover h-full overflow-y-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="w-10 px-4 py-2.5 text-center">
                     <SelectionCheckbox
                       checked={rowSelection.allLoadedSelected}
@@ -158,7 +159,7 @@ export function WarehousePane() {
                     <td className="px-4 py-2 text-center">
                       <SelectionCheckbox checked={rowSelection.isSelected(warehouse.id)} onChange={() => rowSelection.toggle(warehouse.id)} ariaLabel={`Chọn ${warehouse.name}`} />
                     </td>
-                    <td className="px-4 py-2 text-center font-bold text-slate-800">{warehouse.code}</td>
+                    <td className="px-4 py-2 text-center font-semibold text-slate-800">{warehouse.code}</td>
                     <td className="max-w-[320px] truncate px-4 py-2 text-left font-medium text-slate-900" title={warehouse.name}>{warehouse.name}</td>
                     {multiBranch && (
                       <td className="max-w-[208px] px-4 py-2 text-left">
@@ -217,20 +218,24 @@ export function WarehousePane() {
       )}
 
       {deactivateTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <p className="text-sm font-semibold text-slate-900">Ngưng sử dụng kho &quot;{deactivateTarget.name}&quot;?</p>
-            <p className="mt-1.5 text-xs text-slate-500">Sẽ không chọn được kho này khi lập phiếu nhập/xuất kho mới. Có thể kích hoạt lại sau.</p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={Prohibit}
+          tone="danger"
+          title="Ngưng sử dụng kho"
+          rows={[{ label: 'Kho', value: deactivateTarget.name }]}
+          note="Có thể kích hoạt lại sau"
+          onClose={() => setDeactivateTarget(null)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setDeactivateTarget(null)}>
                 Huỷ
               </Button>
               <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => handleDeactivate(deactivateTarget)}>
                 Ngưng sử dụng
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );

@@ -47,7 +47,7 @@ export function BusinessCodeTemplatePane() {
           <div className="scroll-hover h-full overflow-y-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                   <th className="px-4 py-2.5 text-left">Loại mã</th>
                   <th className="px-4 py-2.5 text-left">Khuôn mẫu</th>
                   <th className="w-40 px-4 py-2.5 text-center">Mã kế tiếp</th>
@@ -60,7 +60,7 @@ export function BusinessCodeTemplatePane() {
                   <tr key={item.codeType} className="border-b border-slate-200 last:border-0">
                     <td className="px-4 py-2 text-left font-medium text-slate-900">{item.label}</td>
                     <td className="px-4 py-2 text-left font-mono text-xs text-slate-600">{item.template}</td>
-                    <td className="px-4 py-2 text-center font-mono font-bold text-slate-800">{item.exampleNextCode}</td>
+                    <td className="px-4 py-2 text-center font-mono font-semibold text-slate-800">{item.exampleNextCode}</td>
                     <td className="px-4 py-2 text-center">
                       {item.locked ? (
                         <span title="Đã phát sinh mã đầu tiên — không sửa lại được">

@@ -178,13 +178,13 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
                 </div>
                 <div className="flex flex-shrink-0 items-center gap-1.5">
                   {item.shortcutCode && (
-                    <span className="rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold text-slate-600">
+                    <span className="rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">
                       gõ tắt: {item.shortcutCode}
                     </span>
                   )}
                   {showStock && onHand !== undefined && (
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold text-white ${onHand > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${onHand > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
                     >
                       {onHand > 0 ? `Tồn ${onHand}` : 'Hết hàng'}
                     </span>
@@ -214,11 +214,11 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
           {totalOptions > 0 && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 px-1 pt-1.5 text-[11px] font-medium text-slate-500">
               <span>
-                <kbd className="rounded border border-slate-300 border-b-2 bg-white px-1.5 py-0.5 font-bold text-slate-700">↑</kbd>{' '}
-                <kbd className="rounded border border-slate-300 border-b-2 bg-white px-1.5 py-0.5 font-bold text-slate-700">↓</kbd> di chuyển
+                <kbd className="rounded border border-slate-300 border-b-2 bg-white px-1.5 py-0.5 font-semibold text-slate-700">↑</kbd>{' '}
+                <kbd className="rounded border border-slate-300 border-b-2 bg-white px-1.5 py-0.5 font-semibold text-slate-700">↓</kbd> di chuyển
               </span>
               <span>
-                <kbd className="rounded border border-slate-300 border-b-2 bg-white px-1.5 py-0.5 font-bold text-slate-700">Enter</kbd> thêm vào đơn
+                <kbd className="rounded border border-slate-300 border-b-2 bg-white px-1.5 py-0.5 font-semibold text-slate-700">Enter</kbd> thêm vào đơn
               </span>
             </div>
           )}

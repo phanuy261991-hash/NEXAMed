@@ -56,7 +56,7 @@ function formatDateTime(iso: string): string {
   return `${hh}:${min} · ${dd}/${mm}/${vn.getUTCFullYear()}`;
 }
 
-const methodChipBase = 'flex items-center justify-center gap-1.5 rounded-md border-2 px-3 py-2 text-[14px] font-bold transition-colors';
+const methodChipBase = 'flex items-center justify-center gap-1.5 rounded-md border-2 px-3 py-2 text-[14px] font-semibold transition-colors';
 const methodChipUnselected = 'border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:bg-brand-teal-tint';
 const methodChipSelected = 'border-brand-teal bg-brand-teal text-white';
 
@@ -462,7 +462,7 @@ export function InvoiceDetailPage() {
                     {sibling.status === 'UNPAID' && <StatusBadge tone="warning">Chờ thu</StatusBadge>}
                     {sibling.status === 'CANCELLED' && <StatusBadge tone="neutral">Đã huỷ</StatusBadge>}
                     {sibling.status === 'REFUNDED' && <StatusBadge tone="accent">Đã hoàn tiền</StatusBadge>}
-                    <span className="text-sm font-bold text-slate-900">{formatVnd(sibling.dueAmount)}</span>
+                    <span className="text-sm font-semibold text-slate-900">{formatVnd(sibling.dueAmount)}</span>
                   </span>
                 </button>
               ))}
@@ -470,7 +470,7 @@ export function InvoiceDetailPage() {
           )}
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="text-base font-bold text-slate-900">
+            <h2 className="text-base font-semibold text-slate-900">
               {invoice.invoiceType === 'DRUG' ? 'Phiếu thu tiền thuốc' : invoice.invoiceType === 'PARACLINICAL' ? 'Phiếu thu cận lâm sàng' : 'Phiếu thu'} <span className="text-blue-600">{invoice.invoiceNo}</span>
             </h2>
             {invoice.invoiceType === 'DRUG' && <StatusBadge tone="accent">Hoá đơn thuốc riêng</StatusBadge>}
@@ -518,7 +518,7 @@ export function InvoiceDetailPage() {
 
           <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-slate-200 bg-white p-4">
             <div>
-              <p className="text-[17px] font-bold text-slate-900">{invoice.fullName}</p>
+              <p className="text-[17px] font-semibold text-slate-900">{invoice.fullName}</p>
               <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-slate-600">
                 <span>Mã BN: {invoice.patientCode}</span>
                 <span>Lượt khám: {invoice.encounterNo}</span>
@@ -536,10 +536,10 @@ export function InvoiceDetailPage() {
               >
                 <Wallet size={16} weight="fill" className={wallet.balance >= invoice.dueAmount ? 'text-emerald-700' : 'text-amber-700'} aria-hidden="true" />
                 <div>
-                  <div className={`text-[10px] font-bold uppercase tracking-wide ${wallet.balance >= invoice.dueAmount ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  <div className={`text-[10px] font-semibold uppercase tracking-wide ${wallet.balance >= invoice.dueAmount ? 'text-emerald-700' : 'text-amber-700'}`}>
                     Số dư ví
                   </div>
-                  <div className={`text-[15px] font-bold leading-tight ${wallet.balance >= invoice.dueAmount ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  <div className={`text-[15px] font-semibold leading-tight ${wallet.balance >= invoice.dueAmount ? 'text-emerald-700' : 'text-amber-700'}`}>
                     {formatVnd(wallet.balance)}
                   </div>
                 </div>
@@ -555,12 +555,12 @@ export function InvoiceDetailPage() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_340px]">
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-700">
+              <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-700">
                 {lineGroups.length > 1 ? 'Chi tiết hoá đơn' : 'Dịch vụ đã chỉ định (Tiếp nhận)'}
               </div>
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800">
+                  <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
                     <th className="px-3 py-2.5 text-left">Dịch vụ</th>
                     <th className="px-3 py-2.5 text-center">SL</th>
                     <th className="px-3 py-2.5 text-right">Đơn giá</th>
@@ -579,7 +579,7 @@ export function InvoiceDetailPage() {
                         <tr key={`group-${group.key}`} className="bg-slate-100">
                           <td colSpan={discountEditMode === 'PER_LINE' ? 5 : 4} className="px-3 py-2">
                             <div className="flex items-center justify-between">
-                              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                                 <span className={`h-2 w-2 rounded-full ${group.dotClassName}`} aria-hidden="true" />
                                 {group.label}
                               </span>
@@ -598,7 +598,7 @@ export function InvoiceDetailPage() {
                             </td>
                             <td className="px-3 py-3 text-center font-medium text-slate-700">{line.quantity}</td>
                             <td className="px-3 py-3 text-right font-medium tabular-nums text-slate-700">{formatVnd(line.unitPrice)}</td>
-                            <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-900">{formatVnd(line.lineTotal)}</td>
+                            <td className="px-3 py-3 text-right font-semibold tabular-nums text-slate-900">{formatVnd(line.lineTotal)}</td>
                             {discountEditMode === 'PER_LINE' && (
                               <td className="px-3 py-3">
                                 <div className="flex items-center justify-end gap-1.5">
@@ -611,7 +611,7 @@ export function InvoiceDetailPage() {
                                     onChange={(e) => updateLineDiscount(line.id, { value: e.target.value === '' ? undefined : Number(e.target.value) })}
                                     onBlur={() => void saveLineDiscounts()}
                                     placeholder="0"
-                                    className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
+                                    className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
                                   />
                                   {/* Mặc định %, giống khung tổng — "không chiết khấu dòng này" chỉ cần
                                       để trống ô số, không cần bỏ chọn kiểu (chốt theo yêu cầu trực tiếp). */}
@@ -638,8 +638,8 @@ export function InvoiceDetailPage() {
             <div className="flex flex-col gap-3.5 rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex flex-col gap-1.5 border-b border-dashed border-slate-200 pb-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Tạm tính</span>
-                  <span className="text-sm font-bold tabular-nums text-slate-700">{formatVnd(invoice.totalAmount)}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tạm tính</span>
+                  <span className="text-sm font-semibold tabular-nums text-slate-700">{formatVnd(invoice.totalAmount)}</span>
                 </div>
 
                 {/* Chiết khấu — mặc định chỉ hiện 2 lựa chọn cách làm, chọn 1 trong 2 mới hiện ô
@@ -648,7 +648,7 @@ export function InvoiceDetailPage() {
                 {invoice.status === 'UNPAID' && (
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between gap-1.5">
-                      <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Chiết khấu</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Chiết khấu</span>
                       <TwoOptionToggle options={DISCOUNT_MODE_OPTIONS} value={discountEditMode} disabled={discountMutation.isPending} onChange={setDiscountEditMode} />
                     </div>
                     {discountEditMode === 'TOTAL' && (
@@ -662,7 +662,7 @@ export function InvoiceDetailPage() {
                           onChange={(e) => setTotalDiscountValue(e.target.value === '' ? undefined : Number(e.target.value))}
                           onBlur={() => void saveTotalDiscount()}
                           placeholder="0"
-                          className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
+                          className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
                         />
                         {/* Luôn có 1 kiểu đang chọn (bỏ chiết khấu = xoá Ô GIÁ TRỊ, không phải bỏ
                             chọn kiểu) — bấm lại đúng kiểu đang chọn không làm gì. */}
@@ -683,10 +683,10 @@ export function InvoiceDetailPage() {
                 {/* Dòng số tiền chiết khấu — chỉ hiện khi thật sự có áp dụng (discountAmount > 0). */}
                 {invoice.discountAmount > 0 && (
                   <div className="flex items-baseline justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
                       Đã chiết khấu{invoice.discountMode === 'TOTAL' && invoice.discountType === 'PERCENT' ? ` (${invoice.discountValue}%)` : ''}
                     </span>
-                    <span className="text-sm font-bold tabular-nums text-emerald-700">-{formatVnd(invoice.discountAmount)}</span>
+                    <span className="text-sm font-semibold tabular-nums text-emerald-700">-{formatVnd(invoice.discountAmount)}</span>
                   </div>
                 )}
 
@@ -708,15 +708,15 @@ export function InvoiceDetailPage() {
                 )}
 
                 <div className="flex items-baseline justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Cần thu</span>
-                  <span className="text-2xl font-bold tabular-nums text-slate-900">{formatVnd(invoice.dueAmount)}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cần thu</span>
+                  <span className="text-2xl font-semibold tabular-nums text-slate-900">{formatVnd(invoice.dueAmount)}</span>
                 </div>
               </div>
 
               {invoice.status === 'UNPAID' ? (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-sm font-bold text-slate-700">Phương thức thanh toán</span>
+                    <span className="text-sm font-semibold text-slate-700">Phương thức thanh toán</span>
                     <div className="grid grid-cols-2 gap-1.5">
                       {walletActive && (
                         <button
@@ -748,14 +748,14 @@ export function InvoiceDetailPage() {
 
                   {method === 'CASH' && (
                     <div className="flex flex-col gap-1.5">
-                      <label htmlFor="invoice-cash-received" className="text-sm font-bold text-slate-700">
+                      <label htmlFor="invoice-cash-received" className="text-sm font-semibold text-slate-700">
                         Tiền khách đưa
                       </label>
                       <MoneyInput
                         id="invoice-cash-received"
                         value={cashReceived}
                         onChange={setCashReceived}
-                        className="rounded-md border-2 border-slate-300 px-3 py-2 text-right text-base font-bold text-slate-900 focus:border-blue-500 focus:outline-none"
+                        className="rounded-md border-2 border-slate-300 px-3 py-2 text-right text-base font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
                       />
                       {/* Pill mệnh giá — bấm cộng dồn vào ô trên (chốt qua AskUserQuestion), cộng nút "Vừa đủ" tự điền đúng dueAmount. */}
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -763,15 +763,15 @@ export function InvoiceDetailPage() {
                         <button
                           type="button"
                           onClick={() => setCashReceived(invoice.dueAmount)}
-                          className="rounded-full border-2 border-brand-teal bg-brand-teal-tint px-2.5 py-1 text-xs font-bold text-brand-teal hover:bg-brand-teal hover:text-white"
+                          className="rounded-full border-2 border-brand-teal bg-brand-teal-tint px-2.5 py-1 text-xs font-semibold text-brand-teal hover:bg-brand-teal hover:text-white"
                         >
                           Vừa đủ
                         </button>
                       </div>
                       {changeAmount !== null && changeAmount >= 0 && (
                         <div className="flex items-baseline justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
-                          <span className="text-xs font-bold text-emerald-700">Tiền trả lại</span>
-                          <span className="text-lg font-bold tabular-nums text-emerald-700">{formatVnd(changeAmount)}</span>
+                          <span className="text-xs font-semibold text-emerald-700">Tiền trả lại</span>
+                          <span className="text-lg font-semibold tabular-nums text-emerald-700">{formatVnd(changeAmount)}</span>
                         </div>
                       )}
                     </div>
@@ -781,7 +781,7 @@ export function InvoiceDetailPage() {
                       (Luồng 2 PRD), cộng tuỳ chọn trả hỗn hợp khi tenant đã bật công tắc. */}
                   {method === 'WALLET' && walletShortfall > 0 && (
                     <div className="flex flex-col gap-2.5 rounded-md border border-amber-200 bg-amber-50 p-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-800">
                         <Warning size={14} weight="fill" aria-hidden="true" />
                         Số dư ví không đủ
                       </div>
@@ -794,7 +794,7 @@ export function InvoiceDetailPage() {
                           <span>Số dư ví</span>
                           <span className="tabular-nums">{formatVnd(wallet?.balance ?? 0)}</span>
                         </div>
-                        <div className="flex justify-between border-t border-amber-200 pt-1 text-sm font-bold text-amber-800">
+                        <div className="flex justify-between border-t border-amber-200 pt-1 text-sm font-semibold text-amber-800">
                           <span>Cần thu tối thiểu</span>
                           <span className="tabular-nums">{formatVnd(walletShortfall)}</span>
                         </div>
@@ -805,25 +805,25 @@ export function InvoiceDetailPage() {
                             type="button"
                             onClick={() => setQuickTopUpAmount(walletShortfall)}
                             disabled={topUpAndPayMutation.isPending}
-                            className="flex items-center justify-between gap-2 rounded-md border-2 border-amber-400 bg-amber-100 px-3 py-2.5 text-[13px] font-bold text-amber-900 shadow-sm hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="flex items-center justify-between gap-2 rounded-md border-2 border-amber-400 bg-amber-100 px-3 py-2.5 text-[13px] font-semibold text-amber-900 shadow-sm hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <span className="flex items-center gap-1.5">
                               <Wallet size={15} weight="fill" aria-hidden="true" />
                               Nạp phần thiếu
                             </span>
-                            <span className="text-[15px] font-bold tabular-nums">{formatVnd(walletShortfall)}</span>
+                            <span className="text-[15px] font-semibold tabular-nums">{formatVnd(walletShortfall)}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setQuickTopUpAmount(Math.ceil((walletShortfall + 1) / 1_000_000) * 1_000_000)}
                             disabled={topUpAndPayMutation.isPending}
-                            className="flex items-center justify-between gap-2 rounded-md border-2 border-amber-400 bg-amber-100 px-3 py-2.5 text-[13px] font-bold text-amber-900 shadow-sm hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="flex items-center justify-between gap-2 rounded-md border-2 border-amber-400 bg-amber-100 px-3 py-2.5 text-[13px] font-semibold text-amber-900 shadow-sm hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <span className="flex items-center gap-1.5">
                               <Wallet size={15} weight="fill" aria-hidden="true" />
                               Nạp mức chuẩn
                             </span>
-                            <span className="text-[15px] font-bold tabular-nums">{formatVnd(Math.ceil((walletShortfall + 1) / 1_000_000) * 1_000_000)}</span>
+                            <span className="text-[15px] font-semibold tabular-nums">{formatVnd(Math.ceil((walletShortfall + 1) / 1_000_000) * 1_000_000)}</span>
                           </button>
                           {/* "Nhập số khác" — gõ tay 1 mức tuỳ ý (khác 2 gợi ý cố định ở trên), chủ dự án yêu cầu trực tiếp. */}
                           {customTopUpOpen ? (
@@ -832,7 +832,7 @@ export function InvoiceDetailPage() {
                                 id="invoice-custom-topup"
                                 value={customTopUpAmount}
                                 onChange={setCustomTopUpAmount}
-                                className="min-w-0 flex-1 rounded-md border-2 border-amber-300 bg-white px-2.5 py-2 text-right text-sm font-bold text-amber-900 focus:border-amber-500 focus:outline-none"
+                                className="min-w-0 flex-1 rounded-md border-2 border-amber-300 bg-white px-2.5 py-2 text-right text-sm font-semibold text-amber-900 focus:border-amber-500 focus:outline-none"
                               />
                               <Button
                                 type="button"
@@ -857,7 +857,7 @@ export function InvoiceDetailPage() {
                           <button
                             type="button"
                             onClick={() => setUseHybrid((v) => !v)}
-                            className={`rounded-md border-2 px-2.5 py-2 text-left text-xs font-bold transition-colors ${
+                            className={`rounded-md border-2 px-2.5 py-2 text-left text-xs font-semibold transition-colors ${
                               useHybrid ? 'border-brand-teal bg-brand-teal text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-blue-400'
                             }`}
                           >
@@ -921,7 +921,7 @@ export function InvoiceDetailPage() {
                   {/* #203 — hoàn MỘT PHẦN theo dòng thuốc: liệt kê từng lần hoàn (phiếu vẫn PAID). */}
                   {invoice.status === 'PAID' && invoice.refunds.length > 0 && (
                     <div className="flex flex-col gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-3 py-2.5 text-[13px] text-violet-800">
-                      <div className="flex items-baseline justify-between font-bold">
+                      <div className="flex items-baseline justify-between font-semibold">
                         <span>Đã hoàn một phần</span>
                         <span className="tabular-nums">-{formatVnd(invoice.refundedAmount)}</span>
                       </div>
@@ -1004,7 +1004,7 @@ export function InvoiceDetailPage() {
       {revertOpen && invoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-900">Đánh dấu chưa thu?</h3>
+            <h3 className="text-base font-semibold text-slate-900">Đánh dấu chưa thu?</h3>
             <p className="mt-1.5 text-sm text-slate-600">Phiếu thu quay lại trạng thái &quot;Chờ thu&quot;. Bắt buộc nhập lý do.</p>
             <label htmlFor="revert-reason" className="mt-3 block text-sm font-semibold text-slate-800">
               Lý do
@@ -1046,7 +1046,7 @@ export function InvoiceDetailPage() {
                   <ArrowCounterClockwise size={16} weight="bold" aria-hidden="true" />
                 </div>
                 <p className="text-xs leading-snug text-slate-700">
-                  Trả lại <span className="text-sm font-bold text-slate-900">{formatVnd(invoice.dueAmount)}</span> cho khách.
+                  Trả lại <span className="text-sm font-semibold text-slate-900">{formatVnd(invoice.dueAmount)}</span> cho khách.
                 </p>
               </div>
 
@@ -1091,8 +1091,8 @@ export function InvoiceDetailPage() {
                 <Wallet size={16} weight="fill" aria-hidden="true" />
               </div>
               <p className="text-xs leading-snug text-slate-700">
-                Nạp <span className="text-sm font-bold text-slate-900">{formatVnd(quickTopUpAmount)}</span> vào ví, thu đủ{' '}
-                <span className="text-sm font-bold text-slate-900">{formatVnd(invoice.dueAmount)}</span> cho phiếu {invoice.invoiceNo}.
+                Nạp <span className="text-sm font-semibold text-slate-900">{formatVnd(quickTopUpAmount)}</span> vào ví, thu đủ{' '}
+                <span className="text-sm font-semibold text-slate-900">{formatVnd(invoice.dueAmount)}</span> cho phiếu {invoice.invoiceNo}.
               </p>
             </div>
 

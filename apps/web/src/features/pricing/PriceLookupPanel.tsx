@@ -68,7 +68,7 @@ export function PriceLookupPanel() {
   return (
     <section aria-label="Tra thử giá" className="flex w-[360px] flex-shrink-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
       <div className="border-b border-slate-100 px-4 py-3">
-        <h2 className="text-[14.5px] font-bold text-slate-900">Tra thử giá</h2>
+        <h2 className="text-[14.5px] font-semibold text-slate-900">Tra thử giá</h2>
         <p className="mt-0.5 text-xs text-slate-500">Xem một mặt hàng vào một ngày sẽ được tính giá nào.</p>
       </div>
 
@@ -167,7 +167,7 @@ export function PriceLookupPanel() {
                 })}
               </div>
             )}
-            <div className="text-[11px] font-bold uppercase tracking-wide text-slate-700">Các bảng giá chứa mặt hàng này</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">Các bảng giá chứa mặt hàng này</div>
             <ul className="mt-1.5">
               {data.entries.map((entry) => (
                 <EntryRow key={entry.priceListId ?? 'general'} entry={entry} />
@@ -175,7 +175,7 @@ export function PriceLookupPanel() {
             </ul>
             <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5">
               <div className="text-xs text-emerald-800">Giá được tính ngày {formatDateVn(data.date)}</div>
-              <div className="mt-0.5 text-xl font-bold tabular-nums text-emerald-800">{data.result.amount === null ? 'Chưa có giá' : formatVnd(data.result.amount)}</div>
+              <div className="mt-0.5 text-xl font-semibold tabular-nums text-emerald-800">{data.result.amount === null ? 'Chưa có giá' : formatVnd(data.result.amount)}</div>
               {data.result.applied && <div className="mt-0.5 text-xs font-semibold text-emerald-800">Theo bảng "{data.result.applied.name}"</div>}
             </div>
           </>
@@ -195,15 +195,15 @@ function EntryRow({ entry }: { entry: LookupPriceEntry }) {
   const nameTone = entry.isApplied ? 'text-emerald-700' : 'text-slate-500';
   return (
     <li className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-slate-100 py-2.5 last:border-0">
-      <span className={`text-right text-[12.5px] font-bold tabular-nums ${entry.isApplied ? 'text-slate-900' : 'text-slate-400'}`}>{entry.priority}</span>
+      <span className={`text-right text-[12.5px] font-semibold tabular-nums ${entry.isApplied ? 'text-slate-900' : 'text-slate-400'}`}>{entry.priority}</span>
       <div className="min-w-0">
-        <div className={`truncate text-[13px] font-bold ${nameTone}`} title={entry.name}>
+        <div className={`truncate text-[13px] font-semibold ${nameTone}`} title={entry.name}>
           {entry.name}
         </div>
         <div className={`text-[11.5px] ${entry.isApplied ? 'text-slate-500' : 'text-slate-400'}`}>{subtitle}</div>
       </div>
       <span
-        className={`text-sm font-bold tabular-nums ${entry.isApplied ? 'text-base text-emerald-700' : entry.inEffect ? 'text-slate-400 line-through' : 'text-slate-300'}`}
+        className={`text-sm font-semibold tabular-nums ${entry.isApplied ? 'text-base text-emerald-700' : entry.inEffect ? 'text-slate-400 line-through' : 'text-slate-300'}`}
       >
         {entry.amount === null ? '—' : formatVnd(entry.amount)}
       </span>

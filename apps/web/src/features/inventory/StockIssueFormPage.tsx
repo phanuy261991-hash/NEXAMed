@@ -406,7 +406,7 @@ export function StockIssueFormPage() {
 
       <div className="flex flex-shrink-0 items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-lg font-bold text-slate-900">{readOnly ? issueQuery.data!.issueNo : isEdit ? 'Sửa phiếu Nháp' : 'Tạo phiếu xuất kho'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{readOnly ? issueQuery.data!.issueNo : isEdit ? 'Sửa phiếu Nháp' : 'Tạo phiếu xuất kho'}</h2>
           {isEdit && issueQuery.data && <StatusBadge tone={STATUS_META[issueQuery.data.status].tone}>{STATUS_META[issueQuery.data.status].label}</StatusBadge>}
           {isEdit && issueQuery.data && Boolean(issueQuery.data.supplierId) && <SupplierDebtAdjustmentBadge targetIssueId={issueQuery.data.id} />}
         </div>
@@ -511,7 +511,7 @@ export function StockIssueFormPage() {
               <div
                 role="row"
                 style={{ gridTemplateColumns: rowGridColumns }}
-                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800"
+                className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800"
               >
                 <div role="columnheader" className="py-2.5 text-left">Lô / Hạn sử dụng (tại kho xuất)</div>
                 <div role="columnheader" className="py-2.5 text-right">Tồn khả dụng</div>
@@ -584,8 +584,8 @@ export function StockIssueFormPage() {
               </div>
               {isReturnToSupplier && (
                 <div style={{ gridTemplateColumns: rowGridColumns }} className="grid flex-shrink-0 border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
-                  <div className={readOnly ? 'col-span-3 text-right font-bold text-slate-600' : 'col-span-4 text-right font-bold text-slate-600'}>Giá trị trừ công nợ</div>
-                  <div className="text-right font-bold text-blue-700">{returnTotalAmount !== null ? `${returnTotalAmount.toLocaleString('vi-VN')} đ` : '—'}</div>
+                  <div className={readOnly ? 'col-span-3 text-right font-semibold text-slate-600' : 'col-span-4 text-right font-semibold text-slate-600'}>Giá trị trừ công nợ</div>
+                  <div className="text-right font-semibold text-blue-700">{returnTotalAmount !== null ? `${returnTotalAmount.toLocaleString('vi-VN')} đ` : '—'}</div>
                   {!readOnly && <div />}
                 </div>
               )}
@@ -625,8 +625,9 @@ export function StockIssueFormPage() {
 
       {rejecting && issueQuery.data && (
         <ReasonConfirmDialog
-          title="Từ chối phiếu xuất kho?"
-          description={`Phiếu ${issueQuery.data.issueNo} sẽ chuyển sang trạng thái Từ chối, không đụng tồn kho.`}
+          title="Từ chối phiếu xuất kho"
+          rows={[{ label: 'Phiếu', value: issueQuery.data.issueNo }]}
+          note="Không đụng tồn kho."
           confirmLabel="Xác nhận từ chối"
           confirmVariant="danger"
           onConfirm={(reason) => rejectMutation.mutateAsync({ id: issueQuery.data!.id, body: { reason, version: issueQuery.data!.version } })}

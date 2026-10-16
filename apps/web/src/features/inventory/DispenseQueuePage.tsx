@@ -77,7 +77,7 @@ function DispensedTodayPane() {
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div role="table" aria-label="Đơn đã phát hôm nay" className="scroll-hover h-full overflow-x-auto">
             <div className="flex h-full flex-col" style={{ minWidth: ISSUED_TABLE_MIN_WIDTH_PX }}>
-              <div role="row" style={{ gridTemplateColumns: ISSUED_GRID_COLUMNS }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <div role="row" style={{ gridTemplateColumns: ISSUED_GRID_COLUMNS }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <div role="columnheader" className="py-2.5 text-center">Số phiếu</div>
                 <div role="columnheader" className="py-2.5 text-left">Bệnh nhân</div>
                 <div role="columnheader" className="py-2.5 text-center">Kho</div>
@@ -197,7 +197,7 @@ export function DispenseQueuePage() {
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div role="table" aria-label="Hàng đợi phát thuốc" className="scroll-hover h-full overflow-x-auto">
             <div className="flex h-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
-              <div role="row" style={{ gridTemplateColumns: GRID_COLUMNS }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <div role="row" style={{ gridTemplateColumns: GRID_COLUMNS }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <div role="columnheader" className="py-2.5 text-center">Mã lượt khám</div>
                 <div role="columnheader" className="py-2.5 text-left">Bệnh nhân</div>
                 <div role="columnheader" className="py-2.5 text-center">SĐT</div>

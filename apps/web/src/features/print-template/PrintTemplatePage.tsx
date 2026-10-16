@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Plus, Sparkle } from '@phosphor-icons/react';
+import { Check, Plus, Sparkle, Trash } from '@phosphor-icons/react';
 import type { PrintDocumentType, PrintPaperSize, PrintTemplate, PrintTemplateConfig } from '@nexamed/shared';
 import { describeSaveError } from '../../shared/api/save-error';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -12,6 +12,7 @@ import {
 } from '../../shared/print/print-template.queries';
 import { ActionMenu } from '../../shared/ui/ActionMenu';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { AddPrintTemplateDialog } from './AddPrintTemplateDialog';
@@ -132,7 +133,7 @@ export function PrintTemplatePage() {
     <div className="flex h-full flex-col">
       <div className="flex flex-shrink-0 items-start justify-between gap-4 px-5 pt-3.5">
         <div className="min-w-0">
-          <h1 className="text-[17px] font-bold text-slate-900">Mẫu in</h1>
+          <h1 className="text-[17px] font-semibold text-slate-900">Mẫu in</h1>
           <p className="mt-0.5 text-[12.5px] text-slate-500">Mọi chứng từ đã có bản mẫu dùng được ngay. Chỉ chỉnh khi phòng khám cần khổ giấy hoặc bố cục khác.</p>
         </div>
         <Button type="button" onClick={() => setQuickOpen(true)} disabled={!catalog}>
@@ -162,7 +163,7 @@ export function PrintTemplatePage() {
           <section className="flex w-[380px] flex-shrink-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white" aria-label="Cấu hình bản mẫu">
             <div className="border-b border-slate-100 px-3.5 py-3">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="min-w-0 truncate text-[15px] font-bold text-slate-900">{typeInfo?.label}</h2>
+                <h2 className="min-w-0 truncate text-[15px] font-semibold text-slate-900">{typeInfo?.label}</h2>
                 <Button type="button" variant="secondary" className="h-8 px-2.5 text-xs" onClick={() => setAddOpen(true)}>
                   <Plus size={13} weight="bold" aria-hidden="true" />
                   Thêm bản mẫu
@@ -274,20 +275,24 @@ export function PrintTemplatePage() {
       )}
 
       {deleteOpen && current && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4" role="alertdialog" aria-modal="true" aria-label="Xác nhận xoá bản mẫu">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <h3 className="text-base font-bold text-slate-900">Xoá bản mẫu &quot;{current.name}&quot;?</h3>
-            <p className="mt-1.5 text-sm text-slate-600">Chứng từ sẽ in theo các bản mẫu còn lại (hoặc bản dựng sẵn nếu đây là bản cuối). Không ảnh hưởng chứng từ đã in.</p>
-            <div className="mt-4 flex justify-end gap-2">
+        <ConfirmDialog
+          icon={Trash}
+          tone="danger"
+          title="Xoá bản mẫu"
+          rows={[{ label: 'Bản mẫu', value: current.name }]}
+          note="Chứng từ cũ không đổi"
+          onClose={() => setDeleteOpen(false)}
+          actions={
+            <>
               <Button type="button" variant="secondary" onClick={() => setDeleteOpen(false)}>
                 Huỷ
               </Button>
               <Button type="button" variant="danger" loading={deleteMutation.isPending} onClick={() => void handleDelete()}>
                 Xoá
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );

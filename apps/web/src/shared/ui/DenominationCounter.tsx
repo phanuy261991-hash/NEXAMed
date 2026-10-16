@@ -23,7 +23,7 @@ export function DenominationCounter({ value, onChange }: { value: number; onChan
 
   return (
     <div className="rounded-lg border border-slate-200 overflow-hidden">
-      <div className="grid grid-cols-3 bg-slate-100 border-b-2 border-blue-600 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-800">
+      <div className="grid grid-cols-3 bg-slate-100 border-b-2 border-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-800">
         <div>Mệnh giá</div>
         <div className="text-center text-blue-600">Số tờ</div>
         <div className="text-right">Thành tiền</div>
@@ -55,7 +55,7 @@ export function DenominationCounter({ value, onChange }: { value: number; onChan
                   onChange={(e) => setQuantity(denom, e.target.value === '' ? 0 : Number(e.target.value.replace(/\D/g, '')))}
                   aria-label={`Số tờ ${formatVnd(denom)}`}
                   placeholder="0"
-                  className="h-8 w-12 rounded-md border border-slate-300 bg-slate-50 text-center text-sm font-bold text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="h-8 w-12 rounded-md border border-slate-300 bg-slate-50 text-center text-sm font-semibold text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
                 <button
                   type="button"
@@ -66,7 +66,7 @@ export function DenominationCounter({ value, onChange }: { value: number; onChan
                   <Plus size={13} weight="bold" aria-hidden="true" />
                 </button>
               </div>
-              <div className="text-right text-sm font-bold text-slate-900">{(qty * denom).toLocaleString('vi-VN')}</div>
+              <div className="text-right text-sm font-semibold text-slate-900">{(qty * denom).toLocaleString('vi-VN')}</div>
             </div>
           );
         })}
@@ -74,8 +74,8 @@ export function DenominationCounter({ value, onChange }: { value: number; onChan
       {/* Dòng tổng — màu thương hiệu chính (`bg-blue-600`, mục 2.1 ui-guidelines), không dùng
           nền tối trung tính nữa (phản hồi trực tiếp 2026-09-05). */}
       <div className="flex items-center justify-between bg-blue-600 px-5 py-3">
-        <span className="text-xs font-bold uppercase tracking-wide text-blue-100">Tổng tiền mặt đếm được</span>
-        <span className="text-lg font-bold text-white">{formatVnd(value)}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-blue-100">Tổng tiền mặt đếm được</span>
+        <span className="text-lg font-semibold text-white">{formatVnd(value)}</span>
       </div>
     </div>
   );

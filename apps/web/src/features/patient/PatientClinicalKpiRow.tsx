@@ -93,15 +93,15 @@ export function PatientClinicalKpiRow({
       <div className="flex flex-wrap items-stretch gap-3">
         <div className="flex flex-[2_1_320px] flex-wrap items-center justify-between gap-x-7 gap-y-3.5 rounded-[10px] border border-slate-200 bg-amber-50 px-6 py-4 shadow-sm">
           <div>
-            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-amber-800">
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-amber-800">
               <Heartbeat size={14} weight="bold" aria-hidden="true" />
               Sinh hiệu gần nhất
             </div>
             {latestBmi !== null && bmiClass ? (
               <div className="flex items-end gap-2.5">
-                <div className={`text-[34px] font-bold leading-none tabular-nums ${bmiTextClass}`}>{latestBmi.toFixed(1)}</div>
+                <div className={`text-[34px] font-semibold leading-none tabular-nums ${bmiTextClass}`}>{latestBmi.toFixed(1)}</div>
                 <span
-                  className={`mb-1 rounded-full px-2 py-1 text-[11px] font-bold text-white ${bmiClass.tier === 'danger' ? 'bg-rose-600' : bmiClass.tier === 'caution' ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                  className={`mb-1 rounded-full px-2 py-1 text-[11px] font-semibold text-white ${bmiClass.tier === 'danger' ? 'bg-rose-600' : bmiClass.tier === 'caution' ? 'bg-amber-500' : 'bg-emerald-500'}`}
                 >
                   {bmiClass.label}
                 </span>
@@ -116,20 +116,20 @@ export function PatientClinicalKpiRow({
         {latest !== null && (
           <>
             <div className="flex flex-[1_1_140px] flex-col justify-center gap-1.5 rounded-[10px] border border-slate-200 bg-white px-5 py-4 shadow-sm">
-              <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <Scales size={13} weight="bold" aria-hidden="true" />
                 Cân nặng
               </span>
-              <span className="text-[21px] font-bold tabular-nums text-slate-900">
+              <span className="text-[21px] font-semibold tabular-nums text-slate-900">
                 {latest.weightGram !== null ? `${(latest.weightGram / 1000).toFixed(1)} kg` : '—'}
               </span>
             </div>
             <div className="flex flex-[1_1_140px] flex-col justify-center gap-1.5 rounded-[10px] border border-slate-200 bg-white px-5 py-4 shadow-sm">
-              <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <Ruler size={13} weight="bold" aria-hidden="true" />
                 Chiều cao
               </span>
-              <span className="text-[21px] font-bold tabular-nums text-slate-900">
+              <span className="text-[21px] font-semibold tabular-nums text-slate-900">
                 {latest.heightMm !== null ? `${Math.round(latest.heightMm / 10)} cm` : '—'}
               </span>
             </div>
@@ -139,27 +139,27 @@ export function PatientClinicalKpiRow({
 
       <div className="flex flex-wrap divide-x divide-slate-200 overflow-hidden rounded-[10px] border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-[1_1_180px] flex-col items-center gap-1.5 px-[18px] py-3.5">
-          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             <ClipboardText size={13} weight="bold" aria-hidden="true" />
             Tổng lượt khám
           </span>
-          <span className="whitespace-nowrap text-[21px] font-bold tabular-nums text-slate-900">{totalCompletedVisits}</span>
+          <span className="whitespace-nowrap text-[21px] font-semibold tabular-nums text-slate-900">{totalCompletedVisits}</span>
         </div>
         <div className="flex flex-[1_1_180px] flex-col items-center gap-1.5 px-[18px] py-3.5">
-          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             <CalendarBlank size={13} weight="bold" aria-hidden="true" />
             Lần khám gần nhất
           </span>
-          <span className="whitespace-nowrap text-[21px] font-bold tabular-nums text-slate-900">
+          <span className="whitespace-nowrap text-[21px] font-semibold tabular-nums text-slate-900">
             {lastCompletedVisitAt ? formatDobDisplay(lastCompletedVisitAt.slice(0, 10)) : '—'}
           </span>
         </div>
         <div className="flex flex-[1_1_180px] flex-col items-center gap-1.5 px-[18px] py-3.5">
-          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             <WarningIcon size={13} weight="bold" aria-hidden="true" />
             Dị nguyên đã ghi nhận
           </span>
-          <span className={`whitespace-nowrap text-[21px] font-bold tabular-nums ${allergenCount > 0 ? 'text-rose-600' : 'text-slate-900'}`}>{allergenCount}</span>
+          <span className={`whitespace-nowrap text-[21px] font-semibold tabular-nums ${allergenCount > 0 ? 'text-rose-600' : 'text-slate-900'}`}>{allergenCount}</span>
         </div>
       </div>
     </div>

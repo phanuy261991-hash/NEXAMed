@@ -49,9 +49,9 @@ export function ClinicalOrderResultsBlock({ items, bare = false }: { items: Clin
 
   return (
     <section className={bare ? 'overflow-hidden' : 'overflow-hidden rounded-lg border border-slate-200 bg-white'} aria-label="Kết quả cận lâm sàng của lượt khám">
-      {!bare && <h3 className="border-b border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[13.5px] font-bold text-slate-900">Kết quả cận lâm sàng của lượt khám</h3>}
+      {!bare && <h3 className="border-b border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[13.5px] font-semibold text-slate-900">Kết quả cận lâm sàng của lượt khám</h3>}
       <div role="table" aria-label="Kết quả cận lâm sàng của lượt khám">
-        <div role="row" className={`${GRID} border-b-2 border-blue-600 bg-slate-100 text-center text-[10.5px] font-bold uppercase tracking-wide text-slate-800`}>
+        <div role="row" className={`${GRID} border-b-2 border-blue-600 bg-slate-100 text-center text-[10.5px] font-semibold uppercase tracking-wide text-slate-800`}>
           <div role="columnheader" className="px-1.5 py-2.5">Mã</div>
           <div role="columnheader" className="px-1.5 py-2.5">Dịch vụ</div>
           <div role="columnheader" className="px-1.5 py-2.5">Trạng thái</div>

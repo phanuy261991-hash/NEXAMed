@@ -92,7 +92,7 @@ export function ImportExcelDialog({
           >
             <X size={16} weight="bold" />
           </button>
-          <h2 id="import-excel-title" className="text-[16px] font-bold text-slate-900">
+          <h2 id="import-excel-title" className="text-[16px] font-semibold text-slate-900">
             Nhập lịch làm việc từ Excel
           </h2>
 
@@ -200,7 +200,7 @@ function PreviewSection({ tone, title, rows }: { tone: 'emerald' | 'slate' | 'ro
   }[tone];
   return (
     <div className={`rounded-md border ${toneClass}`}>
-      <div className="border-b border-current/20 px-3.5 py-2 text-[12.5px] font-bold">{title}</div>
+      <div className="border-b border-current/20 px-3.5 py-2 text-[12.5px] font-semibold">{title}</div>
       <ul className="max-h-32 overflow-y-auto scroll-hover px-3.5 py-2 text-[12px]">
         {rows.map((r, i) => (
           <li key={i} className="py-0.5">

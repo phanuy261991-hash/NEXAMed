@@ -111,7 +111,7 @@ export function AddPrintTemplateDialog({
                           : 'border-slate-300 hover:border-blue-400 hover:bg-brand-teal-tint'
                     }`}
                   >
-                    <span className="block text-sm font-bold">{p.label}</span>
+                    <span className="block text-sm font-semibold">{p.label}</span>
                     <span className={`block font-mono text-xs ${selected ? 'opacity-90' : 'text-slate-500'}`}>{taken ? 'Đã có bản mẫu' : p.description}</span>
                   </button>
                 );

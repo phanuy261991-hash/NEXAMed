@@ -67,7 +67,7 @@ export function LeaveApproveDialog({ item, onClose, onDone }: { item: LeaveReque
                 </div>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase text-slate-800">
+                    <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase text-slate-800">
                       <th className="px-3 py-2 text-center">Giờ</th>
                       <th className="px-3 py-2 text-center">Bệnh nhân</th>
                       <th className="px-3 py-2 text-center">SĐT</th>

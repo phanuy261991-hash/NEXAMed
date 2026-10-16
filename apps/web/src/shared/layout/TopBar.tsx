@@ -193,7 +193,7 @@ export function TopBar() {
           <button
             type="button"
             onClick={() => setEndShiftDialog({ trigger: 'SCHEDULED_END' })}
-            className="flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-rose-700"
+            className="flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-rose-700"
           >
             <Clock size={12} weight="fill" aria-hidden="true" />
             Đã quá giờ làm việc — Đóng ca
@@ -201,13 +201,13 @@ export function TopBar() {
         )}
 
         {isDoctor && isBreak && myAvailability && (
-          <span className="flex items-center gap-1.5 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-white">
+          <span className="flex items-center gap-1.5 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white">
             <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-white" aria-hidden="true" />
             Đang tạm nghỉ {formatClockTime(myAvailability.statusChangedAt)}
           </span>
         )}
         {isDoctor && isEnded && myAvailability && (
-          <span className="flex items-center gap-1.5 rounded-full bg-slate-300 px-2.5 py-1 text-xs font-bold text-slate-600">
+          <span className="flex items-center gap-1.5 rounded-full bg-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600">
             <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-slate-500" aria-hidden="true" />
             Đã đóng ca {formatClockTime(myAvailability.statusChangedAt)}
           </span>
@@ -312,7 +312,7 @@ export function TopBar() {
             aria-haspopup="menu"
             aria-expanded={accountMenuOpen}
             aria-label={updateAvailable ? 'Menu tài khoản (có phiên bản phần mềm mới)' : 'Menu tài khoản'}
-            className="relative flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-xs font-bold text-blue-600 hover:bg-blue-100"
+            className="relative flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-blue-50 text-xs font-semibold text-blue-600 hover:bg-blue-100"
           >
             {getInitials(user.displayName ?? user.fullName)}
             {updateAvailable && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />}

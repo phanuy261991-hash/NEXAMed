@@ -219,11 +219,11 @@ export function CashVoucherFormDialog({
             title={mode === 'create' ? 'Lập phiếu thu/chi' : 'Sửa phiếu'}
             subtitle="Sổ quỹ & Thu chi"
             onClose={onCancel}
-            right={voucher ? <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{voucher.voucherNo}</span> : undefined}
+            right={voucher ? <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{voucher.voucherNo}</span> : undefined}
           />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4">
           <SaveFlashBanner visible={flashVisible} />
 
           <div className="space-y-5 pb-6">
@@ -235,7 +235,7 @@ export function CashVoucherFormDialog({
               type="button"
               disabled={mode === 'edit'}
               onClick={() => set('direction', 'INCOME')}
-              className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+              className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                 isIncome ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:bg-white/70 hover:text-slate-700'
               }`}
             >
@@ -246,7 +246,7 @@ export function CashVoucherFormDialog({
               type="button"
               disabled={mode === 'edit'}
               onClick={() => set('direction', 'EXPENSE')}
-              className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+              className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                 !isIncome ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-500 hover:bg-white/70 hover:text-slate-700'
               }`}
             >

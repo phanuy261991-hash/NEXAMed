@@ -79,7 +79,7 @@ export function SettleWalletDialog({ patientId, balance, onClose }: { patientId:
             <p className="text-xs leading-snug text-slate-700">
               {balance > 0 ? (
                 <>
-                  Hoàn lại <span className="text-sm font-bold text-slate-900">{formatVnd(balance)}</span> cho khách.
+                  Hoàn lại <span className="text-sm font-semibold text-slate-900">{formatVnd(balance)}</span> cho khách.
                 </>
               ) : (
                 'Số dư ví đang là 0đ — không cần hoàn tiền, chỉ khoá ví.'

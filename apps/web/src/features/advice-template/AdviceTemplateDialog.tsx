@@ -236,7 +236,7 @@ export function AdviceTemplateDialog({ onInsert, onClose }: { onInsert: (texts: 
                       )}
                     </span>
                     <button type="button" onClick={() => t.isActive && toggle(t.id)} className={`min-w-0 text-left ${t.isActive ? 'cursor-pointer' : 'cursor-default'}`} tabIndex={-1}>
-                      <span className="block text-sm font-bold text-slate-900">
+                      <span className="block text-sm font-semibold text-slate-900">
                         {t.name}
                         {!t.isActive && <span className="ml-2 rounded-full bg-slate-300 px-2 py-0.5 text-[11px] font-semibold text-slate-600">Đã ẩn</span>}
                       </span>

@@ -42,7 +42,7 @@ export function PatientAdministrativeInfoCard({ patient, onEdit }: { patient: Pa
   return (
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
           <IdentificationCard size={16} weight="fill" className="text-blue-600" aria-hidden="true" />
           Thông tin hành chính
         </h2>
@@ -75,7 +75,7 @@ export function PatientAdministrativeInfoCard({ patient, onEdit }: { patient: Pa
 
       {hasRelative && (
         <div className="px-5 pb-5">
-          <div className="mb-2 mt-1 text-[11px] font-bold uppercase tracking-wide text-slate-700">Thông tin người thân</div>
+          <div className="mb-2 mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">Thông tin người thân</div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-md bg-slate-50 p-3 sm:grid-cols-4">
             <Field label="Họ và tên" value={patient.relativeFullName ?? ''} />
             <Field label="Quan hệ" value={patient.relativeRelationship ?? ''} />

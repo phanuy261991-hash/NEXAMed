@@ -9,7 +9,7 @@ export function CompanyNotFoundPage() {
         <p className="mb-4 inline-block rounded border border-slate-200 px-2 py-1 text-xs font-medium text-slate-500">{window.location.host}</p>
         <div className="flex items-center gap-2">
           <Buildings size={22} weight="regular" className="text-slate-400" aria-hidden="true" />
-          <h1 className="text-lg font-bold text-slate-900">Không tìm thấy công ty này</h1>
+          <h1 className="text-lg font-semibold text-slate-900">Không tìm thấy công ty này</h1>
         </div>
         <p className="mt-2 text-sm font-medium text-slate-600">
           Địa chỉ không đúng hoặc công ty chưa được kích hoạt. Kiểm tra lại đường dẫn mà nhà cung cấp đã gửi cho bạn.

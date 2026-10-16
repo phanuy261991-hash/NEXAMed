@@ -72,7 +72,7 @@ export function ColumnVisibilityMenu({
           {hint && <p className="mb-2 text-xs font-medium text-slate-500">{hint}</p>}
           {groups.map((group) => (
             <div key={group} className="mb-2">
-              {group && <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-700">{group}</div>}
+              {group && <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">{group}</div>}
               {options
                 .filter((o) => (o.group ?? '') === group)
                 .map((o) => (

@@ -122,6 +122,8 @@ describe('HTTP e2e — khoá đăng nhập & mở khoá tài khoản (/api/v1/us
     expect(res.body.error.code).toBe('AUTH_ACCOUNT_LOCKED');
     expect(res.body.error.message).toContain('5 phút');
     expect(res.body.error.details.retryAfterMinutes).toBe(5);
+    expect(res.body.error.details.retryAfterSeconds).toBeGreaterThan(290);
+    expect(res.body.error.details.retryAfterSeconds).toBeLessThanOrEqual(300);
     await clearLocks(staffA.id);
   });
 

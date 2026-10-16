@@ -221,7 +221,7 @@ export function SpecimenCollectionDialog({ orderId, initialSid, onClose }: { ord
               <div className="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-slate-500">Họ và tên người bệnh</div>
-                  <div className="truncate text-xl font-bold text-slate-900" title={state.patientName}>
+                  <div className="truncate text-xl font-semibold text-slate-900" title={state.patientName}>
                     {state.patientName.toLocaleUpperCase('vi-VN')}
                   </div>
                   <div className="text-sm font-semibold text-slate-800">
@@ -276,7 +276,7 @@ export function SpecimenCollectionDialog({ orderId, initialSid, onClose }: { ord
                     Đánh dấu tất cả
                   </Button>
                 )}
-                <div className="ml-auto text-sm font-bold text-slate-900">
+                <div className="ml-auto text-sm font-semibold text-slate-900">
                   Đã lấy <span className="text-blue-600">{collectedCount + tickedCount}</span>/{activeTubes.length} ống
                 </div>
               </div>
@@ -293,7 +293,7 @@ export function SpecimenCollectionDialog({ orderId, initialSid, onClose }: { ord
               {/* Bảng ống — gộp tự động theo loại mẫu bệnh phẩm. */}
               <div>
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="text-sm font-bold text-slate-900">
+                  <div className="text-sm font-semibold text-slate-900">
                     Ống cần lấy <span className="font-semibold text-slate-500">({activeTubes.length})</span>
                   </div>
                   <div className="text-[13px] text-slate-500">
@@ -302,7 +302,7 @@ export function SpecimenCollectionDialog({ orderId, initialSid, onClose }: { ord
                 </div>
                 <div className="overflow-x-auto rounded-lg border border-slate-200">
                   <div role="table" aria-label="Các ống mẫu cần lấy" style={{ minWidth: hasActionsColumn ? 1070 : 940 }}>
-                    <div role="row" className={`grid ${gridCols} border-b-2 border-blue-600 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-800`}>
+                    <div role="row" className={`grid ${gridCols} border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800`}>
                       <div role="columnheader" className="px-2 py-2.5 text-center">
                         Đã lấy
                       </div>
@@ -389,7 +389,7 @@ export function SpecimenCollectionDialog({ orderId, initialSid, onClose }: { ord
                                 </>
                               )}
                             </div>
-                            <div className={`px-2 text-center font-bold tabular-nums ${cancelled ? 'line-through' : 'text-slate-900'}`}>{tube.sid}</div>
+                            <div className={`px-2 text-center font-semibold tabular-nums ${cancelled ? 'line-through' : 'text-slate-900'}`}>{tube.sid}</div>
                             <div className="px-2 text-center">
                               {cancelled ? <StatusBadge tone="neutral">Đã huỷ</StatusBadge> : tube.printCount > 0 ? <StatusBadge tone="success">{`Đã in · ${tube.printCount} lần`}</StatusBadge> : <StatusBadge tone="neutral">Chưa in</StatusBadge>}
                             </div>
@@ -420,7 +420,7 @@ export function SpecimenCollectionDialog({ orderId, initialSid, onClose }: { ord
 
                           {recollectId === tube.id && (
                             <div className="border-b border-dashed border-rose-300 bg-rose-50 px-4 py-3 sm:pl-16">
-                              <div className="mb-2 text-sm font-bold text-rose-800">Huỷ ống {tube.sid} và lấy lại mẫu — ống mới sẽ có mã mới, ống cũ giữ lại ở trạng thái “Đã huỷ”</div>
+                              <div className="mb-2 text-sm font-semibold text-rose-800">Huỷ ống {tube.sid} và lấy lại mẫu — ống mới sẽ có mã mới, ống cũ giữ lại ở trạng thái “Đã huỷ”</div>
                               <div className="mb-1.5 text-sm font-semibold text-slate-800">
                                 Lý do <span className="text-rose-600">*</span>
                               </div>

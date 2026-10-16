@@ -8,7 +8,7 @@ import { ResultTemplatePane } from './ResultTemplatePane';
 import { TechnicalServicePane } from './TechnicalServicePane';
 
 /**
- * "Danh mục cận lâm sàng" (`/admin/catalog-paraclinical`, thay `ComingSoonPage`) — Cận lâm sàng GĐ1 (docs/DECISIONS.md
+ * "Danh mục Cận lâm sàng" (`/admin/catalog-paraclinical`, thay `ComingSoonPage`) — Cận lâm sàng GĐ1 (docs/DECISIONS.md
  * #212). `ConfigScreenShell` chế độ pill phẳng (không `items`), đúng khuôn `CatalogClinicalPage.tsx`. Pill "Gói dịch vụ"
  * (mockup màn 4) thêm ở GĐ2 cùng "Bảng giá có thời hạn" (trang riêng `/admin/price-lists`).
  */
@@ -27,10 +27,10 @@ export function CatalogParaclinicalPage() {
   const [activePillKey, setActivePillKey] = useState(FIRST_PILL.key);
   const activePill = PILLS.find((p) => p.key === activePillKey) ?? FIRST_PILL;
 
-  useBreadcrumb([{ label: 'Quản trị' }, { label: 'Danh mục cận lâm sàng', to: '/admin/catalog-paraclinical' }, { label: activePill.label }]);
+  useBreadcrumb([{ label: 'Quản trị' }, { label: 'Danh mục Cận lâm sàng', to: '/admin/catalog-paraclinical' }, { label: activePill.label }]);
 
   return (
-    <ConfigScreenShell pageLabel="Danh mục cận lâm sàng" pills={PILLS} activePillKey={activePillKey} onSelectPill={setActivePillKey}>
+    <ConfigScreenShell pageLabel="Danh mục Cận lâm sàng" pills={PILLS} activePillKey={activePillKey} onSelectPill={setActivePillKey}>
       {activePillKey === 'service' && <TechnicalServicePane />}
       {activePillKey === 'indicator' && <LabIndicatorPane />}
       {activePillKey === 'package' && <ServicePackagePane />}

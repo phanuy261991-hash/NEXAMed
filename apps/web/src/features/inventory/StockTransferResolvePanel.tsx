@@ -62,7 +62,7 @@ export function StockTransferResolvePanel({ transfer, onDone, onCancel }: { tran
       <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="scroll-hover h-full overflow-auto">
           <div role="table" aria-label="Xử lý chênh lệch" style={{ minWidth: 1170 }}>
-            <div role="row" style={{ gridTemplateColumns: GRID }} className="grid gap-x-2 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+            <div role="row" style={{ gridTemplateColumns: GRID }} className="grid gap-x-2 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
               <div role="columnheader" className="py-2.5 text-left">Thuốc / vật tư</div>
               <div role="columnheader" className="py-2.5 text-center">Lô</div>
               <div role="columnheader" className="py-2.5 text-center">SL xuất</div>
@@ -75,13 +75,13 @@ export function StockTransferResolvePanel({ transfer, onDone, onCancel }: { tran
             {rows.map((r) => (
               <div key={r.line.id} role="row" style={{ gridTemplateColumns: GRID, minHeight: 60 }} className="grid items-center gap-x-2 border-b border-slate-100 px-4 text-sm">
                 <div role="cell" className="min-w-0 py-2">
-                  <p className="truncate font-bold text-slate-900" title={r.line.drugName}>{r.line.drugName}</p>
+                  <p className="truncate font-semibold text-slate-900" title={r.line.drugName}>{r.line.drugName}</p>
                   <p className="truncate text-xs font-medium text-slate-400">{r.line.drugCode}</p>
                 </div>
                 <div role="cell" className="truncate text-center text-xs font-medium text-slate-700">{r.line.batchNo ?? '—'}</div>
                 <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{r.line.quantityShipped}</div>
                 <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{r.line.quantityReceived}</div>
-                <div role="cell" className="text-center font-bold tabular-nums text-rose-600">{r.shortage}</div>
+                <div role="cell" className="text-center font-semibold tabular-nums text-rose-600">{r.shortage}</div>
                 <div role="cell" className="text-right font-semibold tabular-nums text-slate-900">{formatVnd(r.value)}</div>
                 <div role="cell" className="min-w-0 pl-3 text-left text-slate-700">
                   <p className="font-semibold">{r.line.varianceReason ? VARIANCE_REASON_LABEL[r.line.varianceReason] : '—'}</p>
@@ -101,8 +101,8 @@ export function StockTransferResolvePanel({ transfer, onDone, onCancel }: { tran
               </div>
             ))}
             <div className="grid items-center gap-x-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-sm" style={{ gridTemplateColumns: GRID }}>
-              <div className="col-span-5 font-bold text-slate-800">Tổng</div>
-              <div className="text-right font-bold tabular-nums text-slate-900">{formatVnd(total)}</div>
+              <div className="col-span-5 font-semibold text-slate-800">Tổng</div>
+              <div className="text-right font-semibold tabular-nums text-slate-900">{formatVnd(total)}</div>
               <div className="col-span-2 pl-3 text-sm text-slate-700">
                 Hao hụt ghi nhận: <strong className="tabular-nums">{formatVnd(writeOffValue)}</strong> · Hàng về kho gửi: <strong className="tabular-nums">{formatVnd(returnedValue)}</strong>
               </div>

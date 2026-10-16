@@ -114,7 +114,7 @@ export function PriceListGroupDialog({
               return (
                 <section key={kind} aria-label={PRICE_LIST_ITEM_KIND_LABELS[kind]}>
                   <div className="mb-2 flex items-center justify-between border-b border-slate-200 pb-1.5">
-                    <h3 className="text-[13px] font-bold uppercase tracking-wide text-slate-700">{PRICE_LIST_ITEM_KIND_LABELS[kind]}</h3>
+                    <h3 className="text-[13px] font-semibold uppercase tracking-wide text-slate-700">{PRICE_LIST_ITEM_KIND_LABELS[kind]}</h3>
                     <button type="button" onClick={() => toggleKind(kindGroups)} className="text-[13px] font-semibold text-blue-600 hover:text-blue-700">
                       {onCount === kindGroups.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
                     </button>

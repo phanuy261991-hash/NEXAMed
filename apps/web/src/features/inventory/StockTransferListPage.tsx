@@ -27,9 +27,10 @@ const ROW_HEIGHT_PX = 60;
 const PAGE_LIMIT = 50;
 
 /** Cột theo từng chế độ xem — "Phiếu đi" (mặc định, gồm cả điều chuyển cùng chi nhánh) và "Phiếu đến" (từ chi nhánh khác). Mockup Đợt 2 màn 4. */
-const GRID_OUT_SINGLE = '130px 280px 250px 110px 90px 150px 230px';
-const GRID_OUT_MULTI = '130px 320px 250px 110px 90px 150px 230px';
-const GRID_IN = '130px 230px 200px 250px 110px 90px 200px';
+// Cột co giãn (minmax + fr) thay cho px cứng: tổng tối thiểu ~890px nên vừa màn 1280px (laptop, 24 inch phóng 125%); màn rộng thì các cột dãn ra. Kiểm toàn app 16/10/2026.
+const GRID_OUT_SINGLE = '110px minmax(150px,1.1fr) minmax(170px,1fr) 100px 70px 120px minmax(150px,0.9fr)';
+const GRID_OUT_MULTI = '110px minmax(170px,1.3fr) minmax(170px,1fr) 100px 70px 120px minmax(150px,0.9fr)';
+const GRID_IN = '110px minmax(150px,1fr) minmax(130px,0.9fr) minmax(170px,1.1fr) 100px 70px minmax(140px,0.9fr)';
 const MIN_WIDTH_OUT = 1250;
 const MIN_WIDTH_IN = 1220;
 
@@ -181,7 +182,7 @@ export function StockTransferListPage() {
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div role="table" aria-label="Danh sách phiếu điều chuyển kho" className="scroll-hover h-full overflow-x-auto">
             <div className="flex h-full flex-col" style={{ minWidth }}>
-              <div role="row" style={{ gridTemplateColumns: gridColumns }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+              <div role="row" style={{ gridTemplateColumns: gridColumns }} className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                 <div role="columnheader" className="py-2.5 text-center">Số phiếu</div>
                 {direction === 'in' ? (
                   <>
@@ -219,7 +220,7 @@ export function StockTransferListPage() {
                       {direction === 'in' ? (
                         <>
                           <div role="cell" className="min-w-0 text-left">
-                            <p className="truncate font-bold text-slate-900" title={item.fromBranchName}>{item.fromBranchName}</p>
+                            <p className="truncate font-semibold text-slate-900" title={item.fromBranchName}>{item.fromBranchName}</p>
                             <p className="truncate text-xs font-medium text-slate-500" title={item.fromWarehouseName}>{item.fromWarehouseName}</p>
                           </div>
                           <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900" title={item.toWarehouseName}>{item.toWarehouseName}</div>
@@ -261,7 +262,7 @@ export function StockTransferListPage() {
                           <button
                             type="button"
                             onClick={() => navigate(`/inventory/transfers/${item.id}`)}
-                            className="flex items-center gap-1.5 whitespace-nowrap rounded-md bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
+                            className="flex items-center gap-1.5 whitespace-nowrap rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                           >
                             <Truck size={13} weight="bold" aria-hidden="true" />
                             {TRANSFER_ACTION_LABEL[action]}

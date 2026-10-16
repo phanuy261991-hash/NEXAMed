@@ -1,6 +1,31 @@
 @import 'tailwindcss';
 
 /**
+ * Mốc "màn hình lớn" của màn đăng nhập: từ 900px rộng VÀ 560px cao mới dùng bố cục chia đôi (cửa sổ nổi giữa nền). Dưới mốc đó (điện thoại dọc/ngang, máy tính bảng dọc) dùng bố cục một cột —
+ * tránh cột form bị bó hẹp ở 768px và tránh bố cục máy tính trên điện thoại nằm ngang (cao chỉ ~390px).
+ */
+@custom-variant desktop (@media (min-width: 900px) and (min-height: 560px));
+
+/**
+ * CHUẨN ĐỘ ĐẬM (ui-guidelines mục 16): thẻ <b>, <strong>, <th> mặc định của trình duyệt/Tailwind là 700 — hạ về 600 trên MÀN HÌNH cho khớp thang (tối đa semibold, ưu tiên nét chữ sắc).
+ * Khi IN giữ đậm thật (chứng từ in cần chữ đậm rõ, ví dụ chỉ số xét nghiệm vượt mức).
+ */
+@layer base {
+  b,
+  strong,
+  th {
+    font-weight: 600;
+  }
+}
+@media print {
+  b,
+  strong,
+  th {
+    font-weight: 700;
+  }
+}
+
+/**
  * Brand phụ — màu nhấn cho các thành phần LỰA CHỌN (chip/thẻ chọn 1-trong-nhiều: Nguồn đặt lịch,
  * chọn Bác sĩ, và các trường hợp tương tự sau này) — tách khỏi `blue-600` (brand chính, dành cho
  * điều hướng/hành động chính) để đỡ lạm dụng một màu xanh cho mọi trạng thái "đang chọn". Chốt
@@ -230,4 +255,26 @@ html {
 }
 .badge-urgent-pulse {
   animation: urgent-pulse 1.1s ease-in-out infinite;
+}
+
+/**
+ * Nền biểu tượng y khoa lơ lửng ở màn đăng nhập (`LoginBackdrop.tsx`, mockup đã duyệt 16/10/2026) — chỉ animate `transform` (trôi + xoay + phồng nhẹ), không nhấp nháy, không đổ bóng. Giá trị trôi/xoay/chu kỳ/trễ truyền qua
+ * biến CSS inline của từng biểu tượng. Máy bật "giảm chuyển động" thì đứng yên.
+ */
+@keyframes login-drift {
+  from {
+    transform: translate3d(0, 0, 0) rotate(var(--r0, -4deg)) scale(1);
+  }
+  to {
+    transform: translate3d(calc(var(--dx, 10px) * var(--s, 1)), calc(var(--dy, -16px) * var(--s, 1)), 0) rotate(var(--r1, 5deg)) scale(var(--sc, 1));
+  }
+}
+.login-float {
+  animation: login-drift var(--t, 12s) ease-in-out var(--d, 0s) infinite alternate;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-float {
+    animation: none;
+  }
 }

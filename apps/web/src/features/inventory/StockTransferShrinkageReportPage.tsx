@@ -15,7 +15,7 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { useExportStockTransferShrinkageMutation, useStockTransferShrinkageQuery } from './inventory.queries';
 
-const GRID = '130px 110px minmax(220px,1.3fr) minmax(220px,1.5fr) 90px 120px 130px 150px';
+const GRID = '110px 100px minmax(150px,1.3fr) minmax(150px,1.5fr) 90px 100px 110px 130px';
 const CAUSE_META: Record<StockTransferShrinkageCause, { label: string; tone: 'danger' | 'accent' }> = {
   WRITE_OFF: { label: 'Ghi hao hụt', tone: 'danger' },
   RETURN_SHORTAGE: { label: 'Nhận lại thiếu', tone: 'accent' },
@@ -125,7 +125,7 @@ export function StockTransferShrinkageReport() {
             <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               <div role="table" aria-label="Báo cáo hao hụt điều chuyển" className="scroll-hover h-full overflow-x-auto">
                 <div className="flex h-full flex-col" style={{ minWidth: 1150 }}>
-                  <div role="row" style={{ gridTemplateColumns: GRID }} className="grid flex-shrink-0 gap-x-2 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-bold uppercase tracking-wide text-slate-800">
+                  <div role="row" style={{ gridTemplateColumns: GRID }} className="grid flex-shrink-0 gap-x-2 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
                     <div role="columnheader" className="py-2.5 text-center">Số phiếu</div>
                     <div role="columnheader" className="py-2.5 text-center">Ngày chuyển</div>
                     <div role="columnheader" className="py-2.5 text-left">Từ → Đến</div>
@@ -148,7 +148,7 @@ export function StockTransferShrinkageReport() {
                           {item.fromWarehouseName} → {item.toWarehouseName}
                         </div>
                         <div role="cell" className="min-w-0 text-left">
-                          <p className="truncate font-bold text-slate-900" title={item.drugName}>{item.drugName}</p>
+                          <p className="truncate font-semibold text-slate-900" title={item.drugName}>{item.drugName}</p>
                           <p className="truncate text-xs font-medium text-slate-400">{item.drugCode}</p>
                         </div>
                         <div role="cell" className="text-center font-semibold tabular-nums text-rose-700">{item.quantity.toLocaleString('vi-VN')}</div>

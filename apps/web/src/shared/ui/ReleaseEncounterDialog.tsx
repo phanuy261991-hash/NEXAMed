@@ -1,7 +1,9 @@
+import { ArrowUUpLeft } from '@phosphor-icons/react';
 import type { EncounterSummary } from '@nexamed/shared';
 import { useReleaseEncounterMutation } from '../../features/reception/reception.queries';
 import { ApiError } from '../api/client';
 import { Button } from './Button';
+import { ConfirmDialog } from './ConfirmDialog';
 
 /**
  * "Trả về hàng chờ" (`IN_CONSULTATION → CHECKED_IN`, #085) — bác sĩ nhả `doctorId` về `NULL`, ca
@@ -39,28 +41,23 @@ export function ReleaseEncounterDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="release-encounter-title">
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-        <p id="release-encounter-title" className="text-sm font-semibold text-slate-900">
-          Trả về hàng chờ?
-        </p>
-        <p className="mt-1.5 text-xs text-slate-500">
-          <span className="font-semibold text-slate-800">{patientFullName}</span> sẽ quay lại hàng chờ chung Khoa cho bác sĩ khác nhận, không huỷ lượt khám.
-        </p>
-        {mutation.isError && (
-          <p className="mt-2 text-xs font-medium text-rose-600">
-            {mutation.error instanceof ApiError ? mutation.error.message : 'Không trả về hàng chờ được, vui lòng thử lại.'}
-          </p>
-        )}
-        <div className="mt-4 flex justify-end gap-2.5">
+    <ConfirmDialog
+      icon={ArrowUUpLeft}
+      title="Trả về hàng chờ"
+      rows={[{ label: 'Bệnh nhân', value: patientFullName }]}
+      note="Quay lại hàng chờ chung của Khoa cho bác sĩ khác nhận, không huỷ lượt khám."
+      error={mutation.isError ? (mutation.error instanceof ApiError ? mutation.error.message : 'Không trả về hàng chờ được, vui lòng thử lại.') : null}
+      onClose={onClose}
+      actions={
+        <>
           <Button type="button" variant="secondary" onClick={onClose}>
             Đóng
           </Button>
           <Button type="button" loading={mutation.isPending} onClick={() => void handleConfirm()}>
             Xác nhận
           </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }

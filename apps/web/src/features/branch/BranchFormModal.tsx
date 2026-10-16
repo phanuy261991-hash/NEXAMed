@@ -75,7 +75,7 @@ export function BranchFormModal({
           onClose={onCancel}
           right={
             mode === 'edit' && branch ? (
-              <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600" title="Mã tự sinh, không sửa được">
+              <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600" title="Mã tự sinh, không sửa được">
                 Mã: {branch.code}
               </span>
             ) : undefined

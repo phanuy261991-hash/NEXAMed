@@ -17,7 +17,7 @@ export function CashTenderPills({ value, onChange }: { value: number; onChange: 
             key={denom}
             type="button"
             onClick={() => onChange(value + denom)}
-            className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
+            className="rounded-full border-2 border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-blue-400 hover:bg-brand-teal-tint"
           >
             +{denom / 1000}k
           </button>
@@ -25,7 +25,7 @@ export function CashTenderPills({ value, onChange }: { value: number; onChange: 
       <button
         type="button"
         onClick={() => onChange(0)}
-        className="rounded-full border-2 border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-600 transition-colors hover:border-rose-300"
+        className="rounded-full border-2 border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 transition-colors hover:border-rose-300"
       >
         Xoá
       </button>

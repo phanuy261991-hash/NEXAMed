@@ -463,7 +463,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
           <div style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
             <div
               role="row"
-              className="sticky top-0 z-10 grid items-center border-b-2 px-3 border-blue-600 bg-slate-100 text-center text-xs font-bold uppercase tracking-wide text-slate-800"
+              className="sticky top-0 z-10 grid items-center border-b-2 px-3 border-blue-600 bg-slate-100 text-center text-xs font-semibold uppercase tracking-wide text-slate-800"
               style={{ gridTemplateColumns: GRID_COLUMNS }}
             >
               <div className="flex items-center justify-center px-1 py-2.5">
@@ -493,7 +493,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                           {line.name}
                         </div>
                         <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
-                          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-bold text-slate-700">{PRICE_LIST_ITEM_KIND_LABELS[line.itemKind]}</span>
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-700">{PRICE_LIST_ITEM_KIND_LABELS[line.itemKind]}</span>
                           <span className="truncate font-semibold text-slate-500">{line.code}</span>
                         </div>
                         {line.itemMissing && (
@@ -560,7 +560,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                           />
                         )}
                       </div>
-                      <div className="px-2.5 text-right font-bold tabular-nums text-emerald-700">{final === null ? <span className="font-normal text-slate-400">—</span> : formatVnd(final)}</div>
+                      <div className="px-2.5 text-right font-semibold tabular-nums text-emerald-700">{final === null ? <span className="font-normal text-slate-400">—</span> : formatVnd(final)}</div>
                       <div className="flex justify-center">
                         {canWrite && (
                           <button
@@ -593,7 +593,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
         </section>
         <aside aria-label="Thông tin bảng giá" className="scroll-hover flex w-[300px] flex-shrink-0 flex-col gap-3 overflow-y-auto">
       <div className="flex flex-shrink-0 items-center gap-2.5">
-        <h2 className="text-lg font-bold text-slate-900">{isCreate ? 'Tạo bảng giá' : detail.name}</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{isCreate ? 'Tạo bảng giá' : detail.name}</h2>
         {status && <StatusBadge tone={status.tone}>{status.label}</StatusBadge>}
       </div>
       <div className="flex-shrink-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -676,7 +676,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
       {confirmStop && detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4" role="alertdialog" aria-modal="true" aria-labelledby="pl-stop-title">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-            <h2 id="pl-stop-title" className="text-[17px] font-bold text-slate-900">
+            <h2 id="pl-stop-title" className="text-[17px] font-semibold text-slate-900">
               Ngừng bảng giá "{detail.name}"?
             </h2>
             <p className="mt-2 text-sm text-slate-600">

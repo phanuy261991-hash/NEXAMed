@@ -13,14 +13,18 @@ export class AccountLockedError extends DomainError {
 
   /** Số phút còn lại tới lúc hết khoá, làm tròn LÊN (còn 10 giây vẫn báo "1 phút"), tối thiểu 1. */
   readonly retryAfterMinutes: number;
+  /** Số giây còn lại (làm tròn lên, tối thiểu 1) — web đếm lùi theo số giây TƯƠNG ĐỐI này, không phụ thuộc đồng hồ máy khách lệch máy chủ. */
+  readonly retryAfterSeconds: number;
 
   constructor(
     public readonly lockedUntil: Date,
     now: Date,
   ) {
-    const minutes = Math.max(1, Math.ceil((lockedUntil.getTime() - now.getTime()) / 60_000));
+    const seconds = Math.max(1, Math.ceil((lockedUntil.getTime() - now.getTime()) / 1000));
+    const minutes = Math.max(1, Math.ceil(seconds / 60));
     super(`Tài khoản bị khoá tạm thời ${minutes} phút do đăng nhập sai nhiều lần. Vui lòng thử lại sau ${minutes} phút.`);
     this.retryAfterMinutes = minutes;
+    this.retryAfterSeconds = seconds;
   }
 }
 

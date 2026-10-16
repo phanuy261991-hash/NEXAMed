@@ -98,7 +98,7 @@ export function VitalSignsDialog({
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 ring-8 ring-blue-100/60">
             <Heartbeat size={22} weight="fill" className="text-blue-600" />
           </div>
-          <h2 id="vital-signs-title" className="text-[16px] font-bold text-slate-900">
+          <h2 id="vital-signs-title" className="text-[16px] font-semibold text-slate-900">
             {current ? 'Cập nhật sinh hiệu' : 'Bổ sung sinh hiệu'}
           </h2>
           <p className="mt-1 text-[13px] leading-relaxed text-slate-500">

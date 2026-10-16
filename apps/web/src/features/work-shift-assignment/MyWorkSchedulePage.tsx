@@ -335,8 +335,8 @@ export function MyWorkSchedulePage() {
         <div className="flex flex-shrink-0 justify-end px-1">
           <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Đã đăng ký</div>
-              <div className="mt-0.5 text-lg font-bold text-slate-900">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Đã đăng ký</div>
+              <div className="mt-0.5 text-lg font-semibold text-slate-900">
                 {registeredCount}/{availableSlotCount} ca <span className="text-sm font-semibold text-slate-400">({formatHours(registeredHours)} giờ)</span>
               </div>
             </div>
@@ -477,7 +477,7 @@ export function MyWorkSchedulePage() {
       {incomingSwapCount > 0 && (
         <div className="flex flex-shrink-0 items-center gap-2.5 rounded-md bg-amber-500 px-3.5 py-2.5 text-white shadow-sm">
           <span className="flex-1 text-[13px] font-semibold">Có {incomingSwapCount} yêu cầu đổi ca đang chờ bạn xác nhận.</span>
-          <Button type="button" variant="secondary" className="px-3.5 py-1.5 text-xs font-bold" onClick={() => setShowIncoming(true)}>
+          <Button type="button" variant="secondary" className="px-3.5 py-1.5 text-xs font-semibold" onClick={() => setShowIncoming(true)}>
             Xem yêu cầu
           </Button>
         </div>
@@ -498,7 +498,7 @@ export function MyWorkSchedulePage() {
               <Button
                 type="button"
                 variant="secondary"
-                className="px-3.5 py-1.5 text-xs font-bold"
+                className="px-3.5 py-1.5 text-xs font-semibold"
                 loading={submitMutation.isPending}
                 onClick={() => void handleSubmitMonth(statusMonth)}
               >
@@ -509,9 +509,9 @@ export function MyWorkSchedulePage() {
           {monthBanner.banner === 'DRAFT_OPEN' && (
             <div className="flex flex-wrap items-center gap-2.5 rounded-md border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-sm text-blue-900">
               <span className="min-w-0 flex-1">
-                <span className="font-bold">Đăng ký {formatMonthLabel(statusMonth).toLowerCase()}.</span> Bạn chỉ đăng ký được cho tháng chưa tới. Đăng ký xong bấm <strong>Gửi duyệt cả tháng</strong>; sau khi gửi bạn không tự sửa hoặc xoá ca được nữa.
+                <span className="font-semibold">Đăng ký {formatMonthLabel(statusMonth).toLowerCase()}.</span> Bạn chỉ đăng ký được cho tháng chưa tới. Đăng ký xong bấm <strong>Gửi duyệt cả tháng</strong>; sau khi gửi bạn không tự sửa hoặc xoá ca được nữa.
               </span>
-              <Button type="button" className="px-3.5 py-1.5 text-xs font-bold" loading={submitMutation.isPending} onClick={() => void handleSubmitMonth(statusMonth)}>
+              <Button type="button" className="px-3.5 py-1.5 text-xs font-semibold" loading={submitMutation.isPending} onClick={() => void handleSubmitMonth(statusMonth)}>
                 Gửi duyệt cả tháng
               </Button>
             </div>
@@ -555,7 +555,7 @@ export function MyWorkSchedulePage() {
             <Button
               type="button"
               variant="secondary"
-              className="px-3.5 py-1.5 text-xs font-bold transition-colors active:bg-amber-100 active:text-amber-800"
+              className="px-3.5 py-1.5 text-xs font-semibold transition-colors active:bg-amber-100 active:text-amber-800"
               onClick={() => setUnlockedForEditing(true)}
             >
               Sửa
@@ -572,7 +572,7 @@ export function MyWorkSchedulePage() {
           <Button
             type="button"
             variant="secondary"
-            className="px-3.5 py-1.5 text-xs font-bold transition-colors active:bg-slate-200 active:text-slate-900"
+            className="px-3.5 py-1.5 text-xs font-semibold transition-colors active:bg-slate-200 active:text-slate-900"
             onClick={() => setUnlockedForEditing(false)}
           >
             Khoá lại
@@ -622,7 +622,7 @@ export function MyWorkSchedulePage() {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="scroll-hover min-h-0 flex-1 overflow-auto">
             <div className="grid" style={{ gridTemplateColumns: `168px repeat(7, minmax(128px, 1fr))`, minWidth: 168 + 128 * 7 }}>
-              <div className="sticky left-0 top-0 z-20 border-b border-r border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+              <div className="sticky left-0 top-0 z-20 border-b border-r border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 Ca / Thời gian
               </div>
               {days.map((day, index) => {
@@ -633,12 +633,12 @@ export function MyWorkSchedulePage() {
                     className={`sticky top-0 z-10 border-b border-r border-slate-200 px-2 py-2 text-center last:border-r-0 ${isToday ? 'bg-blue-600' : 'bg-slate-50'}`}
                   >
                     {isToday && (
-                      <span className="mb-0.5 inline-block rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                      <span className="mb-0.5 inline-block rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                         Hôm nay
                       </span>
                     )}
-                    {!isToday && <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{WEEKDAY_LABELS[index]}</div>}
-                    <div className={`text-[15px] font-extrabold ${isToday ? 'text-white' : 'text-slate-900'}`}>{formatDDMM(day)}</div>
+                    {!isToday && <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{WEEKDAY_LABELS[index]}</div>}
+                    <div className={`text-[15px] font-semibold ${isToday ? 'text-white' : 'text-slate-900'}`}>{formatDDMM(day)}</div>
                   </div>
                 );
               })}
@@ -650,7 +650,7 @@ export function MyWorkSchedulePage() {
               {workShifts.map((shift) => (
                 <Fragment key={shift.id}>
                   <div className="sticky left-0 z-10 border-b border-r border-slate-200 bg-slate-50 px-3 py-3">
-                    <div className="text-[13px] font-bold text-slate-800">{shift.name}</div>
+                    <div className="text-[13px] font-semibold text-slate-800">{shift.name}</div>
                     <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-slate-400">
                       <Clock size={11} weight="bold" aria-hidden="true" />
                       {shift.startTime} - {shift.endTime}
@@ -685,7 +685,7 @@ export function MyWorkSchedulePage() {
                               style={{ backgroundImage: 'repeating-linear-gradient(135deg, rgba(225,29,72,.10) 0 6px, transparent 6px 12px)' }}
                             >
                               <div className="flex flex-wrap items-center justify-between gap-1">
-                                <span className="text-xs font-bold text-rose-700">Nghỉ</span>
+                                <span className="text-xs font-semibold text-rose-700">Nghỉ</span>
                                 <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-semibold text-white">Đã duyệt</span>
                               </div>
                               <span className="truncate text-[11px] text-slate-600" title={leave.reason}>
@@ -701,7 +701,7 @@ export function MyWorkSchedulePage() {
                           <div key={cellKey} className="border-b border-r border-slate-100 p-1.5 last:border-r-0">
                             <div className="flex h-full flex-col justify-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-2">
                               <div className="flex flex-wrap items-center justify-between gap-1">
-                                <span className="text-xs font-bold text-amber-800">{shift.name}</span>
+                                <span className="text-xs font-semibold text-amber-800">{shift.name}</span>
                                 <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white">Chờ duyệt nghỉ</span>
                               </div>
                               {leave.canWithdraw && (
@@ -722,7 +722,7 @@ export function MyWorkSchedulePage() {
                         return (
                           <div key={cellKey} className="border-b border-r border-slate-100 p-1.5 last:border-r-0">
                             <div className="flex h-full flex-col justify-center gap-0.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-2">
-                              <span className="text-xs font-bold text-amber-800">Chờ xác nhận đổi ca</span>
+                              <span className="text-xs font-semibold text-amber-800">Chờ xác nhận đổi ca</span>
                               <span className="truncate text-[11px] text-slate-600">với {pendingSwap.counterpartName}</span>
                               <button
                                 type="button"
@@ -750,7 +750,7 @@ export function MyWorkSchedulePage() {
                             {locked && <Lock size={10} weight="bold" className="absolute right-1.5 top-1.5 text-emerald-400" aria-hidden="true" />}
                             {rejectedNote ? (
                               <>
-                                <span className="flex flex-wrap items-center justify-center gap-1.5 text-[12.5px] font-bold text-slate-700">
+                                <span className="flex flex-wrap items-center justify-center gap-1.5 text-[12.5px] font-semibold text-slate-700">
                                   {shift.name}
                                   <span className="rounded-full bg-slate-300 px-2 py-0.5 text-[10px] font-semibold text-slate-600">Từ chối nghỉ</span>
                                 </span>
@@ -760,7 +760,7 @@ export function MyWorkSchedulePage() {
                               </>
                             ) : (
                               <>
-                                <span className="flex items-center gap-1 text-[12.5px] font-bold text-emerald-700">
+                                <span className="flex items-center gap-1 text-[12.5px] font-semibold text-emerald-700">
                                   <CheckCircle size={13} weight="fill" aria-hidden="true" />
                                   Đã đăng ký
                                 </span>
@@ -872,7 +872,7 @@ export function MyWorkSchedulePage() {
 
       {!loading && !error && view === 'month' && (
         <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm scroll-hover">
-          <div className="grid grid-cols-7 gap-2 pb-2 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">
+          <div className="grid grid-cols-7 gap-2 pb-2 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">
             {WEEKDAY_LABELS.map((label, i) => (
               <div key={label} className={i >= 5 ? 'text-slate-300' : undefined}>
                 {label}
@@ -897,7 +897,7 @@ export function MyWorkSchedulePage() {
                     setWeekStart(getWeekStart(date));
                     setView('week');
                   }}
-                  className={`relative flex min-h-16 flex-col items-start rounded-lg border p-2 text-left text-[13px] font-bold transition-shadow ${
+                  className={`relative flex min-h-16 flex-col items-start rounded-lg border p-2 text-left text-[13px] font-semibold transition-shadow ${
                     !inMonth
                       ? 'border-slate-100 bg-slate-50 text-slate-300'
                       : selected
@@ -925,7 +925,7 @@ export function MyWorkSchedulePage() {
                           <span
                             key={item.id}
                             title={item.workShiftName}
-                            className={`max-w-full truncate rounded bg-white px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-inset ${SCHEDULE_CHIP_TONE[monthStatus(item.workDate.slice(0, 7))]}`}
+                            className={`max-w-full truncate rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${SCHEDULE_CHIP_TONE[monthStatus(item.workDate.slice(0, 7))]}`}
                           >
                             {item.workShiftName}
                           </span>

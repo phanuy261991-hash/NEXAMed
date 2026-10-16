@@ -21,7 +21,7 @@ const ROW_HEIGHT_PX = 60;
 type DialogState = { mode: 'create' } | { mode: 'view' | 'edit'; id: string } | null;
 
 /**
- * Pill "Gói dịch vụ" của "Danh mục cận lâm sàng" (Cận lâm sàng GĐ2, docs/DECISIONS.md #212, mockup màn 4). Danh sách gói kèm kiểu
+ * Pill "Gói dịch vụ" của "Danh mục Cận lâm sàng" (Cận lâm sàng GĐ2, docs/DECISIONS.md #212, mockup màn 4). Danh sách gói kèm kiểu
  * giá, số dịch vụ, giá gói, tổng giá lẻ và hiệu lực. GĐ2 chỉ quản lý danh mục gói — đưa gói vào chỉ định/hoá đơn là việc của GĐ3.
  */
 export function ServicePackagePane() {
@@ -63,7 +63,7 @@ export function ServicePackagePane() {
           <div className="flex h-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
             <div
               role="row"
-              className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-bold uppercase tracking-wide text-slate-800"
+              className="grid flex-shrink-0 border-b-2 border-blue-600 bg-slate-100 text-center text-xs font-semibold uppercase tracking-wide text-slate-800"
               style={{ gridTemplateColumns: GRID_COLUMNS }}
             >
               {['Mã', 'Tên gói', 'Cách tính giá', 'Số DV', 'Giá gói', 'Tổng giá lẻ', 'Hiệu lực', 'Trạng thái', 'Thao tác'].map((h) => (

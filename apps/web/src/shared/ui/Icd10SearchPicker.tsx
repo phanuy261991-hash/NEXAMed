@@ -107,7 +107,7 @@ export const Icd10SearchPicker = forwardRef<Icd10SearchPickerHandle, {
               className="rounded-md border border-slate-200 px-3 py-2 text-left hover:border-blue-400 hover:bg-brand-teal-tint"
             >
               <div className="text-sm text-slate-900">
-                <span className="font-bold">{item.code}</span> — {item.nameVi}
+                <span className="font-semibold">{item.code}</span> — {item.nameVi}
               </div>
               {(item.genderRestriction || item.usageRestriction) && (
                 <div className="mt-1 flex flex-wrap gap-1">

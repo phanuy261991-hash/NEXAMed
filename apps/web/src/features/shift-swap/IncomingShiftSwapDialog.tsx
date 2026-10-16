@@ -44,8 +44,8 @@ export function IncomingShiftSwapDialog({ onClose }: { onClose: () => void }) {
               </div>
               <div className="grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
                 <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Bạn nhận</div>
-                  <div className="text-sm font-bold">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bạn nhận</div>
+                  <div className="text-sm font-semibold">
                     {item.requesterAssignment.workShiftName} · {formatWeekdayDate(item.requesterAssignment.workDate)}
                   </div>
                   <div className="text-xs text-slate-500">
@@ -54,8 +54,8 @@ export function IncomingShiftSwapDialog({ onClose }: { onClose: () => void }) {
                 </div>
                 <ArrowsLeftRight size={20} weight="bold" className="mx-auto text-slate-400" aria-hidden="true" />
                 <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Bạn đưa</div>
-                  <div className="text-sm font-bold">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bạn đưa</div>
+                  <div className="text-sm font-semibold">
                     {item.counterpartAssignment.workShiftName} · {formatWeekdayDate(item.counterpartAssignment.workDate)}
                   </div>
                   <div className="text-xs text-slate-500">
