@@ -395,8 +395,19 @@ Container đều đặt `restart: unless-stopped` — MỘT KHI Docker Desktop �
 - ~~Sao lưu tự động theo LỊCH thật + cảnh báo khi thất bại~~ **ĐÃ LÀM XONG (14/09/2026, S6-01, `docs/DECISIONS.md` #141)** — `backup.sh` ghi trạng thái (JSON, atomic) sau mỗi lần chạy ra volume dùng chung `backup_status_data`; `GET /api/v1/backup-status` (chỉ `clinic_admin`) đọc qua `BackupStatusPort`; banner đỏ toàn cục (`BackupStatusBanner.tsx`, lazy) hiện khi lần chạy gần nhất thất bại HOẶC quá 30 giờ chưa có lần thành công nào. Không phải email/SMS thật (v1: qua banner trong app, cùng tinh thần ADM-06 break-glass) — `BACKUP_STATUS_FILE` tuỳ chọn, máy dev không đặt thì banner tự tắt, không cảnh báo giả.
 - **Diễn tập phục hồi thật — ĐÃ LÀM MỘT PHẦN** (01/09/2026, `docs/DECISIONS.md` #099): xác nhận restore hoạt động đúng, phát hiện + sửa 1 bug thật chặn hoàn toàn (xem mục 2.3c). Chưa làm: đo thời gian phục hồi thật trên máy chủ pilot thật (chỉ mới đo trên máy dev), chưa lặp lại diễn tập định kỳ (nên làm lại mỗi khi có thay đổi schema lớn).
 - Rà soát bảo mật theo checklist `.claude/docs/security-audit.md` đầy đủ (S6-03) — S4-05 chỉ đảm bảo các ràng buộc đã chốt từ trước (không superuser cho role app, không log PII...) không bị phá vỡ lúc đóng gói, chưa phải audit toàn diện.
-- Đo hiệu năng p95 API trên cấu hình máy chủ pilot THẬT (S6-04) — trước đó chỉ đo trên máy dev.
+- Đo hiệu năng p95 API trên cấu hình máy chủ pilot THẬT (S6-04) — công cụ đo đã có (16/10/2026), hướng dẫn chạy ở mục 2.5a ngay dưới; còn thiếu lần chạy trên máy pilot thật.
 - Tài liệu vận hành đầy đủ (S6-07: xử lý sự cố thường gặp cho người không rành IT) — tài liệu này (Phần 2) mới đủ cho người cài đặt kỹ thuật; `docs/pilot-onboarding.md` (S4-06) là tài liệu cho NHÂN VIÊN phòng khám (không phải người cài đặt).
+
+### 2.5a. Đo hiệu năng p95 trên máy chủ pilot (S6-04)
+
+Mục tiêu (PRD mục 5): p95 thời gian phản hồi API < 500 ms với 10 người dùng đồng thời. Công cụ: `apps/api/scripts/perf-load.ts` — chỉ GỌI ĐỌC (không tạo/sửa/xoá dữ liệu), nên chạy được trên dữ liệu thật; các lần mở hồ sơ/lượt khám vẫn để lại dòng "xem" trong nhật ký hoạt động, vì vậy dùng một tài khoản riêng (ví dụ `perf.do`) có quyền đọc bệnh nhân, lịch hẹn, lượt khám, thu ngân, kho.
+
+- **Chạy từ máy nào**: một máy KHÁC trong cùng mạng LAN với máy chủ (đúng điều kiện nhân viên dùng thật; chạy ngay trên máy chủ sẽ tranh CPU với chính ứng dụng và cho số không đại diện). Cần Node 20 và mã nguồn (`pnpm install`).
+- **Lệnh** (đặt `PERF_BASE_URL` là địa chỉ người dùng vẫn mở, không có `/` ở cuối và không có `/api`):
+  `PERF_BASE_URL=http://192.168.1.10 PERF_TENANT_ID=<tenantId> PERF_USERNAME=<tài khoản đo> PERF_PASSWORD=<mật khẩu> PERF_DURATION_SEC=300 PERF_OUT=ket-qua.json pnpm --filter @nexamed/api run perf:load`
+- **Giờ chạy**: lúc phòng khám vắng (đo tải do script tạo ra, không cộng thêm người thật), rồi lặp lại một lần trong giờ cao điểm để biết ảnh hưởng của người dùng thật. Đăng nhập giới hạn 10 lần/phút/IP nên đợi 1 phút giữa hai lần chạy (script tự chờ nếu bị 429).
+- **Đọc kết quả**: `ĐẠT` khi p95 tổng hợp < 500 ms VÀ không có lỗi (mã khác 2xx/429). Dòng đăng nhập báo riêng (Argon2id cố ý chậm, chỉ xảy ra một lần mỗi phiên). Số 429 được đếm riêng, KHÔNG tính vào độ trễ — nếu có, đó là giới hạn tốc độ theo IP đang chặn người dùng chung một địa chỉ (xem `iam.module.ts`). Mục "5 yêu cầu chậm nhất" cho biết chậm tập trung đầu phiên (nhiễu khởi động) hay rải đều (chậm thật).
+- **Ghi lại**: dán dòng "TỔNG HỢP" và thông số máy chủ (CPU, RAM, ổ đĩa, số bệnh nhân/lượt khám) vào `docs/GA-checklist.md` mục 2, dòng "p95 API".
 
 ### Ràng buộc bắt buộc khi viết script/cấu hình on-prem (đã chốt, không tự đổi)
 

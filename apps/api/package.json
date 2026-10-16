@@ -22,7 +22,8 @@
     "db:reset-admin-password": "tsx scripts/reset-admin-password.ts",
     "openapi:generate": "tsx scripts/generate-openapi.ts",
     "perf:patient-search": "tsx scripts/perf-patient-search.ts",
-    "perf:consultation": "tsx scripts/perf-consultation.ts"
+    "perf:consultation": "tsx scripts/perf-consultation.ts",
+    "perf:load": "tsx scripts/perf-load.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed/index.ts"

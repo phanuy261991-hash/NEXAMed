@@ -25,7 +25,7 @@ Quy ước trạng thái: `[ ]` chưa đạt/chưa đo, `[~]` đang làm/một p
 | Tỷ lệ lượt khám nhập vào hệ thống trong ngày (từ tuần 3) | > 95% | [ ] Chưa đo tại pilot |
 | Số ca phải quay lại dùng giấy vì hệ thống chậm/lỗi (từ tuần 3) | < 2 ca/tuần | [ ] Chưa đo tại pilot |
 | Bác sĩ tự thao tác được không cần hỗ trợ sau đào tạo 2 giờ | 100% | [ ] Chưa đo tại pilot |
-| p95 API | < 500ms | [~] Mới đo trên máy dev (không phải cấu hình pilot thật) — xem S6-04 |
+| p95 API | < 500ms | [~] Công cụ đo xong (`perf:load`, 16/10/2026). Đo nền trên máy dev (bản production, 10 người dùng ảo, 180 giây, ~3.000 bệnh nhân): **p95 66 ms, 0 lỗi**. Chưa phải cấu hình pilot thật — chạy lại trên máy chủ pilot theo `docs/Deploy.md` 2.5a rồi ghi số vào đây |
 | Tải màn hình khám có đủ tiền sử | < 2 giây | [x] Đo được 33ms trên dev DB với 20 lượt khám cũ (S3-09) — dưới ngưỡng xa, nhưng cần đo lại trên cấu hình pilot thật (S6-04) để chắc chắn |
 | Uptime giờ làm việc | > 99% | [ ] Chưa đo — cần vận hành thật đủ lâu để tính |
 | Sao lưu chạy đúng lịch + phục hồi thử thành công | 100%, kiểm thử hàng tháng | [~] Xem mục 3 dưới |
@@ -64,7 +64,7 @@ Quy ước trạng thái: `[ ]` chưa đạt/chưa đo, `[~]` đang làm/một p
 ## Việc còn treo trước khi ký GA
 
 1. **S6-02** — diễn tập phục hồi trên máy chủ pilot thật + lặp lại định kỳ (cần pilot thật).
-2. **S6-04** — đo hiệu năng p95 trên cấu hình máy chủ pilot thật (cần pilot thật).
+2. **S6-04** — chạy `perf:load` trên máy chủ pilot thật (công cụ + số đo nền dev đã có, xem bảng mục 2).
 3. Đo đủ bộ chỉ số PRD mục 5 tại pilot, có số gốc trước triển khai để so sánh.
 4. Xác nhận pilot chạy ≥5 ngày làm việc liên tục không dùng sổ giấy.
 5. Cài đặt độc lập lần thứ hai không có dev hỗ trợ, xác nhận tài liệu đủ dùng.
