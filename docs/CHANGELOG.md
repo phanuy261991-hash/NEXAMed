@@ -4,9 +4,21 @@
 
 ## 2026-10-16
 
+### Chữ trong bảng nhẹ hơn, thẻ thống kê phẳng (`docs/DECISIONS.md` #240 bổ sung 2)
+
+Chữ trong các bảng danh sách (tên, mã, SĐT, ngày...) nay hiển thị nét thường thay vì nét đậm, phân cấp bằng màu chữ; số tiền và badge giữ nguyên. Dải thẻ số liệu ở "Bệnh nhân trong ngày" bỏ bóng đổ và nền màu mờ: nền trắng, viền mảnh, biểu tượng nền màu đặc. Không migration.
+
+### Sửa lỗi bố cục màn hình nhỏ và màn rất rộng (`docs/DECISIONS.md` #240 bổ sung)
+
+Khung xem trước Mẫu in tự thu phóng vừa tờ giấy (không còn cắt mép phải ở màn 1280px); bảng dòng hàng ở Phiếu nhập kho cuộn ngang thay vì cắt cột "Thành tiền" ở màn ≤1024px; đường dẫn đầu trang hiện dấu … khi quá dài; màn rất rộng (3440px) nội dung có trần 2200px căn giữa nên bảng không giãn hết ngang. Không migration.
+
+### Kê đơn: liều chia lẻ, thuốc không chia được, số ngày chung, lời dặn riêng + câu chào đăng nhập (`docs/DECISIONS.md` #241)
+
+Bác sĩ kê được **¼, ½, 1½ viên** (gõ `1/2`, `0,5` hoặc bấm nút nhanh ¼ · ½ · 1 · 2); tổng số lẻ làm tròn lên khi phát thuốc và trừ kho, dòng đơn ghi rõ số lẻ gốc. Thuốc đánh dấu **không chia được** (viên nang, bao tan trong ruột, giải phóng kéo dài) mà kê liều lẻ thì hiện cảnh báo, có thể "Bỏ qua"; quản trị bật công tắc "Chặn kê liều lẻ" thì không ký được. Thêm thuốc là **lưu nháp ngay** nên cảnh báo trùng hoạt chất hiện liền (trước đây phải bấm Lưu mới thấy). Hàng pill liều (`1·0·0·1`...), số ngày thuốc đầu tự áp cho các thuốc sau (sửa tay từng thuốc được), ô **Lời dặn của bác sĩ** riêng cho đơn kèm "Mẫu lời dặn" dùng chung, in cuối đơn. Thanh chẩn đoán dính chỉ hiện khi cuộn khuất khối chẩn đoán (sửa lỗi lộ nội dung phía trên), ô "Thêm thuốc vào đơn" dính khi đơn dài. Màn đăng nhập thêm câu chào "Xin chào, Buổi trưa !!!" theo giờ. **Môi trường khác**: `db:deploy` (1 migration: liều NUMERIC(5,2), `drug.is_splittable`, `prescription.doctor_advice`) rồi khởi động lại API; thuốc cũ mặc định chia được nên không đổi hành vi.
+
 ### Chuẩn độ đậm chữ, hộp xác nhận gọn và sửa lỗi hiển thị (`docs/DECISIONS.md` #240)
 
-Toàn bộ giao diện màn hình dùng chữ đậm tối đa semibold (600) thay cho bold/extra-bold, nét chữ sắc hơn, tiếng Việt có dấu không còn "vỡ nét"; chứng từ in giữ nguyên chữ đậm. Các hộp xác nhận (ngưng/ẩn/xoá, từ chối/huỷ có lý do, mở khoá, vô hiệu hoá tài khoản, huỷ lượt khám, trả về hàng chờ) có kiểu mới gọn hơn, ít chữ hơn: tên hành động, thông tin đối tượng có đường kẻ, một câu ghi chú, Esc để đóng. Sửa nhãn khối bị cắt nửa ở hộp thoại Sửa hồ sơ bệnh nhân và 6 hộp thoại khác. Đổi tên menu "Danh mục Cận lâm sàng". Còn 9 hộp xác nhận cũ chưa chuyển. Không migration, không ảnh hưởng dữ liệu.
+Toàn bộ giao diện màn hình dùng chữ đậm tối đa semibold (600) thay cho bold/extra-bold, nét chữ sắc hơn, tiếng Việt có dấu không còn "vỡ nét"; chứng từ in giữ nguyên chữ đậm. Các hộp xác nhận (ngưng/ẩn/xoá, từ chối/huỷ có lý do, mở khoá, vô hiệu hoá tài khoản, huỷ lượt khám, trả về hàng chờ) có kiểu mới gọn hơn, ít chữ hơn: tên hành động, thông tin đối tượng có đường kẻ, một câu ghi chú, Esc để đóng. Sửa nhãn khối bị cắt nửa ở hộp thoại Sửa hồ sơ bệnh nhân và 6 hộp thoại khác. Đổi tên menu "Danh mục Cận lâm sàng". Cuối ngày đã chuyển nốt 9 hộp xác nhận cũ (Hoàn tiền, Nạp tiền & thu ngay, Huỷ đính chính cận lâm sàng, Xuất bệnh án, Tất toán ví, 3 hộp chọn bác sĩ ở Tiếp nhận, Tên vai trò, Đặt lại mật khẩu) sang kiểu mới. Không migration, không ảnh hưởng dữ liệu.
 
 ### Màn hình đăng nhập mới (`docs/DECISIONS.md` #240)
 

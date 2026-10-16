@@ -70,6 +70,52 @@ Tổng 14 ký tự gồm dấu gạch. **Lưu ý**: chưa có số hiệu văn b
 7. Đơn đã ký trước đây: không cấp mã chuẩn (đề xuất) hay cấp hồi tố?
 8. Phạm vi lần đầu: GĐ1 + GĐ2 (đề xuất); GĐ3 sau khi có tài liệu kỹ thuật kết nối thật.
 
+## 7b. ĐÃ CHỐT (16/10/2026, chủ dự án trả lời từng câu)
+
+1. **Mã cơ sở KCB**: đúng 5 chữ số, MỖI CHI NHÁNH một mã riêng (chi nhánh chưa nhập thì lấy mã của công ty).
+2. **7 ký tự giữa**: thập phân (`0000001`...), bộ đếm CHUNG cho cả 4 loại đơn theo cơ sở KCB, không đánh số lại.
+3. **Tiền chất, thuốc độc**: có BẢNG ÁNH XẠ loại thuốc → loại đơn quản trị sửa được. Mặc định: gây nghiện → N; hướng thần và tiền chất dùng làm thuốc → H; thuốc độc và thuốc thường → C; thuốc có cờ "Đông y" → Y. **Tiền chất → H ĐÃ ĐƯỢC TÀI LIỆU 808 XÁC NHẬN** (trường `loai_don_thuoc`: "h: loại đơn thuốc hướng tâm thần và thuốc tiền chất", xem mục 9). Thuốc độc → C vẫn chưa có văn bản nêu rõ (tài liệu chỉ có 4 loại c/h/n/y), nên giữ qua bảng ánh xạ sửa được.
+4. **Thuốc cổ truyền**: thêm cờ "Đông y" ở danh mục thuốc (và cột nhập Excel).
+5. **Đơn nhiều loại**: tự tách khi ký, trước khi ký hiện "sẽ ký thành N đơn".
+6. **Kê thuốc tự do**: CẤM N/H/Y, dòng tự do luôn là đơn C.
+7. **Đơn đã ký trước ngày bật chế độ**: không cấp mã chuẩn hồi tố, giữ mã `DT…`.
+8. **Phạm vi**: cả 3 giai đoạn, kể cả chuẩn bị liên thông (port + bảng gửi đơn, chưa gửi thật). **Rủi ro đã nêu**: chưa có tài liệu kỹ thuật kết nối thật nên phần GĐ3 có thể phải làm lại khi có tài liệu; giữ GĐ3 mỏng (port + outbox + kiểm dữ liệu) để giảm rủi ro.
+
+**Việc kế tiếp**: mockup giao diện (cấu hình mã chế độ chuẩn + nhập mã cơ sở theo chi nhánh; xem trước "sẽ ký thành N đơn"; cờ "Đông y"; trang bảng ánh xạ loại thuốc → loại đơn; bản in nhiều tờ) → chủ dự án duyệt → code GĐ1 → GĐ2 → GĐ3.
+
 ## 8. Lộ trình sơ bộ và kiểm thử
 
 GĐ1 (mã + cấu hình) → GĐ2 (phân loại + tách đơn, phần lớn công việc) → GĐ3 (port + outbox). Cần mockup được duyệt cho phần giao diện (cấu hình mã chế độ chuẩn, màn xem trước "sẽ ký thành N đơn", cờ cổ truyền) theo quy tắc làm việc. Test bắt buộc: duy nhất mã dưới tải đồng thời, không đánh số lại, đúng ký tự loại cho từng tổ hợp thuốc, tách đơn, đính chính giữ mã, cô lập hai chi nhánh cùng công ty, không bật được khi thiếu mã KCB.
+
+## 9. Tài liệu liên thông THẬT (Quyết định 808/QĐ-BYT) — đã nhận 16/10/2026
+
+Bản tham chiếu: `docs/product/references/qd-808-donthuocquocgia-api.md` (PDF gốc: https://donthuocquocgia.vn/quyet-dinh-808.pdf). Máy chủ `https://api.donthuocquocgia.vn`, JSON, token kiểu bearer hiệu lực **7 ngày**.
+
+**Các API cơ sở khám chữa bệnh dùng:**
+1. `POST /api/auth/dang-nhap-co-so-kham-chua-benh` — `ma_lien_thong_co_so_kham_chua_benh` + `password` (cấp trên donthuocquocgia.vn) → token cơ sở (dùng để thêm/xoá bác sĩ).
+2. `POST /api/v1/them-bac-si` / `/api/v1/xoa-bac-si` — `ma_lien_thong_bac_si`, header `Authorization: bearer`.
+3. `POST /api/auth/dang-nhap-bac-si` — `ma_lien_thong_bac_si` + `ma_lien_thong_co_so_kham_chua_benh` + `password` của BÁC SĨ → token bác sĩ (lỗi 422 nếu bác sĩ chưa được thêm vào cơ sở).
+4. `POST /api/v1/gui-don-thuoc` (header bearer = token bác sĩ) — gửi đơn; 200 thành công, 422 kèm `danh_sach_cac_loi`.
+5. Hai API cho NHÀ THUỐC (không phải phòng khám, cần `app-name`/`app-key` do đơn vị vận hành cấp cho nhà cung cấp phần mềm): `GET /api/v1/thong-tin-don-thuoc/{ma_don_thuoc}` và `POST /api/v1/cap-nhat-don-thuoc` (báo số lượng đã bán). Chỉ liên quan nếu sau này "Phát thuốc" muốn báo số lượng bán lên cổng.
+
+**Điều tài liệu xác nhận / làm rõ cho các quyết định đã chốt:**
+- **Tiền chất → H**: `loai_don_thuoc` = `h` là "hướng tâm thần VÀ thuốc tiền chất"; `n` gây nghiện; `y` cổ truyền; `c` cơ bản. Khớp mặc định ở câu 3; thuốc độc không được nêu (giữ C qua bảng ánh xạ).
+- **Mã đơn 14 ký tự** (`xxxxxyyyyyyy-z`): 5 ký tự đầu là "mã bảo hiểm của cơ sở khám chữa bệnh" (chưa có thì đăng ký ở donthuocquocgia.vn); 7 ký tự giữa chữ/số bất kỳ, **mã phải duy nhất** (là khoá tra cứu trên hệ thống); ký tự cuối c/n/h/y. **Lưu ý tài liệu không nhất quán về chữ hoa/thường** ("-c" ở phần cấu trúc, "C, N, H, Y" ở phần định dạng; trường `loai_don_thuoc` dùng chữ thường) — cần chốt với đơn vị vận hành, đề xuất lưu mã chuẩn chữ HOA và chuyển chữ thường khi gửi `loai_don_thuoc`.
+- **"Mã cơ sở KCB" ≠ "mã liên thông"**: 5 ký tự đầu mã đơn là mã cơ sở KCB; `ma_lien_thong_co_so_kham_chua_benh` là mã khác (đăng nhập API). Cả hai cần lưu theo chi nhánh.
+
+**Khoảng cách mới cho GĐ3 (chưa có trong thiết kế ở mục 5):**
+| Cần có | Hiện trạng |
+|---|---|
+| Mã liên thông + mật khẩu của CƠ SỞ (theo chi nhánh, mật khẩu mã hoá) | Chưa có |
+| Mã liên thông + mật khẩu của TỪNG BÁC SĨ (đăng nhập bác sĩ để gửi đơn; mật khẩu mã hoá, token 7 ngày phải làm mới) | Chưa có — `user_account` chỉ có CCHN; đây là điểm thiết kế quan trọng: gửi đơn chạy với danh tính bác sĩ ký |
+| `ma_thuoc` 20 ký tự (danh mục thuốc quốc gia), BẮT BUỘC mỗi dòng thuốc | `drug.national_code` có nhưng không bắt buộc; dòng kê tự do không có mã → không gửi được, cần xử lý (cảnh báo/bỏ qua) |
+| `biet_duoc` = hoạt chất chính (hoặc tên dược liệu với đơn Y) | Có `drug.active_ingredient`/`drug_ingredient`, chưa ánh xạ |
+| `hinh_thuc_dieu_tri` (danh mục BYT) — bắt buộc với đơn loại C | Chưa có danh mục/trường |
+| `dot_dung_thuoc` (đợt, từ ngày, đến ngày; thêm số thang thuốc với đơn Y) — bắt buộc với đơn H/N/Y | Chưa có |
+| `thong_tin_nguoi_giam_ho` (họ tên, SĐT, địa chỉ) — bắt buộc khi người khám là trẻ dưới ngưỡng tháng tuổi (tài liệu ghi "hơn 72 tháng", chữ có vẻ lỗi — đối chiếu PDF/đơn vị vận hành; nhiều khả năng là DƯỚI 72 tháng) | Có `relative_*` của bệnh nhân |
+| `gioi_tinh` số 1/2/3 (chưa rõ/nam/nữ); `ngay_sinh_benh_nhan` d/m/Y; `ngay_gio_ke_don` Y-m-d H:i:s; `ngay_tai_kham` là SỐ NGÀY kể từ ngày kê | Cần hàm ánh xạ; `follow_up` hiện lưu ngày hẹn |
+| `chan_doan` danh sách (mã ICD-10, tên, kết luận) | Có; tài liệu ghi tên trường không nhất quán (`ma_chan_doan` ở mẫu, `ma_benh` ở bảng) — cần thử với môi trường thật |
+| `signature` chữ ký số của người kê đơn | v1 chỉ chữ ký logic; tài liệu không đánh dấu bắt buộc nhưng có trường — hỏi đơn vị vận hành cổng có chấp nhận thiếu không |
+| Giới hạn độ dài: `cach_dung` 500, `luu_y`/`loi_dan` 2000, `ho_ten`/`dia_chi` 500, `ma_thuoc` 20 | Cắt/kiểm khi dựng gói gửi |
+
+**Điều chỉnh thiết kế GĐ3**: ngoài port + outbox + kiểm dữ liệu đã chốt, thêm (a) lưu mã liên thông + mật khẩu mã hoá theo chi nhánh và theo bác sĩ, (b) bộ giữ token có hạn 7 ngày (đăng nhập lại khi hết hạn/401), (c) hàm dựng gói `gui-don-thuoc` thuần ở `packages/core` có test từng trường bắt buộc theo loại đơn, (d) bảng `prescription_submission` ghi cả `danh_sach_cac_loi` trả về. **Còn cần hỏi đơn vị vận hành cổng**: môi trường thử (sandbox), yêu cầu chữ ký số, chuẩn chữ hoa/thường mã đơn, cách đăng ký mã liên thông bác sĩ/cơ sở.
