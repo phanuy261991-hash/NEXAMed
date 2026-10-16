@@ -96,7 +96,7 @@ Nguyên tắc chung: quyền kiểm ở tầng service/repository (guard đọc 
 
 - JWT access token 15 phút + refresh token httpOnly cookie, xoay vòng mỗi lần refresh.
 - Mật khẩu hash Argon2id. Không dùng bcrypt/MD5/SHA cho mật khẩu.
-- Khoá tài khoản tạm sau 5 lần đăng nhập sai trong 15 phút.
+- Khoá tài khoản khi đăng nhập sai (docs/DECISIONS.md #239; nguồn sự thật `packages/core/src/iam/lockout.ts`): **nhân viên** — 5 lần sai trong 15 phút → khoá 5 phút, rồi 15, rồi 30 phút (mỗi bậc cần đủ 5 lần sai mới), sau lần khoá 30 phút sai thêm MỘT lần → khoá vĩnh viễn, chỉ người có quyền `user_account.unlock` (cùng chi nhánh) hoặc đặt lại mật khẩu mới gỡ được; bậc khoá KHÔNG tự hạ theo thời gian — chỉ về 0 khi đăng nhập đúng hoặc được mở khoá. **Người vận hành nền tảng** — khoá cố định 60 phút (đã có OTP). Khi bị khoá phải báo cụ thể số phút cho người dùng.
 - Đổi vai trò hoặc chuyển tenant thu hồi toàn bộ phiên đang mở.
 - JWT chứa `tenantId`; middleware set `app.current_tenant_id` cho phiên DB từ giá trị này (xem `multi-tenancy.md`).
 - **Người vận hành nền tảng SaaS** (docs/DECISIONS.md #237) tách hẳn tài khoản phòng khám: bảng `platform_operator`, đăng nhập mật khẩu Argon2id + OTP TOTP (bí mật mã hoá AES-256-GCM), token riêng `typ: platform_access` 60 phút không refresh, khoá tạm 5 lần sai (cả OTP), chỉ trên tên miền quản trị; không xem dữ liệu bệnh nhân, không đăng nhập thay; mọi thao tác ghi `platform_audit_log` (append-only).

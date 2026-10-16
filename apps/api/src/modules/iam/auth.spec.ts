@@ -7,6 +7,7 @@ import type { ConfigService } from '@nestjs/config';
 import {
   AccountDisabledError,
   AccountLockedError,
+  AccountLockedPermanentlyError,
   DEFAULT_ROLE_PERMISSIONS,
   InvalidCredentialsError,
   RefreshTokenInvalidError,
@@ -126,7 +127,7 @@ describe('AuthService — login/refresh/logout', () => {
   beforeEach(async () => {
     await privileged.userAccount.update({
       where: { id: userAId },
-      data: { failedLoginCount: 0, lastFailedLoginAt: null, lockedUntil: null, isActive: true },
+      data: { failedLoginCount: 0, lastFailedLoginAt: null, lockedUntil: null, lockoutLevel: 0, lockedPermanentlyAt: null, isActive: true },
     });
     await privileged.userSession.deleteMany({ where: { userId: userAId } });
   });
@@ -155,20 +156,64 @@ describe('AuthService — login/refresh/logout', () => {
     expect(user.failedLoginCount).toBe(1);
   });
 
-  it('sai mật khẩu 5 lần liên tiếp → khoá tài khoản; lần kế tiếp dù đúng mật khẩu vẫn bị chặn', async () => {
-    for (let i = 0; i < 5; i++) {
-      await expect(
-        authService.login({ tenantId: tenantAId, username: usernameA, password: 'wrong' }, REQUEST_META),
-      ).rejects.toBeInstanceOf(InvalidCredentialsError);
-    }
+  const wrong = () => authService.login({ tenantId: tenantAId, username: usernameA, password: 'wrong' }, REQUEST_META);
+  const right = () => authService.login({ tenantId: tenantAId, username: usernameA, password: TEST_PASSWORD }, REQUEST_META);
+  // Giả lập "đã chờ hết thời gian khoá" bằng cách đưa lockedUntil về quá khứ (không chờ thật).
+  const expireTemporaryLock = () => privileged.userAccount.update({ where: { id: userAId }, data: { lockedUntil: new Date(Date.now() - 1000) } });
+  const lockMinutes = async (): Promise<number> => {
+    const u = await privileged.userAccount.findUniqueOrThrow({ where: { id: userAId } });
+    return Math.round((u.lockedUntil!.getTime() - Date.now()) / 60_000);
+  };
+
+  it('4 lần sai vẫn báo "sai thông tin"; lần sai thứ 5 báo NGAY số phút khoá (5 phút), mật khẩu đúng sau đó vẫn bị chặn', async () => {
+    for (let i = 0; i < 4; i++) await expect(wrong()).rejects.toBeInstanceOf(InvalidCredentialsError);
+
+    const fifth = await wrong().catch((e: unknown) => e);
+    expect(fifth).toBeInstanceOf(AccountLockedError);
+    expect((fifth as AccountLockedError).retryAfterMinutes).toBe(5);
+    expect((fifth as AccountLockedError).message).toContain('5 phút');
 
     const user = await privileged.userAccount.findUniqueOrThrow({ where: { id: userAId } });
-    expect(user.failedLoginCount).toBe(5);
+    expect(user.lockoutLevel).toBe(1);
     expect(user.lockedUntil).not.toBeNull();
 
-    await expect(
-      authService.login({ tenantId: tenantAId, username: usernameA, password: TEST_PASSWORD }, REQUEST_META),
-    ).rejects.toBeInstanceOf(AccountLockedError);
+    const whileLocked = await right().catch((e: unknown) => e);
+    expect(whileLocked).toBeInstanceOf(AccountLockedError);
+    expect((whileLocked as AccountLockedError).retryAfterMinutes).toBeLessThanOrEqual(5);
+  });
+
+  it('khoá luỹ tiến 5 → 15 → 30 phút rồi MỘT lần sai nữa là khoá vĩnh viễn; mật khẩu đúng cũng bị chặn; nhật ký ghi sự kiện', async () => {
+    for (let i = 0; i < 5; i++) await wrong().catch(() => undefined);
+    expect(await lockMinutes()).toBe(5);
+
+    await expireTemporaryLock();
+    for (let i = 0; i < 4; i++) await expect(wrong()).rejects.toBeInstanceOf(InvalidCredentialsError);
+    await expect(wrong()).rejects.toBeInstanceOf(AccountLockedError);
+    expect(await lockMinutes()).toBe(15);
+
+    await expireTemporaryLock();
+    for (let i = 0; i < 4; i++) await expect(wrong()).rejects.toBeInstanceOf(InvalidCredentialsError);
+    await expect(wrong()).rejects.toBeInstanceOf(AccountLockedError);
+    expect(await lockMinutes()).toBe(30);
+
+    await expireTemporaryLock();
+    // Chỉ MỘT lần sai sau khoá 30 phút.
+    await expect(wrong()).rejects.toBeInstanceOf(AccountLockedPermanentlyError);
+    const user = await privileged.userAccount.findUniqueOrThrow({ where: { id: userAId } });
+    expect(user.lockedPermanentlyAt).not.toBeNull();
+    expect(user.lockedUntil).toBeNull();
+
+    await expect(right()).rejects.toBeInstanceOf(AccountLockedPermanentlyError);
+    const events = await privileged.auditLog.count({ where: { tenantId: tenantAId, entityId: userAId, action: 'auth.account_locked_permanently' } });
+    expect(events).toBe(1);
+  });
+
+  it('đăng nhập đúng sau một lần khoá tạm đặt lại bậc khoá về 0', async () => {
+    for (let i = 0; i < 5; i++) await wrong().catch(() => undefined);
+    await expireTemporaryLock();
+    await right();
+    const user = await privileged.userAccount.findUniqueOrThrow({ where: { id: userAId } });
+    expect(user).toMatchObject({ lockoutLevel: 0, failedLoginCount: 0, lockedUntil: null, lockedPermanentlyAt: null });
   });
 
   it('tài khoản is_active=false → AccountDisabledError', async () => {

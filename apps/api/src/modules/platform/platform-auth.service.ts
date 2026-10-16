@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { AccountLockedError, InvalidCredentialsError, PlatformOtpInvalidError, isAccountLocked, recordFailedLogin as nextFailedState } from '@nexamed/core';
+import { AccountLockedError, InvalidCredentialsError, type LoginAttemptState, PlatformOtpInvalidError, isAccountLocked, recordFailedLogin as nextFailedState } from '@nexamed/core';
 import type { PlatformLoginRequest, PlatformLoginResponse, PlatformOperator as PlatformOperatorDto, PlatformSessionResponse, PlatformVerifyOtpRequest } from '@nexamed/shared';
 import type { PlatformOperator } from '@prisma/client';
 import type { Env } from '../../config/env.schema';
@@ -38,11 +38,13 @@ export class PlatformAuthService {
   async login(dto: PlatformLoginRequest, meta: RequestMeta): Promise<PlatformLoginResponse> {
     const operator = await this.operators.findByUsername(dto.username);
     const now = new Date();
-    if (operator && isAccountLocked(operator, now)) throw new AccountLockedError(operator.lockedUntil!);
+    if (operator && isAccountLocked(operator, now)) throw new AccountLockedError(operator.lockedUntil!, now);
     // Không có tài khoản/đã khoá cũng băm một mật khẩu giả để thời gian phản hồi không tiết lộ tên đăng nhập có tồn tại hay không.
     const passwordOk = operator && operator.isActive ? await argon2.verify(operator.passwordHash, dto.password) : (await argon2.verify(await this.getDummyHash(), dto.password), false);
     if (!operator || !operator.isActive || !passwordOk) {
-      if (operator) await this.registerFailure(operator, now, meta);
+      const failed = operator ? await this.registerFailure(operator, now, meta) : null;
+      // Lần sai vừa khoá tài khoản: báo ngay số phút khoá thay vì "sai mật khẩu" (chủ dự án chốt, #239).
+      if (failed?.lockedUntil) throw new AccountLockedError(failed.lockedUntil, now);
       throw new InvalidCredentialsError();
     }
     return { mfaToken: this.sign(operator.id, 'platform_mfa', MFA_TOKEN_TTL_SECONDS), expiresIn: MFA_TOKEN_TTL_SECONDS };
@@ -53,10 +55,11 @@ export class PlatformAuthService {
     const operator = claims ? await this.operators.findById(claims.sub) : null;
     if (!operator || !operator.isActive) throw new PlatformOtpInvalidError();
     const now = new Date();
-    if (isAccountLocked(operator, now)) throw new AccountLockedError(operator.lockedUntil!);
+    if (isAccountLocked(operator, now)) throw new AccountLockedError(operator.lockedUntil!, now);
     const secret = decryptPii(Buffer.from(operator.totpSecretEnc, 'base64'), this.config.getOrThrow('ENCRYPTION_KEY', { infer: true }));
     if (!verifyTotp(secret, dto.code, now.getTime())) {
-      await this.registerFailure(operator, now, meta);
+      const failed = await this.registerFailure(operator, now, meta);
+      if (failed.lockedUntil) throw new AccountLockedError(failed.lockedUntil, now);
       throw new PlatformOtpInvalidError();
     }
     await this.operators.recordSuccessfulLogin(operator, now);
@@ -72,9 +75,11 @@ export class PlatformAuthService {
     return operator && operator.isActive ? toDto(operator) : null;
   }
 
-  private async registerFailure(operator: PlatformOperator, now: Date, meta: RequestMeta): Promise<void> {
-    await this.operators.recordFailedLogin(operator, nextFailedState(operator, now));
+  private async registerFailure(operator: PlatformOperator, now: Date, meta: RequestMeta): Promise<LoginAttemptState> {
+    const next = nextFailedState(operator, now);
+    await this.operators.recordFailedLogin(operator, next);
     await this.audit.append({ operatorId: operator.id, action: 'platform.login_failed', ip: meta.ip, userAgent: meta.userAgent });
+    return next;
   }
 
   private sign(operatorId: string, typ: 'platform_mfa' | 'platform_access', ttlSeconds: number): string {

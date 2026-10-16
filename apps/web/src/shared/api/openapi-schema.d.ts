@@ -10588,6 +10588,9 @@ export interface paths {
                                     defaultRoomId: string | null;
                                     signatureUrl: string | null;
                                     isActive: boolean;
+                                    /** @enum {string} */
+                                    lockStatus: "NONE" | "TEMPORARY" | "PERMANENT";
+                                    lockedUntil: string | null;
                                     roleNames: string[];
                                     branchIds: string[];
                                     version: number;
@@ -10711,6 +10714,9 @@ export interface paths {
                                 defaultRoomId: string | null;
                                 signatureUrl: string | null;
                                 isActive: boolean;
+                                /** @enum {string} */
+                                lockStatus: "NONE" | "TEMPORARY" | "PERMANENT";
+                                lockedUntil: string | null;
                                 roleNames: string[];
                                 branchIds: string[];
                                 version: number;
@@ -10840,6 +10846,9 @@ export interface paths {
                                 defaultRoomId: string | null;
                                 signatureUrl: string | null;
                                 isActive: boolean;
+                                /** @enum {string} */
+                                lockStatus: "NONE" | "TEMPORARY" | "PERMANENT";
+                                lockedUntil: string | null;
                                 roleNames: string[];
                                 branchIds: string[];
                                 version: number;
@@ -10929,6 +10938,9 @@ export interface paths {
                                 defaultRoomId: string | null;
                                 signatureUrl: string | null;
                                 isActive: boolean;
+                                /** @enum {string} */
+                                lockStatus: "NONE" | "TEMPORARY" | "PERMANENT";
+                                lockedUntil: string | null;
                                 roleNames: string[];
                                 branchIds: string[];
                                 version: number;
@@ -11026,6 +11038,9 @@ export interface paths {
                                 defaultRoomId: string | null;
                                 signatureUrl: string | null;
                                 isActive: boolean;
+                                /** @enum {string} */
+                                lockStatus: "NONE" | "TEMPORARY" | "PERMANENT";
+                                lockedUntil: string | null;
                                 roleNames: string[];
                                 branchIds: string[];
                                 version: number;
@@ -11165,6 +11180,9 @@ export interface paths {
                                 defaultRoomId: string | null;
                                 signatureUrl: string | null;
                                 isActive: boolean;
+                                /** @enum {string} */
+                                lockStatus: "NONE" | "TEMPORARY" | "PERMANENT";
+                                lockedUntil: string | null;
                                 roleNames: string[];
                                 branchIds: string[];
                                 version: number;
@@ -11254,6 +11272,148 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/users/{id}/unlock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mở khoá tài khoản bị khoá do đăng nhập sai (khoá tạm hoặc vĩnh viễn) — chỉ tài khoản chung ít nhất một chi nhánh với người thao tác */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công (tài khoản không bị khoá thì trả nguyên trạng) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                employeeCode: string | null;
+                                username: string;
+                                fullName: string;
+                                displayName: string | null;
+                                phone: string | null;
+                                email: string | null;
+                                dob: string | null;
+                                /** @enum {string|null} */
+                                gender: "male" | "female" | null;
+                                licenseNo: string | null;
+                                licenseIssuedAt: string | null;
+                                licenseIssuedPlace: string | null;
+                                academicTitleCode: string | null;
+                                positionCode: string | null;
+                                employmentStatusCode: string | null;
+                                employmentTypeCode: string | null;
+                                canSignMedicalRecord: boolean;
+                                mustChangePassword: boolean;
+                                /** Format: uuid */
+                                departmentId: string | null;
+                                /** Format: uuid */
+                                defaultRoomId: string | null;
+                                signatureUrl: string | null;
+                                isActive: boolean;
+                                /** @enum {string} */
+                                lockStatus: "NONE" | "TEMPORARY" | "PERMANENT";
+                                lockedUntil: string | null;
+                                roleNames: string[];
+                                branchIds: string[];
+                                version: number;
+                                createdAt: string;
+                                updatedAt: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền user_account.unlock */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác hoặc không chung chi nhánh) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}/reset-password": {
         parameters: {
             query?: never;
@@ -11317,6 +11477,9 @@ export interface paths {
                                 defaultRoomId: string | null;
                                 signatureUrl: string | null;
                                 isActive: boolean;
+                                /** @enum {string} */
+                                lockStatus: "NONE" | "TEMPORARY" | "PERMANENT";
+                                lockedUntil: string | null;
                                 roleNames: string[];
                                 branchIds: string[];
                                 version: number;

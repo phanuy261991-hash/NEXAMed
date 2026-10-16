@@ -67,6 +67,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'clinic_config', action: 'update', description: 'Sửa cấu hình phòng khám' },
   { module: 'user_account', action: 'read', description: 'Xem tài khoản người dùng' },
   { module: 'user_account', action: 'manage', description: 'Tạo/sửa/khoá tài khoản, gán vai trò' },
+  // Mở khoá tài khoản bị khoá do đăng nhập sai (docs/DECISIONS.md #239) — tách khỏi `manage` để cấp riêng cho người trực chi nhánh. Chỉ mở khoá được tài khoản có chung ít nhất một chi nhánh với người thao tác. Mặc định clinic_admin/system_admin.
+  { module: 'user_account', action: 'unlock', description: 'Mở khoá tài khoản bị khoá do đăng nhập sai' },
   { module: 'role_permission', action: 'manage', description: 'Cấu hình ma trận phân quyền' },
   { module: 'audit_log', action: 'read', description: 'Xem nhật ký hoạt động' },
   { module: 'reference_catalog', action: 'read', description: 'Xem danh mục dùng chung (dân tộc, quốc tịch...)' },
@@ -497,6 +499,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'clinic_config.update': 'global',
     'user_account.read': 'global',
     'user_account.manage': 'global',
+    'user_account.unlock': 'global',
     'role_permission.manage': 'global',
     'audit_log.read': 'global',
     'reference_catalog.read': 'global',
@@ -613,6 +616,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'software_update.read': 'global',
     'user_account.read': 'global',
     'user_account.manage': 'global',
+    'user_account.unlock': 'global',
     'audit_log.read': 'global',
     // Mặc định cũng có quyền mở khoá theo yêu cầu chủ dự án — chưa có
     // `work_shift_assignment.read/create/delete` nên hiện chưa dùng được ở UI (không phải bug: vai

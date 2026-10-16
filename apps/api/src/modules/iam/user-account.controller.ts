@@ -20,6 +20,7 @@ import {
   createUserAccountRequestSchema,
   listUserAccountsQuerySchema,
   resetUserPasswordRequestSchema,
+  unlockUserAccountRequestSchema,
   updateOwnProfileRequestSchema,
   updateUserAccountRequestSchema,
 } from '@nexamed/shared';
@@ -89,6 +90,16 @@ export class UserAccountController {
     const dto = updateUserAccountRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
     return this.userAccountService.updateUserAccount(tenantId, userId, id, dto, extractRequestMeta(req));
+  }
+
+  /** Mở khoá tài khoản bị khoá do đăng nhập sai (#239) — quyền riêng `user_account.unlock`, phạm vi theo chi nhánh kiểm ở service. */
+  @Post(':id/unlock')
+  @RequirePermission('user_account', 'unlock', { entityIdParam: 'id' })
+  @HttpCode(200)
+  async unlock(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = unlockUserAccountRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.userAccountService.unlockAccount(tenantId, userId, id, dto, extractRequestMeta(req));
   }
 
   @Post(':id/reset-password')

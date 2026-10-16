@@ -11,8 +11,28 @@ export class InvalidCredentialsError extends DomainError {
 export class AccountLockedError extends DomainError {
   readonly code = 'AUTH_ACCOUNT_LOCKED';
 
-  constructor(public readonly lockedUntil: Date) {
-    super('Tài khoản đang bị khoá tạm thời do đăng nhập sai nhiều lần.');
+  /** Số phút còn lại tới lúc hết khoá, làm tròn LÊN (còn 10 giây vẫn báo "1 phút"), tối thiểu 1. */
+  readonly retryAfterMinutes: number;
+
+  constructor(
+    public readonly lockedUntil: Date,
+    now: Date,
+  ) {
+    const minutes = Math.max(1, Math.ceil((lockedUntil.getTime() - now.getTime()) / 60_000));
+    super(`Tài khoản bị khoá tạm thời ${minutes} phút do đăng nhập sai nhiều lần. Vui lòng thử lại sau ${minutes} phút.`);
+    this.retryAfterMinutes = minutes;
+  }
+}
+
+/**
+ * Khoá vĩnh viễn sau chuỗi khoá tạm (docs/DECISIONS.md #239) — chỉ quản trị có quyền
+ * `user_account.unlock` (hoặc lệnh đặt lại mật khẩu quản trị trên máy chủ) mới gỡ được.
+ */
+export class AccountLockedPermanentlyError extends DomainError {
+  readonly code = 'AUTH_ACCOUNT_LOCKED_PERMANENT';
+
+  constructor() {
+    super('Tài khoản đã bị khoá do đăng nhập sai nhiều lần. Vui lòng liên hệ quản trị viên để được mở khoá.');
   }
 }
 

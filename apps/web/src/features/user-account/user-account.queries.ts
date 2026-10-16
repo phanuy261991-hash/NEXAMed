@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateUserAccountRequest, ResetUserPasswordRequest, UpdateOwnProfileRequest, UpdateUserAccountRequest } from '@nexamed/shared';
+import type { CreateUserAccountRequest, ResetUserPasswordRequest, UnlockUserAccountRequest, UpdateOwnProfileRequest, UpdateUserAccountRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
@@ -7,6 +7,7 @@ import {
   getMyProfile,
   listUserAccounts,
   resetUserPassword,
+  unlockUserAccount,
   updateMyProfile,
   updateUserAccount,
   uploadUserAccountSignature,
@@ -54,6 +55,14 @@ export function useResetUserPasswordMutation() {
   const invalidate = useInvalidateUserAccounts();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: ResetUserPasswordRequest }) => resetUserPassword(id, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUnlockUserAccountMutation() {
+  const invalidate = useInvalidateUserAccounts();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UnlockUserAccountRequest }) => unlockUserAccount(id, body),
     onSuccess: invalidate,
   });
 }

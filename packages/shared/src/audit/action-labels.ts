@@ -51,6 +51,7 @@ const ACTION_LABELS: Record<string, string> = {
   // auth (auth.service.ts)
   'auth.login_success': 'Đăng nhập thành công',
   'auth.login_failed': 'Đăng nhập thất bại',
+  'auth.account_locked_permanently': 'Tài khoản bị khoá vĩnh viễn do đăng nhập sai nhiều lần',
   'auth.refresh_reuse_detected': 'Phát hiện dùng lại refresh token (thu hồi phiên)',
   'auth.logout': 'Đăng xuất',
   'auth.password_changed': 'Đổi mật khẩu',
@@ -67,6 +68,7 @@ const ACTION_LABELS: Record<string, string> = {
   'user_account.updated': 'Sửa tài khoản',
   'user_account.role_changed': 'Đổi vai trò',
   'user_account.password_reset': 'Đặt lại mật khẩu',
+  'user_account.unlocked': 'Mở khoá tài khoản',
   'user_account.signature_updated': 'Cập nhật chữ ký',
   'user_account.self_updated': 'Tự sửa hồ sơ cá nhân',
 

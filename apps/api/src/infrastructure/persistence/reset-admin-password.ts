@@ -69,7 +69,7 @@ export async function resetAdminPassword(
     }
     await tx.userAccount.update({
       where: { tenantId_id: { tenantId, id: found.id } },
-      data: { passwordHash, mustChangePassword: true, failedLoginCount: 0, lastFailedLoginAt: null, lockedUntil: null, updatedBy: SYSTEM_ACTOR, version: { increment: 1 } },
+      data: { passwordHash, mustChangePassword: true, failedLoginCount: 0, lastFailedLoginAt: null, lockedUntil: null, lockoutLevel: 0, lockedPermanentlyAt: null, updatedBy: SYSTEM_ACTOR, version: { increment: 1 } },
     });
     await tx.userSession.updateMany({
       where: { tenantId, userId: found.id, deletedAt: null },

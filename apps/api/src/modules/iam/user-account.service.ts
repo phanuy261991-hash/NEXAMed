@@ -7,7 +7,9 @@ import {
   ConcurrentModificationError,
   InvalidSignatureError,
   REFERENCE_CATALOG_READER_PORT,
-  resetLoginAttempts,
+  resetStaffLoginAttempts,
+  isAccountLocked,
+  isAccountLockedPermanently,
   resolveAccountActiveState,
   RoleInvalidReferenceError,
   sniffImageExtension,
@@ -23,6 +25,7 @@ import type {
   ListUserAccountsQuery,
   ListUserAccountsResponse,
   ResetUserPasswordRequest,
+  UnlockUserAccountRequest,
   UpdateOwnProfileRequest,
   UpdateUserAccountRequest,
   UserAccountGender,
@@ -423,7 +426,7 @@ export class UserAccountService {
       // "không có tác dụng" tới khi `lockedUntil` tự hết hạn (tới 15 phút).
       const count = await this.userAccountRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, {
         passwordHash,
-        ...resetLoginAttempts(),
+        ...resetStaffLoginAttempts(),
         ...(dto.mustChangePassword !== undefined ? { mustChangePassword: dto.mustChangePassword } : {}),
       });
       if (count === 0) {
@@ -449,6 +452,55 @@ export class UserAccountService {
       }
       const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, id);
       return this.toSummary(updated, roleNames, await this.effectiveBranchIds(tx, tenantId, id));
+    });
+  }
+
+  /**
+   * Mở khoá tài khoản bị khoá do đăng nhập sai (khoá tạm hoặc vĩnh viễn, docs/DECISIONS.md #239). Quyền riêng
+   * `user_account.unlock`; chỉ mở khoá được tài khoản có CHUNG ÍT NHẤT MỘT CHI NHÁNH với người thao tác — tài khoản
+   * ngoài phạm vi trả 404 (không lộ sự tồn tại), đúng quy tắc chi nhánh. Công ty một chi nhánh thì luôn chung chi nhánh.
+   * Không đổi mật khẩu; người dùng đăng nhập lại bằng mật khẩu cũ (cần đổi thì dùng "Đặt lại mật khẩu").
+   */
+  async unlockAccount(tenantId: string, actorId: string, id: string, dto: UnlockUserAccountRequest, meta: RequestMeta): Promise<UserAccountSummary> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const existing = await this.userAccountRepository.findById(tx, tenantId, id);
+      if (!existing) {
+        throw new NotFoundException();
+      }
+      const actorBranches = new Set(await this.effectiveBranchIds(tx, tenantId, actorId));
+      const targetBranches = await this.effectiveBranchIds(tx, tenantId, id);
+      if (!targetBranches.some((b) => actorBranches.has(b))) {
+        throw new NotFoundException();
+      }
+
+      const before = this.lockSummary(existing);
+      if (before.lockStatus === 'NONE') {
+        // Không có gì để mở: trả nguyên trạng, không ghi nhật ký (tránh nhật ký "mở khoá" giả).
+        const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, id);
+        return this.toSummary(existing, roleNames, targetBranches);
+      }
+
+      const count = await this.userAccountRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, { ...resetStaffLoginAttempts() });
+      if (count === 0) {
+        throw new ConcurrentModificationError();
+      }
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'user_account.unlocked',
+        entityType: 'user_account',
+        entityId: id,
+        beforeJson: { lockStatus: before.lockStatus },
+        afterJson: { lockStatus: 'NONE' },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      const updated = await this.userAccountRepository.findById(tx, tenantId, id);
+      if (!updated) {
+        throw new NotFoundException();
+      }
+      const roleNames = await this.userAccountAuthRepository.findRoleNamesForUser(tx, tenantId, id);
+      return this.toSummary(updated, roleNames, targetBranches);
     });
   }
 
@@ -524,6 +576,13 @@ export class UserAccountService {
     return `/api/v1/files/${token}`;
   }
 
+  /** Tình trạng khoá đăng nhập để hiện ở danh sách tài khoản (#239). */
+  private lockSummary(user: UserAccount): Pick<UserAccountSummary, 'lockStatus' | 'lockedUntil'> {
+    if (isAccountLockedPermanently(user)) return { lockStatus: 'PERMANENT', lockedUntil: null };
+    if (isAccountLocked(user, new Date())) return { lockStatus: 'TEMPORARY', lockedUntil: user.lockedUntil!.toISOString() };
+    return { lockStatus: 'NONE', lockedUntil: null };
+  }
+
   private toSummary(user: UserAccount, roleNames: readonly string[], branchIds: readonly string[]): UserAccountSummary {
     return {
       id: user.id,
@@ -548,6 +607,7 @@ export class UserAccountService {
       defaultRoomId: user.defaultRoomId,
       signatureUrl: user.signatureKey ? this.signSignatureUrl(user.tenantId, user.signatureKey) : null,
       isActive: user.isActive,
+      ...this.lockSummary(user),
       roleNames: [...roleNames],
       branchIds: [...branchIds],
       version: user.version,

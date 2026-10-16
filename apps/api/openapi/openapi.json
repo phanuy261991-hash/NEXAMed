@@ -27971,6 +27971,20 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "lockStatus": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TEMPORARY",
+                            "PERMANENT"
+                          ]
+                        },
+                        "lockedUntil": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "roleNames": {
                           "type": "array",
                           "items": {
@@ -28017,6 +28031,8 @@
                         "defaultRoomId",
                         "signatureUrl",
                         "isActive",
+                        "lockStatus",
+                        "lockedUntil",
                         "roleNames",
                         "branchIds",
                         "version",
@@ -28332,6 +28348,20 @@
                               "isActive": {
                                 "type": "boolean"
                               },
+                              "lockStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "NONE",
+                                  "TEMPORARY",
+                                  "PERMANENT"
+                                ]
+                              },
+                              "lockedUntil": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "roleNames": {
                                 "type": "array",
                                 "items": {
@@ -28378,6 +28408,8 @@
                               "defaultRoomId",
                               "signatureUrl",
                               "isActive",
+                              "lockStatus",
+                              "lockedUntil",
                               "roleNames",
                               "branchIds",
                               "version",
@@ -28619,6 +28651,20 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "lockStatus": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TEMPORARY",
+                            "PERMANENT"
+                          ]
+                        },
+                        "lockedUntil": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "roleNames": {
                           "type": "array",
                           "items": {
@@ -28665,6 +28711,8 @@
                         "defaultRoomId",
                         "signatureUrl",
                         "isActive",
+                        "lockStatus",
+                        "lockedUntil",
                         "roleNames",
                         "branchIds",
                         "version",
@@ -28908,6 +28956,20 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "lockStatus": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TEMPORARY",
+                            "PERMANENT"
+                          ]
+                        },
+                        "lockedUntil": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "roleNames": {
                           "type": "array",
                           "items": {
@@ -28954,6 +29016,8 @@
                         "defaultRoomId",
                         "signatureUrl",
                         "isActive",
+                        "lockStatus",
+                        "lockedUntil",
                         "roleNames",
                         "branchIds",
                         "version",
@@ -29193,6 +29257,20 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "lockStatus": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TEMPORARY",
+                            "PERMANENT"
+                          ]
+                        },
+                        "lockedUntil": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "roleNames": {
                           "type": "array",
                           "items": {
@@ -29239,6 +29317,8 @@
                         "defaultRoomId",
                         "signatureUrl",
                         "isActive",
+                        "lockStatus",
+                        "lockedUntil",
                         "roleNames",
                         "branchIds",
                         "version",
@@ -29642,6 +29722,20 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "lockStatus": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TEMPORARY",
+                            "PERMANENT"
+                          ]
+                        },
+                        "lockedUntil": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "roleNames": {
                           "type": "array",
                           "items": {
@@ -29688,6 +29782,8 @@
                         "defaultRoomId",
                         "signatureUrl",
                         "isActive",
+                        "lockStatus",
+                        "lockedUntil",
                         "roleNames",
                         "branchIds",
                         "version",
@@ -29834,6 +29930,387 @@
           },
           "422": {
             "description": "roleIds có giá trị không thuộc tenant này hoặc đã bị ẩn (ROLE_INVALID_REFERENCE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{id}/unlock": {
+      "post": {
+        "tags": [
+          "user-account"
+        ],
+        "summary": "Mở khoá tài khoản bị khoá do đăng nhập sai (khoá tạm hoặc vĩnh viễn) — chỉ tài khoản chung ít nhất một chi nhánh với người thao tác",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công (tài khoản không bị khoá thì trả nguyên trạng)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "employeeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dob": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "gender": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "male",
+                            "female"
+                          ]
+                        },
+                        "licenseNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "licenseIssuedPlace": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "academicTitleCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "positionCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "employmentStatusCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "employmentTypeCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "canSignMedicalRecord": {
+                          "type": "boolean"
+                        },
+                        "mustChangePassword": {
+                          "type": "boolean"
+                        },
+                        "departmentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "defaultRoomId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "signatureUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "lockStatus": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TEMPORARY",
+                            "PERMANENT"
+                          ]
+                        },
+                        "lockedUntil": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "roleNames": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "branchIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "employeeCode",
+                        "username",
+                        "fullName",
+                        "displayName",
+                        "phone",
+                        "email",
+                        "dob",
+                        "gender",
+                        "licenseNo",
+                        "licenseIssuedAt",
+                        "licenseIssuedPlace",
+                        "academicTitleCode",
+                        "positionCode",
+                        "employmentStatusCode",
+                        "employmentTypeCode",
+                        "canSignMedicalRecord",
+                        "mustChangePassword",
+                        "departmentId",
+                        "defaultRoomId",
+                        "signatureUrl",
+                        "isActive",
+                        "lockStatus",
+                        "lockedUntil",
+                        "roleNames",
+                        "branchIds",
+                        "version",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền user_account.unlock",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác hoặc không chung chi nhánh)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION)",
             "content": {
               "application/json": {
                 "schema": {
@@ -30046,6 +30523,20 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "lockStatus": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TEMPORARY",
+                            "PERMANENT"
+                          ]
+                        },
+                        "lockedUntil": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "roleNames": {
                           "type": "array",
                           "items": {
@@ -30092,6 +30583,8 @@
                         "defaultRoomId",
                         "signatureUrl",
                         "isActive",
+                        "lockStatus",
+                        "lockedUntil",
                         "roleNames",
                         "branchIds",
                         "version",

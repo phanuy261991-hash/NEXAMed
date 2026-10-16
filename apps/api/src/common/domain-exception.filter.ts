@@ -13,6 +13,7 @@ import type { ZodError } from 'zod';
 const DOMAIN_ERROR_STATUS: Record<string, number> = {
   AUTH_INVALID_CREDENTIALS: HttpStatus.UNAUTHORIZED,
   AUTH_ACCOUNT_LOCKED: 423,
+  AUTH_ACCOUNT_LOCKED_PERMANENT: 423,
   AUTH_ACCOUNT_DISABLED: HttpStatus.FORBIDDEN,
   AUTH_REFRESH_TOKEN_INVALID: HttpStatus.UNAUTHORIZED,
   AUTH_REFRESH_TOKEN_REUSED: HttpStatus.UNAUTHORIZED,
@@ -238,7 +239,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
       // Kho Thuốc GĐ5 — `PrescriptionStockInsufficientError` mang theo danh sách thuốc thiếu tồn để
       // FE hiện đúng dòng nào vượt tồn bao nhiêu, cùng cơ chế duck-type với `lockedUntil`/`shortfall`.
       const details = 'lockedUntil' in exception
-        ? { lockedUntil: (exception as { lockedUntil: Date }).lockedUntil }
+        ? { lockedUntil: (exception as { lockedUntil: Date }).lockedUntil, retryAfterMinutes: (exception as { retryAfterMinutes?: number }).retryAfterMinutes }
         : 'shortfall' in exception
           ? (() => {
               const e = exception as unknown as { balance: number; due: number; shortfall: number };

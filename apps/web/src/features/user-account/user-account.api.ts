@@ -3,6 +3,7 @@ import type {
   ListUserAccountsResponse,
   ResetUserPasswordRequest,
   UpdateOwnProfileRequest,
+  UnlockUserAccountRequest,
   UpdateUserAccountRequest,
   UserAccountSummary,
 } from '@nexamed/shared';
@@ -34,6 +35,11 @@ export async function resetUserPassword(id: string, body: ResetUserPasswordReque
   return unwrap(
     await getApiClient().POST('/api/v1/users/{id}/reset-password', { params: { path: { id } }, body }),
   ) as UserAccountSummary;
+}
+
+/** Mở khoá tài khoản bị khoá do đăng nhập sai (docs/DECISIONS.md #239) — cần quyền `user_account.unlock`, chỉ tài khoản chung chi nhánh. */
+export async function unlockUserAccount(id: string, body: UnlockUserAccountRequest): Promise<UserAccountSummary> {
+  return unwrap(await getApiClient().POST('/api/v1/users/{id}/unlock', { params: { path: { id } }, body })) as UserAccountSummary;
 }
 
 /** Upload/thay ảnh chữ ký (redesign 3-tab, #082) — multipart, cùng khuôn `uploadPatientPhoto`. */

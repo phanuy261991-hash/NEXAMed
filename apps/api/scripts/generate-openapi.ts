@@ -201,6 +201,7 @@ import {
   renameRoleRequestSchema,
   rescheduleAppointmentRequestSchema,
   resetUserPasswordRequestSchema,
+  unlockUserAccountRequestSchema,
   hideRoleRequestSchema,
   roleWithMatrixResponseSchema,
   roomSessionSchema,
@@ -1913,6 +1914,25 @@ registry.registerPath({
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
     422: errorResponse('roleIds có giá trị không thuộc tenant này hoặc đã bị ẩn (ROLE_INVALID_REFERENCE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/users/{id}/unlock',
+  tags: ['user-account'],
+  summary: 'Mở khoá tài khoản bị khoá do đăng nhập sai (khoá tạm hoặc vĩnh viễn) — chỉ tài khoản chung ít nhất một chi nhánh với người thao tác',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: userIdParams,
+    body: { content: { 'application/json': { schema: unlockUserAccountRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công (tài khoản không bị khoá thì trả nguyên trạng)', envelope(userAccountSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền user_account.unlock'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác hoặc không chung chi nhánh)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION)'),
   },
 });
 

@@ -2,6 +2,16 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 2026-10-16
+
+### Khoá đăng nhập luỹ tiến và "Mở khoá" (`docs/DECISIONS.md` #239)
+
+Nhân viên phòng khám nhập sai mật khẩu 5 lần bị khoá **5 phút**, rồi **15 phút**, rồi **30 phút**; sau lần khoá 30 phút chỉ cần sai thêm một lần là **khoá vĩnh viễn** — chỉ người được phân quyền "Mở khoá tài khoản" (mặc định Quản trị phòng khám, chỉ mở được tài khoản cùng chi nhánh) hoặc đặt lại mật khẩu mới gỡ được. Khi bị khoá, màn đăng nhập báo rõ số phút (kể cả ngay ở lần sai thứ 5). Người vận hành SaaS khoá cố định 60 phút (đã có OTP). Giới hạn tần suất theo IP giữ nguyên. Trang Quản lý tài khoản hiện nhãn "Khoá N phút"/"Khoá vĩnh viễn" và nút "Mở khoá" (chỉ người có quyền thấy). Môi trường khác: `db:deploy` (1 migration cộng thêm) + `db:seed` (quyền mới `user_account.unlock`) rồi khởi động lại API. Bậc khoá không tự hạ theo thời gian — chỉ về 0 khi đăng nhập đúng hoặc được mở khoá.
+
+### Công cụ đo tải API (S6-04, `docs/Deploy.md` mục 2.5a)
+
+`pnpm --filter @nexamed/api run perf:load`: 10 người dùng đồng thời, các kịch bản chỉ đọc, báo p50/p95/p99 từng kịch bản và tổng hợp. Đo nền trên máy dev: p95 66 ms, 0 lỗi. Chưa đo trên máy chủ pilot thật nên S6-04 chưa đóng. Không migration, không ảnh hưởng người dùng.
+
 ## 2026-10-15
 
 ### Đặt lại mật khẩu quản trị bằng dòng lệnh (`docs/Deploy.md` mục 2.3)

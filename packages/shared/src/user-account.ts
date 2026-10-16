@@ -101,6 +101,14 @@ export const updateOwnProfileRequestSchema = z.object({
 });
 export type UpdateOwnProfileRequest = z.infer<typeof updateOwnProfileRequestSchema>;
 
+/** Tình trạng khoá đăng nhập của tài khoản (docs/DECISIONS.md #239): chưa khoá / khoá tạm (đang trong thời gian khoá) / khoá vĩnh viễn (chờ quản trị mở khoá). */
+export const userAccountLockStatusSchema = z.enum(['NONE', 'TEMPORARY', 'PERMANENT']);
+export type UserAccountLockStatus = z.infer<typeof userAccountLockStatusSchema>;
+
+/** Mở khoá tài khoản — `version` cho optimistic locking, cùng quy ước các thao tác sửa tài khoản khác. */
+export const unlockUserAccountRequestSchema = z.object({ version: z.number().int().positive() });
+export type UnlockUserAccountRequest = z.infer<typeof unlockUserAccountRequestSchema>;
+
 export const resetUserPasswordRequestSchema = z.object({
   newPassword: z.string().min(8),
   /** Admin đặt lại mật khẩu kèm bắt đổi lại ở lần đăng nhập kế tiếp — mặc định giữ nguyên cờ cũ. */
@@ -137,6 +145,10 @@ export const userAccountSummarySchema = z.object({
   defaultRoomId: z.string().uuid().nullable(),
   signatureUrl: z.string().nullable(),
   isActive: z.boolean(),
+  /** Khoá đăng nhập (#239) — web chỉ hiện nút "Mở khoá" khi khác `NONE` VÀ người xem có quyền `user_account.unlock`. */
+  lockStatus: userAccountLockStatusSchema,
+  /** Mốc hết khoá tạm (ISO) — chỉ có khi `lockStatus='TEMPORARY'`. */
+  lockedUntil: z.string().nullable(),
   roleNames: z.array(z.string()),
   /** Chi nhánh được gán (#231) — công ty 1 chi nhánh: luôn chứa chi nhánh đó. */
   branchIds: z.array(z.string().uuid()),

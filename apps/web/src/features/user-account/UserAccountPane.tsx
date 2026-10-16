@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowCounterClockwise, MagnifyingGlass, PencilSimple, Plus, Prohibit } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, LockKeyOpen, MagnifyingGlass, PencilSimple, Plus, Prohibit } from '@phosphor-icons/react';
 import type { UserAccountSummary } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
@@ -13,6 +13,7 @@ import { PasswordInput } from '../../shared/ui/PasswordInput';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
+import { useHasPermission } from '../auth/usePermission';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useDepartmentsQuery } from '../department/department.queries';
 import { useRolesQuery } from '../role/role.queries';
@@ -21,10 +22,12 @@ import { UserAccountFormDialog, type UserAccountFormValues } from './UserAccount
 import {
   useCreateUserAccountMutation,
   useResetUserPasswordMutation,
+  useUnlockUserAccountMutation,
   useUpdateUserAccountMutation,
   useUserAccountsQuery,
 } from './user-account.queries';
 import { getUserAccount } from './user-account.api';
+import { getLockBadge } from './user-account-lock';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -51,6 +54,9 @@ export function UserAccountPane() {
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; item?: UserAccountSummary } | null>(null);
   const [resetPasswordTarget, setResetPasswordTarget] = useState<UserAccountSummary | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<UserAccountSummary | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<UserAccountSummary | null>(null);
+  // Nút "Mở khoá" chỉ hiện với người được phân quyền (docs/DECISIONS.md #239); phạm vi chi nhánh do máy chủ kiểm.
+  const canUnlock = useHasPermission('user_account', 'unlock');
   const [actionError, setActionError] = useState<string | null>(null);
 
   const accountsQuery = useUserAccountsQuery();
@@ -183,6 +189,11 @@ export function UserAccountPane() {
     }
   }
 
+  /** Nhãn khoá đăng nhập của một dòng (null = không khoá hoặc khoá tạm đã hết hạn) — tính theo giờ lúc vẽ. */
+  function lockBadge(item: UserAccountSummary) {
+    return getLockBadge(item, new Date());
+  }
+
   /** Nút "Vô hiệu hoá" nhanh ở danh sách (không cần mở form Sửa) — bắt xác nhận vì thu hồi phiên đang mở ngay lập tức. */
   function handleDeactivate(item: UserAccountSummary) {
     setActionError(null);
@@ -284,7 +295,10 @@ export function UserAccountPane() {
                     {item.employmentStatusCode ? (employmentStatusNameByCode.get(item.employmentStatusCode) ?? '—') : '—'}
                   </td>
                   <td className="px-4 py-2 text-center">
-                    <StatusBadge tone={item.isActive ? 'success' : 'neutral'}>{item.isActive ? 'Đang hoạt động' : 'Vô hiệu hoá'}</StatusBadge>
+                    <div className="flex flex-wrap items-center justify-center gap-1">
+                      <StatusBadge tone={item.isActive ? 'success' : 'neutral'}>{item.isActive ? 'Đang hoạt động' : 'Vô hiệu hoá'}</StatusBadge>
+                      {lockBadge(item) && <StatusBadge tone={lockBadge(item)!.tone}>{lockBadge(item)!.text}</StatusBadge>}
+                    </div>
                   </td>
                   <td className="px-2 py-2">
                     {/* ≤3 nút thao tác → xếp ngang 1 hàng (không cho wrap xuống dòng, tránh chồng
@@ -292,6 +306,7 @@ export function UserAccountPane() {
                         icon rời — chưa tới ngưỡng đó ở đây (2 nút). */}
                     <div className="flex flex-nowrap items-center justify-center gap-1.5">
                       <RowActionButton icon={PencilSimple} label="Sửa" tone="primary" onClick={() => setModal({ mode: 'edit', item })} />
+                      {canUnlock && lockBadge(item) && <RowActionButton icon={LockKeyOpen} label="Mở khoá" tone="amber" onClick={() => setUnlockTarget(item)} />}
                       {item.isActive ? (
                         <RowActionButton icon={Prohibit} label="Vô hiệu hoá" tone="danger" onClick={() => setDeactivateTarget(item)} />
                       ) : (
@@ -333,6 +348,8 @@ export function UserAccountPane() {
           }}
         />
       )}
+
+      {unlockTarget && <UnlockDialog item={unlockTarget} onCancel={() => setUnlockTarget(null)} onDone={() => setUnlockTarget(null)} />}
 
       {deactivateTarget && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
@@ -405,6 +422,48 @@ function ResetPasswordDialog({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Xác nhận "Mở khoá" (docs/DECISIONS.md #239) — bọc <form> để Enter xác nhận (ui-guidelines mục 4.4). Lỗi hiện inline ngay trong hộp thoại
+ * (mục 4.3): 404 = tài khoản ngoài phạm vi chi nhánh của người mở, 409 = có người vừa sửa tài khoản này.
+ */
+function UnlockDialog({ item, onCancel, onDone }: { item: UserAccountSummary; onCancel: () => void; onDone: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const unlockMutation = useUnlockUserAccountMutation();
+  const permanent = item.lockStatus === 'PERMANENT';
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4">
+      <form
+        className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setError(null);
+          unlockMutation.mutate({ id: item.id, body: { version: item.version } }, { onSuccess: onDone, onError: (err) => setError(errorMessage(err)) });
+        }}
+      >
+        <h3 className="text-[15px] font-semibold text-slate-900">Mở khoá tài khoản &quot;{item.fullName}&quot;?</h3>
+        <p className="mt-1.5 text-xs text-slate-500">
+          {permanent ? 'Tài khoản đang bị khoá vĩnh viễn do đăng nhập sai nhiều lần. ' : 'Tài khoản đang bị khoá tạm thời do đăng nhập sai nhiều lần. '}
+          Sau khi mở khoá, người dùng đăng nhập lại ngay bằng mật khẩu hiện tại. Nếu nghi ngờ mật khẩu bị lộ, hãy dùng &quot;Đặt lại mật khẩu&quot; thay vì mở khoá.
+        </p>
+        {error && (
+          <p role="alert" className="mt-3 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+            {error}
+          </p>
+        )}
+        <div className="mt-4 flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            Huỷ
+          </Button>
+          <Button type="submit" variant="amber" loading={unlockMutation.isPending}>
+            Mở khoá
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

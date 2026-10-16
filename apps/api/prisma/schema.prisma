@@ -704,6 +704,9 @@ model UserAccount {
   failedLoginCount  Int       @default(0) @map("failed_login_count")
   lastFailedLoginAt DateTime? @map("last_failed_login_at") @db.Timestamptz(6)
   lockedUntil       DateTime? @map("locked_until") @db.Timestamptz(6)
+  // Khoá luỹ tiến → vĩnh viễn của nhân viên (#239): bậc khoá tạm liên tiếp (0..3) và mốc khoá vĩnh viễn (null = chưa).
+  lockoutLevel        Int       @default(0) @map("lockout_level") @db.SmallInt
+  lockedPermanentlyAt DateTime? @map("locked_permanently_at") @db.Timestamptz(6)
 
   // Chi nhánh làm việc lần gần nhất (#231) — "Nhớ lựa chọn": đăng nhập lần sau vào thẳng chi nhánh này nếu còn được gán.
   lastBranchId String? @map("last_branch_id") @db.Uuid

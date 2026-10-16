@@ -3,6 +3,7 @@ import * as argon2 from 'argon2';
 import {
   AccountDisabledError,
   AccountLockedError,
+  AccountLockedPermanentlyError,
   BranchNotAssignedError,
   InvalidCredentialsError,
   RefreshTokenInvalidError,
@@ -10,7 +11,8 @@ import {
   TENANT_ACCESS_PORT,
   TenantSuspendedError,
   isAccountLocked,
-  recordFailedLogin,
+  isAccountLockedPermanently,
+  recordFailedStaffLogin,
   resolveBranchId,
   type TenantAccessPort,
 } from '@nexamed/core';
@@ -65,7 +67,8 @@ type LoginOutcome =
   | { kind: 'success'; result: LoginResult }
   | { kind: 'invalid_credentials' }
   | { kind: 'account_disabled' }
-  | { kind: 'account_locked'; lockedUntil: Date };
+  | { kind: 'account_locked'; lockedUntil: Date; now: Date }
+  | { kind: 'account_locked_permanently' };
 
 type RefreshOutcome =
   | { kind: 'success'; result: RefreshResult }
@@ -112,23 +115,43 @@ export class AuthService {
       }
 
       const now = new Date();
+      // Khoá vĩnh viễn (#239) chặn TRƯỚC khi kiểm mật khẩu — mật khẩu đúng cũng không vào được tới khi quản trị mở khoá.
+      if (isAccountLockedPermanently(user)) {
+        await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
+        return { kind: 'account_locked_permanently' };
+      }
       if (isAccountLocked(user, now)) {
         await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
-        return { kind: 'account_locked', lockedUntil: user.lockedUntil! };
+        return { kind: 'account_locked', lockedUntil: user.lockedUntil!, now };
       }
 
       const passwordOk = await argon2.verify(user.passwordHash, request.password);
       if (!passwordOk) {
-        const nextState = recordFailedLogin(
+        const nextState = recordFailedStaffLogin(
           {
             failedLoginCount: user.failedLoginCount,
             lastFailedLoginAt: user.lastFailedLoginAt,
             lockedUntil: user.lockedUntil,
+            lockoutLevel: user.lockoutLevel,
+            lockedPermanentlyAt: user.lockedPermanentlyAt,
           },
           now,
         );
         await this.userAccountAuthRepository.recordFailedLogin(tx, request.tenantId, user.id, nextState);
         await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
+        // Lần sai vừa kích hoạt khoá: báo NGAY (số phút khoá / khoá vĩnh viễn) thay vì "sai mật khẩu" (#239).
+        if (nextState.lockedPermanentlyAt) {
+          await writeAuditLog(tx, request.tenantId, {
+            actorId: user.id,
+            action: 'auth.account_locked_permanently',
+            entityType: 'user_account',
+            entityId: user.id,
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+          });
+          return { kind: 'account_locked_permanently' };
+        }
+        if (nextState.lockedUntil) return { kind: 'account_locked', lockedUntil: nextState.lockedUntil, now };
         return { kind: 'invalid_credentials' };
       }
 
@@ -183,7 +206,9 @@ export class AuthService {
       case 'account_disabled':
         throw new AccountDisabledError();
       case 'account_locked':
-        throw new AccountLockedError(outcome.lockedUntil);
+        throw new AccountLockedError(outcome.lockedUntil, outcome.now);
+      case 'account_locked_permanently':
+        throw new AccountLockedPermanentlyError();
       case 'invalid_credentials':
         throw new InvalidCredentialsError();
     }

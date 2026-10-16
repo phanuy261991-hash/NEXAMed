@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, UserAccount } from '@prisma/client';
-import type { LoginAttemptState } from '@nexamed/core';
+import type { StaffLoginAttemptState } from '@nexamed/core';
 
 /**
  * Chỉ phần đọc/ghi `user_account` phục vụ đăng nhập (tra cứu, đếm đăng nhập sai, khoá tạm).
@@ -20,7 +20,7 @@ export class UserAccountAuthRepository {
     tx: Prisma.TransactionClient,
     tenantId: string,
     userId: string,
-    state: LoginAttemptState,
+    state: StaffLoginAttemptState,
   ): Promise<UserAccount> {
     return tx.userAccount.update({
       where: { tenantId_id: { tenantId, id: userId } },
@@ -28,6 +28,8 @@ export class UserAccountAuthRepository {
         failedLoginCount: state.failedLoginCount,
         lastFailedLoginAt: state.lastFailedLoginAt,
         lockedUntil: state.lockedUntil,
+        lockoutLevel: state.lockoutLevel,
+        lockedPermanentlyAt: state.lockedPermanentlyAt,
         updatedBy: userId,
         version: { increment: 1 },
       },
@@ -41,6 +43,8 @@ export class UserAccountAuthRepository {
         failedLoginCount: 0,
         lastFailedLoginAt: null,
         lockedUntil: null,
+        lockoutLevel: 0,
+        lockedPermanentlyAt: null,
         updatedBy: userId,
         version: { increment: 1 },
       },
