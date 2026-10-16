@@ -3706,6 +3706,7 @@ export interface paths {
                                 pharmacySeparateInvoiceEnabled: boolean;
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
+                                prescriptionSplitBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
                                 paraclinicalBeforePaymentEnabled: boolean;
                                 specimenScanRequired: boolean;
@@ -6125,12 +6126,14 @@ export interface paths {
                                         doseEvening: number;
                                         durationDays: number;
                                         quantity: number;
+                                        isSplittable: boolean;
                                         unitCode: string | null;
                                         instruction: string | null;
                                     }[];
+                                    doctorAdvice: string | null;
                                     warnings: {
                                         /** @enum {string} */
-                                        kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
+                                        kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient" | "not_splittable";
                                         label: string;
                                         drugNames: string[];
                                         key: string;
@@ -7291,12 +7294,14 @@ export interface paths {
                                     doseEvening: number;
                                     durationDays: number;
                                     quantity: number;
+                                    isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
                                 }[];
+                                doctorAdvice: string | null;
                                 warnings: {
                                     /** @enum {string} */
-                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
+                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient" | "not_splittable";
                                     label: string;
                                     drugNames: string[];
                                     key: string;
@@ -7435,6 +7440,7 @@ export interface paths {
                             durationDays: number;
                             instruction?: string;
                         }[];
+                        doctorAdvice?: string;
                     };
                 };
             };
@@ -7465,12 +7471,14 @@ export interface paths {
                                     doseEvening: number;
                                     durationDays: number;
                                     quantity: number;
+                                    isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
                                 }[];
+                                doctorAdvice: string | null;
                                 warnings: {
                                     /** @enum {string} */
-                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
+                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient" | "not_splittable";
                                     label: string;
                                     drugNames: string[];
                                     key: string;
@@ -7619,6 +7627,7 @@ export interface paths {
                                     doseEvening: number;
                                     durationDays: number;
                                     quantity: number;
+                                    isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
                                 }[];
@@ -7735,12 +7744,14 @@ export interface paths {
                                     doseEvening: number;
                                     durationDays: number;
                                     quantity: number;
+                                    isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
                                 }[];
+                                doctorAdvice: string | null;
                                 warnings: {
                                     /** @enum {string} */
-                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
+                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient" | "not_splittable";
                                     label: string;
                                     drugNames: string[];
                                     key: string;
@@ -7894,12 +7905,14 @@ export interface paths {
                                     doseEvening: number;
                                     durationDays: number;
                                     quantity: number;
+                                    isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
                                 }[];
+                                doctorAdvice: string | null;
                                 warnings: {
                                     /** @enum {string} */
-                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
+                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient" | "not_splittable";
                                     label: string;
                                     drugNames: string[];
                                     key: string;
@@ -8009,6 +8022,7 @@ export interface paths {
                             durationDays: number;
                             instruction?: string;
                         }[];
+                        doctorAdvice?: string;
                         amendmentReason: string;
                         version: number;
                     };
@@ -8041,12 +8055,14 @@ export interface paths {
                                     doseEvening: number;
                                     durationDays: number;
                                     quantity: number;
+                                    isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
                                 }[];
+                                doctorAdvice: string | null;
                                 warnings: {
                                     /** @enum {string} */
-                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient";
+                                    kind: "duplicate_active_ingredient" | "allergy" | "stock_insufficient" | "not_splittable";
                                     label: string;
                                     drugNames: string[];
                                     key: string;
@@ -13459,6 +13475,7 @@ export interface paths {
                                     /** @enum {string} */
                                     controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                                     isPrescriptionOnly: boolean;
+                                    isSplittable: boolean;
                                     registrationNumber: string | null;
                                     dosageForm: string | null;
                                     countryOfOrigin: string | null;
@@ -13568,6 +13585,8 @@ export interface paths {
                         controlType?: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                         /** @default true */
                         isPrescriptionOnly?: boolean;
+                        /** @default true */
+                        isSplittable?: boolean;
                         registrationNumber?: string;
                         dosageForm?: string;
                         countryOfOrigin?: string;
@@ -13627,6 +13646,7 @@ export interface paths {
                                 /** @enum {string} */
                                 controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                                 isPrescriptionOnly: boolean;
+                                isSplittable: boolean;
                                 registrationNumber: string | null;
                                 dosageForm: string | null;
                                 countryOfOrigin: string | null;
@@ -13767,6 +13787,7 @@ export interface paths {
                                 /** @enum {string} */
                                 controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                                 isPrescriptionOnly: boolean;
+                                isSplittable: boolean;
                                 registrationNumber: string | null;
                                 dosageForm: string | null;
                                 countryOfOrigin: string | null;
@@ -13890,6 +13911,7 @@ export interface paths {
                         /** @enum {string} */
                         controlType?: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                         isPrescriptionOnly?: boolean;
+                        isSplittable?: boolean;
                         registrationNumber?: string | null;
                         dosageForm?: string | null;
                         countryOfOrigin?: string | null;
@@ -13949,6 +13971,7 @@ export interface paths {
                                 /** @enum {string} */
                                 controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                                 isPrescriptionOnly: boolean;
+                                isSplittable: boolean;
                                 registrationNumber: string | null;
                                 dosageForm: string | null;
                                 countryOfOrigin: string | null;
@@ -16352,6 +16375,7 @@ export interface paths {
                                 pharmacySeparateInvoiceEnabled: boolean;
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
+                                prescriptionSplitBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
                                 paraclinicalBeforePaymentEnabled: boolean;
                                 specimenScanRequired: boolean;
@@ -16464,6 +16488,7 @@ export interface paths {
                         pharmacySeparateInvoiceEnabled?: boolean;
                         pharmacyStockTrackingEnabled?: boolean;
                         prescriptionStockBlockEnabled?: boolean;
+                        prescriptionSplitBlockEnabled?: boolean;
                         allowFreeTextPrescriptionEnabled?: boolean;
                         paraclinicalBeforePaymentEnabled?: boolean;
                         specimenScanRequired?: boolean;
@@ -16535,6 +16560,7 @@ export interface paths {
                                 pharmacySeparateInvoiceEnabled: boolean;
                                 pharmacyStockTrackingEnabled: boolean;
                                 prescriptionStockBlockEnabled: boolean;
+                                prescriptionSplitBlockEnabled: boolean;
                                 allowFreeTextPrescriptionEnabled: boolean;
                                 paraclinicalBeforePaymentEnabled: boolean;
                                 specimenScanRequired: boolean;
@@ -17400,6 +17426,62 @@ export interface paths {
             cookie?: never;
         };
         /** "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/pharmacy-stock-tracking-enabled) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/prescription-split-block-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Chặn kê liều lẻ cho thuốc không chia được" (#241) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/allow-free-text-prescription-enabled) */
         get: {
             parameters: {
                 query?: never;

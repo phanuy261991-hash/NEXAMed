@@ -23,10 +23,11 @@ export interface PrescriptionTemplateWithItems extends PrescriptionTemplate {
 interface RawItemWithDrug {
   id: string;
   drugId: string;
-  doseMorning: number;
-  doseNoon: number;
-  doseAfternoon: number;
-  doseEvening: number;
+  // Cột NUMERIC(5,2) (#241) — Prisma trả Decimal, `mapItems()` đổi sang number.
+  doseMorning: Prisma.Decimal;
+  doseNoon: Prisma.Decimal;
+  doseAfternoon: Prisma.Decimal;
+  doseEvening: Prisma.Decimal;
   durationDays: number;
   quantity: number;
   instruction: string | null;
@@ -42,10 +43,10 @@ function mapItems(rows: RawItemWithDrug[]): PrescriptionTemplateItemWithDrug[] {
     id: row.id,
     drugId: row.drugId,
     drugName: row.drug.name,
-    doseMorning: row.doseMorning,
-    doseNoon: row.doseNoon,
-    doseAfternoon: row.doseAfternoon,
-    doseEvening: row.doseEvening,
+    doseMorning: Number(row.doseMorning),
+    doseNoon: Number(row.doseNoon),
+    doseAfternoon: Number(row.doseAfternoon),
+    doseEvening: Number(row.doseEvening),
     durationDays: row.durationDays,
     quantity: row.quantity,
     unitCode: row.drug.baseUnitCode,

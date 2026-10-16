@@ -666,14 +666,21 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
       expect(item.unitCode).toBe('VIEN');
     });
 
-    it('cả 4 buổi đều 0 → 400 (phải nhập liều dùng ít nhất 1 buổi trong ngày)', async () => {
+    it('cả 4 buổi đều 0 → LƯU NHÁP được (cảnh báo hiện ngay khi vừa thêm thuốc), nhưng KÝ thì chặn 422 PRESCRIPTION_ITEM_MISSING_DOSE (#241)', async () => {
       const { encounterId } = await prepareEncounterInConsultation(9);
       const drugId = await createDrug(fixture.tenantA.id, 'Thuốc không liều', 'Hoạt chất G');
+      await seedSufficientStock(fixture.tenantA.id, drugId);
       const res = await request(app.getHttpServer())
         .put(`/api/v1/encounters/${encounterId}/prescription-items`)
         .set(authed(doctorAToken))
         .send({ items: [{ drugId, doseMorning: 0, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: 5 }] });
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
+      expect(res.body.data.items[0].quantity).toBe(0);
+
+      const blocked = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: res.body.data.version });
+      expect(blocked.status).toBe(422);
+      expect(blocked.body.error.code).toBe('PRESCRIPTION_ITEM_MISSING_DOSE');
+      expect(blocked.body.error.details.shortages).toEqual([{ drugId, drugName: 'Thuốc không liều' }]);
     });
 
     it('dòng "kê thuốc tự do" (không drugId) → unitCode luôn null', async () => {
@@ -732,6 +739,200 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
       const { encounterId } = await prepareEncounterInConsultation(13);
       const res = await request(app.getHttpServer()).get(`/api/v1/encounters/${encounterId}/prescription/previous`).set(authed(tenantBDoctorToken));
       expect(res.status).toBe(404);
+    });
+  });
+
+  /**
+   * Liều chia lẻ (¼ viên), thuốc không chia được, lời dặn riêng của đơn (docs/DECISIONS.md #241, mockup đã duyệt).
+   */
+  describe('Liều lẻ, thuốc không chia được, lời dặn của đơn (#241)', () => {
+    function putItems(encounterId: string, body: Record<string, unknown>) {
+      return request(app.getHttpServer()).put(`/api/v1/encounters/${encounterId}/prescription-items`).set(authed(doctorAToken)).send(body);
+    }
+    function sign(encounterId: string, version: number) {
+      return request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version });
+    }
+    function setSplitBlock(enabled: boolean) {
+      return request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ prescriptionSplitBlockEnabled: enabled });
+    }
+    async function createNonSplittableDrug(name: string, ingredient: string) {
+      const drugId = await createDrug(fixture.tenantA.id, name, ingredient);
+      await privileged.drug.update({ where: { id: drugId }, data: { isSplittable: false } });
+      await seedSufficientStock(fixture.tenantA.id, drugId);
+      return drugId;
+    }
+    const line = (drugId: string, m: number, n: number, a: number, e: number, durationDays: number) => ({
+      drugId,
+      doseMorning: m,
+      doseNoon: n,
+      doseAfternoon: a,
+      doseEvening: e,
+      durationDays,
+    });
+
+    it('liều lẻ lưu đúng và tổng LÀM TRÒN LÊN: ½ × 1 lần × 7 ngày = 3,5 → 4; ½ × 2 lần × 5 ngày = 5', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(14);
+      const drugId = await createDrug(fixture.tenantA.id, 'Thuốc nửa viên', 'Hoạt chất H1');
+      await seedSufficientStock(fixture.tenantA.id, drugId);
+      const odd = await putItems(encounterId, { items: [line(drugId, 0.5, 0, 0, 0, 7)] });
+      expect(odd.status).toBe(200);
+      expect(odd.body.data.items[0].doseMorning).toBe(0.5);
+      expect(odd.body.data.items[0].quantity).toBe(4);
+      expect(odd.body.data.items[0].isSplittable).toBe(true);
+      const even = await putItems(encounterId, { items: [line(drugId, 0.5, 0, 0, 0.5, 5)] });
+      expect(even.body.data.items[0].quantity).toBe(5);
+      const quarter = await putItems(encounterId, { items: [line(drugId, 0.25, 0.25, 1.5, 0, 3)] });
+      expect(quarter.body.data.items[0].doseAfternoon).toBe(1.5);
+      expect(quarter.body.data.items[0].quantity).toBe(6); // (¼+¼+1½) × 3 = 6
+    });
+
+    it('liều không phải bội của ¼ (0,3) hoặc âm → 400', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(15);
+      const drugId = await createDrug(fixture.tenantA.id, 'Thuốc liều sai', 'Hoạt chất H2');
+      expect((await putItems(encounterId, { items: [line(drugId, 0.3, 0, 0, 0, 5)] })).status).toBe(400);
+      expect((await putItems(encounterId, { items: [line(drugId, -0.5, 0, 0, 0, 5)] })).status).toBe(400);
+    });
+
+    it('thuốc không chia được + liều lẻ → cảnh báo not_splittable; liều nguyên thì không; bỏ qua được (ghi dấu vết) và ký được', async () => {
+      await setSplitBlock(false);
+      const { encounterId } = await prepareEncounterInConsultation(16);
+      const drugId = await createNonSplittableDrug('Amoxicillin viên nang (test)', 'Amoxicillin-H3');
+
+      const whole = await putItems(encounterId, { items: [line(drugId, 1, 0, 0, 1, 5)] });
+      expect(whole.body.data.items[0].isSplittable).toBe(false);
+      expect(whole.body.data.warnings.filter((w: { kind: string }) => w.kind === 'not_splittable')).toHaveLength(0);
+
+      const half = await putItems(encounterId, { items: [line(drugId, 0.5, 0, 0, 0, 5)] });
+      const warning = half.body.data.warnings.find((w: { kind: string }) => w.kind === 'not_splittable');
+      expect(warning).toMatchObject({ label: 'Amoxicillin viên nang (test)', key: `not_splittable:${drugId}`, acknowledged: null });
+
+      const ack = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/prescription/warnings/acknowledge`)
+        .set(authed(doctorAToken))
+        .send({ key: warning.key, acknowledged: true, version: half.body.data.version });
+      expect(ack.status).toBe(200);
+      expect(ack.body.data.warnings.find((w: { kind: string }) => w.kind === 'not_splittable').acknowledged).not.toBeNull();
+
+      const signed = await sign(encounterId, ack.body.data.version);
+      expect(signed.status).toBe(200);
+      expect(signed.body.data.items[0].quantity).toBe(3); // ½ × 5 = 2,5 → 3
+    });
+
+    it('chế độ Chặn: không bỏ qua được (422), KÝ bị chặn 422 PRESCRIPTION_NON_SPLITTABLE_DOSE kèm danh sách thuốc; liều nguyên thì ký được', async () => {
+      const enable = await setSplitBlock(true);
+      expect(enable.status).toBe(200);
+      try {
+        const { encounterId } = await prepareEncounterInConsultation(17);
+        const drugId = await createNonSplittableDrug('Diclofenac bao tan (test)', 'Diclofenac-H4');
+        const half = await putItems(encounterId, { items: [line(drugId, 0, 0, 0, 0.5, 5)] });
+        const warning = half.body.data.warnings.find((w: { kind: string }) => w.kind === 'not_splittable');
+        expect(warning).toBeDefined();
+
+        const ack = await request(app.getHttpServer())
+          .post(`/api/v1/encounters/${encounterId}/prescription/warnings/acknowledge`)
+          .set(authed(doctorAToken))
+          .send({ key: warning.key, acknowledged: true, version: half.body.data.version });
+        expect(ack.status).toBe(422);
+        expect(ack.body.error.code).toBe('PRESCRIPTION_WARNING_NOT_ACKNOWLEDGEABLE');
+
+        const blocked = await sign(encounterId, half.body.data.version);
+        expect(blocked.status).toBe(422);
+        expect(blocked.body.error.code).toBe('PRESCRIPTION_NON_SPLITTABLE_DOSE');
+        expect(blocked.body.error.details.shortages).toEqual([{ drugId, drugName: 'Diclofenac bao tan (test)' }]);
+
+        const fixed = await putItems(encounterId, { items: [line(drugId, 0, 0, 0, 1, 5)] });
+        expect((await sign(encounterId, fixed.body.data.version)).status).toBe(200);
+      } finally {
+        await setSplitBlock(false);
+      }
+    });
+
+    it('chế độ Chặn cũng chặn ĐÍNH CHÍNH đơn đã ký thêm liều lẻ cho thuốc không chia được (và huỷ cả bản đính chính)', async () => {
+      await setSplitBlock(false);
+      const { encounterId } = await prepareEncounterInConsultation(18);
+      const drugId = await createNonSplittableDrug('Nifedipin SR (test)', 'Nifedipin-H5');
+      const saved = await putItems(encounterId, { items: [line(drugId, 1, 0, 0, 0, 5)] });
+      const signed = await sign(encounterId, saved.body.data.version);
+      expect(signed.status).toBe(200);
+
+      await setSplitBlock(true);
+      try {
+        const amend = await request(app.getHttpServer())
+          .post(`/api/v1/encounters/${encounterId}/prescription/amend`)
+          .set(authed(doctorAToken))
+          .send({ items: [line(drugId, 0.5, 0, 0, 0, 5)], amendmentReason: 'thử liều lẻ', version: signed.body.data.version });
+        expect(amend.status).toBe(422);
+        expect(amend.body.error.code).toBe('PRESCRIPTION_NON_SPLITTABLE_DOSE');
+        // Giao dịch bị huỷ: đơn gốc vẫn là đơn hiệu lực (không bị đánh dấu đã đính chính).
+        const stillActive = await privileged.prescription.findFirst({ where: { id: signed.body.data.id, deletedAt: null } });
+        expect(stillActive).not.toBeNull();
+      } finally {
+        await setSplitBlock(false);
+      }
+    });
+
+    it('đính chính bắt buộc có liều ở mọi dòng (400), khác lưu nháp', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(19);
+      const drugId = await createDrug(fixture.tenantA.id, 'Thuốc đính chính liều 0', 'Hoạt chất H6');
+      await seedSufficientStock(fixture.tenantA.id, drugId);
+      const saved = await putItems(encounterId, { items: [line(drugId, 1, 0, 0, 0, 5)] });
+      const signed = await sign(encounterId, saved.body.data.version);
+      const amend = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/prescription/amend`)
+        .set(authed(doctorAToken))
+        .send({ items: [line(drugId, 0, 0, 0, 0, 5)], amendmentReason: 'x', version: signed.body.data.version });
+      expect(amend.status).toBe(400);
+    });
+
+    it('lời dặn riêng của đơn: lưu cùng đơn nháp (cắt khoảng trắng), xoá bằng chuỗi rỗng, không đổi version khi lưu lại cùng nội dung, bất biến sau ký, đính chính chép/đổi được', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(20);
+      const drugId = await createDrug(fixture.tenantA.id, 'Thuốc có lời dặn', 'Hoạt chất H7');
+      await seedSufficientStock(fixture.tenantA.id, drugId);
+      const items = [line(drugId, 1, 0, 0, 1, 5)];
+
+      const first = await putItems(encounterId, { items, doctorAdvice: '  Uống sau ăn no.  ' });
+      expect(first.status).toBe(200);
+      expect(first.body.data.doctorAdvice).toBe('Uống sau ăn no.');
+      const again = await putItems(encounterId, { items, doctorAdvice: 'Uống sau ăn no.' });
+      expect(again.body.data.version).toBe(first.body.data.version);
+      const withoutField = await putItems(encounterId, { items });
+      expect(withoutField.body.data.doctorAdvice).toBe('Uống sau ăn no.');
+      const cleared = await putItems(encounterId, { items, doctorAdvice: '' });
+      expect(cleared.body.data.doctorAdvice).toBeNull();
+      const restored = await putItems(encounterId, { items, doctorAdvice: 'Kiêng rượu bia.' });
+
+      const signed = await sign(encounterId, restored.body.data.version);
+      expect(signed.status).toBe(200);
+      expect(signed.body.data.doctorAdvice).toBe('Kiêng rượu bia.');
+      await expect(privileged.$executeRawUnsafe(`UPDATE prescription SET doctor_advice = 'hack' WHERE id = '${signed.body.data.id}'`)).rejects.toThrow();
+
+      const amendKeep = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/prescription/amend`)
+        .set(authed(doctorAToken))
+        .send({ items: [line(drugId, 1, 1, 0, 1, 5)], amendmentReason: 'thêm liều trưa', version: signed.body.data.version });
+      expect(amendKeep.status).toBe(200);
+      expect(amendKeep.body.data.doctorAdvice).toBe('Kiêng rượu bia.');
+      const amendChange = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/prescription/amend`)
+        .set(authed(doctorAToken))
+        .send({ items: [line(drugId, 1, 1, 0, 1, 5)], doctorAdvice: 'Tái khám sau 3 ngày.', amendmentReason: 'đổi lời dặn', version: amendKeep.body.data.version });
+      expect(amendChange.body.data.doctorAdvice).toBe('Tái khám sau 3 ngày.');
+    });
+
+    it('GET /clinic-settings/prescription-split-block-enabled: bác sĩ đọc được, mặc định tắt, đổi theo cấu hình, KHÔNG rò sang tenant khác', async () => {
+      const tenantBAdminToken = (await createUserWithRole(fixture.tenantB.id, 'clinic_admin')).token;
+      const read = (token: string) => request(app.getHttpServer()).get('/api/v1/clinic-settings/prescription-split-block-enabled').set(authed(token));
+
+      expect((await read(doctorAToken)).body.data).toEqual({ enabled: false });
+      expect((await setSplitBlock(true)).status).toBe(200);
+      try {
+        expect((await read(doctorAToken)).body.data).toEqual({ enabled: true });
+        expect((await read(tenantBDoctorToken)).body.data).toEqual({ enabled: false });
+        expect((await request(app.getHttpServer()).get('/api/v1/clinic-settings').set(authed(tenantBAdminToken))).body.data.prescriptionSplitBlockEnabled).toBe(false);
+      } finally {
+        await setSplitBlock(false);
+      }
+      expect((await request(app.getHttpServer()).get('/api/v1/clinic-settings/prescription-split-block-enabled')).status).toBe(401);
     });
   });
 });

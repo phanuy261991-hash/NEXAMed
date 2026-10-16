@@ -65,6 +65,7 @@ import { DiagnosisAmendDialog } from './DiagnosisAmendDialog';
 import { DiagnosisSuggestionPanel, type DiagnosisSuggestionPanelHandle } from './DiagnosisSuggestionPanel';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { PrescriptionPanel } from './PrescriptionPanel';
+import { StickyDiagnosisBar } from './StickyDiagnosisBar';
 import { TreatmentAmendDialog, type TreatmentAmendValues } from './TreatmentAmendDialog';
 import { TreatmentPlanPanel } from './TreatmentPlanPanel';
 import { formatDateStringVi, toVietnamDateString, vietnameseWeekdayLabel } from './follow-up-date';
@@ -289,6 +290,7 @@ export function EncounterConsultationPage() {
   const suggestionsQuery = useDiagnosisSuggestionsQuery(encounterId, debouncedDiagnosisText, suggestionsActive);
   const suggestionGroups: DiagnosisSuggestionGroup[] = suggestionsActive && !suggestionsQuery.isError ? (suggestionsQuery.data?.groups ?? []) : [];
   const suggestionCodeCount = suggestionGroups.reduce((sum, g) => sum + g.items.length, 0);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
   const suggestionPanelRef = useRef<DiagnosisSuggestionPanelHandle>(null);
   const icd10PickerRef = useRef<Icd10SearchPickerHandle>(null);
   /**
@@ -1063,7 +1065,7 @@ export function EncounterConsultationPage() {
             ))}
           </div>
 
-          <div className="scroll-hover flex-1 overflow-y-auto p-4">
+          <div ref={tabScrollRef} className="scroll-hover flex-1 overflow-y-auto p-4">
             {activeTabId === 'section-kham' && (
             <div className="flex flex-col gap-6">
               {/* "THÔNG TIN KHÁM LÂM SÀNG" — MỘT khung duy nhất (không tách 3 khung riêng như bản
@@ -1307,24 +1309,8 @@ export function EncounterConsultationPage() {
                 trên đỉnh khung cuộn (Phương án 1, chốt qua AskUserQuestion): không phải quay lại
                 tab "Khám & Chẩn đoán" để nhớ mã bệnh lúc đang kê đơn. */}
             {activeTabId === 'section-donthuoc' && (
-            <div className="flex flex-col gap-4">
-              {diagnoses.length > 0 && (
-                <div className="sticky top-0 z-10 -mx-4 -mt-4 flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">Chẩn đoán</span>
-                  {diagnoses.map((d) => (
-                    <span
-                      key={d.icd10Code}
-                      className={
-                        d.type === 'PRIMARY'
-                          ? 'rounded-full border border-brand-teal bg-brand-teal-tint px-2.5 py-1 text-xs font-semibold text-brand-teal-active'
-                          : 'rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600'
-                      }
-                    >
-                      {d.icd10Code} — {d.icd10Name}
-                    </span>
-                  ))}
-                </div>
-              )}
+            <div>
+              {diagnoses.length > 0 && <StickyDiagnosisBar diagnoses={diagnoses} scrollRef={tabScrollRef} />}
               <PrescriptionPanel
                 encounterId={encounterId}
                 prescription={prescription}

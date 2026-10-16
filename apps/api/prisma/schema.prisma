@@ -1910,6 +1910,10 @@ model Drug {
   // Yêu cầu kê đơn (Rx) hay không (OTC) — CHỈ có ý nghĩa với itemType=MEDICINE. Mặc định true: mọi
   // thuốc hiện tại đều đi qua đơn thuốc bác sĩ ký, chưa có luồng bán OTC tự do tại quầy.
   isPrescriptionOnly   Boolean         @default(true) @map("is_prescription_only")
+  // "Cho phép chia nhỏ" (#241) — false = viên nang/bao tan trong ruột/giải phóng kéo dài, không bẻ lẻ
+  // được: kê liều lẻ (¼, ½...) thì cảnh báo hoặc chặn ký. Mặc định true để thuốc cũ không đổi hành vi.
+  // Dữ liệu CHUNG cả công ty (danh mục thuốc không theo chi nhánh).
+  isSplittable         Boolean         @default(true) @map("is_splittable")
   // Mở rộng #151 (chủ dự án rà soát trực tiếp từng trường theo tài liệu quy chuẩn) — CHỈ có ý nghĩa
   // với itemType=MEDICINE, ẩn hoàn toàn cho SUPPLY ở UI (VTYT giữ nguyên hoãn, chưa mở rộng field).
   // Bắt buộc ở tầng Zod cho MEDICINE tạo mới (đúng khuôn baseUnitCode/manufacturerCode):
@@ -2829,6 +2833,9 @@ model Prescription {
   // "Bỏ qua cảnh báo trùng hoạt chất cho đơn này" (#228) — mảng `{ key, reason, by, byName, at }`; chỉ sửa được khi đơn còn nháp
   // (trigger bất biến sau ký chặn đổi cột này). Đơn đính chính là dòng mới nên bắt đầu từ `[]`.
   acknowledgedWarnings Json      @default("[]") @map("acknowledged_warnings")
+  // "Lời dặn của bác sĩ" riêng cho đơn thuốc này (#241) — in cuối đơn; để trống thì in lời dặn ở tab Điều
+  // trị. Sửa được khi nháp; đã ký thì bất biến (trigger), đính chính chép sang bản mới.
+  doctorAdvice         String?   @map("doctor_advice")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2867,11 +2874,14 @@ model PrescriptionItem {
   // `dose`/`frequency` cũ. Đơn vị luôn là đơn vị NHỎ NHẤT của thuốc (`drug.baseUnitCode`, resolve qua
   // JOIN lúc đọc — KHÔNG snapshot cột riêng). `quantity` = tổng 4 cột này × `durationDays`, LUÔN do
   // Service tính (`toCreateItemData()`), KHÔNG nhận trực tiếp từ client nữa.
-  doseMorning      Int     @default(0) @map("dose_morning") @db.SmallInt
-  doseNoon         Int     @default(0) @map("dose_noon") @db.SmallInt
-  doseAfternoon    Int     @default(0) @map("dose_afternoon") @db.SmallInt
-  doseEvening      Int     @default(0) @map("dose_evening") @db.SmallInt
+  // #241: liều có thể LẺ theo bước ¼ viên (NUMERIC(5,2), CHECK bội của 0,25 — ngoại lệ có chủ đích của
+  // quy tắc "cấm numeric", vốn chỉ áp cho cột TIỀN). Prisma trả Decimal — repository đổi sang number.
+  doseMorning      Decimal @default(0) @map("dose_morning") @db.Decimal(5, 2)
+  doseNoon         Decimal @default(0) @map("dose_noon") @db.Decimal(5, 2)
+  doseAfternoon    Decimal @default(0) @map("dose_afternoon") @db.Decimal(5, 2)
+  doseEvening      Decimal @default(0) @map("dose_evening") @db.Decimal(5, 2)
   durationDays     Int     @map("duration_days") @db.SmallInt
+  // Tổng số = LÀM TRÒN LÊN((tổng 4 buổi) × durationDays) — số nguyên theo đơn vị nhỏ nhất của thuốc.
   quantity         Int
   instruction      String?
 
@@ -2956,10 +2966,10 @@ model PrescriptionTemplateItem {
   templateId    String  @map("template_id") @db.Uuid
   drugId        String  @map("drug_id") @db.Uuid
   // Đúng khuôn `PrescriptionItem` (docs/DECISIONS.md #196) — thay hẳn dose/frequency tự do.
-  doseMorning   Int     @default(0) @map("dose_morning") @db.SmallInt
-  doseNoon      Int     @default(0) @map("dose_noon") @db.SmallInt
-  doseAfternoon Int     @default(0) @map("dose_afternoon") @db.SmallInt
-  doseEvening   Int     @default(0) @map("dose_evening") @db.SmallInt
+  doseMorning   Decimal @default(0) @map("dose_morning") @db.Decimal(5, 2)
+  doseNoon      Decimal @default(0) @map("dose_noon") @db.Decimal(5, 2)
+  doseAfternoon Decimal @default(0) @map("dose_afternoon") @db.Decimal(5, 2)
+  doseEvening   Decimal @default(0) @map("dose_evening") @db.Decimal(5, 2)
   durationDays  Int     @map("duration_days") @db.SmallInt
   quantity      Int
   instruction   String?

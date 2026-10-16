@@ -133,6 +133,17 @@ export class ClinicSettingsController {
   }
 
   /**
+   * "Chặn kê liều lẻ cho thuốc không chia được" (#241) — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn
+   * `getAllowFreeTextPrescriptionEnabled`): bác sĩ cần biết chế độ Chặn/Cảnh báo để màn kê đơn hiện đúng khung.
+   */
+  @Get('prescription-split-block-enabled')
+  async getPrescriptionSplitBlockEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getPrescriptionSplitBlockEnabled(tenantId);
+    return { enabled };
+  }
+
+  /**
    * "Gợi ý mã ICD-10 từ ô Chẩn đoán" — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn
    * `getAllowFreeTextPrescriptionEnabled` ở trên): bác sĩ cần biết công tắc này để màn khám hiện/ẩn
    * đúng khối gợi ý mã ICD-10.

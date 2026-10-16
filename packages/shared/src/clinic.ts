@@ -308,6 +308,12 @@ export const clinicSettingsSchema = z.object({
    */
   prescriptionStockBlockEnabled: z.boolean(),
   /**
+   * "Chặn kê liều lẻ cho thuốc không chia được" (#241) — TẮT (mặc định): kê ¼/½ viên cho thuốc có cờ "Cho phép chia
+   * nhỏ" = tắt (viên nang, bao tan trong ruột, giải phóng kéo dài) chỉ CẢNH BÁO, bác sĩ có thể "Bỏ qua cảnh báo".
+   * BẬT: chặn CỨNG, không cho lưu đơn nháp có liều lẻ cho thuốc đó nên không ký được.
+   */
+  prescriptionSplitBlockEnabled: z.boolean(),
+  /**
    * "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — TẮT
    * (mặc định, an toàn — giữ nguyên ràng buộc `drugId` bắt buộc). BẬT: bác sĩ thêm được dòng thuốc
    * chỉ có tên tự do (không tính tiền/hoá đơn, không có khái niệm tồn kho, không phát được qua
@@ -370,6 +376,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   pharmacySeparateInvoiceEnabled: z.boolean().optional(),
   pharmacyStockTrackingEnabled: z.boolean().optional(),
   prescriptionStockBlockEnabled: z.boolean().optional(),
+  prescriptionSplitBlockEnabled: z.boolean().optional(),
   allowFreeTextPrescriptionEnabled: z.boolean().optional(),
   paraclinicalBeforePaymentEnabled: z.boolean().optional(),
   specimenScanRequired: z.boolean().optional(),
@@ -428,6 +435,8 @@ export const DEFAULT_PHARMACY_STOCK_TRACKING_ENABLED = true;
  * 03). Bật thì chặn CỨNG, không cho ký khi có dòng thuốc vượt tổng tồn kho toàn phòng khám. Chỉ có
  * ý nghĩa khi `pharmacyStockTrackingEnabled=true`. */
 export const DEFAULT_PRESCRIPTION_STOCK_BLOCK_ENABLED = false;
+/** Tắt theo mặc định (#241): kê liều lẻ cho thuốc không chia được chỉ CẢNH BÁO, bác sĩ có thể "Bỏ qua". */
+export const DEFAULT_PRESCRIPTION_SPLIT_BLOCK_ENABLED = false;
 /** Tắt theo mặc định (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — giữ nguyên ràng buộc
  * `drugId` bắt buộc tới khi tenant chủ động bật "Kê thuốc tự do, không qua danh mục". */
 export const DEFAULT_ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED = false;
@@ -515,6 +524,14 @@ export type PharmacyStockTrackingStatus = z.infer<typeof pharmacyStockTrackingSt
  */
 export const allowFreeTextPrescriptionStatusSchema = z.object({ enabled: z.boolean() });
 export type AllowFreeTextPrescriptionStatus = z.infer<typeof allowFreeTextPrescriptionStatusSchema>;
+
+/**
+ * `GET /clinic-settings/prescription-split-block-enabled` (#241) — chiếu tối thiểu tự-phục vụ, cùng lý do
+ * `allowFreeTextPrescriptionStatusSchema`: bác sĩ cần biết phòng khám đang ở chế độ "Chặn" hay "Cảnh báo" cho thuốc
+ * không chia được để màn kê đơn hiện đúng khung (không có `clinic_config.read`).
+ */
+export const prescriptionSplitBlockStatusSchema = z.object({ enabled: z.boolean() });
+export type PrescriptionSplitBlockStatus = z.infer<typeof prescriptionSplitBlockStatusSchema>;
 
 /**
  * `GET /clinic-settings/icd10-suggestion-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý do

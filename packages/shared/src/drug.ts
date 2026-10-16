@@ -137,6 +137,8 @@ export const createDrugRequestSchema = z
     // người dùng chọn. CHỈ có ý nghĩa khi itemType==='MEDICINE' (service ép NORMAL/true cho SUPPLY).
     controlType: drugControlTypeSchema.default('NORMAL'),
     isPrescriptionOnly: z.boolean().default(true),
+    // "Cho phép chia nhỏ" (#241) — tắt cho viên nang/bao tan trong ruột/giải phóng kéo dài. Chỉ có ý nghĩa với thuốc (MEDICINE).
+    isSplittable: z.boolean().default(true),
     // Mở rộng #151 (rà soát chi tiết theo tài liệu quy chuẩn) — CHỈ có ý nghĩa với MEDICINE, bắt
     // buộc qua `checkMedicineRequiredFields` (3 dòng dưới), còn lại tùy chọn. `dosageForm`/
     // `countryOfOrigin`/`storageConditions` là MÃ tham chiếu reference_catalog (Combobox
@@ -189,6 +191,7 @@ export const updateDrugRequestSchema = z
     maxStockAlert: z.number().int().nonnegative().nullable().optional(),
     controlType: drugControlTypeSchema.optional(),
     isPrescriptionOnly: z.boolean().optional(),
+    isSplittable: z.boolean().optional(),
     registrationNumber: z.string().min(1).nullable().optional(),
     dosageForm: z.string().min(1).nullable().optional(),
     countryOfOrigin: z.string().min(1).nullable().optional(),
@@ -236,6 +239,7 @@ export const drugSummarySchema = z.object({
   maxStockAlert: z.number().int().nullable(),
   controlType: drugControlTypeSchema,
   isPrescriptionOnly: z.boolean(),
+  isSplittable: z.boolean(),
   registrationNumber: z.string().nullable(),
   dosageForm: z.string().nullable(),
   countryOfOrigin: z.string().nullable(),

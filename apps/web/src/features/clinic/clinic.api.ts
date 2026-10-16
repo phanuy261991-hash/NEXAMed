@@ -1,5 +1,6 @@
 import type {
   AllowFreeTextPrescriptionStatus,
+  PrescriptionSplitBlockStatus,
   AllowStaffSelfScheduleStatus,
   BackupConfigResponse,
   BackupRunRequestResponse,
@@ -92,6 +93,11 @@ export async function getPharmacyStockTrackingStatus(): Promise<PharmacyStockTra
 /** "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — tự-phục vụ, không cần `clinic_config.read` (đúng khuôn `getDeferredPaymentStatus`). */
 export async function getAllowFreeTextPrescriptionStatus(): Promise<AllowFreeTextPrescriptionStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/allow-free-text-prescription-enabled')) as AllowFreeTextPrescriptionStatus;
+}
+
+/** "Chặn kê liều lẻ cho thuốc không chia được" (#241) — tự-phục vụ, không cần `clinic_config.read`. */
+export async function getPrescriptionSplitBlockStatus(): Promise<PrescriptionSplitBlockStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/prescription-split-block-enabled')) as PrescriptionSplitBlockStatus;
 }
 
 export async function getIcd10SuggestionStatus(): Promise<Icd10SuggestionStatus> {

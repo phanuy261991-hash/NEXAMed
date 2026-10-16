@@ -8821,6 +8821,9 @@
                         "prescriptionStockBlockEnabled": {
                           "type": "boolean"
                         },
+                        "prescriptionSplitBlockEnabled": {
+                          "type": "boolean"
+                        },
                         "allowFreeTextPrescriptionEnabled": {
                           "type": "boolean"
                         },
@@ -8863,6 +8866,7 @@
                         "pharmacySeparateInvoiceEnabled",
                         "pharmacyStockTrackingEnabled",
                         "prescriptionStockBlockEnabled",
+                        "prescriptionSplitBlockEnabled",
                         "allowFreeTextPrescriptionEnabled",
                         "paraclinicalBeforePaymentEnabled",
                         "specimenScanRequired",
@@ -14963,22 +14967,25 @@
                                     ]
                                   },
                                   "doseMorning": {
-                                    "type": "integer"
+                                    "type": "number"
                                   },
                                   "doseNoon": {
-                                    "type": "integer"
+                                    "type": "number"
                                   },
                                   "doseAfternoon": {
-                                    "type": "integer"
+                                    "type": "number"
                                   },
                                   "doseEvening": {
-                                    "type": "integer"
+                                    "type": "number"
                                   },
                                   "durationDays": {
                                     "type": "integer"
                                   },
                                   "quantity": {
                                     "type": "integer"
+                                  },
+                                  "isSplittable": {
+                                    "type": "boolean"
                                   },
                                   "unitCode": {
                                     "type": [
@@ -15005,10 +15012,17 @@
                                   "doseEvening",
                                   "durationDays",
                                   "quantity",
+                                  "isSplittable",
                                   "unitCode",
                                   "instruction"
                                 ]
                               }
+                            },
+                            "doctorAdvice": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "warnings": {
                               "type": "array",
@@ -15020,7 +15034,8 @@
                                     "enum": [
                                       "duplicate_active_ingredient",
                                       "allergy",
-                                      "stock_insufficient"
+                                      "stock_insufficient",
+                                      "not_splittable"
                                     ]
                                   },
                                   "label": {
@@ -15116,6 +15131,7 @@
                             "id",
                             "encounterId",
                             "items",
+                            "doctorAdvice",
                             "warnings",
                             "prescriptionNo",
                             "signedAt",
@@ -18171,22 +18187,25 @@
                                 ]
                               },
                               "doseMorning": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseNoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseAfternoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseEvening": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "durationDays": {
                                 "type": "integer"
                               },
                               "quantity": {
                                 "type": "integer"
+                              },
+                              "isSplittable": {
+                                "type": "boolean"
                               },
                               "unitCode": {
                                 "type": [
@@ -18213,10 +18232,17 @@
                               "doseEvening",
                               "durationDays",
                               "quantity",
+                              "isSplittable",
                               "unitCode",
                               "instruction"
                             ]
                           }
+                        },
+                        "doctorAdvice": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "warnings": {
                           "type": "array",
@@ -18228,7 +18254,8 @@
                                 "enum": [
                                   "duplicate_active_ingredient",
                                   "allergy",
-                                  "stock_insufficient"
+                                  "stock_insufficient",
+                                  "not_splittable"
                                 ]
                               },
                               "label": {
@@ -18324,6 +18351,7 @@
                         "id",
                         "encounterId",
                         "items",
+                        "doctorAdvice",
                         "warnings",
                         "prescriptionNo",
                         "signedAt",
@@ -18548,20 +18576,24 @@
                           "maxLength": 200
                         },
                         "doseMorning": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseNoon": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseAfternoon": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseEvening": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "durationDays": {
                           "type": "integer",
@@ -18579,6 +18611,10 @@
                         "durationDays"
                       ]
                     }
+                  },
+                  "doctorAdvice": {
+                    "type": "string",
+                    "maxLength": 2000
                   }
                 },
                 "required": [
@@ -18642,22 +18678,25 @@
                                 ]
                               },
                               "doseMorning": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseNoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseAfternoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseEvening": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "durationDays": {
                                 "type": "integer"
                               },
                               "quantity": {
                                 "type": "integer"
+                              },
+                              "isSplittable": {
+                                "type": "boolean"
                               },
                               "unitCode": {
                                 "type": [
@@ -18684,10 +18723,17 @@
                               "doseEvening",
                               "durationDays",
                               "quantity",
+                              "isSplittable",
                               "unitCode",
                               "instruction"
                             ]
                           }
+                        },
+                        "doctorAdvice": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "warnings": {
                           "type": "array",
@@ -18699,7 +18745,8 @@
                                 "enum": [
                                   "duplicate_active_ingredient",
                                   "allergy",
-                                  "stock_insufficient"
+                                  "stock_insufficient",
+                                  "not_splittable"
                                 ]
                               },
                               "label": {
@@ -18795,6 +18842,7 @@
                         "id",
                         "encounterId",
                         "items",
+                        "doctorAdvice",
                         "warnings",
                         "prescriptionNo",
                         "signedAt",
@@ -19044,22 +19092,25 @@
                                 ]
                               },
                               "doseMorning": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseNoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseAfternoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseEvening": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "durationDays": {
                                 "type": "integer"
                               },
                               "quantity": {
                                 "type": "integer"
+                              },
+                              "isSplittable": {
+                                "type": "boolean"
                               },
                               "unitCode": {
                                 "type": [
@@ -19086,6 +19137,7 @@
                               "doseEvening",
                               "durationDays",
                               "quantity",
+                              "isSplittable",
                               "unitCode",
                               "instruction"
                             ]
@@ -19298,22 +19350,25 @@
                                 ]
                               },
                               "doseMorning": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseNoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseAfternoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseEvening": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "durationDays": {
                                 "type": "integer"
                               },
                               "quantity": {
                                 "type": "integer"
+                              },
+                              "isSplittable": {
+                                "type": "boolean"
                               },
                               "unitCode": {
                                 "type": [
@@ -19340,10 +19395,17 @@
                               "doseEvening",
                               "durationDays",
                               "quantity",
+                              "isSplittable",
                               "unitCode",
                               "instruction"
                             ]
                           }
+                        },
+                        "doctorAdvice": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "warnings": {
                           "type": "array",
@@ -19355,7 +19417,8 @@
                                 "enum": [
                                   "duplicate_active_ingredient",
                                   "allergy",
-                                  "stock_insufficient"
+                                  "stock_insufficient",
+                                  "not_splittable"
                                 ]
                               },
                               "label": {
@@ -19451,6 +19514,7 @@
                         "id",
                         "encounterId",
                         "items",
+                        "doctorAdvice",
                         "warnings",
                         "prescriptionNo",
                         "signedAt",
@@ -19708,22 +19772,25 @@
                                 ]
                               },
                               "doseMorning": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseNoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseAfternoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseEvening": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "durationDays": {
                                 "type": "integer"
                               },
                               "quantity": {
                                 "type": "integer"
+                              },
+                              "isSplittable": {
+                                "type": "boolean"
                               },
                               "unitCode": {
                                 "type": [
@@ -19750,10 +19817,17 @@
                               "doseEvening",
                               "durationDays",
                               "quantity",
+                              "isSplittable",
                               "unitCode",
                               "instruction"
                             ]
                           }
+                        },
+                        "doctorAdvice": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "warnings": {
                           "type": "array",
@@ -19765,7 +19839,8 @@
                                 "enum": [
                                   "duplicate_active_ingredient",
                                   "allergy",
-                                  "stock_insufficient"
+                                  "stock_insufficient",
+                                  "not_splittable"
                                 ]
                               },
                               "label": {
@@ -19861,6 +19936,7 @@
                         "id",
                         "encounterId",
                         "items",
+                        "doctorAdvice",
                         "warnings",
                         "prescriptionNo",
                         "signedAt",
@@ -20023,20 +20099,24 @@
                           "maxLength": 200
                         },
                         "doseMorning": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseNoon": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseAfternoon": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseEvening": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "durationDays": {
                           "type": "integer",
@@ -20054,6 +20134,10 @@
                         "durationDays"
                       ]
                     }
+                  },
+                  "doctorAdvice": {
+                    "type": "string",
+                    "maxLength": 2000
                   },
                   "amendmentReason": {
                     "type": "string",
@@ -20126,22 +20210,25 @@
                                 ]
                               },
                               "doseMorning": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseNoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseAfternoon": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "doseEvening": {
-                                "type": "integer"
+                                "type": "number"
                               },
                               "durationDays": {
                                 "type": "integer"
                               },
                               "quantity": {
                                 "type": "integer"
+                              },
+                              "isSplittable": {
+                                "type": "boolean"
                               },
                               "unitCode": {
                                 "type": [
@@ -20168,10 +20255,17 @@
                               "doseEvening",
                               "durationDays",
                               "quantity",
+                              "isSplittable",
                               "unitCode",
                               "instruction"
                             ]
                           }
+                        },
+                        "doctorAdvice": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "warnings": {
                           "type": "array",
@@ -20183,7 +20277,8 @@
                                 "enum": [
                                   "duplicate_active_ingredient",
                                   "allergy",
-                                  "stock_insufficient"
+                                  "stock_insufficient",
+                                  "not_splittable"
                                 ]
                               },
                               "label": {
@@ -20279,6 +20374,7 @@
                         "id",
                         "encounterId",
                         "items",
+                        "doctorAdvice",
                         "warnings",
                         "prescriptionNo",
                         "signedAt",
@@ -34734,6 +34830,10 @@
                     "type": "boolean",
                     "default": true
                   },
+                  "isSplittable": {
+                    "type": "boolean",
+                    "default": true
+                  },
                   "registrationNumber": {
                     "type": "string",
                     "minLength": 1
@@ -34964,6 +35064,9 @@
                         "isPrescriptionOnly": {
                           "type": "boolean"
                         },
+                        "isSplittable": {
+                          "type": "boolean"
+                        },
                         "registrationNumber": {
                           "type": [
                             "string",
@@ -35174,6 +35277,7 @@
                         "maxStockAlert",
                         "controlType",
                         "isPrescriptionOnly",
+                        "isSplittable",
                         "registrationNumber",
                         "dosageForm",
                         "countryOfOrigin",
@@ -35483,6 +35587,9 @@
                               "isPrescriptionOnly": {
                                 "type": "boolean"
                               },
+                              "isSplittable": {
+                                "type": "boolean"
+                              },
                               "registrationNumber": {
                                 "type": [
                                   "string",
@@ -35693,6 +35800,7 @@
                               "maxStockAlert",
                               "controlType",
                               "isPrescriptionOnly",
+                              "isSplittable",
                               "registrationNumber",
                               "dosageForm",
                               "countryOfOrigin",
@@ -35922,6 +36030,9 @@
                         "isPrescriptionOnly": {
                           "type": "boolean"
                         },
+                        "isSplittable": {
+                          "type": "boolean"
+                        },
                         "registrationNumber": {
                           "type": [
                             "string",
@@ -36132,6 +36243,7 @@
                         "maxStockAlert",
                         "controlType",
                         "isPrescriptionOnly",
+                        "isSplittable",
                         "registrationNumber",
                         "dosageForm",
                         "countryOfOrigin",
@@ -36384,6 +36496,9 @@
                     ]
                   },
                   "isPrescriptionOnly": {
+                    "type": "boolean"
+                  },
+                  "isSplittable": {
                     "type": "boolean"
                   },
                   "registrationNumber": {
@@ -36658,6 +36773,9 @@
                         "isPrescriptionOnly": {
                           "type": "boolean"
                         },
+                        "isSplittable": {
+                          "type": "boolean"
+                        },
                         "registrationNumber": {
                           "type": [
                             "string",
@@ -36868,6 +36986,7 @@
                         "maxStockAlert",
                         "controlType",
                         "isPrescriptionOnly",
+                        "isSplittable",
                         "registrationNumber",
                         "dosageForm",
                         "countryOfOrigin",
@@ -37096,20 +37215,24 @@
                                       "format": "uuid"
                                     },
                                     "doseMorning": {
-                                      "type": "integer",
-                                      "minimum": 0
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 99.75
                                     },
                                     "doseNoon": {
-                                      "type": "integer",
-                                      "minimum": 0
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 99.75
                                     },
                                     "doseAfternoon": {
-                                      "type": "integer",
-                                      "minimum": 0
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 99.75
                                     },
                                     "doseEvening": {
-                                      "type": "integer",
-                                      "minimum": 0
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 99.75
                                     },
                                     "durationDays": {
                                       "type": "integer",
@@ -37277,20 +37400,24 @@
                           "format": "uuid"
                         },
                         "doseMorning": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseNoon": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseAfternoon": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseEvening": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "durationDays": {
                           "type": "integer",
@@ -37348,20 +37475,24 @@
                                 "format": "uuid"
                               },
                               "doseMorning": {
-                                "type": "integer",
-                                "minimum": 0
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 99.75
                               },
                               "doseNoon": {
-                                "type": "integer",
-                                "minimum": 0
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 99.75
                               },
                               "doseAfternoon": {
-                                "type": "integer",
-                                "minimum": 0
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 99.75
                               },
                               "doseEvening": {
-                                "type": "integer",
-                                "minimum": 0
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 99.75
                               },
                               "durationDays": {
                                 "type": "integer",
@@ -37567,20 +37698,24 @@
                           "format": "uuid"
                         },
                         "doseMorning": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseNoon": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseAfternoon": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "doseEvening": {
-                          "type": "integer",
-                          "minimum": 0
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
                         },
                         "durationDays": {
                           "type": "integer",
@@ -37644,20 +37779,24 @@
                                 "format": "uuid"
                               },
                               "doseMorning": {
-                                "type": "integer",
-                                "minimum": 0
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 99.75
                               },
                               "doseNoon": {
-                                "type": "integer",
-                                "minimum": 0
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 99.75
                               },
                               "doseAfternoon": {
-                                "type": "integer",
-                                "minimum": 0
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 99.75
                               },
                               "doseEvening": {
-                                "type": "integer",
-                                "minimum": 0
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 99.75
                               },
                               "durationDays": {
                                 "type": "integer",
@@ -41953,6 +42092,9 @@
                         "prescriptionStockBlockEnabled": {
                           "type": "boolean"
                         },
+                        "prescriptionSplitBlockEnabled": {
+                          "type": "boolean"
+                        },
                         "allowFreeTextPrescriptionEnabled": {
                           "type": "boolean"
                         },
@@ -41995,6 +42137,7 @@
                         "pharmacySeparateInvoiceEnabled",
                         "pharmacyStockTrackingEnabled",
                         "prescriptionStockBlockEnabled",
+                        "prescriptionSplitBlockEnabled",
                         "allowFreeTextPrescriptionEnabled",
                         "paraclinicalBeforePaymentEnabled",
                         "specimenScanRequired",
@@ -42333,6 +42476,9 @@
                   "prescriptionStockBlockEnabled": {
                     "type": "boolean"
                   },
+                  "prescriptionSplitBlockEnabled": {
+                    "type": "boolean"
+                  },
                   "allowFreeTextPrescriptionEnabled": {
                     "type": "boolean"
                   },
@@ -42605,6 +42751,9 @@
                         "prescriptionStockBlockEnabled": {
                           "type": "boolean"
                         },
+                        "prescriptionSplitBlockEnabled": {
+                          "type": "boolean"
+                        },
                         "allowFreeTextPrescriptionEnabled": {
                           "type": "boolean"
                         },
@@ -42647,6 +42796,7 @@
                         "pharmacySeparateInvoiceEnabled",
                         "pharmacyStockTrackingEnabled",
                         "prescriptionStockBlockEnabled",
+                        "prescriptionSplitBlockEnabled",
                         "allowFreeTextPrescriptionEnabled",
                         "paraclinicalBeforePaymentEnabled",
                         "specimenScanRequired",
@@ -44153,6 +44303,83 @@
           "clinic"
         ],
         "summary": "\"Kê thuốc tự do, không qua danh mục\" (mở rộng Kho Thuốc GĐ5) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/pharmacy-stock-tracking-enabled)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/prescription-split-block-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Chặn kê liều lẻ cho thuốc không chia được\" (#241) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/allow-free-text-prescription-enabled)",
         "security": [
           {
             "bearerAuth": []

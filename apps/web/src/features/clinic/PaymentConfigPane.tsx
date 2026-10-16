@@ -43,6 +43,7 @@ export function PaymentConfigPane() {
   const pharmacySeparateInvoiceEnabled = settingsQuery.data?.pharmacySeparateInvoiceEnabled ?? false;
   const pharmacyStockTrackingEnabled = settingsQuery.data?.pharmacyStockTrackingEnabled ?? true;
   const prescriptionStockBlockEnabled = settingsQuery.data?.prescriptionStockBlockEnabled ?? false;
+  const prescriptionSplitBlockEnabled = settingsQuery.data?.prescriptionSplitBlockEnabled ?? false;
   const allowFreeTextPrescriptionEnabled = settingsQuery.data?.allowFreeTextPrescriptionEnabled ?? false;
   const paraclinicalBeforePaymentEnabled = settingsQuery.data?.paraclinicalBeforePaymentEnabled ?? false;
   const specimenScanRequired = settingsQuery.data?.specimenScanRequired ?? false;
@@ -349,6 +350,30 @@ export function PaymentConfigPane() {
               disabled={updateMutation.isPending || !pharmacyStockTrackingEnabled}
               onChange={(e) => updateMutation.mutate({ prescriptionStockBlockEnabled: e.target.checked })}
               aria-label="Chặn kê vượt tồn"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        <div className="mt-6 flex items-start justify-between gap-5 border-t border-slate-100 pt-6">
+          <div>
+            <p className="text-[14.5px] font-semibold text-slate-900">Chặn kê liều lẻ cho thuốc không chia được</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Tắt (mặc định): kê liều lẻ (¼, ½ viên) cho thuốc đã tắt &quot;Cho phép chia nhỏ&quot; (viên nang, bao tan trong ruột,
+              giải phóng kéo dài) chỉ cảnh báo, bác sĩ vẫn ký được và có thể &quot;Bỏ qua cảnh báo&quot;.
+              <br />
+              Bật: chặn cứng, không cho ký đơn khi còn thuốc không chia được đang kê liều lẻ.
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={prescriptionSplitBlockEnabled}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ prescriptionSplitBlockEnabled: e.target.checked })}
+              aria-label="Chặn kê liều lẻ cho thuốc không chia được"
             />
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />

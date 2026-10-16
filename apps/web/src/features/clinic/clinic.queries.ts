@@ -29,6 +29,7 @@ import {
   createFloor,
   createRoom,
   getAllowFreeTextPrescriptionStatus,
+  getPrescriptionSplitBlockStatus,
   getIcd10SuggestionStatus,
   getAllowStaffSelfScheduleStatus,
   getBackupConfig,
@@ -232,6 +233,18 @@ export function useAllowFreeTextPrescriptionEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'allow-free-text-prescription-enabled'),
     queryFn: getAllowFreeTextPrescriptionStatus,
+  });
+}
+
+/**
+ * "Chặn kê liều lẻ cho thuốc không chia được" (#241) — màn kê đơn dùng riêng hook này (KHÔNG dùng
+ * `useClinicSettingsQuery()`, cần `clinic_config.read`), cùng lý do `useAllowFreeTextPrescriptionEnabledQuery`.
+ */
+export function usePrescriptionSplitBlockEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'prescription-split-block-enabled'),
+    queryFn: getPrescriptionSplitBlockStatus,
   });
 }
 

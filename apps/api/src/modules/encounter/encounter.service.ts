@@ -22,6 +22,8 @@ import {
   PrescriptionAlreadySignedError,
   PrescriptionEmptyError,
   PrescriptionFreeTextDisabledError,
+  PrescriptionItemMissingDoseError,
+  PrescriptionNonSplittableDoseError,
   PrescriptionRequiresDiagnosisError,
   PrescriptionStockInsufficientError,
   PrescriptionWarningNotAcknowledgeableError,
@@ -34,6 +36,7 @@ import {
   findAllergyMatches,
   findDuplicateActiveIngredients,
   findInsufficientStock,
+  findNonSplittableFractionalDoses,
   formatDateStringVi,
   getVietnamDateString,
   resolveFollowUpFromDate,
@@ -54,7 +57,7 @@ import {
   BRANCH_DIRECTORY_PORT,
   type BranchDirectoryPort,
 } from '@nexamed/core';
-import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary } from '@nexamed/shared';
+import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary, hasAnyDose, hasFractionalDose } from '@nexamed/shared';
 import type {
   AmendClinicalNoteRequest,
   AmendDiagnosesRequest,
@@ -1269,6 +1272,14 @@ export class EncounterService {
       }
 
       await this.prescriptionRepository.replaceItems(tx, tenantId, active.id, actorId, dto.items.map((item) => this.toCreateItemData(item)));
+      // "Lời dặn của bác sĩ" riêng của đơn (#241) — không gửi = giữ nguyên, '' = xoá.
+      // Chỉ ghi khi nội dung ĐỔI THẬT — lưu nháp lặp lại không làm nhảy `version` của đơn (ký/bỏ qua cảnh báo đang dùng version đã đọc).
+      if (dto.doctorAdvice !== undefined) {
+        const nextAdvice = dto.doctorAdvice.trim() || null;
+        if (nextAdvice !== (active.doctorAdvice ?? null)) {
+          await this.prescriptionRepository.setDoctorAdvice(tx, tenantId, active.id, nextAdvice, actorId);
+        }
+      }
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -1302,6 +1313,8 @@ export class EncounterService {
     meta: RequestMeta,
   ): Promise<PrescriptionResponse> {
     const onHandByDrugId = await this.loadDraftOnHand(tenantId, branchId, id);
+    // Chế độ "Chặn" thì cảnh báo thuốc không chia được KHÔNG bỏ qua được (#241).
+    const prescriptionSplitBlockEnabled = await this.clinicConfigReader.getPrescriptionSplitBlockEnabled(tenantId);
     // `DoctorDirectoryPort` tự mở transaction riêng — tra tên người bỏ qua TRƯỚC transaction chính (lưu snapshot vào dấu vết).
     const actorName = (await this.doctorDirectory.getUserFullNames(tenantId, [actorId])).get(actorId) ?? '—';
 
@@ -1324,7 +1337,8 @@ export class EncounterService {
       const allergenNames = (await this.patientAllergenRepository.listForPatient(tx, tenantId, existing.patientId)).map((a) => a.allergenName);
       if (dto.acknowledged) {
         const target = this.computeWarnings(active.items, allergenNames).find((w) => w.key === dto.key);
-        if (!target || target.kind !== 'duplicate_active_ingredient') {
+        const acknowledgeable = target?.kind === 'duplicate_active_ingredient' || (target?.kind === 'not_splittable' && !prescriptionSplitBlockEnabled);
+        if (!target || !acknowledgeable) {
           throw new PrescriptionWarningNotAcknowledgeableError();
         }
       }
@@ -1398,6 +1412,7 @@ export class EncounterService {
       }
     }
     const prescriptionStockBlockEnabled = pharmacyStockTrackingEnabled && (await this.clinicConfigReader.getPrescriptionStockBlockEnabled(tenantId));
+    const prescriptionSplitBlockEnabled = await this.clinicConfigReader.getPrescriptionSplitBlockEnabled(tenantId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
@@ -1416,6 +1431,12 @@ export class EncounterService {
       if (active.items.length === 0) {
         throw new PrescriptionEmptyError();
       }
+      // Đơn nháp được lưu ngay khi thêm thuốc (chưa có liều) — ký thì mọi dòng phải có liều (#241).
+      const missingDose = active.items.filter((i) => !hasAnyDose(i));
+      if (missingDose.length > 0) {
+        throw new PrescriptionItemMissingDoseError(missingDose.map((i) => ({ drugId: i.drugId, drugName: i.drugName })));
+      }
+      this.assertNoNonSplittableFractionalDose(active.items, prescriptionSplitBlockEnabled);
 
       if (prescriptionStockBlockEnabled && onHandByDrugId !== null) {
         const shortages = findInsufficientStock(
@@ -1520,6 +1541,7 @@ export class EncounterService {
     const onHandByDrugId: Record<string, number> | null = pharmacyStockTrackingEnabled
       ? await this.stockAvailability.getOnHandQuantities(tenantId, branchId, realDrugIds)
       : null;
+    const prescriptionSplitBlockEnabled = await this.clinicConfigReader.getPrescriptionSplitBlockEnabled(tenantId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
@@ -1552,6 +1574,8 @@ export class EncounterService {
         signedBy: signature.signedBy,
         // Giữ nguyên mã đơn gốc (#169, chốt qua AskUserQuestion) — không gọi businessCodeService.generate() ở đây.
         prescriptionNo: active.prescriptionNo,
+        // Lời dặn riêng của đơn (#241): không gửi = chép từ bản bị đính chính, '' = xoá.
+        doctorAdvice: dto.doctorAdvice === undefined ? active.doctorAdvice : dto.doctorAdvice.trim() || null,
       });
       await this.prescriptionRepository.createItems(tx, tenantId, created.id, actorId, dto.items.map((item) => this.toCreateItemData(item)));
 
@@ -1571,6 +1595,8 @@ export class EncounterService {
       if (!updated) {
         throw new NotFoundException();
       }
+      // Chặn sau khi đã dựng bản mới trong transaction: ném lỗi thì cả đính chính bị huỷ (cần `is_splittable` của từng thuốc nên chỉ biết được ở đây).
+      this.assertNoNonSplittableFractionalDose(updated.items, prescriptionSplitBlockEnabled);
       return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName), onHandByDrugId);
     });
   }
@@ -1621,6 +1647,22 @@ export class EncounterService {
     }
   }
 
+  /** Thuốc không chia được (`is_splittable=false`) đang kê liều lẻ trên đơn (#241) — dùng cho cảnh báo lẫn chặn. */
+  private findNonSplittableDoses(items: PrescriptionWithItems['items']) {
+    return findNonSplittableFractionalDoses(
+      items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, isSplittable: i.isSplittable, hasFractionalDose: hasFractionalDose(i) })),
+    );
+  }
+
+  /** Chế độ "Chặn kê liều lẻ" bật thì KHÔNG ký/đính chính được đơn có thuốc không chia được kê liều lẻ (422, kèm danh sách thuốc). */
+  private assertNoNonSplittableFractionalDose(items: PrescriptionWithItems['items'], blockEnabled: boolean): void {
+    if (!blockEnabled) return;
+    const offenders = this.findNonSplittableDoses(items);
+    if (offenders.length > 0) {
+      throw new PrescriptionNonSplittableDoseError(offenders);
+    }
+  }
+
   /**
    * PRE-02 (trùng hoạt chất) + PRE-03 (đối chiếu dị nguyên đã biết) — CẢNH BÁO MỀM, không chặn ký
    * (xem docstring `signPrescription`). Kho Thuốc GĐ5: thêm `stock_insufficient` (kê vượt TỔNG tồn
@@ -1648,6 +1690,18 @@ export class EncounterService {
         acknowledged: ack ? { at: ack.at, byName: ack.byName, reason: ack.reason } : null,
       };
     });
+    // "Thuốc không chia được nhưng kê liều lẻ" (#241) — bỏ qua được (trừ khi phòng khám bật chế độ Chặn).
+    const notSplittable = this.findNonSplittableDoses(items).map((w): PrescriptionWarning => {
+      const key = `not_splittable:${w.drugId}`;
+      const ack = acknowledged.find((a) => a.key === key);
+      return {
+        kind: 'not_splittable',
+        label: w.drugName,
+        drugNames: [w.drugName],
+        key,
+        acknowledged: ack ? { at: ack.at, byName: ack.byName, reason: ack.reason } : null,
+      };
+    });
     const allergies = findAllergyMatches(lines, allergenNames).map(
       (a): PrescriptionWarning => ({ kind: 'allergy', label: a.allergenName, drugNames: a.drugNames, key: `allergy:${a.allergenName}`, acknowledged: null }),
     );
@@ -1666,7 +1720,7 @@ export class EncounterService {
             acknowledged: null,
           }),
         );
-    return [...duplicates, ...allergies, ...shortages];
+    return [...duplicates, ...notSplittable, ...allergies, ...shortages];
   }
 
   private toPrescriptionResponse(row: PrescriptionWithItems, allergenNames: string[], onHandByDrugId: Record<string, number> | null = null): PrescriptionDto {
@@ -1675,6 +1729,7 @@ export class EncounterService {
       encounterId: row.encounterId,
       items: row.items.map((item) => this.toPrescriptionItem(item)),
       warnings: this.computeWarnings(row.items, allergenNames, onHandByDrugId, parseAcknowledgedWarnings(row.acknowledgedWarnings)),
+      doctorAdvice: row.doctorAdvice,
       prescriptionNo: row.prescriptionNo,
       signedAt: row.signedAt ? row.signedAt.toISOString() : null,
       signedBy: row.signedBy,
@@ -1700,6 +1755,7 @@ export class EncounterService {
       quantity: item.quantity,
       unitCode: item.unitCode,
       instruction: item.instruction,
+      isSplittable: item.isSplittable,
     };
   }
 

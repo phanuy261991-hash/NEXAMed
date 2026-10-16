@@ -100,6 +100,7 @@ const LOGIN_ONLY_ROUTES = new Set<string>([
   'GET /api/v1/clinic-settings/solo-clinic-workflow-enabled',
   'GET /api/v1/clinic-settings/pharmacy-stock-tracking-enabled',
   'GET /api/v1/clinic-settings/allow-free-text-prescription-enabled',
+  'GET /api/v1/clinic-settings/prescription-split-block-enabled',
   'GET /api/v1/clinic-settings/icd10-suggestion-enabled',
   'GET /api/v1/clinic-settings/cashier-shift-blind-close-enabled',
   'GET /api/v1/clinic-profile/print-header',

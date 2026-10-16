@@ -18,6 +18,7 @@ export interface CreateDrugData {
   maxStockAlert: number | null;
   controlType: DrugControlType;
   isPrescriptionOnly: boolean;
+  isSplittable: boolean;
   manufacturerCode: string;
   registrationNumber: string | null;
   dosageForm: string | null;
@@ -51,6 +52,7 @@ export interface UpdateDrugData {
   maxStockAlert?: number | null;
   controlType?: DrugControlType;
   isPrescriptionOnly?: boolean;
+  isSplittable?: boolean;
   manufacturerCode?: string | null;
   registrationNumber?: string | null;
   dosageForm?: string | null;

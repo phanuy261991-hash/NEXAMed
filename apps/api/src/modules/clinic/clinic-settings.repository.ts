@@ -27,6 +27,7 @@ import {
   DEFAULT_PHARMACY_SEPARATE_INVOICE_ENABLED,
   DEFAULT_PHARMACY_STOCK_TRACKING_ENABLED,
   DEFAULT_PRESCRIPTION_STOCK_BLOCK_ENABLED,
+  DEFAULT_PRESCRIPTION_SPLIT_BLOCK_ENABLED,
   DEFAULT_SIDEBAR_AUTO_COLLAPSE_ENABLED,
   DEFAULT_SOLO_CLINIC_WORKFLOW_ENABLED,
   DEFAULT_SLOT_DURATION_MINUTES,
@@ -122,6 +123,9 @@ const pharmacyStockTrackingEnabledSchema = z.boolean();
 // Kho Thuốc GĐ5 — tắt theo mặc định (kê vượt tồn chỉ cảnh báo mềm) cho tenant chưa từng cấu hình.
 const PRESCRIPTION_STOCK_BLOCK_ENABLED_KEY = 'prescription_stock_block_enabled';
 const prescriptionStockBlockEnabledSchema = z.boolean();
+// "Chặn kê liều lẻ cho thuốc không chia được" (#241) — tắt theo mặc định (chỉ cảnh báo, có "Bỏ qua").
+const PRESCRIPTION_SPLIT_BLOCK_ENABLED_KEY = 'prescription_split_block_enabled';
+const prescriptionSplitBlockEnabledSchema = z.boolean();
 // "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — tắt theo mặc định cho tenant chưa
 // từng cấu hình, giữ nguyên ràng buộc `drugId` bắt buộc.
 const ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED_KEY = 'allow_free_text_prescription_enabled';
@@ -455,6 +459,19 @@ export class ClinicSettingsRepository {
 
   upsertPrescriptionStockBlockEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, PRESCRIPTION_STOCK_BLOCK_ENABLED_KEY, value);
+  }
+
+  async getPrescriptionSplitBlockEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: PRESCRIPTION_SPLIT_BLOCK_ENABLED_KEY } });
+    if (!setting) {
+      return DEFAULT_PRESCRIPTION_SPLIT_BLOCK_ENABLED;
+    }
+    const parsed = prescriptionSplitBlockEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_PRESCRIPTION_SPLIT_BLOCK_ENABLED;
+  }
+
+  upsertPrescriptionSplitBlockEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, PRESCRIPTION_SPLIT_BLOCK_ENABLED_KEY, value);
   }
 
   async getAllowFreeTextPrescriptionEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {

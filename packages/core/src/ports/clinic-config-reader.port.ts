@@ -161,6 +161,8 @@ export interface ClinicConfigReaderPort {
    * `getPharmacyStockTrackingEnabled=true`. Module `encounter` đọc qua port này, cùng lý do trên.
    */
   getPrescriptionStockBlockEnabled(tenantId: string): Promise<boolean>;
+  /** "Chặn kê liều lẻ cho thuốc không chia được" (#241) — mặc định tắt (chỉ cảnh báo). */
+  getPrescriptionSplitBlockEnabled(tenantId: string): Promise<boolean>;
 
   /**
    * "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — tắt

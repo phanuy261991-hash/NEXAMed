@@ -10,6 +10,7 @@ import {
   allergenGroupSummarySchema,
   allergenItemSchema,
   allowFreeTextPrescriptionStatusSchema,
+  prescriptionSplitBlockStatusSchema,
   amendClinicalNoteRequestSchema,
   amendDiagnosesRequestSchema,
   amendPrescriptionRequestSchema,
@@ -2875,6 +2876,18 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(allowFreeTextPrescriptionStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/prescription-split-block-enabled',
+  tags: ['clinic'],
+  summary: '"Chặn kê liều lẻ cho thuốc không chia được" (#241) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read, đúng khuôn GET /clinic-settings/allow-free-text-prescription-enabled)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionSplitBlockStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
   },
 });

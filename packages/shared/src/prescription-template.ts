@@ -34,7 +34,7 @@ export type UpdatePrescriptionTemplateRequest = z.infer<typeof updatePrescriptio
 export const prescriptionTemplateItemSchema = prescriptionTemplateItemInputSchema.extend({
   id: z.string().uuid(),
   drugName: z.string(),
-  /** Tính từ 4 buổi × `durationDays` lúc lưu (docs/DECISIONS.md #196), giống `prescriptionItemSchema`. */
+  /** Tính từ 4 buổi × `durationDays` lúc lưu, LÀM TRÒN LÊN (docs/DECISIONS.md #196/#241), giống `prescriptionItemSchema`. */
   quantity: z.number().int(),
   /** Đơn vị nhỏ nhất của thuốc — CHỈ hiển thị, đúng khuôn `prescriptionItemSchema.unitCode`. */
   unitCode: z.string().nullable(),

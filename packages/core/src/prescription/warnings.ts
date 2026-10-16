@@ -132,3 +132,32 @@ export function findInsufficientStock(lines: PrescriptionStockLine[], onHand: Re
   }
   return shortages;
 }
+
+export interface NonSplittableDoseLine {
+  /** `null` = dòng "kê thuốc tự do" — không có cờ chia nhỏ nên không bao giờ bị cảnh báo. */
+  drugId: string | null;
+  drugName: string;
+  /** `drug.is_splittable`. */
+  isSplittable: boolean;
+  /** Có liều lẻ (không phải số nguyên viên) ở ít nhất một buổi. */
+  hasFractionalDose: boolean;
+}
+
+export interface NonSplittableDoseWarning {
+  drugId: string;
+  drugName: string;
+}
+
+/**
+ * Cảnh báo "thuốc không chia được nhưng kê liều lẻ" (#241) — viên nang, bao tan trong ruột, giải phóng kéo dài
+ * (cờ `is_splittable=false` ở danh mục thuốc) mà bác sĩ kê ¼/½ viên. Mỗi thuốc một cảnh báo.
+ * Chặn cứng hay chỉ cảnh báo do công tắc `prescriptionSplitBlockEnabled` của phòng khám quyết định (ở service).
+ */
+export function findNonSplittableFractionalDoses(lines: NonSplittableDoseLine[]): NonSplittableDoseWarning[] {
+  const found = new Map<string, NonSplittableDoseWarning>();
+  for (const line of lines) {
+    if (line.drugId === null || line.isSplittable || !line.hasFractionalDose) continue;
+    found.set(line.drugId, { drugId: line.drugId, drugName: line.drugName });
+  }
+  return [...found.values()];
+}

@@ -19,6 +19,7 @@ import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { useUnitNameByCode, unitLabel } from './useUnitNameByCode';
 import { DrugPicker } from '../encounter/DrugPicker';
 import { LineInput } from '../encounter/PrescriptionPanel';
+import { DoseInput } from '../encounter/dose-controls';
 import { useCreatePrescriptionTemplateMutation, usePrescriptionTemplatesQuery, useUpdatePrescriptionTemplateMutation } from './prescription-template.queries';
 import { listPrescriptionTemplates } from './prescription-template.api';
 
@@ -348,16 +349,16 @@ function PrescriptionTemplateFormDialog({
               </div>
               <div className="mt-2 flex flex-wrap items-end gap-4">
                 <div className="w-14">
-                  <LineInput dense label="Sáng" type="number" value={line.doseMorning} onChange={(v) => updateLine(line.key, { doseMorning: v })} />
+                  <DoseInput label="Sáng" value={line.doseMorning} onCommit={(v) => updateLine(line.key, { doseMorning: v })} />
                 </div>
                 <div className="w-14">
-                  <LineInput dense label="Trưa" type="number" value={line.doseNoon} onChange={(v) => updateLine(line.key, { doseNoon: v })} />
+                  <DoseInput label="Trưa" value={line.doseNoon} onCommit={(v) => updateLine(line.key, { doseNoon: v })} />
                 </div>
                 <div className="w-14">
-                  <LineInput dense label="Chiều" type="number" value={line.doseAfternoon} onChange={(v) => updateLine(line.key, { doseAfternoon: v })} />
+                  <DoseInput label="Chiều" value={line.doseAfternoon} onCommit={(v) => updateLine(line.key, { doseAfternoon: v })} />
                 </div>
                 <div className="w-14">
-                  <LineInput dense label="Tối" type="number" value={line.doseEvening} onChange={(v) => updateLine(line.key, { doseEvening: v })} />
+                  <DoseInput label="Tối" value={line.doseEvening} onCommit={(v) => updateLine(line.key, { doseEvening: v })} />
                 </div>
                 <span className="pb-1.5 text-lg font-semibold text-slate-300">×</span>
                 <div className="w-16">

@@ -22,6 +22,8 @@ export interface PrescriptionItemWithDrug {
    * cho dòng tự do hoặc thuốc chưa khai đơn vị cơ sở. */
   unitCode: string | null;
   instruction: string | null;
+  /** `drug.is_splittable` (#241) — `true` cho dòng tự do (không có khái niệm chia nhỏ). */
+  isSplittable: boolean;
 }
 
 export interface PrescriptionWithItems extends Prescription {
@@ -32,14 +34,15 @@ interface RawItemWithDrug {
   id: string;
   drugId: string | null;
   freeTextDrugName: string | null;
-  doseMorning: number;
-  doseNoon: number;
-  doseAfternoon: number;
-  doseEvening: number;
+  // Cột NUMERIC(5,2) (#241) — Prisma trả Decimal, `mapItems()` đổi sang number.
+  doseMorning: Prisma.Decimal;
+  doseNoon: Prisma.Decimal;
+  doseAfternoon: Prisma.Decimal;
+  doseEvening: Prisma.Decimal;
   durationDays: number;
   quantity: number;
   instruction: string | null;
-  drug: { name: string; activeIngredient: string | null; baseUnitCode: string | null; ingredients: { activeIngredientCode: string }[] } | null;
+  drug: { name: string; activeIngredient: string | null; baseUnitCode: string | null; isSplittable: boolean; ingredients: { activeIngredientCode: string }[] } | null;
 }
 
 interface RawPrescriptionWithItems extends Prescription {
@@ -54,14 +57,15 @@ function mapItems(rows: RawItemWithDrug[], nameByCode: Map<string, string>): Pre
     drugName: row.drug?.name ?? row.freeTextDrugName!,
     activeIngredient: row.drug?.activeIngredient ?? null,
     ingredientNames: (row.drug?.ingredients ?? []).map((i) => nameByCode.get(i.activeIngredientCode)).filter((n): n is string => n !== undefined),
-    doseMorning: row.doseMorning,
-    doseNoon: row.doseNoon,
-    doseAfternoon: row.doseAfternoon,
-    doseEvening: row.doseEvening,
+    doseMorning: Number(row.doseMorning),
+    doseNoon: Number(row.doseNoon),
+    doseAfternoon: Number(row.doseAfternoon),
+    doseEvening: Number(row.doseEvening),
     durationDays: row.durationDays,
     quantity: row.quantity,
     unitCode: row.drug?.baseUnitCode ?? null,
     instruction: row.instruction,
+    isSplittable: row.drug?.isSplittable ?? true,
   }));
 }
 
@@ -73,6 +77,7 @@ const ITEMS_INCLUDE = {
         name: true,
         activeIngredient: true,
         baseUnitCode: true,
+        isSplittable: true,
         ingredients: { where: { deletedAt: null as null }, select: { activeIngredientCode: true } },
       },
     },
@@ -160,6 +165,18 @@ export class PrescriptionRepository {
   }
 
   /**
+   * "Lời dặn của bác sĩ" riêng của đơn NHÁP (#241) — `null` = xoá. `signedAt: null` chặn ghi vào đơn đã ký (trigger DB là lớp cuối).
+   * Tăng `version` như mọi UPDATE khác; không kèm điều kiện `version` vì lưu nháp vốn là "ghi đè toàn bộ" (cùng `replaceItems`).
+   */
+  async setDoctorAdvice(tx: Prisma.TransactionClient, tenantId: string, id: string, advice: string | null, actorId: string): Promise<number> {
+    const result = await tx.prescription.updateMany({
+      where: { tenantId, id, signedAt: null, deletedAt: null },
+      data: { doctorAdvice: advice, version: { increment: 1 }, updatedBy: actorId },
+    });
+    return result.count;
+  }
+
+  /**
    * "Bỏ qua cảnh báo này cho đơn hiện tại" (#228) — ghi danh sách cảnh báo đã bỏ qua của đơn NHÁP (optimistic lock qua
    * `version`; `signedAt: null` thêm một lớp chặn nữa phía ứng dụng, trigger DB là lớp cuối). Trả số dòng đã cập nhật.
    */
@@ -242,7 +259,7 @@ export class PrescriptionRepository {
     tenantId: string,
     encounterId: string,
     actorId: string,
-    data: { supersedesId: string; amendmentReason: string; signedAt: Date; signedBy: string; prescriptionNo: string | null },
+    data: { supersedesId: string; amendmentReason: string; signedAt: Date; signedBy: string; prescriptionNo: string | null; doctorAdvice: string | null },
   ): Promise<Prescription> {
     return tx.prescription.create({
       data: { tenantId, encounterId, createdBy: actorId, updatedBy: actorId, ...data },

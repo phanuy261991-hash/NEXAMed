@@ -19,13 +19,35 @@ import { z } from 'zod';
  * `computePrescriptionQuantity()` = tổng 4 buổi × `durationDays`, luôn theo đơn vị NHỎ NHẤT của
  * thuốc (không có ô chọn đơn vị — xem `unitCode` ở `prescriptionItemSchema`, chỉ để HIỂN THỊ).
  */
+/**
+ * Liều MỘT buổi (#241, mockup đã duyệt): bước nhỏ nhất ¼ viên (0, ¼, ½, ¾, 1, 1¼...). Số thực nhưng bội
+ * của 0,25 nên biểu diễn chính xác; mọi phép tính tổng đi qua `doseToQuarters` (số nguyên).
+ */
+export const DOSE_STEP = 0.25;
+export const MAX_DOSE_PER_PERIOD = 99.75;
+export const doseQuarterSchema = z
+  .number()
+  .min(0)
+  .max(MAX_DOSE_PER_PERIOD)
+  .refine((v) => Math.abs(v * 4 - Math.round(v * 4)) < 1e-9, { message: 'Liều phải là bội của ¼ viên (ví dụ ¼, ½, 1, 1½).' });
+
 export const prescriptionDosePeriodsSchema = z.object({
-  doseMorning: z.number().int().min(0),
-  doseNoon: z.number().int().min(0),
-  doseAfternoon: z.number().int().min(0),
-  doseEvening: z.number().int().min(0),
+  doseMorning: doseQuarterSchema,
+  doseNoon: doseQuarterSchema,
+  doseAfternoon: doseQuarterSchema,
+  doseEvening: doseQuarterSchema,
 });
 export type PrescriptionDosePeriods = z.infer<typeof prescriptionDosePeriodsSchema>;
+
+/** Liều → số nguyên đơn vị ¼ viên (1 viên = 4), để cộng/nhân không sai số số thực. */
+export function doseToQuarters(dose: number): number {
+  return Math.round(dose * 4);
+}
+
+/** Dòng có liều LẺ (không phải số nguyên viên) ở bất kỳ buổi nào — dùng cho cảnh báo thuốc không chia được. */
+export function hasFractionalDose(periods: PrescriptionDosePeriods): boolean {
+  return [periods.doseMorning, periods.doseNoon, periods.doseAfternoon, periods.doseEvening].some((d) => doseToQuarters(d) % 4 !== 0);
+}
 
 const prescriptionItemInputSchema = z
   .object({
@@ -45,38 +67,55 @@ const prescriptionItemInputSchema = z
         path: ['drugId'],
       });
     }
-    if (data.doseMorning + data.doseNoon + data.doseAfternoon + data.doseEvening <= 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Phải nhập liều dùng ít nhất 1 buổi trong ngày (Sáng/Trưa/Chiều/Tối).',
-        path: ['doseMorning'],
-      });
-    }
+    // Liều KHÔNG bắt buộc ở đây: đơn NHÁP được lưu ngay khi vừa thêm thuốc (chưa nhập liều) để cảnh báo trùng hoạt chất hiện liền (#241).
+    // Bắt buộc có liều ở lúc KÝ (server) và ĐÍNH CHÍNH (`amendPrescriptionRequestSchema`).
   });
+
+/** Dòng đã có liều dùng ít nhất 1 buổi trong ngày (Sáng/Trưa/Chiều/Tối). */
+export function hasAnyDose(periods: PrescriptionDosePeriods): boolean {
+  return doseToQuarters(periods.doseMorning) + doseToQuarters(periods.doseNoon) + doseToQuarters(periods.doseAfternoon) + doseToQuarters(periods.doseEvening) > 0;
+}
 
 /** Tổng số lượng (đơn vị nhỏ nhất của thuốc) — dùng ở CẢ backend (tính `quantity` lúc lưu) lẫn
  * frontend (xem trước lúc còn đang gõ, trước khi lưu — `apps/web` không được import `@nexamed/core`,
  * #073, nên hàm thuần này đặt ở đây thay vì `packages/core`). */
 export function computePrescriptionQuantity(periods: PrescriptionDosePeriods, durationDays: number): number {
-  return (periods.doseMorning + periods.doseNoon + periods.doseAfternoon + periods.doseEvening) * durationDays;
+  return Math.ceil(computePrescriptionExactQuarters(periods, durationDays) / 4);
 }
 
-/** Chuỗi hiển thị "Sáng 1 - Chiều 1 - Tối 1" (bỏ buổi = 0) — dùng cho các nơi CHỈ ĐỌC không có 4 ô
+/** Tổng số theo đơn vị ¼ viên (số nguyên) trước khi làm tròn — `% 4 !== 0` nghĩa là tổng lẻ, đã bị LÀM TRÒN LÊN. */
+export function computePrescriptionExactQuarters(periods: PrescriptionDosePeriods, durationDays: number): number {
+  const perDay = doseToQuarters(periods.doseMorning) + doseToQuarters(periods.doseNoon) + doseToQuarters(periods.doseAfternoon) + doseToQuarters(periods.doseEvening);
+  return perDay * durationDays;
+}
+
+/** Liều một buổi dạng đọc được: 0,5 → "½", 1,5 → "1½", 2 → "2", 0,25 → "¼". */
+export function formatDoseAmount(dose: number): string {
+  const quarters = doseToQuarters(dose);
+  const whole = Math.floor(quarters / 4);
+  const frac = ['', '¼', '½', '¾'][quarters % 4] ?? '';
+  if (whole === 0 && frac === '') return '0';
+  return `${whole > 0 ? whole : ''}${frac}`;
+}
+
+/** Chuỗi hiển thị "Sáng 1 - Chiều 1 - Tối ½" (bỏ buổi = 0) — dùng cho các nơi CHỈ ĐỌC không có 4 ô
  * riêng để hiện (in đơn, "Phát thuốc", bệnh án PDF). `"—"` khi cả 4 buổi đều 0 (dữ liệu cũ trước
  * #196, đã gộp nội dung gốc vào `instruction` lúc migrate — xem migration
  * `20260929110000_prescription_dose_periods`). */
 export function formatDoseSummary(periods: PrescriptionDosePeriods): string {
   const parts: string[] = [];
-  if (periods.doseMorning > 0) parts.push(`Sáng ${periods.doseMorning}`);
-  if (periods.doseNoon > 0) parts.push(`Trưa ${periods.doseNoon}`);
-  if (periods.doseAfternoon > 0) parts.push(`Chiều ${periods.doseAfternoon}`);
-  if (periods.doseEvening > 0) parts.push(`Tối ${periods.doseEvening}`);
+  if (periods.doseMorning > 0) parts.push(`Sáng ${formatDoseAmount(periods.doseMorning)}`);
+  if (periods.doseNoon > 0) parts.push(`Trưa ${formatDoseAmount(periods.doseNoon)}`);
+  if (periods.doseAfternoon > 0) parts.push(`Chiều ${formatDoseAmount(periods.doseAfternoon)}`);
+  if (periods.doseEvening > 0) parts.push(`Tối ${formatDoseAmount(periods.doseEvening)}`);
   return parts.length > 0 ? parts.join(' - ') : '—';
 }
 
 /** `PUT /encounters/:id/prescription-items` — thay thế TOÀN BỘ danh sách dòng thuốc của đơn nháp hiện tại (tạo đơn nháp nếu chưa có). Chỉ dùng được khi đơn CHƯA ký (`PrescriptionAlreadySignedError` nếu đã ký). */
 export const savePrescriptionItemsRequestSchema = z.object({
   items: z.array(prescriptionItemInputSchema),
+  /** "Lời dặn của bác sĩ" riêng cho đơn thuốc (#241) — in cuối đơn. Bỏ trống/`''` = xoá lời dặn. Không gửi = giữ nguyên. */
+  doctorAdvice: z.string().max(2000).optional(),
 });
 export type SavePrescriptionItemsRequest = z.infer<typeof savePrescriptionItemsRequestSchema>;
 
@@ -89,12 +128,15 @@ export const prescriptionItemSchema = z.object({
   /** Có giá trị CHỈ khi `drugId=null` (dòng tự do) — dùng để phân biệt hiển thị badge "Ngoài danh mục". */
   freeTextDrugName: z.string().nullable(),
   activeIngredient: z.string().nullable(),
-  doseMorning: z.number().int(),
-  doseNoon: z.number().int(),
-  doseAfternoon: z.number().int(),
-  doseEvening: z.number().int(),
+  doseMorning: z.number(),
+  doseNoon: z.number(),
+  doseAfternoon: z.number(),
+  doseEvening: z.number(),
   durationDays: z.number().int(),
+  /** Tổng số nguyên theo đơn vị nhỏ nhất, đã LÀM TRÒN LÊN (#241). */
   quantity: z.number().int(),
+  /** "Cho phép chia nhỏ" của thuốc (#241) — `true` cho dòng tự do. Web dùng để hiện nhãn "không chia được" + lọc pill liều lẻ. */
+  isSplittable: z.boolean(),
   /** Đơn vị nhỏ nhất của thuốc (`drug.baseUnitCode`), resolve qua JOIN — CHỈ hiển thị, không sửa
    * được (docs/DECISIONS.md #196). `null` cho dòng "kê thuốc tự do" hoặc thuốc chưa khai đơn vị cơ sở. */
   unitCode: z.string().nullable(),
@@ -110,12 +152,12 @@ export type PrescriptionItem = z.infer<typeof prescriptionItemSchema>;
  * `drugNames` liệt kê thuốc liên quan để bác sĩ đối chiếu.
  */
 export const prescriptionWarningSchema = z.object({
-  kind: z.enum(['duplicate_active_ingredient', 'allergy', 'stock_insufficient']),
+  kind: z.enum(['duplicate_active_ingredient', 'allergy', 'stock_insufficient', 'not_splittable']),
   label: z.string(),
   drugNames: z.array(z.string()),
   /** Khoá định danh cảnh báo (`<kind>:<nhãn chuẩn hoá>`) — dùng để "Bỏ qua cảnh báo này" (#228). */
   key: z.string(),
-  /** Có giá trị khi bác sĩ đã bỏ qua cảnh báo này TRÊN ĐƠN HIỆN TẠI (chỉ `duplicate_active_ingredient` bỏ qua được). */
+  /** Có giá trị khi bác sĩ đã bỏ qua cảnh báo này TRÊN ĐƠN HIỆN TẠI (chỉ `duplicate_active_ingredient` và `not_splittable` bỏ qua được). */
   acknowledged: z.object({ at: z.string(), byName: z.string(), reason: z.string().nullable() }).nullable(),
 });
 export type PrescriptionWarning = z.infer<typeof prescriptionWarningSchema>;
@@ -136,6 +178,8 @@ export const prescriptionSchema = z.object({
   id: z.string().uuid(),
   encounterId: z.string().uuid(),
   items: z.array(prescriptionItemSchema),
+  /** "Lời dặn của bác sĩ" riêng cho đơn này (#241); `null` = chưa nhập → in lời dặn ở tab Điều trị. */
+  doctorAdvice: z.string().nullable(),
   /** Tính lại server-side mỗi lần đọc — không lưu DB, chỉ cảnh báo, không chặn ký. */
   warnings: z.array(prescriptionWarningSchema),
   /** "Mã đơn thuốc thật" (docs/DECISIONS.md #169) — sinh lúc KÝ (`null` khi còn nháp). Đính chính
@@ -165,10 +209,23 @@ export type SignPrescriptionRequest = z.infer<typeof signPrescriptionRequestSche
  * là version của đơn ĐÃ KÝ hiện tại (optimistic lock, chống đính chính trùng khi 2 request gần
  * đồng thời).
  */
-export const amendPrescriptionRequestSchema = savePrescriptionItemsRequestSchema.extend({
-  amendmentReason: z.string().min(1, 'Phải nhập lý do đính chính.'),
-  version: z.number().int(),
-});
+export const amendPrescriptionRequestSchema = savePrescriptionItemsRequestSchema
+  .extend({
+    amendmentReason: z.string().min(1, 'Phải nhập lý do đính chính.'),
+    version: z.number().int(),
+  })
+  .superRefine((data, ctx) => {
+    // Đính chính là bản ĐÃ KÝ ngay nên mọi dòng phải có liều (khác lưu nháp).
+    data.items.forEach((item, index) => {
+      if (!hasAnyDose(item)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Phải nhập liều dùng ít nhất 1 buổi trong ngày (Sáng/Trưa/Chiều/Tối).',
+          path: ['items', index, 'doseMorning'],
+        });
+      }
+    });
+  });
 export type AmendPrescriptionRequest = z.infer<typeof amendPrescriptionRequestSchema>;
 
 /**

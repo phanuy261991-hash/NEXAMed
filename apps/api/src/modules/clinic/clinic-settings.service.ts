@@ -54,6 +54,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacySeparateInvoiceEnabled,
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
+        prescriptionSplitBlockEnabled,
         allowFreeTextPrescriptionEnabled,
         paraclinicalBeforePaymentEnabled,
         specimenScanRequired,
@@ -85,6 +86,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getPharmacySeparateInvoiceEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPharmacyStockTrackingEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getPrescriptionSplitBlockEnabled(tx, tenantId),
         this.clinicSettingsRepository.getAllowFreeTextPrescriptionEnabled(tx, tenantId),
         this.clinicSettingsRepository.getParaclinicalBeforePaymentEnabled(tx, tenantId),
         this.clinicSettingsRepository.getSpecimenScanRequired(tx, tenantId),
@@ -117,6 +119,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacySeparateInvoiceEnabled,
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
+        prescriptionSplitBlockEnabled,
         allowFreeTextPrescriptionEnabled,
         paraclinicalBeforePaymentEnabled,
         specimenScanRequired,
@@ -340,6 +343,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.prescriptionStockBlockEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertPrescriptionStockBlockEnabled(tx, tenantId, actorId, dto.prescriptionStockBlockEnabled);
       }
+      if (dto.prescriptionSplitBlockEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertPrescriptionSplitBlockEnabled(tx, tenantId, actorId, dto.prescriptionSplitBlockEnabled);
+      }
       if (dto.allowFreeTextPrescriptionEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertAllowFreeTextPrescriptionEnabled(tx, tenantId, actorId, dto.allowFreeTextPrescriptionEnabled);
       }
@@ -382,6 +388,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.pharmacySeparateInvoiceEnabled !== undefined ||
         dto.pharmacyStockTrackingEnabled !== undefined ||
         dto.prescriptionStockBlockEnabled !== undefined ||
+        dto.prescriptionSplitBlockEnabled !== undefined ||
         dto.allowFreeTextPrescriptionEnabled !== undefined ||
         dto.paraclinicalBeforePaymentEnabled !== undefined ||
         dto.specimenScanRequired !== undefined ||
@@ -425,6 +432,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacySeparateInvoiceEnabled,
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
+        prescriptionSplitBlockEnabled,
         allowFreeTextPrescriptionEnabled,
         paraclinicalBeforePaymentEnabled,
         specimenScanRequired,
@@ -456,6 +464,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getPharmacySeparateInvoiceEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPharmacyStockTrackingEnabled(tx, tenantId),
         this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getPrescriptionSplitBlockEnabled(tx, tenantId),
         this.clinicSettingsRepository.getAllowFreeTextPrescriptionEnabled(tx, tenantId),
         this.clinicSettingsRepository.getParaclinicalBeforePaymentEnabled(tx, tenantId),
         this.clinicSettingsRepository.getSpecimenScanRequired(tx, tenantId),
@@ -488,6 +497,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         pharmacySeparateInvoiceEnabled,
         pharmacyStockTrackingEnabled,
         prescriptionStockBlockEnabled,
+        prescriptionSplitBlockEnabled,
         allowFreeTextPrescriptionEnabled,
         paraclinicalBeforePaymentEnabled,
         specimenScanRequired,
@@ -508,6 +518,10 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   }
 
   /** `ClinicConfigReaderPort` ("Chặn kê vượt tồn", Kho Thuốc GĐ5) — module `encounter` đọc qua port này, cùng lý do trên. */
+  getPrescriptionSplitBlockEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getPrescriptionSplitBlockEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getPrescriptionSplitBlockEnabled(tx, tenantId));
+  }
+
   getPrescriptionStockBlockEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getPrescriptionStockBlockEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getPrescriptionStockBlockEnabled(tx, tenantId));
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findAllergyMatches, findDuplicateActiveIngredients, type PrescriptionDrugLine } from './warnings';
+import { findAllergyMatches, findDuplicateActiveIngredients, findNonSplittableFractionalDoses, type PrescriptionDrugLine } from './warnings';
 
 describe('findDuplicateActiveIngredients (PRE-02)', () => {
   it('trả về nhóm khi 2 thuốc khác nhau cùng hoạt chất', () => {
@@ -125,5 +125,20 @@ describe('findAllergyMatches (PRE-03)', () => {
     const warnings = findAllergyMatches(lines, ['Amoxicillin']);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]!.drugIds).toEqual(['1', '2']);
+  });
+});
+
+describe('findNonSplittableFractionalDoses (#241)', () => {
+  it('thuốc không chia được mà kê liều lẻ thì báo', () => {
+    expect(findNonSplittableFractionalDoses([{ drugId: 'a', drugName: 'Amoxicillin', isSplittable: false, hasFractionalDose: true }])).toEqual([{ drugId: 'a', drugName: 'Amoxicillin' }]);
+  });
+  it('thuốc không chia được nhưng liều nguyên thì không báo', () => {
+    expect(findNonSplittableFractionalDoses([{ drugId: 'a', drugName: 'A', isSplittable: false, hasFractionalDose: false }])).toEqual([]);
+  });
+  it('thuốc chia được kê liều lẻ thì không báo', () => {
+    expect(findNonSplittableFractionalDoses([{ drugId: 'a', drugName: 'A', isSplittable: true, hasFractionalDose: true }])).toEqual([]);
+  });
+  it('dòng kê thuốc tự do (drugId null) không bao giờ báo', () => {
+    expect(findNonSplittableFractionalDoses([{ drugId: null, drugName: 'Thuốc ngoài', isSplittable: false, hasFractionalDose: true }])).toEqual([]);
   });
 });

@@ -93,6 +93,8 @@ export class DrugService {
         // tránh phụ thuộc vào việc frontend luôn ẩn field đúng (docs/DECISIONS.md #151).
         controlType: dto.itemType === 'MEDICINE' ? dto.controlType : 'NORMAL',
         isPrescriptionOnly: dto.itemType === 'MEDICINE' ? dto.isPrescriptionOnly : true,
+        // "Cho phép chia nhỏ" (#241) — chỉ có ý nghĩa với thuốc, vật tư luôn true (trung tính).
+        isSplittable: dto.itemType === 'MEDICINE' ? dto.isSplittable : true,
         registrationNumber: dto.itemType === 'MEDICINE' ? (dto.registrationNumber ?? null) : null,
         dosageForm: dto.itemType === 'MEDICINE' ? (dto.dosageForm ?? null) : null,
         countryOfOrigin: dto.itemType === 'MEDICINE' ? (dto.countryOfOrigin ?? null) : null,
@@ -202,6 +204,7 @@ export class DrugService {
           // frontend ẩn field cho SUPPLY nên không gửi lên; create() đã ép NORMAL/true khi tạo SUPPLY.
           controlType: dto.controlType,
           isPrescriptionOnly: dto.isPrescriptionOnly,
+          isSplittable: dto.isSplittable,
           registrationNumber: dto.registrationNumber,
           dosageForm: dto.dosageForm,
           countryOfOrigin: dto.countryOfOrigin,
@@ -280,6 +283,7 @@ export class DrugService {
       maxStockAlert: drug.maxStockAlert,
       controlType: drug.controlType,
       isPrescriptionOnly: drug.isPrescriptionOnly,
+      isSplittable: drug.isSplittable,
       registrationNumber: drug.registrationNumber,
       dosageForm: drug.dosageForm,
       countryOfOrigin: drug.countryOfOrigin,

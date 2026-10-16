@@ -534,6 +534,7 @@ export function DrugCatalogPane() {
                 </div>
               )}
               {selectedItem.itemType === 'MEDICINE' && <DetailField label="Yêu cầu kê đơn (Rx)" value={selectedItem.isPrescriptionOnly ? 'Có' : 'Không'} />}
+              {selectedItem.itemType === 'MEDICINE' && <DetailField label="Cho phép chia nhỏ" value={selectedItem.isSplittable ? 'Có' : 'Không (không kê liều lẻ)'} />}
               <DetailField
                 label="Hãng sản xuất"
                 value={selectedItem.manufacturerCode ? (manufacturerCatalog.nameByCode.get(selectedItem.manufacturerCode) ?? selectedItem.manufacturerCode) : selectedItem.manufacturer}
@@ -982,6 +983,7 @@ function DrugFormModal({
     maxStockAlert?: number;
     controlType: DrugControlType;
     isPrescriptionOnly: boolean;
+    isSplittable: boolean;
     registrationNumber?: string;
     dosageForm?: string;
     countryOfOrigin?: string;
@@ -1014,6 +1016,8 @@ function DrugFormModal({
   const [manufacturerCode, setManufacturerCode] = useState(item?.manufacturerCode ?? '');
   const [controlType, setControlType] = useState<DrugControlType>(item?.controlType ?? 'NORMAL');
   const [isPrescriptionOnly, setIsPrescriptionOnly] = useState(item?.isPrescriptionOnly ?? true);
+  // "Cho phép chia nhỏ" (#241) — tắt cho viên nang/bao tan trong ruột/giải phóng kéo dài (kê liều lẻ sẽ cảnh báo hoặc bị chặn).
+  const [isSplittable, setIsSplittable] = useState(item?.isSplittable ?? true);
   // Mở rộng #151 — 3 bắt buộc (Số ĐK/Dạng bào chế/Nước SX) + 5 tùy chọn, CHỈ có ý nghĩa với Thuốc.
   const [registrationNumber, setRegistrationNumber] = useState(item?.registrationNumber ?? '');
   const [dosageForm, setDosageForm] = useState(item?.dosageForm ?? '');
@@ -1085,6 +1089,7 @@ function DrugFormModal({
       // CHỈ có ý nghĩa với Thuốc — Vật tư y tế gửi giá trị trung tính, khớp default DB.
       controlType: isMedicine ? controlType : 'NORMAL',
       isPrescriptionOnly: isMedicine ? isPrescriptionOnly : true,
+      isSplittable: isMedicine ? isSplittable : true,
       // Mở rộng #151 — CHỈ có ý nghĩa với Thuốc, `isInvalid` đã chặn submit khi 3 trường bắt buộc
       // (registrationNumber/dosageForm/countryOfOrigin) còn trống.
       registrationNumber: isMedicine ? registrationNumber.trim() || undefined : undefined,
@@ -1320,6 +1325,14 @@ function DrugFormModal({
                   <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                     <input type="checkbox" checked={isPrescriptionOnly} onChange={(e) => setIsPrescriptionOnly(e.target.checked)} />
                     Yêu cầu kê đơn (Rx)
+                  </label>
+                </div>
+              )}
+              {isMedicine && (
+                <div className="flex items-end pb-1.5">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <input type="checkbox" checked={isSplittable} onChange={(e) => setIsSplittable(e.target.checked)} />
+                    Cho phép chia nhỏ
                   </label>
                 </div>
               )}

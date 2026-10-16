@@ -122,3 +122,32 @@ export class PrescriptionWarningNotAcknowledgeableError extends DomainError {
     super('Chỉ bỏ qua được cảnh báo trùng hoạt chất đang hiển thị trên đơn này.');
   }
 }
+
+/**
+ * "Chặn kê liều lẻ cho thuốc không chia được" (#241) — tenant bật `prescriptionSplitBlockEnabled` và đơn có dòng
+ * thuốc `is_splittable=false` kê liều lẻ (¼, ½...). Chặn lúc KÝ/đính chính (cùng khuôn `PrescriptionStockInsufficientError`),
+ * `details` mang danh sách thuốc vi phạm để FE nêu đúng dòng nào. 422 mặc định (vi phạm quy tắc nghiệp vụ).
+ */
+export class PrescriptionNonSplittableDoseError extends DomainError {
+  readonly code = 'PRESCRIPTION_NON_SPLITTABLE_DOSE';
+  readonly details: { drugId: string; drugName: string }[];
+
+  constructor(drugs: { drugId: string; drugName: string }[]) {
+    super('Có thuốc không chia nhỏ được đang kê liều lẻ — không thể ký đơn khi "Chặn kê liều lẻ" đang bật.');
+    this.details = drugs;
+  }
+}
+
+/**
+ * Ký đơn khi còn dòng thuốc CHƯA nhập liều (#241) — đơn nháp được lưu ngay khi vừa thêm thuốc nên có thể có dòng liều
+ * trống; ký thì mọi dòng phải có liều ít nhất 1 buổi. `details` liệt kê thuốc còn thiếu. 422 mặc định.
+ */
+export class PrescriptionItemMissingDoseError extends DomainError {
+  readonly code = 'PRESCRIPTION_ITEM_MISSING_DOSE';
+  readonly details: { drugId: string | null; drugName: string }[];
+
+  constructor(drugs: { drugId: string | null; drugName: string }[]) {
+    super('Có thuốc chưa nhập liều dùng — nhập ít nhất 1 buổi trong ngày (Sáng/Trưa/Chiều/Tối) cho mọi thuốc trước khi ký đơn.');
+    this.details = drugs;
+  }
+}
