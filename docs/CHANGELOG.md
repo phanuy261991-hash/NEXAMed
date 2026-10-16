@@ -4,6 +4,14 @@
 
 ## 2026-10-16
 
+### Chuẩn độ đậm chữ, hộp xác nhận gọn và sửa lỗi hiển thị (`docs/DECISIONS.md` #240)
+
+Toàn bộ giao diện màn hình dùng chữ đậm tối đa semibold (600) thay cho bold/extra-bold, nét chữ sắc hơn, tiếng Việt có dấu không còn "vỡ nét"; chứng từ in giữ nguyên chữ đậm. Các hộp xác nhận (ngưng/ẩn/xoá, từ chối/huỷ có lý do, mở khoá, vô hiệu hoá tài khoản, huỷ lượt khám, trả về hàng chờ) có kiểu mới gọn hơn, ít chữ hơn: tên hành động, thông tin đối tượng có đường kẻ, một câu ghi chú, Esc để đóng. Sửa nhãn khối bị cắt nửa ở hộp thoại Sửa hồ sơ bệnh nhân và 6 hộp thoại khác. Đổi tên menu "Danh mục Cận lâm sàng". Còn 9 hộp xác nhận cũ chưa chuyển. Không migration, không ảnh hưởng dữ liệu.
+
+### Màn hình đăng nhập mới (`docs/DECISIONS.md` #240)
+
+Đăng nhập là một cửa sổ chia đôi nổi giữa màn hình, nền là các biểu tượng y khoa lơ lửng chuyển động nhẹ (tự dừng khi máy bật "giảm chuyển động"); bên trái giới thiệu hành trình khám 5 bước, bên phải là form với ô nhập nền xám nhạt, nút hiện/ẩn mật khẩu và nhắc Caps Lock. Khi bị khoá tạm, màn hình đếm lùi "Thử lại sau mm:ss" và khoá nút tới khi hết giờ; khoá vĩnh viễn, quá nhiều lần thử và mất kết nối đều có thông báo tiếng Việt riêng. Điện thoại là màn đầy đủ gọn, máy tính bảng dọc dùng cột một cột; cửa sổ và biểu tượng nền lớn hơn trên màn 24 inch và 27 inch. Kiểm toàn app trên 10 cỡ màn hình: không trang nào cuộn ngang hay vỡ ở 1366px trở lên; sửa danh sách "Điều chuyển kho" và "Hao hụt điều chuyển" bị cắt cột ở màn 1280–1536px. Còn lại (Mẫu in, Phiếu nhập chi tiết ở 1280px, máy tính bảng dọc, màn rất rộng) ghi ở #240. Không migration; API thêm `retryAfterSeconds` vào lỗi khoá tạm.
+
 ### Khoá đăng nhập luỹ tiến và "Mở khoá" (`docs/DECISIONS.md` #239)
 
 Nhân viên phòng khám nhập sai mật khẩu 5 lần bị khoá **5 phút**, rồi **15 phút**, rồi **30 phút**; sau lần khoá 30 phút chỉ cần sai thêm một lần là **khoá vĩnh viễn** — chỉ người được phân quyền "Mở khoá tài khoản" (mặc định Quản trị phòng khám, chỉ mở được tài khoản cùng chi nhánh) hoặc đặt lại mật khẩu mới gỡ được. Khi bị khoá, màn đăng nhập báo rõ số phút (kể cả ngay ở lần sai thứ 5). Người vận hành SaaS khoá cố định 60 phút (đã có OTP). Giới hạn tần suất theo IP giữ nguyên. Trang Quản lý tài khoản hiện nhãn "Khoá N phút"/"Khoá vĩnh viễn" và nút "Mở khoá" (chỉ người có quyền thấy). Môi trường khác: `db:deploy` (1 migration cộng thêm) + `db:seed` (quyền mới `user_account.unlock`) rồi khởi động lại API. Bậc khoá không tự hạ theo thời gian — chỉ về 0 khi đăng nhập đúng hoặc được mở khoá.

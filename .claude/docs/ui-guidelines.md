@@ -394,3 +394,44 @@ Mẫu sai đã gặp 2 lần liên tiếp ở `WaitingCard`/`InProgressCard` (`a
 - **Dải số tổng hợp** luôn dùng `StatCardRow` (một dải liền, chia bằng vạch mảnh, màu nằm ở chữ số). KHÔNG dùng thẻ viền bo + thanh màu bên cạnh (chủ dự án từ chối lần nữa 14/10/2026, trùng mục 12). Mỗi ô giữ gọn một dòng: nhãn nêu nội dung, giá trị chỉ là số ("1 / 0"), không viết câu dài vào ô giá trị.
 - **Báo cáo cùng nhóm gộp thành tab của một trang** (`TabBar variant="underline"`, tab nhớ trong `?tab=`) thay vì thêm menu riêng khi chủ dự án chốt như vậy (ví dụ "Hao hụt điều chuyển" nằm trong "Báo cáo Nhập-Xuất-Tồn"); đường dẫn cũ giữ lại và chuyển hướng.
 - **Báo cáo gộp nhiều chi nhánh (Đợt 3, chốt 15/10/2026, `docs/DECISIONS.md` #235)**: bộ chọn "Phạm vi" nằm trong thanh lọc của từng báo cáo (cạnh "Từ ngày / Đến ngày"), dùng DUY NHẤT `ReportScopeControl` + `useReportScope` (`features/branch/`) — ghép `SegmentedToggle` (3 lựa chọn) và `MultiSelectCombobox` (khi "Chọn chi nhánh"), không dựng bộ chọn riêng từng trang. Dòng "Đang xem …" dùng `ReportScopeSummary` với `BranchChip`. Chỉ render khi tài khoản có quyền `company_report.read` ở công ty ≥ 2 chi nhánh; cột/bảng "Chi nhánh" chỉ hiện khi báo cáo gộp từ 2 chi nhánh trở lên (`isMultiBranchScope`). Quỹ/chứng từ chi nhánh khác chỉ xem: dải hổ phách `border-amber-300 bg-amber-50`, không có đường mở phiếu.
+
+## 15. Màn đăng nhập và kiểm tra giao diện đa kích thước màn hình (chốt 16/10/2026, `docs/DECISIONS.md` #240, mockup https://claude.ai/artifact/6D99jqn8SbB6pHF2FemVDA đã duyệt)
+
+**Màn đăng nhập** (`features/auth/LoginPage.tsx`): màn hình lớn là MỘT CỬA SỔ chia đôi nổi giữa nền (không full màn hình): panel trái `bg-brand-teal-tint` (logo, câu giới thiệu, "Một lượt khám đi qua" 5 bước có dấu check teal) + cột form căn giữa; nền phía sau là biểu tượng y khoa lơ lửng (`LoginBackdrop.tsx`, chỉ animate `transform`, tự dừng khi máy bật "giảm chuyển động"). Ô nhập kiểu "nền xám nhạt" có biểu tượng đầu ô (`LoginFields.tsx`) — CHỈ cho màn đăng nhập, các form nghiệp vụ giữ kiểu viền ở mục 4.1c. Nhãn vẫn ở TRÊN ô. Khoá tạm có đếm lùi "Tài khoản bị khoá. Thử lại sau mm:ss" trên MỘT dòng; Caps Lock có nhắc; điện thoại là màn đầy đủ không nền, header chỉ logo + tên + "Phần mềm quản lý phòng khám", không có dòng "Nhấn Enter". Chưa làm: ảnh nền do phòng khám tự tải (làm sau).
+
+**Mốc màn hình lớn `desktop:`** (`@custom-variant` ở `app/index.css`) = rộng ≥ 900px VÀ cao ≥ 560px. Dưới mốc này (điện thoại dọc/ngang, máy tính bảng dọc) dùng bố cục một cột (cột 480px giữa trang). Lý do: `md:` (768px) làm cột form bị bó ~250px ở máy tính bảng dọc và bắt điện thoại nằm ngang (cao ~390px) dùng bố cục máy tính. Kích thước cửa sổ tăng theo màn: 1000px (<1920) → 1120px (≥1920, 24 inch Full HD) → 1280px (≥2560, 27 inch QHD), qua biến CSS `--login-w`/`--login-h` (KHÔNG xếp chồng `md:max-w` với `min-[1920px]:max-w` — lớp `md:` đè lên do thứ tự CSS), biểu tượng nền nhân hệ số `--s` (1 → 1,25 → 1,5).
+
+**Quy tắc kiểm đa kích thước cho MỌI giao diện mới** (khách dùng 24 inch, 27 inch, laptop 13–15 inch phóng 125%, siêu rộng, 4K — không chỉ máy dev): trước khi báo xong, mở ở tối thiểu **1280×720, 1366×657, 1536×730, 1920×969, 2560×1300, 3440×1440** và kiểm: không cuộn ngang trang, không có cột/chữ bị cắt cứng, không bị bó hẹp, căn giữa/cân hai bên. Hai nguyên nhân hay gặp: (1) **cột lưới px cứng** có tổng > ~1000px (vừa 1920px nhưng vỡ ở 1280–1536px) — dùng `minmax(Npx, Xfr)` để cột co giãn, tổng tối thiểu ≤ ~900px; (2) vùng `overflow-x-hidden` che mất nội dung thay vì cuộn. Bộ kiểm tự động toàn app (Playwright, đo tràn ngang/tràn phải/chữ bị cắt/trang trắng/lỗi JS ở 10 cỡ) đã chạy lần đầu 16/10/2026 — kết quả và việc còn lại ở `docs/DECISIONS.md` #240.
+
+### 15b. `ConfirmDialog` — hộp thoại xác nhận DÙNG CHUNG (chốt 16/10/2026, phản hồi "AI look, nhiều chữ")
+
+**Cấm viết tay hộp xác nhận kiểu cũ** ("tiêu đề nhỏ + đoạn chữ xám dài + 2 nút"). Dùng `shared/ui/ConfirmDialog.tsx`: `ModalHeader` (biểu tượng + TÊN HÀNH ĐỘNG ngắn + nút đóng; `tone="danger"` = biểu tượng đỏ cho ngưng/ẩn/xoá) → các dòng `nhãn | giá trị` có đường kẻ (đối tượng bị tác động, tình trạng) → ô nhập bổ sung (`children`, ví dụ "Lý do") → lỗi inline → MỘT dòng `note` hậu quả bên trái + nút bên phải. Quy tắc chữ: tiêu đề là hành động ("Ẩn mẫu", "Mở khoá tài khoản"), không hỏi "...?"; đối tượng đưa vào dòng thông tin chứ không nhét vào câu; hậu quả ≤ ~40 ký tự. Esc đóng. Đã chuyển: Mở khoá, Vô hiệu hoá tài khoản, Ẩn/Ngưng/Xoá ở các danh mục (mẫu lời dặn, chi nhánh, ca làm việc, mặt hàng, kho, mục danh mục, đơn thuốc mẫu, nhà cung cấp, vai trò, bản mẫu in).
+
+## 16. Chuẩn độ đậm chữ (chốt 16/10/2026, `docs/DECISIONS.md` #240 — chủ dự án: "độ đậm phải theo MỘT chuẩn, ưu tiên nét chữ SẮC, đậm quá gây vỡ nét")
+
+**Nguyên tắc**: chữ tiếng Việt có dấu ở cỡ nhỏ mà quá đậm thì dấu dính vào chữ, nét bị "vỡ". Vì vậy **TỐI ĐA `font-semibold` (600) trên giao diện màn hình**. KHÔNG dùng `font-bold`/`font-extrabold`/`font-black` (700–900) và `fontWeight` ≥ 700 — ESLint chặn (`no-restricted-syntax` ở `eslint.config.js`); CSS nền ở `app/index.css` cũng hạ `<b>`/`<strong>`/`<th>` về 600. **Nhấn mạnh bằng cỡ chữ, màu và khoảng cách, KHÔNG bằng độ đậm.** Bản IN (`*PrintView.tsx`, `shared/print/PrintDocument.tsx`) được miễn: chứng từ in cần chữ đậm thật (ví dụ chỉ số xét nghiệm vượt mức phải in đậm) — và CSS in giữ 700 cho `<b>`/`<strong>`/`<th>`.
+
+**Thang 3 mức**: `font-normal` 400 (đoạn mô tả, ghi chú, dòng phụ) · `font-medium` 500 (giá trị trong bảng, nút, mục điều hướng, chữ cần chắc hơn một chút) · `font-semibold` 600 (MỌI chữ cần nhấn: tiêu đề, đầu cột, tên chính, nhãn, giá trị nhập, badge, số liệu nổi bật).
+
+**Theo vai trò** (cỡ / độ đậm / màu):
+
+| Vai trò | Cỡ | Độ đậm | Màu |
+|---|---|---|---|
+| Tiêu đề trang (`h1`) | `text-xl` (20px) | semibold | `text-slate-900` |
+| Tiêu đề hộp thoại (`ModalHeader`) | `text-[17px]` | semibold | `text-slate-900` |
+| Tiêu đề khối/thẻ | `text-[15px]` | semibold | `text-slate-900` |
+| Nhãn khối nhô trên khung (`BoxedSection`), tiêu đề nhóm viết hoa | `text-[11px]`–`text-xs`, `uppercase tracking-wide` | semibold | trắng trên xanh / `text-slate-700` |
+| Đầu cột bảng | `text-xs` `uppercase tracking-wide` | semibold | `text-slate-700` |
+| Ô bảng — chữ CHÍNH (tên, nội dung chính) | `text-sm` | semibold | `text-slate-900` |
+| Ô bảng — giá trị thường (SĐT, ngày, số) | `text-sm` | medium | `text-slate-700` |
+| Ô bảng — dòng phụ/meta | `text-xs` | normal | `text-slate-500` |
+| Mã định danh (link) | `text-sm` | medium | `text-blue-600` |
+| Nhãn trường (`label`) | `text-sm` | semibold | `text-slate-800` |
+| Giá trị trong ô nhập | `text-[15px]` | semibold | `text-slate-900` |
+| Badge trạng thái | `text-[11px]` | semibold | theo tín hiệu |
+| Nút (`Button`) | `text-sm` | medium | theo variant |
+| Mục sidebar | `text-sm` | medium (đang chọn: semibold) | — |
+| Số liệu nổi bật (KPI, tổng tiền) | `text-xl`–`text-2xl` + `tabular-nums` | semibold | `text-slate-900` |
+| Đoạn mô tả, ghi chú, trợ giúp | `text-sm`/`text-xs` | normal | `text-slate-600`/`text-slate-500` |
+
+**Kiểm tra**: đo độ đậm THẬT bằng `getComputedStyle` (script `weight-audit`: gom `font-weight` theo vai trò — tiêu đề, đầu cột, ô bảng, nhãn, nút — trên các trang chính); kết quả mong đợi: KHÔNG có giá trị ≥ 700 ngoài bản in. Lần đo đầu 16/10/2026 trước khi chuẩn hoá: 220 ô bảng và 155 đầu cột ở 700; sau chuẩn hoá: tối đa 600. UI mới phải đối chiếu bảng trên trước khi báo xong — không tự chọn độ đậm theo cảm tính.
