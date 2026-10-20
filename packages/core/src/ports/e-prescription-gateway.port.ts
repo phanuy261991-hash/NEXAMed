@@ -1,6 +1,6 @@
 /**
  * Cổng Đơn thuốc quốc gia (donthuocquocgia.vn, Quyết định 808/QĐ-BYT) — xem `.claude/docs/project-structure.md` bảng Port/adapter và `docs/product/prescription-code-moh.md` mục 9.
- * Từ #242 giai đoạn 3 (chủ dự án yêu cầu dựng khung kết nối sẵn): đăng nhập cơ sở, thêm/xoá bác sĩ khỏi cơ sở, đăng nhập bác sĩ. Gửi đơn (`gui-don-thuoc`) bổ sung khi có hàm dựng gói.
+ * Từ #242 giai đoạn 3 (chủ dự án yêu cầu dựng khung kết nối sẵn): đăng nhập cơ sở, thêm/xoá bác sĩ khỏi cơ sở, đăng nhập bác sĩ, gửi đơn (`gui-don-thuoc`, gói dựng bằng `buildGuiDonThuocPayload`).
  * Adapter HTTP thật ở `apps/api/src/infrastructure/e-prescription/`; mọi tham số kết nối (địa chỉ, thời gian chờ) do nơi gọi truyền vào từ cấu hình "Liên thông đơn thuốc" — adapter KHÔNG giữ cấu hình.
  *
  * Chưa kiểm với cổng thật: tài liệu chưa nêu môi trường thử, định dạng `danh_sach_cac_loi` và một số tên trường còn mơ hồ (xem `docs/product/prescription-interop-questions.md`).
@@ -35,6 +35,11 @@ export interface EPrescriptionGatewayPort {
   removeDoctorFromFacility(endpoint: EPrescriptionGatewayEndpoint, facilityToken: string, doctorCode: string): Promise<EPrescriptionGatewayResult<{ message: string }>>;
   /** API VI — đăng nhập bác sĩ (mã bác sĩ + mã liên thông cơ sở + mật khẩu của BÁC SĨ); lỗi 422 nếu bác sĩ chưa được thêm vào cơ sở. */
   loginDoctor(endpoint: EPrescriptionGatewayEndpoint, credential: { doctorCode: string; facilityCode: string; password: string }): Promise<EPrescriptionGatewayResult<{ token: string }>>;
+  /**
+   * API VII — gửi đơn thuốc (header bearer = token của BÁC SĨ ký đơn). `payload` là gói đã dựng (`GuiDonThuocPayload`); cổng trả 200 khi nhận, 422 kèm `danh_sach_cac_loi` khi dữ liệu sai.
+   * `message` = lời xác nhận của cổng (nếu có), chỉ để ghi nhận.
+   */
+  submitPrescription(endpoint: EPrescriptionGatewayEndpoint, doctorToken: string, payload: Record<string, unknown>): Promise<EPrescriptionGatewayResult<{ message: string }>>;
 }
 
 export const E_PRESCRIPTION_GATEWAY_PORT = Symbol('E_PRESCRIPTION_GATEWAY_PORT');

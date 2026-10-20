@@ -62,7 +62,7 @@ import {
   type BranchDirectoryPort,
   maxDataScope,
 } from '@nexamed/core';
-import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, calculateAgeMonths, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary, hasAnyDose, hasFractionalDose } from '@nexamed/shared';
+import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, type PrescriptionKind, calculateAgeMonths, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary, hasAnyDose, hasFractionalDose } from '@nexamed/shared';
 import type {
   AmendClinicalNoteRequest,
   AmendDiagnosesRequest,
@@ -119,6 +119,8 @@ import { InvoiceRepository } from '../billing/invoice.repository';
 import { ClinicProfileService } from '../clinic/clinic-profile.service';
 import { BusinessCodeService } from '../clinic/business-code.service';
 import { GeoRepository } from '../geo/geo.repository';
+import { PrescriptionInteropService } from '../prescription-interop/prescription-interop.service';
+import { PrescriptionSubmissionRepository } from '../prescription-interop/prescription-submission.repository';
 
 const TEMPERATURE_DECI_PER_CELSIUS = 10;
 /** Số lần khám cũ tối đa hiện trong panel tiền sử (ENC-01) — danh sách tóm tắt, không phân trang ở v1. */
@@ -200,6 +202,8 @@ export class EncounterService {
     @Inject(CLINICAL_ORDER_CANCELLATION_PORT) private readonly clinicalOrderCancellation: ClinicalOrderCancellationPort,
     private readonly diagnosisSuggestionService: DiagnosisSuggestionService,
     private readonly printTemplateService: PrintTemplateService,
+    private readonly interopService: PrescriptionInteropService,
+    private readonly submissionRepository: PrescriptionSubmissionRepository,
   ) {}
 
   /**
@@ -1486,6 +1490,8 @@ export class EncounterService {
     // Tra mã cơ sở KCB TRƯỚC khi mở transaction ký (tra qua port chi nhánh mở transaction riêng — gọi từ bên trong sẽ cạn bể kết nối khi nhiều người ký cùng lúc).
     const facilityCode = kindCtx.standardMode ? await this.businessCodeService.resolveFacilityCodeForBranch(tenantId, branchId) : null;
     const prescriptionSplitBlockEnabled = await this.clinicConfigReader.getPrescriptionSplitBlockEnabled(tenantId);
+    // Liên thông đơn thuốc quốc gia (#242 GĐ3): công tắc tổng đọc TRƯỚC transaction (service tự mở transaction riêng) — bật thì xếp mỗi đơn pháp lý vào hàng chờ gửi ngay trong giao dịch ký.
+    const interopEnabled = (await this.interopService.getRawSettings(tenantId)).enabled;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
@@ -1531,7 +1537,21 @@ export class EncounterService {
       const prescriptionNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'PRESCRIPTION', signature.signedAt);
       // Chế độ "Chuẩn Bộ Y tế": tách theo loại đơn C/N/H/Y, mỗi loại một đơn pháp lý có mã chuẩn riêng (#242).
       if (kindCtx.standardMode && facilityCode !== null) {
-        await this.issuePrescriptionDocuments(tx, tenantId, actorId, active.id, active.items, kindCtx.mapping, facilityCode, null);
+        const documents = await this.issuePrescriptionDocuments(tx, tenantId, actorId, active.id, active.items, kindCtx.mapping, facilityCode, null);
+        if (interopEnabled) {
+          // Đơn ký lúc công tắc liên thông đang TẮT không tự xếp hàng khi bật lại (đã chốt, #242 bổ sung 5).
+          for (const doc of documents) {
+            await this.submissionRepository.enqueue(tx, tenantId, actorId, {
+              branchId: existing.branchId,
+              encounterId: id,
+              documentId: doc.id,
+              nationalCode: doc.nationalCode,
+              kind: doc.kind,
+              doctorUserId: actorId,
+              signedAt: signature.signedAt,
+            });
+          }
+        }
       }
       const count = await this.prescriptionRepository.sign(tx, tenantId, active.id, dto.version, actorId, signature.signedAt, signature.signedBy, prescriptionNo);
       if (count === 0) {
@@ -1625,6 +1645,8 @@ export class EncounterService {
     const kindCtx = await this.loadKindContext(tenantId);
     // Mã cơ sở KCB tra TRƯỚC transaction (chỉ khi chế độ chuẩn đang bật); khi chế độ tắt mà đơn gốc đã có mã chuẩn thì lấy 5 số đầu của mã đã cấp (cùng cơ sở).
     const facilityCode = kindCtx.standardMode ? await this.businessCodeService.resolveFacilityCodeForBranch(tenantId, branchId) : null;
+    // Liên thông đơn thuốc quốc gia (#242 GĐ3) — xem `signPrescription`.
+    const interopEnabled = (await this.interopService.getRawSettings(tenantId)).enabled;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
@@ -1670,7 +1692,17 @@ export class EncounterService {
           throw new NotFoundException();
         }
         const reuse = new Map<string, string>(active.documents.map((d) => [d.kind, d.nationalCode]));
-        await this.issuePrescriptionDocuments(tx, tenantId, actorId, created.id, fresh.items, kindCtx.mapping, facilityCode ?? active.documents[0]!.nationalCode.slice(0, 5), reuse);
+        const reissued = await this.issuePrescriptionDocuments(tx, tenantId, actorId, created.id, fresh.items, kindCtx.mapping, facilityCode ?? active.documents[0]!.nationalCode.slice(0, 5), reuse);
+        // Hàng chờ gửi: đơn pháp lý giữ mã nhưng là dòng mới → trỏ sang đơn mới; đã gửi rồi thì thành "Đính chính, chưa gửi"; loại mới xuất hiện thì xếp hàng (nếu đang bật liên thông).
+        await this.submissionRepository.syncAfterAmend(tx, tenantId, actorId, {
+          branchId: existing.branchId,
+          encounterId: id,
+          previousCodes: active.documents.map((d) => d.nationalCode),
+          newDocuments: reissued,
+          doctorUserId: actorId,
+          signedAt: signature.signedAt,
+          enqueueNew: interopEnabled,
+        });
       }
 
       await writeAuditLog(tx, tenantId, {
@@ -1839,7 +1871,8 @@ export class EncounterService {
     mapping: PrescriptionKindMapping,
     facilityCode: string,
     reuse: Map<string, string> | null,
-  ): Promise<void> {
+  ): Promise<{ id: string; kind: PrescriptionKind; nationalCode: string }[]> {
+    const issued: { id: string; kind: PrescriptionKind; nationalCode: string }[] = [];
     const withKind = items.map((i) => ({
       id: i.id,
       kind: resolvePrescriptionKind({ isFreeText: i.drugId === null, controlType: i.controlType, isTraditional: i.isTraditional }, mapping),
@@ -1848,7 +1881,9 @@ export class EncounterService {
       const nationalCode = reuse?.get(group.kind) ?? (await this.businessCodeService.generatePrescriptionNationalCode(tx, tenantId, actorId, facilityCode, group.kind));
       const document = await this.prescriptionRepository.createDocument(tx, tenantId, prescriptionId, actorId, { kind: group.kind, nationalCode });
       await this.prescriptionRepository.assignItemsToDocument(tx, tenantId, group.items.map((i) => i.id), document.id, actorId);
+      issued.push({ id: document.id, kind: group.kind, nationalCode });
     }
+    return issued;
   }
 
   private toPrescriptionResponse(

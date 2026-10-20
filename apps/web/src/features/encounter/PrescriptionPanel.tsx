@@ -29,6 +29,7 @@ import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { PrescriptionPrintView } from './PrescriptionPrintView';
 import { PrescriptionKindChip, PRESCRIPTION_KIND_TEXT, type PrescriptionKindLetter } from '../../shared/ui/PrescriptionKindChip';
 import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCode';
+import { InteropInfoBlock } from '../prescription-interop/InteropInfoBlock';
 import {
   useAmendPrescriptionMutation,
   useGetPreviousPrescriptionMutation,
@@ -895,6 +896,9 @@ export function PrescriptionPanel({
           )}
         </div>
       )}
+
+      {/* Liên thông đơn thuốc quốc gia (#242 GĐ3, mockup 8a/8b) — tự ẩn khi công tắc "Có liên thông" tắt. */}
+      <InteropInfoBlock encounterId={encounterId} prescription={prescription} />
 
       {isSigned && prescription && (
         <PrescriptionPrintView

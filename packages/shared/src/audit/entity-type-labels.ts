@@ -72,6 +72,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   advice_template: 'Mẫu lời dặn',
   interop_facility_credential: 'Mã liên thông cơ sở',
   interop_doctor_credential: 'Mã liên thông bác sĩ',
+  prescription_submission: 'Đơn thuốc gửi liên thông',
   reception_list_export: 'Danh sách tiếp nhận',
 };
 

@@ -46,6 +46,9 @@ const PrintTemplatePage = lazy(() => import('../features/print-template/PrintTem
 const SupplierDebtListPage = lazy(() =>
   import('../features/supplier-debt/SupplierDebtListPage').then((m) => ({ default: m.SupplierDebtListPage })),
 );
+const InteropSubmissionListPage = lazy(() =>
+  import('../features/prescription-interop/InteropSubmissionListPage').then((m) => ({ default: m.InteropSubmissionListPage })),
+);
 const SupplierPaymentListPage = lazy(() =>
   import('../features/supplier-debt/SupplierPaymentListPage').then((m) => ({ default: m.SupplierPaymentListPage })),
 );
@@ -166,6 +169,8 @@ export const router = createBrowserRouter([
       // "Hàng đợi khám" — chặn theo TÊN VAI TRÒ (quyết định workflow đã chốt, không phải quyền cụ
       // thể — điều dưỡng/lễ tân cũng có encounter.read nhưng cố tình không cho vào màn này), xem
       // `features/auth/workflow-roles.ts`.
+      // Liên thông đơn thuốc quốc gia GĐ3 (#242, mockup 8c) — hàng chờ gửi đơn; trang tự báo "đang tắt" khi công tắc liên thông tắt.
+      { path: 'prescription-interop/submissions', element: <RequirePermissionRoute module="encounter" action="read_clinical"><InteropSubmissionListPage /></RequirePermissionRoute> },
       { path: 'reception/doctor-queue', element: <RequireDoctorQueueRoute><ReceptionDoctorQueuePage /></RequireDoctorQueueRoute> },
       // Màn hình khám bệnh (S3-06/07) — vào từ "Hàng đợi khám", không có mục sidebar riêng (cùng
       // cách patient/appointment detail không có mục sidebar riêng).

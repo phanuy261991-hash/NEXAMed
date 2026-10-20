@@ -59,6 +59,10 @@ export class HttpEPrescriptionGatewayAdapter implements EPrescriptionGatewayPort
     });
   }
 
+  submitPrescription(endpoint: EPrescriptionGatewayEndpoint, doctorToken: string, payload: Record<string, unknown>) {
+    return this.postForMessage(endpoint, '/api/v1/gui-don-thuoc', payload, doctorToken);
+  }
+
   private async postForToken(endpoint: EPrescriptionGatewayEndpoint, path: string, body: Record<string, unknown>): Promise<EPrescriptionGatewayResult<{ token: string }>> {
     const result = await this.post(endpoint, path, body);
     if (result.kind !== 'ok') return result;

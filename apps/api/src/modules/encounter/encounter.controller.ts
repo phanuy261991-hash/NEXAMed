@@ -18,6 +18,7 @@ import {
   releaseEncounterRequestSchema,
   saveClinicalNoteRequestSchema,
   saveDiagnosesRequestSchema,
+  saveEncounterInteropInfoRequestSchema,
   savePrescriptionItemsRequestSchema,
   signPrescriptionRequestSchema,
   startConsultationRequestSchema,
@@ -28,6 +29,7 @@ import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
 import { requireBranchId } from '../../common/branch-context';
 import { DiagnosisSuggestionService } from './diagnosis-suggestion.service';
+import { EncounterInteropInfoService } from './encounter-interop-info.service';
 import { EncounterService } from './encounter.service';
 
 /** Transition endpoints của lượt khám (Sprint 3) — tạo encounter (check-in) thuộc `reception.controller.ts`, không phải đây. */
@@ -37,6 +39,7 @@ export class EncounterController {
   constructor(
     private readonly encounterService: EncounterService,
     private readonly diagnosisSuggestionService: DiagnosisSuggestionService,
+    private readonly interopInfoService: EncounterInteropInfoService,
   ) {}
 
   /**
@@ -156,6 +159,28 @@ export class EncounterController {
   async getPrescriptionPrintInfo(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
     return this.encounterService.getPrescriptionPrintInfo(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, extractRequestMeta(req));
+  }
+
+  /**
+   * Thông tin liên thông đơn thuốc quốc gia của lượt khám (#242 GĐ3, mockup 8a/8b): các ô bổ sung đã lưu + gợi ý tự điền + người giám hộ + dải kiểm dữ liệu. Công tắc liên thông tắt → `enabled=false`.
+   * `encounter.read_clinical` + ghi nhật ký xem (có thông tin người thân của bệnh nhân).
+   */
+  @Get(':id/prescription-interop')
+  @RequirePermission('encounter', 'read_clinical', { entityIdParam: 'id' })
+  @AuditView('encounter')
+  @UseInterceptors(AuditViewInterceptor)
+  async getPrescriptionInterop(@Param('id') id: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.interopInfoService.getInfo(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
+  }
+
+  /** Lưu các ô bổ sung (và người giám hộ → hồ sơ bệnh nhân). Cùng quyền với sửa đơn nháp; sửa được tới khi đơn được gửi. */
+  @Put(':id/prescription-interop')
+  @RequirePermission('prescription', 'create', { entityIdParam: 'id' })
+  async savePrescriptionInterop(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
+    const dto = saveEncounterInteropInfoRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.interopInfoService.saveInfo(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, dto, extractRequestMeta(req));
   }
 
   @Put(':id/diagnoses')

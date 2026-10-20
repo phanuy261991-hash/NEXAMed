@@ -4,6 +4,7 @@ export * from './event-bus.port';
 export * from './signature.port';
 export * from './insurance.port';
 export * from './e-prescription-gateway.port';
+export * from './interop-submission-source.port';
 export * from './patient-identity.port';
 export * from './doctor-directory.port';
 export * from './branch-directory.port';

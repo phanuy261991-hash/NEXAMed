@@ -127,6 +127,9 @@ const MANUAL_TAXONOMY_CATEGORIES: ReferenceCatalogCategory[] = ['ACTIVE_INGREDIE
  */
 const ABBREVIATION_CODE_PATTERN = /^[\p{L}\p{N}]+$/u;
 
+/** `TREATMENT_FORM` (#242 GĐ3): `code` = MÃ SỐ do Bộ Y tế ban hành (cổng đơn thuốc quốc gia chỉ nhận số). Bản sao chủ đích của quy tắc ở máy chủ, chỉ để báo sớm. */
+const TREATMENT_FORM_CODE_PATTERN = /^\d{1,9}$/;
+
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
@@ -170,6 +173,7 @@ export function ReferenceCatalogPane({
   const reactivateMutation = useReactivateReferenceCatalogItemMutation(category);
 
   const isAbbreviation = category === 'ICD10_ABBREVIATION';
+  const isTreatmentForm = category === 'TREATMENT_FORM';
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Phát hiện người khác vừa sửa mục đang mở form Sửa (mẫu `useEditedRecordGuard`; lấy cả mục đã ẩn để tìm đúng bản ghi).
@@ -203,6 +207,12 @@ export function ReferenceCatalogPane({
 
   return (
     <div className="flex h-full flex-col">
+      {isTreatmentForm && (
+        <p className="mb-3 text-sm text-slate-600">
+          Danh mục dùng cho ô &quot;Hình thức điều trị&quot; của đơn thuốc loại C khi gửi liên thông lên cổng Đơn thuốc quốc gia. Mã là MÃ SỐ do Bộ Y tế ban hành (ví dụ 1, 2, 3); nhập đúng mã số theo danh mục chính thức,
+          cổng sẽ từ chối đơn nếu mã không có trong danh mục của họ.
+        </p>
+      )}
       {isAbbreviation && (
         <p className="mb-3 text-sm text-slate-600">
           Từ điển dùng khi bác sĩ gõ ô &quot;Chẩn đoán&quot; ở màn khám để gợi ý mã ICD-10: mỗi từ viết tắt được đổi thành cách viết đầy đủ trước khi
@@ -538,8 +548,10 @@ function ItemFormModal({
   const showBytFields = isBytTaxonomyCreate || isManualTaxonomy;
   // "Từ viết tắt chẩn đoán" (#206) — `code` là TỪ viết tắt, bắt buộc đúng MỘT từ chữ/số.
   const isAbbreviation = category === 'ICD10_ABBREVIATION';
+  const isTreatmentForm = category === 'TREATMENT_FORM';
+  const treatmentFormCodeInvalid = isTreatmentForm && code.trim() !== '' && !TREATMENT_FORM_CODE_PATTERN.test(code.trim());
   const abbreviationFormatInvalid = isAbbreviation && code.trim() !== '' && !ABBREVIATION_CODE_PATTERN.test(code.trim());
-  const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '' || abbreviationFormatInvalid || stale;
+  const isInvalid = (!hideCode && code.trim() === '') || name.trim() === '' || abbreviationFormatInvalid || treatmentFormCodeInvalid || stale;
   // Từ viết tắt trùng mã có câu riêng (mục có thể đang bị ẩn) thay câu chung của server.
   const saveError =
     rawSaveError && isAbbreviation && rawSaveError.code === 'REFERENCE_CATALOG_DUPLICATE_CODE'
@@ -618,16 +630,20 @@ function ItemFormModal({
           {!hideCode && (
             <div className="flex flex-col gap-1.5">
               <label htmlFor="rc-code" className="text-sm font-semibold text-slate-800">
-                {isAbbreviation ? 'Từ viết tắt' : 'Mã'} <span className="text-rose-500">*</span>
+                {isAbbreviation ? 'Từ viết tắt' : isTreatmentForm ? 'Mã số (theo Bộ Y tế)' : 'Mã'} <span className="text-rose-500">*</span>
               </label>
               <input
                 id="rc-code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder={isAbbreviation ? 'VD: THA' : undefined}
-                aria-invalid={abbreviationFormatInvalid}
+                placeholder={isAbbreviation ? 'VD: THA' : isTreatmentForm ? 'VD: 1' : undefined}
+                inputMode={isTreatmentForm ? 'numeric' : undefined}
+                aria-invalid={abbreviationFormatInvalid || treatmentFormCodeInvalid}
                 className={inputClassName}
               />
+              {isTreatmentForm && (
+                <p className={`text-xs ${treatmentFormCodeInvalid ? 'font-semibold text-rose-700' : 'text-slate-500'}`}>Chỉ gồm chữ số (tối đa 9 chữ số), đúng mã trong danh mục của Bộ Y tế.</p>
+              )}
               {isAbbreviation && (
                 <p className={`text-xs ${abbreviationFormatInvalid ? 'font-semibold text-rose-700' : 'text-slate-500'}`}>
                   Một từ, chỉ chữ hoặc số (không khoảng trắng, dấu chấm, gạch nối). Không phân biệt hoa/thường.

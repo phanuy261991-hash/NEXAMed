@@ -6,6 +6,8 @@ import { BillingModule } from '../billing/billing.module';
 import { PrintTemplateModule } from '../print-template/print-template.module';
 import { GeoModule } from '../geo/geo.module';
 import { WorkShiftAssignmentModule } from '../work-shift-assignment/work-shift-assignment.module';
+import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
+import { PrescriptionInteropModule } from '../prescription-interop/prescription-interop.module';
 import { EncounterController } from './encounter.controller';
 import { EncounterService } from './encounter.service';
 import { EncounterRepository } from './encounter.repository';
@@ -15,6 +17,9 @@ import { TreatmentPlanRepository } from './treatment-plan.repository';
 import { PrescriptionRepository } from './prescription.repository';
 import { DiagnosisSuggestionService } from './diagnosis-suggestion.service';
 import { Icd10SuggestionRepository } from './icd10-suggestion.repository';
+import { EncounterInteropInfoRepository } from './encounter-interop-info.repository';
+import { EncounterInteropInfoService } from './encounter-interop-info.service';
+import { PrescriptionInteropDataService } from './prescription-interop-data.service';
 import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter-reader.adapter';
 
 /**
@@ -45,9 +50,12 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
  * (packages/core) qua `@Inject()` thẳng token, KHÔNG thêm `InventoryModule`/`StockAvailabilityModule`
  * vào `imports` ở trên — giữ đúng nguyên tắc một chiều đã ghi. `StockAvailabilityModule` (module
  * `inventory`) đăng ký token này dạng `@Global()`, tự `imports: [InventoryModule]` phía nó.
+ * Liên thông đơn thuốc quốc gia GĐ3 (#242): `imports: [..., PrescriptionInteropModule]` — xếp đơn vào hàng chờ gửi TRONG transaction ký/đính chính (dùng chung `PrescriptionSubmissionRepository`, đúng tiền lệ #042)
+ * và đọc công tắc liên thông; `ReferenceCatalogModule` cho `REFERENCE_CATALOG_READER_PORT` (tên đơn vị tính). Chiều ngược (module liên thông cần dữ liệu lượt khám để gửi) đi qua
+ * `INTEROP_SUBMISSION_SOURCE_PORT` do `PrescriptionInteropSourceModule` (@Global) cung cấp từ `PrescriptionInteropDataService` (export ở đây).
  */
 @Module({
-  imports: [PatientModule, ClinicModule, BillingModule, GeoModule, PrintTemplateModule, WorkShiftAssignmentModule],
+  imports: [PatientModule, ClinicModule, BillingModule, GeoModule, PrintTemplateModule, WorkShiftAssignmentModule, ReferenceCatalogModule, PrescriptionInteropModule],
   controllers: [EncounterController],
   providers: [
     EncounterService,
@@ -58,8 +66,11 @@ import { EncounterReaderAdapter } from '../../infrastructure/encounter/encounter
     PrescriptionRepository,
     DiagnosisSuggestionService,
     Icd10SuggestionRepository,
+    EncounterInteropInfoRepository,
+    EncounterInteropInfoService,
+    PrescriptionInteropDataService,
     { provide: ENCOUNTER_READER_PORT, useClass: EncounterReaderAdapter },
   ],
-  exports: [EncounterRepository, PrescriptionRepository, DiagnosisRepository, ENCOUNTER_READER_PORT],
+  exports: [EncounterRepository, PrescriptionRepository, DiagnosisRepository, ENCOUNTER_READER_PORT, PrescriptionInteropDataService],
 })
 export class EncounterModule {}

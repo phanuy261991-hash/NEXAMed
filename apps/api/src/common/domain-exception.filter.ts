@@ -89,6 +89,11 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // DIAGNOSIS/PRESCRIPTION_EMPTY không có trong bảng này nên rơi về mặc định 422 (vi phạm quy tắc
   // nghiệp vụ, không phải xung đột trạng thái đồng thời).
   PRESCRIPTION_ALREADY_SIGNED: HttpStatus.CONFLICT,
+  // Liên thông đơn thuốc quốc gia (#242 GĐ3) — sửa ô liên thông sau khi đã gửi / gửi khi công tắc tắt / đơn không ở trạng thái gửi được là xung đột trạng thái (409); thiếu quyền sửa hồ sơ bệnh nhân là 403.
+  INTEROP_INFO_LOCKED: HttpStatus.CONFLICT,
+  INTEROP_SEND_DISABLED: HttpStatus.CONFLICT,
+  INTEROP_SUBMISSION_NOT_SENDABLE: HttpStatus.CONFLICT,
+  INTEROP_GUARDIAN_EDIT_FORBIDDEN: HttpStatus.FORBIDDEN,
   DRUG_DUPLICATE_CODE: HttpStatus.CONFLICT,
   // "Quản lý mẫu in" (#211) — trùng khổ giấy / xoá bản mặc định là xung đột trạng thái hiện có (409); khổ giấy không được mở rơi về mặc định 422.
   PRINT_TEMPLATE_DUPLICATE_PAPER: HttpStatus.CONFLICT,

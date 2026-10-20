@@ -88,6 +88,11 @@ import {
   listInteropFacilitiesResponseSchema,
   listInteropDoctorsResponseSchema,
   saveInteropCredentialRequestSchema,
+  encounterInteropInfoResponseSchema,
+  saveEncounterInteropInfoRequestSchema,
+  listInteropSubmissionsQuerySchema,
+  listInteropSubmissionsResponseSchema,
+  interopSubmissionActionResponseSchema,
   cashAccountSchema,
   createCashAccountRequestSchema,
   updateCashAccountRequestSchema,
@@ -2606,6 +2611,85 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinic_config.update'),
     404: errorResponse('Bác sĩ không tồn tại, thuộc chi nhánh khác hoặc công ty khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/encounters/{id}/prescription-interop',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — ô bổ sung bắt buộc khi gửi đơn (hình thức điều trị, đợt dùng thuốc, số thang, người giám hộ) + gợi ý tự điền + dải kiểm dữ liệu (#242 GĐ3, mockup 8a/8b). Công tắc liên thông tắt → enabled=false. Ghi nhật ký xem',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Thành công', envelope(encounterInteropInfoResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.read_clinical'),
+    404: errorResponse('Lượt khám không tồn tại, thuộc chi nhánh khác/công ty khác hoặc ngoài phạm vi dữ liệu'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/encounters/{id}/prescription-interop',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — lưu các ô bổ sung của từng loại đơn (và người giám hộ → hồ sơ bệnh nhân). Sửa được tới khi đơn được gửi; ghi nhật ký (chỉ tên ô). Công tắc liên thông tắt → 404',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }), body: { content: { 'application/json': { schema: saveEncounterInteropInfoRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công, trả lại trạng thái mới', envelope(encounterInteropInfoResponseSchema)),
+    400: errorResponse('Dữ liệu sai định dạng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription.create, hoặc không có quyền sửa hồ sơ bệnh nhân khi gửi kèm người giám hộ (INTEROP_GUARDIAN_EDIT_FORBIDDEN)'),
+    404: errorResponse('Lượt khám không tồn tại/thuộc chi nhánh khác/công ty khác, hoặc liên thông đang tắt'),
+    409: errorResponse('Đơn đã gửi lên cổng nên khoá (INTEROP_INFO_LOCKED), hoặc hồ sơ bệnh nhân đã bị sửa (CONCURRENT_MODIFICATION)'),
+    422: errorResponse('Loại đơn không có trong đơn, ngày ngược, hình thức điều trị ngoài danh mục'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/prescription-interop/submissions',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — hàng chờ gửi của chi nhánh đang làm việc (mockup 8c): mã đơn, bác sĩ ký, trạng thái, lỗi cổng nguyên văn, số mục dữ liệu còn thiếu',
+  security: [{ bearerAuth: [] }],
+  request: { query: listInteropSubmissionsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listInteropSubmissionsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.read_clinical'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/prescription-interop/submissions/{id}/send',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — "Gửi ngay" một đơn (cần bật "Gửi đơn lên cổng"). Trả 200 kể cả khi cổng từ chối/mất kết nối (xem outcome)',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Kết quả (SENT/REJECTED/UNREACHABLE/NOT_CONFIGURED/NOT_READY)', envelope(interopSubmissionActionResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription.sign'),
+    404: errorResponse('Đơn không tồn tại, thuộc chi nhánh khác/công ty khác hoặc do bác sĩ khác ký (phạm vi cá nhân)'),
+    409: errorResponse('Chưa bật gửi (INTEROP_SEND_DISABLED), đơn đã gửi/đã đính chính hoặc đang được gửi (INTEROP_SUBMISSION_NOT_SENDABLE)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/prescription-interop/submissions/{id}/retry',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — "Gửi lại" sau lỗi: đặt lại số lần thử về 0 rồi gửi ngay (cùng điều kiện với "Gửi ngay")',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Kết quả (SENT/REJECTED/UNREACHABLE/NOT_CONFIGURED/NOT_READY)', envelope(interopSubmissionActionResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền prescription.sign'),
+    404: errorResponse('Đơn không tồn tại, thuộc chi nhánh khác/công ty khác hoặc do bác sĩ khác ký (phạm vi cá nhân)'),
+    409: errorResponse('Chưa bật gửi, đơn đã gửi/đã đính chính hoặc đang được gửi'),
   },
 });
 

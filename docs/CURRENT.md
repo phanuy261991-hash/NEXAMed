@@ -1,6 +1,6 @@
 # Current — NEXAMed
 
-Trạng thái HIỆN TẠI của dự án (cập nhật 20/10/2026). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
+Trạng thái HIỆN TẠI của dự án (cập nhật 20/10/2026, cuối ngày). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
 
 Nhật ký trạng thái đầy đủ cũ (từng đợt, đến 16/10/2026) ở `docs/archive/CURRENT-den-2026-10-16.md` — **chỉ mở khi cần tra một mục cụ thể**. Khi file này vượt ~40 KB thì chuyển phần cũ sang `docs/archive/CURRENT-*.md` mới và viết lại bản ngắn (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
@@ -20,7 +20,7 @@ Mockup đã chốt (https://claude.ai/artifact/6eERQ9k2qsneekMWW2ymjJ, bản 7) 
 
 **Giai đoạn 2 (phân loại thuốc, tách đơn khi ký, in nhiều tờ, phát thuốc nhóm theo đơn) — ĐÃ CODE ĐỦ, ĐÃ KIỂM TEST và ĐÃ KIỂM CHROME THẬT (20/10/2026).** Spec `prescription-document-http.spec.ts` 12/12 + kiểm đột biến; shared 46, core 455, web 156, full API 1529/1529 (mọi test cô lập tenant/chi nhánh xanh). Kiểm đã bắt được lỗi thật: bật chế độ chuẩn làm bộ đếm mã DT đếm lại từ 1 và trùng mã cũ — đã sửa bằng cờ `implicitPeriod` (`docs/DECISIONS.md` #242 bổ sung 8). Thiết kế: mã chuẩn ở bảng `prescription_document` (không thêm cột vào `prescription`), tách đơn CHỈ khi chế độ chuẩn bật, đơn ký trước ngày bật không cấp mã chuẩn hồi tố. **4 sai khác nhỏ so với mockup đã được chủ dự án duyệt (20/10; "Mã cơ sở KCB" đã chuyển lên đầu phiếu in, #242 bổ sung 10); luồng "Sửa đơn" đã kiểm giao diện; hàng tab 1280px đã sửa. Mã chuẩn đã hiện ở lịch sử khám/PDF bệnh án/phiếu xuất kho, tiêu đề đơn N/H đã khoá theo mẫu Thông tư 52/2017 (#242 bổ sung 11). **Cấu hình "thông tin bệnh nhân & mục đơn N/H" trên mẫu in ĐÃ XONG 20/10 (#242 bổ sung 12, bám mockup đã duyệt, kiểm Chrome thật: lưu cấu hình → in thật áp đúng; đã sửa lỗi kế thừa khổ giấy). Việc kế tiếp: giai đoạn 3 liên thông. Còn mở: số thẻ BHYT trên đơn (làm cùng S2-04); hộp in thật của trình duyệt.**
 
-**Giai đoạn 3 (liên thông) — ĐANG LÀM (20/10/2026, `docs/DECISIONS.md` #242 bổ sung 16)**: ĐÃ XONG trang "Liên thông đơn thuốc" (8d: công tắc tổng, địa chỉ cổng, mã/mật khẩu cơ sở + bác sĩ, token, "Kiểm tra kết nối", thêm/xoá bác sĩ khỏi cơ sở) + port/adapter gọi cổng theo tài liệu QĐ 808, kiểm bằng cổng giả (chưa kiểm cổng thật). Hàm dựng gói `gui-don-thuoc` + bộ kiểm dữ liệu đã viết ở `packages/core/src/prescription-interop/submission.ts` (có test, CHƯA nối). CÒN: adapter `submitPrescription`, ô nhập bổ sung 8b (+ danh mục `TREATMENT_FORM`), dải kiểm 8a, hàng chờ gửi + bộ gửi nền + trang 8c — thiết kế chi tiết ở bàn giao mới nhất. Câu hỏi gửi đơn vị vận hành: `docs/product/prescription-interop-questions.md`.
+**Giai đoạn 3 (liên thông) — ĐÃ CODE ĐỦ, ĐÃ KIỂM TEST + CHROME THẬT bằng cổng giả (20/10/2026, `docs/DECISIONS.md` #242 bổ sung 16–17; CHƯA kiểm cổng thật)**: trang cấu hình + khung kết nối (8d); ô bổ sung 8b (hình thức điều trị, đợt dùng thuốc, số thang, người giám hộ) + dải kiểm 8a; hàng chờ `prescription_submission` xếp lúc ký/đính chính; bộ gửi nền mỗi phút + "Gửi ngay"/"Gửi lại"; trang "Đơn thuốc liên thông" (8c) **nằm trong menu Quản trị, dưới "Mẫu in"** (chủ dự án chốt); danh mục "Hình thức điều trị" (mã số BYT nhập tay, chưa seed). Công tắc "Có liên thông" tắt thì ẩn hết. Còn lại: kiểm với cổng thật khi có môi trường thử, câu hỏi gửi đơn vị vận hành (`docs/product/prescription-interop-questions.md`, câu 16 hỏi giá trị "hình thức điều trị"), API nhà thuốc (8e, duyệt riêng).
 
 ## Đang chờ / việc treo
 
@@ -28,11 +28,11 @@ Mockup đã chốt (https://claude.ai/artifact/6eERQ9k2qsneekMWW2ymjJ, bản 7) 
 - Bố cục: bộ kiểm toàn app (53 trang × 10 cỡ) đã **0 vấn đề** (20/10/2026); độ đậm chữ đo tối đa 600. Còn lại ưu tiên thấp: ghi chú 2 dòng của hộp "Bác sĩ đang nghỉ"/"Không có ca làm việc hôm nay" ở Tiếp nhận vượt gợi ý ≤ ~40 ký tự (ui-guidelines 15b), chưa kiểm hộp in thật của trình duyệt.
 - Gói thuê bao + giấy phép ký số (làm SAU; mockup trang Giấy phép chờ duyệt; đảo ngược #070/#072 khi bắt đầu).
 - Việc cần pilot thật: S6-02 diễn tập phục hồi, S6-04 đo tải trên máy chủ pilot (công cụ `perf:load` đã có), BHYT (S2-04), phát hành `1.0.0`, CSP đang Report-Only. Gói on-prem chưa dựng lại cho các thay đổi từ 16/10 (dựng khi sắp giao khách). Chọn nhà cung cấp hạ tầng SaaS (chờ báo giá, `docs/product/saas-hosting-comparison.md`).
-- Môi trường khác cần `db:deploy` (các migration `20261016110000_…`, `20261020090000_…`, `20261020110000_…`, `20261020120000_…`) + `db:seed` + khởi động lại API.
+- Môi trường khác cần `db:deploy` (các migration `20261016110000_…`, `20261020090000_…`, `20261020110000_…`, `20261020120000_…`, `20261021090000_…`, `20261021100000_…`) + `db:seed` + khởi động lại API.
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-LienThong-GD3-CauHinh-KhungKetNoi-2026-10-20-p3.md`** (mới nhất, 20/10/2026 phần 3: dọn việc treo, GĐ3 trang cấu hình + khung kết nối đã xong, thiết kế chi tiết phần còn lại: 8b/8a/hàng chờ/trang 8c, bẫy, câu hỏi treo). Bản trước: `HANDOFF-MaDonThuocBYT-GD2-MauInDonThuoc-KiemNghiem-2026-10-20-p2.md`.
+**`docs/handoffs/HANDOFF-LienThong-GD3-HangCho-OBoSung-2026-10-20-p4.md`** (mới nhất, 20/10/2026 phần 4: GĐ3 xong ô 8b/dải 8a/hàng chờ/bộ gửi nền/trang 8c, bẫy, việc còn lại). Bản trước: `HANDOFF-LienThong-GD3-CauHinh-KhungKetNoi-2026-10-20-p3.md`; `HANDOFF-MaDonThuocBYT-GD2-MauInDonThuoc-KiemNghiem-2026-10-20-p2.md`.
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 

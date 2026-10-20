@@ -222,3 +222,13 @@ Trang web `/suppliers/:id` (chi tiết NCC — header + `StatCardRow` 3 số li�
 | `tenant_setting` key `prescription_interop` | Cấu hình liên thông (cả công ty) | JSON `{enabled, sendEnabled, gatewayUrl, timeoutSeconds, maxRetries}`; vắng = mặc định (tắt, https://api.donthuocquocgia.vn, 30 giây, 5 lần). Khoá nhà cung cấp (app-name/app-key) KHÔNG lưu DB: biến môi trường `INTEROP_APP_NAME`/`INTEROP_APP_KEY`, giao diện chỉ hiện đã/chưa cài. |
 
 Đổi mã/mật khẩu làm mất hiệu lực: đổi mã hoặc mật khẩu CƠ SỞ → xoá token cơ sở; đổi MÃ cơ sở → đặt mọi bác sĩ của chi nhánh về "chưa thêm" + xoá token bác sĩ. Đổi MÃ bác sĩ → bỏ "đã thêm" + token ở mọi chi nhánh; chỉ đổi mật khẩu bác sĩ → chỉ xoá token.
+
+---
+
+### 3.13 Liên thông đơn thuốc quốc gia — ô bổ sung 8b + hàng chờ gửi (v1.81, `docs/DECISIONS.md` #242 bổ sung 17)
+
+| Bảng/cột | Vai trò | Ghi chú |
+|---|---|---|
+| `reference_catalog_category` giá trị `TREATMENT_FORM` | "Hình thức điều trị" (đơn loại C) | `code` = mã SỐ của Bộ Y tế, nhập tay (máy chủ + web kiểm `^[0-9]{1,9}$`); không seed. Danh mục riêng theo công ty như mọi `reference_catalog`. |
+| `encounter_interop_kind_info` | Ô bổ sung bắt buộc khi gửi đơn, theo (lượt khám, loại đơn C/N/H/Y) | Đủ 8 cột; `encounter_id` composite FK; `kind` CHECK; `treatment_form_code` (CHECK số), `dose_period_number`, `dose_from`/`dose_to` (DATE, CHECK đến ≥ từ), `herbal_doses`, `herbal_instruction` (≤ 1000); partial UNIQUE `(tenant_id, encounter_id, kind) WHERE deleted_at IS NULL`; RLS + FORCE. Khoá theo lượt khám (không theo `prescription_document`) để còn nguyên qua đính chính. Chi nhánh kế thừa qua lượt khám. |
+| `prescription_submission` | Hàng chờ gửi đơn pháp lý lên cổng | Đủ 8 cột; **`branch_id NOT NULL`** composite FK; `encounter_id`, `prescription_document_id`, `doctor_user_id` đều composite FK; `national_code` + `kind`; `signed_at`; `status` CHECK `PENDING/SENT/FAILED/AMENDED`; `attempts`, `last_attempt_at`, `next_attempt_at`, `locked_until` (thuê 5 phút chống gửi trùng), `last_http_status`, `errors` JSONB (nguyên văn `danh_sach_cac_loi`), `sent_at` (CHECK: có ⇔ `SENT`/`AMENDED`); partial UNIQUE `(tenant_id, national_code) WHERE deleted_at IS NULL`; index đến hạn `(tenant_id, status, next_attempt_at)`; RLS + FORCE. KHÔNG lưu gói dữ liệu bệnh nhân (dựng lại lúc gửi). |

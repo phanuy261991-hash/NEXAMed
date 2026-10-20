@@ -38,6 +38,8 @@ export * from './prescription/prescription-kind';
 export * from './prescription-interop/token-lifecycle';
 export * from './prescription-interop/gateway-errors';
 export * from './prescription-interop/submission';
+export * from './prescription-interop/retry-policy';
+export * from './prescription-interop/dose-period';
 export * from './diagnosis/pair-diagnosis-amendment';
 export * from './billing/combined-invoice-totals';
 export * from './billing/compute-invoice-lines';

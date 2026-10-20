@@ -20,6 +20,15 @@ export class ReferenceCatalogInvalidAbbreviationError extends DomainError {
   }
 }
 
+/** `code` của mục `TREATMENT_FORM` (Hình thức điều trị, #242 GĐ3) phải là MÃ SỐ do Bộ Y tế ban hành — cổng đơn thuốc quốc gia chỉ nhận giá trị số. 422 mặc định. */
+export class ReferenceCatalogInvalidTreatmentFormCodeError extends DomainError {
+  readonly code = 'REFERENCE_CATALOG_INVALID_TREATMENT_FORM_CODE';
+
+  constructor() {
+    super('Mã hình thức điều trị phải là số (tối đa 9 chữ số) theo danh mục của Bộ Y tế, ví dụ 1, 2, 3.');
+  }
+}
+
 /** DB trả exclusion-constraint violation trên `exam_type_price_no_overlap_excl` (C20,
  * docs/DECISIONS.md #079) — 2 dòng đơn giá cùng dịch vụ khám + cùng Loại giá dịch vụ có khoảng
  * ngày hiệu lực chồng lấn nhau, kể cả khi ghi đồng thời. Cùng tinh thần `AppointmentSlotConflictError`. */

@@ -174,6 +174,9 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // vòng xoá các dòng KHÔNG bị dòng nào khác còn lại trỏ tới (không phải "bản gốc" của ai), lặp
       // tới khi hết — đủ dùng cho chuỗi đính chính bất kỳ độ sâu, mỗi vòng là 1 câu lệnh riêng nên
       // không phụ thuộc thứ tự xử lý trong 1 statement như xoá gộp cha-con cùng lúc.
+      // Liên thông đơn thuốc GĐ3 (#242): hàng chờ gửi tham chiếu prescription_document/encounter/user (FK RESTRICT) và ô bổ sung 8b tham chiếu encounter — xoá TRƯỚC.
+      await prisma.prescriptionSubmission.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.encounterInteropKindInfo.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.prescriptionItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // prescription_document (mã đơn thuốc chuẩn Bộ Y tế, #242 GĐ2) tham chiếu prescription (FK RESTRICT); prescription_item.document_id trỏ vào nó nên dòng thuốc đã xoá ở trên.
       await prisma.prescriptionDocument.deleteMany({ where: { tenantId: { in: tenantIds } } });

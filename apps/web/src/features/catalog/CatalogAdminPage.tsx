@@ -28,6 +28,8 @@ const PILLS: ConfigScreenPill[] = [
   // Chuẩn bị cho chức năng "Thu chi tại quầy"/Sổ quỹ sắp làm (chủ dự án yêu cầu trực tiếp
   // 2026-09-05) — CHỈ danh mục, chức năng thu chi thật chưa xây.
   { key: 'income-expense-type', label: 'Loại thu chi' },
+  // Liên thông đơn thuốc quốc gia GĐ3 (docs/DECISIONS.md #242, mockup 8b) — danh mục Hình thức điều trị (mã số của Bộ Y tế).
+  { key: 'treatment-form', label: 'Hình thức điều trị' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
@@ -69,6 +71,7 @@ export function CatalogAdminPage() {
       {activePillKey === 'unit' && <ReferenceCatalogPane category="UNIT" categoryLabel="Đơn vị tính" />}
       {activePillKey === 'payment-method' && <ReferenceCatalogPane category="PAYMENT_METHOD" categoryLabel="Hình thức thanh toán" />}
       {activePillKey === 'income-expense-type' && <ReferenceCatalogPane category="INCOME_EXPENSE_TYPE" categoryLabel="Loại thu chi" />}
+      {activePillKey === 'treatment-form' && <ReferenceCatalogPane category="TREATMENT_FORM" categoryLabel="Hình thức điều trị" />}
       {activePillKey === 'province' && <GeoPane mode="province" />}
       {activePillKey === 'ward' && <GeoPane mode="ward" />}
     </ConfigScreenShell>

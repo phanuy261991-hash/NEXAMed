@@ -15883,6 +15883,680 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/encounters/{id}/prescription-interop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liên thông đơn thuốc — ô bổ sung bắt buộc khi gửi đơn (hình thức điều trị, đợt dùng thuốc, số thang, người giám hộ) + gợi ý tự điền + dải kiểm dữ liệu (#242 GĐ3, mockup 8a/8b). Công tắc liên thông tắt → enabled=false. Ghi nhật ký xem */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                                standardMode: boolean;
+                                signed: boolean;
+                                kinds: {
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string | null;
+                                    /** @enum {string} */
+                                    submissionStatus: "NONE" | "PENDING" | "SENT" | "FAILED" | "AMENDED";
+                                    editable: boolean;
+                                    info: {
+                                        treatmentFormCode: string | null;
+                                        dosePeriodNumber: number | null;
+                                        doseFrom: string | null;
+                                        doseTo: string | null;
+                                        herbalDoses: number | null;
+                                        herbalInstruction: string | null;
+                                    };
+                                    suggested: {
+                                        dosePeriodNumber: number | null;
+                                        doseFrom: string | null;
+                                        doseTo: string | null;
+                                    };
+                                }[];
+                                guardian: {
+                                    fullName: string | null;
+                                    relationship: string | null;
+                                    phone: string | null;
+                                    address: string | null;
+                                    patientVersion: number;
+                                    canEdit: boolean;
+                                } | null;
+                                problems: {
+                                    code: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    message: string;
+                                    required: boolean;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.read_clinical */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám không tồn tại, thuộc chi nhánh khác/công ty khác hoặc ngoài phạm vi dữ liệu */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        /** Liên thông đơn thuốc — lưu các ô bổ sung của từng loại đơn (và người giám hộ → hồ sơ bệnh nhân). Sửa được tới khi đơn được gửi; ghi nhật ký (chỉ tên ô). Công tắc liên thông tắt → 404 */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        kinds: {
+                            treatmentFormCode: string | null;
+                            dosePeriodNumber: number | null;
+                            doseFrom: string | null;
+                            doseTo: string | null;
+                            herbalDoses: number | null;
+                            herbalInstruction: string | null;
+                            /** @enum {string} */
+                            kind: "C" | "N" | "H" | "Y";
+                        }[];
+                        guardian?: {
+                            fullName?: string;
+                            phone?: string;
+                            address?: string;
+                            patientVersion: number;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công, trả lại trạng thái mới */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                                standardMode: boolean;
+                                signed: boolean;
+                                kinds: {
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string | null;
+                                    /** @enum {string} */
+                                    submissionStatus: "NONE" | "PENDING" | "SENT" | "FAILED" | "AMENDED";
+                                    editable: boolean;
+                                    info: {
+                                        treatmentFormCode: string | null;
+                                        dosePeriodNumber: number | null;
+                                        doseFrom: string | null;
+                                        doseTo: string | null;
+                                        herbalDoses: number | null;
+                                        herbalInstruction: string | null;
+                                    };
+                                    suggested: {
+                                        dosePeriodNumber: number | null;
+                                        doseFrom: string | null;
+                                        doseTo: string | null;
+                                    };
+                                }[];
+                                guardian: {
+                                    fullName: string | null;
+                                    relationship: string | null;
+                                    phone: string | null;
+                                    address: string | null;
+                                    patientVersion: number;
+                                    canEdit: boolean;
+                                } | null;
+                                problems: {
+                                    code: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    message: string;
+                                    required: boolean;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu sai định dạng */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription.create, hoặc không có quyền sửa hồ sơ bệnh nhân khi gửi kèm người giám hộ (INTEROP_GUARDIAN_EDIT_FORBIDDEN) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám không tồn tại/thuộc chi nhánh khác/công ty khác, hoặc liên thông đang tắt */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đơn đã gửi lên cổng nên khoá (INTEROP_INFO_LOCKED), hoặc hồ sơ bệnh nhân đã bị sửa (CONCURRENT_MODIFICATION) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Loại đơn không có trong đơn, ngày ngược, hình thức điều trị ngoài danh mục */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescription-interop/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liên thông đơn thuốc — hàng chờ gửi của chi nhánh đang làm việc (mockup 8c): mã đơn, bác sĩ ký, trạng thái, lỗi cổng nguyên văn, số mục dữ liệu còn thiếu */
+        get: {
+            parameters: {
+                query?: {
+                    status?: "PENDING" | "SENT" | "FAILED" | "AMENDED";
+                    dateFrom?: string;
+                    dateTo?: string;
+                    limit?: number;
+                    offset?: number | null;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    nationalCode: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    doctorName: string | null;
+                                    signedAt: string;
+                                    /** @enum {string} */
+                                    status: "PENDING" | "SENT" | "FAILED" | "AMENDED";
+                                    attempts: number;
+                                    maxRetries: number;
+                                    lastAttemptAt: string | null;
+                                    nextAttemptAt: string | null;
+                                    sentAt: string | null;
+                                    lastHttpStatus: number | null;
+                                    errors: string[];
+                                    missingCount: number | null;
+                                    missing: {
+                                        code: string;
+                                        /** @enum {string} */
+                                        kind: "C" | "N" | "H" | "Y";
+                                        message: string;
+                                        required: boolean;
+                                    }[];
+                                }[];
+                                total: number;
+                                sendEnabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.read_clinical */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescription-interop/submissions/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Liên thông đơn thuốc — "Gửi ngay" một đơn (cần bật "Gửi đơn lên cổng"). Trả 200 kể cả khi cổng từ chối/mất kết nối (xem outcome) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Kết quả (SENT/REJECTED/UNREACHABLE/NOT_CONFIGURED/NOT_READY) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                row: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    nationalCode: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    doctorName: string | null;
+                                    signedAt: string;
+                                    /** @enum {string} */
+                                    status: "PENDING" | "SENT" | "FAILED" | "AMENDED";
+                                    attempts: number;
+                                    maxRetries: number;
+                                    lastAttemptAt: string | null;
+                                    nextAttemptAt: string | null;
+                                    sentAt: string | null;
+                                    lastHttpStatus: number | null;
+                                    errors: string[];
+                                    missingCount: number | null;
+                                    missing: {
+                                        code: string;
+                                        /** @enum {string} */
+                                        kind: "C" | "N" | "H" | "Y";
+                                        message: string;
+                                        required: boolean;
+                                    }[];
+                                };
+                                /** @enum {string} */
+                                outcome: "SENT" | "REJECTED" | "UNREACHABLE" | "NOT_CONFIGURED" | "NOT_READY";
+                                message: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription.sign */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đơn không tồn tại, thuộc chi nhánh khác/công ty khác hoặc do bác sĩ khác ký (phạm vi cá nhân) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chưa bật gửi (INTEROP_SEND_DISABLED), đơn đã gửi/đã đính chính hoặc đang được gửi (INTEROP_SUBMISSION_NOT_SENDABLE) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescription-interop/submissions/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Liên thông đơn thuốc — "Gửi lại" sau lỗi: đặt lại số lần thử về 0 rồi gửi ngay (cùng điều kiện với "Gửi ngay") */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Kết quả (SENT/REJECTED/UNREACHABLE/NOT_CONFIGURED/NOT_READY) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                row: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    nationalCode: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    doctorName: string | null;
+                                    signedAt: string;
+                                    /** @enum {string} */
+                                    status: "PENDING" | "SENT" | "FAILED" | "AMENDED";
+                                    attempts: number;
+                                    maxRetries: number;
+                                    lastAttemptAt: string | null;
+                                    nextAttemptAt: string | null;
+                                    sentAt: string | null;
+                                    lastHttpStatus: number | null;
+                                    errors: string[];
+                                    missingCount: number | null;
+                                    missing: {
+                                        code: string;
+                                        /** @enum {string} */
+                                        kind: "C" | "N" | "H" | "Y";
+                                        message: string;
+                                        required: boolean;
+                                    }[];
+                                };
+                                /** @enum {string} */
+                                outcome: "SENT" | "REJECTED" | "UNREACHABLE" | "NOT_CONFIGURED" | "NOT_READY";
+                                message: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền prescription.sign */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đơn không tồn tại, thuộc chi nhánh khác/công ty khác hoặc do bác sĩ khác ký (phạm vi cá nhân) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chưa bật gửi, đơn đã gửi/đã đính chính hoặc đang được gửi */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/suppliers": {
         parameters: {
             query?: never;
@@ -19813,7 +20487,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
                 };
                 cookie?: never;
             };
@@ -19831,7 +20505,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
@@ -19941,7 +20615,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
                         code?: string;
                         name: string;
                         /** @default 0 */
@@ -19981,7 +20655,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -20102,7 +20776,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -20251,7 +20925,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -20382,7 +21056,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -24378,7 +25052,7 @@ export interface paths {
                                 }[];
                                 newCatalogItems: {
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
                                     name: string;
                                 }[];
                                 exampleRowCount: number;

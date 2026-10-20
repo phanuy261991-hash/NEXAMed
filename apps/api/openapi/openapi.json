@@ -41239,6 +41239,1914 @@
         }
       }
     },
+    "/api/v1/encounters/{id}/prescription-interop": {
+      "get": {
+        "tags": [
+          "prescription-interop"
+        ],
+        "summary": "Liên thông đơn thuốc — ô bổ sung bắt buộc khi gửi đơn (hình thức điều trị, đợt dùng thuốc, số thang, người giám hộ) + gợi ý tự điền + dải kiểm dữ liệu (#242 GĐ3, mockup 8a/8b). Công tắc liên thông tắt → enabled=false. Ghi nhật ký xem",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "standardMode": {
+                          "type": "boolean"
+                        },
+                        "signed": {
+                          "type": "boolean"
+                        },
+                        "kinds": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "submissionStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "NONE",
+                                  "PENDING",
+                                  "SENT",
+                                  "FAILED",
+                                  "AMENDED"
+                                ]
+                              },
+                              "editable": {
+                                "type": "boolean"
+                              },
+                              "info": {
+                                "type": "object",
+                                "properties": {
+                                  "treatmentFormCode": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^\\d{1,9}$"
+                                  },
+                                  "dosePeriodNumber": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ],
+                                    "minimum": 1,
+                                    "maximum": 999
+                                  },
+                                  "doseFrom": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "doseTo": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "herbalDoses": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ],
+                                    "minimum": 1,
+                                    "maximum": 999
+                                  },
+                                  "herbalInstruction": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "maxLength": 1000
+                                  }
+                                },
+                                "required": [
+                                  "treatmentFormCode",
+                                  "dosePeriodNumber",
+                                  "doseFrom",
+                                  "doseTo",
+                                  "herbalDoses",
+                                  "herbalInstruction"
+                                ]
+                              },
+                              "suggested": {
+                                "type": "object",
+                                "properties": {
+                                  "dosePeriodNumber": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  },
+                                  "doseFrom": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "doseTo": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  }
+                                },
+                                "required": [
+                                  "dosePeriodNumber",
+                                  "doseFrom",
+                                  "doseTo"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nationalCode",
+                              "submissionStatus",
+                              "editable",
+                              "info",
+                              "suggested"
+                            ]
+                          }
+                        },
+                        "guardian": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "fullName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "relationship": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "phone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "address": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "patientVersion": {
+                              "type": "integer"
+                            },
+                            "canEdit": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "fullName",
+                            "relationship",
+                            "phone",
+                            "address",
+                            "patientVersion",
+                            "canEdit"
+                          ]
+                        },
+                        "problems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "kind",
+                              "message",
+                              "required"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "standardMode",
+                        "signed",
+                        "kinds",
+                        "guardian",
+                        "problems"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.read_clinical",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lượt khám không tồn tại, thuộc chi nhánh khác/công ty khác hoặc ngoài phạm vi dữ liệu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "prescription-interop"
+        ],
+        "summary": "Liên thông đơn thuốc — lưu các ô bổ sung của từng loại đơn (và người giám hộ → hồ sơ bệnh nhân). Sửa được tới khi đơn được gửi; ghi nhật ký (chỉ tên ô). Công tắc liên thông tắt → 404",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kinds": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "treatmentFormCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^\\d{1,9}$"
+                        },
+                        "dosePeriodNumber": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 1,
+                          "maximum": 999
+                        },
+                        "doseFrom": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "doseTo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "herbalDoses": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 1,
+                          "maximum": 999
+                        },
+                        "herbalInstruction": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 1000
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "C",
+                            "N",
+                            "H",
+                            "Y"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "treatmentFormCode",
+                        "dosePeriodNumber",
+                        "doseFrom",
+                        "doseTo",
+                        "herbalDoses",
+                        "herbalInstruction",
+                        "kind"
+                      ]
+                    },
+                    "maxItems": 4
+                  },
+                  "guardian": {
+                    "type": "object",
+                    "properties": {
+                      "fullName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "phone": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 30
+                      },
+                      "address": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      },
+                      "patientVersion": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "patientVersion"
+                    ]
+                  }
+                },
+                "required": [
+                  "kinds"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công, trả lại trạng thái mới",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "standardMode": {
+                          "type": "boolean"
+                        },
+                        "signed": {
+                          "type": "boolean"
+                        },
+                        "kinds": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "submissionStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "NONE",
+                                  "PENDING",
+                                  "SENT",
+                                  "FAILED",
+                                  "AMENDED"
+                                ]
+                              },
+                              "editable": {
+                                "type": "boolean"
+                              },
+                              "info": {
+                                "type": "object",
+                                "properties": {
+                                  "treatmentFormCode": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^\\d{1,9}$"
+                                  },
+                                  "dosePeriodNumber": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ],
+                                    "minimum": 1,
+                                    "maximum": 999
+                                  },
+                                  "doseFrom": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "doseTo": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "herbalDoses": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ],
+                                    "minimum": 1,
+                                    "maximum": 999
+                                  },
+                                  "herbalInstruction": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "maxLength": 1000
+                                  }
+                                },
+                                "required": [
+                                  "treatmentFormCode",
+                                  "dosePeriodNumber",
+                                  "doseFrom",
+                                  "doseTo",
+                                  "herbalDoses",
+                                  "herbalInstruction"
+                                ]
+                              },
+                              "suggested": {
+                                "type": "object",
+                                "properties": {
+                                  "dosePeriodNumber": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  },
+                                  "doseFrom": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  },
+                                  "doseTo": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  }
+                                },
+                                "required": [
+                                  "dosePeriodNumber",
+                                  "doseFrom",
+                                  "doseTo"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nationalCode",
+                              "submissionStatus",
+                              "editable",
+                              "info",
+                              "suggested"
+                            ]
+                          }
+                        },
+                        "guardian": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "fullName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "relationship": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "phone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "address": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "patientVersion": {
+                              "type": "integer"
+                            },
+                            "canEdit": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "fullName",
+                            "relationship",
+                            "phone",
+                            "address",
+                            "patientVersion",
+                            "canEdit"
+                          ]
+                        },
+                        "problems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "kind",
+                              "message",
+                              "required"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "standardMode",
+                        "signed",
+                        "kinds",
+                        "guardian",
+                        "problems"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu sai định dạng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền prescription.create, hoặc không có quyền sửa hồ sơ bệnh nhân khi gửi kèm người giám hộ (INTEROP_GUARDIAN_EDIT_FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lượt khám không tồn tại/thuộc chi nhánh khác/công ty khác, hoặc liên thông đang tắt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Đơn đã gửi lên cổng nên khoá (INTEROP_INFO_LOCKED), hoặc hồ sơ bệnh nhân đã bị sửa (CONCURRENT_MODIFICATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Loại đơn không có trong đơn, ngày ngược, hình thức điều trị ngoài danh mục",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prescription-interop/submissions": {
+      "get": {
+        "tags": [
+          "prescription-interop"
+        ],
+        "summary": "Liên thông đơn thuốc — hàng chờ gửi của chi nhánh đang làm việc (mockup 8c): mã đơn, bác sĩ ký, trạng thái, lỗi cổng nguyên văn, số mục dữ liệu còn thiếu",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "SENT",
+                "FAILED",
+                "AMENDED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "dateFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "dateTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "default": 0
+            },
+            "required": false,
+            "name": "offset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "doctorName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "signedAt": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "PENDING",
+                                  "SENT",
+                                  "FAILED",
+                                  "AMENDED"
+                                ]
+                              },
+                              "attempts": {
+                                "type": "integer"
+                              },
+                              "maxRetries": {
+                                "type": "integer"
+                              },
+                              "lastAttemptAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "nextAttemptAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "sentAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lastHttpStatus": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "errors": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "missingCount": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "missing": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "code": {
+                                      "type": "string"
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "C",
+                                        "N",
+                                        "H",
+                                        "Y"
+                                      ]
+                                    },
+                                    "message": {
+                                      "type": "string"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "code",
+                                    "kind",
+                                    "message",
+                                    "required"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "encounterId",
+                              "nationalCode",
+                              "kind",
+                              "doctorName",
+                              "signedAt",
+                              "status",
+                              "attempts",
+                              "maxRetries",
+                              "lastAttemptAt",
+                              "nextAttemptAt",
+                              "sentAt",
+                              "lastHttpStatus",
+                              "errors",
+                              "missingCount",
+                              "missing"
+                            ]
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "sendEnabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "total",
+                        "sendEnabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.read_clinical",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prescription-interop/submissions/{id}/send": {
+      "post": {
+        "tags": [
+          "prescription-interop"
+        ],
+        "summary": "Liên thông đơn thuốc — \"Gửi ngay\" một đơn (cần bật \"Gửi đơn lên cổng\"). Trả 200 kể cả khi cổng từ chối/mất kết nối (xem outcome)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kết quả (SENT/REJECTED/UNREACHABLE/NOT_CONFIGURED/NOT_READY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "row": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "nationalCode": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "doctorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "signedAt": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "PENDING",
+                                "SENT",
+                                "FAILED",
+                                "AMENDED"
+                              ]
+                            },
+                            "attempts": {
+                              "type": "integer"
+                            },
+                            "maxRetries": {
+                              "type": "integer"
+                            },
+                            "lastAttemptAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "nextAttemptAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "sentAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "lastHttpStatus": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "missingCount": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "missing": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "C",
+                                      "N",
+                                      "H",
+                                      "Y"
+                                    ]
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "kind",
+                                  "message",
+                                  "required"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "encounterId",
+                            "nationalCode",
+                            "kind",
+                            "doctorName",
+                            "signedAt",
+                            "status",
+                            "attempts",
+                            "maxRetries",
+                            "lastAttemptAt",
+                            "nextAttemptAt",
+                            "sentAt",
+                            "lastHttpStatus",
+                            "errors",
+                            "missingCount",
+                            "missing"
+                          ]
+                        },
+                        "outcome": {
+                          "type": "string",
+                          "enum": [
+                            "SENT",
+                            "REJECTED",
+                            "UNREACHABLE",
+                            "NOT_CONFIGURED",
+                            "NOT_READY"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "row",
+                        "outcome",
+                        "message"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền prescription.sign",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Đơn không tồn tại, thuộc chi nhánh khác/công ty khác hoặc do bác sĩ khác ký (phạm vi cá nhân)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Chưa bật gửi (INTEROP_SEND_DISABLED), đơn đã gửi/đã đính chính hoặc đang được gửi (INTEROP_SUBMISSION_NOT_SENDABLE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prescription-interop/submissions/{id}/retry": {
+      "post": {
+        "tags": [
+          "prescription-interop"
+        ],
+        "summary": "Liên thông đơn thuốc — \"Gửi lại\" sau lỗi: đặt lại số lần thử về 0 rồi gửi ngay (cùng điều kiện với \"Gửi ngay\")",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kết quả (SENT/REJECTED/UNREACHABLE/NOT_CONFIGURED/NOT_READY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "row": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "encounterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "nationalCode": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "doctorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "signedAt": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "PENDING",
+                                "SENT",
+                                "FAILED",
+                                "AMENDED"
+                              ]
+                            },
+                            "attempts": {
+                              "type": "integer"
+                            },
+                            "maxRetries": {
+                              "type": "integer"
+                            },
+                            "lastAttemptAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "nextAttemptAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "sentAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "lastHttpStatus": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "missingCount": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "missing": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "C",
+                                      "N",
+                                      "H",
+                                      "Y"
+                                    ]
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "kind",
+                                  "message",
+                                  "required"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "encounterId",
+                            "nationalCode",
+                            "kind",
+                            "doctorName",
+                            "signedAt",
+                            "status",
+                            "attempts",
+                            "maxRetries",
+                            "lastAttemptAt",
+                            "nextAttemptAt",
+                            "sentAt",
+                            "lastHttpStatus",
+                            "errors",
+                            "missingCount",
+                            "missing"
+                          ]
+                        },
+                        "outcome": {
+                          "type": "string",
+                          "enum": [
+                            "SENT",
+                            "REJECTED",
+                            "UNREACHABLE",
+                            "NOT_CONFIGURED",
+                            "NOT_READY"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "row",
+                        "outcome",
+                        "message"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền prescription.sign",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Đơn không tồn tại, thuộc chi nhánh khác/công ty khác hoặc do bác sĩ khác ký (phạm vi cá nhân)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Chưa bật gửi, đơn đã gửi/đã đính chính hoặc đang được gửi",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/suppliers": {
       "post": {
         "tags": [
@@ -49974,7 +51882,8 @@
                 "ICD10_ABBREVIATION",
                 "TECH_SERVICE_CATEGORY",
                 "SPECIMEN_TYPE",
-                "LAB_RESULT_UNIT"
+                "LAB_RESULT_UNIT",
+                "TREATMENT_FORM"
               ]
             },
             "required": true,
@@ -50045,7 +51954,8 @@
                                   "ICD10_ABBREVIATION",
                                   "TECH_SERVICE_CATEGORY",
                                   "SPECIMEN_TYPE",
-                                  "LAB_RESULT_UNIT"
+                                  "LAB_RESULT_UNIT",
+                                  "TREATMENT_FORM"
                                 ]
                               },
                               "code": {
@@ -50367,7 +52277,8 @@
                       "ICD10_ABBREVIATION",
                       "TECH_SERVICE_CATEGORY",
                       "SPECIMEN_TYPE",
-                      "LAB_RESULT_UNIT"
+                      "LAB_RESULT_UNIT",
+                      "TREATMENT_FORM"
                     ]
                   },
                   "code": {
@@ -50525,7 +52436,8 @@
                             "ICD10_ABBREVIATION",
                             "TECH_SERVICE_CATEGORY",
                             "SPECIMEN_TYPE",
-                            "LAB_RESULT_UNIT"
+                            "LAB_RESULT_UNIT",
+                            "TREATMENT_FORM"
                           ]
                         },
                         "code": {
@@ -50984,7 +52896,8 @@
                             "ICD10_ABBREVIATION",
                             "TECH_SERVICE_CATEGORY",
                             "SPECIMEN_TYPE",
-                            "LAB_RESULT_UNIT"
+                            "LAB_RESULT_UNIT",
+                            "TREATMENT_FORM"
                           ]
                         },
                         "code": {
@@ -51358,7 +53271,8 @@
                             "ICD10_ABBREVIATION",
                             "TECH_SERVICE_CATEGORY",
                             "SPECIMEN_TYPE",
-                            "LAB_RESULT_UNIT"
+                            "LAB_RESULT_UNIT",
+                            "TREATMENT_FORM"
                           ]
                         },
                         "code": {
@@ -51734,7 +53648,8 @@
                             "ICD10_ABBREVIATION",
                             "TECH_SERVICE_CATEGORY",
                             "SPECIMEN_TYPE",
-                            "LAB_RESULT_UNIT"
+                            "LAB_RESULT_UNIT",
+                            "TREATMENT_FORM"
                           ]
                         },
                         "code": {
@@ -61674,7 +63589,8 @@
                                   "ICD10_ABBREVIATION",
                                   "TECH_SERVICE_CATEGORY",
                                   "SPECIMEN_TYPE",
-                                  "LAB_RESULT_UNIT"
+                                  "LAB_RESULT_UNIT",
+                                  "TREATMENT_FORM"
                                 ]
                               },
                               "name": {

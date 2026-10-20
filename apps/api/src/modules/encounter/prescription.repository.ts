@@ -28,6 +28,8 @@ export interface PrescriptionItemWithDrug {
   /** Phân loại kiểm soát + cờ Đông y của thuốc — đầu vào của `resolvePrescriptionKind()` (#242). `null`/`false` cho dòng tự do. */
   controlType: DrugControlType | null;
   isTraditional: boolean;
+  /** Mã thuốc quốc gia 20 ký tự (`drug.national_code`) — cần khi gửi đơn lên cổng liên thông (#242 GĐ3); `null` = chưa khai hoặc dòng tự do. */
+  nationalCode: string | null;
   /** Đơn pháp lý chứa dòng này (#242) — `null` khi còn nháp hoặc đơn ký trước ngày bật chế độ chuẩn. */
   documentId: string | null;
 }
@@ -64,6 +66,7 @@ interface RawItemWithDrug {
     isSplittable: boolean;
     controlType: DrugControlType;
     isTraditional: boolean;
+    nationalCode: string | null;
     ingredients: { activeIngredientCode: string }[];
   } | null;
 }
@@ -101,6 +104,7 @@ function mapItems(rows: RawItemWithDrug[], nameByCode: Map<string, string>): Pre
     isSplittable: row.drug?.isSplittable ?? true,
     controlType: row.drug?.controlType ?? null,
     isTraditional: row.drug?.isTraditional ?? false,
+    nationalCode: row.drug?.nationalCode ?? null,
     documentId: row.documentId,
   }));
 }
@@ -116,6 +120,7 @@ const ITEMS_INCLUDE = {
         isSplittable: true,
         controlType: true,
         isTraditional: true,
+        nationalCode: true,
         ingredients: { where: { deletedAt: null as null }, select: { activeIngredientCode: true } },
       },
     },

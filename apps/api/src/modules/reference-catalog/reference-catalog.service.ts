@@ -9,6 +9,7 @@ import {
   REFERENCE_CATALOG_SHORT_CODE_PREFIXES,
   ReferenceCatalogDuplicateCodeError,
   ReferenceCatalogInvalidAbbreviationError,
+  ReferenceCatalogInvalidTreatmentFormCodeError,
 } from '@nexamed/core';
 import { CodeSequenceRepository } from '../../infrastructure/persistence/code-sequence.repository';
 import {
@@ -87,6 +88,12 @@ export class ReferenceCatalogService {
    * từ chữ/số. Category khác trả nguyên `code` (có thể `undefined` → tự sinh mã như cũ).
    */
   private normalizeCodeForCategory(category: ReferenceCatalogCategory, code: string | undefined): string | undefined {
+    if (category === 'TREATMENT_FORM' && code !== undefined) {
+      // Hình thức điều trị (#242 GĐ3): mã SỐ của Bộ Y tế, nhập tay (không tự sinh; lúc TẠO bắt buộc có mã — kiểm ở `create`).
+      const trimmed = code.trim();
+      if (!/^\d{1,9}$/.test(trimmed)) throw new ReferenceCatalogInvalidTreatmentFormCodeError();
+      return trimmed;
+    }
     if (category !== 'ICD10_ABBREVIATION' || code === undefined) {
       return code;
     }
@@ -164,6 +171,9 @@ export class ReferenceCatalogService {
       const providedCode = this.normalizeCodeForCategory(dto.category, dto.code);
       if (dto.category === 'ICD10_ABBREVIATION' && providedCode === undefined) {
         throw new ReferenceCatalogInvalidAbbreviationError();
+      }
+      if (dto.category === 'TREATMENT_FORM' && providedCode === undefined) {
+        throw new ReferenceCatalogInvalidTreatmentFormCodeError();
       }
       const code = providedCode ?? (await this.generateCode(tx, tenantId, actorId, dto.category));
       let created: ReferenceCatalog;

@@ -1,9 +1,14 @@
 import type {
+  EncounterInteropInfoResponse,
   InteropActionResult,
+  InteropSubmissionActionResponse,
   ListInteropDoctorsResponse,
   ListInteropFacilitiesResponse,
+  ListInteropSubmissionsQuery,
+  ListInteropSubmissionsResponse,
   PrescriptionInteropSettingsResponse,
   PrescriptionInteropStatus,
+  SaveEncounterInteropInfoRequest,
   SaveInteropCredentialRequest,
   UpdatePrescriptionInteropSettingsRequest,
 } from '@nexamed/shared';
@@ -53,4 +58,30 @@ export async function addInteropDoctorToFacility(userId: string): Promise<Intero
 
 export async function removeInteropDoctorFromFacility(userId: string): Promise<InteropActionResult> {
   return unwrap(await getApiClient().POST('/api/v1/prescription-interop/doctors/{userId}/remove-from-facility', { params: { path: { userId } } })) as InteropActionResult;
+}
+
+// ---- Ô bổ sung bắt buộc khi gửi đơn + dải kiểm dữ liệu (mockup 8a/8b) ----
+
+export async function getEncounterInteropInfo(encounterId: string): Promise<EncounterInteropInfoResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/encounters/{id}/prescription-interop', { params: { path: { id: encounterId } } })) as EncounterInteropInfoResponse;
+}
+
+export async function saveEncounterInteropInfo(encounterId: string, body: SaveEncounterInteropInfoRequest): Promise<EncounterInteropInfoResponse> {
+  return unwrap(await getApiClient().PUT('/api/v1/encounters/{id}/prescription-interop', { params: { path: { id: encounterId } }, body })) as EncounterInteropInfoResponse;
+}
+
+// ---- Hàng chờ gửi (mockup 8c) ----
+
+export async function listInteropSubmissions(query: ListInteropSubmissionsQuery): Promise<ListInteropSubmissionsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/prescription-interop/submissions', { params: { query } })) as ListInteropSubmissionsResponse;
+}
+
+/** "Gửi ngay". Trả 200 kể cả khi cổng từ chối/mất kết nối (xem `outcome`). */
+export async function sendInteropSubmission(id: string): Promise<InteropSubmissionActionResponse> {
+  return unwrap(await getApiClient().POST('/api/v1/prescription-interop/submissions/{id}/send', { params: { path: { id } } })) as InteropSubmissionActionResponse;
+}
+
+/** "Gửi lại" sau lỗi (đặt lại số lần thử). */
+export async function retryInteropSubmission(id: string): Promise<InteropSubmissionActionResponse> {
+  return unwrap(await getApiClient().POST('/api/v1/prescription-interop/submissions/{id}/retry', { params: { path: { id } } })) as InteropSubmissionActionResponse;
 }

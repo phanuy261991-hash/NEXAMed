@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { prescriptionKindSchema } from './business-code';
 
 /**
  * Liên thông đơn thuốc quốc gia (Quyết định 808/QĐ-BYT) — giai đoạn 3 của mã đơn thuốc Bộ Y tế (docs/DECISIONS.md #242, mockup 8d).
@@ -125,3 +126,162 @@ export const saveInteropCredentialRequestSchema = z.object({
   password: z.string().min(1).max(200).optional(),
 });
 export type SaveInteropCredentialRequest = z.infer<typeof saveInteropCredentialRequestSchema>;
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Dữ liệu bổ sung bắt buộc khi gửi đơn (mockup 8b) + dải kiểm dữ liệu (8a) + hàng chờ gửi (8c) — docs/DECISIONS.md #242 bổ sung 17.
+// ---------------------------------------------------------------------------------------------------------------------
+
+const interopDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải có dạng YYYY-MM-DD.');
+
+/** Mã số hình thức điều trị (danh mục BYT `TREATMENT_FORM`): cổng nhận giá trị số. */
+export const INTEROP_TREATMENT_FORM_CODE_PATTERN = /^\d{1,9}$/;
+
+/** Các ô bổ sung của MỘT loại đơn (C/N/H/Y). Mỗi loại chỉ dùng một phần: C = hình thức điều trị; N/H/Y = đợt dùng thuốc; Y = thêm số thang + cách sắc/uống. */
+export const interopKindInfoValueSchema = z.object({
+  treatmentFormCode: z.string().regex(INTEROP_TREATMENT_FORM_CODE_PATTERN, 'Mã hình thức điều trị phải là số.').nullable(),
+  dosePeriodNumber: z.number().int().min(1).max(999).nullable(),
+  doseFrom: interopDateSchema.nullable(),
+  doseTo: interopDateSchema.nullable(),
+  herbalDoses: z.number().int().min(1).max(999).nullable(),
+  herbalInstruction: z.string().trim().max(1000).nullable(),
+});
+export type InteropKindInfoValue = z.infer<typeof interopKindInfoValueSchema>;
+
+export const EMPTY_INTEROP_KIND_INFO: InteropKindInfoValue = {
+  treatmentFormCode: null,
+  dosePeriodNumber: null,
+  doseFrom: null,
+  doseTo: null,
+  herbalDoses: null,
+  herbalInstruction: null,
+};
+
+/** Một vấn đề thiếu/sai dữ liệu để gửi (kết quả `checkInteropReadiness` ở `packages/core`). `required=false` = chỉ nhắc, không chặn gửi. */
+export const interopProblemSchema = z.object({
+  code: z.string(),
+  kind: prescriptionKindSchema,
+  message: z.string(),
+  required: z.boolean(),
+});
+export type InteropProblemDto = z.infer<typeof interopProblemSchema>;
+
+export const INTEROP_SUBMISSION_STATUSES = ['PENDING', 'SENT', 'FAILED', 'AMENDED'] as const;
+export const interopSubmissionStatusSchema = z.enum(INTEROP_SUBMISSION_STATUSES);
+export type InteropSubmissionStatus = z.infer<typeof interopSubmissionStatusSchema>;
+
+export const INTEROP_SUBMISSION_STATUS_LABEL: Record<InteropSubmissionStatus, string> = {
+  PENDING: 'Chờ gửi',
+  SENT: 'Đã gửi',
+  FAILED: 'Lỗi',
+  AMENDED: 'Đính chính, chưa gửi',
+};
+
+export const encounterInteropKindSchema = z.object({
+  kind: prescriptionKindSchema,
+  /** Mã đơn chuẩn; `null` khi đơn còn nháp (chưa cấp mã). */
+  nationalCode: z.string().nullable(),
+  /** Trạng thái hàng chờ của đơn này; `NONE` = chưa xếp hàng (đơn nháp, hoặc ký lúc công tắc liên thông đang tắt). */
+  submissionStatus: z.enum(['NONE', ...INTEROP_SUBMISSION_STATUSES]),
+  /** Sửa được tới khi đơn được gửi; sau `SENT`/`AMENDED` thì khoá. */
+  editable: z.boolean(),
+  /** Giá trị đã lưu (null = chưa nhập). */
+  info: interopKindInfoValueSchema,
+  /** Gợi ý tự điền cho đợt dùng thuốc (từ ngày = ngày kê, đến ngày = ngày kê + số ngày thuốc dài nhất − 1). Hệ thống dùng gợi ý khi ô chưa nhập. */
+  suggested: z.object({ dosePeriodNumber: z.number().int().nullable(), doseFrom: interopDateSchema.nullable(), doseTo: interopDateSchema.nullable() }),
+});
+export type EncounterInteropKind = z.infer<typeof encounterInteropKindSchema>;
+
+/** Người giám hộ (bệnh nhân dưới 72 tháng tuổi) — lấy/ghi ngược vào các trường người thân của hồ sơ bệnh nhân. */
+export const encounterInteropGuardianSchema = z.object({
+  fullName: z.string().nullable(),
+  relationship: z.string().nullable(),
+  phone: z.string().nullable(),
+  address: z.string().nullable(),
+  /** `version` hồ sơ bệnh nhân (khoá lạc quan khi lưu ngược). */
+  patientVersion: z.number().int(),
+  /** Người dùng có quyền sửa hồ sơ bệnh nhân không (không có thì ô người giám hộ chỉ đọc). */
+  canEdit: z.boolean(),
+});
+export type EncounterInteropGuardian = z.infer<typeof encounterInteropGuardianSchema>;
+
+export const encounterInteropInfoResponseSchema = z.object({
+  /** Công tắc tổng "Có liên thông". Tắt thì web ẩn cả khối. */
+  enabled: z.boolean(),
+  /** Chế độ mã đơn "Chuẩn Bộ Y tế" đang bật — chưa bật thì không có đơn pháp lý nên chưa gửi được. */
+  standardMode: z.boolean(),
+  /** Đơn đã ký chưa. */
+  signed: z.boolean(),
+  kinds: z.array(encounterInteropKindSchema),
+  /** `null` khi bệnh nhân từ 72 tháng tuổi trở lên. */
+  guardian: encounterInteropGuardianSchema.nullable(),
+  problems: z.array(interopProblemSchema),
+});
+export type EncounterInteropInfoResponse = z.infer<typeof encounterInteropInfoResponseSchema>;
+
+export const saveEncounterInteropInfoRequestSchema = z.object({
+  kinds: z
+    .array(interopKindInfoValueSchema.extend({ kind: prescriptionKindSchema }))
+    .max(4)
+    .refine((list) => new Set(list.map((k) => k.kind)).size === list.length, 'Mỗi loại đơn chỉ khai một lần.'),
+  guardian: z
+    .object({
+      fullName: z.string().trim().min(1).max(200).optional(),
+      phone: z.string().trim().min(1).max(30).optional(),
+      address: z.string().trim().min(1).max(500).optional(),
+      patientVersion: z.number().int().positive(),
+    })
+    .optional(),
+});
+export type SaveEncounterInteropInfoRequest = z.infer<typeof saveEncounterInteropInfoRequestSchema>;
+
+// ---- Hàng chờ gửi (8c) ----
+
+export const listInteropSubmissionsQuerySchema = z.object({
+  status: interopSubmissionStatusSchema.optional(),
+  /** Lọc theo ngày ký (giờ Việt Nam), `YYYY-MM-DD`. */
+  dateFrom: interopDateSchema.optional(),
+  dateTo: interopDateSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+export type ListInteropSubmissionsQuery = z.infer<typeof listInteropSubmissionsQuerySchema>;
+
+export const interopSubmissionRowSchema = z.object({
+  id: z.string().uuid(),
+  encounterId: z.string().uuid(),
+  nationalCode: z.string(),
+  kind: prescriptionKindSchema,
+  doctorName: z.string().nullable(),
+  signedAt: z.string(),
+  status: interopSubmissionStatusSchema,
+  attempts: z.number().int(),
+  /** Số lần thử tối đa đang cấu hình (để hiện "thử 3/5 lần"). */
+  maxRetries: z.number().int(),
+  lastAttemptAt: z.string().nullable(),
+  nextAttemptAt: z.string().nullable(),
+  sentAt: z.string().nullable(),
+  lastHttpStatus: z.number().int().nullable(),
+  /** Nguyên văn các lỗi cổng trả (hoặc lý do chưa gửi được). */
+  errors: z.array(z.string()),
+  /** Số mục dữ liệu còn thiếu để gửi (`null` khi đã gửi — không cần tính). */
+  missingCount: z.number().int().nullable(),
+  /** Nội dung từng mục còn thiếu (cho hộp "Xem"). */
+  missing: z.array(interopProblemSchema),
+});
+export type InteropSubmissionRow = z.infer<typeof interopSubmissionRowSchema>;
+
+export const listInteropSubmissionsResponseSchema = z.object({
+  items: z.array(interopSubmissionRowSchema),
+  total: z.number().int(),
+  /** Công tắc "Gửi đơn lên cổng" — tắt thì "Gửi ngay"/"Gửi lại" không dùng được. */
+  sendEnabled: z.boolean(),
+});
+export type ListInteropSubmissionsResponse = z.infer<typeof listInteropSubmissionsResponseSchema>;
+
+/** Kết quả "Gửi ngay"/"Gửi lại": dòng sau khi xử lý + thông báo viết sẵn. */
+export const interopSubmissionActionResponseSchema = z.object({
+  row: interopSubmissionRowSchema,
+  outcome: z.enum(['SENT', 'REJECTED', 'UNREACHABLE', 'NOT_CONFIGURED', 'NOT_READY']),
+  message: z.string(),
+});
+export type InteropSubmissionActionResponse = z.infer<typeof interopSubmissionActionResponseSchema>;

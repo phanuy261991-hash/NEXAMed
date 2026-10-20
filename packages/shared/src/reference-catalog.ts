@@ -77,6 +77,8 @@ export const referenceCatalogCategorySchema = z.enum([
   'SPECIMEN_TYPE',
   // Cận lâm sàng GĐ2 (docs/DECISIONS.md #212) — Đơn vị kết quả xét nghiệm (g/L, mmol/L...), seed sẵn đơn vị phổ biến, mã tự sinh.
   'LAB_RESULT_UNIT',
+  // Liên thông đơn thuốc quốc gia GĐ3 (docs/DECISIONS.md #242, mockup 8b) — Hình thức điều trị (đơn loại C). `code` = MÃ SỐ của Bộ Y tế (nhập tay, chỉ chữ số), `name` = tên hiển thị.
+  'TREATMENT_FORM',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 

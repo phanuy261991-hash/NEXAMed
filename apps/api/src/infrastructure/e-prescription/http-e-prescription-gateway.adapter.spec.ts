@@ -170,6 +170,42 @@ describe('HttpEPrescriptionGatewayAdapter — gọi cổng đúng tài liệu Q�
     });
   });
 
+  describe('VII. Gửi đơn thuốc — POST /api/v1/gui-don-thuoc (token BÁC SĨ)', () => {
+    const payload = { loai_don_thuoc: 'c', ma_don_thuoc: '790010000043-C', ho_ten_benh_nhan: 'Lê Quang Huy', thong_tin_don_thuoc: [{ ma_thuoc: 'ABCDEFGHIJ0123456789' }] };
+
+    it('đúng đường dẫn, POST, Content-Type JSON, header Authorization: bearer {token bác sĩ} (chữ thường), thân là NGUYÊN gói đã dựng (không thêm/bớt trường), đọc success', async () => {
+      handler = (_req, res) => json(res, 200, { success: 'Đơn thuốc đã được gửi' });
+      const result = await adapter.submitPrescription(endpoint(), 'tok-bac-si', payload);
+      expect(result).toEqual({ kind: 'ok', data: { message: 'Đơn thuốc đã được gửi' } });
+      const req = captured[0]!;
+      expect(req.method).toBe('POST');
+      expect(req.url).toBe('/api/v1/gui-don-thuoc');
+      expect(req.headers.authorization).toBe('bearer tok-bac-si');
+      expect(req.headers['content-type']).toMatch(/^application\/json/);
+      expect(req.body).toEqual(payload);
+    });
+
+    it('422 + danh_sach_cac_loi → rejected kèm nguyên văn từng lỗi và mã trạng thái', async () => {
+      handler = (_req, res) => json(res, 422, { danh_sach_cac_loi: ['hinh_thuc_dieu_tri: bắt buộc với đơn loại c', 'thong_tin_don_thuoc.0.ma_thuoc: không hợp lệ'] });
+      expect(await adapter.submitPrescription(endpoint(), 't', payload)).toEqual({
+        kind: 'rejected',
+        status: 422,
+        errors: ['hinh_thuc_dieu_tri: bắt buộc với đơn loại c', 'thong_tin_don_thuoc.0.ma_thuoc: không hợp lệ'],
+      });
+    });
+
+    it('401 (token bác sĩ hết hạn) → unauthorized để nơi gọi đăng nhập lại bác sĩ rồi thử một lần', async () => {
+      handler = (_req, res) => json(res, 401, { message: 'Unauthenticated.' });
+      expect(await adapter.submitPrescription(endpoint(), 'het-han', payload)).toEqual({ kind: 'unauthorized', errors: ['Unauthenticated.'] });
+    });
+
+    it('cổng lỗi 503 → unreachable (đáng thử lại), KHÔNG bị coi là đơn bị từ chối', async () => {
+      handler = (_req, res) => json(res, 503, { message: 'Service Unavailable' });
+      const result = await adapter.submitPrescription(endpoint(), 't', payload);
+      expect(result.kind).toBe('unreachable');
+    });
+  });
+
   describe('lỗi kết nối và phản hồi bất thường — không bao giờ ném lỗi, luôn trả kết quả phân loại', () => {
     it('cổng lỗi 500/502/503 → unreachable (đáng thử lại), không phải rejected', async () => {
       for (const status of [500, 502, 503]) {

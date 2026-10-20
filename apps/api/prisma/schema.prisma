@@ -122,6 +122,8 @@ model Tenant {
   interopFacilityCredentials  InteropFacilityCredential[]
   interopDoctorCredentials    InteropDoctorCredential[]
   interopDoctorFacilities     InteropDoctorFacility[]
+  encounterInteropKindInfos   EncounterInteropKindInfo[]
+  prescriptionSubmissions     PrescriptionSubmission[]
   prescriptionTemplates       PrescriptionTemplate[]
   printTemplates              PrintTemplate[]
   technicalServices           TechnicalService[]
@@ -705,9 +707,9 @@ model UserAccount {
 
   // Khoá tài khoản tạm sau 5 lần đăng nhập sai trong 15 phút — xem
   // .claude/docs/security-audit.md mục Xác thực, packages/core/src/iam/lockout.ts.
-  failedLoginCount  Int       @default(0) @map("failed_login_count")
-  lastFailedLoginAt DateTime? @map("last_failed_login_at") @db.Timestamptz(6)
-  lockedUntil       DateTime? @map("locked_until") @db.Timestamptz(6)
+  failedLoginCount    Int       @default(0) @map("failed_login_count")
+  lastFailedLoginAt   DateTime? @map("last_failed_login_at") @db.Timestamptz(6)
+  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
   // Khoá luỹ tiến → vĩnh viễn của nhân viên (#239): bậc khoá tạm liên tiếp (0..3) và mốc khoá vĩnh viễn (null = chưa).
   lockoutLevel        Int       @default(0) @map("lockout_level") @db.SmallInt
   lockedPermanentlyAt DateTime? @map("locked_permanently_at") @db.Timestamptz(6)
@@ -724,33 +726,35 @@ model UserAccount {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant                  Tenant                   @relation(fields: [tenantId], references: [id])
-  lastBranch              Branch?                  @relation("UserLastBranch", fields: [tenantId, lastBranchId], references: [tenantId, id])
-  branches                UserBranch[]
+  tenant                   Tenant                    @relation(fields: [tenantId], references: [id])
+  lastBranch               Branch?                   @relation("UserLastBranch", fields: [tenantId, lastBranchId], references: [tenantId, id])
+  branches                 UserBranch[]
   // Composite FK (tenant_id, department_id) -> department(tenant_id, id): department_id
   // nullable nên FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE — xem docs/DECISIONS.md).
-  department              Department?              @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  department               Department?               @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   // "Phòng khám mặc định" (redesign 3-tab #082) — cùng mẫu department ở trên, FK chỉ áp khi có
   // giá trị. Chỉ là gợi ý mặc định hiển thị, KHÔNG đổi cơ chế "Phòng làm việc hôm nay"
   // (doctor_room_session, #054) — hai khái niệm tách biệt.
-  defaultRoom             Room?                    @relation(fields: [tenantId, defaultRoomId], references: [tenantId, id])
-  userRoles               UserRole[]
-  sessions                UserSession[]
-  appointmentsAsDoctor    Appointment[]            @relation("AppointmentDoctor")
-  encountersAsDoctor      Encounter[]              @relation("EncounterDoctor")
-  roomSessionsAsDoctor    DoctorRoomSession[]
-  availabilityAsDoctor    DoctorAvailability[]
-  workShiftAssignments    WorkShiftAssignment[]
-  leaveRequests           LeaveRequest[]
-  workScheduleSubmissions WorkScheduleSubmission[]
-  swapsRequested          ShiftSwapRequest[]       @relation("SwapRequester")
-  swapsReceived           ShiftSwapRequest[]       @relation("SwapCounterpart")
-  cashierShiftsAsCashier  CashierShift[]
+  defaultRoom              Room?                     @relation(fields: [tenantId, defaultRoomId], references: [tenantId, id])
+  userRoles                UserRole[]
+  sessions                 UserSession[]
+  appointmentsAsDoctor     Appointment[]             @relation("AppointmentDoctor")
+  encountersAsDoctor       Encounter[]               @relation("EncounterDoctor")
+  roomSessionsAsDoctor     DoctorRoomSession[]
+  availabilityAsDoctor     DoctorAvailability[]
+  workShiftAssignments     WorkShiftAssignment[]
+  leaveRequests            LeaveRequest[]
+  workScheduleSubmissions  WorkScheduleSubmission[]
+  swapsRequested           ShiftSwapRequest[]        @relation("SwapRequester")
+  swapsReceived            ShiftSwapRequest[]        @relation("SwapCounterpart")
+  cashierShiftsAsCashier   CashierShift[]
   // "Thủ quỹ riêng" (Sổ quỹ & Thu chi GĐ2) — quỹ `DRAWER` (két riêng) mà user này sở hữu, nếu có.
-  ownedCashAccounts       CashAccount[]            @relation("CashAccountOwner")
+  ownedCashAccounts        CashAccount[]             @relation("CashAccountOwner")
   // Mã + mật khẩu liên thông đơn thuốc quốc gia của bác sĩ (#242 GĐ3) — bảng riêng để mật khẩu mã hoá không lẫn vào dữ liệu tài khoản.
   interopDoctorCredentials InteropDoctorCredential[]
   interopDoctorFacilities  InteropDoctorFacility[]
+  // Hàng chờ gửi đơn thuốc liên thông (#242 GĐ3) — bác sĩ ký đơn.
+  prescriptionSubmissions  PrescriptionSubmission[]
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])
@@ -920,6 +924,8 @@ enum ReferenceCatalogCategory {
   // Cận lâm sàng GĐ2 (docs/DECISIONS.md #212) — "Đơn vị kết quả xét nghiệm" (g/L, mmol/L, 10^9/L...). Chọn từ danh mục thay vì
   // gõ tay (tránh "g/L"/"g/l"/"G/L" thành nhiều đơn vị); `lab_indicator.unit` vẫn lưu CHỮ (snapshot in lên phiếu). Có seed sẵn, mã tự sinh.
   LAB_RESULT_UNIT
+  // Liên thông đơn thuốc quốc gia GĐ3 (docs/DECISIONS.md #242, mockup 8b) — "Hình thức điều trị" (bắt buộc với đơn loại C khi gửi). `code` = MÃ SỐ của Bộ Y tế, nhập tay; không seed cứng.
+  TREATMENT_FORM
 
   @@map("reference_catalog_category")
 }
@@ -1594,22 +1600,25 @@ model Encounter {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant         Tenant                   @relation(fields: [tenantId], references: [id])
-  branch         Branch                   @relation(fields: [tenantId, branchId], references: [tenantId, id])
+  tenant                  Tenant                     @relation(fields: [tenantId], references: [id])
+  branch                  Branch                     @relation(fields: [tenantId, branchId], references: [tenantId, id])
   // Composite FK (tenant_id, patient_id/doctor_id/appointment_id) -> ...(tenant_id, id): chống trỏ
   // chéo tenant (C5, docs/ERD.md mục 4), appointment_id nullable nên FK chỉ áp khi có giá trị.
-  patient        Patient                  @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  patient                 Patient                    @relation(fields: [tenantId, patientId], references: [tenantId, id])
   // doctorId nullable — FK chỉ áp khi có giá trị (Postgres MATCH SIMPLE, cùng mẫu room.floorId).
-  doctor         UserAccount?             @relation("EncounterDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
-  department     Department               @relation(fields: [tenantId, departmentId], references: [tenantId, id])
-  appointment    Appointment?             @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
-  vitalSigns     VitalSign[]
-  serviceItems   EncounterServiceItem[]
-  diagnoses      Diagnosis[]
-  clinicalNotes  ClinicalNote[]
-  treatmentPlans EncounterTreatmentPlan[]
-  prescriptions  Prescription[]
-  clinicalOrders ClinicalOrder[]
+  doctor                  UserAccount?               @relation("EncounterDoctor", fields: [tenantId, doctorId], references: [tenantId, id])
+  department              Department                 @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  appointment             Appointment?               @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
+  vitalSigns              VitalSign[]
+  serviceItems            EncounterServiceItem[]
+  diagnoses               Diagnosis[]
+  clinicalNotes           ClinicalNote[]
+  treatmentPlans          EncounterTreatmentPlan[]
+  prescriptions           Prescription[]
+  // Liên thông đơn thuốc quốc gia GĐ3 (#242): ô bổ sung 8b theo (lượt khám, loại đơn) + hàng chờ gửi đơn.
+  interopKindInfos        EncounterInteropKindInfo[]
+  prescriptionSubmissions PrescriptionSubmission[]
+  clinicalOrders          ClinicalOrder[]
   // Thu ngân cơ bản — TỐI ĐA 1 hoá đơn `invoiceType=SERVICE`/lượt khám (BIL-01, PRD mục 4.7), ép
   // bằng partial unique index raw SQL trong migration (`WHERE invoice_type='SERVICE' AND
   // deleted_at IS NULL`, không khai @@unique ở Prisma — cùng lý do patient.nationalIdHash). Kho
@@ -1617,7 +1626,7 @@ model Encounter {
   // hệ đổi từ 1-1 (`Invoice?`) sang 1-N thật — mọi nơi cần "hoá đơn dịch vụ khám" (gating Hàng đợi
   // khám, Ví tạm ứng...) PHẢI lọc tường minh `invoiceType: 'SERVICE'` ở Repository, không dựa ngầm
   // vào "chỉ có 1 dòng" nữa.
-  invoices       Invoice[]
+  invoices                Invoice[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, encounterNo])
@@ -2855,14 +2864,14 @@ model Prescription {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant       Tenant             @relation(fields: [tenantId], references: [id])
+  tenant       Tenant                 @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, encounter_id) -> encounter(tenant_id, id): chống trỏ chéo tenant.
-  encounter    Encounter          @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  encounter    Encounter              @relation(fields: [tenantId, encounterId], references: [tenantId, id])
   items        PrescriptionItem[]
   // Self-relation đính chính — cùng khuôn patient.mergedInto/mergedFrom, appointment.rescheduledFrom.
   // Không @unique ở supersedesId (chấp nhận rủi ro lý thuyết, cùng lựa chọn patient.mergedIntoId).
-  supersedes   Prescription?      @relation("PrescriptionAmendment", fields: [tenantId, supersedesId], references: [tenantId, id])
-  supersededBy Prescription[]     @relation("PrescriptionAmendment")
+  supersedes   Prescription?          @relation("PrescriptionAmendment", fields: [tenantId, supersedesId], references: [tenantId, id])
+  supersededBy Prescription[]         @relation("PrescriptionAmendment")
   // Kho Thuốc GĐ3 (#163) — 1 đơn có thể ứng NHIỀU phiếu xuất (khách lấy nốt thuốc còn lại sau).
   stockIssues  StockIssue[]
   // Mã đơn thuốc chuẩn Bộ Y tế (#242, giai đoạn 2) — mỗi loại đơn C/N/H/Y một đơn pháp lý khi ký ở chế độ chuẩn.
@@ -2907,12 +2916,12 @@ model PrescriptionItem {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant          Tenant               @relation(fields: [tenantId], references: [id])
+  tenant          Tenant                @relation(fields: [tenantId], references: [id])
   document        PrescriptionDocument? @relation(fields: [tenantId, documentId], references: [tenantId, id])
   // Composite FK (tenant_id, prescription_id/drug_id) -> ...(tenant_id, id): chống trỏ chéo tenant.
   // `drug_id` NULL (dòng tự do) tự bỏ qua ràng buộc FK composite (Postgres MATCH SIMPLE mặc định).
-  prescription    Prescription     @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
-  drug            Drug?            @relation(fields: [tenantId, drugId], references: [tenantId, id])
+  prescription    Prescription          @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
+  drug            Drug?                 @relation(fields: [tenantId, drugId], references: [tenantId, id])
   // Kho Thuốc GĐ3 (#163) — "đã phát" tính từ SUM(stock_issue_line.quantity), không lưu cột luỹ kế ở đây.
   stockIssueLines StockIssueLine[]
 
@@ -4808,17 +4817,17 @@ model PlatformAuditLog {
 // không thấy khái niệm này trên giao diện. `code` tự sinh qua CodeSequenceRepository (prefix "CN"), không nhập tay.
 // Đúng 1 dòng `is_default` mỗi tenant — partial unique index raw SQL trong migration (Prisma không biểu diễn được).
 model Branch {
-  id        String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId  String  @map("tenant_id") @db.Uuid
-  code      String
-  name      String
-  address   String?
-  phone     String?
+  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String  @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  address      String?
+  phone        String?
   // Mã cơ sở khám chữa bệnh 5 chữ số (#242) — 5 ký tự đầu của mã đơn thuốc chuẩn Bộ Y tế. NULL = dùng mã công ty (tenant.facility_code).
   // CHECK `^[0-9]{5}$` khai ở migration (Prisma không biểu diễn được).
   facilityCode String? @map("facility_code")
-  isDefault Boolean @default(false) @map("is_default")
-  isActive  Boolean @default(true) @map("is_active")
+  isDefault    Boolean @default(false) @map("is_default")
+  isActive     Boolean @default(true) @map("is_active")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -4829,27 +4838,29 @@ model Branch {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant                  Tenant                   @relation(fields: [tenantId], references: [id])
-  userBranches            UserBranch[]
-  lastBranchUsers         UserAccount[]            @relation("UserLastBranch")
-  sessions                UserSession[]            @relation("SessionBranch")
-  floors                  Floor[]
-  rooms                   Room[]
-  examStations            ExamStation[]
-  encounters              Encounter[]
-  appointments            Appointment[]
-  workShiftAssignments    WorkShiftAssignment[]
-  doctorRoomSessions      DoctorRoomSession[]
-  leaveRequests           LeaveRequest[]
-  workScheduleSubmissions WorkScheduleSubmission[]
-  shiftSwapRequests       ShiftSwapRequest[]
+  tenant                     Tenant                      @relation(fields: [tenantId], references: [id])
+  userBranches               UserBranch[]
+  lastBranchUsers            UserAccount[]               @relation("UserLastBranch")
+  sessions                   UserSession[]               @relation("SessionBranch")
+  floors                     Floor[]
+  rooms                      Room[]
+  examStations               ExamStation[]
+  encounters                 Encounter[]
+  appointments               Appointment[]
+  workShiftAssignments       WorkShiftAssignment[]
+  doctorRoomSessions         DoctorRoomSession[]
+  leaveRequests              LeaveRequest[]
+  workScheduleSubmissions    WorkScheduleSubmission[]
+  shiftSwapRequests          ShiftSwapRequest[]
   // Đợt 2 (#233) — kho, quỹ, ca thu ngân theo chi nhánh.
-  warehouses              Warehouse[]
-  cashAccounts            CashAccount[]
-  cashierShifts           CashierShift[]
+  warehouses                 Warehouse[]
+  cashAccounts               CashAccount[]
+  cashierShifts              CashierShift[]
   // Mã + mật khẩu liên thông đơn thuốc quốc gia của cơ sở (#242 GĐ3) — theo chi nhánh.
   interopFacilityCredentials InteropFacilityCredential[]
   interopDoctorFacilities    InteropDoctorFacility[]
+  // Hàng chờ gửi đơn thuốc liên thông (#242 GĐ3) — theo chi nhánh của lượt khám.
+  prescriptionSubmissions    PrescriptionSubmission[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -4902,9 +4913,10 @@ model PrescriptionDocument {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant       Tenant             @relation(fields: [tenantId], references: [id])
-  prescription Prescription       @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
+  tenant       Tenant                   @relation(fields: [tenantId], references: [id])
+  prescription Prescription             @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
   items        PrescriptionItem[]
+  submissions  PrescriptionSubmission[]
 
   @@unique([tenantId, id])
   @@map("prescription_document")
@@ -4913,11 +4925,11 @@ model PrescriptionDocument {
 // Liên thông đơn thuốc quốc gia (Quyết định 808/QĐ-BYT, docs/DECISIONS.md #242 GĐ3): mã + mật khẩu đăng nhập cổng của CƠ SỞ (mỗi chi nhánh một cặp; mã liên thông KHÁC mã cơ sở KCB 5 chữ số).
 // Mật khẩu mã hoá AES-256-GCM (`encryptPii`, cùng cơ chế CCCD), KHÔNG BAO GIỜ trả về qua API. Tối đa 1 dòng đang hiệu lực/chi nhánh (partial unique ở migration).
 model InteropFacilityCredential {
-  id          String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId    String @map("tenant_id") @db.Uuid
-  branchId    String @map("branch_id") @db.Uuid
-  code        String
-  passwordEnc Bytes  @map("password_enc")
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  branchId      String    @map("branch_id") @db.Uuid
+  code          String
+  passwordEnc   Bytes     @map("password_enc")
   // Token CƠ SỞ (bearer, mã hoá, hiệu lực 7 ngày — cổng không trả hạn nên lưu giờ nhận). Cả hai cùng null hoặc cùng có (CHECK ở migration).
   tokenEnc      Bytes?    @map("token_enc")
   tokenIssuedAt DateTime? @map("token_issued_at") @db.Timestamptz(6)
@@ -4988,4 +5000,78 @@ model InteropDoctorFacility {
 
   @@unique([tenantId, id])
   @@map("interop_doctor_facility")
+}
+
+// Liên thông đơn thuốc quốc gia GĐ3 (#242, mockup 8b): thông tin BỔ SUNG bắt buộc khi gửi đơn, khoá theo (lượt khám, loại đơn C/N/H/Y) — KHÔNG theo prescription_document vì đính chính
+// soft-delete đơn pháp lý rồi tạo lại mà các ô này phải còn nguyên. Không thuộc nội dung đơn đã ký nên sửa được tới khi đơn được gửi (có nhật ký). Chi nhánh kế thừa qua lượt khám.
+// Tối đa 1 dòng đang hiệu lực / (lượt khám, loại) — partial unique ở migration nên quan hệ phía lượt khám là mảng.
+model EncounterInteropKindInfo {
+  id                String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  encounterId       String    @map("encounter_id") @db.Uuid
+  kind              String
+  // Hình thức điều trị (mã số BYT, danh mục TREATMENT_FORM) — đơn C.
+  treatmentFormCode String?   @map("treatment_form_code")
+  // Đợt dùng thuốc — đơn N/H/Y. Ngày lịch (DATE).
+  dosePeriodNumber  Int?      @map("dose_period_number")
+  doseFrom          DateTime? @map("dose_from") @db.Date
+  doseTo            DateTime? @map("dose_to") @db.Date
+  // Số thang thuốc + cách sắc/uống — đơn Y.
+  herbalDoses       Int?      @map("herbal_doses")
+  herbalInstruction String?   @map("herbal_instruction")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  encounter Encounter @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("encounter_interop_kind_info")
+}
+
+// Hàng chờ gửi đơn thuốc lên cổng Đơn thuốc quốc gia (#242 GĐ3, mockup 8c) — mỗi đơn pháp lý một dòng (mã đơn duy nhất). THEO CHI NHÁNH (branch_id NOT NULL, lấy từ lượt khám lúc xếp hàng).
+// Không lưu gói dữ liệu bệnh nhân (dựng lại lúc gửi). status PENDING|SENT|FAILED|AMENDED; errors = nguyên văn danh_sach_cac_loi; locked_until = "thuê" ngắn để bộ gửi nền và "Gửi ngay" không gửi trùng.
+model PrescriptionSubmission {
+  id                     String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId               String    @map("tenant_id") @db.Uuid
+  branchId               String    @map("branch_id") @db.Uuid
+  encounterId            String    @map("encounter_id") @db.Uuid
+  prescriptionDocumentId String    @map("prescription_document_id") @db.Uuid
+  nationalCode           String    @map("national_code")
+  kind                   String
+  doctorUserId           String    @map("doctor_user_id") @db.Uuid
+  signedAt               DateTime  @map("signed_at") @db.Timestamptz(6)
+  status                 String    @default("PENDING")
+  attempts               Int       @default(0)
+  lastAttemptAt          DateTime? @map("last_attempt_at") @db.Timestamptz(6)
+  nextAttemptAt          DateTime? @map("next_attempt_at") @db.Timestamptz(6)
+  lockedUntil            DateTime? @map("locked_until") @db.Timestamptz(6)
+  lastHttpStatus         Int?      @map("last_http_status")
+  errors                 Json      @default("[]")
+  sentAt                 DateTime? @map("sent_at") @db.Timestamptz(6)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant               @relation(fields: [tenantId], references: [id])
+  branch    Branch               @relation(fields: [tenantId, branchId], references: [tenantId, id])
+  encounter Encounter            @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+  document  PrescriptionDocument @relation(fields: [tenantId, prescriptionDocumentId], references: [tenantId, id])
+  doctor    UserAccount          @relation(fields: [tenantId, doctorUserId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("prescription_submission")
 }

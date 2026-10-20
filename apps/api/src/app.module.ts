@@ -19,6 +19,7 @@ import { AllergenModule } from './modules/allergen/allergen.module';
 import { DrugModule } from './modules/drug/drug.module';
 import { AdviceTemplateModule } from './modules/advice-template/advice-template.module';
 import { PrescriptionInteropModule } from './modules/prescription-interop/prescription-interop.module';
+import { PrescriptionInteropSourceModule } from './modules/encounter/prescription-interop-source.module';
 import { PrintTemplateModule } from './modules/print-template/print-template.module';
 import { TechnicalServiceModule } from './modules/technical-service/technical-service.module';
 import { PricingModule } from './modules/pricing/pricing.module';
@@ -73,6 +74,8 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     DrugModule,
     AdviceTemplateModule,
     PrescriptionInteropModule,
+    // Liên thông đơn thuốc GĐ3 — `@Global()` bind `INTEROP_SUBMISSION_SOURCE_PORT` (dữ liệu để gửi đơn) cho module liên thông; cùng khuôn `StockAvailabilityModule`.
+    PrescriptionInteropSourceModule,
     PrintTemplateModule,
     TechnicalServiceModule,
     PricingModule,

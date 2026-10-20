@@ -196,8 +196,8 @@ export function PrescriptionInteropPane() {
               />
               <p className="mt-2 max-w-3xl text-xs text-slate-500">
                 {draft.enabled
-                  ? 'Bật: nhập mã liên thông của cơ sở và bác sĩ ở dưới, kiểm tra kết nối và thêm bác sĩ vào cơ sở trên cổng.'
-                  : 'Tắt: ẩn mọi thứ liên quan liên thông, không cần mã liên thông. Mã đơn chuẩn Bộ Y tế vẫn dùng được riêng.'}
+                  ? 'Bật: màn kê đơn có khối "Thông tin liên thông" và cảnh báo thiếu dữ liệu, có menu "Đơn thuốc liên thông", đơn ký xong được xếp vào hàng chờ gửi. Nhập mã liên thông của cơ sở và bác sĩ ở dưới, kiểm tra kết nối và thêm bác sĩ vào cơ sở trên cổng.'
+                  : 'Tắt: ẩn khối "Thông tin liên thông" ở màn kê đơn, không cảnh báo thiếu dữ liệu, không có menu "Đơn thuốc liên thông", không xếp hàng chờ, không cần mã liên thông. Mã đơn chuẩn Bộ Y tế vẫn dùng được riêng. Bật lại sau này thì đơn ký trong lúc tắt không tự xếp hàng.'}
               </p>
             </BoxedSection>
 
@@ -454,6 +454,7 @@ export function PrescriptionInteropPane() {
             <div className="mr-auto min-h-5 text-sm" aria-live="polite">
               {errorMessage && <span className="font-semibold text-rose-700">{errorMessage}</span>}
               {saved && !dirty && !errorMessage && <span className="font-semibold text-emerald-700">Đã lưu.</span>}
+              {!errorMessage && !(saved && !dirty) && <span className="text-xs text-slate-500">Lưu cấu hình không làm đơn đã xếp hàng chờ biến mất.</span>}
             </div>
             {canManage && (
               <>

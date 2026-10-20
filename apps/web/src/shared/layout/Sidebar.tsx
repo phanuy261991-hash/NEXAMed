@@ -36,6 +36,7 @@ import {
   BookOpen,
   ChartLine,
   Wallet,
+  UploadSimple,
   type Icon,
 } from '@phosphor-icons/react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -57,6 +58,7 @@ import { useScheduleSubmissionPendingCountQuery } from '../../features/work-shif
 import { useDoctorUnseenResultsQuery } from '../../features/reception/reception.queries';
 import { useSupplierDebtSummariesQuery } from '../../features/supplier-debt/supplier-debt.queries';
 import { useStockTransferPendingCountsQuery } from '../../features/inventory/inventory.queries';
+import { usePrescriptionInteropStatusQuery } from '../../features/prescription-interop/prescription-interop.queries';
 import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context';
 
 /**
@@ -73,6 +75,8 @@ import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context'
 /** Route của "Hàng đợi khám" — giữ nguyên dưới `features/reception/` (chưa có module `encounter`/
  * `examination` thật ở web), chỉ đổi vị trí hiển thị sang nhóm "Khám bệnh" trong sidebar. */
 const EXAMINATION_GROUP_PATH = '/reception/doctor-queue';
+/** "Đơn thuốc liên thông" (#242 GĐ3, mockup 8c) — mục con của nhóm "Quản trị" (dưới "Mẫu in", chủ dự án chốt 20/10/2026), chỉ hiện khi công tắc "Có liên thông" bật. */
+const INTEROP_SUBMISSIONS_PATH = '/prescription-interop/submissions';
 /** Nhóm "Cận lâm sàng" (#215): 2 mục con Xét nghiệm / CĐHA & Thăm dò chức năng, mục nào hiện tuỳ quyền `lab_result.read` / `imaging_result.read`. */
 const PARACLINICAL_GROUP_PATH = '/paraclinical';
 /** Đường dẫn thuộc nhóm "Tiếp nhận và Đặt lịch" — dùng để tự mở nhóm khi route đang active nằm trong
@@ -131,6 +135,8 @@ const ADMIN_GROUP_PATHS = [
   '/admin/prescription-templates',
   // "Quản lý mẫu in" (docs/DECISIONS.md #211).
   '/admin/print-templates',
+  // "Đơn thuốc liên thông" (#242 GĐ3) — dưới "Mẫu in".
+  INTEROP_SUBMISSIONS_PATH,
   '/admin/system-config',
   '/admin/activity-log',
 ];
@@ -290,6 +296,9 @@ export function Sidebar() {
   // Chấm số bệnh nhân có kết quả cận lâm sàng mới chưa xem ở "Hàng đợi khám" (#221).
   const doctorUnseenResultsQuery = useDoctorUnseenResultsQuery(canSeeDoctorQueue);
   const doctorUnseenResultCount = doctorUnseenResultsQuery.data?.patientCount ?? 0;
+  // "Đơn thuốc liên thông": đúng quyền của route (`encounter.read_clinical`) VÀ công tắc tổng bật — tắt thì ẩn hẳn mục này.
+  const interopStatusQuery = usePrescriptionInteropStatusQuery();
+  const canSeeInteropSubmissions = useHasPermission('encounter', 'read_clinical') && interopStatusQuery.data?.enabled === true;
   const canSeeBilling = useHasPermission('invoice', 'read');
   const canSeeCashBook = useHasPermission('cash_voucher', 'read');
   // "Báo cáo dòng tiền" (Sổ quỹ & Thu chi GĐ2) — báo cáo quản trị tổng hợp toàn phòng khám, CHỈ
@@ -806,6 +815,7 @@ export function Sidebar() {
                   {canSeeCatalogPharmacy && <NavItem to="/admin/catalog-warehouse" label="Danh mục kho" icon={Warehouse} collapsed={false} indent />}
                   {canSeePrescriptionTemplates && <NavItem to="/admin/prescription-templates" label="Đơn thuốc mẫu" icon={Stack} collapsed={false} indent />}
                   {canSeePrintTemplates && <NavItem to="/admin/print-templates" label="Mẫu in" icon={Printer} collapsed={false} indent />}
+                  {canSeeInteropSubmissions && <NavItem to={INTEROP_SUBMISSIONS_PATH} label="Đơn thuốc liên thông" icon={UploadSimple} collapsed={false} indent />}
                   {canSeeSystemConfig && <NavItem to="/admin/system-config" label="Cấu hình hệ thống" icon={SlidersHorizontal} collapsed={false} indent />}
                   {canSeeActivityLog && <NavItem to="/admin/activity-log" label="Nhật ký hoạt động" icon={ClockCounterClockwise} collapsed={false} indent />}
                 </ul>
