@@ -1,6 +1,11 @@
 import { Body, Controller, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { businessCodeTypeSchema, updateBusinessCodeTemplateRequestSchema, updateClinicSettingsRequestSchema } from '@nexamed/shared';
+import {
+  businessCodeTypeSchema,
+  updateBusinessCodeTemplateRequestSchema,
+  updateClinicSettingsRequestSchema,
+  updatePrescriptionKindMappingRequestSchema,
+} from '@nexamed/shared';
 import { z } from 'zod';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
@@ -169,8 +174,30 @@ export class ClinicSettingsController {
   @RequirePermission('clinic_config', 'read')
   async listCodeTemplates(@Req() req: Request) {
     const { tenantId } = req.user!;
-    const items = await this.businessCodeService.listTemplates(tenantId);
+    const items = await this.businessCodeService.listTemplates(tenantId, req.user!.branchId);
     return { items };
+  }
+
+  /** Mã đơn thuốc chuẩn Bộ Y tế (#242): chi nhánh nào đã/chưa có mã cơ sở KCB, để bật được chế độ chuẩn. */
+  @Get('code-templates/prescription-standard-readiness')
+  @RequirePermission('clinic_config', 'read')
+  async prescriptionStandardReadiness(@Req() req: Request) {
+    return this.businessCodeService.getPrescriptionStandardReadiness(req.user!.tenantId);
+  }
+
+  /** Bảng ánh xạ loại thuốc → loại đơn Bộ Y tế (#242, giai đoạn 2). */
+  @Get('prescription-kind-mapping')
+  @RequirePermission('clinic_config', 'read')
+  async getPrescriptionKindMapping(@Req() req: Request) {
+    return this.clinicSettingsService.getPrescriptionKindMappingResponse(req.user!.tenantId);
+  }
+
+  @Patch('prescription-kind-mapping')
+  @RequirePermission('clinic_config', 'update')
+  async updatePrescriptionKindMapping(@Body() body: unknown, @Req() req: Request) {
+    const dto = updatePrescriptionKindMappingRequestSchema.parse(body);
+    const { userId, tenantId } = req.user!;
+    return this.clinicSettingsService.updatePrescriptionKindMapping(tenantId, userId, dto, extractRequestMeta(req));
   }
 
   @Patch('code-templates/:codeType')
@@ -179,6 +206,6 @@ export class ClinicSettingsController {
     const codeType = z.object({ codeType: businessCodeTypeSchema }).parse({ codeType: codeTypeParam }).codeType;
     const dto = updateBusinessCodeTemplateRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;
-    return this.businessCodeService.updateTemplate(tenantId, userId, codeType, dto, extractRequestMeta(req));
+    return this.businessCodeService.updateTemplate(tenantId, userId, codeType, dto, extractRequestMeta(req), req.user!.branchId);
   }
 }

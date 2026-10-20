@@ -34,6 +34,7 @@ export * from './encounter/resolve-doctor-department-routing';
 export * from './vital-sign/vital-sign-thresholds';
 export * from './vital-sign/bmi';
 export * from './prescription/warnings';
+export * from './prescription/prescription-kind';
 export * from './diagnosis/pair-diagnosis-amendment';
 export * from './billing/combined-invoice-totals';
 export * from './billing/compute-invoice-lines';

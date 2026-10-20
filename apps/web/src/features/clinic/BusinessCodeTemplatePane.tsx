@@ -59,8 +59,18 @@ export function BusinessCodeTemplatePane() {
                 {items.map((item) => (
                   <tr key={item.codeType} className="border-b border-slate-200 last:border-0">
                     <td className="px-4 py-2 text-left font-medium text-slate-900">{item.label}</td>
-                    <td className="px-4 py-2 text-left font-mono text-xs text-slate-600">{item.template}</td>
-                    <td className="px-4 py-2 text-center font-mono font-semibold text-slate-800">{item.exampleNextCode}</td>
+                    <td className="px-4 py-2 text-left text-xs text-slate-600">
+                      {item.mode === 'STANDARD' && (
+                        <span className="mr-2 align-middle">
+                          <StatusBadge tone="info">Chuẩn Bộ Y tế</StatusBadge>
+                        </span>
+                      )}
+                      <span className="align-middle">{item.template}</span>
+                    </td>
+                    <td className="px-4 py-2 text-center font-semibold tabular-nums text-slate-800">
+                      {item.exampleNextCode}
+                      {item.mode === 'STANDARD' && <div className="text-xs font-normal text-slate-500">theo chi nhánh đang làm</div>}
+                    </td>
                     <td className="px-4 py-2 text-center">
                       {item.locked ? (
                         <span title="Đã phát sinh mã đầu tiên — không sửa lại được">
@@ -90,7 +100,7 @@ export function BusinessCodeTemplatePane() {
           submitError={mutationErrorMessage}
           onCancel={() => setEditing(null)}
           onSubmit={(dto) =>
-            updateMutation.mutate({ codeType: editing.codeType, body: dto }, { onSuccess: () => setEditing(null) })
+            updateMutation.mutate({ codeType: editing.codeType, body: { ...dto } }, { onSuccess: () => setEditing(null) })
           }
         />
       )}

@@ -84,6 +84,7 @@ function addListValidations(sheet: ExcelJS.Worksheet): void {
     itemType: '"Thuốc,Vật tư"',
     isBatchManaged: '"Có,Không"',
     isPrescriptionOnly: '"Có,Không"',
+    isTraditional: '"Có,Không"',
     controlType: '"Thường,Độc,Gây nghiện,Hướng thần,Tiền chất"',
   };
   ITEM_COLUMNS.forEach((c, i) => {

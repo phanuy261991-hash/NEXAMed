@@ -118,6 +118,7 @@ model Tenant {
   warehouses                  Warehouse[]
   prescriptions               Prescription[]
   prescriptionItems           PrescriptionItem[]
+  prescriptionDocuments       PrescriptionDocument[]
   prescriptionTemplates       PrescriptionTemplate[]
   printTemplates              PrintTemplate[]
   technicalServices           TechnicalService[]
@@ -1914,6 +1915,8 @@ model Drug {
   // được: kê liều lẻ (¼, ½...) thì cảnh báo hoặc chặn ký. Mặc định true để thuốc cũ không đổi hành vi.
   // Dữ liệu CHUNG cả công ty (danh mục thuốc không theo chi nhánh).
   isSplittable         Boolean         @default(true) @map("is_splittable")
+  // "Thuốc y học cổ truyền (Đông y)" (#242) — đơn có thuốc này được cấp mã loại Y (qua bảng ánh xạ loại thuốc → loại đơn).
+  isTraditional        Boolean         @default(false) @map("is_traditional")
   // Mở rộng #151 (chủ dự án rà soát trực tiếp từng trường theo tài liệu quy chuẩn) — CHỈ có ý nghĩa
   // với itemType=MEDICINE, ẩn hoàn toàn cho SUPPLY ở UI (VTYT giữ nguyên hoãn, chưa mở rộng field).
   // Bắt buộc ở tầng Zod cho MEDICINE tạo mới (đúng khuôn baseUnitCode/manufacturerCode):
@@ -2856,6 +2859,8 @@ model Prescription {
   supersededBy Prescription[]     @relation("PrescriptionAmendment")
   // Kho Thuốc GĐ3 (#163) — 1 đơn có thể ứng NHIỀU phiếu xuất (khách lấy nốt thuốc còn lại sau).
   stockIssues  StockIssue[]
+  // Mã đơn thuốc chuẩn Bộ Y tế (#242, giai đoạn 2) — mỗi loại đơn C/N/H/Y một đơn pháp lý khi ký ở chế độ chuẩn.
+  documents    PrescriptionDocument[]
 
   @@unique([tenantId, id])
   @@map("prescription")
@@ -2884,6 +2889,8 @@ model PrescriptionItem {
   // Tổng số = LÀM TRÒN LÊN((tổng 4 buổi) × durationDays) — số nguyên theo đơn vị nhỏ nhất của thuốc.
   quantity         Int
   instruction      String?
+  // Đơn pháp lý (mã chuẩn Bộ Y tế, #242) chứa dòng này — NULL khi còn nháp hoặc đơn ký trước ngày bật chế độ chuẩn.
+  documentId       String? @map("document_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2894,7 +2901,8 @@ model PrescriptionItem {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  tenant          Tenant               @relation(fields: [tenantId], references: [id])
+  document        PrescriptionDocument? @relation(fields: [tenantId, documentId], references: [tenantId, id])
   // Composite FK (tenant_id, prescription_id/drug_id) -> ...(tenant_id, id): chống trỏ chéo tenant.
   // `drug_id` NULL (dòng tự do) tự bỏ qua ràng buộc FK composite (Postgres MATCH SIMPLE mặc định).
   prescription    Prescription     @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
@@ -4800,6 +4808,9 @@ model Branch {
   name      String
   address   String?
   phone     String?
+  // Mã cơ sở khám chữa bệnh 5 chữ số (#242) — 5 ký tự đầu của mã đơn thuốc chuẩn Bộ Y tế. NULL = dùng mã công ty (tenant.facility_code).
+  // CHECK `^[0-9]{5}$` khai ở migration (Prisma không biểu diễn được).
+  facilityCode String? @map("facility_code")
   isDefault Boolean @default(false) @map("is_default")
   isActive  Boolean @default(true) @map("is_active")
 
@@ -4861,4 +4872,31 @@ model UserBranch {
   @@index([tenantId, userId])
   @@index([tenantId, branchId])
   @@map("user_branch")
+}
+
+// Đơn thuốc PHÁP LÝ (docs/DECISIONS.md #242, giai đoạn 2): một lần ký ở chế độ "Chuẩn Bộ Y tế" tách thành N đơn (mỗi loại C/N/H/Y một mã `xxxxxyyyyyyy-z`).
+// Chỉ GHI khi ký; chỉ soft-delete khi đơn bị đính chính (đơn mới giữ mã của đơn pháp lý cùng loại). CHECK định dạng mã + ký tự cuối khớp `kind`, partial unique
+// `(tenant_id, national_code) WHERE deleted_at IS NULL` khai raw SQL trong migration. Chi nhánh kế thừa qua prescription → encounter.
+model PrescriptionDocument {
+  id             String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId       String @map("tenant_id") @db.Uuid
+  prescriptionId String @map("prescription_id") @db.Uuid
+  kind           String
+  nationalCode   String @map("national_code")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant       Tenant             @relation(fields: [tenantId], references: [id])
+  prescription Prescription       @relation(fields: [tenantId, prescriptionId], references: [tenantId, id])
+  items        PrescriptionItem[]
+
+  @@unique([tenantId, id])
+  @@map("prescription_document")
 }

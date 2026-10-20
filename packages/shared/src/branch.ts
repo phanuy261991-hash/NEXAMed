@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { facilityCodeSchema } from './business-code';
 
 /**
  * "Chi nhánh" (docs/DECISIONS.md #231, mô hình B của #075) — `tenant` = công ty, chi nhánh nằm BÊN TRONG. Mọi tenant luôn có ít nhất 1
@@ -17,6 +18,8 @@ export type BranchLite = z.infer<typeof branchLiteSchema>;
 
 export const branchSummarySchema = branchLiteSchema.extend({
   phone: z.string().nullable(),
+  /** Mã cơ sở khám chữa bệnh 5 chữ số của chi nhánh (#242) — null = chưa nhập, dùng mã công ty. */
+  facilityCode: z.string().nullable(),
   isActive: z.boolean(),
   /** Số tài khoản đang hoạt động được gán chi nhánh này. */
   staffCount: z.number().int(),
@@ -29,6 +32,7 @@ export const createBranchRequestSchema = z.object({
   name: z.string().trim().min(1).max(100, 'Tên chi nhánh tối đa 100 ký tự.'),
   address: z.string().trim().max(500).optional(),
   phone: z.string().trim().max(50).optional(),
+  facilityCode: facilityCodeSchema.nullable().optional(),
 });
 export type CreateBranchRequest = z.infer<typeof createBranchRequestSchema>;
 
@@ -36,6 +40,7 @@ export const updateBranchRequestSchema = z.object({
   name: z.string().trim().min(1).max(100, 'Tên chi nhánh tối đa 100 ký tự.').optional(),
   address: z.string().trim().max(500).nullable().optional(),
   phone: z.string().trim().max(50).nullable().optional(),
+  facilityCode: facilityCodeSchema.nullable().optional(),
   isActive: z.boolean().optional(),
   version: z.number().int().positive(),
 });

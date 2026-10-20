@@ -232,6 +232,7 @@ const ACTION_LABELS: Record<string, string> = {
   'advice_template.created': 'Thêm mẫu lời dặn',
   'advice_template.updated': 'Sửa mẫu lời dặn',
   'business_code_template.updated': 'Sửa cấu hình mã hiển thị',
+  'prescription_kind_mapping.updated': 'Sửa bảng ánh xạ loại thuốc → loại đơn',
   'encounter.reassigned': 'Chuyển bác sĩ phụ trách lượt khám',
   'reception_list.exported': 'Xuất danh sách tiếp nhận ra Excel',
   'work_shift_assignment.exported': 'Xuất đăng ký ca làm việc ra Excel',

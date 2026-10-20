@@ -372,6 +372,12 @@ export function ClinicInfoPane() {
                   ) : (
                     <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{query.data.facilityCode || '—'}</p>
                   )}
+                  {/* Gợi ý (không chặn lưu — dữ liệu cũ là text tự do): mã đơn thuốc chuẩn Bộ Y tế cần đúng 5 chữ số (#242). */}
+                  {(editing ? facilityCode : (query.data.facilityCode ?? '')).trim() !== '' && !/^\d{5}$/.test((editing ? facilityCode : (query.data.facilityCode ?? '')).trim()) ? (
+                    <p className="mt-1 text-xs font-semibold text-amber-700">Chưa đúng 5 chữ số nên chưa dùng được cho mã đơn thuốc chuẩn Bộ Y tế.</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-500">5 chữ số. Là 5 ký tự đầu của mã đơn thuốc chuẩn Bộ Y tế khi chi nhánh chưa có mã riêng.</p>
+                  )}
                 </div>
 
                 <div>

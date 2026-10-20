@@ -12,6 +12,7 @@ import type {
   SetRoomSessionRequest,
   UpdateBackupConfigRequest,
   UpdateBusinessCodeTemplateRequest,
+  UpdatePrescriptionKindMappingRequest,
   UpdateClinicProfileRequest,
   UpdateClinicSettingsRequest,
   UpdateExamStationRequest,
@@ -54,6 +55,9 @@ import {
   listRooms,
   listWorkShifts,
   listBusinessCodeTemplates,
+  getPrescriptionStandardReadiness,
+  getPrescriptionKindMapping,
+  updatePrescriptionKindMapping,
   createWorkShift,
   updateWorkShift,
   updateBusinessCodeTemplate,
@@ -487,13 +491,41 @@ export function useBusinessCodeTemplatesQuery() {
   return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'business-code-templates'), queryFn: listBusinessCodeTemplates });
 }
 
+/** Bảng ánh xạ loại thuốc → loại đơn (#242, giai đoạn 2) — trang "Loại đơn thuốc". */
+export function usePrescriptionKindMappingQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({ queryKey: queryKey(tenantId, 'clinic', 'prescription-kind-mapping'), queryFn: getPrescriptionKindMapping });
+}
+
+export function useUpdatePrescriptionKindMappingMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdatePrescriptionKindMappingRequest) => updatePrescriptionKindMapping(body),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'prescription-kind-mapping') }),
+  });
+}
+
+/** Chi nhánh nào đã có mã cơ sở KCB hợp lệ (mã đơn thuốc chuẩn Bộ Y tế, #242) — chỉ tải khi hộp thoại đang mở. */
+export function usePrescriptionStandardReadinessQuery(enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'prescription-standard-readiness'),
+    queryFn: getPrescriptionStandardReadiness,
+    enabled,
+  });
+}
+
 export function useUpdateBusinessCodeTemplateMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ codeType, body }: { codeType: BusinessCodeType; body: UpdateBusinessCodeTemplateRequest }) =>
       updateBusinessCodeTemplate(codeType, body),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'business-code-templates') }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'business-code-templates') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'prescription-standard-readiness') });
+    },
   });
 }
 

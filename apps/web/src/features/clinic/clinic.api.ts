@@ -9,6 +9,9 @@ import type {
   SidebarAutoCollapseStatus,
   BusinessCodeTemplateItem,
   BusinessCodeType,
+  PrescriptionStandardReadinessResponse,
+  PrescriptionKindMappingResponse,
+  UpdatePrescriptionKindMappingRequest,
   CashierShiftRequiredStatus,
   WalletMixedPaymentStatus,
   ClinicProfile,
@@ -237,6 +240,20 @@ export async function getDoctorShiftSummary(doctorId: string): Promise<DoctorShi
 /** "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — 7 loại mã nghiệp vụ. */
 export async function listBusinessCodeTemplates(): Promise<{ items: BusinessCodeTemplateItem[] }> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/code-templates')) as { items: BusinessCodeTemplateItem[] };
+}
+
+/** Bảng ánh xạ loại thuốc → loại đơn Bộ Y tế C/N/H/Y (#242, giai đoạn 2). */
+export async function getPrescriptionKindMapping(): Promise<PrescriptionKindMappingResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/prescription-kind-mapping')) as PrescriptionKindMappingResponse;
+}
+
+export async function updatePrescriptionKindMapping(body: UpdatePrescriptionKindMappingRequest): Promise<PrescriptionKindMappingResponse> {
+  return unwrap(await getApiClient().PATCH('/api/v1/clinic-settings/prescription-kind-mapping', { body })) as PrescriptionKindMappingResponse;
+}
+
+/** Mã đơn thuốc chuẩn Bộ Y tế (#242) — chi nhánh nào đã/chưa có mã cơ sở KCB để bật được chế độ chuẩn. */
+export async function getPrescriptionStandardReadiness(): Promise<PrescriptionStandardReadinessResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/code-templates/prescription-standard-readiness')) as PrescriptionStandardReadinessResponse;
 }
 
 export async function updateBusinessCodeTemplate(codeType: BusinessCodeType, body: UpdateBusinessCodeTemplateRequest): Promise<BusinessCodeTemplateItem> {

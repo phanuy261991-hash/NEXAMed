@@ -482,6 +482,7 @@ export interface paths {
                                     address: string | null;
                                     isDefault: boolean;
                                     phone: string | null;
+                                    facilityCode: string | null;
                                     isActive: boolean;
                                     staffCount: number;
                                     version: number;
@@ -538,6 +539,7 @@ export interface paths {
                         name: string;
                         address?: string;
                         phone?: string;
+                        facilityCode?: string | null;
                     };
                 };
             };
@@ -557,6 +559,7 @@ export interface paths {
                                 address: string | null;
                                 isDefault: boolean;
                                 phone: string | null;
+                                facilityCode: string | null;
                                 isActive: boolean;
                                 staffCount: number;
                                 version: number;
@@ -1911,6 +1914,7 @@ export interface paths {
                                     address: string | null;
                                     isDefault: boolean;
                                     phone: string | null;
+                                    facilityCode: string | null;
                                     isActive: boolean;
                                     staffCount: number;
                                     version: number;
@@ -1989,6 +1993,7 @@ export interface paths {
                         name?: string;
                         address?: string | null;
                         phone?: string | null;
+                        facilityCode?: string | null;
                         isActive?: boolean;
                         version: number;
                     };
@@ -2010,6 +2015,7 @@ export interface paths {
                                 address: string | null;
                                 isDefault: boolean;
                                 phone: string | null;
+                                facilityCode: string | null;
                                 isActive: boolean;
                                 staffCount: number;
                                 version: number;
@@ -6129,6 +6135,10 @@ export interface paths {
                                         isSplittable: boolean;
                                         unitCode: string | null;
                                         instruction: string | null;
+                                        /** @enum {string|null} */
+                                        kind: "C" | "N" | "H" | "Y" | null;
+                                        /** Format: uuid */
+                                        documentId: string | null;
                                     }[];
                                     doctorAdvice: string | null;
                                     warnings: {
@@ -6144,6 +6154,15 @@ export interface paths {
                                         } | null;
                                     }[];
                                     prescriptionNo: string | null;
+                                    standardMode: boolean;
+                                    documents: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        /** @enum {string} */
+                                        kind: "C" | "N" | "H" | "Y";
+                                        nationalCode: string;
+                                        itemIds: string[];
+                                    }[];
                                     signedAt: string | null;
                                     /** Format: uuid */
                                     signedBy: string | null;
@@ -7297,6 +7316,10 @@ export interface paths {
                                     isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
+                                    /** @enum {string|null} */
+                                    kind: "C" | "N" | "H" | "Y" | null;
+                                    /** Format: uuid */
+                                    documentId: string | null;
                                 }[];
                                 doctorAdvice: string | null;
                                 warnings: {
@@ -7312,6 +7335,15 @@ export interface paths {
                                     } | null;
                                 }[];
                                 prescriptionNo: string | null;
+                                standardMode: boolean;
+                                documents: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                    itemIds: string[];
+                                }[];
                                 signedAt: string | null;
                                 /** Format: uuid */
                                 signedBy: string | null;
@@ -7474,6 +7506,10 @@ export interface paths {
                                     isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
+                                    /** @enum {string|null} */
+                                    kind: "C" | "N" | "H" | "Y" | null;
+                                    /** Format: uuid */
+                                    documentId: string | null;
                                 }[];
                                 doctorAdvice: string | null;
                                 warnings: {
@@ -7489,6 +7525,15 @@ export interface paths {
                                     } | null;
                                 }[];
                                 prescriptionNo: string | null;
+                                standardMode: boolean;
+                                documents: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                    itemIds: string[];
+                                }[];
                                 signedAt: string | null;
                                 /** Format: uuid */
                                 signedBy: string | null;
@@ -7630,6 +7675,10 @@ export interface paths {
                                     isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
+                                    /** @enum {string|null} */
+                                    kind: "C" | "N" | "H" | "Y" | null;
+                                    /** Format: uuid */
+                                    documentId: string | null;
                                 }[];
                             } | null;
                             meta: Record<string, never>;
@@ -7747,6 +7796,10 @@ export interface paths {
                                     isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
+                                    /** @enum {string|null} */
+                                    kind: "C" | "N" | "H" | "Y" | null;
+                                    /** Format: uuid */
+                                    documentId: string | null;
                                 }[];
                                 doctorAdvice: string | null;
                                 warnings: {
@@ -7762,6 +7815,15 @@ export interface paths {
                                     } | null;
                                 }[];
                                 prescriptionNo: string | null;
+                                standardMode: boolean;
+                                documents: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                    itemIds: string[];
+                                }[];
                                 signedAt: string | null;
                                 /** Format: uuid */
                                 signedBy: string | null;
@@ -7908,6 +7970,10 @@ export interface paths {
                                     isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
+                                    /** @enum {string|null} */
+                                    kind: "C" | "N" | "H" | "Y" | null;
+                                    /** Format: uuid */
+                                    documentId: string | null;
                                 }[];
                                 doctorAdvice: string | null;
                                 warnings: {
@@ -7923,6 +7989,15 @@ export interface paths {
                                     } | null;
                                 }[];
                                 prescriptionNo: string | null;
+                                standardMode: boolean;
+                                documents: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                    itemIds: string[];
+                                }[];
                                 signedAt: string | null;
                                 /** Format: uuid */
                                 signedBy: string | null;
@@ -8058,6 +8133,10 @@ export interface paths {
                                     isSplittable: boolean;
                                     unitCode: string | null;
                                     instruction: string | null;
+                                    /** @enum {string|null} */
+                                    kind: "C" | "N" | "H" | "Y" | null;
+                                    /** Format: uuid */
+                                    documentId: string | null;
                                 }[];
                                 doctorAdvice: string | null;
                                 warnings: {
@@ -8073,6 +8152,15 @@ export interface paths {
                                     } | null;
                                 }[];
                                 prescriptionNo: string | null;
+                                standardMode: boolean;
+                                documents: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                    itemIds: string[];
+                                }[];
                                 signedAt: string | null;
                                 /** Format: uuid */
                                 signedBy: string | null;
@@ -13476,6 +13564,7 @@ export interface paths {
                                     controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                                     isPrescriptionOnly: boolean;
                                     isSplittable: boolean;
+                                    isTraditional: boolean;
                                     registrationNumber: string | null;
                                     dosageForm: string | null;
                                     countryOfOrigin: string | null;
@@ -13587,6 +13676,8 @@ export interface paths {
                         isPrescriptionOnly?: boolean;
                         /** @default true */
                         isSplittable?: boolean;
+                        /** @default false */
+                        isTraditional?: boolean;
                         registrationNumber?: string;
                         dosageForm?: string;
                         countryOfOrigin?: string;
@@ -13647,6 +13738,7 @@ export interface paths {
                                 controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                                 isPrescriptionOnly: boolean;
                                 isSplittable: boolean;
+                                isTraditional: boolean;
                                 registrationNumber: string | null;
                                 dosageForm: string | null;
                                 countryOfOrigin: string | null;
@@ -13788,6 +13880,7 @@ export interface paths {
                                 controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                                 isPrescriptionOnly: boolean;
                                 isSplittable: boolean;
+                                isTraditional: boolean;
                                 registrationNumber: string | null;
                                 dosageForm: string | null;
                                 countryOfOrigin: string | null;
@@ -13912,6 +14005,7 @@ export interface paths {
                         controlType?: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                         isPrescriptionOnly?: boolean;
                         isSplittable?: boolean;
+                        isTraditional?: boolean;
                         registrationNumber?: string | null;
                         dosageForm?: string | null;
                         countryOfOrigin?: string | null;
@@ -13972,6 +14066,7 @@ export interface paths {
                                 controlType: "NORMAL" | "TOXIC" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR";
                                 isPrescriptionOnly: boolean;
                                 isSplittable: boolean;
+                                isTraditional: boolean;
                                 registrationNumber: string | null;
                                 dosageForm: string | null;
                                 countryOfOrigin: string | null;
@@ -17621,6 +17716,9 @@ export interface paths {
                                     startingValue: number;
                                     locked: boolean;
                                     exampleNextCode: string;
+                                    /** @enum {string} */
+                                    mode: "CUSTOM" | "STANDARD";
+                                    supportsStandardMode: boolean;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -17667,6 +17765,303 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clinic-settings/code-templates/prescription-standard-readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mã đơn thuốc chuẩn Bộ Y tế (docs/DECISIONS.md #242) — chi nhánh nào đã/chưa có mã cơ sở KCB 5 chữ số để bật chế độ chuẩn */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                ready: boolean;
+                                companyFacilityCode: string | null;
+                                multiBranch: boolean;
+                                branches: {
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    name: string;
+                                    isDefault: boolean;
+                                    facilityCode: string | null;
+                                    effectiveFacilityCode: string | null;
+                                    /** @enum {string} */
+                                    source: "BRANCH" | "COMPANY" | "NONE";
+                                    ready: boolean;
+                                    exampleNextCode: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/prescription-kind-mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bảng ánh xạ loại thuốc → loại đơn Bộ Y tế C/N/H/Y (docs/DECISIONS.md #242, giai đoạn 2) — hiện tại + mặc định */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                mapping: {
+                                    /** @enum {string} */
+                                    NARCOTIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    PSYCHOTROPIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    PRECURSOR: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    TOXIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    NORMAL: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    TRADITIONAL: "Y" | "C";
+                                };
+                                defaults: {
+                                    /** @enum {string} */
+                                    NARCOTIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    PSYCHOTROPIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    PRECURSOR: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    TOXIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    NORMAL: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    TRADITIONAL: "Y" | "C";
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa bảng ánh xạ loại thuốc → loại đơn (chỉ áp dụng cho đơn ký từ lúc lưu; ghi nhật ký kiểm toán) */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        NARCOTIC: "C" | "N" | "H" | "Y";
+                        /** @enum {string} */
+                        PSYCHOTROPIC: "C" | "N" | "H" | "Y";
+                        /** @enum {string} */
+                        PRECURSOR: "C" | "N" | "H" | "Y";
+                        /** @enum {string} */
+                        TOXIC: "C" | "N" | "H" | "Y";
+                        /** @enum {string} */
+                        NORMAL: "C" | "N" | "H" | "Y";
+                        /** @enum {string} */
+                        TRADITIONAL: "Y" | "C";
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                mapping: {
+                                    /** @enum {string} */
+                                    NARCOTIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    PSYCHOTROPIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    PRECURSOR: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    TOXIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    NORMAL: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    TRADITIONAL: "Y" | "C";
+                                };
+                                defaults: {
+                                    /** @enum {string} */
+                                    NARCOTIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    PSYCHOTROPIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    PRECURSOR: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    TOXIC: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    NORMAL: "C" | "N" | "H" | "Y";
+                                    /** @enum {string} */
+                                    TRADITIONAL: "Y" | "C";
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu không hợp lệ (dòng Đông y chỉ nhận Y hoặc C) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinic_config.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/clinic-settings/code-templates/{codeType}": {
         parameters: {
             query?: never;
@@ -17696,6 +18091,8 @@ export interface paths {
                         template: string;
                         counterDigits: number;
                         startingValue?: number;
+                        /** @enum {string} */
+                        mode?: "CUSTOM" | "STANDARD";
                     };
                 };
             };
@@ -17717,6 +18114,9 @@ export interface paths {
                                 startingValue: number;
                                 locked: boolean;
                                 exampleNextCode: string;
+                                /** @enum {string} */
+                                mode: "CUSTOM" | "STANDARD";
+                                supportsStandardMode: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -17769,6 +18169,21 @@ export interface paths {
                 };
                 /** @description Đã khoá — không sửa lại được "Số bắt đầu đếm" (BUSINESS_CODE_TEMPLATE_STARTING_VALUE_LOCKED) */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không bật được chế độ Chuẩn Bộ Y tế: còn chi nhánh chưa có mã cơ sở KCB (PRESCRIPTION_STANDARD_MODE_NOT_READY) */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -29692,6 +30107,8 @@ export interface paths {
                                         unitCost: number;
                                     }[];
                                     warehouseStockOnHand: number;
+                                    /** Format: uuid */
+                                    documentId: string | null;
                                 }[];
                                 freeTextLines: {
                                     /** Format: uuid */
@@ -29700,6 +30117,15 @@ export interface paths {
                                     prescribedQuantity: number;
                                     doseSummary: string;
                                     instruction: string | null;
+                                    /** Format: uuid */
+                                    documentId: string | null;
+                                }[];
+                                documents: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
                                 }[];
                             };
                             meta: Record<string, never>;

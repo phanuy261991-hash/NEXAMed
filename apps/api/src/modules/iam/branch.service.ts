@@ -50,6 +50,7 @@ export class BranchService {
         name: dto.name,
         address: dto.address ?? null,
         phone: dto.phone ?? null,
+        facilityCode: dto.facilityCode ?? null,
         isDefault: false,
       });
       if (activeBefore <= 1) await this.materializeAssignments(tx, tenantId, actorId);
@@ -85,6 +86,7 @@ export class BranchService {
         name: dto.name,
         address: dto.address,
         phone: dto.phone,
+        facilityCode: dto.facilityCode,
         isActive: dto.isActive,
       });
       if (count === 0) throw new ConcurrentModificationError();
@@ -124,6 +126,7 @@ export class BranchService {
       address: row.address,
       isDefault: row.isDefault,
       phone: row.phone,
+      facilityCode: row.facilityCode ?? null,
       isActive: row.isActive,
       staffCount,
       version: row.version,

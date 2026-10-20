@@ -29,6 +29,7 @@ export * from './cashier-shift';
 export * from './cash-book';
 export * from './patient-wallet';
 export * from './business-code';
+export * from './prescription-kind-mapping';
 export * from './audit-log';
 export * from './audit/action-labels';
 export * from './audit/entity-type-labels';

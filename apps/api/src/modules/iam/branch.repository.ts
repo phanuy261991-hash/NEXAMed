@@ -6,6 +6,7 @@ export interface CreateBranchData {
   name: string;
   address: string | null;
   phone: string | null;
+  facilityCode: string | null;
   isDefault: boolean;
 }
 
@@ -13,6 +14,7 @@ export interface UpdateBranchData {
   name?: string;
   address?: string | null;
   phone?: string | null;
+  facilityCode?: string | null;
   isActive?: boolean;
 }
 

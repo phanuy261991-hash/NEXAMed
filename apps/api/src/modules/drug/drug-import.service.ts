@@ -174,6 +174,7 @@ export class DrugImportService {
           country: nameOf('COUNTRY_OF_ORIGIN', d.countryOfOrigin),
           controlType: medicine ? IMPORT_CONTROL_TYPE_LABELS[d.controlType] : '',
           isPrescriptionOnly: medicine ? yesNo(d.isPrescriptionOnly) : '',
+          isTraditional: medicine ? yesNo(d.isTraditional) : '',
           nationalCode: d.nationalCode ?? '',
           barcode: d.barcode ?? '',
           shortcutCode: d.shortcutCode ?? '',
@@ -507,10 +508,13 @@ export class DrugImportService {
         if (!control.ok) itemErr('Phân loại kiểm soát phải là Thường, Độc, Gây nghiện, Hướng thần hoặc Tiền chất.');
         const rx = parseImportYesNo(c.isPrescriptionOnly);
         if (!rx.ok) itemErr('"Chỉ bán theo đơn" phải là Có hoặc Không.');
+        const traditional = parseImportYesNo(c.isTraditional);
+        if (!traditional.ok) itemErr('"Đông y" phải là Có hoặc Không.');
         const optionalCatalog = (category: DrugImportCategory, v: Cell | undefined): string | undefined => (text(v) === '' ? undefined : resolve(draft, category, v, SHEET_ITEMS, r.rowNumber));
         Object.assign(fields, {
           controlType: control.ok ? (control.value ?? 'NORMAL') : 'NORMAL',
           isPrescriptionOnly: rx.ok ? (rx.value ?? true) : true,
+          isTraditional: traditional.ok ? (traditional.value ?? false) : false,
           drugGroupCode: optionalCatalog('DRUG_GROUP', c.drugGroup),
           routeCode: optionalCatalog('DRUG_ROUTE', c.route),
           registrationNumber: optionalText(c.registrationNumber),

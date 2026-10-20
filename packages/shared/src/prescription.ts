@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { prescriptionKindSchema } from './business-code';
 
 /**
  * Kê đơn (Sprint 4, S4-01→04) — xem .claude/docs/clinical-workflow.md mục "Kê đơn (v1: chỉ in
@@ -141,8 +142,29 @@ export const prescriptionItemSchema = z.object({
    * được (docs/DECISIONS.md #196). `null` cho dòng "kê thuốc tự do" hoặc thuốc chưa khai đơn vị cơ sở. */
   unitCode: z.string().nullable(),
   instruction: z.string().nullable(),
+  /**
+   * Loại đơn Bộ Y tế của dòng này (C/N/H/Y, #242) — CHỈ có giá trị khi phòng khám bật chế độ "Chuẩn Bộ Y tế" (`Prescription.standardMode`), `null` khi tắt hoặc đơn đã ký trước ngày bật.
+   * Đơn nháp: tính lại theo ánh xạ hiện tại mỗi lần đọc; đơn đã ký: lấy từ đơn pháp lý đã cấp mã (không đổi theo ánh xạ sau này).
+   */
+  kind: prescriptionKindSchema.nullable(),
+  /** Đơn pháp lý (mã chuẩn) chứa dòng này — `null` khi còn nháp hoặc đơn ký trước ngày bật chế độ chuẩn. */
+  documentId: z.string().uuid().nullable(),
 });
 export type PrescriptionItem = z.infer<typeof prescriptionItemSchema>;
+
+/**
+ * Đơn thuốc PHÁP LÝ (docs/DECISIONS.md #242, giai đoạn 2): một lần ký đơn có nhiều loại (C/N/H/Y) tự tách thành từng đơn, MỖI ĐƠN MỘT MÃ chuẩn Bộ Y tế
+ * `xxxxxyyyyyyy-z`. Chỉ có khi đơn ký lúc chế độ "Chuẩn Bộ Y tế" đang bật.
+ */
+export const prescriptionDocumentSchema = z.object({
+  id: z.string().uuid(),
+  kind: prescriptionKindSchema,
+  /** Mã chuẩn 14 ký tự, ví dụ `790010000043-C`. */
+  nationalCode: z.string(),
+  /** Các dòng thuốc (`PrescriptionItem.id`) thuộc đơn pháp lý này. */
+  itemIds: z.array(z.string().uuid()),
+});
+export type PrescriptionDocument = z.infer<typeof prescriptionDocumentSchema>;
 
 /**
  * `kind`: `duplicate_active_ingredient` (PRE-02, giữa các dòng trong đơn) / `allergy` (PRE-03, đối
@@ -185,6 +207,10 @@ export const prescriptionSchema = z.object({
   /** "Mã đơn thuốc thật" (docs/DECISIONS.md #169) — sinh lúc KÝ (`null` khi còn nháp). Đính chính
    * (`amend`) GIỮ NGUYÊN mã của bản gốc, không sinh mã mới. */
   prescriptionNo: z.string().nullable(),
+  /** Phòng khám đang bật chế độ mã đơn "Chuẩn Bộ Y tế" (#242) — web dùng để hiện chữ cái loại đơn từng dòng, dải "sẽ ký thành N đơn" và nhãn nút ký. */
+  standardMode: z.boolean(),
+  /** Các đơn pháp lý đã cấp mã chuẩn khi ký (rỗng: còn nháp, hoặc ký trước ngày bật chế độ chuẩn — in như đơn cũ). Thứ tự C, N, H, Y. */
+  documents: z.array(prescriptionDocumentSchema),
   signedAt: z.string().nullable(),
   signedBy: z.string().uuid().nullable(),
   printedAt: z.string().nullable(),

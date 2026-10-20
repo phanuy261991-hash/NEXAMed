@@ -12,9 +12,12 @@ export function CheckTile({
   onChange,
   disabled = false,
   tone = 'default',
+  hint,
 }: {
   id: string;
   label: string;
+  /** Dòng chú thích nhỏ dưới nhãn (tuỳ chọn) — ví dụ giải thích hệ quả của ô tích. */
+  hint?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
@@ -38,7 +41,14 @@ export function CheckTile({
       >
         {checked && <Check size={12} weight="bold" className={tone === 'danger' ? 'text-rose-600' : 'text-brand-teal'} />}
       </span>
-      {label}
+      {hint ? (
+        <span className="flex flex-col">
+          <span>{label}</span>
+          <span className={`text-xs font-normal ${checked ? 'text-white/85' : 'text-slate-500'}`}>{hint}</span>
+        </span>
+      ) : (
+        label
+      )}
     </label>
   );
 }

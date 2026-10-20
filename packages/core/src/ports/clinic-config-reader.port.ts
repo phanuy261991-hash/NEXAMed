@@ -1,3 +1,4 @@
+import type { PrescriptionKindMapping } from '../prescription/prescription-kind';
 /** Giờ mở/đóng cửa một ngày trong tuần; `null` = đóng cửa cả ngày. Khớp `businessHoursSchema` ở
  * `packages/shared/src/clinic.ts` — định nghĩa lại cục bộ (không import `packages/shared` vào
  * `packages/core`, giữ đúng chiều phụ thuộc `.claude/docs/project-structure.md`). */
@@ -197,6 +198,15 @@ export interface ClinicConfigReaderPort {
    * (`tenant_setting` key `icd10_suggestion_learning_enabled`).
    */
   getIcd10SuggestionLearningEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * Bảng ánh xạ "loại thuốc → loại đơn Bộ Y tế" (#242, giai đoạn 2) — `tenant_setting` key `prescription_kind_mapping`, vắng thì mặc định (`DEFAULT_PRESCRIPTION_KIND_MAPPING`).
+   * Module `encounter` đọc qua port này (TRƯỚC transaction chính) để gắn loại đơn cho từng dòng thuốc và tách đơn khi ký.
+   */
+  getPrescriptionKindMapping(tenantId: string): Promise<PrescriptionKindMapping>;
+
+  /** Chế độ mã đơn thuốc "Chuẩn Bộ Y tế" đang bật không (#242) — đọc `business_code_templates.PRESCRIPTION.mode`. Bật thì ký đơn tách theo loại và cấp mã chuẩn. */
+  getPrescriptionStandardMode(tenantId: string): Promise<boolean>;
 }
 
 export const CLINIC_CONFIG_READER_PORT = Symbol('CLINIC_CONFIG_READER_PORT');

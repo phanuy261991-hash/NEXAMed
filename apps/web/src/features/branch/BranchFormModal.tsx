@@ -16,6 +16,8 @@ export interface BranchSubmitDto {
   name: string;
   address: string | null;
   phone: string | null;
+  /** Mã cơ sở khám chữa bệnh 5 chữ số (#242) — null = chưa nhập (dùng mã công ty). */
+  facilityCode: string | null;
 }
 
 /**
@@ -41,14 +43,15 @@ export function BranchFormModal({
   onSubmit: (dto: BranchSubmitDto) => Promise<void>;
 }) {
   const nameRef = useRef<HTMLInputElement>(null);
-  const [values, setValues] = useState({ name: branch?.name ?? '', address: branch?.address ?? '', phone: branch?.phone ?? '' });
+  const [values, setValues] = useState({ name: branch?.name ?? '', address: branch?.address ?? '', phone: branch?.phone ?? '', facilityCode: branch?.facilityCode ?? '' });
   const { flashVisible, triggerFlash } = useSaveFlash();
   const { saveError, run } = useSaveAttempt();
 
-  const isValid = values.name.trim() !== '' && !stale;
+  const facilityCodeValid = values.facilityCode === '' || /^\d{5}$/.test(values.facilityCode);
+  const isValid = values.name.trim() !== '' && facilityCodeValid && !stale;
 
   function buildDto(): BranchSubmitDto {
-    return { name: values.name.trim(), address: values.address.trim() || null, phone: values.phone.trim() || null };
+    return { name: values.name.trim(), address: values.address.trim() || null, phone: values.phone.trim() || null, facilityCode: values.facilityCode || null };
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -60,7 +63,7 @@ export function BranchFormModal({
   async function handleSaveAndContinue() {
     if (!isValid) return;
     if (!(await run(() => onSubmit(buildDto())))) return;
-    setValues({ name: '', address: '', phone: '' });
+    setValues({ name: '', address: '', phone: '', facilityCode: '' });
     nameRef.current?.focus();
     triggerFlash();
   }
@@ -125,6 +128,29 @@ export function BranchFormModal({
                 maxLength={50}
                 inputMode="tel"
               />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="branch-facility-code" className="text-sm font-semibold text-slate-800">
+                Mã cơ sở KCB (5 chữ số)
+              </label>
+              <input
+                id="branch-facility-code"
+                value={values.facilityCode}
+                onChange={(e) => setValues((v) => ({ ...v, facilityCode: e.target.value.replace(/\D/g, '').slice(0, 5) }))}
+                className={inputClassName}
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="Ví dụ 79001"
+                aria-invalid={!facilityCodeValid}
+              />
+              {!facilityCodeValid ? (
+                <p className="text-xs font-semibold text-rose-700">Mã cơ sở KCB phải gồm đúng 5 chữ số.</p>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  Là 5 ký tự đầu của mã đơn thuốc chuẩn Bộ Y tế. Để trống = dùng mã của công ty.
+                  {mode === 'edit' && branch?.facilityCode && values.facilityCode !== branch.facilityCode ? ' Đơn mới sẽ mang mã mới, đơn đã cấp giữ mã cũ.' : ''}
+                </p>
+              )}
             </div>
           </div>
         </BoxedSection>

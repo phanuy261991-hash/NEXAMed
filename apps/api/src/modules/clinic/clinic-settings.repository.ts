@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
+import { DEFAULT_PRESCRIPTION_KIND_MAPPING, type PrescriptionKindMapping } from '@nexamed/core';
 import {
+  prescriptionKindMappingSchema,
   businessCodeTypeSchema,
   businessHoursSchema,
   type BusinessCodeType,
@@ -147,15 +149,20 @@ const icd10SuggestionLearningEnabledSchema = z.boolean();
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
 const BUSINESS_CODE_TEMPLATES_KEY = 'business_code_templates';
+// Bảng ánh xạ loại thuốc → loại đơn Bộ Y tế (#242, giai đoạn 2) — 1 object JSON; vắng = mặc định (`DEFAULT_PRESCRIPTION_KIND_MAPPING`).
+const PRESCRIPTION_KIND_MAPPING_KEY = 'prescription_kind_mapping';
 export interface BusinessCodeTemplateEntry {
   template: string;
   counterDigits: number;
   startingValue: number;
+  /** `STANDARD` = chế độ "Chuẩn Bộ Y tế" của mã đơn thuốc (#242), vắng = `CUSTOM`. Khuôn/số chữ số lưu ở đây vẫn là của mã nội bộ `prescription_no`. */
+  mode?: 'STANDARD';
 }
 const businessCodeTemplateEntrySchema = z.object({
   template: z.string().min(1),
   counterDigits: z.number().int().min(1).max(9),
   startingValue: z.number().int().positive(),
+  mode: z.literal('STANDARD').optional(),
 });
 const businessCodeTemplatesConfigSchema = z.record(businessCodeTypeSchema, businessCodeTemplateEntrySchema);
 type BusinessCodeTemplatesConfig = Partial<Record<BusinessCodeType, BusinessCodeTemplateEntry>>;
@@ -563,6 +570,20 @@ export class ClinicSettingsRepository {
     const current = await this.getBusinessCodeTemplatesConfig(tx, tenantId);
     const next: BusinessCodeTemplatesConfig = { ...current, [codeType]: entry };
     await this.upsert(tx, tenantId, actorId, BUSINESS_CODE_TEMPLATES_KEY, next);
+  }
+
+  /** Bảng ánh xạ loại thuốc → loại đơn (#242). Vắng/hỏng → mặc định; khoá thiếu được bù từ mặc định (thêm loại mới sau này không làm hỏng cấu hình cũ). */
+  async getPrescriptionKindMapping(tx: Prisma.TransactionClient, tenantId: string): Promise<PrescriptionKindMapping> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: PRESCRIPTION_KIND_MAPPING_KEY } });
+    if (!setting) {
+      return { ...DEFAULT_PRESCRIPTION_KIND_MAPPING };
+    }
+    const parsed = prescriptionKindMappingSchema.partial().safeParse(setting.valueJson);
+    return parsed.success ? ({ ...DEFAULT_PRESCRIPTION_KIND_MAPPING, ...parsed.data } as PrescriptionKindMapping) : { ...DEFAULT_PRESCRIPTION_KIND_MAPPING };
+  }
+
+  upsertPrescriptionKindMapping(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: PrescriptionKindMapping) {
+    return this.upsert(tx, tenantId, actorId, PRESCRIPTION_KIND_MAPPING_KEY, value);
   }
 
   upsertAllowEmergencyEndShift(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {

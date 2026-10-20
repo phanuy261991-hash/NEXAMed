@@ -95,6 +95,8 @@ export class DrugService {
         isPrescriptionOnly: dto.itemType === 'MEDICINE' ? dto.isPrescriptionOnly : true,
         // "Cho phép chia nhỏ" (#241) — chỉ có ý nghĩa với thuốc, vật tư luôn true (trung tính).
         isSplittable: dto.itemType === 'MEDICINE' ? dto.isSplittable : true,
+        // "Thuốc y học cổ truyền (Đông y)" (#242) — chỉ có ý nghĩa với thuốc, vật tư luôn false.
+        isTraditional: dto.itemType === 'MEDICINE' ? dto.isTraditional : false,
         registrationNumber: dto.itemType === 'MEDICINE' ? (dto.registrationNumber ?? null) : null,
         dosageForm: dto.itemType === 'MEDICINE' ? (dto.dosageForm ?? null) : null,
         countryOfOrigin: dto.itemType === 'MEDICINE' ? (dto.countryOfOrigin ?? null) : null,
@@ -205,6 +207,7 @@ export class DrugService {
           controlType: dto.controlType,
           isPrescriptionOnly: dto.isPrescriptionOnly,
           isSplittable: dto.isSplittable,
+          isTraditional: dto.isTraditional,
           registrationNumber: dto.registrationNumber,
           dosageForm: dto.dosageForm,
           countryOfOrigin: dto.countryOfOrigin,
@@ -284,6 +287,7 @@ export class DrugService {
       controlType: drug.controlType,
       isPrescriptionOnly: drug.isPrescriptionOnly,
       isSplittable: drug.isSplittable,
+      isTraditional: drug.isTraditional,
       registrationNumber: drug.registrationNumber,
       dosageForm: drug.dosageForm,
       countryOfOrigin: drug.countryOfOrigin,

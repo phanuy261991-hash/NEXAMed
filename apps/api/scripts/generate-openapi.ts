@@ -106,6 +106,9 @@ import {
   businessCodeTemplateItemSchema,
   businessCodeTypeSchema,
   listBusinessCodeTemplatesResponseSchema,
+  prescriptionStandardReadinessResponseSchema,
+  prescriptionKindMappingResponseSchema,
+  updatePrescriptionKindMappingRequestSchema,
   updateBusinessCodeTemplateRequestSchema,
   backupStatusResponseSchema,
   backupConfigResponseSchema,
@@ -2931,6 +2934,47 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/code-templates/prescription-standard-readiness',
+  tags: ['clinic'],
+  summary: 'Mã đơn thuốc chuẩn Bộ Y tế (docs/DECISIONS.md #242) — chi nhánh nào đã/chưa có mã cơ sở KCB 5 chữ số để bật chế độ chuẩn',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionStandardReadinessResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/prescription-kind-mapping',
+  tags: ['clinic'],
+  summary: 'Bảng ánh xạ loại thuốc → loại đơn Bộ Y tế C/N/H/Y (docs/DECISIONS.md #242, giai đoạn 2) — hiện tại + mặc định',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionKindMappingResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/clinic-settings/prescription-kind-mapping',
+  tags: ['clinic'],
+  summary: 'Sửa bảng ánh xạ loại thuốc → loại đơn (chỉ áp dụng cho đơn ký từ lúc lưu; ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: updatePrescriptionKindMappingRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(prescriptionKindMappingResponseSchema)),
+    400: errorResponse('Dữ liệu không hợp lệ (dòng Đông y chỉ nhận Y hoặc C)'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+  },
+});
+
 const businessCodeTypeParams = z.object({ codeType: businessCodeTypeSchema });
 
 registry.registerPath({
@@ -2949,6 +2993,7 @@ registry.registerPath({
     403: errorResponse('Không có quyền clinic_config.update'),
     400: errorResponse('Khuôn mẫu sai cú pháp (BUSINESS_CODE_TEMPLATE_INVALID)'),
     409: errorResponse('Đã khoá — không sửa lại được "Số bắt đầu đếm" (BUSINESS_CODE_TEMPLATE_STARTING_VALUE_LOCKED)'),
+    422: errorResponse('Không bật được chế độ Chuẩn Bộ Y tế: còn chi nhánh chưa có mã cơ sở KCB (PRESCRIPTION_STANDARD_MODE_NOT_READY)'),
   },
 });
 

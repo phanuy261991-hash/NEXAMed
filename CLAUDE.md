@@ -69,13 +69,23 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 
 ### Quy trình làm việc
 
-- **Trước khi bắt đầu bất kỳ công việc nào, phải đọc qua** `docs/product/prd.md`, `docs/product/plan.md`, `docs/ERD.md`, `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`, `.claude/docs/ui-guidelines.md`.
+- **Trước khi bắt đầu bất kỳ công việc nào, phải đọc qua** `docs/product/prd.md`, `docs/product/plan.md`, `docs/ERD.md`, `docs/CURRENT.md`, `docs/TASK.md`, `docs/CHANGELOG.md`, `.claude/docs/ui-guidelines.md`. Với các file `docs/` dài chỉ đọc PHIÊN BẢN MỚI NHẤT (file gốc, không đọc `docs/archive/`) — xem mục "Quy ước tài liệu dài" ngay dưới.
 - **Không tự ý thay đổi hay suy diễn cấu trúc đã chốt.** Schema, tên bảng/cột, state machine, ranh giới module, contract API trong `.claude/docs/` là đã chốt. Cần đổi thì dừng lại, nêu vấn đề và hỏi trước — không tự sửa rồi báo sau.
 - Không viết code cho module ngoài phạm vi v1, kể cả khi schema đã để sẵn chỗ.
 - Trước khi thêm hàm/component mới, tìm trong `packages/core` và `packages/shared` xem đã có chưa. Không tạo bản sao logic. Trùng lặp lần thứ hai là dấu hiệu phải trích xuất ra dùng chung.
 - Code viết theo hướng tái sử dụng toàn hệ thống: logic nghiệp vụ thuần đặt ở `packages/core`, không nhét vào component React hay controller NestJS.
 - **Viết component/hàm tiện ích ở nơi dùng chung (`packages/shared`, `packages/core`, `apps/web/src/shared`) với chủ đích tái dùng ngay từ lần viết đầu tiên**: nhận dữ liệu qua props/tham số thay vì gắn cứng chi tiết của màn hình/nghiệp vụ hiện tại, không hardcode text/logic riêng của một nơi gọi khi rõ ràng sẽ còn nơi khác cần — để tích hợp hệ thống khác sau này tái dùng được thay vì viết lại. Không mâu thuẫn với nguyên tắc "trùng lặp lần hai mới trích xuất" ở trên: quy tắc đó áp dụng cho *logic nghiệp vụ đặc thù* (chưa biết có dùng lại hay không); quy tắc này áp dụng cho *thành phần đã biết trước sẽ dùng chung* (UI primitive, hook tiện ích, adapter tích hợp). Không dựng abstraction cho tình huống hoàn toàn chưa xảy ra.
 - **Trước khi thiết kế hoặc viết bất kỳ giao diện UI/UX nào, phải đọc** `.claude/docs/ui-guidelines.md` và mọi file trong `docs/design/` để nắm quy tắc thiết kế đã chốt, đảm bảo tính đồng nhất xuyên suốt sản phẩm. Nếu hai tài liệu mâu thuẫn nhau, `.claude/docs/ui-guidelines.md` (chi tiết, có hệ thống token) thắng — `docs/design/*.md` chỉ là nguyên tắc chung, không phải đặc tả. Cần điều chỉnh quy tắc hoặc có ý tưởng tốt hơn thì dừng lại hỏi trước, không tự đổi. Có quyết định thiết kế mới thì cập nhật lại đúng file liên quan trong cùng lúc, không để tài liệu lệch với thực tế.
+
+### Quy ước tài liệu dài (chốt 20/10/2026, chủ dự án yêu cầu: tránh đọc lại quá nhiều, không nhồi một file)
+
+Áp dụng cho `docs/DECISIONS.md`, `docs/CHANGELOG.md`, `docs/CURRENT.md`, `docs/TASK.md`, `docs/ERD.md` (và mọi tài liệu `docs/` khác phình lớn):
+
+- **File gốc LUÔN là phiên bản mới nhất** (`docs/DECISIONS.md`, ...). Phần cũ được cắt NGUYÊN VĂN sang `docs/archive/<TÊN>-<từ>-<đến>.md` (phiên bản cũ), file gốc có mục "Các phần cũ (lưu trữ)" liệt kê link + khoảng nội dung của từng file cũ. Riêng `docs/ERD.md` tách theo chủ đề: nhóm bảng mở rộng (3.6 trở đi) ở `docs/ERD-2.md` (phần tiếp cùng một ERD), lịch sử phiên bản ở archive.
+- **Khi ĐỌC**: chỉ đọc file gốc (và `docs/ERD-2.md` khi làm việc với các nhóm bảng ở đó). KHÔNG đọc `docs/archive/` trừ khi cần tra một mục cụ thể — khi đó dùng grep theo số quyết định/ngày/mã rồi đọc đúng đoạn. Tham chiếu kiểu `docs/DECISIONS.md #114` vẫn đúng: không thấy trong file gốc thì grep `docs/archive/DECISIONS-*.md`.
+- **Khi GHI**: chỉ ghi vào file gốc (DECISIONS: thêm mục mới ở cuối; CHANGELOG: thêm ngày mới ở đầu; TASK/CURRENT: cập nhật tại chỗ; ERD: nhóm bảng mới ghi vào `docs/ERD-2.md`, thêm dòng phiên bản mới vào bảng ở mục 9 của `docs/ERD.md`). Không sửa nội dung bản ghi cũ khi chuyển sang archive.
+- **Ngưỡng cắt** (khi file gốc vượt, cắt phần cũ nhất sang file archive MỚI rồi thêm link ở file gốc, không gộp vào file archive đã có): `DECISIONS` ~150 KB, `CHANGELOG` ~120 KB, `TASK` ~100 KB (mọi việc `[ ]`/`[~]` chưa xong PHẢI ở lại file gốc), `CURRENT` ~40 KB (viết lại bản ngắn phản ánh hiện tại; bản dài cũ lưu archive), `ERD` ~80 KB mỗi file (mở `ERD-3.md` nếu cần). Đo bằng `wc -c`; kiểm lại mỗi khi thêm nội dung lớn.
+- File `CURRENT.md` là **bức tranh hiện tại** (đang làm gì, đang chờ gì), không phải nhật ký — nhật ký nằm ở `CHANGELOG.md`.
 
 ### Cơ sở dữ liệu
 
@@ -116,9 +126,10 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 - `docs/design/UI_GUIDELINE.md`, `docs/design/AI_AVOID_RULES.md` — nguyên tắc chung về phong cách thiết kế (tránh phong cách nào, cảm giác sản phẩm nên giống gì). Đọc cùng lúc với `ui-guidelines.md`.
 - `docs/product/prd.md` — dùng để biết yêu cầu sản phẩm, mục tiêu, tiêu chí chấp nhận.
 - `docs/product/plan.md` — dùng để biết kế hoạch theo giai đoạn/sprint, thứ tự ưu tiên.
-- `docs/ERD.md` — dùng để biết sơ đồ quan hệ dữ liệu đầy đủ, ràng buộc DB, index, thứ tự tạo bảng theo sprint.
-- `docs/CURRENT.md` — dùng để biết trạng thái hiện tại của dự án trước khi bắt đầu việc mới.
-- `docs/TASK.md` — dùng để biết việc nào đang làm, việc nào đã xong theo phase.
-- `docs/CHANGELOG.md` — dùng để tra lịch sử thay đổi; cập nhật khi hoàn thành một thay đổi đáng kể.
-- `docs/DECISIONS.md` — dùng để tra quyết định kiến trúc/nghiệp vụ đã chốt ngoài phạm vi `.claude/docs/`; cập nhật khi có quyết định mới cần lưu vết.
+- `docs/ERD.md` — dùng để biết sơ đồ quan hệ dữ liệu, nhóm bảng nền, ràng buộc DB, index, thứ tự tạo bảng theo sprint. **`docs/ERD-2.md`** (phần tiếp) chứa nhóm bảng Thu ngân/Kho Thuốc/Công nợ NCC và mọi nhóm bảng mới — mở khi làm việc với các bảng đó. Lịch sử phiên bản cũ: `docs/archive/`.
+- `docs/CURRENT.md` — dùng để biết trạng thái HIỆN TẠI của dự án trước khi bắt đầu việc mới (bản ngắn; nhật ký cũ ở `docs/archive/CURRENT-*.md`).
+- `docs/TASK.md` — dùng để biết việc nào đang làm, việc nào chưa xong, việc mới nhất (phần đã xong cũ ở `docs/archive/TASK-*.md`).
+- `docs/CHANGELOG.md` — dùng để tra thay đổi MỚI NHẤT; cập nhật khi hoàn thành một thay đổi đáng kể (phần cũ ở `docs/archive/CHANGELOG-*.md`).
+- `docs/DECISIONS.md` — dùng để tra quyết định MỚI NHẤT (từ #230); cập nhật khi có quyết định mới cần lưu vết (quyết định cũ ở `docs/archive/DECISIONS-*.md`, chỉ grep khi cần tra số cụ thể).
+- `docs/archive/` — kho lưu trữ phần cũ của các file trên, KHÔNG đọc mặc định (xem "Quy ước tài liệu dài").
 - `docs/Hybrid Authorization.md` — định hướng kiến trúc phân quyền cho giai đoạn platform/đa module (v3+): Centralized Identity (SSO) + Module-Specific Authorization. **Chưa triển khai ở v1** — chỉ tham khảo, chủ động gợi ý khi thấy phù hợp (ví dụ khi bàn về mở rộng đa module/tenant liên hệ thống), không tự ý bắt đầu code theo hướng này.

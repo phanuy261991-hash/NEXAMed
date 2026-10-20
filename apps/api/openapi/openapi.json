@@ -892,6 +892,12 @@
                                   "null"
                                 ]
                               },
+                              "facilityCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "isActive": {
                                 "type": "boolean"
                               },
@@ -909,6 +915,7 @@
                               "address",
                               "isDefault",
                               "phone",
+                              "facilityCode",
                               "isActive",
                               "staffCount",
                               "version"
@@ -1025,6 +1032,13 @@
                   "phone": {
                     "type": "string",
                     "maxLength": 50
+                  },
+                  "facilityCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{5}$"
                   }
                 },
                 "required": [
@@ -1070,6 +1084,12 @@
                             "null"
                           ]
                         },
+                        "facilityCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "isActive": {
                           "type": "boolean"
                         },
@@ -1087,6 +1107,7 @@
                         "address",
                         "isDefault",
                         "phone",
+                        "facilityCode",
                         "isActive",
                         "staffCount",
                         "version"
@@ -4171,6 +4192,12 @@
                                   "null"
                                 ]
                               },
+                              "facilityCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "isActive": {
                                 "type": "boolean"
                               },
@@ -4188,6 +4215,7 @@
                               "address",
                               "isDefault",
                               "phone",
+                              "facilityCode",
                               "isActive",
                               "staffCount",
                               "version"
@@ -4324,6 +4352,13 @@
                     ],
                     "maxLength": 50
                   },
+                  "facilityCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{5}$"
+                  },
                   "isActive": {
                     "type": "boolean"
                   },
@@ -4375,6 +4410,12 @@
                             "null"
                           ]
                         },
+                        "facilityCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "isActive": {
                           "type": "boolean"
                         },
@@ -4392,6 +4433,7 @@
                         "address",
                         "isDefault",
                         "phone",
+                        "facilityCode",
                         "isActive",
                         "staffCount",
                         "version"
@@ -14998,6 +15040,25 @@
                                       "string",
                                       "null"
                                     ]
+                                  },
+                                  "kind": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "C",
+                                      "N",
+                                      "H",
+                                      "Y"
+                                    ]
+                                  },
+                                  "documentId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "format": "uuid"
                                   }
                                 },
                                 "required": [
@@ -15014,7 +15075,9 @@
                                   "quantity",
                                   "isSplittable",
                                   "unitCode",
-                                  "instruction"
+                                  "instruction",
+                                  "kind",
+                                  "documentId"
                                 ]
                               }
                             },
@@ -15091,6 +15154,46 @@
                                 "null"
                               ]
                             },
+                            "standardMode": {
+                              "type": "boolean"
+                            },
+                            "documents": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "C",
+                                      "N",
+                                      "H",
+                                      "Y"
+                                    ]
+                                  },
+                                  "nationalCode": {
+                                    "type": "string"
+                                  },
+                                  "itemIds": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "nationalCode",
+                                  "itemIds"
+                                ]
+                              }
+                            },
                             "signedAt": {
                               "type": [
                                 "string",
@@ -15134,6 +15237,8 @@
                             "doctorAdvice",
                             "warnings",
                             "prescriptionNo",
+                            "standardMode",
+                            "documents",
                             "signedAt",
                             "signedBy",
                             "printedAt",
@@ -18218,6 +18323,25 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "kind": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "documentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
                               }
                             },
                             "required": [
@@ -18234,7 +18358,9 @@
                               "quantity",
                               "isSplittable",
                               "unitCode",
-                              "instruction"
+                              "instruction",
+                              "kind",
+                              "documentId"
                             ]
                           }
                         },
@@ -18311,6 +18437,46 @@
                             "null"
                           ]
                         },
+                        "standardMode": {
+                          "type": "boolean"
+                        },
+                        "documents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              },
+                              "itemIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "nationalCode",
+                              "itemIds"
+                            ]
+                          }
+                        },
                         "signedAt": {
                           "type": [
                             "string",
@@ -18354,6 +18520,8 @@
                         "doctorAdvice",
                         "warnings",
                         "prescriptionNo",
+                        "standardMode",
+                        "documents",
                         "signedAt",
                         "signedBy",
                         "printedAt",
@@ -18709,6 +18877,25 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "kind": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "documentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
                               }
                             },
                             "required": [
@@ -18725,7 +18912,9 @@
                               "quantity",
                               "isSplittable",
                               "unitCode",
-                              "instruction"
+                              "instruction",
+                              "kind",
+                              "documentId"
                             ]
                           }
                         },
@@ -18802,6 +18991,46 @@
                             "null"
                           ]
                         },
+                        "standardMode": {
+                          "type": "boolean"
+                        },
+                        "documents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              },
+                              "itemIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "nationalCode",
+                              "itemIds"
+                            ]
+                          }
+                        },
                         "signedAt": {
                           "type": [
                             "string",
@@ -18845,6 +19074,8 @@
                         "doctorAdvice",
                         "warnings",
                         "prescriptionNo",
+                        "standardMode",
+                        "documents",
                         "signedAt",
                         "signedBy",
                         "printedAt",
@@ -19123,6 +19354,25 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "kind": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "documentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
                               }
                             },
                             "required": [
@@ -19139,7 +19389,9 @@
                               "quantity",
                               "isSplittable",
                               "unitCode",
-                              "instruction"
+                              "instruction",
+                              "kind",
+                              "documentId"
                             ]
                           }
                         }
@@ -19381,6 +19633,25 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "kind": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "documentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
                               }
                             },
                             "required": [
@@ -19397,7 +19668,9 @@
                               "quantity",
                               "isSplittable",
                               "unitCode",
-                              "instruction"
+                              "instruction",
+                              "kind",
+                              "documentId"
                             ]
                           }
                         },
@@ -19474,6 +19747,46 @@
                             "null"
                           ]
                         },
+                        "standardMode": {
+                          "type": "boolean"
+                        },
+                        "documents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              },
+                              "itemIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "nationalCode",
+                              "itemIds"
+                            ]
+                          }
+                        },
                         "signedAt": {
                           "type": [
                             "string",
@@ -19517,6 +19830,8 @@
                         "doctorAdvice",
                         "warnings",
                         "prescriptionNo",
+                        "standardMode",
+                        "documents",
                         "signedAt",
                         "signedBy",
                         "printedAt",
@@ -19803,6 +20118,25 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "kind": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "documentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
                               }
                             },
                             "required": [
@@ -19819,7 +20153,9 @@
                               "quantity",
                               "isSplittable",
                               "unitCode",
-                              "instruction"
+                              "instruction",
+                              "kind",
+                              "documentId"
                             ]
                           }
                         },
@@ -19896,6 +20232,46 @@
                             "null"
                           ]
                         },
+                        "standardMode": {
+                          "type": "boolean"
+                        },
+                        "documents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              },
+                              "itemIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "nationalCode",
+                              "itemIds"
+                            ]
+                          }
+                        },
                         "signedAt": {
                           "type": [
                             "string",
@@ -19939,6 +20315,8 @@
                         "doctorAdvice",
                         "warnings",
                         "prescriptionNo",
+                        "standardMode",
+                        "documents",
                         "signedAt",
                         "signedBy",
                         "printedAt",
@@ -20241,6 +20619,25 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "kind": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "documentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
                               }
                             },
                             "required": [
@@ -20257,7 +20654,9 @@
                               "quantity",
                               "isSplittable",
                               "unitCode",
-                              "instruction"
+                              "instruction",
+                              "kind",
+                              "documentId"
                             ]
                           }
                         },
@@ -20334,6 +20733,46 @@
                             "null"
                           ]
                         },
+                        "standardMode": {
+                          "type": "boolean"
+                        },
+                        "documents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              },
+                              "itemIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "nationalCode",
+                              "itemIds"
+                            ]
+                          }
+                        },
                         "signedAt": {
                           "type": [
                             "string",
@@ -20377,6 +20816,8 @@
                         "doctorAdvice",
                         "warnings",
                         "prescriptionNo",
+                        "standardMode",
+                        "documents",
                         "signedAt",
                         "signedBy",
                         "printedAt",
@@ -34834,6 +35275,10 @@
                     "type": "boolean",
                     "default": true
                   },
+                  "isTraditional": {
+                    "type": "boolean",
+                    "default": false
+                  },
                   "registrationNumber": {
                     "type": "string",
                     "minLength": 1
@@ -35067,6 +35512,9 @@
                         "isSplittable": {
                           "type": "boolean"
                         },
+                        "isTraditional": {
+                          "type": "boolean"
+                        },
                         "registrationNumber": {
                           "type": [
                             "string",
@@ -35278,6 +35726,7 @@
                         "controlType",
                         "isPrescriptionOnly",
                         "isSplittable",
+                        "isTraditional",
                         "registrationNumber",
                         "dosageForm",
                         "countryOfOrigin",
@@ -35590,6 +36039,9 @@
                               "isSplittable": {
                                 "type": "boolean"
                               },
+                              "isTraditional": {
+                                "type": "boolean"
+                              },
                               "registrationNumber": {
                                 "type": [
                                   "string",
@@ -35801,6 +36253,7 @@
                               "controlType",
                               "isPrescriptionOnly",
                               "isSplittable",
+                              "isTraditional",
                               "registrationNumber",
                               "dosageForm",
                               "countryOfOrigin",
@@ -36033,6 +36486,9 @@
                         "isSplittable": {
                           "type": "boolean"
                         },
+                        "isTraditional": {
+                          "type": "boolean"
+                        },
                         "registrationNumber": {
                           "type": [
                             "string",
@@ -36244,6 +36700,7 @@
                         "controlType",
                         "isPrescriptionOnly",
                         "isSplittable",
+                        "isTraditional",
                         "registrationNumber",
                         "dosageForm",
                         "countryOfOrigin",
@@ -36499,6 +36956,9 @@
                     "type": "boolean"
                   },
                   "isSplittable": {
+                    "type": "boolean"
+                  },
+                  "isTraditional": {
                     "type": "boolean"
                   },
                   "registrationNumber": {
@@ -36776,6 +37236,9 @@
                         "isSplittable": {
                           "type": "boolean"
                         },
+                        "isTraditional": {
+                          "type": "boolean"
+                        },
                         "registrationNumber": {
                           "type": [
                             "string",
@@ -36987,6 +37450,7 @@
                         "controlType",
                         "isPrescriptionOnly",
                         "isSplittable",
+                        "isTraditional",
                         "registrationNumber",
                         "dosageForm",
                         "countryOfOrigin",
@@ -44611,6 +45075,16 @@
                               },
                               "exampleNextCode": {
                                 "type": "string"
+                              },
+                              "mode": {
+                                "type": "string",
+                                "enum": [
+                                  "CUSTOM",
+                                  "STANDARD"
+                                ]
+                              },
+                              "supportsStandardMode": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -44621,7 +45095,9 @@
                               "counterDigits",
                               "startingValue",
                               "locked",
-                              "exampleNextCode"
+                              "exampleNextCode",
+                              "mode",
+                              "supportsStandardMode"
                             ]
                           }
                         }
@@ -44676,6 +45152,755 @@
           },
           "403": {
             "description": "Không có quyền clinic_config.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/code-templates/prescription-standard-readiness": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "Mã đơn thuốc chuẩn Bộ Y tế (docs/DECISIONS.md #242) — chi nhánh nào đã/chưa có mã cơ sở KCB 5 chữ số để bật chế độ chuẩn",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ready": {
+                          "type": "boolean"
+                        },
+                        "companyFacilityCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "multiBranch": {
+                          "type": "boolean"
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
+                              "facilityCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "effectiveFacilityCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "BRANCH",
+                                  "COMPANY",
+                                  "NONE"
+                                ]
+                              },
+                              "ready": {
+                                "type": "boolean"
+                              },
+                              "exampleNextCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "branchId",
+                              "name",
+                              "isDefault",
+                              "facilityCode",
+                              "effectiveFacilityCode",
+                              "source",
+                              "ready",
+                              "exampleNextCode"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "ready",
+                        "companyFacilityCode",
+                        "multiBranch",
+                        "branches"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/prescription-kind-mapping": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "Bảng ánh xạ loại thuốc → loại đơn Bộ Y tế C/N/H/Y (docs/DECISIONS.md #242, giai đoạn 2) — hiện tại + mặc định",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "mapping": {
+                          "type": "object",
+                          "properties": {
+                            "NARCOTIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "PSYCHOTROPIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "PRECURSOR": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "TOXIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "NORMAL": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "TRADITIONAL": {
+                              "type": "string",
+                              "enum": [
+                                "Y",
+                                "C"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "NARCOTIC",
+                            "PSYCHOTROPIC",
+                            "PRECURSOR",
+                            "TOXIC",
+                            "NORMAL",
+                            "TRADITIONAL"
+                          ]
+                        },
+                        "defaults": {
+                          "type": "object",
+                          "properties": {
+                            "NARCOTIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "PSYCHOTROPIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "PRECURSOR": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "TOXIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "NORMAL": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "TRADITIONAL": {
+                              "type": "string",
+                              "enum": [
+                                "Y",
+                                "C"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "NARCOTIC",
+                            "PSYCHOTROPIC",
+                            "PRECURSOR",
+                            "TOXIC",
+                            "NORMAL",
+                            "TRADITIONAL"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "mapping",
+                        "defaults"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "Sửa bảng ánh xạ loại thuốc → loại đơn (chỉ áp dụng cho đơn ký từ lúc lưu; ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "NARCOTIC": {
+                    "type": "string",
+                    "enum": [
+                      "C",
+                      "N",
+                      "H",
+                      "Y"
+                    ]
+                  },
+                  "PSYCHOTROPIC": {
+                    "type": "string",
+                    "enum": [
+                      "C",
+                      "N",
+                      "H",
+                      "Y"
+                    ]
+                  },
+                  "PRECURSOR": {
+                    "type": "string",
+                    "enum": [
+                      "C",
+                      "N",
+                      "H",
+                      "Y"
+                    ]
+                  },
+                  "TOXIC": {
+                    "type": "string",
+                    "enum": [
+                      "C",
+                      "N",
+                      "H",
+                      "Y"
+                    ]
+                  },
+                  "NORMAL": {
+                    "type": "string",
+                    "enum": [
+                      "C",
+                      "N",
+                      "H",
+                      "Y"
+                    ]
+                  },
+                  "TRADITIONAL": {
+                    "type": "string",
+                    "enum": [
+                      "Y",
+                      "C"
+                    ]
+                  }
+                },
+                "required": [
+                  "NARCOTIC",
+                  "PSYCHOTROPIC",
+                  "PRECURSOR",
+                  "TOXIC",
+                  "NORMAL",
+                  "TRADITIONAL"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sửa thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "mapping": {
+                          "type": "object",
+                          "properties": {
+                            "NARCOTIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "PSYCHOTROPIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "PRECURSOR": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "TOXIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "NORMAL": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "TRADITIONAL": {
+                              "type": "string",
+                              "enum": [
+                                "Y",
+                                "C"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "NARCOTIC",
+                            "PSYCHOTROPIC",
+                            "PRECURSOR",
+                            "TOXIC",
+                            "NORMAL",
+                            "TRADITIONAL"
+                          ]
+                        },
+                        "defaults": {
+                          "type": "object",
+                          "properties": {
+                            "NARCOTIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "PSYCHOTROPIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "PRECURSOR": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "TOXIC": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "NORMAL": {
+                              "type": "string",
+                              "enum": [
+                                "C",
+                                "N",
+                                "H",
+                                "Y"
+                              ]
+                            },
+                            "TRADITIONAL": {
+                              "type": "string",
+                              "enum": [
+                                "Y",
+                                "C"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "NARCOTIC",
+                            "PSYCHOTROPIC",
+                            "PRECURSOR",
+                            "TOXIC",
+                            "NORMAL",
+                            "TRADITIONAL"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "mapping",
+                        "defaults"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ (dòng Đông y chỉ nhận Y hoặc C)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinic_config.update",
             "content": {
               "application/json": {
                 "schema": {
@@ -44777,6 +46002,13 @@
                   "startingValue": {
                     "type": "integer",
                     "exclusiveMinimum": 0
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "CUSTOM",
+                      "STANDARD"
+                    ]
                   }
                 },
                 "required": [
@@ -44854,6 +46086,16 @@
                         },
                         "exampleNextCode": {
                           "type": "string"
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "CUSTOM",
+                            "STANDARD"
+                          ]
+                        },
+                        "supportsStandardMode": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -44864,7 +46106,9 @@
                         "counterDigits",
                         "startingValue",
                         "locked",
-                        "exampleNextCode"
+                        "exampleNextCode",
+                        "mode",
+                        "supportsStandardMode"
                       ]
                     },
                     "meta": {
@@ -44975,6 +46219,37 @@
           },
           "409": {
             "description": "Đã khoá — không sửa lại được \"Số bắt đầu đếm\" (BUSINESS_CODE_TEMPLATE_STARTING_VALUE_LOCKED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Không bật được chế độ Chuẩn Bộ Y tế: còn chi nhánh chưa có mã cơ sở KCB (PRESCRIPTION_STANDARD_MODE_NOT_READY)",
             "content": {
               "application/json": {
                 "schema": {
@@ -75786,6 +77061,13 @@
                               },
                               "warehouseStockOnHand": {
                                 "type": "integer"
+                              },
+                              "documentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
                               }
                             },
                             "required": [
@@ -75799,7 +77081,8 @@
                               "remainingQuantity",
                               "sellPrice",
                               "suggestedBatches",
-                              "warehouseStockOnHand"
+                              "warehouseStockOnHand",
+                              "documentId"
                             ]
                           }
                         },
@@ -75826,6 +77109,13 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "documentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
                               }
                             },
                             "required": [
@@ -75833,7 +77123,37 @@
                               "drugName",
                               "prescribedQuantity",
                               "doseSummary",
-                              "instruction"
+                              "instruction",
+                              "documentId"
+                            ]
+                          }
+                        },
+                        "documents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "nationalCode"
                             ]
                           }
                         }
@@ -75848,7 +77168,8 @@
                         "signedByName",
                         "diagnosisLabel",
                         "lines",
-                        "freeTextLines"
+                        "freeTextLines",
+                        "documents"
                       ]
                     },
                     "meta": {

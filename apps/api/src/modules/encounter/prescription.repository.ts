@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { Prescription, Prisma } from '@prisma/client';
+import type { Prescription, PrescriptionDocument, Prisma } from '@prisma/client';
+import type { DrugControlType } from '@nexamed/shared';
 
 export interface PrescriptionItemWithDrug {
   id: string;
@@ -24,10 +25,23 @@ export interface PrescriptionItemWithDrug {
   instruction: string | null;
   /** `drug.is_splittable` (#241) — `true` cho dòng tự do (không có khái niệm chia nhỏ). */
   isSplittable: boolean;
+  /** Phân loại kiểm soát + cờ Đông y của thuốc — đầu vào của `resolvePrescriptionKind()` (#242). `null`/`false` cho dòng tự do. */
+  controlType: DrugControlType | null;
+  isTraditional: boolean;
+  /** Đơn pháp lý chứa dòng này (#242) — `null` khi còn nháp hoặc đơn ký trước ngày bật chế độ chuẩn. */
+  documentId: string | null;
+}
+
+/** Đơn thuốc pháp lý đang hiệu lực (mã chuẩn Bộ Y tế, #242) — thứ tự C, N, H, Y theo thời điểm tạo. */
+export interface PrescriptionDocumentRow {
+  id: string;
+  kind: 'C' | 'N' | 'H' | 'Y';
+  nationalCode: string;
 }
 
 export interface PrescriptionWithItems extends Prescription {
   items: PrescriptionItemWithDrug[];
+  documents: PrescriptionDocumentRow[];
 }
 
 interface RawItemWithDrug {
@@ -42,11 +56,30 @@ interface RawItemWithDrug {
   durationDays: number;
   quantity: number;
   instruction: string | null;
-  drug: { name: string; activeIngredient: string | null; baseUnitCode: string | null; isSplittable: boolean; ingredients: { activeIngredientCode: string }[] } | null;
+  documentId: string | null;
+  drug: {
+    name: string;
+    activeIngredient: string | null;
+    baseUnitCode: string | null;
+    isSplittable: boolean;
+    controlType: DrugControlType;
+    isTraditional: boolean;
+    ingredients: { activeIngredientCode: string }[];
+  } | null;
 }
 
 interface RawPrescriptionWithItems extends Prescription {
   items: RawItemWithDrug[];
+  documents: PrescriptionDocument[];
+}
+
+function mapDocuments(rows: PrescriptionDocument[]): PrescriptionDocumentRow[] {
+  return rows.map((d) => ({ id: d.id, kind: d.kind as PrescriptionDocumentRow['kind'], nationalCode: d.nationalCode }));
+}
+
+/** Dựng `PrescriptionWithItems` từ dòng thô (items + documents) — dùng chung mọi hàm đọc. */
+function toPrescriptionWithItems(row: RawPrescriptionWithItems, nameByCode: Map<string, string>): PrescriptionWithItems {
+  return { ...row, items: mapItems(row.items, nameByCode), documents: mapDocuments(row.documents) };
 }
 
 function mapItems(rows: RawItemWithDrug[], nameByCode: Map<string, string>): PrescriptionItemWithDrug[] {
@@ -66,6 +99,9 @@ function mapItems(rows: RawItemWithDrug[], nameByCode: Map<string, string>): Pre
     unitCode: row.drug?.baseUnitCode ?? null,
     instruction: row.instruction,
     isSplittable: row.drug?.isSplittable ?? true,
+    controlType: row.drug?.controlType ?? null,
+    isTraditional: row.drug?.isTraditional ?? false,
+    documentId: row.documentId,
   }));
 }
 
@@ -78,12 +114,17 @@ const ITEMS_INCLUDE = {
         activeIngredient: true,
         baseUnitCode: true,
         isSplittable: true,
+        controlType: true,
+        isTraditional: true,
         ingredients: { where: { deletedAt: null as null }, select: { activeIngredientCode: true } },
       },
     },
   },
   orderBy: { createdAt: 'asc' as const },
 };
+
+/** Đơn pháp lý đang hiệu lực kèm đơn thuốc (#242). */
+const DOCUMENTS_INCLUDE = { where: { deletedAt: null as null }, orderBy: { createdAt: 'asc' as const } };
 
 /**
  * Tên hoạt chất chuẩn theo mã (`reference_catalog` category `ACTIVE_INGREDIENT`, danh mục dùng chung — không có
@@ -115,10 +156,10 @@ export class PrescriptionRepository {
   async findActiveForEncounter(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<PrescriptionWithItems | null> {
     const row = (await tx.prescription.findFirst({
       where: { tenantId, encounterId, deletedAt: null },
-      include: { items: ITEMS_INCLUDE },
+      include: { items: ITEMS_INCLUDE, documents: DOCUMENTS_INCLUDE },
     })) as RawPrescriptionWithItems | null;
     if (!row) return null;
-    return { ...row, items: mapItems(row.items, await loadIngredientNames(tx, tenantId, row.items)) };
+    return toPrescriptionWithItems(row, await loadIngredientNames(tx, tenantId, row.items));
   }
 
   /** "Xuất bệnh án PDF" (S6-06) — đơn ĐANG HIỆU LỰC của NHIỀU lượt khám trong 1 query (partial
@@ -127,12 +168,12 @@ export class PrescriptionRepository {
     if (encounterIds.length === 0) return new Map();
     const rows = (await tx.prescription.findMany({
       where: { tenantId, encounterId: { in: encounterIds }, deletedAt: null },
-      include: { items: ITEMS_INCLUDE },
+      include: { items: ITEMS_INCLUDE, documents: DOCUMENTS_INCLUDE },
     })) as RawPrescriptionWithItems[];
     const nameByCode = await loadIngredientNames(tx, tenantId, rows.flatMap((r) => r.items));
     const result = new Map<string, PrescriptionWithItems>();
     for (const row of rows) {
-      result.set(row.encounterId, { ...row, items: mapItems(row.items, nameByCode) });
+      result.set(row.encounterId, toPrescriptionWithItems(row, nameByCode));
     }
     return result;
   }
@@ -140,10 +181,10 @@ export class PrescriptionRepository {
   async findById(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<PrescriptionWithItems | null> {
     const row = (await tx.prescription.findFirst({
       where: { tenantId, id, deletedAt: null },
-      include: { items: ITEMS_INCLUDE },
+      include: { items: ITEMS_INCLUDE, documents: DOCUMENTS_INCLUDE },
     })) as RawPrescriptionWithItems | null;
     if (!row) return null;
-    return { ...row, items: mapItems(row.items, await loadIngredientNames(tx, tenantId, row.items)) };
+    return toPrescriptionWithItems(row, await loadIngredientNames(tx, tenantId, row.items));
   }
 
   /** "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196, mockup đã duyệt) — đơn ĐÃ KÝ gần
@@ -158,10 +199,10 @@ export class PrescriptionRepository {
     const row = (await tx.prescription.findFirst({
       where: { tenantId, deletedAt: null, signedAt: { not: null }, encounterId: { not: excludeEncounterId }, encounter: { patientId } },
       orderBy: { signedAt: 'desc' },
-      include: { items: ITEMS_INCLUDE },
+      include: { items: ITEMS_INCLUDE, documents: DOCUMENTS_INCLUDE },
     })) as RawPrescriptionWithItems | null;
     if (!row) return null;
-    return { ...row, items: mapItems(row.items, await loadIngredientNames(tx, tenantId, row.items)) };
+    return toPrescriptionWithItems(row, await loadIngredientNames(tx, tenantId, row.items));
   }
 
   /**
@@ -219,6 +260,36 @@ export class PrescriptionRepository {
     if (items.length === 0) return;
     await tx.prescriptionItem.createMany({
       data: items.map((item) => ({ tenantId, prescriptionId, ...item, createdBy: actorId, updatedBy: actorId })),
+    });
+  }
+
+  // ----- Đơn thuốc pháp lý (mã chuẩn Bộ Y tế, #242) -----
+
+  /** Tạo một đơn pháp lý (một loại C/N/H/Y) của đơn thuốc — chỉ gọi lúc ký/đính chính, trong cùng transaction. */
+  createDocument(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    prescriptionId: string,
+    actorId: string,
+    data: { kind: PrescriptionDocumentRow['kind']; nationalCode: string },
+  ): Promise<PrescriptionDocument> {
+    return tx.prescriptionDocument.create({ data: { tenantId, prescriptionId, ...data, createdBy: actorId, updatedBy: actorId } });
+  }
+
+  /** Gán các dòng thuốc vào một đơn pháp lý. Dòng của đơn nháp chưa ký chưa bị trigger chặn (trigger chỉ ở bảng `prescription`). */
+  async assignItemsToDocument(tx: Prisma.TransactionClient, tenantId: string, itemIds: string[], documentId: string, actorId: string): Promise<void> {
+    if (itemIds.length === 0) return;
+    await tx.prescriptionItem.updateMany({
+      where: { tenantId, id: { in: itemIds }, deletedAt: null },
+      data: { documentId, updatedBy: actorId, version: { increment: 1 } },
+    });
+  }
+
+  /** Soft-delete các đơn pháp lý của đơn bị đính chính — PHẢI chạy TRƯỚC khi tạo đơn pháp lý mới giữ cùng mã (partial unique theo mã chỉ tính bản đang hiệu lực). */
+  async supersedeDocuments(tx: Prisma.TransactionClient, tenantId: string, prescriptionId: string, actorId: string): Promise<void> {
+    await tx.prescriptionDocument.updateMany({
+      where: { tenantId, prescriptionId, deletedAt: null },
+      data: { deletedAt: new Date(), deletedReason: 'amended', updatedBy: actorId, version: { increment: 1 } },
     });
   }
 

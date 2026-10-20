@@ -17,6 +17,13 @@ export interface BranchDirectoryPort {
    * không có chi nhánh đó trong công ty.
    */
   getBranchPrintInfo(tenantId: string, branchId: string): Promise<{ name: string; address: string | null; phone: string | null } | null>;
+  /**
+   * Mã cơ sở khám chữa bệnh (5 chữ số) riêng của MỘT chi nhánh (docs/DECISIONS.md #242) — `null` nếu không có chi nhánh đó hoặc chi nhánh chưa nhập
+   * (nơi gọi tự quay về mã công ty). Dùng để ghép mã đơn thuốc chuẩn Bộ Y tế.
+   */
+  getBranchFacilityCode(tenantId: string, branchId: string): Promise<string | null>;
+  /** Mọi chi nhánh đang hoạt động kèm mã KCB riêng (có thể null) — thứ tự: mặc định đứng đầu rồi theo tên. Dùng kiểm tra "sẵn sàng bật chế độ chuẩn". */
+  listActiveBranchFacilityInfo(tenantId: string): Promise<{ id: string; name: string; isDefault: boolean; facilityCode: string | null }[]>;
 }
 
 export const BRANCH_DIRECTORY_PORT = Symbol('BRANCH_DIRECTORY_PORT');

@@ -954,6 +954,7 @@ export class StockIssueService {
             prescribedQuantity: item.quantity,
             doseSummary: formatDoseSummary(item),
             instruction: item.instruction,
+            documentId: item.documentId,
           });
           continue;
         }
@@ -999,6 +1000,7 @@ export class StockIssueService {
           sellPrice: effectivePrices[item.drugId] ?? (drug.defaultSellPrice === null ? 0 : Number(drug.defaultSellPrice)),
           suggestedBatches,
           warehouseStockOnHand,
+          documentId: item.documentId,
         });
       }
 
@@ -1021,6 +1023,7 @@ export class StockIssueService {
         diagnosisLabel,
         lines,
         freeTextLines,
+        documents: prescription.documents.map((d) => ({ id: d.id, kind: d.kind, nationalCode: d.nationalCode })),
       };
     });
   }

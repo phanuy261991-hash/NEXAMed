@@ -67,7 +67,7 @@ export function BranchPane() {
 
   async function handleSubmit(dto: BranchSubmitDto) {
     if (modal?.mode === 'create') {
-      await createMutation.mutateAsync({ name: dto.name, address: dto.address ?? undefined, phone: dto.phone ?? undefined });
+      await createMutation.mutateAsync({ name: dto.name, address: dto.address ?? undefined, phone: dto.phone ?? undefined, facilityCode: dto.facilityCode });
     } else if (modal?.branch) {
       await updateMutation.mutateAsync({ id: modal.branch.id, body: { ...dto, version: modal.branch.version } });
     }
@@ -130,6 +130,7 @@ export function BranchPane() {
                   <th className="px-4 py-2.5 text-left">Tên chi nhánh</th>
                   <th className="px-4 py-2.5 text-left">Địa chỉ</th>
                   <th className="w-36 px-4 py-2.5 text-center">Điện thoại</th>
+                  <th className="w-28 px-4 py-2.5 text-center">Mã KCB</th>
                   <th className="w-28 px-4 py-2.5 text-center">Nhân viên</th>
                   <th className="w-36 px-4 py-2.5 text-center">Trạng thái</th>
                   {canManage && <th className="w-24 px-4 py-2.5 text-center">Thao tác</th>}
@@ -148,6 +149,9 @@ export function BranchPane() {
                     </td>
                     <td className="max-w-[360px] truncate px-4 py-2 text-left text-slate-600" title={b.address ?? undefined}>{b.address ?? '—'}</td>
                     <td className="px-4 py-2 text-center text-slate-600">{b.phone ?? '—'}</td>
+                    <td className="px-4 py-2 text-center" title={b.facilityCode ? 'Mã cơ sở khám chữa bệnh của chi nhánh' : 'Chưa nhập — dùng mã của công ty (Thông tin phòng khám)'}>
+                      {b.facilityCode ? <span className="font-semibold tabular-nums text-slate-800">{b.facilityCode}</span> : <span className="text-slate-400">—</span>}
+                    </td>
                     <td className="px-4 py-2 text-center font-semibold text-slate-800">{b.staffCount}</td>
                     <td className="px-4 py-2 text-center">
                       <StatusBadge tone={b.isActive ? 'success' : 'neutral'}>{b.isActive ? 'Đang hoạt động' : 'Ngưng dùng'}</StatusBadge>

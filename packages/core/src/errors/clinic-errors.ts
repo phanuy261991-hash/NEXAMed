@@ -102,3 +102,33 @@ export class SoloClinicWorkflowConflictsWithMultiCashierError extends DomainErro
     );
   }
 }
+
+/**
+ * Mã đơn thuốc chuẩn Bộ Y tế (docs/DECISIONS.md #242): chi nhánh đang ký không có mã cơ sở KCB hợp lệ (5 chữ số) — cả của chi nhánh lẫn
+ * của công ty — nên không ghép được 5 ký tự đầu của mã đơn.
+ */
+export class PrescriptionFacilityCodeMissingError extends DomainError {
+  readonly code = 'PRESCRIPTION_FACILITY_CODE_MISSING';
+
+  constructor() {
+    super('Chi nhánh chưa có mã cơ sở khám chữa bệnh (5 chữ số) nên chưa cấp được mã đơn thuốc chuẩn Bộ Y tế. Nhập mã ở Quản trị > Chi nhánh (hoặc Thông tin phòng khám).');
+  }
+}
+
+/** Không bật được chế độ "Chuẩn Bộ Y tế": còn chi nhánh đang hoạt động chưa có mã cơ sở KCB hợp lệ. `message` nêu tên chi nhánh thiếu. */
+export class PrescriptionStandardModeNotReadyError extends DomainError {
+  readonly code = 'PRESCRIPTION_STANDARD_MODE_NOT_READY';
+
+  constructor(branchNames: string[]) {
+    super(`Chưa bật được chế độ Chuẩn Bộ Y tế: chi nhánh chưa có mã cơ sở KCB (5 chữ số): ${branchNames.join(', ')}. Nhập mã ở Quản trị > Chi nhánh.`);
+  }
+}
+
+/** Chế độ "Chuẩn Bộ Y tế" chỉ có ở loại mã đơn thuốc. */
+export class BusinessCodeModeUnsupportedError extends DomainError {
+  readonly code = 'BUSINESS_CODE_MODE_UNSUPPORTED';
+
+  constructor() {
+    super('Chế độ "Chuẩn Bộ Y tế" chỉ áp dụng cho mã đơn thuốc.');
+  }
+}

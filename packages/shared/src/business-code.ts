@@ -18,9 +18,42 @@ export const BUSINESS_CODE_TOKEN = {
   MONTH: '[Tháng]',
   DAY: '[Ngày]',
   COUNTER: '[Số đếm]',
+  // Mã đơn thuốc theo Bộ Y tế (docs/DECISIONS.md #242) — CHỈ dùng được trong khuôn của loại mã PRESCRIPTION.
+  FACILITY_CODE: '[Mã cơ sở KCB]',
+  PRESCRIPTION_KIND: '[Loại đơn]',
 } as const;
 
+/** Hai token chỉ có nghĩa với mã đơn thuốc — `parseBusinessCodeTemplate(template, codeType)` từ chối ở loại mã khác. */
+const PRESCRIPTION_ONLY_TOKENS: string[] = [BUSINESS_CODE_TOKEN.FACILITY_CODE, BUSINESS_CODE_TOKEN.PRESCRIPTION_KIND];
+
 const KNOWN_TOKENS = Object.values(BUSINESS_CODE_TOKEN);
+
+/**
+ * Mã đơn thuốc chuẩn Bộ Y tế (`xxxxxyyyyyyy-z`, docs/DECISIONS.md #242): 5 chữ số mã cơ sở KCB + 7 chữ số thập phân bộ đếm chung
+ * 4 loại đơn + `-` + loại đơn C/N/H/Y. Chế độ "Chuẩn Bộ Y tế" KHOÁ khuôn mẫu và số chữ số này.
+ */
+export const PRESCRIPTION_KINDS = ['C', 'N', 'H', 'Y'] as const;
+export const prescriptionKindSchema = z.enum(PRESCRIPTION_KINDS);
+export type PrescriptionKind = z.infer<typeof prescriptionKindSchema>;
+export const PRESCRIPTION_KIND_LABEL: Record<PrescriptionKind, string> = {
+  C: 'thông thường',
+  N: 'gây nghiện',
+  H: 'hướng thần',
+  Y: 'y học cổ truyền',
+};
+export const PRESCRIPTION_STANDARD_TEMPLATE = `${BUSINESS_CODE_TOKEN.FACILITY_CODE}${BUSINESS_CODE_TOKEN.COUNTER}-${BUSINESS_CODE_TOKEN.PRESCRIPTION_KIND}`;
+export const PRESCRIPTION_STANDARD_COUNTER_DIGITS = 7;
+/** Mã cơ sở khám chữa bệnh: đúng 5 chữ số. */
+export const FACILITY_CODE_PATTERN = /^\d{5}$/;
+export const facilityCodeSchema = z.string().regex(FACILITY_CODE_PATTERN, 'Mã cơ sở KCB phải gồm đúng 5 chữ số.');
+export function isValidFacilityCode(value: string | null | undefined): value is string {
+  return typeof value === 'string' && FACILITY_CODE_PATTERN.test(value);
+}
+/** Khoá bộ đếm riêng của mã đơn chuẩn: `code_sequence.prefix` — chu kỳ (`period_key`) = mã cơ sở KCB nên mỗi cơ sở một bộ đếm, KHÔNG đánh số lại. */
+export const PRESCRIPTION_STANDARD_SEQUENCE_PREFIX = 'DTQG';
+
+export const businessCodeModeSchema = z.enum(['CUSTOM', 'STANDARD']);
+export type BusinessCodeMode = z.infer<typeof businessCodeModeSchema>;
 /** Khớp bất kỳ chuỗi trong ngoặc vuông — dùng để phát hiện token LẠ (không thuộc 5 token đã biết). */
 const BRACKET_TOKEN_PATTERN = /\[[^\]]*\]/g;
 
@@ -169,11 +202,17 @@ export type ParseBusinessCodeTemplateResult =
  * Validate khuôn mẫu: đúng 1 lần `[Số đếm]` (bắt buộc — không có thì không đảm bảo mã không
  * trùng), mỗi token khác tối đa 1 lần, không có `[...]` nào lạ ngoài 5 token đã biết.
  */
-export function parseBusinessCodeTemplate(template: string): ParseBusinessCodeTemplateResult {
+export function parseBusinessCodeTemplate(template: string, codeType?: BusinessCodeType): ParseBusinessCodeTemplateResult {
   const brackets = template.match(BRACKET_TOKEN_PATTERN) ?? [];
   const unknown = brackets.filter((b) => !KNOWN_TOKENS.includes(b as (typeof KNOWN_TOKENS)[number]));
   if (unknown.length > 0) {
     return { ok: false, error: `Token không hợp lệ: ${unknown.join(', ')}` };
+  }
+  if (codeType !== undefined && codeType !== 'PRESCRIPTION') {
+    const misplaced = brackets.filter((b) => PRESCRIPTION_ONLY_TOKENS.includes(b));
+    if (misplaced.length > 0) {
+      return { ok: false, error: `Token ${misplaced[0]} chỉ dùng được cho mã đơn thuốc.` };
+    }
   }
 
   const countOf = (token: string) => brackets.filter((b) => b === token).length;
@@ -184,7 +223,14 @@ export function parseBusinessCodeTemplate(template: string): ParseBusinessCodeTe
   if (counterCount > 1) {
     return { ok: false, error: `Token ${BUSINESS_CODE_TOKEN.COUNTER} chỉ được dùng 1 lần` };
   }
-  for (const token of [BUSINESS_CODE_TOKEN.YEAR_2, BUSINESS_CODE_TOKEN.YEAR_4, BUSINESS_CODE_TOKEN.MONTH, BUSINESS_CODE_TOKEN.DAY]) {
+  for (const token of [
+    BUSINESS_CODE_TOKEN.YEAR_2,
+    BUSINESS_CODE_TOKEN.YEAR_4,
+    BUSINESS_CODE_TOKEN.MONTH,
+    BUSINESS_CODE_TOKEN.DAY,
+    BUSINESS_CODE_TOKEN.FACILITY_CODE,
+    BUSINESS_CODE_TOKEN.PRESCRIPTION_KIND,
+  ]) {
     if (countOf(token) > 1) {
       return { ok: false, error: `Token ${token} chỉ được dùng tối đa 1 lần` };
     }
@@ -226,8 +272,14 @@ export function computeBusinessCodePeriodKey(parsed: ParsedBusinessCodeTemplate,
   return '';
 }
 
+/** Giá trị cho hai token riêng của mã đơn thuốc; thiếu thì token được giữ nguyên (nơi gọi tự đảm bảo truyền đủ khi khuôn có token đó). */
+export interface BusinessCodeExtras {
+  facilityCode?: string;
+  prescriptionKind?: PrescriptionKind;
+}
+
 /** Ghép khuôn mẫu thành mã thật — `seq` do backend cấp atomic; ở web chỉ dùng để XEM TRƯỚC. */
-export function formatBusinessCode(template: string, counterDigits: number, date: DateParts, seq: number | bigint): string {
+export function formatBusinessCode(template: string, counterDigits: number, date: DateParts, seq: number | bigint, extras: BusinessCodeExtras = {}): string {
   const yy = String(date.year % 100).padStart(2, '0');
   const yyyy = String(date.year).padStart(4, '0');
   const mm = String(date.month).padStart(2, '0');
@@ -243,8 +295,20 @@ export function formatBusinessCode(template: string, counterDigits: number, date
     .join(mm)
     .split(BUSINESS_CODE_TOKEN.DAY)
     .join(dd)
+    .split(BUSINESS_CODE_TOKEN.FACILITY_CODE)
+    .join(extras.facilityCode ?? BUSINESS_CODE_TOKEN.FACILITY_CODE)
+    .split(BUSINESS_CODE_TOKEN.PRESCRIPTION_KIND)
+    .join(extras.prescriptionKind ?? BUSINESS_CODE_TOKEN.PRESCRIPTION_KIND)
     .split(BUSINESS_CODE_TOKEN.COUNTER)
     .join(seqStr);
+}
+
+/** Mã đơn thuốc chuẩn Bộ Y tế, ghép trực tiếp (không đi qua khuôn tuỳ chỉnh): `<5 số KCB><7 số>-<C|N|H|Y>`. */
+export function formatPrescriptionNationalCode(facilityCode: string, seq: number | bigint, kind: PrescriptionKind): string {
+  return formatBusinessCode(PRESCRIPTION_STANDARD_TEMPLATE, PRESCRIPTION_STANDARD_COUNTER_DIGITS, { year: 2000, month: 1, day: 1 }, seq, {
+    facilityCode,
+    prescriptionKind: kind,
+  });
 }
 
 export const businessCodeTemplateItemSchema = z.object({
@@ -258,6 +322,10 @@ export const businessCodeTemplateItemSchema = z.object({
   locked: z.boolean(),
   /** Mã kế tiếp minh hoạ (tính từ `currentValue` thật hiện có, KHÔNG cấp số/đụng DB). */
   exampleNextCode: z.string(),
+  /** `STANDARD` = "Chuẩn Bộ Y tế" (chỉ loại mã PRESCRIPTION, #242): khuôn + số chữ số bị khoá, không đánh số lại. Loại mã khác luôn `CUSTOM`. */
+  mode: businessCodeModeSchema,
+  /** Loại mã này có chế độ "Chuẩn Bộ Y tế" không (hiện chỉ PRESCRIPTION). */
+  supportsStandardMode: z.boolean(),
 });
 export type BusinessCodeTemplateItem = z.infer<typeof businessCodeTemplateItemSchema>;
 
@@ -271,5 +339,34 @@ export const updateBusinessCodeTemplateRequestSchema = z.object({
   counterDigits: z.number().int().min(1).max(9),
   /** Chỉ chấp nhận khi loại mã CHƯA `locked` — server 409 nếu gửi kèm lúc đã khoá. */
   startingValue: z.number().int().positive().optional(),
+  /** Bỏ trống = giữ chế độ hiện tại. `STANDARD` chỉ hợp lệ với PRESCRIPTION; server tự đặt khuôn + số chữ số chuẩn và bỏ qua `template`/`counterDigits` gửi kèm. */
+  mode: businessCodeModeSchema.optional(),
 });
 export type UpdateBusinessCodeTemplateRequest = z.infer<typeof updateBusinessCodeTemplateRequestSchema>;
+
+/** Một chi nhánh trong kiểm tra "sẵn sàng bật chế độ Chuẩn Bộ Y tế" của mã đơn thuốc. */
+export const prescriptionStandardReadinessBranchSchema = z.object({
+  branchId: z.string().uuid(),
+  name: z.string(),
+  isDefault: z.boolean(),
+  /** Mã KCB riêng của chi nhánh (null = chưa nhập, dùng mã công ty nếu có). */
+  facilityCode: z.string().nullable(),
+  /** Mã KCB thực dùng: của chi nhánh nếu hợp lệ, không thì của công ty nếu hợp lệ, không thì null. */
+  effectiveFacilityCode: z.string().nullable(),
+  source: z.enum(['BRANCH', 'COMPANY', 'NONE']),
+  ready: z.boolean(),
+  /** Mã kế tiếp minh hoạ cho đơn thường (loại C) của cơ sở này; null khi chưa sẵn sàng. */
+  exampleNextCode: z.string().nullable(),
+});
+export type PrescriptionStandardReadinessBranch = z.infer<typeof prescriptionStandardReadinessBranchSchema>;
+
+export const prescriptionStandardReadinessResponseSchema = z.object({
+  /** Mọi chi nhánh đang hoạt động đều sẵn sàng. */
+  ready: z.boolean(),
+  /** Mã KCB cấp công ty (`Thông tin phòng khám`), null nếu chưa nhập. */
+  companyFacilityCode: z.string().nullable(),
+  /** Công ty có từ 2 chi nhánh hoạt động không (giao diện chỉ hiện bảng chi nhánh khi true). */
+  multiBranch: z.boolean(),
+  branches: z.array(prescriptionStandardReadinessBranchSchema),
+});
+export type PrescriptionStandardReadinessResponse = z.infer<typeof prescriptionStandardReadinessResponseSchema>;

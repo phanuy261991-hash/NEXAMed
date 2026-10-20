@@ -242,6 +242,19 @@ html {
   .print-sheet + .print-sheet {
     break-before: page;
   }
+  /* Nhiều chứng từ in MỘT lần (ví dụ đơn thuốc tách thành nhiều đơn pháp lý, docs/DECISIONS.md #242): bọc trong .print-stack — mỗi .print-area một tờ, ngắt trang giữa các tờ. */
+  .print-stack {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .print-stack > .print-area {
+    position: static;
+  }
+  .print-stack > .print-area + .print-area {
+    break-before: page;
+  }
   /* Vùng xem trước ở trang Quản lý mẫu in được thu nhỏ bằng transform — phải bỏ khi in thử. */
   .print-no-transform {
     transform: none !important;

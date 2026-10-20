@@ -9,6 +9,7 @@ import { useDrugBatchBalancesQuery, useDrugLedgerQuery } from '../inventory/inve
 import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
 import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
+import { CheckTile } from '../../shared/ui/CheckTile';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { Textarea } from '../../shared/ui/Textarea';
@@ -418,6 +419,9 @@ export function DrugCatalogPane() {
                       <div className="flex items-center font-medium text-slate-900">
                         {d.name}
                         {d.itemType === 'MEDICINE' && <ControlTypeBadge controlType={d.controlType} />}
+                        {d.itemType === 'MEDICINE' && d.isTraditional && (
+                          <span className="ml-2 inline-block rounded-full bg-brand-teal px-2 py-0.5 text-[11px] font-semibold text-white">Đông y</span>
+                        )}
                       </div>
                       {d.activeIngredient && <div className="truncate text-xs font-medium text-slate-500">{d.activeIngredient}</div>}
                     </td>
@@ -535,6 +539,7 @@ export function DrugCatalogPane() {
               )}
               {selectedItem.itemType === 'MEDICINE' && <DetailField label="Yêu cầu kê đơn (Rx)" value={selectedItem.isPrescriptionOnly ? 'Có' : 'Không'} />}
               {selectedItem.itemType === 'MEDICINE' && <DetailField label="Cho phép chia nhỏ" value={selectedItem.isSplittable ? 'Có' : 'Không (không kê liều lẻ)'} />}
+              {selectedItem.itemType === 'MEDICINE' && <DetailField label="Thuốc y học cổ truyền (Đông y)" value={selectedItem.isTraditional ? 'Có (đơn loại Y)' : 'Không'} />}
               <DetailField
                 label="Hãng sản xuất"
                 value={selectedItem.manufacturerCode ? (manufacturerCatalog.nameByCode.get(selectedItem.manufacturerCode) ?? selectedItem.manufacturerCode) : selectedItem.manufacturer}
@@ -984,6 +989,7 @@ function DrugFormModal({
     controlType: DrugControlType;
     isPrescriptionOnly: boolean;
     isSplittable: boolean;
+    isTraditional: boolean;
     registrationNumber?: string;
     dosageForm?: string;
     countryOfOrigin?: string;
@@ -1018,6 +1024,8 @@ function DrugFormModal({
   const [isPrescriptionOnly, setIsPrescriptionOnly] = useState(item?.isPrescriptionOnly ?? true);
   // "Cho phép chia nhỏ" (#241) — tắt cho viên nang/bao tan trong ruột/giải phóng kéo dài (kê liều lẻ sẽ cảnh báo hoặc bị chặn).
   const [isSplittable, setIsSplittable] = useState(item?.isSplittable ?? true);
+  // "Thuốc y học cổ truyền (Đông y)" (#242) — đơn có thuốc này được cấp mã loại Y.
+  const [isTraditional, setIsTraditional] = useState(item?.isTraditional ?? false);
   // Mở rộng #151 — 3 bắt buộc (Số ĐK/Dạng bào chế/Nước SX) + 5 tùy chọn, CHỈ có ý nghĩa với Thuốc.
   const [registrationNumber, setRegistrationNumber] = useState(item?.registrationNumber ?? '');
   const [dosageForm, setDosageForm] = useState(item?.dosageForm ?? '');
@@ -1090,6 +1098,7 @@ function DrugFormModal({
       controlType: isMedicine ? controlType : 'NORMAL',
       isPrescriptionOnly: isMedicine ? isPrescriptionOnly : true,
       isSplittable: isMedicine ? isSplittable : true,
+      isTraditional: isMedicine ? isTraditional : false,
       // Mở rộng #151 — CHỈ có ý nghĩa với Thuốc, `isInvalid` đã chặn submit khi 3 trường bắt buộc
       // (registrationNumber/dosageForm/countryOfOrigin) còn trống.
       registrationNumber: isMedicine ? registrationNumber.trim() || undefined : undefined,
@@ -1334,6 +1343,17 @@ function DrugFormModal({
                     <input type="checkbox" checked={isSplittable} onChange={(e) => setIsSplittable(e.target.checked)} />
                     Cho phép chia nhỏ
                   </label>
+                </div>
+              )}
+              {isMedicine && (
+                <div className="sm:col-span-2 lg:col-span-4">
+                  <CheckTile
+                    id="drug-is-traditional"
+                    label="Thuốc y học cổ truyền (Đông y)"
+                    hint="Đơn có thuốc này được cấp mã loại Y. Thang thuốc, cao, hoàn, tán đánh dấu ở đây."
+                    checked={isTraditional}
+                    onChange={setIsTraditional}
+                  />
                 </div>
               )}
             </div>

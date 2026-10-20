@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { invoiceTypeSchema, discountTypeSchema } from './billing';
 import { withReportScope } from './branch';
+import { prescriptionKindSchema } from './business-code';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146, kế hoạch
@@ -683,6 +684,8 @@ export const prescriptionDispenseLineSchema = z.object({
    * dòng `stock_balance` phi-lô) — tách biệt hoàn toàn với `remainingQuantity` (còn lại THEO ĐƠN,
    * không liên quan tồn kho). Thêm để tránh nhầm lẫn "còn lại theo đơn" với "tồn kho thực tế". */
   warehouseStockOnHand: z.number().int(),
+  /** Đơn pháp lý (mã chuẩn Bộ Y tế, #242) chứa dòng này — `null` khi đơn ký trước ngày bật chế độ chuẩn hoặc chế độ tắt. Dùng để NHÓM dòng theo đơn ở hộp "Phát thuốc". */
+  documentId: z.string().uuid().nullable(),
 });
 export type PrescriptionDispenseLine = z.infer<typeof prescriptionDispenseLineSchema>;
 
@@ -703,6 +706,7 @@ export const freeTextPrescriptionLineSchema = z.object({
    * `formatDoseSummary()` (`@nexamed/shared/prescription`), tránh `apps/web` phải tự tính lại. */
   doseSummary: z.string(),
   instruction: z.string().nullable(),
+  documentId: z.string().uuid().nullable(),
 });
 export type FreeTextPrescriptionLine = z.infer<typeof freeTextPrescriptionLineSchema>;
 
@@ -728,6 +732,8 @@ export const getPrescriptionDispenseStatusResponseSchema = z.object({
   /** "Kê thuốc tự do" — dòng đọc-only, KHÔNG được tính vào `lines` dispensable. Rỗng nếu tenant
    * chưa từng bật công tắc này hoặc đơn không có dòng tự do nào. */
   freeTextLines: z.array(freeTextPrescriptionLineSchema),
+  /** Các đơn pháp lý đã cấp mã chuẩn của đơn này (#242), thứ tự C, N, H, Y — rỗng nếu đơn ký trước ngày bật chế độ chuẩn. */
+  documents: z.array(z.object({ id: z.string().uuid(), kind: prescriptionKindSchema, nationalCode: z.string() })),
 });
 export type GetPrescriptionDispenseStatusResponse = z.infer<typeof getPrescriptionDispenseStatusResponseSchema>;
 

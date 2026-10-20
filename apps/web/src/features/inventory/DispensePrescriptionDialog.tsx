@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Pill, Plus, Trash, X } from '@phosphor-icons/react';
 import type { StockIssueLineInput } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
+import { PrescriptionKindChip } from '../../shared/ui/PrescriptionKindChip';
+import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCode';
 import { Combobox } from '../../shared/ui/Combobox';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
@@ -132,6 +134,18 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
   // "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — chỉ đọc, KHÔNG dispensable
   // (không có drugId để chọn lô/trừ kho), hiện kèm ghi chú để dược sĩ không nhầm tưởng thiếu dòng.
   const freeTextLines = statusQuery.data?.freeTextLines ?? [];
+  // Mã đơn thuốc chuẩn Bộ Y tế (#242): đơn đã tách thành nhiều đơn pháp lý thì NHÓM dòng thuốc theo từng đơn (tiêu đề nhóm = chữ cái loại đơn + mã đơn + số thuốc).
+  const documents = statusQuery.data?.documents ?? [];
+  const docIdByItemId = new Map<string, string | null>([
+    ...(statusQuery.data?.lines ?? []).map((l) => [l.prescriptionItemId, l.documentId] as const),
+    ...freeTextLines.map((l) => [l.prescriptionItemId, l.documentId] as const),
+  ]);
+  const docOfLine = (l: { prescriptionItemId: string | null }): string | null => (l.prescriptionItemId === null ? null : (docIdByItemId.get(l.prescriptionItemId) ?? null));
+  const docRank = (id: string | null): number => {
+    const idx = documents.findIndex((d) => d.id === id);
+    return idx === -1 ? documents.length : idx;
+  };
+  const docItemCount = (id: string): number => [...docIdByItemId.values()].filter((v) => v === id).length;
 
   // Nạp draft từ response khi query load xong, và NẠP LẠI mỗi khi đổi kho (tồn/lô khác hẳn theo
   // từng kho — bug thật đã sửa 22/09/2026: trước đây chỉ nạp 1 lần bằng guard `lines===null`, đổi
@@ -357,7 +371,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                   <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-slate-800">Mã đơn thuốc</span>
-                      <span className="font-semibold text-teal-600">{statusQuery.data.prescriptionNo ?? '—'}</span>
+                      <span className="font-semibold text-teal-600">{documents.length > 0 ? `${documents.length} đơn` : (statusQuery.data.prescriptionNo ?? '—')}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-slate-800">BS Kê đơn</span>
@@ -405,10 +419,21 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                   {lines.length === 0 && fullyDispensedLines.length === 0 && freeTextLines.length === 0 && (
                     <p className="py-4 text-center text-sm text-slate-500">Đơn thuốc không có dòng nào cần phát.</p>
                   )}
-                  {lines.map((line) => {
+                  {(documents.length === 0 ? lines : [...lines].sort((a, b) => docRank(docOfLine(a)) - docRank(docOfLine(b)))).map((line, lineIndex, orderedLines) => {
                     const allocated = lineQuantity(line);
+                    const docId = docOfLine(line);
+                    const prevDocId = lineIndex > 0 ? docOfLine(orderedLines[lineIndex - 1]!) : undefined;
+                    const groupDoc = documents.length > 0 && docId !== null && docId !== prevDocId ? documents.find((d) => d.id === docId) : undefined;
                     return (
-                      <div key={line.key} className={`flex flex-col gap-2 px-4 py-3 ${!line.selected ? 'bg-slate-50' : ''}`}>
+                      <Fragment key={line.key}>
+                      {groupDoc && (
+                        <div className="flex items-center gap-2.5 bg-slate-100 px-4 py-2">
+                          <PrescriptionKindChip kind={groupDoc.kind} />
+                          <PrescriptionNationalCode code={groupDoc.nationalCode} className="text-sm" />
+                          <span className="ml-auto text-xs text-slate-500">{docItemCount(groupDoc.id)} thuốc</span>
+                        </div>
+                      )}
+                      <div className={`flex flex-col gap-2 px-4 py-3 ${!line.selected ? 'bg-slate-50' : ''}`}>
                         <div className="flex items-center gap-3">
                           {line.maxQuantity !== null && (
                             <SelectionCheckbox checked={line.selected} onChange={() => updateLine(line.key, { selected: !line.selected })} ariaLabel={`Chọn phát ${line.drugName}`} />
@@ -519,6 +544,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                             </div>
                           )}
                       </div>
+                      </Fragment>
                     );
                   })}
 

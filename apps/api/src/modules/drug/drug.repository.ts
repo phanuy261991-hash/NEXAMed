@@ -19,6 +19,7 @@ export interface CreateDrugData {
   controlType: DrugControlType;
   isPrescriptionOnly: boolean;
   isSplittable: boolean;
+  isTraditional: boolean;
   manufacturerCode: string;
   registrationNumber: string | null;
   dosageForm: string | null;
@@ -53,6 +54,7 @@ export interface UpdateDrugData {
   controlType?: DrugControlType;
   isPrescriptionOnly?: boolean;
   isSplittable?: boolean;
+  isTraditional?: boolean;
   manufacturerCode?: string | null;
   registrationNumber?: string | null;
   dosageForm?: string | null;

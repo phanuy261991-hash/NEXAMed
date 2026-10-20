@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ArrowRight, CheckCircle, ClockCounterClockwise, PencilSimple, Pill, Plus, Stack, Warning, X } from '@phosphor-icons/react';
+import { ArrowRight, CheckCircle, ClockCounterClockwise, Info, PencilSimple, Pill, Plus, Stack, Warning, X } from '@phosphor-icons/react';
 import type { PrescriptionItem, PrescriptionResponse, PrescriptionTemplate } from '@nexamed/shared';
 import {
   computePrescriptionExactQuartersPreview,
@@ -27,6 +27,8 @@ import { useCreatePrescriptionTemplateMutation, usePrescriptionTemplatesQuery } 
 import { DrugPicker, type DrugPickerHandle } from './DrugPicker';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { PrescriptionPrintView } from './PrescriptionPrintView';
+import { PrescriptionKindChip, PRESCRIPTION_KIND_TEXT, type PrescriptionKindLetter } from '../../shared/ui/PrescriptionKindChip';
+import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCode';
 import {
   useAmendPrescriptionMutation,
   useGetPreviousPrescriptionMutation,
@@ -219,6 +221,15 @@ export function PrescriptionPanel({
   const [ackError, setAckError] = useState<string | null>(null);
 
   const isSigned = prescription !== null && prescription.signedAt !== null;
+  // Mã đơn thuốc chuẩn Bộ Y tế (#242): chữ cái loại đơn từng dòng + dải "sẽ ký thành N đơn". Chỉ có khi phòng khám bật chế độ chuẩn (server trả `kind`).
+  const standardMode = prescription?.standardMode ?? false;
+  const kindByDrugId = new Map((prescription?.items ?? []).flatMap((i) => (i.drugId !== null && i.kind !== null ? [[i.drugId, i.kind] as const] : [])));
+  const kindOfLine = (line: DraftLine): PrescriptionKindLetter | null => (line.drugId === null ? (standardMode ? 'C' : null) : (kindByDrugId.get(line.drugId) ?? null));
+  const KIND_ORDER: PrescriptionKindLetter[] = ['C', 'N', 'H', 'Y'];
+  const kindGroups = KIND_ORDER.map((kind) => ({ kind, names: (prescription?.items ?? []).filter((i) => i.kind === kind).map((i) => i.drugName) })).filter((g) => g.names.length > 0);
+  const willSplit = standardMode && !isSigned && kindGroups.length > 1;
+  // In MỘT tờ (id đơn pháp lý) hoặc tất cả (null) — dùng cho đơn đã tách nhiều đơn pháp lý.
+  const [printDocumentId, setPrintDocumentId] = useState<string | null>(null);
   const canEdit = isEditableEncounter && !isSigned;
   // Kho Thuốc GĐ3 (#163, đảo hướng #165) — nút "Phát thuốc" chỉ hiện khi đơn đã ký, actor có quyền
   // phát (`stock_issue.create` — lễ tân chỉ `.read`, không tự phát được), VÀ tenant bật "Chế độ
@@ -410,7 +421,8 @@ export function PrescriptionPanel({
     );
   }
 
-  async function handlePrint() {
+  async function handlePrint(documentId: string | null = null) {
+    setPrintDocumentId(documentId);
     await printMutation.mutateAsync();
     setTimeout(() => window.print(), 100);
   }
@@ -603,11 +615,33 @@ export function PrescriptionPanel({
                   Phát thuốc
                 </Button>
               )}
-              <PrintButton documentType="PRESCRIPTION" variant="primary" onPrint={() => void handlePrint()} loading={printMutation.isPending}>
-                In đơn
+              <PrintButton documentType="PRESCRIPTION" variant="primary" onPrint={() => void handlePrint(null)} loading={printMutation.isPending}>
+                {prescription!.documents.length > 1 ? `In tất cả (${prescription!.documents.length} tờ)` : 'In đơn'}
               </PrintButton>
             </div>
           </div>
+          {prescription!.documents.length > 0 && (
+            <div className="mb-3 overflow-hidden rounded-lg border border-slate-200">
+              {prescription!.documents.map((doc, i) => (
+                <div key={doc.id} className="flex items-center gap-3 border-b border-slate-200 px-4 py-2.5 last:border-b-0">
+                  <PrescriptionKindChip kind={doc.kind} />
+                  <div className="min-w-0 flex-1">
+                    <PrescriptionNationalCode code={doc.nationalCode} className="text-sm" />
+                    <p className="text-xs text-slate-500">
+                      {prescription!.documents.length > 1 ? `Đơn ${i + 1}/${prescription!.documents.length}: ` : ''}
+                      {PRESCRIPTION_KIND_TEXT[doc.kind]} · {doc.itemIds.length} thuốc
+                      {prescription!.signedAt ? ` · ký lúc ${new Date(prescription!.signedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                    </p>
+                  </div>
+                  {prescription!.documents.length > 1 && (
+                    <PrintButton documentType="PRESCRIPTION" variant="secondary" onPrint={() => void handlePrint(doc.id)} loading={printMutation.isPending}>
+                      In
+                    </PrintButton>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           <PrescriptionItemsTable items={prescription!.items} />
           {prescription!.doctorAdvice && (
             <p className="mt-3 border-t border-slate-200 pt-3 text-sm text-slate-800">
@@ -660,6 +694,7 @@ export function PrescriptionPanel({
                 >
                   <div>
                     <div className="flex items-center gap-2">
+                      {kindOfLine(line) && <PrescriptionKindChip kind={kindOfLine(line)!} />}
                       <p className="text-sm font-medium text-slate-900">{line.drugName}</p>
                       {!splittableOf(line) && (
                         <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">Không chia được</span>
@@ -805,6 +840,33 @@ export function PrescriptionPanel({
             </div>
           )}
 
+          {canEdit && standardMode && draftLines.some((l) => l.drugId === null) && (
+            <div className="mt-4 flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-700">
+              <Info size={16} weight="fill" className="mt-0.5 shrink-0" aria-hidden="true" />
+              <span>Thuốc kê tự do luôn thuộc đơn loại C. Muốn kê thuốc gây nghiện hoặc hướng thần, chọn từ danh mục thuốc.</span>
+            </div>
+          )}
+
+          {canEdit && willSplit && (
+            <div className="mt-4 rounded-lg border border-slate-200 bg-white" aria-live="polite">
+              <p className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800">
+                <Info size={16} weight="fill" className="text-blue-600" aria-hidden="true" />
+                Khi ký, đơn này tách thành {kindGroups.length} đơn thuốc riêng
+              </p>
+              {kindGroups.map((g, i) => (
+                <div key={g.kind} className="flex items-center gap-2.5 border-b border-slate-100 px-3 py-2 text-sm text-slate-600 last:border-b-0">
+                  <PrescriptionKindChip kind={g.kind} />
+                  <span className="font-semibold text-slate-800">
+                    Đơn {i + 1}: {PRESCRIPTION_KIND_TEXT[g.kind]}
+                  </span>
+                  <span className="ml-auto min-w-0 max-w-[60%] truncate text-xs text-slate-500" title={g.names.join(', ')}>
+                    {g.names.length} thuốc · {g.names.join(', ')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {canEdit && (
             <div className="mt-4 flex items-center justify-end gap-2">
               {signBlockedMessage && (
@@ -822,7 +884,7 @@ export function PrescriptionPanel({
                 loading={signMutation.isPending}
                 disabled={!prescription || prescription.items.length === 0 || signBlockedMessage !== ''}
               >
-                Ký đơn
+                {willSplit ? `Ký ${kindGroups.length} đơn` : 'Ký đơn'}
               </Button>
             </div>
           )}
@@ -837,6 +899,8 @@ export function PrescriptionPanel({
           patientGender={patientGender}
           diagnosisLabel={diagnosisLabel}
           items={prescription.items}
+          documents={prescription.documents}
+          printDocumentId={printDocumentId}
           signedAt={prescription.signedAt!}
           advice={prescription.doctorAdvice?.trim() || adviceText}
           followUpLabel={followUpLabel}
@@ -1259,6 +1323,7 @@ export function PrescriptionItemsTable({ items }: { items: PrescriptionItem[] })
         {items.map((item) => (
           <tr key={item.id} className="border-b border-slate-100 last:border-0">
             <td className="py-2 font-medium text-slate-900">
+              {item.kind && <PrescriptionKindChip kind={item.kind} className="mr-2 align-middle" />}
               {item.drugName}
               {item.drugId === null && (
                 <span className="ml-1.5 rounded-full border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">

@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import {
   CashierDrawerSeparateRequiresMultiCashierError,
+  DEFAULT_PRESCRIPTION_KIND_MAPPING,
   SoloClinicWorkflowConflictsWithMultiCashierError,
   type ClinicConfigReaderPort,
+  type PrescriptionKindMapping,
 } from '@nexamed/core';
-import type { ClinicSettings, UpdateClinicSettingsRequest } from '@nexamed/shared';
+import type { ClinicSettings, PrescriptionKindMappingResponse, UpdateClinicSettingsRequest, UpdatePrescriptionKindMappingRequest } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import type { RequestMeta } from '../../common/request-meta';
@@ -505,6 +508,41 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         icd10SuggestionLearningEnabled,
       };
     });
+  }
+
+  /** `ClinicConfigReaderPort` (#242) — bảng ánh xạ loại thuốc → loại đơn; module `encounter` đọc TRƯỚC transaction chính. */
+  getPrescriptionKindMapping(tenantId: string): Promise<PrescriptionKindMapping> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getPrescriptionKindMapping(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` (#242) — chế độ mã đơn "Chuẩn Bộ Y tế" đang bật không. */
+  getPrescriptionStandardMode(tenantId: string): Promise<boolean> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => (await this.clinicSettingsRepository.getBusinessCodeTemplatesConfig(tx, tenantId)).PRESCRIPTION?.mode === 'STANDARD');
+  }
+
+  /** `GET /clinic-settings/prescription-kind-mapping` — bảng ánh xạ hiện tại + mặc định (trang "Loại đơn thuốc"). */
+  async getPrescriptionKindMappingResponse(tenantId: string): Promise<PrescriptionKindMappingResponse> {
+    const mapping = await this.getPrescriptionKindMapping(tenantId);
+    return { mapping: mapping as PrescriptionKindMappingResponse['mapping'], defaults: { ...DEFAULT_PRESCRIPTION_KIND_MAPPING } as PrescriptionKindMappingResponse['defaults'] };
+  }
+
+  /** `PATCH /clinic-settings/prescription-kind-mapping` — chỉ áp dụng cho đơn ký TỪ LÚC LƯU; ghi nhật ký kiểm toán (trước/sau). */
+  async updatePrescriptionKindMapping(tenantId: string, actorId: string, dto: UpdatePrescriptionKindMappingRequest, meta: RequestMeta): Promise<PrescriptionKindMappingResponse> {
+    await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const before = await this.clinicSettingsRepository.getPrescriptionKindMapping(tx, tenantId);
+      await this.clinicSettingsRepository.upsertPrescriptionKindMapping(tx, tenantId, actorId, dto);
+      await writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'prescription_kind_mapping.updated',
+        entityType: 'tenant_setting',
+        entityId: tenantId,
+        beforeJson: before as unknown as Prisma.InputJsonValue,
+        afterJson: dto as unknown as Prisma.InputJsonValue,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+    });
+    return this.getPrescriptionKindMappingResponse(tenantId);
   }
 
   /** `ClinicConfigReaderPort` ("Cảnh báo hạn dùng", Kho Thuốc GĐ2) — module `inventory` đọc qua port này (không có endpoint tự-phục vụ, chỉ backend rẽ nhánh lúc tính cảnh báo hạn dùng). */

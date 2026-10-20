@@ -3,6 +3,10 @@ import { z } from 'zod';
 import {
   CLINIC_CONFIG_READER_PORT,
   ClinicalRecordAlreadySignedError,
+  DEFAULT_PRESCRIPTION_KIND_MAPPING,
+  groupByPrescriptionKind,
+  resolvePrescriptionKind,
+  type PrescriptionKindMapping,
   ConcurrentModificationError,
   DiagnosisPrimaryRequiredError,
   DOCTOR_DIRECTORY_PORT,
@@ -71,6 +75,7 @@ import type {
   DiagnosisItem,
   EncounterSummary,
   Prescription as PrescriptionDto,
+  PrescriptionDocument as PrescriptionDocumentDto,
   PrescriptionItem as PrescriptionItemDto,
   PatientClinicalSummaryResponse,
   ListPatientEncounterHistoryQuery,
@@ -155,6 +160,12 @@ const acknowledgedWarningsSchema = z.array(
 function parseAcknowledgedWarnings(value: unknown): AcknowledgedWarning[] {
   const parsed = acknowledgedWarningsSchema.safeParse(value);
   return parsed.success ? parsed.data : [];
+}
+
+/** Chế độ mã đơn "Chuẩn Bộ Y tế" + ánh xạ loại thuốc → loại đơn (#242), đọc TRƯỚC transaction chính của mỗi thao tác kê đơn. */
+interface PrescriptionKindContext {
+  standardMode: boolean;
+  mapping: PrescriptionKindMapping;
 }
 
 @Injectable()
@@ -486,6 +497,8 @@ export class EncounterService {
     // refetch, coi như KHÔNG BAO GIỜ hiển thị được cho bác sĩ trong thực tế. Chỉ tính cho đơn CHƯA KÝ
     // (đơn đã ký xem như "đã xong", giữ nguyên `null` — đúng khuôn PrescriptionPrintView/lịch sử).
     const onHandByDrugId = await this.loadDraftOnHand(tenantId, branchId, id);
+    // Mã đơn thuốc chuẩn Bộ Y tế (#242): chế độ + bảng ánh xạ đọc TRƯỚC transaction chính (port tự mở transaction riêng).
+    const kindCtx = await this.loadKindContext(tenantId);
 
     const { history: historyWithDoctorId, ...rest } = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounter = await this.encounterRepository.findByIdWithConsultationContext(tx, tenantId, id);
@@ -562,7 +575,7 @@ export class EncounterService {
         history,
         diagnoses,
         clinicalNote: this.toClinicalNoteResponse(noteRows, treatmentPlanRow),
-        prescription: prescriptionRow ? this.toPrescriptionResponse(prescriptionRow, allergenRows.map((a) => a.allergenName), onHandByDrugId) : null,
+        prescription: prescriptionRow ? this.toPrescriptionResponse(prescriptionRow, allergenRows.map((a) => a.allergenName), onHandByDrugId, kindCtx) : null,
       };
     });
 
@@ -1246,6 +1259,8 @@ export class EncounterService {
     const onHandByDrugId: Record<string, number> | null = pharmacyStockTrackingEnabled
       ? await this.stockAvailability.getOnHandQuantities(tenantId, branchId, realDrugIds)
       : null;
+    // Mã đơn thuốc chuẩn Bộ Y tế (#242): chế độ + bảng ánh xạ đọc TRƯỚC transaction chính (port tự mở transaction riêng).
+    const kindCtx = await this.loadKindContext(tenantId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
@@ -1268,7 +1283,7 @@ export class EncounterService {
       }
       if (!active) {
         const created = await this.prescriptionRepository.createDraft(tx, tenantId, id, actorId);
-        active = { ...created, items: [] };
+        active = { ...created, items: [], documents: [] };
       }
 
       await this.prescriptionRepository.replaceItems(tx, tenantId, active.id, actorId, dto.items.map((item) => this.toCreateItemData(item)));
@@ -1295,7 +1310,7 @@ export class EncounterService {
       if (!updated) {
         throw new NotFoundException();
       }
-      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName), onHandByDrugId);
+      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName), onHandByDrugId, kindCtx);
     });
   }
 
@@ -1313,6 +1328,8 @@ export class EncounterService {
     meta: RequestMeta,
   ): Promise<PrescriptionResponse> {
     const onHandByDrugId = await this.loadDraftOnHand(tenantId, branchId, id);
+    // Mã đơn thuốc chuẩn Bộ Y tế (#242): chế độ + bảng ánh xạ đọc TRƯỚC transaction chính (port tự mở transaction riêng).
+    const kindCtx = await this.loadKindContext(tenantId);
     // Chế độ "Chặn" thì cảnh báo thuốc không chia được KHÔNG bỏ qua được (#241).
     const prescriptionSplitBlockEnabled = await this.clinicConfigReader.getPrescriptionSplitBlockEnabled(tenantId);
     // `DoctorDirectoryPort` tự mở transaction riêng — tra tên người bỏ qua TRƯỚC transaction chính (lưu snapshot vào dấu vết).
@@ -1366,7 +1383,7 @@ export class EncounterService {
       if (!updated) {
         throw new NotFoundException();
       }
-      return this.toPrescriptionResponse(updated, allergenNames, onHandByDrugId);
+      return this.toPrescriptionResponse(updated, allergenNames, onHandByDrugId, kindCtx);
     });
   }
 
@@ -1412,6 +1429,10 @@ export class EncounterService {
       }
     }
     const prescriptionStockBlockEnabled = pharmacyStockTrackingEnabled && (await this.clinicConfigReader.getPrescriptionStockBlockEnabled(tenantId));
+    // Mã đơn thuốc chuẩn Bộ Y tế (#242): chế độ + bảng ánh xạ đọc TRƯỚC transaction chính (port tự mở transaction riêng).
+    const kindCtx = await this.loadKindContext(tenantId);
+    // Tra mã cơ sở KCB TRƯỚC khi mở transaction ký (tra qua port chi nhánh mở transaction riêng — gọi từ bên trong sẽ cạn bể kết nối khi nhiều người ký cùng lúc).
+    const facilityCode = kindCtx.standardMode ? await this.businessCodeService.resolveFacilityCodeForBranch(tenantId, branchId) : null;
     const prescriptionSplitBlockEnabled = await this.clinicConfigReader.getPrescriptionSplitBlockEnabled(tenantId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -1456,6 +1477,10 @@ export class EncounterService {
 
       const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'prescription', entityId: active.id });
       const prescriptionNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'PRESCRIPTION', signature.signedAt);
+      // Chế độ "Chuẩn Bộ Y tế": tách theo loại đơn C/N/H/Y, mỗi loại một đơn pháp lý có mã chuẩn riêng (#242).
+      if (kindCtx.standardMode && facilityCode !== null) {
+        await this.issuePrescriptionDocuments(tx, tenantId, actorId, active.id, active.items, kindCtx.mapping, facilityCode, null);
+      }
       const count = await this.prescriptionRepository.sign(tx, tenantId, active.id, dto.version, actorId, signature.signedAt, signature.signedBy, prescriptionNo);
       if (count === 0) {
         throw new ConcurrentModificationError();
@@ -1475,7 +1500,7 @@ export class EncounterService {
       if (!updated) {
         throw new NotFoundException();
       }
-      return this.toPrescriptionResponse(updated, allergenNames, onHandByDrugId);
+      return this.toPrescriptionResponse(updated, allergenNames, onHandByDrugId, kindCtx);
     });
   }
 
@@ -1485,6 +1510,8 @@ export class EncounterService {
    * (`markPrintedIfNotYet`).
    */
   async markPrescriptionPrinted(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, meta: RequestMeta): Promise<PrescriptionResponse> {
+    // Mã đơn thuốc chuẩn Bộ Y tế (#242): chế độ + bảng ánh xạ đọc TRƯỚC transaction chính (port tự mở transaction riêng).
+    const kindCtx = await this.loadKindContext(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.doctorId !== actorId)) {
@@ -1512,7 +1539,7 @@ export class EncounterService {
       if (!updated) {
         throw new NotFoundException();
       }
-      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName));
+      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName), null, kindCtx);
     });
   }
 
@@ -1542,6 +1569,10 @@ export class EncounterService {
       ? await this.stockAvailability.getOnHandQuantities(tenantId, branchId, realDrugIds)
       : null;
     const prescriptionSplitBlockEnabled = await this.clinicConfigReader.getPrescriptionSplitBlockEnabled(tenantId);
+    // Mã đơn thuốc chuẩn Bộ Y tế (#242): chế độ + bảng ánh xạ đọc TRƯỚC transaction chính (port tự mở transaction riêng).
+    const kindCtx = await this.loadKindContext(tenantId);
+    // Mã cơ sở KCB tra TRƯỚC transaction (chỉ khi chế độ chuẩn đang bật); khi chế độ tắt mà đơn gốc đã có mã chuẩn thì lấy 5 số đầu của mã đã cấp (cùng cơ sở).
+    const facilityCode = kindCtx.standardMode ? await this.businessCodeService.resolveFacilityCodeForBranch(tenantId, branchId) : null;
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findById(tx, tenantId, branchId, id);
@@ -1578,6 +1609,17 @@ export class EncounterService {
         doctorAdvice: dto.doctorAdvice === undefined ? active.doctorAdvice : dto.doctorAdvice.trim() || null,
       });
       await this.prescriptionRepository.createItems(tx, tenantId, created.id, actorId, dto.items.map((item) => this.toCreateItemData(item)));
+      // Đơn gốc đã có mã chuẩn (ký lúc chế độ chuẩn bật): đơn pháp lý cùng loại GIỮ mã cũ, loại mới nhận mã mới, loại bị bỏ hết thì mã đó không dùng lại (#242).
+      // Đơn gốc ký TRƯỚC ngày bật chế độ chuẩn (không có mã chuẩn) thì đính chính cũng không cấp mã chuẩn (không hồi tố).
+      if (active.documents.length > 0) {
+        await this.prescriptionRepository.supersedeDocuments(tx, tenantId, active.id, actorId);
+        const fresh = await this.prescriptionRepository.findById(tx, tenantId, created.id);
+        if (!fresh) {
+          throw new NotFoundException();
+        }
+        const reuse = new Map<string, string>(active.documents.map((d) => [d.kind, d.nationalCode]));
+        await this.issuePrescriptionDocuments(tx, tenantId, actorId, created.id, fresh.items, kindCtx.mapping, facilityCode ?? active.documents[0]!.nationalCode.slice(0, 5), reuse);
+      }
 
       await writeAuditLog(tx, tenantId, {
         actorId,
@@ -1597,7 +1639,7 @@ export class EncounterService {
       }
       // Chặn sau khi đã dựng bản mới trong transaction: ném lỗi thì cả đính chính bị huỷ (cần `is_splittable` của từng thuốc nên chỉ biết được ở đây).
       this.assertNoNonSplittableFractionalDose(updated.items, prescriptionSplitBlockEnabled);
-      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName), onHandByDrugId);
+      return this.toPrescriptionResponse(updated, allergenRows.map((a) => a.allergenName), onHandByDrugId, kindCtx);
     });
   }
 
@@ -1723,11 +1765,67 @@ export class EncounterService {
     return [...duplicates, ...notSplittable, ...allergies, ...shortages];
   }
 
-  private toPrescriptionResponse(row: PrescriptionWithItems, allergenNames: string[], onHandByDrugId: Record<string, number> | null = null): PrescriptionDto {
+  /** Chế độ mã đơn chuẩn + bảng ánh xạ loại thuốc → loại đơn (#242) — đọc TRƯỚC transaction chính. */
+  private async loadKindContext(tenantId: string): Promise<PrescriptionKindContext> {
+    const [standardMode, mapping] = await Promise.all([
+      this.clinicConfigReader.getPrescriptionStandardMode(tenantId),
+      this.clinicConfigReader.getPrescriptionKindMapping(tenantId),
+    ]);
+    return { standardMode, mapping };
+  }
+
+  /**
+   * Tách đơn theo loại C/N/H/Y và cấp mã chuẩn cho từng đơn pháp lý (#242). Chạy TRONG transaction ký/đính chính. `reuse` (đính chính): loại đã có đơn pháp lý ở bản gốc
+   * giữ nguyên mã cũ, loại chưa có mới sinh mã. Thứ tự cấp mã C, N, H, Y.
+   */
+  private async issuePrescriptionDocuments(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    prescriptionId: string,
+    items: PrescriptionWithItems['items'],
+    mapping: PrescriptionKindMapping,
+    facilityCode: string,
+    reuse: Map<string, string> | null,
+  ): Promise<void> {
+    const withKind = items.map((i) => ({
+      id: i.id,
+      kind: resolvePrescriptionKind({ isFreeText: i.drugId === null, controlType: i.controlType, isTraditional: i.isTraditional }, mapping),
+    }));
+    for (const group of groupByPrescriptionKind(withKind)) {
+      const nationalCode = reuse?.get(group.kind) ?? (await this.businessCodeService.generatePrescriptionNationalCode(tx, tenantId, actorId, facilityCode, group.kind));
+      const document = await this.prescriptionRepository.createDocument(tx, tenantId, prescriptionId, actorId, { kind: group.kind, nationalCode });
+      await this.prescriptionRepository.assignItemsToDocument(tx, tenantId, group.items.map((i) => i.id), document.id, actorId);
+    }
+  }
+
+  private toPrescriptionResponse(
+    row: PrescriptionWithItems,
+    allergenNames: string[],
+    onHandByDrugId: Record<string, number> | null = null,
+    kindCtx: PrescriptionKindContext = { standardMode: false, mapping: DEFAULT_PRESCRIPTION_KIND_MAPPING },
+  ): PrescriptionDto {
+    const documentKindById = new Map(row.documents.map((d) => [d.id, d.kind]));
+    const kindOf = (item: PrescriptionWithItems['items'][number]) => {
+      // Đã có đơn pháp lý: loại cố định theo đơn đã cấp mã. Còn nháp ở chế độ chuẩn: tính theo ánh xạ HIỆN TẠI. Còn lại (chế độ tắt, đơn cũ): không có loại.
+      if (item.documentId !== null) return documentKindById.get(item.documentId) ?? null;
+      if (kindCtx.standardMode && row.signedAt === null) {
+        return resolvePrescriptionKind({ isFreeText: item.drugId === null, controlType: item.controlType, isTraditional: item.isTraditional }, kindCtx.mapping);
+      }
+      return null;
+    };
+    const documents: PrescriptionDocumentDto[] = row.documents.map((d) => ({
+      id: d.id,
+      kind: d.kind,
+      nationalCode: d.nationalCode,
+      itemIds: row.items.filter((i) => i.documentId === d.id).map((i) => i.id),
+    }));
     return {
       id: row.id,
       encounterId: row.encounterId,
-      items: row.items.map((item) => this.toPrescriptionItem(item)),
+      items: row.items.map((item) => this.toPrescriptionItem(item, kindOf(item))),
+      standardMode: kindCtx.standardMode,
+      documents,
       warnings: this.computeWarnings(row.items, allergenNames, onHandByDrugId, parseAcknowledgedWarnings(row.acknowledgedWarnings)),
       doctorAdvice: row.doctorAdvice,
       prescriptionNo: row.prescriptionNo,
@@ -1740,7 +1838,7 @@ export class EncounterService {
     };
   }
 
-  private toPrescriptionItem(item: PrescriptionWithItems['items'][number]): PrescriptionItemDto {
+  private toPrescriptionItem(item: PrescriptionWithItems['items'][number], kind: PrescriptionItemDto['kind'] = null): PrescriptionItemDto {
     return {
       id: item.id,
       drugId: item.drugId,
@@ -1756,6 +1854,8 @@ export class EncounterService {
       unitCode: item.unitCode,
       instruction: item.instruction,
       isSplittable: item.isSplittable,
+      kind,
+      documentId: item.documentId,
     };
   }
 

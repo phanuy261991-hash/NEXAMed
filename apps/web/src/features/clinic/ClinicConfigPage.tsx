@@ -25,6 +25,7 @@ import { WorkShiftPane } from './WorkShiftPane';
 /** Lazy — riêng pill này có thêm form phân tích cú pháp khuôn mẫu (`@nexamed/shared`), tránh đẩy
  * thêm code vào chunk khởi động cho một màn hình hiếm khi mở (`.claude/docs/coding-standards.md`
  * mục "Hiệu suất"). */
+const PrescriptionKindPane = lazy(() => import('./PrescriptionKindPane').then((m) => ({ default: m.PrescriptionKindPane })));
 const BusinessCodeTemplatePane = lazy(() =>
   import('./BusinessCodeTemplatePane').then((m) => ({ default: m.BusinessCodeTemplatePane })),
 );
@@ -71,6 +72,7 @@ const BASE_PILLS: ConfigScreenPill[] = [
   },
   { key: 'exam', label: 'Cấu hình khám' },
   { key: 'code-templates', label: 'Cấu hình mẫu mã phát sinh' },
+  { key: 'prescription-kind', label: 'Loại đơn thuốc' },
 ];
 const FIRST_PILL = BASE_PILLS[0]!;
 
@@ -183,6 +185,11 @@ export function ClinicConfigPage() {
       {activePillKey === 'exam' && <ExamConfigPane />}
       {activePillKey === 'backup' && showBackupPill && <BackupConfigPane />}
       {activePillKey === 'software-update' && showSoftwareUpdatePill && <SoftwareUpdatePane />}
+      {activePillKey === 'prescription-kind' && (
+        <Suspense fallback={null}>
+          <PrescriptionKindPane />
+        </Suspense>
+      )}
       {activePillKey === 'code-templates' && (
         <Suspense fallback={null}>
           <BusinessCodeTemplatePane />
