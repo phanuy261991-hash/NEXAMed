@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { prescriptionKindSchema } from './business-code';
+import { patientAddressSchema } from './patient';
 
 /**
  * Kê đơn (Sprint 4, S4-01→04) — xem .claude/docs/clinical-workflow.md mục "Kê đơn (v1: chỉ in
@@ -195,6 +196,24 @@ export const acknowledgePrescriptionWarningRequestSchema = z.object({
   version: z.number().int().positive(),
 });
 export type AcknowledgePrescriptionWarningRequest = z.infer<typeof acknowledgePrescriptionWarningRequestSchema>;
+
+/**
+ * Thông tin bệnh nhân IN THÊM trên đơn thuốc (docs/DECISIONS.md #242, mockup 20/10/2026) — chỉ lấy khi bấm In, KHÔNG nằm trong `GET .../consultation` để không giải mã CCCD mỗi lần mở màn khám.
+ * `nationalId` đã giải mã; `null` nếu bệnh nhân chưa có CCCD HOẶC người in không có quyền xem hồ sơ bệnh nhân (`patient.read`).
+ */
+export const prescriptionPrintInfoSchema = z.object({
+  patientCode: z.string(),
+  nationalId: z.string().nullable(),
+  address: patientAddressSchema.nullable(),
+  phone: z.string(),
+  /** Cân nặng (gram) lấy từ sinh hiệu MỚI NHẤT của lượt khám có ghi cân nặng; `null` = chưa đo. */
+  weightGram: z.number().int().nullable(),
+  /** Tuổi tính theo tháng tại thời điểm in — web dùng để chỉ in người giám hộ cho trẻ dưới 72 tháng. */
+  ageMonths: z.number().int().nonnegative(),
+  /** Người thân trong hồ sơ (họ tên + quan hệ); `null` nếu hồ sơ chưa ghi. */
+  guardian: z.object({ fullName: z.string(), relationship: z.string().nullable() }).nullable(),
+});
+export type PrescriptionPrintInfo = z.infer<typeof prescriptionPrintInfoSchema>;
 
 export const prescriptionSchema = z.object({
   id: z.string().uuid(),

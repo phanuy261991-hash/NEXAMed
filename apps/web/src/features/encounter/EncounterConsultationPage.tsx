@@ -1039,18 +1039,19 @@ export function EncounterConsultationPage() {
 
         {/* Panel phải — khu vực làm việc */}
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex h-11 flex-shrink-0 items-center gap-1.5 border-b border-slate-200 bg-white px-4">
+          {/* Nhãn tab KHÔNG xuống dòng; màn hẹp (< 1440px) ẩn biểu tượng + thu padding cho vừa 5 tab, vẫn không vừa thì cuộn ngang (ui-guidelines mục 15). */}
+          <div className="scroll-hover flex h-11 flex-shrink-0 items-center gap-1.5 overflow-x-auto border-b border-slate-200 bg-white px-4">
             {TABS.filter((tab) => (tab.id !== 'section-chidinh' && tab.id !== 'section-ketqua') || canSeeClinicalOrders).map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTabId(tab.id)}
                 aria-current={activeTabId === tab.id ? 'true' : undefined}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                className={`flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-colors min-[1440px]:px-3.5 ${
                   activeTabId === tab.id ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                 }`}
               >
-                <tab.icon size={15} weight={activeTabId === tab.id ? 'fill' : 'bold'} aria-hidden="true" />
+                <tab.icon size={15} weight={activeTabId === tab.id ? 'fill' : 'bold'} aria-hidden="true" className="hidden min-[1440px]:block" />
                 {tab.label}
                 {tab.id === 'section-chidinh' && clinicalOrderCount > 0 && (
                   <span className={`rounded-full px-1.5 text-[10.5px] font-semibold ${activeTabId === tab.id ? 'bg-white text-blue-700' : 'bg-blue-600 text-white'}`}>{clinicalOrderCount}</span>

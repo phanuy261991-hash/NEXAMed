@@ -7,7 +7,9 @@ import type {
   CombinedInvoicePrintResponse,
   Invoice,
   InvoiceLine,
+  PrescriptionDocument,
   PrescriptionItem,
+  PrescriptionPrintInfo,
   StockCountDetail,
   StockIssueDetail,
   StockReceiptDetail,
@@ -35,6 +37,64 @@ export const SAMPLE_CLINIC_HEADER: ClinicPrintHeader = {
   taxCode: '0312345678',
   printLogoUrl: SAMPLE_LOGO,
 };
+
+/**
+ * Các biến thể xem trước ĐƠN THUỐC (mockup "Mẫu in đơn thuốc" 20/10/2026): đơn thường C, đơn "N", đơn "H" và trẻ nhỏ chưa có CCCD — để thấy từng công tắc
+ * thông tin bệnh nhân và mục riêng của đơn N/H tác động thế nào lên bản in.
+ */
+export type SamplePrescriptionVariant = 'C' | 'N' | 'H' | 'CHILD';
+export const SAMPLE_PRESCRIPTION_VARIANT_LABEL: Record<SamplePrescriptionVariant, string> = {
+  C: 'Đơn thường (C)',
+  N: 'Đơn “N” gây nghiện',
+  H: 'Đơn “H” hướng thần',
+  CHILD: 'Trẻ 4 tuổi (chưa có CCCD)',
+};
+const SAMPLE_CODE_PREFIX = '79001';
+function sampleVariantItem(base: PrescriptionItem, over: Partial<PrescriptionItem>): PrescriptionItem {
+  return { ...base, ...over };
+}
+export function buildSamplePrescriptionVariant(variant: SamplePrescriptionVariant): {
+  patientFullName: string;
+  patientDob: string;
+  patientGender: string;
+  diagnosisLabel: string;
+  items: PrescriptionItem[];
+  documents: PrescriptionDocument[];
+  printInfo: PrescriptionPrintInfo;
+} {
+  const base = SAMPLE_PRESCRIPTION_ITEMS[0]!;
+  const kind = variant === 'CHILD' ? 'C' : variant;
+  const item = sampleVariantItem(base, {
+    id: ID(901),
+    drugName: variant === 'N' ? 'Morphin sulfat 10mg' : variant === 'H' ? 'Diazepam 5mg' : variant === 'CHILD' ? 'Paracetamol siro 120mg/5ml' : base.drugName,
+    quantity: variant === 'N' ? 6 : base.quantity,
+    kind,
+    documentId: ID(902),
+    unitCode: variant === 'CHILD' ? 'CHAI' : 'VIEN',
+  });
+  const documents: PrescriptionDocument[] = [{ id: ID(902), kind, nationalCode: `${SAMPLE_CODE_PREFIX}0000001-${kind}`, itemIds: [item.id] }];
+  const adult: PrescriptionPrintInfo = {
+    patientCode: 'BN2610000148',
+    nationalId: '079187001234',
+    address: { street: '12 Lê Văn Sỹ, P.14, Q.3' },
+    phone: '0912 345 678',
+    weightGram: 54_000,
+    ageMonths: 475,
+    guardian: { fullName: 'Nguyễn Văn Nam', relationship: 'Chồng' },
+  };
+  if (variant === 'CHILD') {
+    return {
+      patientFullName: 'Nguyễn Gia Bảo',
+      patientDob: '05/06/2022',
+      patientGender: 'Nam',
+      diagnosisLabel: 'Sốt siêu vi (B34.9)',
+      items: [item],
+      documents,
+      printInfo: { ...adult, patientCode: 'BN2610000149', nationalId: null, weightGram: 16_000, ageMonths: 48, guardian: { fullName: 'Nguyễn Văn Nam', relationship: 'Bố' } },
+    };
+  }
+  return { patientFullName: 'Lý Thị Hoài Thương', patientDob: '14/03/1987', patientGender: 'Nữ', diagnosisLabel: 'Viêm họng cấp (J02.9) / Sốt (R50.9)', items: [item], documents, printInfo: adult };
+}
 
 export const SAMPLE_PRESCRIPTION_ITEMS: PrescriptionItem[] = [
   {
@@ -197,6 +257,7 @@ export const SAMPLE_WALLET_RECEIPT = {
   voucherNo: 'NV2610000009',
   occurredAt: NOW,
   patientFullName: 'Lý Thị Hoài Thương',
+  prescriptionDocuments: [],
   patientCode: 'BN2609000471',
   note: 'Tạm ứng thủ thuật tiểu phẫu',
   paymentMethodLabel: 'Tiền mặt',
@@ -294,6 +355,7 @@ export const SAMPLE_STOCK_ISSUE: StockIssueDetail = {
   encounterId: ID(301),
   patientCode: 'BN2609000471',
   patientFullName: 'Lý Thị Hoài Thương',
+  prescriptionDocuments: [],
   occurredAt: NOW,
   note: null,
   totalAmount: 168000,

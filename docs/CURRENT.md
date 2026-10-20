@@ -18,7 +18,7 @@ Mockup đã chốt (https://claude.ai/artifact/6eERQ9k2qsneekMWW2ymjJ, bản 7) 
 
 **Giai đoạn 1 (mã, cấu hình, mã cơ sở theo chi nhánh) — XONG và đã kiểm** (test HTTP 12/12 + kiểm đột biến, shared/core/web xanh, full API chỉ có chập chờn đã biết ở `inventory-http.spec.ts`). Chưa kiểm Chrome thật cho phần web của GĐ1. Bài học: KHÔNG gọi port chi nhánh (mở transaction riêng) từ BÊN TRONG transaction khác — cạn bể kết nối khi nhiều người ký đồng thời; tra mã cơ sở TRƯỚC (`resolveFacilityCodeForBranch`).
 
-**Giai đoạn 2 (phân loại thuốc, tách đơn khi ký, in nhiều tờ, phát thuốc nhóm theo đơn) — ĐÃ CODE ĐỦ API + web, CHƯA KIỂM.** Migration `20261020100000_prescription_document` đã áp DB dev; typecheck + eslint sạch; spec mới `apps/api/src/modules/encounter/prescription-document-http.spec.ts` đã viết nhưng **chưa chạy**; chưa chạy lại toàn bộ test; chưa kiểm Chrome/nhiều cỡ màn hình. Thiết kế: mã chuẩn ở bảng `prescription_document` (không thêm cột vào `prescription`), tách đơn CHỈ khi chế độ chuẩn bật, đơn ký trước ngày bật không cấp mã chuẩn hồi tố. **Việc đầu tiên phiên sau: chạy + sửa test GĐ2, chạy full test, kiểm Chrome, cập nhật ERD-2/CHANGELOG/TASK** — danh sách đầy đủ ở handoff.
+**Giai đoạn 2 (phân loại thuốc, tách đơn khi ký, in nhiều tờ, phát thuốc nhóm theo đơn) — ĐÃ CODE ĐỦ, ĐÃ KIỂM TEST và ĐÃ KIỂM CHROME THẬT (20/10/2026).** Spec `prescription-document-http.spec.ts` 12/12 + kiểm đột biến; shared 46, core 455, web 156, full API 1529/1529 (mọi test cô lập tenant/chi nhánh xanh). Kiểm đã bắt được lỗi thật: bật chế độ chuẩn làm bộ đếm mã DT đếm lại từ 1 và trùng mã cũ — đã sửa bằng cờ `implicitPeriod` (`docs/DECISIONS.md` #242 bổ sung 8). Thiết kế: mã chuẩn ở bảng `prescription_document` (không thêm cột vào `prescription`), tách đơn CHỈ khi chế độ chuẩn bật, đơn ký trước ngày bật không cấp mã chuẩn hồi tố. **4 sai khác nhỏ so với mockup đã được chủ dự án duyệt (20/10; "Mã cơ sở KCB" đã chuyển lên đầu phiếu in, #242 bổ sung 10); luồng "Sửa đơn" đã kiểm giao diện; hàng tab 1280px đã sửa. Mã chuẩn đã hiện ở lịch sử khám/PDF bệnh án/phiếu xuất kho, tiêu đề đơn N/H đã khoá theo mẫu Thông tư 52/2017 (#242 bổ sung 11). **Cấu hình "thông tin bệnh nhân & mục đơn N/H" trên mẫu in ĐÃ XONG 20/10 (#242 bổ sung 12, bám mockup đã duyệt, kiểm Chrome thật: lưu cấu hình → in thật áp đúng; đã sửa lỗi kế thừa khổ giấy). Việc kế tiếp: giai đoạn 3 liên thông. Còn mở: số thẻ BHYT trên đơn (làm cùng S2-04); hộp in thật của trình duyệt; tên mẫu đơn thuốc cổ truyền (Y); dòng nhật ký riêng cho "in đơn kèm CCCD".**
 
 **Giai đoạn 3 (liên thông)** chưa bắt đầu (mockup 8a–8d đã chốt, kế hoạch ở handoff mục 3).
 
@@ -33,7 +33,7 @@ Mockup đã chốt (https://claude.ai/artifact/6eERQ9k2qsneekMWW2ymjJ, bản 7) 
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-MaDonThuocBYT-GD1-GD2-TachTaiLieu-2026-10-20.md`** (mới nhất, 20/10/2026: giai đoạn 1 xong, giai đoạn 2 chờ kiểm, tách tài liệu dài). Bản trước: `HANDOFF-KeDonLieuLe-ChuanGiaoDien-MaDonThuoc-2026-10-16-p2.md`.
+**`docs/handoffs/HANDOFF-MaDonThuocBYT-GD2-MauInDonThuoc-KiemNghiem-2026-10-20-p2.md`** (mới nhất, 20/10/2026 phần 2: giai đoạn 2 đã kiểm, mẫu in đơn thuốc cấu hình được, rà lỗi kế thừa khổ giấy, danh sách 31 mục kiểm nghiệm để chốt; kế tiếp giai đoạn 3 liên thông). Bản trước: `HANDOFF-MaDonThuocBYT-GD1-GD2-TachTaiLieu-2026-10-20.md`.
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 

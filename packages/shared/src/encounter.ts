@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { invoiceStatusSchema } from './billing';
 import { patientAllergenItemSchema, patientConditionItemSchema, patientFamilyHistoryItemSchema } from './patient';
+import { prescriptionKindSchema } from './business-code';
 import { prescriptionResponseSchema } from './prescription';
 
 /**
@@ -778,6 +779,8 @@ export const patientEncounterHistoryClinicalSchema = z.object({
   /** `YYYY-MM-DD`, chỉ khi đã chọn hướng "Hẹn tái khám". */
   followUpDate: z.string().nullable(),
   prescriptionNo: z.string().nullable(),
+  /** Các đơn pháp lý mang mã chuẩn Bộ Y tế (#242) — có thì web hiện mã chuẩn thay cho mã nội bộ `prescriptionNo`; rỗng với đơn ký trước ngày bật chế độ chuẩn. */
+  prescriptionDocuments: z.array(z.object({ kind: prescriptionKindSchema, nationalCode: z.string() })),
   prescriptionItemCount: z.number().int(),
   /** `null` = lượt khám không có dịch vụ cận lâm sàng nào làm tại phòng khám. */
   paraclinical: z.object({ total: z.number().int(), withResult: z.number().int() }).nullable(),

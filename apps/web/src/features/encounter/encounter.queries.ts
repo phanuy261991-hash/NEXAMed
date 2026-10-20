@@ -29,7 +29,20 @@ import {
   savePrescriptionItems,
   acknowledgePrescriptionWarning,
   signPrescription,
+  getPrescriptionPrintInfo,
 } from './encounter.api';
+
+/** Thông tin in thêm của đơn thuốc — chỉ nạp khi `enabled` (đơn đã ký); lỗi/không có quyền thì bản in tự ẩn các ô phụ thuộc dữ liệu. */
+export function usePrescriptionPrintInfoQuery(id: string, enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'encounter', 'prescription-print-info', id),
+    queryFn: () => getPrescriptionPrintInfo(id),
+    enabled,
+    retry: false,
+    staleTime: 60_000,
+  });
+}
 
 export function useConsultationDetailQuery(id: string) {
   const { tenantId } = useAppConfig();

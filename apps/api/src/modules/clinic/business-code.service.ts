@@ -108,7 +108,9 @@ export class BusinessCodeService {
     // cấp dưới bộ đếm liên tục (`period_key=''`). Chỉ tính periodKey thật khi tenant ĐÃ chủ động
     // lưu khuôn riêng (`explicitConfig` tồn tại) — đúng lời hứa "tương thích ngược tuyệt đối,
     // CHO TỚI KHI tenant chủ động cấu hình" đã chốt ở docs/DECISIONS.md #114.
-    const periodKey = explicitConfig || businessCodeResetsByDefault(codeType) ? computeBusinessCodePeriodKey(parseResult.parsed, dateParts) : '';
+    // Entry do hệ thống tạo khi bật chế độ chuẩn (`implicitPeriod`) vẫn coi như CHƯA cấu hình: giữ bộ đếm liên tục, không đếm lại từ 1 (#242).
+    const isExplicit = explicitConfig !== undefined && !explicitConfig.implicitPeriod;
+    const periodKey = isExplicit || businessCodeResetsByDefault(codeType) ? computeBusinessCodePeriodKey(parseResult.parsed, dateParts) : '';
     const prefix = BUSINESS_CODE_TYPE_REGISTRY[codeType].internalPrefix;
 
     // Token riêng của mã đơn thuốc (#242): cần chi nhánh/loại đơn do nơi gọi truyền vào.
@@ -224,7 +226,7 @@ export class BusinessCodeService {
       for (const codeType of businessCodeTypeSchema.options) {
         const explicitConfig = stored[codeType];
         const config = explicitConfig ?? this.defaultConfig(codeType);
-        items.push(await this.toItem(tx, tenantId, codeType, config, now, explicitConfig !== undefined, branchId, branches));
+        items.push(await this.toItem(tx, tenantId, codeType, config, now, explicitConfig !== undefined && !explicitConfig.implicitPeriod, branchId, branches));
       }
       return items;
     });
@@ -261,7 +263,9 @@ export class BusinessCodeService {
           }
         }
         const base = existingEntry ?? this.defaultConfig(codeType);
-        newEntry = { template: base.template, counterDigits: base.counterDigits, startingValue: base.startingValue, mode: 'STANDARD' };
+        // Tenant chưa tự cấu hình khuôn → entry này do hệ thống tạo, giữ cách đếm cũ (liên tục) để không trùng mã DT đã cấp.
+        const implicitPeriod = existingEntry === undefined || existingEntry.implicitPeriod === true;
+        newEntry = { template: base.template, counterDigits: base.counterDigits, startingValue: base.startingValue, mode: 'STANDARD', ...(implicitPeriod ? { implicitPeriod: true as const } : {}) };
       } else {
         const parseResult = parseBusinessCodeTemplate(dto.template, codeType);
         if (!parseResult.ok) {
@@ -273,10 +277,13 @@ export class BusinessCodeService {
             throw new BusinessCodeTemplateStartingValueLockedError();
           }
         }
+        // Tắt chế độ chuẩn mà khuôn không đổi so với entry do hệ thống tạo → vẫn là "chưa cấu hình" (giữ bộ đếm liên tục).
+        const keepImplicit = existingEntry?.implicitPeriod === true && dto.template === existingEntry.template && dto.counterDigits === existingEntry.counterDigits;
         newEntry = {
           template: dto.template,
           counterDigits: dto.counterDigits,
           startingValue: dto.startingValue ?? existingEntry?.startingValue ?? DEFAULT_BUSINESS_CODE_STARTING_VALUE,
+          ...(keepImplicit ? { implicitPeriod: true as const } : {}),
         };
       }
       await this.clinicSettingsRepository.upsertBusinessCodeTemplateEntry(tx, tenantId, actorId, codeType, newEntry);
@@ -293,7 +300,7 @@ export class BusinessCodeService {
       });
 
       const now = toVietnamDateParts(new Date());
-      return this.toItem(tx, tenantId, codeType, newEntry, now, true, branchId, branches);
+      return this.toItem(tx, tenantId, codeType, newEntry, now, newEntry.implicitPeriod !== true, branchId, branches);
     });
   }
 

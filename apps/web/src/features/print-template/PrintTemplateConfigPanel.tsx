@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Check as CheckIcon } from '@phosphor-icons/react';
-import type { PrintPaperInfo, PrintTemplateConfig } from '@nexamed/shared';
+import type { PrescriptionInfoConfig, PrintDocumentType, PrintPaperInfo, PrintTemplateConfig } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
 import { useAuthStore } from '../auth/auth.store';
 import { showBranchInfo } from '../branch/branch-visibility';
 import { Textarea } from '../../shared/ui/Textarea';
+import { ALL_ON_PRESCRIPTION_INFO } from '../encounter/prescription-print-fields';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -21,6 +22,42 @@ const LABEL_TOGGLES: { key: LabelKey; label: string }[] = [
 ];
 const DEFAULT_LABEL_OPTIONS: NonNullable<PrintTemplateConfig['label']> = { showPatientCode: false, showGroup: true, showCapColor: false, showDate: true };
 type MarginKey = keyof PrintTemplateConfig['margins'];
+
+type RxToggleKey = Exclude<keyof PrescriptionInfoConfig, 'nationalIdWhenMissing'>;
+interface RxToggle {
+  key: RxToggleKey;
+  label: string;
+  hint: string;
+  /** Nhãn loại đơn áp dụng (chỉ các mục riêng của đơn "N"/"H"). */
+  tag?: string;
+}
+/** Thông tin bệnh nhân in trên MỌI loại đơn thuốc (mockup "Mẫu in đơn thuốc" đã duyệt 20/10/2026, docs/DECISIONS.md #242). Họ tên, ngày sinh, giới tính, bác sĩ, chẩn đoán luôn in. */
+const RX_PATIENT_TOGGLES: RxToggle[] = [
+  { key: 'showPatientCode', label: 'Mã bệnh nhân', hint: 'Lấy từ hồ sơ bệnh nhân.' },
+  { key: 'showNationalId', label: 'Số CCCD của bệnh nhân', hint: 'Lấy từ hồ sơ (đã mã hoá, chỉ giải mã khi in và ghi nhật ký xem).' },
+  { key: 'showAddress', label: 'Địa chỉ liên hệ', hint: 'Địa chỉ trong hồ sơ.' },
+  { key: 'showPhone', label: 'Số điện thoại liên hệ', hint: 'Số điện thoại trong hồ sơ.' },
+  { key: 'showWeight', label: 'Cân nặng', hint: 'Lấy từ sinh hiệu của lượt khám; chưa đo thì in dòng chấm để viết tay.' },
+  { key: 'showGuardian', label: 'Người giám hộ (trẻ dưới 72 tháng)', hint: 'Họ tên, quan hệ lấy từ "Người thân" trong hồ sơ; số CCCD người giám hộ chưa lưu nên in dòng chấm. Chỉ hiện với trẻ dưới 72 tháng.' },
+];
+/** Mục riêng theo mẫu đơn "N"/"H" của Thông tư 52/2017/TT-BYT. */
+const RX_CONTROLLED_TOGGLES: RxToggle[] = [
+  { key: 'showCourse', label: 'Đợt: từ ngày … đến hết ngày …', hint: 'Chưa có dữ liệu nên in dòng chấm để viết tay.', tag: 'Đơn N' },
+  { key: 'showQuantityInWords', label: 'Số lượng viết bằng chữ', hint: 'Quy định bắt buộc với thuốc gây nghiện: "Sáu viên", chữ đầu viết hoa.', tag: 'Đơn N' },
+  { key: 'showReceiverBox', label: 'Ô người nhận thuốc', hint: 'Ký, ghi rõ họ tên và số CCCD/CMND của người nhận thuốc.', tag: 'Đơn N · H' },
+];
+
+function RxToggleRow({ toggle, checked, onChange }: { toggle: RxToggle; checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <div className="border-b border-slate-100 py-2 first:pt-0 last:border-b-0 last:pb-0">
+      <div className="flex items-center justify-between gap-2">
+        <Check id={`pt-rx-${toggle.key}`} label={toggle.label} checked={checked} onChange={onChange} />
+        {toggle.tag && <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">{toggle.tag}</span>}
+      </div>
+      <p className="ml-6 mt-0.5 text-[11px] leading-snug text-slate-500">{toggle.hint}</p>
+    </div>
+  );
+}
 
 const HEADER_TOGGLES: { key: HeaderKey; label: string }[] = [
   { key: 'showLogo', label: 'Logo phòng khám' },
@@ -92,6 +129,7 @@ function MarginInput({ id, label, value, onCommit }: { id: string; label: string
  * vùng xem trước cập nhật ngay.
  */
 export function PrintTemplateConfigPanel({
+  documentType,
   name,
   onNameChange,
   paper,
@@ -103,6 +141,7 @@ export function PrintTemplateConfigPanel({
   isDefault,
   onSetDefault,
 }: {
+  documentType: PrintDocumentType;
   name: string;
   onNameChange: (name: string) => void;
   paper: PrintPaperInfo;
@@ -127,6 +166,11 @@ export function PrintTemplateConfigPanel({
   const isLabel = paper.paperSize === 'LABEL_35X22' || paper.paperSize === 'LABEL_50X30';
   const labelOptions = config.label ?? DEFAULT_LABEL_OPTIONS;
   const setLabelOption = (key: LabelKey, value: boolean) => onConfigChange({ ...config, label: { ...labelOptions, [key]: value } });
+  // Khối "Thông tin trên đơn" chỉ của chứng từ Đơn thuốc; cấu hình chưa có khối (vd. sau "Khôi phục mặc định") coi như bật hết, ghi đủ khối khi người dùng đổi một công tắc.
+  const rxInfo = documentType === 'PRESCRIPTION' ? (config.prescriptionInfo ?? ALL_ON_PRESCRIPTION_INFO) : undefined;
+  const setRxInfo = (patch: Partial<PrescriptionInfoConfig>) => {
+    if (rxInfo) onConfigChange({ ...config, prescriptionInfo: { ...rxInfo, ...patch } });
+  };
   const setHeader = (key: HeaderKey, value: boolean) => onConfigChange({ ...config, header: { ...config.header, [key]: value } });
   const setMargin = (key: MarginKey, value: number) => onConfigChange({ ...config, margins: { ...config.margins, [key]: value } });
   const setCopyCount = (count: number) => onConfigChange({ ...config, copies: { ...config.copies, count } });
@@ -206,6 +250,42 @@ export function PrintTemplateConfigPanel({
           className={inputClassName}
         />
       </Block>
+
+      {rxInfo && (
+        <>
+          <Block title="Thông tin bệnh nhân — mọi loại đơn">
+            {RX_PATIENT_TOGGLES.map((toggle) => (
+              <div key={toggle.key}>
+                <RxToggleRow toggle={toggle} checked={rxInfo[toggle.key]} onChange={(v) => setRxInfo({ [toggle.key]: v })} />
+                {toggle.key === 'showNationalId' && rxInfo.showNationalId && (
+                  <div className="mb-2 ml-6 flex flex-wrap items-center gap-2 text-[12px] text-slate-600">
+                    <label htmlFor="pt-rx-nationalIdWhenMissing">Khi bệnh nhân chưa có CCCD (vd. trẻ em):</label>
+                    <select
+                      id="pt-rx-nationalIdWhenMissing"
+                      value={rxInfo.nationalIdWhenMissing}
+                      onChange={(e) => setRxInfo({ nationalIdWhenMissing: e.target.value === 'dots' ? 'dots' : 'hide' })}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[12px] font-semibold text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    >
+                      <option value="hide">Ẩn cả dòng</option>
+                      <option value="dots">In dòng chấm để viết tay</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            ))}
+          </Block>
+
+          <Block title="Mục riêng của đơn “N” và “H”">
+            {RX_CONTROLLED_TOGGLES.map((toggle) => (
+              <RxToggleRow key={toggle.key} toggle={toggle} checked={rxInfo[toggle.key]} onChange={(v) => setRxInfo({ [toggle.key]: v })} />
+            ))}
+            <p className="mt-2 text-[11px] leading-snug text-slate-500">
+              <span className="font-semibold text-slate-700">Số bản:</span> đơn “N” và “H” theo quy định in 03 bản. Mục “Số liên” ở phần Cuối trang vẫn do phòng khám chọn; không tự đổi.
+            </p>
+          </Block>
+          <p className="px-1 text-[11px] leading-snug text-slate-400">Tiêu đề đơn “N” và “H” được cố định theo mẫu, bản mẫu in không đổi được. Số thẻ BHYT sẽ làm cùng việc lưu thẻ BHYT sau này.</p>
+        </>
+      )}
 
       {notice && currentNotice && (
         <Block title="Khuyến cáo (in sau bảng kết quả)">

@@ -10,8 +10,9 @@ import {
   buildBuiltinPrintTemplate,
   buildPrintTemplateCatalog,
   buildResolvedPrintTemplate,
+  deriveConfigForPaper,
   buildDefaultPrintTemplateConfig,
-  withDefaultPrintNotice,
+  withDefaultPrintOptions,
   defaultPrintTemplateName,
   paperForQuickSetupPreset,
   printDocumentTypeSchema,
@@ -178,6 +179,8 @@ export class PrintTemplateService {
       for (const documentType of documentTypes) {
         const registry = PRINT_DOCUMENT_TYPE_REGISTRY[documentType];
         const currentDefault = rows.find((r) => r.documentType === documentType && r.isDefault);
+        // Đọc cấu hình bản đang là mặc định TRƯỚC khi bỏ cờ mặc định của nó — khổ đích chưa có bản mẫu thì kế thừa từ đây thay vì quay về mặc định trơn (#242).
+        const currentDefaultConfig = currentDefault ? this.parseConfig(currentDefault) : null;
         let target: PrintPaperSize = paperForQuickSetupPreset(dto.paperPreset, documentType) ?? currentDefault?.paperSize ?? registry.defaultPaper;
         if (!registry.allowedPapers.includes(target)) target = registry.defaultPaper;
 
@@ -199,7 +202,8 @@ export class PrintTemplateService {
             paperSize: target,
             name: defaultPrintTemplateName(documentType, target),
             isDefault: true,
-            configJson: { ...buildDefaultPrintTemplateConfig(target), header: dto.header } as Prisma.InputJsonValue,
+            // Khổ đích CHƯA có bản mẫu: kế thừa tiêu đề, chữ ký, ghi chú, công tắc thông tin đơn thuốc, số liên... của bản đang dùng (đúng như khi in ra khổ đó qua nút "In ▾"), chỉ đầu trang theo bước thiết lập nhanh.
+            configJson: { ...(currentDefault && currentDefaultConfig ? deriveConfigForPaper(target, currentDefaultConfig, currentDefault.paperSize) : buildDefaultPrintTemplateConfig(target)), header: dto.header } as Prisma.InputJsonValue,
           });
         }
       }
@@ -253,7 +257,7 @@ export class PrintTemplateService {
   /** Cấu hình lưu hỏng/cũ → rơi về mặc định theo khổ giấy (in không bao giờ vỡ vì dữ liệu cấu hình). */
   private parseConfig(row: PrintTemplateRow): PrintTemplateConfig {
     const parsed = printTemplateConfigSchema.safeParse(row.configJson);
-    return withDefaultPrintNotice(documentTypeOf(row), parsed.success ? parsed.data : buildDefaultPrintTemplateConfig(row.paperSize));
+    return withDefaultPrintOptions(documentTypeOf(row), parsed.success ? parsed.data : buildDefaultPrintTemplateConfig(row.paperSize));
   }
 
   private toDto(row: PrintTemplateRow): PrintTemplate {

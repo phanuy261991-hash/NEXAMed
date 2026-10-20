@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { PrintDocumentType } from '@nexamed/shared';
+import { Button } from '../../shared/ui/Button';
 import { PrintDocument } from '../../shared/print/PrintDocument';
 import { formatPrintDate } from '../../shared/format/print-date';
 import { InvoiceCombinedPrintView } from '../billing/InvoiceCombinedPrintView';
@@ -22,7 +24,9 @@ import {
   SAMPLE_CASHIER_SHIFT,
   SAMPLE_COMBINED_INVOICES,
   SAMPLE_INVOICE,
-  SAMPLE_PRESCRIPTION_ITEMS,
+  SAMPLE_PRESCRIPTION_VARIANT_LABEL,
+  buildSamplePrescriptionVariant,
+  type SamplePrescriptionVariant,
   SAMPLE_STOCK_COUNT,
   SAMPLE_STOCK_ISSUE,
   SAMPLE_STOCK_RECEIPT,
@@ -36,22 +40,40 @@ import {
  * chứng từ đó với dữ liệu mẫu, nên bản xem trước luôn khớp bản in. Phải được bọc trong `PrintPreviewProvider` (bản mẫu
  * đang soạn + đầu trang) để `PrintDocument` lấy cấu hình nháp thay vì bản đã lưu.
  */
+/** Xem trước đơn thuốc có 4 biến thể (đơn thường, "N", "H", trẻ nhỏ) để thấy tác động của từng công tắc ở khối "Thông tin trên đơn". */
+function PrescriptionSamplePreview() {
+  const [variant, setVariant] = useState<SamplePrescriptionVariant>('C');
+  const sample = buildSamplePrescriptionVariant(variant);
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap gap-1.5 print:hidden" role="group" aria-label="Loại đơn xem trước">
+        {(Object.keys(SAMPLE_PRESCRIPTION_VARIANT_LABEL) as SamplePrescriptionVariant[]).map((v) => (
+          <Button key={v} type="button" variant={variant === v ? 'primary' : 'secondary'} aria-pressed={variant === v} className="h-8 px-3 text-xs" onClick={() => setVariant(v)}>
+            {SAMPLE_PRESCRIPTION_VARIANT_LABEL[v]}
+          </Button>
+        ))}
+      </div>
+      <PrescriptionPrintView
+        doctorName="BS. Đặng Quốc Hưng"
+        patientFullName={sample.patientFullName}
+        patientDob={sample.patientDob}
+        patientGender={sample.patientGender}
+        diagnosisLabel={sample.diagnosisLabel}
+        items={sample.items}
+        documents={sample.documents}
+        printInfo={sample.printInfo}
+        signedAt="2026-10-01T07:30:00.000Z"
+        advice="Uống thuốc đúng giờ, nghỉ ngơi, uống đủ nước. Quay lại ngay nếu sốt cao hoặc khó thở."
+        followUpLabel="Thứ Năm, 08/10/2026"
+      />
+    </div>
+  );
+}
+
 export function PrintDocumentPreview({ documentType }: { documentType: PrintDocumentType }) {
   switch (documentType) {
     case 'PRESCRIPTION':
-      return (
-        <PrescriptionPrintView
-          doctorName="BS. Đặng Quốc Hưng"
-          patientFullName="Lý Thị Hoài Thương"
-          patientDob="14/03/1987"
-          patientGender="Nữ"
-          diagnosisLabel="Viêm họng cấp (J02.9) / Sốt (R50.9)"
-          items={SAMPLE_PRESCRIPTION_ITEMS}
-          signedAt="2026-10-01T07:30:00.000Z"
-          advice="Uống thuốc đúng giờ, nghỉ ngơi, uống đủ nước. Quay lại ngay nếu sốt cao hoặc khó thở."
-          followUpLabel="Thứ Năm, 08/10/2026"
-        />
-      );
+      return <PrescriptionSamplePreview />;
     case 'CLINICAL_ORDER':
       return (
         <ClinicalOrderPrintView

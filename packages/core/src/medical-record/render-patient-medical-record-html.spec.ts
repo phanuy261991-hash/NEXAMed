@@ -156,6 +156,46 @@ describe('renderPatientMedicalRecordHtml', () => {
     expect(html).toContain('120/80 mmHg');
   });
 
+  describe('mã đơn thuốc chuẩn Bộ Y tế (#242)', () => {
+    const encounter = {
+      encounterNo: 'KB-2610-000002',
+      checkedInAt: '2026-10-20T01:30:00.000Z',
+      doctorName: 'Trần Thị B',
+      chiefComplaint: null,
+      vitalSigns: null,
+      diagnoses: [],
+      clinicalNoteSections: [],
+      prescriptionItems: [{ drugName: 'Morphin 10mg', doseSummary: 'Sáng 1', durationDays: 3, quantity: 3, unitCode: 'VIEN', instruction: null }],
+      signedAt: '2026-10-20T02:00:00.000Z',
+    };
+
+    it('có đơn pháp lý → in dòng "Mã đơn" với mã chuẩn và loại đơn từng đơn', () => {
+      const html = renderPatientMedicalRecordHtml(
+        buildDoc({
+          encounters: [
+            {
+              ...encounter,
+              prescriptionDocuments: [
+                { kind: 'C', nationalCode: '790010000001-C' },
+                { kind: 'N', nationalCode: '790010000002-N' },
+              ],
+            },
+          ],
+        }),
+      );
+      expect(html).toContain('Mã đơn:');
+      expect(html).toContain('790010000001-C');
+      expect(html).toContain('(thông thường)');
+      expect(html).toContain('790010000002-N');
+      expect(html).toContain('(gây nghiện)');
+    });
+
+    it('đơn ký trước ngày bật chế độ chuẩn (không có đơn pháp lý) → KHÔNG in dòng "Mã đơn"', () => {
+      expect(renderPatientMedicalRecordHtml(buildDoc({ encounters: [{ ...encounter }] }))).not.toContain('Mã đơn:');
+      expect(renderPatientMedicalRecordHtml(buildDoc({ encounters: [{ ...encounter, prescriptionDocuments: [] }] }))).not.toContain('Mã đơn:');
+    });
+  });
+
   it('escape HTML trong nội dung do người dùng nhập (chống XSS trong PDF)', () => {
     const html = renderPatientMedicalRecordHtml(buildDoc({ reason: '<script>alert(1)</script>' }));
     expect(html).not.toContain('<script>alert(1)</script>');

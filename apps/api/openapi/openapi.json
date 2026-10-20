@@ -12582,6 +12582,30 @@
                                       "null"
                                     ]
                                   },
+                                  "prescriptionDocuments": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "enum": [
+                                            "C",
+                                            "N",
+                                            "H",
+                                            "Y"
+                                          ]
+                                        },
+                                        "nationalCode": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "nationalCode"
+                                      ]
+                                    }
+                                  },
                                   "prescriptionItemCount": {
                                     "type": "integer"
                                   },
@@ -12611,6 +12635,7 @@
                                   "conclusion",
                                   "followUpDate",
                                   "prescriptionNo",
+                                  "prescriptionDocuments",
                                   "prescriptionItemCount",
                                   "paraclinical"
                                 ]
@@ -15335,6 +15360,230 @@
           },
           "404": {
             "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encounters/{id}/prescription-print-info": {
+      "get": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "Thông tin bệnh nhân in thêm trên đơn thuốc (mã BN, CCCD giải mã nếu có quyền xem hồ sơ bệnh nhân, địa chỉ, SĐT, cân nặng, tháng tuổi, người thân) — gọi khi bấm In, ghi nhật ký xem",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "nationalId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "address": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "street": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "ward": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "neighborhood": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "district": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "province": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        },
+                        "phone": {
+                          "type": "string"
+                        },
+                        "weightGram": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "ageMonths": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "guardian": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "fullName": {
+                              "type": "string"
+                            },
+                            "relationship": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "fullName",
+                            "relationship"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "patientCode",
+                        "nationalId",
+                        "address",
+                        "phone",
+                        "weightGram",
+                        "ageMonths",
+                        "guardian"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.read_clinical",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài scope personal)",
             "content": {
               "application/json": {
                 "schema": {
@@ -55115,6 +55364,57 @@
                                       "showDate"
                                     ]
                                   },
+                                  "prescriptionInfo": {
+                                    "type": "object",
+                                    "properties": {
+                                      "showPatientCode": {
+                                        "type": "boolean"
+                                      },
+                                      "showNationalId": {
+                                        "type": "boolean"
+                                      },
+                                      "nationalIdWhenMissing": {
+                                        "type": "string",
+                                        "enum": [
+                                          "hide",
+                                          "dots"
+                                        ]
+                                      },
+                                      "showAddress": {
+                                        "type": "boolean"
+                                      },
+                                      "showPhone": {
+                                        "type": "boolean"
+                                      },
+                                      "showWeight": {
+                                        "type": "boolean"
+                                      },
+                                      "showGuardian": {
+                                        "type": "boolean"
+                                      },
+                                      "showCourse": {
+                                        "type": "boolean"
+                                      },
+                                      "showQuantityInWords": {
+                                        "type": "boolean"
+                                      },
+                                      "showReceiverBox": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "showPatientCode",
+                                      "showNationalId",
+                                      "nationalIdWhenMissing",
+                                      "showAddress",
+                                      "showPhone",
+                                      "showWeight",
+                                      "showGuardian",
+                                      "showCourse",
+                                      "showQuantityInWords",
+                                      "showReceiverBox"
+                                    ]
+                                  },
                                   "copies": {
                                     "type": "object",
                                     "properties": {
@@ -55446,6 +55746,57 @@
                                         "showDate"
                                       ]
                                     },
+                                    "prescriptionInfo": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showNationalId": {
+                                          "type": "boolean"
+                                        },
+                                        "nationalIdWhenMissing": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "dots"
+                                          ]
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showWeight": {
+                                          "type": "boolean"
+                                        },
+                                        "showGuardian": {
+                                          "type": "boolean"
+                                        },
+                                        "showCourse": {
+                                          "type": "boolean"
+                                        },
+                                        "showQuantityInWords": {
+                                          "type": "boolean"
+                                        },
+                                        "showReceiverBox": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showNationalId",
+                                        "nationalIdWhenMissing",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showWeight",
+                                        "showGuardian",
+                                        "showCourse",
+                                        "showQuantityInWords",
+                                        "showReceiverBox"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -55620,6 +55971,57 @@
                                         "showGroup",
                                         "showCapColor",
                                         "showDate"
+                                      ]
+                                    },
+                                    "prescriptionInfo": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showNationalId": {
+                                          "type": "boolean"
+                                        },
+                                        "nationalIdWhenMissing": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "dots"
+                                          ]
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showWeight": {
+                                          "type": "boolean"
+                                        },
+                                        "showGuardian": {
+                                          "type": "boolean"
+                                        },
+                                        "showCourse": {
+                                          "type": "boolean"
+                                        },
+                                        "showQuantityInWords": {
+                                          "type": "boolean"
+                                        },
+                                        "showReceiverBox": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showNationalId",
+                                        "nationalIdWhenMissing",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showWeight",
+                                        "showGuardian",
+                                        "showCourse",
+                                        "showQuantityInWords",
+                                        "showReceiverBox"
                                       ]
                                     },
                                     "copies": {
@@ -55798,6 +56200,57 @@
                                         "showDate"
                                       ]
                                     },
+                                    "prescriptionInfo": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showNationalId": {
+                                          "type": "boolean"
+                                        },
+                                        "nationalIdWhenMissing": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "dots"
+                                          ]
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showWeight": {
+                                          "type": "boolean"
+                                        },
+                                        "showGuardian": {
+                                          "type": "boolean"
+                                        },
+                                        "showCourse": {
+                                          "type": "boolean"
+                                        },
+                                        "showQuantityInWords": {
+                                          "type": "boolean"
+                                        },
+                                        "showReceiverBox": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showNationalId",
+                                        "nationalIdWhenMissing",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showWeight",
+                                        "showGuardian",
+                                        "showCourse",
+                                        "showQuantityInWords",
+                                        "showReceiverBox"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -55972,6 +56425,57 @@
                                         "showGroup",
                                         "showCapColor",
                                         "showDate"
+                                      ]
+                                    },
+                                    "prescriptionInfo": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showNationalId": {
+                                          "type": "boolean"
+                                        },
+                                        "nationalIdWhenMissing": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "dots"
+                                          ]
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showWeight": {
+                                          "type": "boolean"
+                                        },
+                                        "showGuardian": {
+                                          "type": "boolean"
+                                        },
+                                        "showCourse": {
+                                          "type": "boolean"
+                                        },
+                                        "showQuantityInWords": {
+                                          "type": "boolean"
+                                        },
+                                        "showReceiverBox": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showNationalId",
+                                        "nationalIdWhenMissing",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showWeight",
+                                        "showGuardian",
+                                        "showCourse",
+                                        "showQuantityInWords",
+                                        "showReceiverBox"
                                       ]
                                     },
                                     "copies": {
@@ -56150,6 +56654,57 @@
                                         "showDate"
                                       ]
                                     },
+                                    "prescriptionInfo": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showNationalId": {
+                                          "type": "boolean"
+                                        },
+                                        "nationalIdWhenMissing": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "dots"
+                                          ]
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showWeight": {
+                                          "type": "boolean"
+                                        },
+                                        "showGuardian": {
+                                          "type": "boolean"
+                                        },
+                                        "showCourse": {
+                                          "type": "boolean"
+                                        },
+                                        "showQuantityInWords": {
+                                          "type": "boolean"
+                                        },
+                                        "showReceiverBox": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showNationalId",
+                                        "nationalIdWhenMissing",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showWeight",
+                                        "showGuardian",
+                                        "showCourse",
+                                        "showQuantityInWords",
+                                        "showReceiverBox"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -56324,6 +56879,57 @@
                                         "showGroup",
                                         "showCapColor",
                                         "showDate"
+                                      ]
+                                    },
+                                    "prescriptionInfo": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showNationalId": {
+                                          "type": "boolean"
+                                        },
+                                        "nationalIdWhenMissing": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "dots"
+                                          ]
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showWeight": {
+                                          "type": "boolean"
+                                        },
+                                        "showGuardian": {
+                                          "type": "boolean"
+                                        },
+                                        "showCourse": {
+                                          "type": "boolean"
+                                        },
+                                        "showQuantityInWords": {
+                                          "type": "boolean"
+                                        },
+                                        "showReceiverBox": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showNationalId",
+                                        "nationalIdWhenMissing",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showWeight",
+                                        "showGuardian",
+                                        "showCourse",
+                                        "showQuantityInWords",
+                                        "showReceiverBox"
                                       ]
                                     },
                                     "copies": {
@@ -56646,6 +57252,57 @@
                           "showDate"
                         ]
                       },
+                      "prescriptionInfo": {
+                        "type": "object",
+                        "properties": {
+                          "showPatientCode": {
+                            "type": "boolean"
+                          },
+                          "showNationalId": {
+                            "type": "boolean"
+                          },
+                          "nationalIdWhenMissing": {
+                            "type": "string",
+                            "enum": [
+                              "hide",
+                              "dots"
+                            ]
+                          },
+                          "showAddress": {
+                            "type": "boolean"
+                          },
+                          "showPhone": {
+                            "type": "boolean"
+                          },
+                          "showWeight": {
+                            "type": "boolean"
+                          },
+                          "showGuardian": {
+                            "type": "boolean"
+                          },
+                          "showCourse": {
+                            "type": "boolean"
+                          },
+                          "showQuantityInWords": {
+                            "type": "boolean"
+                          },
+                          "showReceiverBox": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "showPatientCode",
+                          "showNationalId",
+                          "nationalIdWhenMissing",
+                          "showAddress",
+                          "showPhone",
+                          "showWeight",
+                          "showGuardian",
+                          "showCourse",
+                          "showQuantityInWords",
+                          "showReceiverBox"
+                        ]
+                      },
                       "copies": {
                         "type": "object",
                         "properties": {
@@ -56891,6 +57548,57 @@
                                 "showGroup",
                                 "showCapColor",
                                 "showDate"
+                              ]
+                            },
+                            "prescriptionInfo": {
+                              "type": "object",
+                              "properties": {
+                                "showPatientCode": {
+                                  "type": "boolean"
+                                },
+                                "showNationalId": {
+                                  "type": "boolean"
+                                },
+                                "nationalIdWhenMissing": {
+                                  "type": "string",
+                                  "enum": [
+                                    "hide",
+                                    "dots"
+                                  ]
+                                },
+                                "showAddress": {
+                                  "type": "boolean"
+                                },
+                                "showPhone": {
+                                  "type": "boolean"
+                                },
+                                "showWeight": {
+                                  "type": "boolean"
+                                },
+                                "showGuardian": {
+                                  "type": "boolean"
+                                },
+                                "showCourse": {
+                                  "type": "boolean"
+                                },
+                                "showQuantityInWords": {
+                                  "type": "boolean"
+                                },
+                                "showReceiverBox": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "showPatientCode",
+                                "showNationalId",
+                                "nationalIdWhenMissing",
+                                "showAddress",
+                                "showPhone",
+                                "showWeight",
+                                "showGuardian",
+                                "showCourse",
+                                "showQuantityInWords",
+                                "showReceiverBox"
                               ]
                             },
                             "copies": {
@@ -57325,6 +58033,57 @@
                                       "showDate"
                                     ]
                                   },
+                                  "prescriptionInfo": {
+                                    "type": "object",
+                                    "properties": {
+                                      "showPatientCode": {
+                                        "type": "boolean"
+                                      },
+                                      "showNationalId": {
+                                        "type": "boolean"
+                                      },
+                                      "nationalIdWhenMissing": {
+                                        "type": "string",
+                                        "enum": [
+                                          "hide",
+                                          "dots"
+                                        ]
+                                      },
+                                      "showAddress": {
+                                        "type": "boolean"
+                                      },
+                                      "showPhone": {
+                                        "type": "boolean"
+                                      },
+                                      "showWeight": {
+                                        "type": "boolean"
+                                      },
+                                      "showGuardian": {
+                                        "type": "boolean"
+                                      },
+                                      "showCourse": {
+                                        "type": "boolean"
+                                      },
+                                      "showQuantityInWords": {
+                                        "type": "boolean"
+                                      },
+                                      "showReceiverBox": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "showPatientCode",
+                                      "showNationalId",
+                                      "nationalIdWhenMissing",
+                                      "showAddress",
+                                      "showPhone",
+                                      "showWeight",
+                                      "showGuardian",
+                                      "showCourse",
+                                      "showQuantityInWords",
+                                      "showReceiverBox"
+                                    ]
+                                  },
                                   "copies": {
                                     "type": "object",
                                     "properties": {
@@ -57530,6 +58289,57 @@
                                             "showGroup",
                                             "showCapColor",
                                             "showDate"
+                                          ]
+                                        },
+                                        "prescriptionInfo": {
+                                          "type": "object",
+                                          "properties": {
+                                            "showPatientCode": {
+                                              "type": "boolean"
+                                            },
+                                            "showNationalId": {
+                                              "type": "boolean"
+                                            },
+                                            "nationalIdWhenMissing": {
+                                              "type": "string",
+                                              "enum": [
+                                                "hide",
+                                                "dots"
+                                              ]
+                                            },
+                                            "showAddress": {
+                                              "type": "boolean"
+                                            },
+                                            "showPhone": {
+                                              "type": "boolean"
+                                            },
+                                            "showWeight": {
+                                              "type": "boolean"
+                                            },
+                                            "showGuardian": {
+                                              "type": "boolean"
+                                            },
+                                            "showCourse": {
+                                              "type": "boolean"
+                                            },
+                                            "showQuantityInWords": {
+                                              "type": "boolean"
+                                            },
+                                            "showReceiverBox": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "showPatientCode",
+                                            "showNationalId",
+                                            "nationalIdWhenMissing",
+                                            "showAddress",
+                                            "showPhone",
+                                            "showWeight",
+                                            "showGuardian",
+                                            "showCourse",
+                                            "showQuantityInWords",
+                                            "showReceiverBox"
                                           ]
                                         },
                                         "copies": {
@@ -58037,6 +58847,57 @@
                           "showDate"
                         ]
                       },
+                      "prescriptionInfo": {
+                        "type": "object",
+                        "properties": {
+                          "showPatientCode": {
+                            "type": "boolean"
+                          },
+                          "showNationalId": {
+                            "type": "boolean"
+                          },
+                          "nationalIdWhenMissing": {
+                            "type": "string",
+                            "enum": [
+                              "hide",
+                              "dots"
+                            ]
+                          },
+                          "showAddress": {
+                            "type": "boolean"
+                          },
+                          "showPhone": {
+                            "type": "boolean"
+                          },
+                          "showWeight": {
+                            "type": "boolean"
+                          },
+                          "showGuardian": {
+                            "type": "boolean"
+                          },
+                          "showCourse": {
+                            "type": "boolean"
+                          },
+                          "showQuantityInWords": {
+                            "type": "boolean"
+                          },
+                          "showReceiverBox": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "showPatientCode",
+                          "showNationalId",
+                          "nationalIdWhenMissing",
+                          "showAddress",
+                          "showPhone",
+                          "showWeight",
+                          "showGuardian",
+                          "showCourse",
+                          "showQuantityInWords",
+                          "showReceiverBox"
+                        ]
+                      },
                       "copies": {
                         "type": "object",
                         "properties": {
@@ -58287,6 +59148,57 @@
                                 "showGroup",
                                 "showCapColor",
                                 "showDate"
+                              ]
+                            },
+                            "prescriptionInfo": {
+                              "type": "object",
+                              "properties": {
+                                "showPatientCode": {
+                                  "type": "boolean"
+                                },
+                                "showNationalId": {
+                                  "type": "boolean"
+                                },
+                                "nationalIdWhenMissing": {
+                                  "type": "string",
+                                  "enum": [
+                                    "hide",
+                                    "dots"
+                                  ]
+                                },
+                                "showAddress": {
+                                  "type": "boolean"
+                                },
+                                "showPhone": {
+                                  "type": "boolean"
+                                },
+                                "showWeight": {
+                                  "type": "boolean"
+                                },
+                                "showGuardian": {
+                                  "type": "boolean"
+                                },
+                                "showCourse": {
+                                  "type": "boolean"
+                                },
+                                "showQuantityInWords": {
+                                  "type": "boolean"
+                                },
+                                "showReceiverBox": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "showPatientCode",
+                                "showNationalId",
+                                "nationalIdWhenMissing",
+                                "showAddress",
+                                "showPhone",
+                                "showWeight",
+                                "showGuardian",
+                                "showCourse",
+                                "showQuantityInWords",
+                                "showReceiverBox"
                               ]
                             },
                             "copies": {
@@ -73161,6 +74073,30 @@
                                   "null"
                                 ]
                               },
+                              "prescriptionDocuments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "C",
+                                        "N",
+                                        "H",
+                                        "Y"
+                                      ]
+                                    },
+                                    "nationalCode": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "nationalCode"
+                                  ]
+                                }
+                              },
                               "occurredAt": {
                                 "type": "string"
                               },
@@ -73269,6 +74205,7 @@
                               "encounterId",
                               "patientCode",
                               "patientFullName",
+                              "prescriptionDocuments",
                               "occurredAt",
                               "note",
                               "totalAmount",
@@ -73529,6 +74466,30 @@
                             "null"
                           ]
                         },
+                        "prescriptionDocuments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nationalCode"
+                            ]
+                          }
+                        },
                         "occurredAt": {
                           "type": "string"
                         },
@@ -73739,6 +74700,7 @@
                         "encounterId",
                         "patientCode",
                         "patientFullName",
+                        "prescriptionDocuments",
                         "occurredAt",
                         "note",
                         "totalAmount",
@@ -73995,6 +74957,30 @@
                             "null"
                           ]
                         },
+                        "prescriptionDocuments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nationalCode"
+                            ]
+                          }
+                        },
                         "occurredAt": {
                           "type": "string"
                         },
@@ -74205,6 +75191,7 @@
                         "encounterId",
                         "patientCode",
                         "patientFullName",
+                        "prescriptionDocuments",
                         "occurredAt",
                         "note",
                         "totalAmount",
@@ -74452,6 +75439,30 @@
                             "null"
                           ]
                         },
+                        "prescriptionDocuments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nationalCode"
+                            ]
+                          }
+                        },
                         "occurredAt": {
                           "type": "string"
                         },
@@ -74662,6 +75673,7 @@
                         "encounterId",
                         "patientCode",
                         "patientFullName",
+                        "prescriptionDocuments",
                         "occurredAt",
                         "note",
                         "totalAmount",
@@ -74987,6 +75999,30 @@
                             "null"
                           ]
                         },
+                        "prescriptionDocuments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nationalCode"
+                            ]
+                          }
+                        },
                         "occurredAt": {
                           "type": "string"
                         },
@@ -75197,6 +76233,7 @@
                         "encounterId",
                         "patientCode",
                         "patientFullName",
+                        "prescriptionDocuments",
                         "occurredAt",
                         "note",
                         "totalAmount",
@@ -75537,6 +76574,30 @@
                             "null"
                           ]
                         },
+                        "prescriptionDocuments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nationalCode"
+                            ]
+                          }
+                        },
                         "occurredAt": {
                           "type": "string"
                         },
@@ -75747,6 +76808,7 @@
                         "encounterId",
                         "patientCode",
                         "patientFullName",
+                        "prescriptionDocuments",
                         "occurredAt",
                         "note",
                         "totalAmount",
@@ -76020,6 +77082,30 @@
                             "null"
                           ]
                         },
+                        "prescriptionDocuments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nationalCode"
+                            ]
+                          }
+                        },
                         "occurredAt": {
                           "type": "string"
                         },
@@ -76230,6 +77316,7 @@
                         "encounterId",
                         "patientCode",
                         "patientFullName",
+                        "prescriptionDocuments",
                         "occurredAt",
                         "note",
                         "totalAmount",
@@ -76539,6 +77626,30 @@
                             "null"
                           ]
                         },
+                        "prescriptionDocuments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "C",
+                                  "N",
+                                  "H",
+                                  "Y"
+                                ]
+                              },
+                              "nationalCode": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nationalCode"
+                            ]
+                          }
+                        },
                         "occurredAt": {
                           "type": "string"
                         },
@@ -76749,6 +77860,7 @@
                         "encounterId",
                         "patientCode",
                         "patientFullName",
+                        "prescriptionDocuments",
                         "occurredAt",
                         "note",
                         "totalAmount",

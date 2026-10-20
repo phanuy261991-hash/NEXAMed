@@ -32,6 +32,7 @@ import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCo
 import {
   useAmendPrescriptionMutation,
   useGetPreviousPrescriptionMutation,
+  usePrescriptionPrintInfoQuery,
   usePrintPrescriptionMutation,
   useSavePrescriptionItemsMutation,
   useAcknowledgePrescriptionWarningMutation,
@@ -221,6 +222,8 @@ export function PrescriptionPanel({
   const [ackError, setAckError] = useState<string | null>(null);
 
   const isSigned = prescription !== null && prescription.signedAt !== null;
+  // Thông tin bệnh nhân in thêm (mã BN, CCCD, địa chỉ...) — chỉ nạp khi đơn đã ký; lỗi/không có quyền thì bản in tự ẩn các ô đó (#242).
+  const printInfoQuery = usePrescriptionPrintInfoQuery(encounterId, isSigned);
   // Mã đơn thuốc chuẩn Bộ Y tế (#242): chữ cái loại đơn từng dòng + dải "sẽ ký thành N đơn". Chỉ có khi phòng khám bật chế độ chuẩn (server trả `kind`).
   const standardMode = prescription?.standardMode ?? false;
   const kindByDrugId = new Map((prescription?.items ?? []).flatMap((i) => (i.drugId !== null && i.kind !== null ? [[i.drugId, i.kind] as const] : [])));
@@ -424,6 +427,8 @@ export function PrescriptionPanel({
   async function handlePrint(documentId: string | null = null) {
     setPrintDocumentId(documentId);
     await printMutation.mutateAsync();
+    // Bấm In ngay khi vừa ký có thể thông tin bệnh nhân (CCCD, địa chỉ...) chưa nạp xong — đợi nốt để bản in không thiếu ô (lỗi nạp thì vẫn in, các ô đó tự ẩn).
+    if (printInfoQuery.isFetching) await printInfoQuery.refetch().catch(() => undefined);
     setTimeout(() => window.print(), 100);
   }
 
@@ -904,6 +909,7 @@ export function PrescriptionPanel({
           signedAt={prescription.signedAt!}
           advice={prescription.doctorAdvice?.trim() || adviceText}
           followUpLabel={followUpLabel}
+          printInfo={printInfoQuery.data ?? null}
         />
       )}
 
@@ -944,7 +950,7 @@ export function PrescriptionPanel({
                         </span>
                       )}
                     </p>
-                    <button type="button" onClick={() => setAmendLines((prev) => prev.filter((l) => l.key !== line.key))} className="text-slate-400 hover:text-rose-600">
+                    <button type="button" onClick={() => setAmendLines((prev) => prev.filter((l) => l.key !== line.key))} className="text-slate-400 hover:text-rose-600" aria-label={`Bỏ ${line.drugName} khỏi bản đính chính`}>
                       <X size={15} weight="bold" aria-hidden="true" />
                     </button>
                   </div>

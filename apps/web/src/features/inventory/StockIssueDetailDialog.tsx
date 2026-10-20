@@ -10,6 +10,7 @@ import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
+import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCode';
 import { useHasPermission } from '../auth/usePermission';
 import { useStockIssueQuery } from './inventory.queries';
 import { StockIssuePrintView } from './StockIssuePrintView';
@@ -80,6 +81,15 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
               <p className="mb-3 text-sm text-slate-600">
                 Bệnh nhân <span className="font-semibold text-slate-900">{issue.patientFullName ?? '—'}</span>
                 {issue.patientCode && <span className="text-slate-400"> ({issue.patientCode})</span>}
+                {/* Mã chuẩn Bộ Y tế các đơn pháp lý của đơn thuốc nguồn (#242) — truy vết thuốc kiểm soát đặc biệt về đúng đơn. */}
+                {issue.prescriptionDocuments.length > 0 && (
+                  <span className="ml-3 inline-flex flex-wrap items-center gap-x-3 gap-y-1 align-middle">
+                    <span className="text-slate-500">Theo đơn</span>
+                    {issue.prescriptionDocuments.map((d) => (
+                      <PrescriptionNationalCode key={d.nationalCode} code={d.nationalCode} />
+                    ))}
+                  </span>
+                )}
               </p>
             ) : (
               issue.departmentName && (

@@ -175,6 +175,8 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // tới khi hết — đủ dùng cho chuỗi đính chính bất kỳ độ sâu, mỗi vòng là 1 câu lệnh riêng nên
       // không phụ thuộc thứ tự xử lý trong 1 statement như xoá gộp cha-con cùng lúc.
       await prisma.prescriptionItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // prescription_document (mã đơn thuốc chuẩn Bộ Y tế, #242 GĐ2) tham chiếu prescription (FK RESTRICT); prescription_item.document_id trỏ vào nó nên dòng thuốc đã xoá ở trên.
+      await prisma.prescriptionDocument.deleteMany({ where: { tenantId: { in: tenantIds } } });
       for (let i = 0; i < 20; i++) {
         const referenced = await prisma.prescription.findMany({
           where: { tenantId: { in: tenantIds }, supersedesId: { not: null } },

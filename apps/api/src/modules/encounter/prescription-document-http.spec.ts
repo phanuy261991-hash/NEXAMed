@@ -373,7 +373,25 @@ describe('HTTP e2e — Đơn thuốc pháp lý C/N/H/Y (giai đoạn 2)', () => 
       expect(numbers).toEqual(Array.from({ length: 8 }, (_, i) => numbers[0]! + i));
     });
 
-    it('hộp "Phát thuốc": trạng thái trả về các đơn pháp lý + mỗi dòng biết thuộc đơn nào', async () => {
+    it('lịch sử khám của bệnh nhân + chi tiết đơn trả về mã chuẩn từng đơn pháp lý', async () => {
+    const normalA = await createDrug('Lịch sử thường');
+    const narcoticA = await createDrug('Lịch sử gây nghiện', { controlType: 'NARCOTIC' });
+    const encounterId = await prepareEncounter();
+    const draft = await saveDraft(encounterId, [{ drugId: normalA }, { drugId: narcoticA }]);
+    const signed = await sign(encounterId, draft.version);
+    expect(signed.status, JSON.stringify(signed.body)).toBe(200);
+    const codes = (signed.body.data.documents as { nationalCode: string }[]).map((d) => d.nationalCode).sort();
+    expect(codes).toHaveLength(2);
+
+    const row = await privileged.encounter.findFirstOrThrow({ where: { id: encounterId } });
+    const history = await http().get(`/api/v1/encounters/by-patient/${row.patientId}/history?status=ALL`).set(authed(doctorToken));
+    expect(history.status, JSON.stringify(history.body)).toBe(200);
+    const item = history.body.data.items.find((i: { encounterId: string }) => i.encounterId === encounterId);
+    expect(item.clinical.prescriptionDocuments.map((d: { nationalCode: string }) => d.nationalCode).sort()).toEqual(codes);
+    expect(item.clinical.prescriptionNo).toMatch(/^DT/);
+  });
+
+  it('hộp "Phát thuốc": trạng thái trả về các đơn pháp lý + mỗi dòng biết thuộc đơn nào', async () => {
       const status = await http().get(`/api/v1/inventory/prescriptions/${signedCN.id}/dispense-status`).set(authed(adminToken));
       expect(status.status, JSON.stringify(status.body)).toBe(200);
       expect(status.body.data.documents.map((d: { kind: string }) => d.kind)).toEqual(['C', 'N']);

@@ -157,12 +157,16 @@ export interface BusinessCodeTemplateEntry {
   startingValue: number;
   /** `STANDARD` = chế độ "Chuẩn Bộ Y tế" của mã đơn thuốc (#242), vắng = `CUSTOM`. Khuôn/số chữ số lưu ở đây vẫn là của mã nội bộ `prescription_no`. */
   mode?: 'STANDARD';
+  /** Entry này do HỆ THỐNG tạo (bật chế độ chuẩn khi tenant chưa tự cấu hình khuôn) nên bộ đếm vẫn tính như khuôn mặc định chưa cấu hình (`period_key=''`, đếm liên tục) —
+   * nếu không, bộ đếm tách chu kỳ theo tháng và đếm lại từ 1, trùng mã `prescription_no` đã cấp trước đó. */
+  implicitPeriod?: true;
 }
 const businessCodeTemplateEntrySchema = z.object({
   template: z.string().min(1),
   counterDigits: z.number().int().min(1).max(9),
   startingValue: z.number().int().positive(),
   mode: z.literal('STANDARD').optional(),
+  implicitPeriod: z.literal(true).optional(),
 });
 const businessCodeTemplatesConfigSchema = z.record(businessCodeTypeSchema, businessCodeTemplateEntrySchema);
 type BusinessCodeTemplatesConfig = Partial<Record<BusinessCodeType, BusinessCodeTemplateEntry>>;

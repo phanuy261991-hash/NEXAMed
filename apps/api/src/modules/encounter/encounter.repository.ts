@@ -229,6 +229,23 @@ export class EncounterRepository {
   }
 
   /** Encounter kèm đủ trường bệnh nhân màn khám cần (S3-05) — join `patient`, cùng khuôn `findByIdWithPatientDob`. */
+  /**
+   * Dữ liệu tối thiểu để dựng thông tin in thêm của đơn thuốc (#242): chi nhánh/bác sĩ để kiểm quyền, ngày sinh, và cân nặng của lần ĐO MỚI NHẤT có ghi cân nặng
+   * (sinh hiệu mới nhất có thể không đo cân nặng). Họ tên/CCCD/địa chỉ đọc qua `PatientService.getPatient()` (giải mã đúng một chỗ).
+   */
+  findForPrescriptionPrint(tx: Prisma.TransactionClient, tenantId: string, id: string) {
+    return tx.encounter.findFirst({
+      where: { tenantId, id, deletedAt: null },
+      select: {
+        id: true,
+        branchId: true,
+        doctorId: true,
+        patientId: true,
+        vitalSigns: { where: { deletedAt: null, weightGram: { not: null } }, orderBy: { measuredAt: 'desc' }, take: 1, select: { weightGram: true } },
+      },
+    });
+  }
+
   findByIdWithConsultationContext(tx: Prisma.TransactionClient, tenantId: string, id: string): Promise<EncounterWithConsultationPatient | null> {
     return tx.encounter.findFirst({
       where: { tenantId, id, deletedAt: null },

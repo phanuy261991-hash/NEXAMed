@@ -1,5 +1,5 @@
 import { useContext, type CSSProperties, type ReactNode } from 'react';
-import type { ClinicPrintHeader, PrintDocumentType, PrintPaperSize, ResolvedPrintTemplate } from '@nexamed/shared';
+import type { ClinicPrintHeader, PrintDocumentType, PrintPaperSize, PrintTemplateConfig, ResolvedPrintTemplate } from '@nexamed/shared';
 import { useClinicPrintHeaderQuery } from './clinic-print-header.queries';
 import { usePrintPaperChoice } from './print-paper-choice';
 import { PrintPreviewContext } from './print-preview.context';
@@ -16,6 +16,8 @@ export interface PrintRenderContext {
   paperSize: PrintPaperSize;
   /** `true` với giấy cuộn K80 (72mm) — nội dung xếp 1 cột, không bảng nhiều cột. */
   compact: boolean;
+  /** Cấu hình bản mẫu đang áp (đã chọn khổ giấy) — chứng từ có công tắc riêng (vd. `prescriptionInfo` của đơn thuốc) đọc ở đây. */
+  config: PrintTemplateConfig;
 }
 
 /**
@@ -56,16 +58,20 @@ function fallbackTemplate(documentType: PrintDocumentType): ResolvedPrintTemplat
 export function PrintDocument({
   documentType,
   title,
+  fixedTitle = false,
   subtitle,
   signatures,
   signatureDateText,
   display = 'print',
   branchId,
+  headerExtra,
   children,
 }: {
   documentType: PrintDocumentType;
-  /** Tiêu đề mặc định — bị `config.title.text` của bản mẫu ghi đè nếu có. */
+  /** Tiêu đề mặc định — bị `config.title.text` của bản mẫu ghi đè nếu có (trừ khi `fixedTitle`). */
   title: string;
+  /** Tiêu đề do quy định bắt buộc (vd. "ĐƠN THUỐC “N”" của Thông tư 52/2017) — KHÔNG cho `config.title.text` của bản mẫu ghi đè. */
+  fixedTitle?: boolean;
   /** Dòng phụ dưới tiêu đề (số chứng từ, ngày giờ...). */
   subtitle?: ReactNode;
   signatures?: PrintSignature[];
@@ -77,6 +83,8 @@ export function PrintDocument({
    * đúng với mọi chứng từ chỉ mở được trong chi nhánh hiện hành; chỉ phiếu điều chuyển truyền chi nhánh GỬI.
    */
   branchId?: string | null;
+  /** Dòng phụ in ở ĐẦU PHIẾU, ngay dưới các dòng thông tin phòng khám (vd. "Mã cơ sở KCB: 79001" của đơn thuốc, #242). Luôn in, không phụ thuộc công tắc đầu trang của bản mẫu. */
+  headerExtra?: ReactNode;
   children: ReactNode | ((context: PrintRenderContext) => ReactNode);
 }) {
   const preview = useContext(PrintPreviewContext);
@@ -104,8 +112,8 @@ export function PrintDocument({
     '--sheet-pad': `${config.margins.topMm}mm ${config.margins.rightMm}mm ${config.margins.bottomMm}mm ${config.margins.leftMm}mm`,
   } as CSSProperties;
 
-  const resolvedTitle = config.title.text.trim() || title;
-  const body = typeof children === 'function' ? children({ paperSize, compact }) : children;
+  const resolvedTitle = (!fixedTitle && config.title.text.trim()) || title;
+  const body = typeof children === 'function' ? children({ paperSize, compact, config }) : children;
   const { header, footer } = config;
   const showSignatures = footer.showSignature && signatures !== undefined && signatures.length > 0;
 
@@ -132,6 +140,7 @@ export function PrintDocument({
                 {header.showAddress && clinicHeader.address && <p className={compact ? 'text-xs' : 'text-sm'}>Địa chỉ: {clinicHeader.address}</p>}
                 {header.showPhone && clinicHeader.phone && <p className={compact ? 'text-xs' : 'text-sm'}>Điện thoại: {clinicHeader.phone}</p>}
                 {header.showTaxCode && clinicHeader.taxCode && <p className={compact ? 'text-xs' : 'text-sm'}>Mã số thuế: {clinicHeader.taxCode}</p>}
+                {headerExtra && <p className={compact ? 'text-xs' : 'text-sm'}>{headerExtra}</p>}
               </div>
             </div>
             {header.showDivider && <div className={`mt-3 ${compact ? 'border-t border-dashed border-slate-500' : 'border-t-2 border-slate-800'}`} />}

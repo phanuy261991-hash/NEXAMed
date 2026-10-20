@@ -15,6 +15,7 @@ import type {
   RecordVitalSignRequest,
   SaveClinicalNoteRequest,
   SaveDiagnosesRequest,
+  PrescriptionPrintInfo,
   SaveDiagnosesResponse,
   SavePrescriptionItemsRequest,
   SignPrescriptionRequest,
@@ -26,6 +27,11 @@ export async function getConsultationDetail(id: string): Promise<ConsultationDet
   return unwrap(
     await getApiClient().GET('/api/v1/encounters/{id}/consultation', { params: { path: { id } } }),
   ) as ConsultationDetailResponse;
+}
+
+/** Thông tin bệnh nhân in thêm trên đơn thuốc (#242) — chỉ gọi khi đơn đã ký và sắp in. */
+export async function getPrescriptionPrintInfo(id: string): Promise<PrescriptionPrintInfo> {
+  return unwrap(await getApiClient().GET('/api/v1/encounters/{id}/prescription-print-info', { params: { path: { id } } })) as PrescriptionPrintInfo;
 }
 
 export async function saveDiagnoses(id: string, body: SaveDiagnosesRequest): Promise<SaveDiagnosesResponse> {

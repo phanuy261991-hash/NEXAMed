@@ -422,7 +422,7 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
       expect(res.headers['content-disposition']).toContain('danh-muc-thuoc-vat-tu.xlsx');
       const wb = await loadWorkbook(res.body as Buffer);
       const sheet = wb.getWorksheet('Thuốc & Vật tư')!;
-      expect(String(sheet.getCell(1, 26).value)).toBe('Trạng thái');
+      expect(String(sheet.getCell(1, 27).value)).toBe('Trạng thái');
       let medRow = 0;
       sheet.eachRow((row, n) => {
         if (String(row.getCell(1).value) === `${baseCode}-M`) medRow = n;
@@ -431,7 +431,7 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
       expect(String(sheet.getCell(medRow, 4).value)).toBe(`Viên-${tag}`); // Đơn vị cơ sở = TÊN
       expect(String(sheet.getCell(medRow, 3).value)).toBe('Thuốc');
       expect(String(sheet.getCell(medRow, 13).value)).toBe('Gây nghiện');
-      expect(String(sheet.getCell(medRow, 26).value)).toBe('Đang dùng');
+      expect(String(sheet.getCell(medRow, 27).value)).toBe('Đang dùng');
       const ing: number[] = [];
       wb.getWorksheet('Hoạt chất')!.eachRow((row) => {
         if (String(row.getCell(1).value) === `${baseCode}-M`) ing.push(Number(row.getCell(3).value));

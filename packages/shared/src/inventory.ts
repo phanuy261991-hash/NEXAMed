@@ -591,6 +591,8 @@ export const stockIssueSummarySchema = z.object({
   encounterId: z.string().uuid().nullable(),
   patientCode: z.string().nullable(),
   patientFullName: z.string().nullable(),
+  /** Mã chuẩn Bộ Y tế các đơn pháp lý của đơn thuốc nguồn (#242); rỗng nếu phiếu không theo đơn hoặc đơn ký trước ngày bật chế độ chuẩn. */
+  prescriptionDocuments: z.array(z.object({ kind: prescriptionKindSchema, nationalCode: z.string() })),
   occurredAt: z.string(),
   note: z.string().nullable(),
   totalAmount: z.number().int(),

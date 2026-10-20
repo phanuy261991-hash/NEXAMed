@@ -344,6 +344,28 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
     expect((await resolved(adminToken)).find((x) => x.documentType === 'INVOICE')!.paperSize).toBe('A4');
   });
 
+  it('"Thiết lập nhanh" đổi sang khổ CHƯA có bản mẫu → bản mới KẾ THỪA tiêu đề, chữ ký, số liên của bản đang dùng (không quay về mặc định trơn); đầu trang theo bước thiết lập', async () => {
+    const custom = {
+      ...buildDefaultPrintTemplateConfig('A5'),
+      title: { text: 'Phiếu thu chi riêng' },
+      footer: { note: 'Ghi chú riêng', showSignature: false, showSignatureHint: false },
+      copies: { count: 2, labels: ['Liên lưu', 'Liên bệnh nhân', ''] },
+    };
+    const created = await request(app.getHttpServer()).post(API).set(authed(adminToken)).send({ documentType: 'CASH_VOUCHER', name: 'Phiếu thu chi A5', paperSize: 'A5', config: custom, isDefault: true });
+    expect(created.status, JSON.stringify(created.body)).toBeLessThan(300);
+
+    const header = { showLogo: false, showClinicName: true, showBranchName: true, showAddress: true, showPhone: false, showTaxCode: false, showDivider: true };
+    const res = await request(app.getHttpServer()).post(`${API}/quick-setup`).set(authed(adminToken)).send({ paperPreset: 'ALL_A4', header, documentTypes: ['CASH_VOUCHER'] });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+
+    const now = (await resolved(adminToken)).find((x) => x.documentType === 'CASH_VOUCHER')!;
+    expect(now.paperSize).toBe('A4');
+    expect(now.config.title.text).toBe('Phiếu thu chi riêng');
+    expect(now.config.footer).toEqual({ note: 'Ghi chú riêng', showSignature: false, showSignatureHint: false });
+    expect(now.config.copies.count).toBe(2);
+    expect(now.config.header).toEqual(header);
+  });
+
   it('cấu hình lưu hỏng trong DB → rơi về mặc định theo khổ giấy (không làm vỡ in/danh sách)', async () => {
     const row = await privileged.printTemplate.create({
       data: {

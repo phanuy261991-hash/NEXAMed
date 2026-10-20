@@ -14,6 +14,13 @@
 
 export type MedicalRecordDiagnosisType = 'PRIMARY' | 'SECONDARY';
 
+/** Đơn pháp lý mang mã chuẩn Bộ Y tế (#242) — nhãn loại đơn lặp lại cố ý như các nhãn khác của file này (file không import gói nào). */
+export interface MedicalRecordPrescriptionDocument {
+  kind: 'C' | 'N' | 'H' | 'Y';
+  nationalCode: string;
+}
+const PRESCRIPTION_KIND_TEXT: Record<MedicalRecordPrescriptionDocument['kind'], string> = { C: 'thông thường', N: 'gây nghiện', H: 'hướng thần', Y: 'y học cổ truyền' };
+
 export interface MedicalRecordVitalSigns {
   measuredAt: string;
   pulse: number | null;
@@ -97,6 +104,8 @@ export interface MedicalRecordEncounterEntry {
   /** Kết quả cận lâm sàng đã duyệt của lượt khám (bỏ trống/rỗng = không in mục này). */
   paraclinicalResults?: MedicalRecordParaclinicalResult[];
   prescriptionItems: MedicalRecordPrescriptionItem[];
+  /** Các đơn pháp lý đã cấp mã chuẩn Bộ Y tế (#242) — bỏ trống/rỗng = không in dòng "Mã đơn" (đơn ký trước ngày bật chế độ chuẩn). */
+  prescriptionDocuments?: MedicalRecordPrescriptionDocument[];
   signedAt: string | null;
 }
 
@@ -234,9 +243,13 @@ function renderParaclinicalResults(results: MedicalRecordParaclinicalResult[] | 
   return `<h3>Cận lâm sàng</h3>${results.map(renderParaclinicalResult).join('')}`;
 }
 
-function renderPrescription(items: MedicalRecordPrescriptionItem[]): string {
+function renderPrescription(items: MedicalRecordPrescriptionItem[], documents: MedicalRecordPrescriptionDocument[] = []): string {
   if (items.length === 0) return '<p class="muted">Không kê đơn thuốc.</p>';
-  return `<table class="data-table"><thead><tr><th>Thuốc</th><th>Liều dùng theo buổi</th><th>Số ngày</th><th>SL</th><th>Cách dùng</th></tr></thead><tbody>${items
+  const codes =
+    documents.length > 0
+      ? `<p class="meta">Mã đơn: ${documents.map((d) => `<strong>${escapeHtml(d.nationalCode)}</strong> (${PRESCRIPTION_KIND_TEXT[d.kind]})`).join(' · ')}</p>`
+      : '';
+  return `${codes}<table class="data-table"><thead><tr><th>Thuốc</th><th>Liều dùng theo buổi</th><th>Số ngày</th><th>SL</th><th>Cách dùng</th></tr></thead><tbody>${items
     .map(
       (i) =>
         `<tr><td>${escapeHtml(i.drugName)}</td><td>${escapeHtml(i.doseSummary)}</td><td>${i.durationDays}</td><td>${i.quantity}${i.unitCode ? ` ${escapeHtml(i.unitCode)}` : ''}</td><td>${i.instruction ? escapeHtml(i.instruction) : '—'}</td></tr>`,
@@ -261,7 +274,7 @@ function renderEncounter(entry: MedicalRecordEncounterEntry, index: number): str
       ${renderParaclinicalResults(entry.paraclinicalResults)}
       ${renderTreatment(entry.treatment)}
       <h3>Đơn thuốc</h3>
-      ${renderPrescription(entry.prescriptionItems)}
+      ${renderPrescription(entry.prescriptionItems, entry.prescriptionDocuments)}
     </section>`;
 }
 

@@ -127,6 +127,15 @@ export function calculateAgeYears(dob: string, now: Date = new Date()): number {
   return age;
 }
 
+/** Số tháng tuổi tròn (theo lịch Asia/Saigon, cùng cách `calculateAgeYears`) — dùng cho mốc "trẻ dưới 72 tháng" trên đơn thuốc (Thông tư 52/2017). `now` chỉ để test tái lập được. */
+export function calculateAgeMonths(dob: string, now: Date = new Date()): number {
+  const birth = toVietnamCalendarDay(new Date(dob));
+  const today = toVietnamCalendarDay(now);
+  let months = (today.year - birth.year) * 12 + (today.month - birth.month);
+  if (today.date < birth.date) months -= 1;
+  return Math.max(0, months);
+}
+
 /**
  * PAT-01 mở rộng (docs/DECISIONS.md #035, yêu cầu chủ dự án): bệnh nhân từ 18 tuổi bắt buộc có
  * CCCD; dưới 18 vẫn tuỳ chọn (khớp edge case "trẻ em/người không giấy tờ" đã có ở

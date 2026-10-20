@@ -104,6 +104,39 @@ export const PRINT_MONEY_DOCUMENT_TYPES: PrintDocumentType[] = ['INVOICE', 'WALL
 
 const marginMm = z.number().int().min(0).max(40);
 
+/** Công tắc thông tin in trên đơn thuốc (mockup đã duyệt 20/10/2026, docs/DECISIONS.md #242). */
+export const prescriptionInfoConfigSchema = z.object({
+  showPatientCode: z.boolean(),
+  showNationalId: z.boolean(),
+  /** Bệnh nhân chưa có CCCD (vd. trẻ em): `hide` = ẩn cả dòng, `dots` = in dòng chấm để viết tay. */
+  nationalIdWhenMissing: z.enum(['hide', 'dots']),
+  showAddress: z.boolean(),
+  showPhone: z.boolean(),
+  showWeight: z.boolean(),
+  /** Người giám hộ — chỉ in cho trẻ dưới 72 tháng tuổi. */
+  showGuardian: z.boolean(),
+  /** Đợt "từ ngày … đến hết ngày …" — chỉ đơn "N". */
+  showCourse: z.boolean(),
+  /** Số lượng viết bằng chữ — chỉ đơn "N" (Thông tư 52/2017, điều 6). */
+  showQuantityInWords: z.boolean(),
+  /** Ô người nhận thuốc (ký, họ tên, số CCCD) — đơn "N" và "H". */
+  showReceiverBox: z.boolean(),
+});
+export type PrescriptionInfoConfig = z.infer<typeof prescriptionInfoConfigSchema>;
+
+export const DEFAULT_PRESCRIPTION_INFO_CONFIG: PrescriptionInfoConfig = {
+  showPatientCode: true,
+  showNationalId: true,
+  nationalIdWhenMissing: 'hide',
+  showAddress: true,
+  showPhone: true,
+  showWeight: true,
+  showGuardian: true,
+  showCourse: true,
+  showQuantityInWords: true,
+  showReceiverBox: true,
+};
+
 export const printTemplateConfigSchema = z.object({
   margins: z.object({ topMm: marginMm, rightMm: marginMm, bottomMm: marginMm, leftMm: marginMm }),
   header: z.object({
@@ -128,6 +161,8 @@ export const printTemplateConfigSchema = z.object({
   notice: z.object({ show: z.boolean(), title: z.string().max(60), text: z.string().max(1000) }).optional(),
   /** Thông tin in THÊM trên tem ống nghiệm (chỉ chứng từ SPECIMEN_LABEL, #220). Mã vạch, SID, họ tên, năm sinh, giới tính luôn in nên không có công tắc. */
   label: z.object({ showPatientCode: z.boolean(), showGroup: z.boolean(), showCapColor: z.boolean(), showDate: z.boolean() }).optional(),
+  /** Thông tin in THÊM trên đơn thuốc (chỉ chứng từ PRESCRIPTION, #242): thông tin bệnh nhân dùng chung mọi loại đơn + các mục riêng của đơn "N"/"H" (Thông tư 52/2017). Vắng = bật hết (xem `withDefaultPrescriptionInfo`). Họ tên, ngày sinh, giới tính, bác sĩ, chẩn đoán luôn in nên không có công tắc. */
+  prescriptionInfo: prescriptionInfoConfigSchema.optional(),
   /** Số liên in mỗi lần bấm In (1-3) + nhãn từng liên ("Liên 1 — Lưu"...). */
   copies: z.object({ count: z.number().int().min(1).max(3), labels: z.array(z.string().max(40)).max(3) }),
 });
@@ -152,6 +187,24 @@ export function withDefaultPrintNotice(documentType: PrintDocumentType, config: 
     return rest;
   }
   return { ...config, notice: config.notice ?? fallback };
+}
+
+/**
+ * Điền khối `prescriptionInfo` mặc định (bật hết) cho đơn thuốc nếu CHƯA có, và bỏ khối này ở chứng từ khác — để web chỉ đọc `config.prescriptionInfo`, không cần biết bảng mặc định.
+ */
+export function withDefaultPrescriptionInfo(documentType: PrintDocumentType, config: PrintTemplateConfig): PrintTemplateConfig {
+  if (documentType !== 'PRESCRIPTION') {
+    if (config.prescriptionInfo === undefined) return config;
+    const { prescriptionInfo: _dropped, ...rest } = config;
+    void _dropped;
+    return rest;
+  }
+  return { ...config, prescriptionInfo: config.prescriptionInfo ?? { ...DEFAULT_PRESCRIPTION_INFO_CONFIG } };
+}
+
+/** Mọi phần mặc định phụ thuộc loại chứng từ (khuyến cáo, thông tin đơn thuốc) — một chỗ gọi cho API lẫn dựng bản mẫu sẵn. */
+export function withDefaultPrintOptions(documentType: PrintDocumentType, config: PrintTemplateConfig): PrintTemplateConfig {
+  return withDefaultPrescriptionInfo(documentType, withDefaultPrintNotice(documentType, config));
 }
 
 export const DEFAULT_PRINT_COPY_LABELS = ['Liên 1 — Lưu', 'Liên 2 — Khách hàng', 'Liên 3'];
@@ -327,24 +380,33 @@ export function buildBuiltinPrintTemplate(documentType: PrintDocumentType): Prin
     paperSize,
     isDefault: true,
     isBuiltin: true,
-    config: withDefaultPrintNotice(documentType, buildDefaultPrintTemplateConfig(paperSize)),
+    config: withDefaultPrintOptions(documentType, buildDefaultPrintTemplateConfig(paperSize)),
     version: null,
   };
 }
 
 /**
- * Cấu hình dùng khi in `documentType` ở khổ `paperSize` mà phòng khám CHƯA có bản mẫu cho khổ đó: mặc định theo khổ,
- * kế thừa đầu trang/tiêu đề/ghi chú/số liên từ bản mặc định (giấy cuộn K80 luôn không logo, không chữ ký).
+ * Cấu hình dùng khi in `documentType` ở khổ `paperSize` mà phòng khám CHƯA có bản mẫu cho khổ đó: lề và tuỳ chọn tem theo mặc định của khổ,
+ * còn lại kế thừa từ bản mặc định (`base`, ở khổ `basePaperSize`): đầu trang, tiêu đề, ghi chú, ô chữ ký, khuyến cáo, công tắc thông tin đơn thuốc, số liên.
+ * Giấy cuộn K80 luôn không logo, không chữ ký (ràng buộc của khổ giấy, không phải lựa chọn của phòng khám) nên khi `base` là K80 hai công tắc đó KHÔNG được mang sang khổ khác.
+ * Thêm trường mới vào `printTemplateConfigSchema` thì phải kế thừa ở đây — `print-template.spec.ts` quét mọi chứng từ × mọi khổ để chặn quên.
  */
-export function deriveConfigForPaper(paperSize: PrintPaperSize, base: PrintTemplateConfig): PrintTemplateConfig {
+export function deriveConfigForPaper(paperSize: PrintPaperSize, base: PrintTemplateConfig, basePaperSize?: PrintPaperSize): PrintTemplateConfig {
   const defaults = buildDefaultPrintTemplateConfig(paperSize);
   const roll = paperSize === 'K80';
+  const baseIsRoll = basePaperSize === 'K80';
   return {
     ...defaults,
-    header: { ...base.header, showLogo: roll ? false : base.header.showLogo },
+    header: { ...base.header, showLogo: roll ? false : baseIsRoll ? defaults.header.showLogo : base.header.showLogo },
     title: base.title,
-    footer: { ...defaults.footer, note: base.footer.note },
+    footer: {
+      note: base.footer.note,
+      showSignature: roll ? false : baseIsRoll ? defaults.footer.showSignature : base.footer.showSignature,
+      showSignatureHint: base.footer.showSignatureHint,
+    },
     ...(base.notice ? { notice: base.notice } : {}),
+    // Công tắc thông tin trên đơn thuốc (#242) cũng kế thừa — nếu không, in ra khổ giấy khác khổ mặc định sẽ quay về "bật hết" và các lựa chọn của phòng khám không áp được.
+    ...(base.prescriptionInfo ? { prescriptionInfo: base.prescriptionInfo } : {}),
     copies: base.copies,
   };
 }
@@ -366,9 +428,9 @@ export function buildResolvedPrintTemplate(
     widthMm: PRINT_PAPER_SPECS[size].widthMm,
     heightMm: PRINT_PAPER_SPECS[size].heightMm,
     isDefault: size === paperSize,
-    config: withDefaultPrintNotice(documentType, size === paperSize ? config : (storedByPaper[size] ?? deriveConfigForPaper(size, config))),
+    config: withDefaultPrintOptions(documentType, size === paperSize ? config : (storedByPaper[size] ?? deriveConfigForPaper(size, config, paperSize))),
   }));
-  return { documentType, paperSize, widthMm: spec.widthMm, heightMm: spec.heightMm, config: withDefaultPrintNotice(documentType, config), options };
+  return { documentType, paperSize, widthMm: spec.widthMm, heightMm: spec.heightMm, config: withDefaultPrintOptions(documentType, config), options };
 }
 
 /** Danh mục tĩnh (loại chứng từ + khổ giấy + cấu hình mặc định từng khổ) trả kèm `GET /print-templates`. */

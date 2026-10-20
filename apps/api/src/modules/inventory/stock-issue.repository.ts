@@ -63,7 +63,8 @@ const CONTEXT_INCLUDE = {
   // `departmentId` (thêm cho retrofit phân quyền Khoa/Phòng #173) — `getById()`/`voidIssue()` cần
   // kiểm scope trực tiếp trên kết quả JOIN sẵn có, không phải gọi thêm `WarehouseRepository.findById()`.
   warehouse: { select: { name: true, departmentId: true } },
-  prescription: { select: { encounter: { select: { id: true, encounterNo: true, patient: { select: { patientCode: true, fullName: true } } } } } },
+  // `documents` = các đơn pháp lý mang mã chuẩn Bộ Y tế (#242) để phiếu xuất kho hiện mã chuẩn của đơn nguồn.
+  prescription: { select: { encounter: { select: { id: true, encounterNo: true, patient: { select: { patientCode: true, fullName: true } } } }, documents: { where: { deletedAt: null }, orderBy: { nationalCode: 'asc' as const }, select: { kind: true, nationalCode: true } } } },
   // "Phiếu xuất kho mở rộng" (#170) — Khoa/Phòng TIẾP NHẬN của INTERNAL_ALLOCATION, resolve tên NGAY
   // trong JOIN thay vì gọi thêm `DoctorDirectoryPort.getDepartmentNames()`.
   department: { select: { name: true } },
@@ -77,7 +78,7 @@ export type StockIssueWithContext = Prisma.StockIssueGetPayload<{ include: typeo
 export interface StockIssueListRow extends StockIssue {
   warehouse: { name: string };
   // Nullable từ Kho Thuốc GĐ4 (#170) — `COUNT_SHORTAGE` tự sinh không có `prescriptionId`.
-  prescription: { encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } } } | null;
+  prescription: { encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } }; documents: { kind: 'C' | 'N' | 'H' | 'Y'; nationalCode: string }[] } | null;
   department: { name: string } | null;
   // "Công nợ nhà cung cấp" Phần C — `null` cho mọi phiếu không phải RETURN_TO_SUPPLIER.
   supplier: { name: string } | null;
@@ -214,7 +215,7 @@ export class StockIssueRepository {
       where,
       include: {
         warehouse: { select: { name: true } },
-        prescription: { select: { encounter: { select: { id: true, encounterNo: true, patient: { select: { patientCode: true, fullName: true } } } } } },
+        prescription: { select: { encounter: { select: { id: true, encounterNo: true, patient: { select: { patientCode: true, fullName: true } } } }, documents: { where: { deletedAt: null }, orderBy: { nationalCode: 'asc' as const }, select: { kind: true, nationalCode: true } } } },
         department: { select: { name: true } },
         supplier: { select: { name: true } },
         sourceReceipt: { select: { receiptNo: true } },

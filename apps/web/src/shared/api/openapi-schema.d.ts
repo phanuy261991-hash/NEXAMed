@@ -5275,6 +5275,11 @@ export interface paths {
                                         conclusion: string | null;
                                         followUpDate: string | null;
                                         prescriptionNo: string | null;
+                                        prescriptionDocuments: {
+                                            /** @enum {string} */
+                                            kind: "C" | "N" | "H" | "Y";
+                                            nationalCode: string;
+                                        }[];
                                         prescriptionItemCount: number;
                                         paraclinical: {
                                             total: number;
@@ -6208,6 +6213,109 @@ export interface paths {
                     };
                 };
                 /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/prescription-print-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thông tin bệnh nhân in thêm trên đơn thuốc (mã BN, CCCD giải mã nếu có quyền xem hồ sơ bệnh nhân, địa chỉ, SĐT, cân nặng, tháng tuổi, người thân) — gọi khi bấm In, ghi nhật ký xem */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                patientCode: string;
+                                nationalId: string | null;
+                                address: {
+                                    street?: string;
+                                    ward?: string;
+                                    neighborhood?: string;
+                                    district?: string;
+                                    province?: string;
+                                } | null;
+                                phone: string;
+                                weightGram: number | null;
+                                ageMonths: number;
+                                guardian: {
+                                    fullName: string;
+                                    relationship: string | null;
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.read_clinical */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài scope personal) */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -22005,6 +22113,19 @@ export interface paths {
                                             showCapColor: boolean;
                                             showDate: boolean;
                                         };
+                                        prescriptionInfo?: {
+                                            showPatientCode: boolean;
+                                            showNationalId: boolean;
+                                            /** @enum {string} */
+                                            nationalIdWhenMissing: "hide" | "dots";
+                                            showAddress: boolean;
+                                            showPhone: boolean;
+                                            showWeight: boolean;
+                                            showGuardian: boolean;
+                                            showCourse: boolean;
+                                            showQuantityInWords: boolean;
+                                            showReceiverBox: boolean;
+                                        };
                                         copies: {
                                             count: number;
                                             labels: string[];
@@ -22072,6 +22193,19 @@ export interface paths {
                                                 showCapColor: boolean;
                                                 showDate: boolean;
                                             };
+                                            prescriptionInfo?: {
+                                                showPatientCode: boolean;
+                                                showNationalId: boolean;
+                                                /** @enum {string} */
+                                                nationalIdWhenMissing: "hide" | "dots";
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showWeight: boolean;
+                                                showGuardian: boolean;
+                                                showCourse: boolean;
+                                                showQuantityInWords: boolean;
+                                                showReceiverBox: boolean;
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -22112,6 +22246,19 @@ export interface paths {
                                                 showGroup: boolean;
                                                 showCapColor: boolean;
                                                 showDate: boolean;
+                                            };
+                                            prescriptionInfo?: {
+                                                showPatientCode: boolean;
+                                                showNationalId: boolean;
+                                                /** @enum {string} */
+                                                nationalIdWhenMissing: "hide" | "dots";
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showWeight: boolean;
+                                                showGuardian: boolean;
+                                                showCourse: boolean;
+                                                showQuantityInWords: boolean;
+                                                showReceiverBox: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -22154,6 +22301,19 @@ export interface paths {
                                                 showCapColor: boolean;
                                                 showDate: boolean;
                                             };
+                                            prescriptionInfo?: {
+                                                showPatientCode: boolean;
+                                                showNationalId: boolean;
+                                                /** @enum {string} */
+                                                nationalIdWhenMissing: "hide" | "dots";
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showWeight: boolean;
+                                                showGuardian: boolean;
+                                                showCourse: boolean;
+                                                showQuantityInWords: boolean;
+                                                showReceiverBox: boolean;
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -22194,6 +22354,19 @@ export interface paths {
                                                 showGroup: boolean;
                                                 showCapColor: boolean;
                                                 showDate: boolean;
+                                            };
+                                            prescriptionInfo?: {
+                                                showPatientCode: boolean;
+                                                showNationalId: boolean;
+                                                /** @enum {string} */
+                                                nationalIdWhenMissing: "hide" | "dots";
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showWeight: boolean;
+                                                showGuardian: boolean;
+                                                showCourse: boolean;
+                                                showQuantityInWords: boolean;
+                                                showReceiverBox: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -22236,6 +22409,19 @@ export interface paths {
                                                 showCapColor: boolean;
                                                 showDate: boolean;
                                             };
+                                            prescriptionInfo?: {
+                                                showPatientCode: boolean;
+                                                showNationalId: boolean;
+                                                /** @enum {string} */
+                                                nationalIdWhenMissing: "hide" | "dots";
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showWeight: boolean;
+                                                showGuardian: boolean;
+                                                showCourse: boolean;
+                                                showQuantityInWords: boolean;
+                                                showReceiverBox: boolean;
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -22276,6 +22462,19 @@ export interface paths {
                                                 showGroup: boolean;
                                                 showCapColor: boolean;
                                                 showDate: boolean;
+                                            };
+                                            prescriptionInfo?: {
+                                                showPatientCode: boolean;
+                                                showNationalId: boolean;
+                                                /** @enum {string} */
+                                                nationalIdWhenMissing: "hide" | "dots";
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showWeight: boolean;
+                                                showGuardian: boolean;
+                                                showCourse: boolean;
+                                                showQuantityInWords: boolean;
+                                                showReceiverBox: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -22374,6 +22573,19 @@ export interface paths {
                                 showCapColor: boolean;
                                 showDate: boolean;
                             };
+                            prescriptionInfo?: {
+                                showPatientCode: boolean;
+                                showNationalId: boolean;
+                                /** @enum {string} */
+                                nationalIdWhenMissing: "hide" | "dots";
+                                showAddress: boolean;
+                                showPhone: boolean;
+                                showWeight: boolean;
+                                showGuardian: boolean;
+                                showCourse: boolean;
+                                showQuantityInWords: boolean;
+                                showReceiverBox: boolean;
+                            };
                             copies: {
                                 count: number;
                                 labels: string[];
@@ -22436,6 +22648,19 @@ export interface paths {
                                         showGroup: boolean;
                                         showCapColor: boolean;
                                         showDate: boolean;
+                                    };
+                                    prescriptionInfo?: {
+                                        showPatientCode: boolean;
+                                        showNationalId: boolean;
+                                        /** @enum {string} */
+                                        nationalIdWhenMissing: "hide" | "dots";
+                                        showAddress: boolean;
+                                        showPhone: boolean;
+                                        showWeight: boolean;
+                                        showGuardian: boolean;
+                                        showCourse: boolean;
+                                        showQuantityInWords: boolean;
+                                        showReceiverBox: boolean;
                                     };
                                     copies: {
                                         count: number;
@@ -22599,6 +22824,19 @@ export interface paths {
                                             showCapColor: boolean;
                                             showDate: boolean;
                                         };
+                                        prescriptionInfo?: {
+                                            showPatientCode: boolean;
+                                            showNationalId: boolean;
+                                            /** @enum {string} */
+                                            nationalIdWhenMissing: "hide" | "dots";
+                                            showAddress: boolean;
+                                            showPhone: boolean;
+                                            showWeight: boolean;
+                                            showGuardian: boolean;
+                                            showCourse: boolean;
+                                            showQuantityInWords: boolean;
+                                            showReceiverBox: boolean;
+                                        };
                                         copies: {
                                             count: number;
                                             labels: string[];
@@ -22646,6 +22884,19 @@ export interface paths {
                                                 showGroup: boolean;
                                                 showCapColor: boolean;
                                                 showDate: boolean;
+                                            };
+                                            prescriptionInfo?: {
+                                                showPatientCode: boolean;
+                                                showNationalId: boolean;
+                                                /** @enum {string} */
+                                                nationalIdWhenMissing: "hide" | "dots";
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showWeight: boolean;
+                                                showGuardian: boolean;
+                                                showCourse: boolean;
+                                                showQuantityInWords: boolean;
+                                                showReceiverBox: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -22945,6 +23196,19 @@ export interface paths {
                                 showCapColor: boolean;
                                 showDate: boolean;
                             };
+                            prescriptionInfo?: {
+                                showPatientCode: boolean;
+                                showNationalId: boolean;
+                                /** @enum {string} */
+                                nationalIdWhenMissing: "hide" | "dots";
+                                showAddress: boolean;
+                                showPhone: boolean;
+                                showWeight: boolean;
+                                showGuardian: boolean;
+                                showCourse: boolean;
+                                showQuantityInWords: boolean;
+                                showReceiverBox: boolean;
+                            };
                             copies: {
                                 count: number;
                                 labels: string[];
@@ -23009,6 +23273,19 @@ export interface paths {
                                         showGroup: boolean;
                                         showCapColor: boolean;
                                         showDate: boolean;
+                                    };
+                                    prescriptionInfo?: {
+                                        showPatientCode: boolean;
+                                        showNationalId: boolean;
+                                        /** @enum {string} */
+                                        nationalIdWhenMissing: "hide" | "dots";
+                                        showAddress: boolean;
+                                        showPhone: boolean;
+                                        showWeight: boolean;
+                                        showGuardian: boolean;
+                                        showCourse: boolean;
+                                        showQuantityInWords: boolean;
+                                        showReceiverBox: boolean;
                                     };
                                     copies: {
                                         count: number;
@@ -28760,6 +29037,11 @@ export interface paths {
                                     encounterId: string | null;
                                     patientCode: string | null;
                                     patientFullName: string | null;
+                                    prescriptionDocuments: {
+                                        /** @enum {string} */
+                                        kind: "C" | "N" | "H" | "Y";
+                                        nationalCode: string;
+                                    }[];
                                     occurredAt: string;
                                     note: string | null;
                                     totalAmount: number;
@@ -28875,6 +29157,11 @@ export interface paths {
                                 encounterId: string | null;
                                 patientCode: string | null;
                                 patientFullName: string | null;
+                                prescriptionDocuments: {
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                }[];
                                 occurredAt: string;
                                 note: string | null;
                                 totalAmount: number;
@@ -29037,6 +29324,11 @@ export interface paths {
                                 encounterId: string | null;
                                 patientCode: string | null;
                                 patientFullName: string | null;
+                                prescriptionDocuments: {
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                }[];
                                 occurredAt: string;
                                 note: string | null;
                                 totalAmount: number;
@@ -29195,6 +29487,11 @@ export interface paths {
                                 encounterId: string | null;
                                 patientCode: string | null;
                                 patientFullName: string | null;
+                                prescriptionDocuments: {
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                }[];
                                 occurredAt: string;
                                 note: string | null;
                                 totalAmount: number;
@@ -29382,6 +29679,11 @@ export interface paths {
                                 encounterId: string | null;
                                 patientCode: string | null;
                                 patientFullName: string | null;
+                                prescriptionDocuments: {
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                }[];
                                 occurredAt: string;
                                 note: string | null;
                                 totalAmount: number;
@@ -29576,6 +29878,11 @@ export interface paths {
                                 encounterId: string | null;
                                 patientCode: string | null;
                                 patientFullName: string | null;
+                                prescriptionDocuments: {
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                }[];
                                 occurredAt: string;
                                 note: string | null;
                                 totalAmount: number;
@@ -29742,6 +30049,11 @@ export interface paths {
                                 encounterId: string | null;
                                 patientCode: string | null;
                                 patientFullName: string | null;
+                                prescriptionDocuments: {
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                }[];
                                 occurredAt: string;
                                 note: string | null;
                                 totalAmount: number;
@@ -29928,6 +30240,11 @@ export interface paths {
                                 encounterId: string | null;
                                 patientCode: string | null;
                                 patientFullName: string | null;
+                                prescriptionDocuments: {
+                                    /** @enum {string} */
+                                    kind: "C" | "N" | "H" | "Y";
+                                    nationalCode: string;
+                                }[];
                                 occurredAt: string;
                                 note: string | null;
                                 totalAmount: number;

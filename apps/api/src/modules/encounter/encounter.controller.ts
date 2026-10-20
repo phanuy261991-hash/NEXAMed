@@ -145,6 +145,19 @@ export class EncounterController {
     return this.encounterService.getConsultationDetail(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
   }
 
+  /**
+   * Thông tin bệnh nhân in thêm trên đơn thuốc (#242) — gọi khi bấm In. Cùng quyền xem hồ sơ khám (`encounter.read_clinical`) và CŨNG ghi nhật ký xem (`@AuditView`), vì trả về CCCD đã giải mã.
+   * Khai TRƯỚC `:id/consultation` không cần vì path khác nhau; đặt ngay sau cho dễ đọc.
+   */
+  @Get(':id/prescription-print-info')
+  @RequirePermission('encounter', 'read_clinical', { entityIdParam: 'id' })
+  @AuditView('encounter')
+  @UseInterceptors(AuditViewInterceptor)
+  async getPrescriptionPrintInfo(@Param('id') id: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.getPrescriptionPrintInfo(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
+  }
+
   @Put(':id/diagnoses')
   @RequirePermission('diagnosis', 'create', { entityIdParam: 'id' })
   async saveDiagnoses(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {

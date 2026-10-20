@@ -917,7 +917,7 @@ export class StockIssueService {
 
     return {
       items: page.map((row) =>
-        this.toSummaryDto(row, row.warehouse.name, row.prescription?.encounter ?? null, row._count.lines, names, null, row.supplier?.name ?? null, row.sourceReceipt?.receiptNo ?? null),
+        this.toSummaryDto(row, row.warehouse.name, row.prescription?.encounter ?? null, row.prescription?.documents ?? [], row._count.lines, names, null, row.supplier?.name ?? null, row.sourceReceipt?.receiptNo ?? null),
       ),
       nextCursor,
     };
@@ -1073,6 +1073,8 @@ export class StockIssueService {
     warehouseName: string,
     // Nullable từ Kho Thuốc GĐ4 (#170) — `COUNT_SHORTAGE` tự sinh không gắn đơn thuốc/lượt khám nào.
     encounter: { id: string; encounterNo: string; patient: { patientCode: string; fullName: string } } | null,
+    // Đơn pháp lý mang mã chuẩn Bộ Y tế của đơn thuốc nguồn (#242) — rỗng cho phiếu không theo đơn hoặc đơn ký trước ngày bật chế độ chuẩn.
+    prescriptionDocuments: { kind: 'C' | 'N' | 'H' | 'Y'; nationalCode: string }[],
     lineCount: number,
     names: Map<string, string>,
     // "Phiếu xuất kho mở rộng" (#170) — `null` cho mọi phiếu không phải INTERNAL_ALLOCATION.
@@ -1092,6 +1094,7 @@ export class StockIssueService {
       encounterId: encounter?.id ?? null,
       patientCode: encounter?.patient.patientCode ?? null,
       patientFullName: encounter?.patient.fullName ?? null,
+      prescriptionDocuments,
       occurredAt: row.occurredAt.toISOString(),
       note: row.note,
       totalAmount: Number(row.totalAmount),
@@ -1119,6 +1122,7 @@ export class StockIssueService {
         row,
         row.warehouse.name,
         row.prescription?.encounter ?? null,
+        (row.prescription?.documents ?? []).map((d) => ({ kind: d.kind as 'C' | 'N' | 'H' | 'Y', nationalCode: d.nationalCode })),
         row.lines.length,
         names,
         row.department?.name ?? null,

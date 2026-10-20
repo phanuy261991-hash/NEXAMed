@@ -60,8 +60,9 @@ import {
   type StockAvailabilityPort,
   BRANCH_DIRECTORY_PORT,
   type BranchDirectoryPort,
+  maxDataScope,
 } from '@nexamed/core';
-import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary, hasAnyDose, hasFractionalDose } from '@nexamed/shared';
+import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, calculateAgeMonths, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary, hasAnyDose, hasFractionalDose } from '@nexamed/shared';
 import type {
   AmendClinicalNoteRequest,
   AmendDiagnosesRequest,
@@ -82,6 +83,7 @@ import type {
   PatientEncounterHistoryResponse,
   PatientVitalSignHistoryItem,
   PreviousPrescriptionResponse,
+  PrescriptionPrintInfo,
   PrescriptionResponse,
   PrescriptionWarning,
   ReassignEncounterRequest,
@@ -100,7 +102,7 @@ import type { ClinicalNote, EncounterTreatmentPlan, Prisma, VitalSign } from '@p
 import { PrintTemplateService } from '../print-template/print-template.service';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
-import { findAllPermissionsForUser } from '../../infrastructure/persistence/permission-lookup.helper';
+import { findAllPermissionsForUser, findScopesForUserPermission } from '../../infrastructure/persistence/permission-lookup.helper';
 import type { RequestMeta } from '../../common/request-meta';
 import { DiagnosisSuggestionService } from './diagnosis-suggestion.service';
 import { EncounterRepository } from './encounter.repository';
@@ -486,6 +488,32 @@ export class EncounterService {
     return this.stockAvailability.getOnHandQuantities(tenantId, branchId, [...new Set(realDrugIds)]);
   }
 
+  /**
+   * Thông tin bệnh nhân IN THÊM trên đơn thuốc (#242, mockup 20/10/2026): mã BN, CCCD đã giải mã, địa chỉ, SĐT, cân nặng, người giám hộ. Gọi khi bấm In (không nằm trong `getConsultationDetail` để
+   * không giải mã CCCD mỗi lần mở màn khám). Chỉ lượt khám của CHI NHÁNH đang làm việc; CCCD chỉ trả cho người có quyền `patient.read` (không có thì `null` — bản in tự ẩn/để chấm). Ghi nhật ký xem ở controller.
+   */
+  async getPrescriptionPrintInfo(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<PrescriptionPrintInfo> {
+    const context = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const encounter = await this.encounterRepository.findForPrescriptionPrint(tx, tenantId, id);
+      if (!encounter || encounter.branchId !== branchId || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
+        throw new NotFoundException();
+      }
+      const patientScope = maxDataScope(await findScopesForUserPermission(tx, tenantId, actorId, 'patient', 'read'));
+      return { patientId: encounter.patientId, weightGram: encounter.vitalSigns[0]?.weightGram ?? null, canReadPatient: patientScope !== 'none' };
+    });
+    // `PatientService` tự mở transaction riêng — gọi NGOÀI transaction trên (cùng nguyên tắc `exportMedicalRecordPdf()`).
+    const patient = await this.patientService.getPatient(tenantId, context.patientId);
+    return {
+      patientCode: patient.patientCode,
+      nationalId: context.canReadPatient ? patient.nationalId : null,
+      address: patient.address,
+      phone: patient.phone,
+      weightGram: context.weightGram,
+      ageMonths: calculateAgeMonths(patient.dob),
+      guardian: patient.relativeFullName ? { fullName: patient.relativeFullName, relationship: patient.relativeRelationship } : null,
+    };
+  }
+
   async getConsultationDetail(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<ConsultationDetailResponse> {
     // Kho Thuốc GĐ5 — đọc cấu hình + tồn kho TRƯỚC transaction chính, cùng nguyên tắc `signPrescription()`
     // (`ClinicConfigReaderPort`/`StockAvailabilityPort` tự mở transaction riêng, không lồng được).
@@ -679,6 +707,7 @@ export class EncounterService {
           conclusion: noteContent('CONCLUSION'),
           followUpDate: signedPlan && signedPlan.directions.includes('FOLLOW_UP') && signedPlan.followUpDate ? signedPlan.followUpDate.toISOString().slice(0, 10) : null,
           prescriptionNo: signedPrescription?.prescriptionNo ?? null,
+          prescriptionDocuments: (signedPrescription?.documents ?? []).map((d) => ({ kind: d.kind, nationalCode: d.nationalCode })),
           prescriptionItemCount: signedPrescription ? signedPrescription.items.length : 0,
           paraclinical: cls ? { total: cls.total, withResult: cls.withResult } : null,
         };
@@ -795,6 +824,7 @@ export class EncounterService {
           unitCode: i.unitCode,
           instruction: i.instruction,
         })),
+        prescriptionDocuments: (prescriptionRow?.documents ?? []).map((d) => ({ kind: d.kind, nationalCode: d.nationalCode })),
         signedAt: prescriptionRow?.signedAt ? prescriptionRow.signedAt.toISOString() : (noteRows[0]?.signedAt?.toISOString() ?? null),
       };
     });

@@ -4,6 +4,8 @@ import { ApiError } from '../../shared/api/client';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { Button } from '../../shared/ui/Button';
+import { PrescriptionKindChip } from '../../shared/ui/PrescriptionKindChip';
+import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCode';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { ENCOUNTER_STATUS_META } from '../reception/encounter-status';
 import { TREATMENT_DIRECTION_LABEL } from './treatment-plan';
@@ -290,6 +292,17 @@ function DialogContent({
                     Đã ký lúc {new Date(prescription.signedAt).toLocaleString('vi-VN')}
                     {prescription.amendmentReason && ' (bản đính chính)'}
                   </p>
+                )}
+                {/* Mã chuẩn Bộ Y tế từng đơn pháp lý (#242) — chỉ có với đơn ký ở chế độ chuẩn. */}
+                {prescription.documents.length > 0 && (
+                  <ul className="mb-3 flex flex-wrap gap-x-5 gap-y-1.5">
+                    {prescription.documents.map((d) => (
+                      <li key={d.id} className="flex items-center gap-2 text-sm">
+                        <PrescriptionKindChip kind={d.kind} />
+                        <PrescriptionNationalCode code={d.nationalCode} />
+                      </li>
+                    ))}
+                  </ul>
                 )}
                 <PrescriptionItemsTable items={prescription.items} />
               </>

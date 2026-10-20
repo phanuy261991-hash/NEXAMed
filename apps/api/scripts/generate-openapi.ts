@@ -122,6 +122,7 @@ import {
   diagnosisSuggestionResponseSchema,
   icd10SuggestionStatusSchema,
   consultationDetailResponseSchema,
+  prescriptionPrintInfoSchema,
   createAppointmentRequestSchema,
   createExamStationRequestSchema,
   createFloorRequestSchema,
@@ -1372,6 +1373,21 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền encounter.read'),
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/encounters/{id}/prescription-print-info',
+  tags: ['encounter'],
+  summary: 'Thông tin bệnh nhân in thêm trên đơn thuốc (mã BN, CCCD giải mã nếu có quyền xem hồ sơ bệnh nhân, địa chỉ, SĐT, cân nặng, tháng tuổi, người thân) — gọi khi bấm In, ghi nhật ký xem',
+  security: [{ bearerAuth: [] }],
+  request: { params: encounterActionIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionPrintInfoSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.read_clinical'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài scope personal)'),
   },
 });
 

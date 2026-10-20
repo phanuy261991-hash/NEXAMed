@@ -1219,4 +1219,55 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
       await request(app.getHttpServer()).patch('/api/v1/clinic-settings').set(authed(clinicAdminToken)).send({ allowFreeTextPrescriptionEnabled: false });
     });
   });
+
+  describe('Mã đơn thuốc chuẩn Bộ Y tế (#242) trên phiếu xuất kho', () => {
+    async function setStandardMode(on: boolean) {
+      const res = await request(app.getHttpServer())
+        .patch('/api/v1/clinic-settings/code-templates/PRESCRIPTION')
+        .set(authed(clinicAdminToken))
+        .send({ template: 'DT[Năm 2 số][Tháng][Số đếm]', counterDigits: 6, mode: on ? 'STANDARD' : 'CUSTOM' });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+    }
+
+    it('phiếu xuất theo đơn ký ở chế độ chuẩn trả mã chuẩn của đơn nguồn (chi tiết + danh sách); phiếu theo đơn ký lúc chế độ tắt thì rỗng', async () => {
+      await privileged.branch.updateMany({ where: { tenantId: fixture.tenantA.id }, data: { facilityCode: '79123' } });
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc mã chuẩn A', defaultSellPrice: 1000 });
+      const batchId = await receiveStock(clinicAdminToken, drugId, 100, 500);
+
+      // Đơn ký TRƯỚC khi bật chế độ chuẩn → không có mã chuẩn.
+      const before = await prepareEncounterInConsultation(10);
+      const rxBefore = await signPrescription(before.encounterId, [{ drugId, quantity: 2 }]);
+      const issueBefore = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues')
+        .set(authed(doctorToken))
+        .send({ prescriptionId: rxBefore.prescriptionId, warehouseId, lines: [{ prescriptionItemId: rxBefore.items[0]!.id, drugId, batchId, quantity: 2 }] });
+      expect(issueBefore.status).toBe(200);
+      expect(issueBefore.body.data.prescriptionDocuments).toEqual([]);
+
+      await setStandardMode(true);
+      try {
+        const encounter = await prepareEncounterInConsultation(11);
+        const rx = await signPrescription(encounter.encounterId, [{ drugId, quantity: 3 }]);
+        const issueRes = await request(app.getHttpServer())
+          .post('/api/v1/inventory/issues')
+          .set(authed(doctorToken))
+          .send({ prescriptionId: rx.prescriptionId, warehouseId, lines: [{ prescriptionItemId: rx.items[0]!.id, drugId, batchId, quantity: 3 }] });
+        expect(issueRes.status, JSON.stringify(issueRes.body)).toBe(200);
+        expect(issueRes.body.data.prescriptionDocuments).toHaveLength(1);
+        expect(issueRes.body.data.prescriptionDocuments[0]).toMatchObject({ kind: 'C' });
+        expect(issueRes.body.data.prescriptionDocuments[0].nationalCode).toMatch(/^79123\d{7}-C$/);
+
+        const detail = await request(app.getHttpServer()).get(`/api/v1/inventory/issues/${issueRes.body.data.id}`).set(authed(clinicAdminToken));
+        expect(detail.body.data.prescriptionDocuments).toEqual(issueRes.body.data.prescriptionDocuments);
+        const list = await request(app.getHttpServer()).get('/api/v1/inventory/issues').set(authed(clinicAdminToken)).query({ warehouseId });
+        const inList = list.body.data.items.find((i: { id: string }) => i.id === issueRes.body.data.id);
+        expect(inList.prescriptionDocuments).toEqual(issueRes.body.data.prescriptionDocuments);
+        const oldInList = list.body.data.items.find((i: { id: string }) => i.id === issueBefore.body.data.id);
+        expect(oldInList.prescriptionDocuments).toEqual([]);
+      } finally {
+        await setStandardMode(false);
+      }
+    });
+  });
+
 });

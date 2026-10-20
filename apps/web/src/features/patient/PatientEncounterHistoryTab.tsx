@@ -8,6 +8,7 @@ import { useColumnVisibility } from '../../shared/hooks/useColumnVisibility';
 import { Button } from '../../shared/ui/Button';
 import { ColumnVisibilityMenu, type ColumnVisibilityOption } from '../../shared/ui/ColumnVisibilityMenu';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCode';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { SegmentedToggle } from '../../shared/ui/SegmentedToggle';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -346,7 +347,16 @@ function renderCell(key: string, item: PatientEncounterHistoryItem, receptionTyp
     case 'rx':
       return clinical?.prescriptionNo ? (
         <>
-          <div className="font-semibold text-slate-800">{clinical.prescriptionNo}</div>
+          {/* Đơn ký ở chế độ "Chuẩn Bộ Y tế" (#242) hiện mã chuẩn từng đơn pháp lý; đơn cũ hiện mã nội bộ. */}
+          {clinical.prescriptionDocuments.length > 0 ? (
+            clinical.prescriptionDocuments.map((d) => (
+              <div key={d.nationalCode}>
+                <PrescriptionNationalCode code={d.nationalCode} />
+              </div>
+            ))
+          ) : (
+            <div className="font-semibold text-slate-800">{clinical.prescriptionNo}</div>
+          )}
           <div className="text-xs font-medium text-slate-500">{clinical.prescriptionItemCount} thuốc</div>
         </>
       ) : (

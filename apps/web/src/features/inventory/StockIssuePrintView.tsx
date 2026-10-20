@@ -45,6 +45,11 @@ export function StockIssuePrintView({ issue }: { issue: StockIssueDetail }) {
             Bệnh nhân: <strong>{issue.patientFullName}</strong> {issue.patientCode && `(${issue.patientCode})`}
           </p>
         )}
+        {issue.prescriptionDocuments.length > 0 && (
+          <p className="col-span-2">
+            Theo đơn thuốc: <strong>{issue.prescriptionDocuments.map((d) => d.nationalCode).join(' · ')}</strong>
+          </p>
+        )}
         {issue.departmentName && (
           <p>
             Khoa/Phòng tiếp nhận: <strong>{issue.departmentName}</strong>

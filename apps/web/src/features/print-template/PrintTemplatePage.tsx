@@ -198,6 +198,7 @@ export function PrintTemplatePage() {
               {saveError && <ErrorBanner message={saveError} />}
               {current && effective && paper && typeInfo && (
                 <PrintTemplateConfigPanel
+                  documentType={current.documentType}
                   name={effective.name}
                   onNameChange={(name) => setDraft({ key: effective.key, name, config: effective.config })}
                   paper={paper}
