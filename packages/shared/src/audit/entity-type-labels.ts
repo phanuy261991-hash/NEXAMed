@@ -70,6 +70,8 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   patient_wallet: 'Ví tạm ứng',
   prescription_template: 'Đơn thuốc mẫu',
   advice_template: 'Mẫu lời dặn',
+  interop_facility_credential: 'Mã liên thông cơ sở',
+  interop_doctor_credential: 'Mã liên thông bác sĩ',
   reception_list_export: 'Danh sách tiếp nhận',
 };
 

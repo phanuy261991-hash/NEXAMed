@@ -154,7 +154,7 @@ export class UserAccountRepository {
     tx: Prisma.TransactionClient,
     tenantId: string,
     branchId: string,
-  ): Promise<{ id: string; fullName: string; displayName: string | null; departmentId: string | null }[]> {
+  ): Promise<{ id: string; fullName: string; displayName: string | null; departmentId: string | null; licenseNo: string | null }[]> {
     // Chỉ bác sĩ được làm việc ở chi nhánh đang chọn (docs/DECISIONS.md #231).
     const branchWhere = await userBranchWhere(tx, tenantId, branchId);
     const rows = await tx.userAccount.findMany({
@@ -165,7 +165,7 @@ export class UserAccountRepository {
         userRoles: { some: { deletedAt: null, role: { tenantId, deletedAt: null, name: 'doctor' } } },
         ...branchWhere,
       },
-      select: { id: true, fullName: true, displayName: true, departmentId: true },
+      select: { id: true, fullName: true, displayName: true, departmentId: true, licenseNo: true },
       orderBy: { fullName: 'asc' },
     });
     return rows;

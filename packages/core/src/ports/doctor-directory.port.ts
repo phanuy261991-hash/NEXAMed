@@ -12,7 +12,7 @@ export interface DoctorDirectoryPort {
   listActiveDoctors(
     tenantId: string,
     branchId: string,
-  ): Promise<{ id: string; fullName: string; displayName: string | null; departmentId: string | null }[]>;
+  ): Promise<{ id: string; fullName: string; displayName: string | null; departmentId: string | null; licenseNo: string | null }[]>;
   /**
    * "Hàng đợi ảo" (#064) — server tự suy `departmentId` từ hồ sơ bác sĩ khi Tiếp nhận/Check-in chọn
    * "đích danh bác sĩ", KHÔNG tin giá trị `departmentId` client tự gửi cho nhánh này (chỉ trường

@@ -14,6 +14,22 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-20
 
+### Liên thông đơn thuốc quốc gia: trang cấu hình + khung kết nối (`docs/DECISIONS.md` #242 bổ sung 16)
+
+Cấu hình hệ thống có pill mới **"Liên thông đơn thuốc"**: công tắc "Có liên thông" (mặc định tắt), địa chỉ cổng, "Gửi đơn lên cổng", thông số nâng cao, **"Kiểm tra kết nối"**, bảng cơ sở theo chi nhánh (mã + mật khẩu liên thông, token, trạng thái, "Đăng nhập lại"), bảng bác sĩ ("Trên cổng", token, "Thêm vào cơ sở"/"Xoá khỏi cơ sở") và trạng thái khoá nhà cung cấp phần mềm. Mật khẩu và token lưu mã hoá, không hiện lại, không vào nhật ký. Đã dựng đủ khung gọi cổng theo tài liệu QĐ 808 nhưng **chưa kiểm với cổng thật** (chưa có môi trường thử); việc gửi đơn lên cổng chưa có. **Môi trường khác**: `db:deploy` (2 migration `20261020110000_…`, `20261020120000_…`) + khởi động lại API; biến môi trường mới tuỳ chọn `INTEROP_APP_NAME`/`INTEROP_APP_KEY`. Đã soạn danh sách 26 câu hỏi gửi đơn vị vận hành cổng (`docs/product/prescription-interop-questions.md`).
+
+### Đơn thuốc cổ truyền (loại Y) in tiêu đề "Đơn thuốc" (`docs/DECISIONS.md` #242 bổ sung 15)
+
+Tờ in đơn loại Y nay có tiêu đề "Đơn thuốc" (như đơn thường) thay vì "Đơn thuốc y học cổ truyền". Không migration.
+
+### Nhật ký riêng khi in đơn thuốc kèm số CCCD (`docs/DECISIONS.md` #242 bổ sung 14)
+
+Mỗi lần in đơn thuốc mà số CCCD bệnh nhân thật sự được giải mã để in, nhật ký hoạt động có thêm dòng "In đơn thuốc có số CCCD bệnh nhân" (không chứa số CCCD). Lần in không có CCCD (không có quyền xem hồ sơ bệnh nhân hoặc bệnh nhân chưa có CCCD) chỉ có dòng xem chung như cũ. Không migration.
+
+### Rà soát giao diện: sửa 5 trang tablet, kiểm bằng mắt các hộp xác nhận và màn kê đơn (`docs/DECISIONS.md` #240 bổ sung 3)
+
+Bộ kiểm toàn app (53 trang × 10 cỡ) lúc đầu còn 5 chỗ chữ bị cắt ở máy tính bảng, nay **0 vấn đề**. Danh sách bệnh nhân và các bảng ở chi tiết nhà cung cấp cuộn ngang thay vì ép cột; Báo cáo dòng tiền xếp hai bảng dọc dưới 1280px; Mẫu in cuộn ngang thay vì ép khung xem trước; Hàng đợi khám cuộn ngang 3 cột; thanh trên cùng cắt bớt câu chào (không còn che avatar). Độ đậm chữ đo lại: tối đa 600, không chỗ nào ≥700. Đã nhìn bằng Chrome thật: hộp Hoàn tiền, Nạp & thu ngay, Tất toán ví, Huỷ đính chính cận lâm sàng, 3 hộp ở Tiếp nhận, "Sửa đơn" với liều lẻ (½ → "4,5 làm tròn lên"), chế độ Chặn kê liều lẻ (khung đỏ, nút Ký đơn bị khoá) và "Mẫu lời dặn". Không migration, không đổi API.
+
 ### Mã đơn thuốc theo Bộ Y tế — giai đoạn 1 và 2 (`docs/DECISIONS.md` #242)
 
 **Giai đoạn 1 (đã kiểm)**: mỗi chi nhánh có **mã cơ sở khám chữa bệnh 5 chữ số** (ô mới ở "Sửa chi nhánh", cột "Mã KCB" ở danh sách; "Thông tin phòng khám" nhắc nhập đúng 5 chữ số). "Cấu hình mẫu mã phát sinh" của Đơn thuốc có chế độ **"Chuẩn Bộ Y tế"** (mã 14 ký tự `xxxxxyyyyyyy-z`, khuôn khoá, bộ đếm 7 chữ số chung bốn loại đơn theo cơ sở, không đánh số lại); không bật được khi còn chi nhánh chưa có mã; tắt lại được (có xác nhận), đơn đã cấp giữ mã chuẩn. **Giai đoạn 2 (đã kiểm test + Chrome thật 20/10)**: cờ **"Đông y"** ở danh mục thuốc (cả nhập/xuất Excel), trang **"Loại đơn thuốc"** (bảng ánh xạ loại thuốc → loại đơn C/N/H/Y), kê đơn hiện chữ cái loại đơn từng dòng và dải "Khi ký, đơn này tách thành N đơn", ký tách thành các **đơn pháp lý** mỗi đơn một mã chuẩn, đính chính giữ mã, in mỗi đơn một tờ kèm mã vạch (in từng tờ hoặc tất cả), "Phát thuốc" nhóm dòng theo đơn. Đơn ký trước ngày bật chế độ chuẩn giữ mã cũ, không cấp hồi tố. Mặc định chế độ chuẩn TẮT nên phòng khám hiện có không đổi gì. **Sửa lỗi phát hiện khi kiểm**: bật chế độ chuẩn ở phòng khám đã có đơn ký làm bộ đếm mã nội bộ DT đếm lại từ 1 và trùng mã cũ (ký đơn lỗi 500) — nay bộ đếm giữ liên tục (`docs/DECISIONS.md` #242 bổ sung 8). **Môi trường khác**: `db:deploy` (2 migration `20261020090000_branch_facility_code`, `20261020100000_prescription_document`) + khởi động lại API; chưa có `db:seed` mới.

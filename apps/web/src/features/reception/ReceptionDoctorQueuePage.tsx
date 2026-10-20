@@ -190,7 +190,7 @@ export function ReceptionDoctorQueuePage() {
       {rowError && <ErrorBanner message={rowError} />}
 
       {listQuery.isPending && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-[repeat(3,minmax(240px,1fr))] gap-3 overflow-x-auto">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-96 w-full rounded-lg" />
           ))}
@@ -205,7 +205,7 @@ export function ReceptionDoctorQueuePage() {
       )}
 
       {listQuery.isSuccess && (
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="grid min-h-0 flex-1 grid-cols-[repeat(3,minmax(240px,1fr))] gap-3 overflow-x-auto">
           <QueueColumn
             title="Đang chờ"
             icon={Clock}

@@ -158,11 +158,12 @@ export function PatientListPage() {
 
       {query.isSuccess && patients.length > 0 && (
         <div
-          className={`min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-opacity ${
+          className={`min-h-0 flex-1 overflow-x-auto overflow-y-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-opacity ${
             query.isPlaceholderData ? 'opacity-60' : 'opacity-100'
           }`}
         >
-          <div role="table" aria-label="Danh sách bệnh nhân" className="flex h-full flex-col">
+          {/* min-w: màn hẹp (máy tính bảng dọc) bảng cuộn ngang thay vì ép cột Họ tên/Địa chỉ về 0 (ui-guidelines mục 15). */}
+          <div role="table" aria-label="Danh sách bệnh nhân" className="flex h-full min-w-[860px] flex-col">
             <div
               role="row"
               style={{ gridTemplateColumns: GRID_COLUMNS }}

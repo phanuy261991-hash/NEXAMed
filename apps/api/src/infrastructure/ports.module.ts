@@ -4,7 +4,7 @@ import { LocalDiskStorageAdapter } from './storage/local-disk.adapter';
 import { InMemoryEventBusAdapter } from './eventbus/in-memory.adapter';
 import { NoopSignatureAdapter } from './signature/noop.adapter';
 import { NoopInsuranceGatewayAdapter } from './insurance/noop.adapter';
-import { NoopEPrescriptionGatewayAdapter } from './e-prescription/noop.adapter';
+import { HttpEPrescriptionGatewayAdapter } from './e-prescription/http-e-prescription-gateway.adapter';
 import { SameTenantPatientIdentityAdapter } from './patient-identity/same-tenant.adapter';
 import { LocalFileBackupStatusAdapter } from './backup-status/local-file.adapter';
 import { LocalFileBackupControlAdapter } from './backup-control/local-file.adapter';
@@ -22,9 +22,8 @@ import { HttpReleaseServerAdapter } from './update/http-release-server.adapter';
  * `@Inject()` thẳng token.
  * `PDF_RENDERER_PORT` (S6-06, ADM-05) — Global cùng lý do, module `encounter` (xuất bệnh án PDF)
  * `@Inject()` thẳng token, không cần import module này.
- * `E_PRESCRIPTION_GATEWAY_PORT` (cổng Đơn thuốc quốc gia, ngoài phạm vi v1 — xem
- * `packages/core/src/ports/e-prescription-gateway.port.ts`) — Global cùng lý do, để chỗ sẵn
- * cho module `prescription` v3, chưa có service nào gọi tới.
+ * `E_PRESCRIPTION_GATEWAY_PORT` (cổng Đơn thuốc quốc gia, QĐ 808 — xem
+ * `packages/core/src/ports/e-prescription-gateway.port.ts`) — Global cùng lý do; từ #242 GĐ3 là adapter HTTP thật (module `prescription-interop` gọi).
  */
 @Global()
 @Module({
@@ -33,7 +32,7 @@ import { HttpReleaseServerAdapter } from './update/http-release-server.adapter';
     { provide: EVENT_BUS_PORT, useClass: InMemoryEventBusAdapter },
     { provide: SIGNATURE_PORT, useClass: NoopSignatureAdapter },
     { provide: INSURANCE_GATEWAY_PORT, useClass: NoopInsuranceGatewayAdapter },
-    { provide: E_PRESCRIPTION_GATEWAY_PORT, useClass: NoopEPrescriptionGatewayAdapter },
+    { provide: E_PRESCRIPTION_GATEWAY_PORT, useClass: HttpEPrescriptionGatewayAdapter },
     { provide: PATIENT_IDENTITY_PORT, useClass: SameTenantPatientIdentityAdapter },
     { provide: BACKUP_STATUS_PORT, useClass: LocalFileBackupStatusAdapter },
     { provide: BACKUP_CONTROL_PORT, useClass: LocalFileBackupControlAdapter },

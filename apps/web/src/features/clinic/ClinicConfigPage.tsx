@@ -26,6 +26,7 @@ import { WorkShiftPane } from './WorkShiftPane';
  * thêm code vào chunk khởi động cho một màn hình hiếm khi mở (`.claude/docs/coding-standards.md`
  * mục "Hiệu suất"). */
 const PrescriptionKindPane = lazy(() => import('./PrescriptionKindPane').then((m) => ({ default: m.PrescriptionKindPane })));
+const PrescriptionInteropPane = lazy(() => import('../prescription-interop/PrescriptionInteropPane').then((m) => ({ default: m.PrescriptionInteropPane })));
 const BusinessCodeTemplatePane = lazy(() =>
   import('./BusinessCodeTemplatePane').then((m) => ({ default: m.BusinessCodeTemplatePane })),
 );
@@ -73,6 +74,7 @@ const BASE_PILLS: ConfigScreenPill[] = [
   { key: 'exam', label: 'Cấu hình khám' },
   { key: 'code-templates', label: 'Cấu hình mẫu mã phát sinh' },
   { key: 'prescription-kind', label: 'Loại đơn thuốc' },
+  { key: 'prescription-interop', label: 'Liên thông đơn thuốc' },
 ];
 const FIRST_PILL = BASE_PILLS[0]!;
 
@@ -188,6 +190,11 @@ export function ClinicConfigPage() {
       {activePillKey === 'prescription-kind' && (
         <Suspense fallback={null}>
           <PrescriptionKindPane />
+        </Suspense>
+      )}
+      {activePillKey === 'prescription-interop' && (
+        <Suspense fallback={null}>
+          <PrescriptionInteropPane />
         </Suspense>
       )}
       {activePillKey === 'code-templates' && (

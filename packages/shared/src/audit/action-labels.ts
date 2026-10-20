@@ -62,6 +62,7 @@ const ACTION_LABELS: Record<string, string> = {
   'branch.reactivated': 'Khôi phục chi nhánh',
   'user_account.branches_updated': 'Đổi chi nhánh làm việc của tài khoản',
   'encounter.history_viewed_cross_branch': 'Xem lịch sử khám ở chi nhánh khác',
+  'encounter.prescription_printed_with_national_id': 'In đơn thuốc có số CCCD bệnh nhân',
 
   // user-account (user-account.service.ts)
   'user_account.created': 'Tạo tài khoản',
@@ -233,6 +234,12 @@ const ACTION_LABELS: Record<string, string> = {
   'advice_template.updated': 'Sửa mẫu lời dặn',
   'business_code_template.updated': 'Sửa cấu hình mã hiển thị',
   'prescription_kind_mapping.updated': 'Sửa bảng ánh xạ loại thuốc → loại đơn',
+  'prescription_interop.settings_updated': 'Sửa cấu hình liên thông đơn thuốc quốc gia',
+  'prescription_interop.facility_credential_saved': 'Lưu mã liên thông của cơ sở (chi nhánh)',
+  'prescription_interop.doctor_credential_saved': 'Lưu mã liên thông của bác sĩ',
+  'prescription_interop.facility_login': 'Đăng nhập cổng đơn thuốc quốc gia (cơ sở)',
+  'prescription_interop.doctor_added_to_facility': 'Thêm bác sĩ vào cơ sở trên cổng đơn thuốc quốc gia',
+  'prescription_interop.doctor_removed_from_facility': 'Xoá bác sĩ khỏi cơ sở trên cổng đơn thuốc quốc gia',
   'encounter.reassigned': 'Chuyển bác sĩ phụ trách lượt khám',
   'reception_list.exported': 'Xuất danh sách tiếp nhận ra Excel',
   'work_shift_assignment.exported': 'Xuất đăng ký ca làm việc ra Excel',

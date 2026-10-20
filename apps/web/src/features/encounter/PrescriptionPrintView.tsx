@@ -40,13 +40,13 @@ function FieldValue({ field }: { field: PrintField }) {
 
 /**
  * Tiêu đề từng loại đơn (docs/DECISIONS.md #242). C/N/H đúng tên mẫu của Thông tư 52/2017/TT-BYT (Phụ lục I–III): "ĐƠN THUỐC", "ĐƠN THUỐC “N”", "ĐƠN THUỐC “H”" — dấu ngoặc kép CONG,
- * chữ in hoa do khung in tự viết hoa tiêu đề. Y (thuốc cổ truyền, Thông tư 44/2018/TT-BYT) CHƯA đối chiếu được tên mẫu chính thức — tiêu đề mặc định, bản mẫu in có thể ghi đè.
+ * chữ in hoa do khung in tự viết hoa tiêu đề. Y (thuốc cổ truyền): chủ dự án chốt (20/10/2026) chỉ dùng "Đơn thuốc", như đơn C — không đặt tên mẫu riêng.
  */
 const KIND_TITLE: Record<PrescriptionDocument['kind'], string> = {
   C: 'Đơn thuốc',
   N: 'Đơn thuốc “N”',
   H: 'Đơn thuốc “H”',
-  Y: 'Đơn thuốc y học cổ truyền',
+  Y: 'Đơn thuốc',
 };
 
 /**

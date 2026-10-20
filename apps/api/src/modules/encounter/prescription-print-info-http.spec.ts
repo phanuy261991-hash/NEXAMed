@@ -195,6 +195,33 @@ describe('HTTP e2e — thông tin bệnh nhân in trên đơn thuốc (#242)', (
     expect(after).toBe(before + 1);
   });
 
+  describe('nhật ký riêng "in đơn thuốc có số CCCD"', () => {
+    const ACTION = 'encounter.prescription_printed_with_national_id';
+    const countAction = (encounterId: string) => privileged.auditLog.count({ where: { tenantId: fixture.tenantA.id, action: ACTION, entityId: encounterId } });
+
+    it('CCCD được giải mã để in → ghi đúng 1 dòng riêng, KHÔNG chứa số CCCD', async () => {
+      const { encounterId } = await prepareEncounter({ dob: '1980-02-02', nationalId: '079180006666' });
+      expect(await countAction(encounterId)).toBe(0);
+      expect((await printInfo(doctorToken, encounterId)).status).toBe(200);
+      expect(await countAction(encounterId)).toBe(1);
+      const row = await privileged.auditLog.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, action: ACTION, entityId: encounterId } });
+      expect(row.actorId).toBe(doctorUserId);
+      expect(JSON.stringify(row)).not.toContain('079180006666');
+    });
+
+    it('người in không có patient.read (CCCD = null) → KHÔNG có dòng riêng (vẫn có dòng xem chung)', async () => {
+      const { encounterId } = await prepareEncounter({ dob: '1980-02-02', nationalId: '079180007777' });
+      expect((await printInfo(clinicalOnlyToken, encounterId)).status).toBe(200);
+      expect(await countAction(encounterId)).toBe(0);
+    });
+
+    it('bệnh nhân chưa có CCCD → KHÔNG có dòng riêng', async () => {
+      const { encounterId } = await prepareEncounter({ dob: '2024-01-01' });
+      expect((await printInfo(doctorToken, encounterId)).status).toBe(200);
+      expect(await countAction(encounterId)).toBe(0);
+    });
+  });
+
   describe('cấu hình bản mẫu in đơn thuốc (prescriptionInfo)', () => {
     it('chưa lưu bản mẫu nào → bản dựng sẵn có prescriptionInfo bật hết, nationalIdWhenMissing = hide; chứng từ khác KHÔNG có khối này', async () => {
       const res = await http().get('/api/v1/print-templates/resolved').set(authed(doctorToken));

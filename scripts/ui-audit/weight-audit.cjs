@@ -56,7 +56,9 @@ function collect() {
     await page.waitForTimeout(500);
     all[r] = await page.evaluate(collect);
   }
-  fs.writeFileSync(path.join(process.env.UI_AUDIT_OUT || process.cwd(), 'weights.json'), JSON.stringify(all, null, 1));
+  const outDir = process.env.UI_AUDIT_OUT || process.cwd();
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'weights.json'), JSON.stringify(all, null, 1));
   // Tổng hợp: theo vai trò, phân bố trên toàn app + trang nào có chữ trong ô bảng ≥ 700.
   const tot = {};
   for (const [route, roles] of Object.entries(all)) for (const [role, hist] of Object.entries(roles)) for (const [w, n] of Object.entries(hist)) { (tot[role] ||= {})[w] = (tot[role][w] || 0) + n; }

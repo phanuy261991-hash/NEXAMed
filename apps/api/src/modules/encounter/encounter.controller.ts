@@ -155,7 +155,7 @@ export class EncounterController {
   @UseInterceptors(AuditViewInterceptor)
   async getPrescriptionPrintInfo(@Param('id') id: string, @Req() req: Request) {
     const { userId, tenantId } = req.user!;
-    return this.encounterService.getPrescriptionPrintInfo(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
+    return this.encounterService.getPrescriptionPrintInfo(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, extractRequestMeta(req));
   }
 
   @Put(':id/diagnoses')

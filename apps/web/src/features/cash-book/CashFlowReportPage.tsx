@@ -96,7 +96,7 @@ export function CashFlowReportPage() {
           </div>
 
           {multiBranch && (
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-800">Theo chi nhánh</div>
               <table className="w-full text-sm">
                 <thead>
@@ -129,8 +129,8 @@ export function CashFlowReportPage() {
             </div>
           )}
 
-          <div className={`grid grid-cols-1 gap-4 ${multiBranch ? '' : 'lg:grid-cols-2'}`}>
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className={`grid grid-cols-1 gap-4 ${multiBranch ? '' : 'xl:grid-cols-2'}`}>
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-800">Theo Loại thu chi</div>
               <table className="w-full text-sm">
                 <thead>
@@ -152,7 +152,7 @@ export function CashFlowReportPage() {
               </table>
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-800">Theo Quỹ</div>
               <table className="w-full text-sm">
                 <thead>

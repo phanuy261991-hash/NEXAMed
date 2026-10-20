@@ -1,27 +1,40 @@
 /**
- * Cổng Đơn thuốc quốc gia (donthuocquocgia.vn, QĐ 808/QĐ-BYT) — xem
- * .claude/docs/project-structure.md bảng Port/adapter. Ngoài phạm vi v1
- * (`docs/product/prd.md` Appendix A liệt kê BHYT + chữ ký số vào v3). Port khai báo sẵn để
- * `prescription` (v1, chỉ ghi nhận + in) có chỗ nối vào khi tích hợp thật ở v3 — v1 adapter
- * no-op, luôn báo chưa triển khai, không có service nào gọi.
+ * Cổng Đơn thuốc quốc gia (donthuocquocgia.vn, Quyết định 808/QĐ-BYT) — xem `.claude/docs/project-structure.md` bảng Port/adapter và `docs/product/prescription-code-moh.md` mục 9.
+ * Từ #242 giai đoạn 3 (chủ dự án yêu cầu dựng khung kết nối sẵn): đăng nhập cơ sở, thêm/xoá bác sĩ khỏi cơ sở, đăng nhập bác sĩ. Gửi đơn (`gui-don-thuoc`) bổ sung khi có hàm dựng gói.
+ * Adapter HTTP thật ở `apps/api/src/infrastructure/e-prescription/`; mọi tham số kết nối (địa chỉ, thời gian chờ) do nơi gọi truyền vào từ cấu hình "Liên thông đơn thuốc" — adapter KHÔNG giữ cấu hình.
  *
- * Điều kiện thật sự để hiện thực hoá port này (không chỉ vấn đề code):
- * 1. `SignaturePort` phải có adapter chữ ký số CA thật — cổng bắt buộc field `signature`
- *    trong mọi lần gửi đơn, chữ ký logic (`signed_at`/`signed_by`) hiện tại không đáp ứng được.
- * 2. Phòng khám (cơ sở KCB) và từng bác sĩ phải được cấp "mã liên thông" + mật khẩu từ đơn vị
- *    vận hành cổng — một thủ tục đăng ký ngoài phần mềm, không phải việc code.
+ * Chưa kiểm với cổng thật: tài liệu chưa nêu môi trường thử, định dạng `danh_sach_cac_loi` và một số tên trường còn mơ hồ (xem `docs/product/prescription-interop-questions.md`).
+ * Chữ ký số (`signature`) vẫn chưa có (`SignaturePort` no-op); cổng có nhận đơn thiếu chữ ký hay không là câu hỏi đang chờ trả lời.
  */
-export interface EPrescriptionSubmission {
-  encounterId: string;
-  prescriptionId: string;
+export interface EPrescriptionGatewayEndpoint {
+  /** Địa chỉ máy chủ, đã bỏ dấu `/` cuối (ví dụ `https://api.donthuocquocgia.vn`). */
+  baseUrl: string;
+  /** Thời gian chờ mỗi lần gọi (mili giây). */
+  timeoutMs: number;
 }
 
-export interface EPrescriptionSubmissionResult {
-  nationalPrescriptionCode: string;
-}
+/**
+ * Kết quả một lần gọi cổng. KHÔNG ném lỗi: mọi sự cố trả về một trong các nhánh dưới để nơi gọi quyết định thử lại hay báo người dùng.
+ * - `rejected`: cổng trả lỗi nghiệp vụ (422/4xx khác) kèm `errors` (nội dung `danh_sach_cac_loi` đã đọc ra chuỗi; có thể rỗng nếu cổng không nêu).
+ * - `unauthorized`: 401 — token hết hạn/không hợp lệ (nơi gọi đăng nhập lại rồi thử lại MỘT lần).
+ * - `unreachable`: lỗi mạng, hết thời gian chờ, 5xx hoặc phản hồi không đọc được — đáng thử lại sau.
+ */
+export type EPrescriptionGatewayResult<T> =
+  | { kind: 'ok'; data: T }
+  | { kind: 'rejected'; status: number; errors: string[] }
+  | { kind: 'unauthorized'; errors: string[] }
+  /** `message` = LÝ DO ngắn bằng tiếng Việt, không viết hoa đầu và không dấu chấm cuối (nơi gọi ghép vào câu thông báo), ví dụ "hết thời gian chờ 30 giây". */
+  | { kind: 'unreachable'; message: string };
 
 export interface EPrescriptionGatewayPort {
-  sendPrescription(submission: EPrescriptionSubmission): Promise<EPrescriptionSubmissionResult>;
+  /** API III — đăng nhập cơ sở khám chữa bệnh bằng mã liên thông + mật khẩu của cơ sở; trả token (7 ngày) để thêm/xoá bác sĩ. */
+  loginFacility(endpoint: EPrescriptionGatewayEndpoint, credential: { facilityCode: string; password: string }): Promise<EPrescriptionGatewayResult<{ token: string }>>;
+  /** API IV — thêm bác sĩ vào cơ sở (header bearer = token cơ sở). */
+  addDoctorToFacility(endpoint: EPrescriptionGatewayEndpoint, facilityToken: string, doctorCode: string): Promise<EPrescriptionGatewayResult<{ message: string }>>;
+  /** API V — xoá bác sĩ khỏi cơ sở (header bearer = token cơ sở). */
+  removeDoctorFromFacility(endpoint: EPrescriptionGatewayEndpoint, facilityToken: string, doctorCode: string): Promise<EPrescriptionGatewayResult<{ message: string }>>;
+  /** API VI — đăng nhập bác sĩ (mã bác sĩ + mã liên thông cơ sở + mật khẩu của BÁC SĨ); lỗi 422 nếu bác sĩ chưa được thêm vào cơ sở. */
+  loginDoctor(endpoint: EPrescriptionGatewayEndpoint, credential: { doctorCode: string; facilityCode: string; password: string }): Promise<EPrescriptionGatewayResult<{ token: string }>>;
 }
 
 export const E_PRESCRIPTION_GATEWAY_PORT = Symbol('E_PRESCRIPTION_GATEWAY_PORT');

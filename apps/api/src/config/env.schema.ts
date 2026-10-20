@@ -42,6 +42,9 @@ export const envSchema = z.object({
   // Chế độ SaaS (#237): tên miền gốc (mỗi công ty là một tên miền phụ `<mã>.<tên miền gốc>`, khu quản trị ở `<PLATFORM_ADMIN_SUBDOMAIN>.<tên miền gốc>`). Bắt buộc khi DEPLOYMENT_MODE=saas; chế độ một công ty bỏ qua.
   PLATFORM_BASE_DOMAIN: z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.string().trim().min(3).optional()),
   PLATFORM_ADMIN_SUBDOMAIN: z.string().trim().min(1).default('admin'),
+  // Khoá của NHÀ CUNG CẤP PHẦN MỀM do đơn vị vận hành cổng Đơn thuốc quốc gia cấp (#242 GĐ3) — chỉ cần cho API nhà thuốc (lấy đơn, báo số lượng bán, làm sau). Cài ở máy chủ, KHÔNG nhập trên giao diện, không lưu DB; giao diện chỉ hiện "đã/chưa cấu hình".
+  INTEROP_APP_NAME: z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.string().trim().min(1).optional()),
+  INTEROP_APP_KEY: z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.string().trim().min(1).optional()),
 }).superRefine((env, ctx) => {
   if (env.DEPLOYMENT_MODE === 'saas' && !env.PLATFORM_BASE_DOMAIN) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['PLATFORM_BASE_DOMAIN'], message: 'PLATFORM_BASE_DOMAIN là bắt buộc khi DEPLOYMENT_MODE=saas' });

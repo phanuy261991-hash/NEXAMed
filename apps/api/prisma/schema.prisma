@@ -119,6 +119,9 @@ model Tenant {
   prescriptions               Prescription[]
   prescriptionItems           PrescriptionItem[]
   prescriptionDocuments       PrescriptionDocument[]
+  interopFacilityCredentials  InteropFacilityCredential[]
+  interopDoctorCredentials    InteropDoctorCredential[]
+  interopDoctorFacilities     InteropDoctorFacility[]
   prescriptionTemplates       PrescriptionTemplate[]
   printTemplates              PrintTemplate[]
   technicalServices           TechnicalService[]
@@ -745,6 +748,9 @@ model UserAccount {
   cashierShiftsAsCashier  CashierShift[]
   // "Thủ quỹ riêng" (Sổ quỹ & Thu chi GĐ2) — quỹ `DRAWER` (két riêng) mà user này sở hữu, nếu có.
   ownedCashAccounts       CashAccount[]            @relation("CashAccountOwner")
+  // Mã + mật khẩu liên thông đơn thuốc quốc gia của bác sĩ (#242 GĐ3) — bảng riêng để mật khẩu mã hoá không lẫn vào dữ liệu tài khoản.
+  interopDoctorCredentials InteropDoctorCredential[]
+  interopDoctorFacilities  InteropDoctorFacility[]
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])
@@ -4841,6 +4847,9 @@ model Branch {
   warehouses              Warehouse[]
   cashAccounts            CashAccount[]
   cashierShifts           CashierShift[]
+  // Mã + mật khẩu liên thông đơn thuốc quốc gia của cơ sở (#242 GĐ3) — theo chi nhánh.
+  interopFacilityCredentials InteropFacilityCredential[]
+  interopDoctorFacilities    InteropDoctorFacility[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -4899,4 +4908,84 @@ model PrescriptionDocument {
 
   @@unique([tenantId, id])
   @@map("prescription_document")
+}
+
+// Liên thông đơn thuốc quốc gia (Quyết định 808/QĐ-BYT, docs/DECISIONS.md #242 GĐ3): mã + mật khẩu đăng nhập cổng của CƠ SỞ (mỗi chi nhánh một cặp; mã liên thông KHÁC mã cơ sở KCB 5 chữ số).
+// Mật khẩu mã hoá AES-256-GCM (`encryptPii`, cùng cơ chế CCCD), KHÔNG BAO GIỜ trả về qua API. Tối đa 1 dòng đang hiệu lực/chi nhánh (partial unique ở migration).
+model InteropFacilityCredential {
+  id          String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  branchId    String @map("branch_id") @db.Uuid
+  code        String
+  passwordEnc Bytes  @map("password_enc")
+  // Token CƠ SỞ (bearer, mã hoá, hiệu lực 7 ngày — cổng không trả hạn nên lưu giờ nhận). Cả hai cùng null hoặc cùng có (CHECK ở migration).
+  tokenEnc      Bytes?    @map("token_enc")
+  tokenIssuedAt DateTime? @map("token_issued_at") @db.Timestamptz(6)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [tenantId, branchId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("interop_facility_credential")
+}
+
+// Mã + mật khẩu tài khoản liên thông của BÁC SĨ (CHUNG cả công ty: một bác sĩ một tài khoản cổng dù làm ở nhiều chi nhánh). Mật khẩu mã hoá, không trả về.
+model InteropDoctorCredential {
+  id          String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  userId      String @map("user_id") @db.Uuid
+  code        String
+  passwordEnc Bytes  @map("password_enc")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id])
+  user   UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("interop_doctor_credential")
+}
+
+// Quan hệ (bác sĩ, cơ sở/chi nhánh) trên cổng Đơn thuốc quốc gia (#242 GĐ3): đã thêm bác sĩ vào cơ sở chưa + token BÁC SĨ của cặp này (bác sĩ làm hai chi nhánh có hai token).
+// Theo chi nhánh (branch_id NOT NULL). Token mã hoá, không trả về qua API.
+model InteropDoctorFacility {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  branchId      String    @map("branch_id") @db.Uuid
+  addedAt       DateTime? @map("added_at") @db.Timestamptz(6)
+  tokenEnc      Bytes?    @map("token_enc")
+  tokenIssuedAt DateTime? @map("token_issued_at") @db.Timestamptz(6)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id])
+  user   UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
+  branch Branch      @relation(fields: [tenantId, branchId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("interop_doctor_facility")
 }

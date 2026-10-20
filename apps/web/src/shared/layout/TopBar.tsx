@@ -182,7 +182,7 @@ export function TopBar() {
         })}
       </nav>
 
-      <div className="flex flex-shrink-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         {isOnEncounterPage && isDoctor && (
           <Suspense fallback={null}>
             <DoctorQueueButton />
@@ -215,7 +215,7 @@ export function TopBar() {
 
         <BranchSwitcher />
 
-        <span className="text-sm text-slate-500">
+        <span className="min-w-0 truncate text-sm text-slate-500">
           Xin chào,<strong className="font-semibold text-slate-900">{user.displayName ?? user.fullName}</strong>
         </span>
 

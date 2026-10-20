@@ -247,6 +247,10 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.doctorRoomSession.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // doctor_availability ("Tạm nghỉ / Đóng ca") tham chiếu user_account (FK RESTRICT) — xoá trước.
       await prisma.doctorAvailability.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Liên thông đơn thuốc (#242 GĐ3): mã/mật khẩu cơ sở + bác sĩ tham chiếu branch/user_account (FK RESTRICT) — xoá trước cả hai.
+      await prisma.interopDoctorFacility.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.interopFacilityCredential.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.interopDoctorCredential.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // cashier_shift đã xoá sớm hơn ở trên (cùng cash_voucher/cash_account, xem comment ở đó).
       await prisma.userAccount.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // warehouse (#146) tham chiếu department (FK RESTRICT, tuỳ chọn) — xoá trước department.

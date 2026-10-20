@@ -21,7 +21,7 @@ export class DoctorDirectoryAdapter implements DoctorDirectoryPort {
   async listActiveDoctors(
     tenantId: string,
     branchId: string,
-  ): Promise<{ id: string; fullName: string; displayName: string | null; departmentId: string | null }[]> {
+  ): Promise<{ id: string; fullName: string; displayName: string | null; departmentId: string | null; licenseNo: string | null }[]> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.userAccountRepository.listActiveDoctors(tx, tenantId, branchId));
   }
 

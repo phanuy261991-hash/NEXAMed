@@ -81,6 +81,13 @@ import {
   adviceTemplateSchema,
   listAdviceTemplatesResponseSchema,
   listAdviceTemplatesQuerySchema,
+  prescriptionInteropSettingsResponseSchema,
+  interopActionResultSchema,
+  updatePrescriptionInteropSettingsRequestSchema,
+  prescriptionInteropStatusSchema,
+  listInteropFacilitiesResponseSchema,
+  listInteropDoctorsResponseSchema,
+  saveInteropCredentialRequestSchema,
   cashAccountSchema,
   createCashAccountRequestSchema,
   updateCashAccountRequestSchema,
@@ -2445,6 +2452,160 @@ registry.registerPath({
     403: errorResponse('Không có quyền advice_template.manage'),
     404: errorResponse('Không tìm thấy (không tồn tại hoặc thuộc tenant khác)'),
     409: errorResponse('Trùng tên mẫu, hoặc version không khớp (CONCURRENT_MODIFICATION)'),
+  },
+});
+
+// ---------------------------------------------------------------------------------------------
+// Liên thông đơn thuốc quốc gia — cấu hình (docs/DECISIONS.md #242 GĐ3, mockup 8d)
+// ---------------------------------------------------------------------------------------------
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/prescription-interop/status',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — công tắc tổng "Có liên thông" (tự-phục vụ, mọi nhân viên đã đăng nhập)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionInteropStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/prescription-interop/settings',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — cấu hình (công tắc tổng, địa chỉ cổng, thời gian chờ, số lần thử lại)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionInteropSettingsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/prescription-interop/settings',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — sửa cấu hình (ghi nhật ký trước/sau)',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: updatePrescriptionInteropSettingsRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(prescriptionInteropSettingsResponseSchema)),
+    400: errorResponse('Địa chỉ không phải https, thời gian chờ/số lần thử ngoài khoảng, hoặc không có gì để cập nhật'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/prescription-interop/facilities',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — mã liên thông cơ sở của từng chi nhánh (mật khẩu không bao giờ trả về)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listInteropFacilitiesResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/prescription-interop/facilities/{branchId}/credential',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — nhập/sửa mã + mật khẩu liên thông của cơ sở (chi nhánh). Mật khẩu mã hoá, chỉ ghi đè; bỏ trống khi đã có = giữ nguyên',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ branchId: z.string().uuid() }),
+    body: { content: { 'application/json': { schema: saveInteropCredentialRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công, trả lại danh sách cơ sở', envelope(listInteropFacilitiesResponseSchema)),
+    400: errorResponse('Mã trống/quá dài'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Chi nhánh không tồn tại hoặc thuộc công ty khác'),
+    422: errorResponse('Lần đầu lưu mà thiếu mật khẩu (INTEROP_PASSWORD_REQUIRED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/prescription-interop/facilities/{branchId}/login',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — "Kiểm tra kết nối"/"Đăng nhập lại": đăng nhập cơ sở trên cổng bằng mã + mật khẩu đã lưu, lưu token mới (không gửi đơn). Trả 200 kể cả khi cổng từ chối (xem outcome)',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ branchId: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Kết quả (OK/REJECTED/UNREACHABLE/NOT_CONFIGURED)', envelope(interopActionResultSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Chi nhánh không tồn tại hoặc thuộc công ty khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/prescription-interop/doctors',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — bác sĩ của chi nhánh đang làm việc kèm mã liên thông (mật khẩu không bao giờ trả về)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(listInteropDoctorsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/prescription-interop/doctors/{userId}/credential',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — nhập/sửa mã + mật khẩu liên thông của bác sĩ (chung cả công ty). Chỉ bác sĩ của chi nhánh đang làm việc',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ userId: z.string().uuid() }),
+    body: { content: { 'application/json': { schema: saveInteropCredentialRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công, trả lại danh sách bác sĩ', envelope(listInteropDoctorsResponseSchema)),
+    400: errorResponse('Mã trống/quá dài'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Bác sĩ không tồn tại, thuộc chi nhánh khác hoặc công ty khác'),
+    422: errorResponse('Lần đầu lưu mà thiếu mật khẩu (INTEROP_PASSWORD_REQUIRED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/prescription-interop/doctors/{userId}/add-to-facility',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — "Thêm vào cơ sở" (API IV): thêm bác sĩ vào cơ sở của chi nhánh đang làm việc trên cổng (tự đăng nhập cơ sở nếu cần), rồi đăng nhập bác sĩ để lấy token. Trả 200 kể cả khi cổng từ chối',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ userId: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Kết quả (OK/REJECTED/UNREACHABLE/NOT_CONFIGURED)', envelope(interopActionResultSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Bác sĩ không tồn tại, thuộc chi nhánh khác hoặc công ty khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/prescription-interop/doctors/{userId}/remove-from-facility',
+  tags: ['prescription-interop'],
+  summary: 'Liên thông đơn thuốc — "Xoá khỏi cơ sở" (API V): xoá bác sĩ khỏi cơ sở của chi nhánh đang làm việc trên cổng. Trả 200 kể cả khi cổng từ chối',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ userId: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Kết quả (OK/REJECTED/UNREACHABLE/NOT_CONFIGURED)', envelope(interopActionResultSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền clinic_config.update'),
+    404: errorResponse('Bác sĩ không tồn tại, thuộc chi nhánh khác hoặc công ty khác'),
   },
 });
 

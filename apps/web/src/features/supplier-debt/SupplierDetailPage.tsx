@@ -143,7 +143,7 @@ export function SupplierDetailPage() {
               </div>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {summary.canRecordOpeningBalance && (
               <Button type="button" variant="secondary" onClick={() => setOpeningBalanceOpen(true)}>
                 <ClipboardText size={16} weight="bold" aria-hidden="true" />
@@ -271,7 +271,7 @@ function ReceiptsTab({ supplierId }: { supplierId: string }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
+    <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
@@ -350,7 +350,7 @@ function ReturnsTab({ supplierId }: { supplierId: string }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
+    <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
@@ -402,7 +402,7 @@ function LedgerTab({ supplierId }: { supplierId: string }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
+    <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
@@ -485,7 +485,7 @@ function PaymentsTab({ supplierId }: { supplierId: string }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
+    <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
@@ -561,7 +561,7 @@ function AdjustmentsTab({ supplierId }: { supplierId: string }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
+    <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
@@ -657,7 +657,7 @@ function ReconciliationsTab({ supplierId }: { supplierId: string }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
+    <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">

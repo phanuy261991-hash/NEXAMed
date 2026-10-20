@@ -209,3 +209,16 @@ Trang web `/suppliers/:id` (chi tiết NCC — header + `StatCardRow` 3 số li�
 | `prescription_item.document_id` | Dòng thuốc thuộc đơn pháp lý nào | NULL = còn nháp hoặc đơn ký trước ngày bật chế độ chuẩn. Composite FK `(tenant_id, document_id)`; không có trigger bất biến ở bảng dòng thuốc (chỉ `prescription` có). |
 | `drug.is_traditional` | Cờ "Thuốc y học cổ truyền (Đông y)" | BOOLEAN NOT NULL DEFAULT false; chỉ có ý nghĩa với thuốc. |
 | `tenant_setting` key `prescription_kind_mapping` | Bảng ánh xạ loại thuốc → loại đơn (cả công ty) | JSON `{NARCOTIC, PSYCHOTROPIC, PRECURSOR, TOXIC, NORMAL, TRADITIONAL}`; vắng = mặc định (N, H, H, C, C, Y). |
+
+---
+
+### 3.12 Liên thông đơn thuốc quốc gia — mã/mật khẩu, token, quan hệ bác sĩ–cơ sở (v1.80, `docs/DECISIONS.md` #242, giai đoạn 3)
+
+| Bảng/cột | Vai trò | Ghi chú |
+|---|---|---|
+| `interop_facility_credential` | Mã liên thông + mật khẩu đăng nhập cổng của CƠ SỞ, mỗi chi nhánh một dòng | Đủ 8 cột bắt buộc; `branch_id NOT NULL` composite FK `(tenant_id, branch_id)`; `code` (mã liên thông cơ sở, KHÁC mã cơ sở KCB 5 chữ số); `password_enc` BYTEA (AES-256-GCM như CCCD); `token_enc`/`token_issued_at` = token cơ sở (7 ngày, cổng không trả hạn nên lưu giờ nhận; CHECK cả hai cùng null hoặc cùng có); partial UNIQUE `(tenant_id, branch_id) WHERE deleted_at IS NULL`; RLS + FORCE. Mật khẩu/token KHÔNG bao giờ trả về qua API. |
+| `interop_doctor_credential` | Mã liên thông + mật khẩu tài khoản cổng của BÁC SĨ — CHUNG cả công ty | Đủ 8 cột; `user_id` composite FK `(tenant_id, user_id)`; không có `branch_id` (một tài khoản cổng/bác sĩ dù làm nhiều chi nhánh); partial UNIQUE `(tenant_id, user_id) WHERE deleted_at IS NULL`; RLS + FORCE. |
+| `interop_doctor_facility` | Quan hệ (bác sĩ, chi nhánh): đã thêm bác sĩ vào cơ sở trên cổng chưa + token BÁC SĨ của cặp | Đủ 8 cột; `user_id` và `branch_id` đều composite FK; `added_at` (null = chưa thêm); `token_enc`/`token_issued_at` (CHECK cùng null/cùng có); partial UNIQUE `(tenant_id, user_id, branch_id) WHERE deleted_at IS NULL`; RLS + FORCE. Theo chi nhánh (bác sĩ làm hai chi nhánh có hai dòng/hai token). |
+| `tenant_setting` key `prescription_interop` | Cấu hình liên thông (cả công ty) | JSON `{enabled, sendEnabled, gatewayUrl, timeoutSeconds, maxRetries}`; vắng = mặc định (tắt, https://api.donthuocquocgia.vn, 30 giây, 5 lần). Khoá nhà cung cấp (app-name/app-key) KHÔNG lưu DB: biến môi trường `INTEROP_APP_NAME`/`INTEROP_APP_KEY`, giao diện chỉ hiện đã/chưa cài. |
+
+Đổi mã/mật khẩu làm mất hiệu lực: đổi mã hoặc mật khẩu CƠ SỞ → xoá token cơ sở; đổi MÃ cơ sở → đặt mọi bác sĩ của chi nhánh về "chưa thêm" + xoá token bác sĩ. Đổi MÃ bác sĩ → bỏ "đã thêm" + token ở mọi chi nhánh; chỉ đổi mật khẩu bác sĩ → chỉ xoá token.

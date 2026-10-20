@@ -18,6 +18,7 @@ import { ReceptionModule } from './modules/reception/reception.module';
 import { AllergenModule } from './modules/allergen/allergen.module';
 import { DrugModule } from './modules/drug/drug.module';
 import { AdviceTemplateModule } from './modules/advice-template/advice-template.module';
+import { PrescriptionInteropModule } from './modules/prescription-interop/prescription-interop.module';
 import { PrintTemplateModule } from './modules/print-template/print-template.module';
 import { TechnicalServiceModule } from './modules/technical-service/technical-service.module';
 import { PricingModule } from './modules/pricing/pricing.module';
@@ -71,6 +72,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     AllergenModule,
     DrugModule,
     AdviceTemplateModule,
+    PrescriptionInteropModule,
     PrintTemplateModule,
     TechnicalServiceModule,
     PricingModule,

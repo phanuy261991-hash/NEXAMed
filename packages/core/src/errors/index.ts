@@ -23,6 +23,7 @@ export * from './clinical-order-errors';
 export * from './paraclinical-result-errors';
 export * from './backup-errors';
 export * from './advice-template-errors';
+export * from './prescription-interop-errors';
 export * from './leave-request-errors';
 export * from './shift-swap-errors';
 export * from './branch-errors';

@@ -101,6 +101,8 @@ const LOGIN_ONLY_ROUTES = new Set<string>([
   'GET /api/v1/clinic-settings/pharmacy-stock-tracking-enabled',
   'GET /api/v1/clinic-settings/allow-free-text-prescription-enabled',
   'GET /api/v1/clinic-settings/prescription-split-block-enabled',
+  // Liên thông đơn thuốc (#242 GĐ3): chỉ công tắc tổng, để màn kê đơn/menu biết có hiện phần liên thông không (không lộ mã/mật khẩu/địa chỉ cổng).
+  'GET /api/v1/prescription-interop/status',
   'GET /api/v1/clinic-settings/icd10-suggestion-enabled',
   'GET /api/v1/clinic-settings/cashier-shift-blind-close-enabled',
   'GET /api/v1/clinic-profile/print-header',

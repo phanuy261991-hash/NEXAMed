@@ -492,7 +492,14 @@ export class EncounterService {
    * Thông tin bệnh nhân IN THÊM trên đơn thuốc (#242, mockup 20/10/2026): mã BN, CCCD đã giải mã, địa chỉ, SĐT, cân nặng, người giám hộ. Gọi khi bấm In (không nằm trong `getConsultationDetail` để
    * không giải mã CCCD mỗi lần mở màn khám). Chỉ lượt khám của CHI NHÁNH đang làm việc; CCCD chỉ trả cho người có quyền `patient.read` (không có thì `null` — bản in tự ẩn/để chấm). Ghi nhật ký xem ở controller.
    */
-  async getPrescriptionPrintInfo(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<PrescriptionPrintInfo> {
+  async getPrescriptionPrintInfo(
+    tenantId: string,
+    branchId: string,
+    actorId: string,
+    dataScope: DataScope,
+    id: string,
+    meta: RequestMeta,
+  ): Promise<PrescriptionPrintInfo> {
     const context = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounter = await this.encounterRepository.findForPrescriptionPrint(tx, tenantId, id);
       if (!encounter || encounter.branchId !== branchId || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
@@ -503,9 +510,24 @@ export class EncounterService {
     });
     // `PatientService` tự mở transaction riêng — gọi NGOÀI transaction trên (cùng nguyên tắc `exportMedicalRecordPdf()`).
     const patient = await this.patientService.getPatient(tenantId, context.patientId);
+    const nationalId = context.canReadPatient ? patient.nationalId : null;
+    if (nationalId) {
+      // Số CCCD đã giải mã đang rời máy chủ để in ra giấy — dòng nhật ký RIÊNG (ngoài `encounter.viewed` chung của `@AuditView`) để truy được "ai đã in CCCD của bệnh nhân này". KHÔNG ghi giá trị CCCD.
+      await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+        writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'encounter.prescription_printed_with_national_id',
+          entityType: 'encounter',
+          entityId: id,
+          afterJson: { patientId: context.patientId, branchId },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        }),
+      );
+    }
     return {
       patientCode: patient.patientCode,
-      nationalId: context.canReadPatient ? patient.nationalId : null,
+      nationalId,
       address: patient.address,
       phone: patient.phone,
       weightGram: context.weightGram,
