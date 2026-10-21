@@ -4,7 +4,7 @@
 > Quy ước tài liệu dài (CLAUDE.md): chỉ đọc file gốc `docs/DECISIONS.md` (#243 + bổ sung 1 là mới nhất), `CHANGELOG.md`, `CURRENT.md`, `TASK.md`, `ERD.md` (+ `ERD-2.md` mục 3.14).
 
 ## ⚠ CẬP NHẬT CUỐI NGÀY 21/10/2026 — S2-04 ĐÃ XONG TOÀN BỘ
-Mọi việc ở mục 3 bên dưới (1–8) **đã làm xong** trong phiên tiếp theo: web hoàn tất, kiểm Chrome thật (kể cả công tắc tắt = ẩn hết, 4 cỡ màn hình), kiểm đột biến (backend 13 + lõi 6, vá 3 lỗ hổng test), FULL test xanh (API 1655, core 509, web 237, shared 96, setup 76). Chi tiết + sai khác so với mockup: `docs/DECISIONS.md` #243 bổ sung 2–3. **Chỉ còn 2 việc chờ**: (1) gửi đơn vị vận hành câu hỏi 19 (`docs/product/prescription-interop-questions.md`); (2) chủ dự án quyết có cho thêm thẻ ngay lúc tiếp nhận hồ sơ MỚI không. Phần dưới giữ nguyên làm lịch sử.
+Mọi việc ở mục 3 bên dưới (1–8) **đã làm xong** trong phiên tiếp theo: web hoàn tất, kiểm Chrome thật (kể cả công tắc tắt = ẩn hết, 4 cỡ màn hình), kiểm đột biến (backend 13 + lõi 6, vá 3 lỗ hổng test), FULL test xanh (API 1655, core 509, web 237, shared 96, setup 76). Chi tiết + sai khác so với mockup: `docs/DECISIONS.md` #243 bổ sung 2–3. **2 việc chờ đã xong cùng ngày** (#243 bổ sung 4): số thẻ mới 12 chữ số chốt (không cần hỏi đơn vị vận hành); Tiếp nhận cho thêm thẻ nháp cho hồ sơ MỚI. Không còn việc treo. Phần dưới giữ nguyên làm lịch sử.
 
 ## 0. Trạng thái một câu
 S2-04 (thẻ BHYT) đã **chốt định hướng + mockup (bản 3, chủ dự án "oki chốt mockup" 21/10)** và **backend + phần lớn web xong, test xanh**; còn LÀM DỞ phần web ở Tiếp nhận, hàng đợi/màn khám/lịch sử khám, ô tích ở Quản lý mẫu in, và kiểm Chrome thật. Mockup: https://claude.ai/artifact/FAi8GCjycj94s6EwTT9t6b (bản 3). Chưa có dữ liệu/cấu hình thật nào đổi: công tắc "Áp dụng BHYT" mặc định TẮT.

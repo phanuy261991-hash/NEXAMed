@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveReceptionInsuranceView, detectInsuranceCardKind, formatValidityRange, formatWarningMessage, insuranceBadgeLabel, normalizeInsuranceCardNo } from './insurance-card-view';
+import { resolveCardValidity, deriveReceptionInsuranceView, detectInsuranceCardKind, formatValidityRange, formatWarningMessage, insuranceBadgeLabel, normalizeInsuranceCardNo } from './insurance-card-view';
 
 /** Bộ vector DÙNG CHUNG với `packages/core/src/insurance/insurance-card.spec.ts` — đổi một bên phải đổi bên kia. */
 const KIND_VECTORS: { raw: string; normalized: string; kind: 'NEW_12' | 'OLD_15' | 'UNKNOWN' }[] = [
@@ -73,5 +73,20 @@ describe('deriveReceptionInsuranceView (khối chọn thẻ ở Tiếp nhận)',
 
   it('lựa chọn cũ trỏ thẻ không còn trong danh sách → coi như không dùng thẻ', () => {
     expect(deriveReceptionInsuranceView([card('a', 'VALID')], 'a', 'đã-xoá')).toMatchObject({ selected: null });
+  });
+});
+
+/** Bộ vector DÙNG CHUNG với `resolveInsuranceCardValidity` ở packages/core — đổi một bên phải đổi bên kia. */
+describe('resolveCardValidity (bản sao của packages/core)', () => {
+  it.each([
+    { from: null, to: null, today: '2026-10-21', expected: 'UNKNOWN_EXPIRY' },
+    { from: '2026-01-01', to: '2026-12-31', today: '2026-10-21', expected: 'VALID' },
+    { from: '2026-01-01', to: '2026-10-21', today: '2026-10-21', expected: 'VALID' },
+    { from: '2025-01-01', to: '2026-10-20', today: '2026-10-21', expected: 'EXPIRED' },
+    { from: '2026-10-22', to: '2026-12-31', today: '2026-10-21', expected: 'NOT_STARTED' },
+    { from: '2026-10-22', to: null, today: '2026-10-21', expected: 'NOT_STARTED' },
+    { from: null, to: '2026-12-31', today: '2026-10-21', expected: 'VALID' },
+  ] as const)('%j', ({ from, to, today, expected }) => {
+    expect(resolveCardValidity({ validFrom: from, validTo: to }, today)).toBe(expected);
   });
 });

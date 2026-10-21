@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-21
 
+### Tiếp nhận: thêm thẻ BHYT ngay cho hồ sơ bệnh nhân MỚI (`docs/DECISIONS.md` #243 bổ sung 4)
+
+Tiếp nhận bệnh nhân chưa có hồ sơ: khối "Thẻ bảo hiểm y tế" có nút "Thêm thẻ" (gợi ý điền số CCCD). Thẻ được giữ trong form dưới dạng thẻ nháp; bấm "Lưu tiếp nhận" thì hệ thống tạo hồ sơ → tạo thẻ (kèm ảnh nếu có) → tiếp nhận với đúng thẻ đó. Không thêm thẻ thì lượt khám ghi tự chi trả như cũ. Chủ dự án xác nhận số thẻ mới là 12 chữ số theo quy định mới nhất (trùng số CCCD) nên không cần hỏi đơn vị vận hành về độ dài. Chỉ đổi web; không migration, không đổi API.
+
 ### Thẻ BHYT (S2-04): hoàn tất phần web (`docs/DECISIONS.md` #243 bổ sung 2)
 
 Quản lý mẫu in có ô tích "Số thẻ BHYT" (đơn thuốc cạnh CCCD, phiếu thu và bệnh án PDF có khối riêng; chọn "Ẩn cả dòng"/"In Tự chi trả" khi tự chi trả; khoá mờ khi công tắc tổng tắt). Tiếp nhận có khối "Thẻ bảo hiểm y tế" (thẻ gợi ý chọn sẵn, đổi thẻ, "Không dùng thẻ", "Thêm thẻ mới", dải hổ phách khi thẻ hết hạn/chưa hiệu lực). Nhãn "BHYT 80%"/"Tự chi trả" ở danh sách tiếp nhận, hàng đợi khám, đầu màn khám (kèm số thẻ); chi tiết lượt khám cũ có khung "Thẻ BHYT lúc khám — Đã chụp, không đổi". Công tắc tắt thì tất cả ẩn. Sửa luôn: nút "Xem" ở bảng Lịch sử khám sát mép (cột Thao tác 90→112px, "Tổng chi phí" 130→150px). Không migration, không đổi API. Kiểm đột biến backend: bổ sung 3 test (thẻ chưa hiệu lực, mã băm số thẻ khác mã băm CCCD, nhật ký không ghi số thẻ) — spec thẻ BHYT nay 27 ca. Câu hỏi 19 gửi đơn vị vận hành cổng đã cập nhật (thẻ mới 12 số/thẻ cũ 15 ký tự).

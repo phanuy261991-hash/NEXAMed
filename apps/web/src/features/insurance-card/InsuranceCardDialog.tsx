@@ -5,7 +5,7 @@ import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { DateInput } from '../../shared/ui/DateInput';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
-import { detectInsuranceCardKind, formatWarningMessage, KIND_CHIP_CLASS, KIND_LABEL, normalizeInsuranceCardNo, QUICK_BENEFIT_RATES } from './insurance-card-view';
+import { detectInsuranceCardKind, formatWarningMessage, KIND_CHIP_CLASS, KIND_LABEL, normalizeInsuranceCardNo, QUICK_BENEFIT_RATES, type InsuranceCardDraft } from './insurance-card-view';
 import { useSaveInsuranceCardMutation, useUploadInsuranceCardPhotoMutation } from './insurance-card.queries';
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
@@ -81,8 +81,10 @@ export function InsuranceCardDialog({
   card,
   onClose,
   onSaved,
+  onDraft,
 }: {
-  patientId: string;
+  /** `null` = hồ sơ MỚI chưa lưu (Tiếp nhận) — phải truyền `onDraft`, hộp thoại không gọi máy chủ mà trả thẻ nháp. */
+  patientId: string | null;
   patientName: string;
   patientNationalId: string | null;
   /** `null` = Thêm thẻ mới; có giá trị = Sửa thẻ đó. */
@@ -90,9 +92,11 @@ export function InsuranceCardDialog({
   onClose: () => void;
   /** `photoError`: thẻ ĐÃ lưu nhưng tải ảnh lỗi — nơi gọi báo cho người dùng. */
   onSaved: (warnings: InsuranceCardWarning[], photoError: string | null) => void;
+  /** Chế độ nháp (hồ sơ mới): nhận thẻ đã nhập, KHÔNG lưu máy chủ. */
+  onDraft?: (draft: InsuranceCardDraft) => void;
 }) {
-  const saveMutation = useSaveInsuranceCardMutation(patientId);
-  const photoMutation = useUploadInsuranceCardPhotoMutation(patientId);
+  const saveMutation = useSaveInsuranceCardMutation(patientId ?? '');
+  const photoMutation = useUploadInsuranceCardPhotoMutation(patientId ?? '');
   const [cardNo, setCardNo] = useState(card?.cardNo ?? '');
   const [validFrom, setValidFrom] = useState(card?.validFrom ?? '');
   const [validTo, setValidTo] = useState(card?.validTo ?? '');
@@ -146,6 +150,10 @@ export function InsuranceCardDialog({
         facilityName: facilityName.trim() || null,
         benefitRate: resolveBenefit(),
       };
+      if (onDraft) {
+        onDraft({ cardNo: normalized, ...fields, frontFile, backFile });
+        return;
+      }
       const result = await saveMutation.mutateAsync(
         card ? { cardId: card.id, update: { cardNo, version: card.version, ...fields } } : { cardId: null, create: { cardNo, ...fields } },
       );

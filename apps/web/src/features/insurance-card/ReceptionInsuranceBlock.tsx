@@ -6,15 +6,48 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatDobDisplay } from '../../shared/format/date';
+import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { ApiError } from '../../shared/api/client';
 import { useInsuranceEnabledQuery } from '../clinic/clinic.queries';
 import { InsuranceCardDialog } from './InsuranceCardDialog';
-import { deriveReceptionInsuranceView, formatValidityRange, insuranceBadgeLabel, KIND_LABEL, VALIDITY_LABEL, VALIDITY_TONE } from './insurance-card-view';
+import {
+  deriveReceptionInsuranceView,
+  detectInsuranceCardKind,
+  formatValidityRange,
+  insuranceBadgeLabel,
+  KIND_LABEL,
+  resolveCardValidity,
+  VALIDITY_LABEL,
+  VALIDITY_TONE,
+  type InsuranceCardDraft,
+} from './insurance-card-view';
 import { useInsuranceCardsQuery } from './insurance-card.queries';
 
 const pickBase = 'flex min-w-[220px] flex-col items-start gap-0.5 rounded-lg border px-3.5 py-2 text-left';
 const pickIdle = 'border-slate-300 bg-white text-slate-800 hover:border-blue-400 hover:bg-brand-teal-tint';
 const pickSelected = 'border-brand-teal bg-brand-teal text-white';
+
+/** Id giả của thẻ nháp (hồ sơ mới) trong danh sách chọn — không bao giờ gửi lên máy chủ. */
+export const DRAFT_CARD_ID = 'draft';
+
+function draftToCard(draft: InsuranceCardDraft): InsuranceCard {
+  return {
+    id: DRAFT_CARD_ID,
+    patientId: '',
+    cardNo: draft.cardNo,
+    kind: detectInsuranceCardKind(draft.cardNo),
+    validFrom: draft.validFrom,
+    validTo: draft.validTo,
+    validity: resolveCardValidity(draft, getVietnamTodayDateString()),
+    facilityCode: draft.facilityCode,
+    facilityName: draft.facilityName,
+    benefitRate: draft.benefitRate,
+    photoFrontUrl: null,
+    photoBackUrl: null,
+    createdAt: '',
+    version: 0,
+  };
+}
 
 /** Dòng phụ của thẻ chọn: "Thẻ mới · chưa rõ hạn · 80%". */
 function pickSubtitle(card: InsuranceCard): string {
@@ -27,16 +60,27 @@ function pickSubtitle(card: InsuranceCard): string {
  * Khối "Thẻ bảo hiểm y tế" ở form Tiếp nhận (S2-04, docs/DECISIONS.md #243, mockup màn 3), nằm ngay dưới phần thông tin bệnh nhân. CHỈ hiện khi công tắc "Áp dụng BHYT" bật.
  * Thẻ được CHỤP vào lượt khám lúc bấm Tiếp nhận. `choice`: `undefined` = theo gợi ý của máy chủ (thẻ còn hiệu lực mới nhất, chọn sẵn — ngoại lệ có chủ đích với quy tắc
  * "không tô sẵn lựa chọn"), `null` = "Không dùng thẻ" (tự chi trả), uuid = đúng thẻ đó. Thẻ hết hạn / không có thẻ chỉ cảnh báo, không chặn tiếp nhận.
- * `patient` = hồ sơ đã khớp; hồ sơ mới (chưa lưu) chưa có thẻ nào nên lượt khám ghi tự chi trả.
+ * `patient` = hồ sơ đã khớp (thẻ lưu ngay). Hồ sơ MỚI (chưa lưu, `patient = null`): thẻ nhập ở đây là THẺ NHÁP (`draft`) — giữ trong form, tạo sau khi tạo hồ sơ lúc bấm Lưu tiếp nhận;
+ * `choice` của thẻ nháp dùng `DRAFT_CARD_ID`.
  */
 export function ReceptionInsuranceBlock({
   patient,
   choice,
   onChoiceChange,
+  draft,
+  onDraftChange,
+  draftPatientName,
+  draftPatientNationalId,
 }: {
   patient: PatientDetail | null;
   choice: string | null | undefined;
   onChoiceChange: (choice: string | null | undefined) => void;
+  /** Thẻ nháp của hồ sơ mới (chỉ dùng khi `patient = null`). */
+  draft: InsuranceCardDraft | null;
+  onDraftChange: (draft: InsuranceCardDraft) => void;
+  /** Tên + CCCD đang nhập ở form — cho hộp thoại thẻ nháp (tiêu đề và gợi ý số CCCD). */
+  draftPatientName: string;
+  draftPatientNationalId: string | null;
 }) {
   const enabled = useInsuranceEnabledQuery().data?.enabled === true;
   const cardsQuery = useInsuranceCardsQuery(patient?.id, enabled && patient !== null);
@@ -45,34 +89,30 @@ export function ReceptionInsuranceBlock({
 
   if (!enabled) return null;
 
-  const view = cardsQuery.data ? deriveReceptionInsuranceView(cardsQuery.data.items, cardsQuery.data.suggestedCardId, choice) : null;
+  const draftCard = patient === null && draft ? draftToCard(draft) : null;
+  const cardsData =
+    patient === null
+      ? { items: draftCard ? [draftCard] : [], suggestedCardId: draftCard && (draftCard.validity === 'VALID' || draftCard.validity === 'UNKNOWN_EXPIRY') ? DRAFT_CARD_ID : null }
+      : (cardsQuery.data ?? null);
+  const view = cardsData ? deriveReceptionInsuranceView(cardsData.items, cardsData.suggestedCardId, choice) : null;
   const addButton = (variant: 'primary' | 'secondary') => (
-    <Button type="button" variant={variant} className="px-3 py-1.5 text-[13px]" onClick={() => setDialogOpen(true)} disabled={patient === null}>
+    <Button type="button" variant={variant} className="px-3 py-1.5 text-[13px]" onClick={() => setDialogOpen(true)}>
       <Plus size={13} weight="bold" aria-hidden="true" />
       {variant === 'primary' ? 'Thêm thẻ' : 'Thêm thẻ mới'}
     </Button>
   );
 
   let body: React.ReactNode;
-  if (patient === null) {
-    body = (
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-700">
-          <strong className="font-semibold text-slate-900">Hồ sơ bệnh nhân mới.</strong> Lượt khám ghi tự chi trả; thêm thẻ BHYT ở hồ sơ bệnh nhân sau khi tiếp nhận.
-        </p>
-        <StatusBadge tone="neutral">Tự chi trả</StatusBadge>
-      </div>
-    );
-  } else if (cardsQuery.isPending) {
+  if (patient !== null && cardsQuery.isPending) {
     body = <Skeleton className="h-12 w-full" />;
-  } else if (cardsQuery.isError || view === null) {
+  } else if ((patient !== null && cardsQuery.isError) || view === null) {
     body = <ErrorBanner message={cardsQuery.error instanceof ApiError ? cardsQuery.error.message : 'Không tải được thẻ BHYT.'} onRetry={() => void cardsQuery.refetch()} />;
   } else if (view.mode === 'NO_CARDS') {
     body = (
       <>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-slate-700">
-            <strong className="font-semibold text-slate-900">Bệnh nhân chưa có thẻ BHYT.</strong> Lượt khám ghi tự chi trả.
+            <strong className="font-semibold text-slate-900">{patient === null ? 'Hồ sơ bệnh nhân mới chưa có thẻ BHYT.' : 'Bệnh nhân chưa có thẻ BHYT.'}</strong> Lượt khám ghi tự chi trả nếu không thêm thẻ.
           </p>
           {addButton('primary')}
         </div>
@@ -160,13 +200,23 @@ export function ReceptionInsuranceBlock({
         </p>
       )}
       {body}
-      {dialogOpen && patient && (
+      {dialogOpen && (
         <InsuranceCardDialog
-          patientId={patient.id}
-          patientName={patient.fullName}
-          patientNationalId={patient.nationalId}
+          patientId={patient?.id ?? null}
+          patientName={patient?.fullName ?? (draftPatientName.trim() || 'Hồ sơ mới')}
+          patientNationalId={patient ? patient.nationalId : draftPatientNationalId}
           card={null}
           onClose={() => setDialogOpen(false)}
+          onDraft={
+            patient === null
+              ? (d) => {
+                  onDraftChange(d);
+                  setDialogOpen(false);
+                  setNotice(null);
+                  onChoiceChange(undefined);
+                }
+              : undefined
+          }
           onSaved={(warnings, photoError) => {
             setDialogOpen(false);
             setNotice(

@@ -7,6 +7,29 @@ import { formatDobDisplay } from '../../shared/format/date';
  */
 export type InsuranceCardKind = 'NEW_12' | 'OLD_15' | 'UNKNOWN';
 export type InsuranceCardValidity = 'VALID' | 'UNKNOWN_EXPIRY' | 'EXPIRED' | 'NOT_STARTED';
+/**
+ * Hiệu lực của thẻ tại ngày `today` (YYYY-MM-DD) — BẢN SAO của `resolveInsuranceCardValidity` ở `packages/core/src/insurance/insurance-card.ts`
+ * (cùng bộ vector test), dùng cho thẻ NHÁP ở Tiếp nhận hồ sơ mới (chưa có máy chủ tính).
+ */
+export function resolveCardValidity(card: { validFrom: string | null; validTo: string | null }, today: string): InsuranceCardValidity {
+  if (card.validTo !== null && today > card.validTo) return 'EXPIRED';
+  if (card.validFrom !== null && today < card.validFrom) return 'NOT_STARTED';
+  if (card.validTo === null) return 'UNKNOWN_EXPIRY';
+  return 'VALID';
+}
+
+/** Thẻ nhập lúc Tiếp nhận hồ sơ MỚI (chưa có hồ sơ để lưu thẻ): giữ trong form, tạo thẻ ngay sau khi tạo hồ sơ, rồi mới tiếp nhận. Ảnh (nếu có) tải lên sau khi thẻ được tạo. */
+export interface InsuranceCardDraft {
+  cardNo: string;
+  validFrom: string | null;
+  validTo: string | null;
+  facilityCode: string | null;
+  facilityName: string | null;
+  benefitRate: number | null;
+  frontFile: File | null;
+  backFile: File | null;
+}
+
 export type InsuranceSelfPayReason = 'DISABLED' | 'NO_CARD' | 'EXPIRED' | 'NOT_STARTED' | 'DECLINED';
 
 /** Bỏ khoảng trắng và gạch nối, đổi sang chữ hoa — một thẻ không bị lưu thành nhiều dạng. */

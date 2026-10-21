@@ -36,6 +36,8 @@ import {
 import { patientDetailToFormValues, toCreatePatientRequest, toUpdatePatientRequest } from '../patient/patient-form.utils';
 import { EMPTY_PATIENT_FORM, PatientFormFields, type PatientFormValues } from '../patient/PatientFormFields';
 import { PatientMatchDialog } from '../patient/PatientMatchDialog';
+import { createInsuranceCard, uploadInsuranceCardPhoto } from '../insurance-card/insurance-card.api';
+import type { InsuranceCardDraft } from '../insurance-card/insurance-card-view';
 import { ReceptionInsuranceBlock } from '../insurance-card/ReceptionInsuranceBlock';
 import { PatientSearchDialog } from './PatientSearchDialog';
 import { resolvePrices } from '../pricing/pricing.api';
@@ -147,6 +149,8 @@ export function ReceptionIntakeForm({
   const [duplicates, setDuplicates] = useState<PatientSummary[] | null>(null);
   /** Thẻ BHYT dùng cho lượt khám (S2-04, #243): `undefined` = máy chủ tự gợi ý, `null` = "Không dùng thẻ", uuid = thẻ đó. Đổi hồ sơ khớp thì quay về gợi ý. */
   const [insuranceCardChoice, setInsuranceCardChoice] = useState<string | null | undefined>(undefined);
+  /** Thẻ BHYT nhập cho hồ sơ MỚI (chưa lưu): tạo sau khi tạo hồ sơ, lúc bấm Lưu tiếp nhận. */
+  const [insuranceCardDraft, setInsuranceCardDraft] = useState<InsuranceCardDraft | null>(null);
   /** Đóng popup "trùng SĐT"/"trùng CCCD" thì không tự bật lại cho tới khi giá trị field đó đổi khác. */
   const [phoneMatchDismissed, setPhoneMatchDismissed] = useState(false);
   const [nationalIdMatchDismissed, setNationalIdMatchDismissed] = useState(false);
@@ -325,6 +329,8 @@ export function ReceptionIntakeForm({
     setDepartmentId('');
     setDoctorFilterDepartmentId('');
     setVitals(EMPTY_VITALS);
+    setInsuranceCardDraft(null);
+    setInsuranceCardChoice(undefined);
     setError(null);
   }
 
@@ -540,6 +546,33 @@ export function ReceptionIntakeForm({
       const patientId = await resolvePatientId(confirmDuplicate);
       if (patientId === null) return; // chặn bởi nghi trùng (PAT-03), chờ người dùng quyết định
 
+      // Thẻ BHYT nhập cho hồ sơ MỚI: hồ sơ vừa được tạo nên giờ mới lưu được thẻ. Xoá bản nháp ngay khi thẻ đã tạo để bấm lại không tạo trùng.
+      let insuranceCardId = insuranceCardChoice;
+      if (matchedPatient === null && insuranceCardDraft !== null && insuranceCardChoice !== null) {
+        const created = await createInsuranceCard(patientId, {
+          cardNo: insuranceCardDraft.cardNo,
+          validFrom: insuranceCardDraft.validFrom,
+          validTo: insuranceCardDraft.validTo,
+          facilityCode: insuranceCardDraft.facilityCode,
+          facilityName: insuranceCardDraft.facilityName,
+          benefitRate: insuranceCardDraft.benefitRate,
+        });
+        insuranceCardId = created.card.id;
+        let version = created.card.version;
+        const staged: Array<['front' | 'back', File | null]> = [['front', insuranceCardDraft.frontFile], ['back', insuranceCardDraft.backFile]];
+        for (const [side, file] of staged) {
+          if (!file) continue;
+          try {
+            version = (await uploadInsuranceCardPhoto(patientId, created.card.id, side, version, file)).card.version;
+          } catch {
+            break; // thẻ đã lưu; ảnh thêm lại được ở hồ sơ bệnh nhân
+          }
+        }
+        setInsuranceCardDraft(null);
+      } else if (matchedPatient === null) {
+        insuranceCardId = insuranceCardChoice === null ? null : undefined;
+      }
+
       // Điều phối Bác sĩ/Khoa ("Hàng đợi ảo", #064) — CHỈ gửi field đúng nhánh đang chọn (server tự
       // suy departmentId từ hồ sơ bác sĩ khi routingMode='doctor', không tin departmentId client
       // gửi kèm cho nhánh đó — xem `ReceptionService.resolveRouting()`).
@@ -562,7 +595,7 @@ export function ReceptionIntakeForm({
         examFormCode,
         isPriority,
         priorityReasonCode: isPriority && priorityReasonCode !== '' ? priorityReasonCode : undefined,
-        insuranceCardId: insuranceCardChoice,
+        insuranceCardId,
         // Tắt tính năng ở cấp phòng khám thì LUÔN gửi false, bất kể state cục bộ còn giữ gì (checkbox
         // đã ẩn khỏi giao diện lúc đó — xem khối "Chỉ định dịch vụ khám" bên dưới).
         allowsDeferredPayment: deferredPaymentFeatureEnabled && allowsDeferredPayment,
@@ -667,7 +700,15 @@ export function ReceptionIntakeForm({
         />
       )}
 
-      <ReceptionInsuranceBlock patient={matchedPatient} choice={insuranceCardChoice} onChoiceChange={setInsuranceCardChoice} />
+      <ReceptionInsuranceBlock
+        patient={matchedPatient}
+        choice={insuranceCardChoice}
+        onChoiceChange={setInsuranceCardChoice}
+        draft={insuranceCardDraft}
+        onDraftChange={setInsuranceCardDraft}
+        draftPatientName={formValues.fullName}
+        draftPatientNationalId={formValues.nationalId.trim() === '' ? null : formValues.nationalId}
+      />
 
       <div className={sectionBoxClassName}>
         <span className={sectionBadgeClassName}>Thông tin tiếp nhận</span>
