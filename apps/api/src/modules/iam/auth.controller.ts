@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { TenantThrottlerGuard } from '../../common/tenant-throttler.guard';
 import type { Request, Response } from 'express';
 import { changePasswordRequestSchema, loginRequestSchema, switchBranchRequestSchema } from '@nexamed/shared';
 import { RefreshTokenInvalidError } from '@nexamed/core';
@@ -20,7 +20,7 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  @UseGuards(ThrottlerGuard)
+  @UseGuards(TenantThrottlerGuard)
   @HttpCode(200)
   async login(@Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const dto = loginRequestSchema.parse(body);

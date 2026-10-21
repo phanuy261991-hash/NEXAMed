@@ -76,6 +76,10 @@ services:
       # hỏng không báo lỗi (bug thật phát hiện lúc verify S4-05). Đặt "true" trong .env CHỈ khi
       # đã có TLS thật trước nginx.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Số lớp reverse proxy đáng tin trước API (docs/DECISIONS.md #244): 1 = chỉ nginx (cài LAN),
+      # 2 = Caddy HTTPS + nginx (VPS/SaaS). Thiếu giá trị này thì máy chủ thấy mọi người dùng chung
+      # một IP (của nginx) — giới hạn tần suất gộp cả hệ thống và nhật ký ghi sai IP.
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       # Chế độ triển khai (docs/DECISIONS.md #237): single = một công ty (mặc định, on-prem/VPS/NAS); saas = nhiều công ty theo tên miền phụ, cần PLATFORM_BASE_DOMAIN.
       DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-single}
       PLATFORM_BASE_DOMAIN: ${PLATFORM_BASE_DOMAIN:-}

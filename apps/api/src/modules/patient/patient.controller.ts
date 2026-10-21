@@ -14,7 +14,8 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle } from '@nestjs/throttler';
+import { TenantThrottlerGuard } from '../../common/tenant-throttler.guard';
 import type { Request } from 'express';
 import { z } from 'zod';
 import {
@@ -66,7 +67,7 @@ export class PatientController {
    */
   @Get()
   @RequirePermission('patient', 'read')
-  @UseGuards(ThrottlerGuard)
+  @UseGuards(TenantThrottlerGuard)
   @SkipThrottle({ login: true })
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listPatientsQuerySchema.parse(query);
@@ -80,7 +81,7 @@ export class PatientController {
    */
   @Get('check-duplicate')
   @RequirePermission('patient', 'read')
-  @UseGuards(ThrottlerGuard)
+  @UseGuards(TenantThrottlerGuard)
   @SkipThrottle({ login: true })
   async checkDuplicate(@Query() query: unknown, @Req() req: Request) {
     const dto = checkPatientDuplicateQuerySchema.parse(query);
@@ -94,7 +95,7 @@ export class PatientController {
    */
   @Get('by-phone')
   @RequirePermission('patient', 'read')
-  @UseGuards(ThrottlerGuard)
+  @UseGuards(TenantThrottlerGuard)
   @SkipThrottle({ login: true })
   async findByPhone(@Query() query: unknown, @Req() req: Request) {
     const dto = patientByPhoneQuerySchema.parse(query);
@@ -108,7 +109,7 @@ export class PatientController {
    */
   @Get('by-national-id')
   @RequirePermission('patient', 'read')
-  @UseGuards(ThrottlerGuard)
+  @UseGuards(TenantThrottlerGuard)
   @SkipThrottle({ login: true })
   async findByNationalId(@Query() query: unknown, @Req() req: Request) {
     const dto = patientByNationalIdQuerySchema.parse(query);

@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-21
 
+### Sửa 2 lỗi nghiêm trọng về đăng nhập đồng thời và chặn chéo công ty, dọn phiên cũ (`docs/DECISIONS.md` #244)
+
+**Đăng nhập khi đông người**: trước đây 100 người đăng nhập cùng lúc làm hỏng 64-81 lượt (lỗi máy chủ), vì mỗi lượt giữ một kết nối cơ sở dữ liệu suốt lúc kiểm mật khẩu. Nay kiểm mật khẩu tách khỏi phần ghi dữ liệu: 100 người cùng lúc không lỗi; 8 công ty × 40 tài khoản (320 lượt) cũng không lỗi. **Chặn chéo công ty (SaaS)**: trước đây một công ty gõ sai mật khẩu 10 lần là mọi công ty khác không đăng nhập được; nay hạn mức tính riêng theo từng công ty, và có cấu hình `TRUST_PROXY_HOPS` để máy chủ đọc đúng địa chỉ máy trạm qua proxy (trình cài đặt tự điền; nhật ký cũng ghi đúng địa chỉ). **Phiên đăng nhập**: giữ tối đa 5 phiên mỗi tài khoản (quá thì phiên cũ nhất tự đăng xuất), hạn phiên giảm từ 30 ngày xuống 7 ngày, và job nền 2h15 sáng dọn phiên đã hết hạn quá 7 ngày (trên máy dev: 53% số dòng là phiên hết hạn chưa dọn). **Đo hiệu năng toàn ứng dụng**: đạt — p95 58 ms so với ngưỡng 500 ms, không lỗi. **Job dọn dẹp không còn hẹn giờ ban đêm** (chủ dự án chỉ ra): máy tính phòng khám tắt buổi tối nên lịch 2 giờ sáng chưa từng chạy — kể cả job dọn nhật ký hệ thống có từ trước. Nay cả hai chạy ít phút sau khi bật máy rồi lặp lại trong ngày. **Môi trường khác**: `db:deploy` (migration `20261021140000_user_session_purge_grant`) + khởi động lại API; bản on-prem/VPS/SaaS nên đặt `TRUST_PROXY_HOPS` (1 nếu chỉ có nginx, 2 nếu có thêm Caddy).
+
 ### Tiếp nhận: thêm thẻ BHYT ngay cho hồ sơ bệnh nhân MỚI (`docs/DECISIONS.md` #243 bổ sung 4)
 
 Tiếp nhận bệnh nhân chưa có hồ sơ: khối "Thẻ bảo hiểm y tế" có nút "Thêm thẻ" (gợi ý điền số CCCD). Thẻ được giữ trong form dưới dạng thẻ nháp; bấm "Lưu tiếp nhận" thì hệ thống tạo hồ sơ → tạo thẻ (kèm ảnh nếu có) → tiếp nhận với đúng thẻ đó. Không thêm thẻ thì lượt khám ghi tự chi trả như cũ. Chủ dự án xác nhận số thẻ mới là 12 chữ số theo quy định mới nhất (trùng số CCCD) nên không cần hỏi đơn vị vận hành về độ dài. Chỉ đổi web; không migration, không đổi API.

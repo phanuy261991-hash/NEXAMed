@@ -1,0 +1,16 @@
+-- Dọn phiên đăng nhập đã hết hạn (chủ dự án chốt 21/10/2026, docs/DECISIONS.md #244).
+--
+-- Vì sao cần: mỗi lần gia hạn phiên (15 phút/lần) sinh MỘT dòng `user_session` mới và không bao giờ
+-- xoá — đo thật trên máy dev 21/10/2026: 3.814/7.114 dòng (53%) đã hết hạn mà vẫn nằm lại. Ước tính
+-- SaaS 50 công ty × 40 người: ~64.000 dòng/ngày (~18 GB/năm) chỉ riêng bảng này, làm chậm dần chính
+-- thao tác gia hạn phiên (tra theo `refresh_token_hash`).
+--
+-- NGOẠI LỆ THỨ HAI (sau `audit_log` ở 20260829110000) với quy tắc "cấm DELETE" của
+-- 20260807170922_tenant_context. `user_session` là dữ liệu KỸ THUẬT của phiên đăng nhập, không phải
+-- hồ sơ bệnh án; dấu vết "ai đăng nhập lúc nào" vẫn giữ VĨNH VIỄN ở `audit_log`
+-- (`auth.login_success`). Chỉ cấp cho ĐÚNG bảng này, không đụng `ALTER DEFAULT PRIVILEGES`.
+--
+-- Quyền này chỉ dùng qua ĐÚNG 1 chỗ trong code: `SessionRepository.purgeExpiredBefore()` — luôn ép
+-- `WHERE tenant_id = ? AND expires_at < cutoff` cứng trong câu lệnh, không endpoint API nào gọi tới
+-- (chỉ job nền `@Cron`, apps/api/src/modules/iam/expired-session-purge.job.ts).
+GRANT DELETE ON user_session TO nexamed_app;

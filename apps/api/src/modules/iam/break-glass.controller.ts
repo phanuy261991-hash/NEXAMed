@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { TenantThrottlerGuard } from '../../common/tenant-throttler.guard';
 import type { Request } from 'express';
 import { breakGlassRequestSchema } from '@nexamed/shared';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -20,7 +20,7 @@ export class BreakGlassController {
   constructor(private readonly breakGlassService: BreakGlassService) {}
 
   @Post()
-  @UseGuards(ThrottlerGuard)
+  @UseGuards(TenantThrottlerGuard)
   @HttpCode(200)
   async request(@Body() body: unknown, @Req() req: Request) {
     const dto = breakGlassRequestSchema.parse(body);

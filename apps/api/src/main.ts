@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import cookieParser from 'cookie-parser';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/response.interceptor';
@@ -11,7 +12,7 @@ import { UnitOfWorkService } from './infrastructure/persistence/unit-of-work.ser
 import { findMissingPermissionKeys, syncRolePermissionsForAllTenants } from './infrastructure/persistence/sync-role-permissions';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api/v1', { exclude: ['health'] });
   // Bắt buộc để `OnModuleDestroy` chạy khi container nhận SIGTERM (S6-06) — `PuppeteerPdfRendererAdapter`
   // cần đóng tiến trình Chromium đang giữ, không tự tắt theo NestJS mặc định nếu thiếu dòng này.
@@ -19,6 +20,13 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   app.enableCors({ origin: configService.getOrThrow<string>('WEB_ORIGIN'), credentials: true });
+
+  // IP thật của người dùng khi API đứng sau reverse proxy (docs/DECISIONS.md #244). Mặc định 0 =
+  // không tin `X-Forwarded-For` (ai cũng tự khai được). Đặt đúng số lớp proxy thì `req.ip` mới là IP
+  // máy trạm — giới hạn tần suất đăng nhập tính theo từng máy thay vì gộp cả hệ thống, và nhật ký
+  // hoạt động ghi đúng IP để còn điều tra sự cố.
+  const trustProxyHops = configService.getOrThrow<number>('TRUST_PROXY_HOPS');
+  if (trustProxyHops > 0) app.set('trust proxy', trustProxyHops);
 
   app.use(cookieParser());
   app.useGlobalInterceptors(new ResponseInterceptor());

@@ -6,6 +6,7 @@ import {
   AccountLockedPermanentlyError,
   BranchNotAssignedError,
   InvalidCredentialsError,
+  MAX_ACTIVE_SESSIONS_PER_USER,
   RefreshTokenInvalidError,
   RefreshTokenReuseDetectedError,
   TENANT_ACCESS_PORT,
@@ -101,7 +102,9 @@ export class AuthService {
   async login(request: LoginRequest, meta: RequestMeta): Promise<LoginResult> {
     // Công ty tạm ngưng (#237): chặn trước mọi thao tác khác. Công ty không tồn tại thì không báo gì riêng — rơi xuống luồng "sai thông tin" như cũ.
     if (await this.tenantAccess.isSuspended(request.tenantId)) throw new TenantSuspendedError();
-    const outcome = await this.unitOfWork.runInTenantScope<LoginOutcome>(request.tenantId, async (tx) => {
+
+    // BƯỚC 1 (transaction NGẮN): tra tài khoản + chặn theo trạng thái khoá. KHÔNG băm mật khẩu trong này — xem ghi chú ở bước 2.
+    const prepared = await this.unitOfWork.runInTenantScope<LoginOutcome | { kind: 'verify'; passwordHash: string }>(request.tenantId, async (tx) => {
       const user = await this.userAccountAuthRepository.findByUsername(tx, request.tenantId, request.username);
       if (!user) {
         // Không log audit: chưa xác định được entity_id thật, tránh vô tình biến audit_log
@@ -124,8 +127,33 @@ export class AuthService {
         await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
         return { kind: 'account_locked', lockedUntil: user.lockedUntil!, now };
       }
+      return { kind: 'verify', passwordHash: user.passwordHash };
+    });
+    if (prepared.kind !== 'verify') return this.finishLogin(prepared);
 
-      const passwordOk = await argon2.verify(user.passwordHash, request.password);
+    // BƯỚC 2 — NGOÀI transaction (lỗi thật 21/10/2026, docs/DECISIONS.md #244): `argon2.verify` tốn ~100-300 ms và 64 MB RAM mỗi lượt. Chạy nó BÊN TRONG transaction
+    // khiến mỗi người đang đăng nhập GIỮ một kết nối Postgres suốt thời gian đó; bể kết nối nhỏ (Prisma mặc định `số CPU × 2 + 1`) nên cả phòng khám đăng nhập đầu ca
+    // là cạn bể → "Unable to start a transaction in the given time" → 500 hàng loạt. Cùng loại bài học với #242 GĐ1 (không mở transaction lồng nhau).
+    const passwordOk = await argon2.verify(prepared.passwordHash, request.password);
+
+    // BƯỚC 3 (transaction NGẮN): ghi kết quả. Đọc LẠI tài khoản vì giữa hai bước, tài khoản có thể vừa bị khoá/vô hiệu hoá bởi một lượt đăng nhập sai khác.
+    const outcome = await this.unitOfWork.runInTenantScope<LoginOutcome>(request.tenantId, async (tx) => {
+      const user = await this.userAccountAuthRepository.findByUsername(tx, request.tenantId, request.username);
+      if (!user) return { kind: 'invalid_credentials' };
+      if (!user.isActive) {
+        await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
+        return { kind: 'account_disabled' };
+      }
+      const now = new Date();
+      if (isAccountLockedPermanently(user)) {
+        await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
+        return { kind: 'account_locked_permanently' };
+      }
+      if (isAccountLocked(user, now)) {
+        await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
+        return { kind: 'account_locked', lockedUntil: user.lockedUntil!, now };
+      }
+
       if (!passwordOk) {
         const nextState = recordFailedStaffLogin(
           {
@@ -200,6 +228,11 @@ export class AuthService {
       };
     });
 
+    return this.finishLogin(outcome);
+  }
+
+  /** Kết quả đăng nhập → giá trị trả về hoặc lỗi nghiệp vụ tương ứng (dùng chung cho cả hai điểm thoát của `login`). */
+  private finishLogin(outcome: LoginOutcome): LoginResult {
     switch (outcome.kind) {
       case 'success':
         return outcome.result;
@@ -426,20 +459,25 @@ export class AuthService {
    * phút) vẫn dùng được tới khi hết hạn tự nhiên, không đăng xuất ngay giữa chừng thao tác.
    */
   async changePassword(tenantId: string, userId: string, dto: ChangePasswordRequest, meta: RequestMeta): Promise<void> {
+    // Băm mật khẩu NGOÀI transaction (cùng lý do với `login` — #244): cả phòng khám buộc đổi mật khẩu lần đầu cùng lúc cũng không giữ kết nối Postgres trong lúc băm.
+    const current = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.userAccountAuthRepository.findById(tx, tenantId, userId));
+    if (!current || !current.isActive) throw new AccountDisabledError();
+    const passwordOk = await argon2.verify(current.passwordHash, dto.currentPassword);
+    if (!passwordOk) throw new InvalidCredentialsError();
+    const newPasswordHash = await argon2.hash(dto.newPassword, { type: argon2.argon2id });
+
     const outcome = await this.unitOfWork.runInTenantScope<'success' | 'invalid_credentials' | 'account_disabled'>(
       tenantId,
       async (tx) => {
+        // Đọc lại: tài khoản có thể vừa bị vô hiệu hoá, hoặc mật khẩu vừa đổi ở nơi khác, trong lúc băm.
         const user = await this.userAccountAuthRepository.findById(tx, tenantId, userId);
         if (!user || !user.isActive) {
           return 'account_disabled';
         }
-
-        const passwordOk = await argon2.verify(user.passwordHash, dto.currentPassword);
-        if (!passwordOk) {
+        if (user.passwordHash !== current.passwordHash) {
           return 'invalid_credentials';
         }
 
-        const newPasswordHash = await argon2.hash(dto.newPassword, { type: argon2.argon2id });
         await this.userAccountAuthRepository.updatePasswordAndClearMustChange(tx, tenantId, userId, newPasswordHash);
 
         await this.sessionRepository.revokeAllForUser(tx, tenantId, userId, 'password_changed', userId);
@@ -504,6 +542,8 @@ export class AuthService {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
+    // Giữ tối đa `MAX_ACTIVE_SESSIONS_PER_USER` phiên mới nhất (#244) — phiên cũ nhất tự đăng xuất. Làm sau khi tạo để phiên vừa cấp luôn nằm trong số được giữ.
+    await this.sessionRepository.revokeOldestBeyondLimit(tx, tenantId, userId, MAX_ACTIVE_SESSIONS_PER_USER, userId);
 
     return { session, rawRefreshToken: refreshToken.token, expiresIn: refreshToken.expiresIn };
   }

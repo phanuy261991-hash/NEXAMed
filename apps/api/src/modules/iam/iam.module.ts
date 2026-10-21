@@ -27,6 +27,7 @@ import { BranchController } from './branch.controller';
 import { BranchService } from './branch.service';
 import { BranchRepository } from './branch.repository';
 import { BranchAccessService } from './branch-access.service';
+import { ExpiredSessionPurgeJob } from './expired-session-purge.job';
 import { NoopNotificationAdapter } from '../../infrastructure/notification/noop.adapter';
 import { DoctorDirectoryAdapter } from '../../infrastructure/directory/doctor-directory.adapter';
 import { BranchDirectoryAdapter } from '../../infrastructure/directory/branch-directory.adapter';
@@ -109,6 +110,8 @@ import { ClinicModule } from '../clinic/clinic.module';
     BranchService,
     BranchRepository,
     BranchAccessService,
+    // Dọn phiên hết hạn mỗi đêm (#244) — cùng khuôn `SystemLogPurgeJob` của module audit.
+    ExpiredSessionPurgeJob,
     { provide: NOTIFICATION_PORT, useClass: NoopNotificationAdapter },
     { provide: DOCTOR_DIRECTORY_PORT, useClass: DoctorDirectoryAdapter },
     { provide: BRANCH_DIRECTORY_PORT, useClass: BranchDirectoryAdapter },

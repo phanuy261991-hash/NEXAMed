@@ -40,17 +40,14 @@ export class BreakGlassService {
   ) {}
 
   async request(ctx: RequestContext, dto: BreakGlassRequest, meta: RequestMeta): Promise<BreakGlassRequestResult> {
+    // Xác thực lại mật khẩu NGOÀI transaction (cùng lý do với `AuthService.login` — docs/DECISIONS.md #244): `argon2.verify` chậm và tốn RAM, giữ kết nối Postgres trong
+    // lúc đó sẽ cạn bể kết nối khi nhiều người thao tác cùng lúc.
+    const user = await this.unitOfWork.runInTenantScope(ctx.tenantId, (tx) => this.userAccountAuthRepository.findById(tx, ctx.tenantId, ctx.actorId));
+    if (!user) throw new InvalidCredentialsError();
+    const passwordOk = await argon2.verify(user.passwordHash, dto.password);
+    if (!passwordOk) throw new InvalidCredentialsError();
+
     const outcome = await this.unitOfWork.runInTenantScope<RequestOutcome>(ctx.tenantId, async (tx) => {
-      const user = await this.userAccountAuthRepository.findById(tx, ctx.tenantId, ctx.actorId);
-      if (!user) {
-        return { kind: 'invalid_credentials' };
-      }
-
-      const passwordOk = await argon2.verify(user.passwordHash, dto.password);
-      if (!passwordOk) {
-        return { kind: 'invalid_credentials' };
-      }
-
       const durationMinutes = await this.breakGlassRepository.getDurationMinutes(tx, ctx.tenantId);
       const occurredAt = new Date();
       const expiresAt = computeExpiresAt(occurredAt, durationMinutes);

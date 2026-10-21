@@ -127,6 +127,8 @@ export function buildPlan(answers: InstallAnswers): InstallPlan {
         WEB_HTTP_PORT: String(port),
         // "Chỉ trên máy này" thì không mở cổng ra mạng nội bộ.
         WEB_BIND_IP: address === 'localhost' ? '127.0.0.1' : '0.0.0.0',
+        // Máy trạm → nginx → API: đúng MỘT lớp proxy, nên máy chủ đọc được IP thật của từng máy trạm (#244).
+        TRUST_PROXY_HOPS: '1',
         COOKIE_SECURE: 'false',
         COMPOSE_PROFILES: '',
         PLATFORM_BASE_DOMAIN: '',
@@ -157,6 +159,8 @@ export function buildPlan(answers: InstallAnswers): InstallPlan {
         // Web chỉ nghe nội bộ; Caddy là cửa ngõ duy nhất ra Internet.
         WEB_HTTP_PORT: '8081',
         WEB_BIND_IP: '127.0.0.1',
+        // Máy trạm → Caddy (HTTPS) → nginx → API: HAI lớp proxy (#244).
+        TRUST_PROXY_HOPS: '2',
         COOKIE_SECURE: 'true',
         COMPOSE_PROFILES: 'https',
         PLATFORM_BASE_DOMAIN: '',
@@ -187,6 +191,8 @@ export function buildPlan(answers: InstallAnswers): InstallPlan {
       WEB_ORIGIN: origin,
       WEB_HTTP_PORT: '8081',
       WEB_BIND_IP: '127.0.0.1',
+      // Máy trạm → Caddy (HTTPS) → nginx → API: HAI lớp proxy (#244). Bắt buộc ở SaaS, nếu không mọi công ty dùng chung một hạn mức đăng nhập.
+      TRUST_PROXY_HOPS: '2',
       COOKIE_SECURE: 'true',
       COMPOSE_PROFILES: 'https',
       ...backupEnv,

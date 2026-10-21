@@ -18,6 +18,12 @@ export const envSchema = z.object({
   // (NODE_ENV==='production' → secure) khi không đặt biến này; đặt "false" tường minh cho bản
   // on-prem HTTP-only, "true" bắt buộc khi có TLS (VPS/cloud — xem docs/Deploy.md Phần 0.2).
   COOKIE_SECURE: z.enum(['true', 'false']).optional(),
+  // Số lớp reverse proxy ĐÁNG TIN đứng trước API (docs/DECISIONS.md #244). 0 (mặc định) = KHÔNG tin
+  // `X-Forwarded-For`, lấy IP của kết nối trực tiếp — an toàn khi API mở thẳng ra mạng, vì nếu tin
+  // mù quáng thì ai cũng tự khai IP giả để né giới hạn tần suất và làm sai nhật ký. Đặt 1 khi API
+  // đứng sau ĐÚNG MỘT reverse proxy do mình quản (nginx của bản on-prem, hoặc proxy của SaaS) —
+  // lúc đó giới hạn tần suất mới tính đúng theo từng máy trạm và nhật ký mới ghi đúng IP người dùng.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
   // Đường dẫn file trạng thái sao lưu do `deploy/on-prem/backup/backup.sh` ghi ra (S6-01, ADM-04)
   // — CHỈ đặt ở bản on-prem thật (docker-compose.yml mount volume dùng chung với container
   // `backup`). Để trống (mặc định, đúng cho máy dev — không chạy container backup) thì
