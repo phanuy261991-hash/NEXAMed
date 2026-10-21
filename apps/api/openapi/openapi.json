@@ -8880,6 +8880,9 @@
                         },
                         "icd10SuggestionLearningEnabled": {
                           "type": "boolean"
+                        },
+                        "insuranceEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -8913,7 +8916,8 @@
                         "paraclinicalBeforePaymentEnabled",
                         "specimenScanRequired",
                         "icd10SuggestionEnabled",
-                        "icd10SuggestionLearningEnabled"
+                        "icd10SuggestionLearningEnabled",
+                        "insuranceEnabled"
                       ]
                     },
                     "meta": {
@@ -10922,6 +10926,13 @@
                   "priorityReasonCode": {
                     "type": "string"
                   },
+                  "insuranceCardId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
                   "allowsDeferredPayment": {
                     "type": "boolean",
                     "default": false
@@ -11316,6 +11327,13 @@
                   },
                   "priorityReasonCode": {
                     "type": "string"
+                  },
+                  "insuranceCardId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
                   },
                   "allowsDeferredPayment": {
                     "type": "boolean",
@@ -11784,6 +11802,27 @@
                                 "type": "integer",
                                 "minimum": 0
                               },
+                              "insurance": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "selfPay": {
+                                    "type": "boolean"
+                                  },
+                                  "benefitRate": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "selfPay",
+                                  "benefitRate"
+                                ]
+                              },
                               "version": {
                                 "type": "integer"
                               }
@@ -11809,6 +11848,7 @@
                               "completedAt",
                               "paraclinicalPendingCount",
                               "paraclinicalUnseenResultCount",
+                              "insurance",
                               "version"
                             ]
                           }
@@ -12674,6 +12714,88 @@
                               },
                               "billingHidden": {
                                 "type": "boolean"
+                              },
+                              "insurance": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "selfPay": {
+                                    "type": "boolean"
+                                  },
+                                  "reason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "DISABLED",
+                                      "NO_CARD",
+                                      "EXPIRED",
+                                      "NOT_STARTED",
+                                      "DECLINED"
+                                    ]
+                                  },
+                                  "cardNo": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "kind": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "enum": [
+                                      "NEW_12",
+                                      "OLD_15",
+                                      "UNKNOWN"
+                                    ]
+                                  },
+                                  "validFrom": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "validTo": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "facilityCode": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "facilityName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "benefitRate": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "selfPay",
+                                  "reason",
+                                  "cardNo",
+                                  "kind",
+                                  "validFrom",
+                                  "validTo",
+                                  "facilityCode",
+                                  "facilityName",
+                                  "benefitRate"
+                                ]
                               }
                             },
                             "required": [
@@ -12690,7 +12812,8 @@
                               "billing",
                               "branchName",
                               "isOtherBranch",
-                              "billingHidden"
+                              "billingHidden",
+                              "insurance"
                             ]
                           }
                         },
@@ -14405,6 +14528,88 @@
                             "warnings"
                           ]
                         },
+                        "insurance": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "selfPay": {
+                              "type": "boolean"
+                            },
+                            "reason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "DISABLED",
+                                "NO_CARD",
+                                "EXPIRED",
+                                "NOT_STARTED",
+                                "DECLINED"
+                              ]
+                            },
+                            "cardNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "kind": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "NEW_12",
+                                "OLD_15",
+                                "UNKNOWN"
+                              ]
+                            },
+                            "validFrom": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "validTo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "facilityCode": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "facilityName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "benefitRate": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "selfPay",
+                            "reason",
+                            "cardNo",
+                            "kind",
+                            "validFrom",
+                            "validTo",
+                            "facilityCode",
+                            "facilityName",
+                            "benefitRate"
+                          ]
+                        },
                         "history": {
                           "type": "array",
                           "items": {
@@ -15277,6 +15482,7 @@
                         "encounter",
                         "patient",
                         "vitalSigns",
+                        "insurance",
                         "history",
                         "diagnoses",
                         "clinicalNote",
@@ -15495,6 +15701,88 @@
                             "fullName",
                             "relationship"
                           ]
+                        },
+                        "insurance": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "selfPay": {
+                              "type": "boolean"
+                            },
+                            "reason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "DISABLED",
+                                "NO_CARD",
+                                "EXPIRED",
+                                "NOT_STARTED",
+                                "DECLINED"
+                              ]
+                            },
+                            "cardNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "kind": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "NEW_12",
+                                "OLD_15",
+                                "UNKNOWN"
+                              ]
+                            },
+                            "validFrom": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "validTo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "facilityCode": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "facilityName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "benefitRate": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "selfPay",
+                            "reason",
+                            "cardNo",
+                            "kind",
+                            "validFrom",
+                            "validTo",
+                            "facilityCode",
+                            "facilityName",
+                            "benefitRate"
+                          ]
                         }
                       },
                       "required": [
@@ -15504,7 +15792,8 @@
                         "phone",
                         "weightGram",
                         "ageMonths",
-                        "guardian"
+                        "guardian",
+                        "insurance"
                       ]
                     },
                     "meta": {
@@ -46607,6 +46896,9 @@
                         },
                         "icd10SuggestionLearningEnabled": {
                           "type": "boolean"
+                        },
+                        "insuranceEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -46640,7 +46932,8 @@
                         "paraclinicalBeforePaymentEnabled",
                         "specimenScanRequired",
                         "icd10SuggestionEnabled",
-                        "icd10SuggestionLearningEnabled"
+                        "icd10SuggestionLearningEnabled",
+                        "insuranceEnabled"
                       ]
                     },
                     "meta": {
@@ -46991,6 +47284,9 @@
                   },
                   "icd10SuggestionLearningEnabled": {
                     "type": "boolean"
+                  },
+                  "insuranceEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -47266,6 +47562,9 @@
                         },
                         "icd10SuggestionLearningEnabled": {
                           "type": "boolean"
+                        },
+                        "insuranceEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -47299,7 +47598,8 @@
                         "paraclinicalBeforePaymentEnabled",
                         "specimenScanRequired",
                         "icd10SuggestionEnabled",
-                        "icd10SuggestionLearningEnabled"
+                        "icd10SuggestionLearningEnabled",
+                        "insuranceEnabled"
                       ]
                     },
                     "meta": {
@@ -48994,6 +49294,1875 @@
           },
           "401": {
             "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/insurance-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Áp dụng BHYT\" (S2-04, #243) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}/insurance": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "Thẻ BHYT đã chụp của lượt khám để IN trên phiếu thu (S2-04, #243) — null khi công tắc \"Áp dụng BHYT\" tắt",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "selfPay": {
+                          "type": "boolean"
+                        },
+                        "reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "DISABLED",
+                            "NO_CARD",
+                            "EXPIRED",
+                            "NOT_STARTED",
+                            "DECLINED"
+                          ]
+                        },
+                        "cardNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "NEW_12",
+                            "OLD_15",
+                            "UNKNOWN"
+                          ]
+                        },
+                        "validFrom": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "validTo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "facilityCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "facilityName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "benefitRate": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "selfPay",
+                        "reason",
+                        "cardNo",
+                        "kind",
+                        "validFrom",
+                        "validTo",
+                        "facilityCode",
+                        "facilityName",
+                        "benefitRate"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy lượt khám trong chi nhánh đang làm việc",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients/{patientId}/insurance-cards": {
+      "get": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Danh sách thẻ BHYT của bệnh nhân + thẻ gợi ý cho lượt khám mới (S2-04, #243) — số thẻ hiện rõ cho người có patient.read",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "patientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "cardNo": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "NEW_12",
+                                  "OLD_15",
+                                  "UNKNOWN"
+                                ]
+                              },
+                              "validFrom": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "validTo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "validity": {
+                                "type": "string",
+                                "enum": [
+                                  "VALID",
+                                  "UNKNOWN_EXPIRY",
+                                  "EXPIRED",
+                                  "NOT_STARTED"
+                                ]
+                              },
+                              "facilityCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "facilityName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "benefitRate": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "photoFrontUrl": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "photoBackUrl": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "patientId",
+                              "cardNo",
+                              "kind",
+                              "validFrom",
+                              "validTo",
+                              "validity",
+                              "facilityCode",
+                              "facilityName",
+                              "benefitRate",
+                              "photoFrontUrl",
+                              "photoBackUrl",
+                              "createdAt",
+                              "version"
+                            ]
+                          }
+                        },
+                        "suggestedCardId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "items",
+                        "suggestedCardId"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy hồ sơ (không tồn tại hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Thêm thẻ BHYT — chuẩn hoá số thẻ, sai định dạng chỉ cảnh báo mềm (warnings), vẫn lưu",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cardNo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24
+                  },
+                  "validFrom": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "validTo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "facilityCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{5}$"
+                  },
+                  "facilityName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "benefitRate": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "cardNo"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thêm thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "card": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "patientId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "cardNo": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "NEW_12",
+                                "OLD_15",
+                                "UNKNOWN"
+                              ]
+                            },
+                            "validFrom": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "validTo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "validity": {
+                              "type": "string",
+                              "enum": [
+                                "VALID",
+                                "UNKNOWN_EXPIRY",
+                                "EXPIRED",
+                                "NOT_STARTED"
+                              ]
+                            },
+                            "facilityCode": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "facilityName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "benefitRate": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "photoFrontUrl": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "photoBackUrl": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "patientId",
+                            "cardNo",
+                            "kind",
+                            "validFrom",
+                            "validTo",
+                            "validity",
+                            "facilityCode",
+                            "facilityName",
+                            "benefitRate",
+                            "photoFrontUrl",
+                            "photoBackUrl",
+                            "createdAt",
+                            "version"
+                          ]
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "UNRECOGNIZED_FORMAT",
+                              "DUPLICATE_CARD_NO"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "card",
+                        "warnings"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy hồ sơ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Công tắc \"Áp dụng BHYT\" đang tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp (PATIENT_ALREADY_MERGED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients/{patientId}/insurance-cards/{cardId}": {
+      "patch": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Sửa thẻ BHYT (kèm version) — trường vắng giữ nguyên, null xoá giá trị",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "cardId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cardNo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24
+                  },
+                  "validFrom": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "validTo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "facilityCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{5}$"
+                  },
+                  "facilityName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "benefitRate": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sửa thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "card": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "patientId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "cardNo": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "NEW_12",
+                                "OLD_15",
+                                "UNKNOWN"
+                              ]
+                            },
+                            "validFrom": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "validTo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "validity": {
+                              "type": "string",
+                              "enum": [
+                                "VALID",
+                                "UNKNOWN_EXPIRY",
+                                "EXPIRED",
+                                "NOT_STARTED"
+                              ]
+                            },
+                            "facilityCode": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "facilityName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "benefitRate": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "photoFrontUrl": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "photoBackUrl": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "patientId",
+                            "cardNo",
+                            "kind",
+                            "validFrom",
+                            "validTo",
+                            "validity",
+                            "facilityCode",
+                            "facilityName",
+                            "benefitRate",
+                            "photoFrontUrl",
+                            "photoBackUrl",
+                            "createdAt",
+                            "version"
+                          ]
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "UNRECOGNIZED_FORMAT",
+                              "DUPLICATE_CARD_NO"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "card",
+                        "warnings"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy thẻ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp (CONCURRENT_MODIFICATION), công tắc tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Xoá mềm thẻ BHYT (kèm ?version=)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "cardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "required": true,
+            "name": "version",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Xoá thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "removed": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "removed"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy thẻ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, công tắc tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients/{patientId}/insurance-cards/{cardId}/photo": {
+      "post": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Upload ảnh thẻ BHYT (side=front|back) — chỉ JPG/PNG (kiểm magic byte), tối đa 3MB, kèm version",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "patientId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "cardId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Ảnh JPG hoặc PNG"
+                  },
+                  "side": {
+                    "type": "string",
+                    "enum": [
+                      "front",
+                      "back"
+                    ]
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "file",
+                  "side",
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upload thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "card": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "patientId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "cardNo": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "NEW_12",
+                                "OLD_15",
+                                "UNKNOWN"
+                              ]
+                            },
+                            "validFrom": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "validTo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "validity": {
+                              "type": "string",
+                              "enum": [
+                                "VALID",
+                                "UNKNOWN_EXPIRY",
+                                "EXPIRED",
+                                "NOT_STARTED"
+                              ]
+                            },
+                            "facilityCode": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "facilityName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "benefitRate": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "photoFrontUrl": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "photoBackUrl": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "patientId",
+                            "cardNo",
+                            "kind",
+                            "validFrom",
+                            "validTo",
+                            "validity",
+                            "facilityCode",
+                            "facilityName",
+                            "benefitRate",
+                            "photoFrontUrl",
+                            "photoBackUrl",
+                            "createdAt",
+                            "version"
+                          ]
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "UNRECOGNIZED_FORMAT",
+                              "DUPLICATE_CARD_NO"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "card",
+                        "warnings"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Sai định dạng ảnh hoặc quá 3MB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy thẻ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "version không khớp, công tắc tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp",
             "content": {
               "application/json": {
                 "schema": {
@@ -59207,6 +61376,25 @@
                                       "showReceiverBox"
                                     ]
                                   },
+                                  "insurance": {
+                                    "type": "object",
+                                    "properties": {
+                                      "show": {
+                                        "type": "boolean"
+                                      },
+                                      "whenSelfPay": {
+                                        "type": "string",
+                                        "enum": [
+                                          "hide",
+                                          "selfPay"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "show",
+                                      "whenSelfPay"
+                                    ]
+                                  },
                                   "copies": {
                                     "type": "object",
                                     "properties": {
@@ -59589,6 +61777,25 @@
                                         "showReceiverBox"
                                       ]
                                     },
+                                    "insurance": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "whenSelfPay": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "selfPay"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "whenSelfPay"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -59814,6 +62021,25 @@
                                         "showCourse",
                                         "showQuantityInWords",
                                         "showReceiverBox"
+                                      ]
+                                    },
+                                    "insurance": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "whenSelfPay": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "selfPay"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "whenSelfPay"
                                       ]
                                     },
                                     "copies": {
@@ -60043,6 +62269,25 @@
                                         "showReceiverBox"
                                       ]
                                     },
+                                    "insurance": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "whenSelfPay": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "selfPay"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "whenSelfPay"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -60268,6 +62513,25 @@
                                         "showCourse",
                                         "showQuantityInWords",
                                         "showReceiverBox"
+                                      ]
+                                    },
+                                    "insurance": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "whenSelfPay": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "selfPay"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "whenSelfPay"
                                       ]
                                     },
                                     "copies": {
@@ -60497,6 +62761,25 @@
                                         "showReceiverBox"
                                       ]
                                     },
+                                    "insurance": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "whenSelfPay": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "selfPay"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "whenSelfPay"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -60722,6 +63005,25 @@
                                         "showCourse",
                                         "showQuantityInWords",
                                         "showReceiverBox"
+                                      ]
+                                    },
+                                    "insurance": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "whenSelfPay": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "selfPay"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "whenSelfPay"
                                       ]
                                     },
                                     "copies": {
@@ -61095,6 +63397,25 @@
                           "showReceiverBox"
                         ]
                       },
+                      "insurance": {
+                        "type": "object",
+                        "properties": {
+                          "show": {
+                            "type": "boolean"
+                          },
+                          "whenSelfPay": {
+                            "type": "string",
+                            "enum": [
+                              "hide",
+                              "selfPay"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "show",
+                          "whenSelfPay"
+                        ]
+                      },
                       "copies": {
                         "type": "object",
                         "properties": {
@@ -61391,6 +63712,25 @@
                                 "showCourse",
                                 "showQuantityInWords",
                                 "showReceiverBox"
+                              ]
+                            },
+                            "insurance": {
+                              "type": "object",
+                              "properties": {
+                                "show": {
+                                  "type": "boolean"
+                                },
+                                "whenSelfPay": {
+                                  "type": "string",
+                                  "enum": [
+                                    "hide",
+                                    "selfPay"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "show",
+                                "whenSelfPay"
                               ]
                             },
                             "copies": {
@@ -61876,6 +64216,25 @@
                                       "showReceiverBox"
                                     ]
                                   },
+                                  "insurance": {
+                                    "type": "object",
+                                    "properties": {
+                                      "show": {
+                                        "type": "boolean"
+                                      },
+                                      "whenSelfPay": {
+                                        "type": "string",
+                                        "enum": [
+                                          "hide",
+                                          "selfPay"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "show",
+                                      "whenSelfPay"
+                                    ]
+                                  },
                                   "copies": {
                                     "type": "object",
                                     "properties": {
@@ -62132,6 +64491,25 @@
                                             "showCourse",
                                             "showQuantityInWords",
                                             "showReceiverBox"
+                                          ]
+                                        },
+                                        "insurance": {
+                                          "type": "object",
+                                          "properties": {
+                                            "show": {
+                                              "type": "boolean"
+                                            },
+                                            "whenSelfPay": {
+                                              "type": "string",
+                                              "enum": [
+                                                "hide",
+                                                "selfPay"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "show",
+                                            "whenSelfPay"
                                           ]
                                         },
                                         "copies": {
@@ -62690,6 +65068,25 @@
                           "showReceiverBox"
                         ]
                       },
+                      "insurance": {
+                        "type": "object",
+                        "properties": {
+                          "show": {
+                            "type": "boolean"
+                          },
+                          "whenSelfPay": {
+                            "type": "string",
+                            "enum": [
+                              "hide",
+                              "selfPay"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "show",
+                          "whenSelfPay"
+                        ]
+                      },
                       "copies": {
                         "type": "object",
                         "properties": {
@@ -62991,6 +65388,25 @@
                                 "showCourse",
                                 "showQuantityInWords",
                                 "showReceiverBox"
+                              ]
+                            },
+                            "insurance": {
+                              "type": "object",
+                              "properties": {
+                                "show": {
+                                  "type": "boolean"
+                                },
+                                "whenSelfPay": {
+                                  "type": "string",
+                                  "enum": [
+                                    "hide",
+                                    "selfPay"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "show",
+                                "whenSelfPay"
                               ]
                             },
                             "copies": {

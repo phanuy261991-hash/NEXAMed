@@ -241,6 +241,7 @@ export class EncounterRepository {
         branchId: true,
         doctorId: true,
         patientId: true,
+        insuranceSnapshot: true,
         vitalSigns: { where: { deletedAt: null, weightGram: { not: null } }, orderBy: { measuredAt: 'desc' }, take: 1, select: { weightGram: true } },
       },
     });

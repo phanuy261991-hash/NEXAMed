@@ -18,7 +18,7 @@ import {
  */
 
 /** Khoá cấu hình KẾ THỪA từ bản mặc định sang khổ khác. */
-const INHERITED_KEYS = ['header', 'title', 'footer', 'notice', 'prescriptionInfo', 'copies'] as const;
+const INHERITED_KEYS = ['header', 'title', 'footer', 'notice', 'prescriptionInfo', 'insurance', 'copies'] as const;
 /** Khoá RIÊNG TỪNG KHỔ có chủ đích: lề theo khổ giấy; bộ tuỳ chọn tem theo cỡ tem ("Mỗi khổ tem có bộ tuỳ chọn riêng"). */
 const PER_PAPER_KEYS = ['margins', 'label'] as const;
 
@@ -41,6 +41,7 @@ function customised(documentType: PrintDocumentType): PrintTemplateConfig {
           },
         }
       : {}),
+    ...(base.insurance ? { insurance: { show: !base.insurance.show, whenSelfPay: base.insurance.whenSelfPay === 'hide' ? ('selfPay' as const) : ('hide' as const) } } : {}),
     copies: { count: 3, labels: ['Liên A', 'Liên B', 'Liên C'] },
   };
 }

@@ -17,8 +17,9 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
  */
 export function Textarea({ id, label, required, dense = false, hideLabel = false, className = '', ...rest }: TextareaProps) {
   return (
-    <div>
-      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'mb-1 block text-sm font-semibold text-slate-800'}>
+    // `relative`: nhãn `sr-only` là `position: absolute` — thiếu tổ tiên định vị thì nó neo vào khung gốc của trang, không bị vùng cuộn nội bộ cắt và kéo dài chiều cao cả trang (lỗi ở tab Kê đơn).
+    <div className="relative">
+      <label htmlFor={id} className={hideLabel ? 'sr-only' :'mb-1 block text-sm font-semibold text-slate-800'}>
         {label}
         {required && <span className="text-rose-500"> *</span>}
       </label>

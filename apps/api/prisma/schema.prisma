@@ -147,6 +147,7 @@ model Tenant {
   prescriptionTemplateItems   PrescriptionTemplateItem[]
   patientAllergens            PatientAllergen[]
   patientConditions           PatientCondition[]
+  insuranceCards              InsuranceCard[]
   patientFamilyHistories      PatientFamilyHistory[]
   examTypePrices              ExamTypePrice[]
   invoices                    Invoice[]
@@ -1374,6 +1375,8 @@ model Patient {
   // Bệnh lý nền + thói quen/lối sống, tiền sử gia đình có cấu trúc (Sprint 5) — xem model
   // PatientCondition/PatientFamilyHistory.
   conditions        PatientCondition[]
+  // Thẻ BHYT (S2-04, #243) — nhiều thẻ mỗi bệnh nhân, dùng chung cả công ty.
+  insuranceCards    InsuranceCard[]
   familyHistoryRows PatientFamilyHistory[]
   // Ví tạm ứng — 1 ví/bệnh nhân, `null` nếu chưa từng nạp lần nào (xem model PatientWallet).
   wallet            PatientWallet?
@@ -3957,6 +3960,41 @@ model PatientCondition {
 
   @@unique([tenantId, id])
   @@map("patient_condition")
+}
+
+// Thẻ bảo hiểm y tế của bệnh nhân (S2-04, docs/DECISIONS.md #243) — v1 chỉ lưu và hiển thị, không tính chi trả. Thẻ theo bệnh nhân → CHUNG cả công ty (không branch_id).
+// Số thẻ có hai định dạng (mới 12 chữ số / cũ 15 ký tự chữ+số): kiểu thẻ TÍNH RA từ số thẻ, không có cột riêng. `cardNoEnc` mã hoá AES-256-GCM, `cardNoHash` HMAC để tra trùng/tìm theo số thẻ.
+model InsuranceCard {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  patientId     String    @map("patient_id") @db.Uuid
+  cardNoEnc     Bytes     @map("card_no_enc")
+  cardNoHash    String    @map("card_no_hash")
+  // Hạn thẻ để trống = "chưa rõ hạn" (thẻ mới có thể không in hạn), KHÔNG coi là hết hạn.
+  validFrom     DateTime? @map("valid_from") @db.Date
+  validTo       DateTime? @map("valid_to") @db.Date
+  facilityCode  String?   @map("facility_code")
+  facilityName  String?   @map("facility_name")
+  // Mức hưởng 0-100%, CHỈ để hiển thị/in.
+  benefitRate   Int?      @map("benefit_rate") @db.SmallInt
+  photoFrontKey String?   @map("photo_front_key")
+  photoBackKey  String?   @map("photo_back_key")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  // Composite FK (tenant_id, patient_id) -> patient(tenant_id, id): chống trỏ chéo tenant.
+  patient Patient @relation(fields: [tenantId, patientId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("insurance_card")
 }
 
 // Tiền sử gia đình có cấu trúc (Sprint 5) — ma trận Quan hệ huyết thống x Bệnh lý (ICD-10) + tuổi

@@ -3718,6 +3718,7 @@ export interface paths {
                                 specimenScanRequired: boolean;
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
+                                insuranceEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -4633,6 +4634,8 @@ export interface paths {
                         /** @default false */
                         isPriority?: boolean;
                         priorityReasonCode?: string;
+                        /** Format: uuid */
+                        insuranceCardId?: string | null;
                         /** @default false */
                         allowsDeferredPayment?: boolean;
                         services: {
@@ -4792,6 +4795,8 @@ export interface paths {
                         /** @default false */
                         isPriority?: boolean;
                         priorityReasonCode?: string;
+                        /** Format: uuid */
+                        insuranceCardId?: string | null;
                         /** @default false */
                         allowsDeferredPayment?: boolean;
                         services: {
@@ -4956,6 +4961,10 @@ export interface paths {
                                     completedAt: string | null;
                                     paraclinicalPendingCount: number;
                                     paraclinicalUnseenResultCount: number;
+                                    insurance: {
+                                        selfPay: boolean;
+                                        benefitRate: number | null;
+                                    } | null;
                                     version: number;
                                 }[];
                             };
@@ -5294,6 +5303,19 @@ export interface paths {
                                     branchName: string | null;
                                     isOtherBranch: boolean;
                                     billingHidden: boolean;
+                                    insurance: {
+                                        selfPay: boolean;
+                                        /** @enum {string|null} */
+                                        reason: "DISABLED" | "NO_CARD" | "EXPIRED" | "NOT_STARTED" | "DECLINED" | null;
+                                        cardNo: string | null;
+                                        /** @enum {string|null} */
+                                        kind: "NEW_12" | "OLD_15" | "UNKNOWN" | null;
+                                        validFrom: string | null;
+                                        validTo: string | null;
+                                        facilityCode: string | null;
+                                        facilityName: string | null;
+                                        benefitRate: number | null;
+                                    } | null;
                                 }[];
                                 /** Format: uuid */
                                 nextCursor: string | null;
@@ -6000,6 +6022,19 @@ export interface paths {
                                         message: string;
                                     }[];
                                 } | null;
+                                insurance: {
+                                    selfPay: boolean;
+                                    /** @enum {string|null} */
+                                    reason: "DISABLED" | "NO_CARD" | "EXPIRED" | "NOT_STARTED" | "DECLINED" | null;
+                                    cardNo: string | null;
+                                    /** @enum {string|null} */
+                                    kind: "NEW_12" | "OLD_15" | "UNKNOWN" | null;
+                                    validFrom: string | null;
+                                    validTo: string | null;
+                                    facilityCode: string | null;
+                                    facilityName: string | null;
+                                    benefitRate: number | null;
+                                } | null;
                                 history: {
                                     /** Format: uuid */
                                     encounterId: string;
@@ -6279,6 +6314,19 @@ export interface paths {
                                 guardian: {
                                     fullName: string;
                                     relationship: string | null;
+                                } | null;
+                                insurance: {
+                                    selfPay: boolean;
+                                    /** @enum {string|null} */
+                                    reason: "DISABLED" | "NO_CARD" | "EXPIRED" | "NOT_STARTED" | "DECLINED" | null;
+                                    cardNo: string | null;
+                                    /** @enum {string|null} */
+                                    kind: "NEW_12" | "OLD_15" | "UNKNOWN" | null;
+                                    validFrom: string | null;
+                                    validTo: string | null;
+                                    facilityCode: string | null;
+                                    facilityName: string | null;
+                                    benefitRate: number | null;
                                 } | null;
                             };
                             meta: Record<string, never>;
@@ -18199,6 +18247,7 @@ export interface paths {
                                 specimenScanRequired: boolean;
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
+                                insuranceEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -18312,6 +18361,7 @@ export interface paths {
                         specimenScanRequired?: boolean;
                         icd10SuggestionEnabled?: boolean;
                         icd10SuggestionLearningEnabled?: boolean;
+                        insuranceEnabled?: boolean;
                     };
                 };
             };
@@ -18384,6 +18434,7 @@ export interface paths {
                                 specimenScanRequired: boolean;
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
+                                insuranceEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -19398,6 +19449,796 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/insurance-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Áp dụng BHYT" (S2-04, #243) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}/insurance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thẻ BHYT đã chụp của lượt khám để IN trên phiếu thu (S2-04, #243) — null khi công tắc "Áp dụng BHYT" tắt */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                selfPay: boolean;
+                                /** @enum {string|null} */
+                                reason: "DISABLED" | "NO_CARD" | "EXPIRED" | "NOT_STARTED" | "DECLINED" | null;
+                                cardNo: string | null;
+                                /** @enum {string|null} */
+                                kind: "NEW_12" | "OLD_15" | "UNKNOWN" | null;
+                                validFrom: string | null;
+                                validTo: string | null;
+                                facilityCode: string | null;
+                                facilityName: string | null;
+                                benefitRate: number | null;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy lượt khám trong chi nhánh đang làm việc */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}/insurance-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách thẻ BHYT của bệnh nhân + thẻ gợi ý cho lượt khám mới (S2-04, #243) — số thẻ hiện rõ cho người có patient.read */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    patientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    cardNo: string;
+                                    /** @enum {string} */
+                                    kind: "NEW_12" | "OLD_15" | "UNKNOWN";
+                                    validFrom: string | null;
+                                    validTo: string | null;
+                                    /** @enum {string} */
+                                    validity: "VALID" | "UNKNOWN_EXPIRY" | "EXPIRED" | "NOT_STARTED";
+                                    facilityCode: string | null;
+                                    facilityName: string | null;
+                                    benefitRate: number | null;
+                                    photoFrontUrl: string | null;
+                                    photoBackUrl: string | null;
+                                    createdAt: string;
+                                    version: number;
+                                }[];
+                                /** Format: uuid */
+                                suggestedCardId: string | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ (không tồn tại hoặc thuộc tenant khác) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Thêm thẻ BHYT — chuẩn hoá số thẻ, sai định dạng chỉ cảnh báo mềm (warnings), vẫn lưu */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    patientId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        cardNo: string;
+                        validFrom?: string | null;
+                        validTo?: string | null;
+                        facilityCode?: string | null;
+                        facilityName?: string | null;
+                        benefitRate?: number | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thêm thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                card: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    cardNo: string;
+                                    /** @enum {string} */
+                                    kind: "NEW_12" | "OLD_15" | "UNKNOWN";
+                                    validFrom: string | null;
+                                    validTo: string | null;
+                                    /** @enum {string} */
+                                    validity: "VALID" | "UNKNOWN_EXPIRY" | "EXPIRED" | "NOT_STARTED";
+                                    facilityCode: string | null;
+                                    facilityName: string | null;
+                                    benefitRate: number | null;
+                                    photoFrontUrl: string | null;
+                                    photoBackUrl: string | null;
+                                    createdAt: string;
+                                    version: number;
+                                };
+                                warnings: ("UNRECOGNIZED_FORMAT" | "DUPLICATE_CARD_NO")[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy hồ sơ */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Công tắc "Áp dụng BHYT" đang tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp (PATIENT_ALREADY_MERGED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}/insurance-cards/{cardId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Xoá mềm thẻ BHYT (kèm ?version=) */
+        delete: {
+            parameters: {
+                query: {
+                    version: number;
+                };
+                header?: never;
+                path: {
+                    patientId: string;
+                    cardId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Xoá thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                removed: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy thẻ */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, công tắc tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Sửa thẻ BHYT (kèm version) — trường vắng giữ nguyên, null xoá giá trị */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    patientId: string;
+                    cardId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        cardNo?: string;
+                        validFrom?: string | null;
+                        validTo?: string | null;
+                        facilityCode?: string | null;
+                        facilityName?: string | null;
+                        benefitRate?: number | null;
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Sửa thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                card: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    cardNo: string;
+                                    /** @enum {string} */
+                                    kind: "NEW_12" | "OLD_15" | "UNKNOWN";
+                                    validFrom: string | null;
+                                    validTo: string | null;
+                                    /** @enum {string} */
+                                    validity: "VALID" | "UNKNOWN_EXPIRY" | "EXPIRED" | "NOT_STARTED";
+                                    facilityCode: string | null;
+                                    facilityName: string | null;
+                                    benefitRate: number | null;
+                                    photoFrontUrl: string | null;
+                                    photoBackUrl: string | null;
+                                    createdAt: string;
+                                    version: number;
+                                };
+                                warnings: ("UNRECOGNIZED_FORMAT" | "DUPLICATE_CARD_NO")[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy thẻ */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp (CONCURRENT_MODIFICATION), công tắc tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}/insurance-cards/{cardId}/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload ảnh thẻ BHYT (side=front|back) — chỉ JPG/PNG (kiểm magic byte), tối đa 3MB, kèm version */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    patientId: string;
+                    cardId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /**
+                         * Format: binary
+                         * @description Ảnh JPG hoặc PNG
+                         */
+                        file: string;
+                        /** @enum {string} */
+                        side: "front" | "back";
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Upload thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                card: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    cardNo: string;
+                                    /** @enum {string} */
+                                    kind: "NEW_12" | "OLD_15" | "UNKNOWN";
+                                    validFrom: string | null;
+                                    validTo: string | null;
+                                    /** @enum {string} */
+                                    validity: "VALID" | "UNKNOWN_EXPIRY" | "EXPIRED" | "NOT_STARTED";
+                                    facilityCode: string | null;
+                                    facilityName: string | null;
+                                    benefitRate: number | null;
+                                    photoFrontUrl: string | null;
+                                    photoBackUrl: string | null;
+                                    createdAt: string;
+                                    version: number;
+                                };
+                                warnings: ("UNRECOGNIZED_FORMAT" | "DUPLICATE_CARD_NO")[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Sai định dạng ảnh hoặc quá 3MB */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy thẻ */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description version không khớp, công tắc tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -23741,6 +24582,11 @@ export interface paths {
                                             showQuantityInWords: boolean;
                                             showReceiverBox: boolean;
                                         };
+                                        insurance?: {
+                                            show: boolean;
+                                            /** @enum {string} */
+                                            whenSelfPay: "hide" | "selfPay";
+                                        };
                                         copies: {
                                             count: number;
                                             labels: string[];
@@ -23821,6 +24667,11 @@ export interface paths {
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
                                             };
+                                            insurance?: {
+                                                show: boolean;
+                                                /** @enum {string} */
+                                                whenSelfPay: "hide" | "selfPay";
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -23874,6 +24725,11 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                            };
+                                            insurance?: {
+                                                show: boolean;
+                                                /** @enum {string} */
+                                                whenSelfPay: "hide" | "selfPay";
                                             };
                                             copies: {
                                                 count: number;
@@ -23929,6 +24785,11 @@ export interface paths {
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
                                             };
+                                            insurance?: {
+                                                show: boolean;
+                                                /** @enum {string} */
+                                                whenSelfPay: "hide" | "selfPay";
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -23982,6 +24843,11 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                            };
+                                            insurance?: {
+                                                show: boolean;
+                                                /** @enum {string} */
+                                                whenSelfPay: "hide" | "selfPay";
                                             };
                                             copies: {
                                                 count: number;
@@ -24037,6 +24903,11 @@ export interface paths {
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
                                             };
+                                            insurance?: {
+                                                show: boolean;
+                                                /** @enum {string} */
+                                                whenSelfPay: "hide" | "selfPay";
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -24090,6 +24961,11 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                            };
+                                            insurance?: {
+                                                show: boolean;
+                                                /** @enum {string} */
+                                                whenSelfPay: "hide" | "selfPay";
                                             };
                                             copies: {
                                                 count: number;
@@ -24201,6 +25077,11 @@ export interface paths {
                                 showQuantityInWords: boolean;
                                 showReceiverBox: boolean;
                             };
+                            insurance?: {
+                                show: boolean;
+                                /** @enum {string} */
+                                whenSelfPay: "hide" | "selfPay";
+                            };
                             copies: {
                                 count: number;
                                 labels: string[];
@@ -24276,6 +25157,11 @@ export interface paths {
                                         showCourse: boolean;
                                         showQuantityInWords: boolean;
                                         showReceiverBox: boolean;
+                                    };
+                                    insurance?: {
+                                        show: boolean;
+                                        /** @enum {string} */
+                                        whenSelfPay: "hide" | "selfPay";
                                     };
                                     copies: {
                                         count: number;
@@ -24452,6 +25338,11 @@ export interface paths {
                                             showQuantityInWords: boolean;
                                             showReceiverBox: boolean;
                                         };
+                                        insurance?: {
+                                            show: boolean;
+                                            /** @enum {string} */
+                                            whenSelfPay: "hide" | "selfPay";
+                                        };
                                         copies: {
                                             count: number;
                                             labels: string[];
@@ -24512,6 +25403,11 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                            };
+                                            insurance?: {
+                                                show: boolean;
+                                                /** @enum {string} */
+                                                whenSelfPay: "hide" | "selfPay";
                                             };
                                             copies: {
                                                 count: number;
@@ -24824,6 +25720,11 @@ export interface paths {
                                 showQuantityInWords: boolean;
                                 showReceiverBox: boolean;
                             };
+                            insurance?: {
+                                show: boolean;
+                                /** @enum {string} */
+                                whenSelfPay: "hide" | "selfPay";
+                            };
                             copies: {
                                 count: number;
                                 labels: string[];
@@ -24901,6 +25802,11 @@ export interface paths {
                                         showCourse: boolean;
                                         showQuantityInWords: boolean;
                                         showReceiverBox: boolean;
+                                    };
+                                    insurance?: {
+                                        show: boolean;
+                                        /** @enum {string} */
+                                        whenSelfPay: "hide" | "selfPay";
                                     };
                                     copies: {
                                         count: number;

@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { PatientInsuranceCardService } from '../patient/patient-insurance-card.service';
 import {
   allocateInvoiceDueToLines,
   canRefundInvoice,
@@ -29,6 +30,7 @@ import {
 import type {
   ApplyInvoiceDiscountRequest,
   CombinedInvoicePrintResponse,
+  EncounterInsurance,
   Invoice as InvoiceDto,
   ListBillingInvoicesResponse,
   MarkInvoicePaidRequest,
@@ -185,7 +187,20 @@ export class InvoiceService {
     @Inject(CASHIER_SHIFT_READER_PORT) private readonly cashierShiftReader: CashierShiftReaderPort,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
+    private readonly insuranceCardService: PatientInsuranceCardService,
   ) {}
+
+  /**
+   * Thẻ BHYT đã chụp của lượt khám để IN trên phiếu thu (S2-04, #243) — web chỉ gọi khi ô tích "Số thẻ BHYT" của bản mẫu Phiếu thu bật. Công tắc "Áp dụng BHYT" tắt → `null`.
+   * Lượt khám của chi nhánh khác coi như không tồn tại (404). Công tắc đọc TRƯỚC transaction (port tự mở transaction riêng).
+   */
+  async getInsuranceForEncounter(tenantId: string, branchId: string, encounterId: string): Promise<EncounterInsurance | null> {
+    const enabled = await this.clinicConfigReader.getInsuranceEnabled(tenantId);
+    if (!enabled) return null;
+    const snapshot = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.invoiceRepository.findInsuranceSnapshot(tx, tenantId, branchId, encounterId));
+    if (snapshot === undefined) throw new NotFoundException();
+    return this.insuranceCardService.toEncounterInsurance(snapshot, enabled);
+  }
 
   /**
    * "Thu chi tại quầy" (Sổ quỹ & Thu chi GĐ1) — quỹ nhận/xuất tiền của dòng thu/hoàn tiền khám.

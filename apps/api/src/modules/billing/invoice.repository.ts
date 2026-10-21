@@ -260,6 +260,12 @@ export class InvoiceRepository {
       .then((row) => (row ? { ...row, ...toPaymentSides(row.payments) } : null));
   }
 
+  /** Bản chụp thẻ BHYT trên lượt khám (S2-04, #243) — chỉ lượt khám của chi nhánh `branchId`; `undefined` = không có/không thuộc chi nhánh. */
+  async findInsuranceSnapshot(tx: Prisma.TransactionClient, tenantId: string, branchId: string, encounterId: string): Promise<Prisma.JsonValue | undefined> {
+    const row = await tx.encounter.findFirst({ where: { tenantId, id: encounterId, branchId, deletedAt: null }, select: { insuranceSnapshot: true } });
+    return row?.insuranceSnapshot;
+  }
+
   /** Lượt khám có thuộc chi nhánh `branchId` không (Đợt 2 chi nhánh, #233) — phân biệt "lượt khám của chi nhánh này chưa có phiếu" với "lượt khám chi nhánh khác". */
   async encounterInBranch(tx: Prisma.TransactionClient, tenantId: string, branchId: string, encounterId: string): Promise<boolean> {
     return (await tx.encounter.count({ where: { tenantId, id: encounterId, branchId } })) > 0;

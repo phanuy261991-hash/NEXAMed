@@ -1,6 +1,6 @@
 # Current — NEXAMed
 
-Trạng thái HIỆN TẠI của dự án (cập nhật 20/10/2026, cuối ngày). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
+Trạng thái HIỆN TẠI của dự án (cập nhật 21/10/2026, cuối ngày). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
 
 Nhật ký trạng thái đầy đủ cũ (từng đợt, đến 16/10/2026) ở `docs/archive/CURRENT-den-2026-10-16.md` — **chỉ mở khi cần tra một mục cụ thể**. Khi file này vượt ~40 KB thì chuyển phần cũ sang `docs/archive/CURRENT-*.md` mới và viết lại bản ngắn (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
@@ -22,17 +22,21 @@ Mockup đã chốt (https://claude.ai/artifact/6eERQ9k2qsneekMWW2ymjJ, bản 7) 
 
 **Giai đoạn 3 (liên thông) — ĐÃ CODE ĐỦ, ĐÃ KIỂM TEST + CHROME THẬT bằng cổng giả (20/10/2026, `docs/DECISIONS.md` #242 bổ sung 16–17; CHƯA kiểm cổng thật)**: trang cấu hình + khung kết nối (8d); ô bổ sung 8b (hình thức điều trị, đợt dùng thuốc, số thang, người giám hộ) + dải kiểm 8a; hàng chờ `prescription_submission` xếp lúc ký/đính chính; bộ gửi nền mỗi phút + "Gửi ngay"/"Gửi lại"; trang "Đơn thuốc liên thông" (8c) **nằm trong menu Quản trị, dưới "Mẫu in"** (chủ dự án chốt); danh mục "Hình thức điều trị" (mã số BYT nhập tay, chưa seed). Công tắc "Có liên thông" tắt thì ẩn hết. Còn lại: kiểm với cổng thật khi có môi trường thử, câu hỏi gửi đơn vị vận hành (`docs/product/prescription-interop-questions.md`, câu 16 hỏi giá trị "hình thức điều trị"), API nhà thuốc (8e, duyệt riêng).
 
+## Đang làm: Thẻ bảo hiểm y tế — S2-04 (#243)
+
+Mockup (https://claude.ai/artifact/FAi8GCjycj94s6EwTT9t6b, bản 3) **đã chốt 21/10/2026**. Công tắc tổng "Áp dụng BHYT" (chung cả công ty, mặc định TẮT); thẻ mới 12 chữ số / cũ 15 ký tự chữ+số; nhiều thẻ/bệnh nhân; chụp thẻ vào lượt khám lúc Tiếp nhận; ba ô tích in. **Backend xong và đã test** (API 24 ca riêng, core 509, shared 96, web 232); **web làm dở**: còn ô tích ở Quản lý mẫu in, khối chọn thẻ ở Tiếp nhận, nhãn BHYT ở hàng đợi/màn khám/lịch sử khám, kiểm Chrome thật, kiểm đột biến. Bàn giao `docs/handoffs/HANDOFF-TheBHYT-S204-2026-10-21.md` (đọc trước khi tiếp tục). Cùng ngày: sửa lỗi cả trang cuộn dọc ở tab Kê đơn (#240 bổ sung 4); ghi kế hoạch gói Nhi khoa (`docs/product/pediatric-pack-plan.md`, tạm dừng, còn 6 câu chưa chốt).
+
 ## Đang chờ / việc treo
 
 - Hỏi đơn vị vận hành cổng đơn thuốc: sandbox, chữ ký số bắt buộc?, chữ hoa/thường mã đơn, cách cập nhật đơn đã gửi khi đính chính, "72 tháng", danh mục hình thức điều trị, tên trường chẩn đoán, app-name/app-key, địa chỉ API nhà thuốc. API nhà thuốc (lấy đơn, báo số lượng bán) làm SAU giai đoạn 1–3, duyệt riêng.
 - Bố cục: bộ kiểm toàn app (53 trang × 10 cỡ) đã **0 vấn đề** (20/10/2026); độ đậm chữ đo tối đa 600. Còn lại ưu tiên thấp: ghi chú 2 dòng của hộp "Bác sĩ đang nghỉ"/"Không có ca làm việc hôm nay" ở Tiếp nhận vượt gợi ý ≤ ~40 ký tự (ui-guidelines 15b), chưa kiểm hộp in thật của trình duyệt.
 - Gói thuê bao + giấy phép ký số (làm SAU; mockup trang Giấy phép chờ duyệt; đảo ngược #070/#072 khi bắt đầu).
-- Việc cần pilot thật: S6-02 diễn tập phục hồi, S6-04 đo tải trên máy chủ pilot (công cụ `perf:load` đã có), BHYT (S2-04), phát hành `1.0.0`, CSP đang Report-Only. Gói on-prem chưa dựng lại cho các thay đổi từ 16/10 (dựng khi sắp giao khách). Chọn nhà cung cấp hạ tầng SaaS (chờ báo giá, `docs/product/saas-hosting-comparison.md`).
-- Môi trường khác cần `db:deploy` (các migration `20261016110000_…`, `20261020090000_…`, `20261020110000_…`, `20261020120000_…`, `20261021090000_…`, `20261021100000_…`) + `db:seed` + khởi động lại API.
+- Việc cần pilot thật: S6-02 diễn tập phục hồi, S6-04 đo tải trên máy chủ pilot (công cụ `perf:load` đã có), phát hành `1.0.0`, CSP đang Report-Only. Gói on-prem chưa dựng lại cho các thay đổi từ 16/10 (dựng khi sắp giao khách). Chọn nhà cung cấp hạ tầng SaaS (chờ báo giá, `docs/product/saas-hosting-comparison.md`).
+- Môi trường khác cần `db:deploy` (các migration `20261016110000_…`, `20261020090000_…`, `20261020110000_…`, `20261020120000_…`, `20261021090000_…`, `20261021100000_…`, `20261021120000_…`) + `db:seed` + khởi động lại API.
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-LienThong-GD3-HangCho-OBoSung-2026-10-20-p4.md`** (mới nhất, 20/10/2026 phần 4: GĐ3 xong ô 8b/dải 8a/hàng chờ/bộ gửi nền/trang 8c, bẫy, việc còn lại). Bản trước: `HANDOFF-LienThong-GD3-CauHinh-KhungKetNoi-2026-10-20-p3.md`; `HANDOFF-MaDonThuocBYT-GD2-MauInDonThuoc-KiemNghiem-2026-10-20-p2.md`.
+**`docs/handoffs/HANDOFF-TheBHYT-S204-2026-10-21.md`** (mới nhất, 21/10/2026: thẻ BHYT backend xong + web làm dở, việc còn lại theo thứ tự, bẫy). Bản trước: `HANDOFF-LienThong-GD3-HangCho-OBoSung-2026-10-20-p4.md` (20/10/2026 phần 4: GĐ3 liên thông xong ô 8b/dải 8a/hàng chờ/bộ gửi nền/trang 8c).
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 

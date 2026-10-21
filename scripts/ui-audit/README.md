@@ -9,7 +9,7 @@ Hai script Playwright chạy trên Chrome thật. Xem quy tắc ở `.claude/doc
 
 ## Chạy
 ```
-node scripts/ui-audit/layout-audit.cjs     # ~53 trang × 10 cỡ màn hình: cuộn ngang, tràn phải, chữ bị cắt, bó hẹp, trang trắng, lỗi JS → ui-audit-out/report.json + ảnh
+node scripts/ui-audit/layout-audit.cjs     # ~53 trang × 10 cỡ màn hình: cuộn ngang, cuộn dọc cả trang (phần tử `absolute`/`sr-only` thiếu tổ tiên `relative`), tràn phải, chữ bị cắt, bó hẹp, trang trắng, lỗi JS → ui-audit-out/report.json + ảnh
 ONLY=inventory/transfers,suppliers node scripts/ui-audit/layout-audit.cjs   # chỉ vài trang (không có / đầu)
 node scripts/ui-audit/weight-audit.cjs     # font-weight THẬT theo vai trò (tiêu đề, đầu cột, ô bảng, nhãn, nút): mong đợi KHÔNG có giá trị >= 700
 ```

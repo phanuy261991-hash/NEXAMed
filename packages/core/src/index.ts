@@ -33,6 +33,7 @@ export * from './encounter/follow-up-date';
 export * from './encounter/resolve-doctor-department-routing';
 export * from './vital-sign/vital-sign-thresholds';
 export * from './vital-sign/bmi';
+export * from './insurance/insurance-card';
 export * from './prescription/warnings';
 export * from './prescription/prescription-kind';
 export * from './prescription-interop/token-lifecycle';

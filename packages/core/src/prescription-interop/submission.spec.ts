@@ -79,10 +79,14 @@ describe('buildGuiDonThuocPayload — đúng tên trường tài liệu QĐ 808 
     expect(buildGuiDonThuocPayload(base({ patient: { ...base().patient, guardian } }))).not.toHaveProperty('thong_tin_nguoi_giam_ho');
   });
 
-  it('trường tuỳ chọn sai định dạng thì BỎ khỏi gói (CCCD không đủ 12 số, thẻ BHYT khác 10 ký tự, SĐT ngắn); thẻ BHYT đúng 10 ký tự thì gửi', () => {
+  it('trường tuỳ chọn sai định dạng thì BỎ khỏi gói (CCCD không đủ 12 số, thẻ BHYT không phải 12 chữ số, SĐT ngắn); chỉ thẻ MỚI 12 chữ số thì gửi', () => {
     const p = buildGuiDonThuocPayload(base({ patient: { ...base().patient, nationalId: '123456789', insuranceNumber: 'GD4797912345678', phone: '123', weightGram: null }, followUpDays: null }));
     for (const k of ['ma_dinh_danh_cong_dan', 'ma_so_the_bao_hiem_y_te', 'so_dien_thoai_nguoi_kham_benh', 'can_nang', 'ngay_tai_kham']) expect(p).not.toHaveProperty(k);
-    expect(buildGuiDonThuocPayload(base({ patient: { ...base().patient, insuranceNumber: 'GD12345678' } })).ma_so_the_bao_hiem_y_te).toBe('GD12345678');
+    // Thẻ MỚI 12 chữ số được gửi; thẻ CŨ 15 ký tự, số 10 chữ số (định dạng không còn dùng) và 12 ký tự có chữ đều BỎ.
+    expect(buildGuiDonThuocPayload(base({ patient: { ...base().patient, insuranceNumber: '079193004512' } })).ma_so_the_bao_hiem_y_te).toBe('079193004512');
+    for (const bad of ['0791930045', 'DN4797915123456', '07919300451A', '0791930045123']) {
+      expect(buildGuiDonThuocPayload(base({ patient: { ...base().patient, insuranceNumber: bad } })), bad).not.toHaveProperty('ma_so_the_bao_hiem_y_te');
+    }
   });
 
   it('cắt theo giới hạn độ dài của tài liệu', () => {

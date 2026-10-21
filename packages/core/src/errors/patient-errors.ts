@@ -29,3 +29,12 @@ export class PatientAlreadyMergedError extends DomainError {
     super('Hồ sơ này đã được gộp vào hồ sơ khác, không thể thao tác.');
   }
 }
+
+/** Công tắc "Áp dụng BHYT" đang TẮT (S2-04, #243) — thêm/sửa/xoá thẻ BHYT bị từ chối. 409. */
+export class InsuranceDisabledError extends DomainError {
+  readonly code = 'INSURANCE_DISABLED';
+
+  constructor() {
+    super('Phòng khám chưa bật "Áp dụng BHYT" ở Cấu hình phòng khám.');
+  }
+}

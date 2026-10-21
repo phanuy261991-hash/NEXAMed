@@ -12,6 +12,15 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-10-21
+
+### Thẻ bảo hiểm y tế (S2-04): backend xong, web làm dở (`docs/DECISIONS.md` #243)
+
+Mockup đã chốt (https://claude.ai/artifact/FAi8GCjycj94s6EwTT9t6b). **Công tắc "Áp dụng BHYT"** (Cấu hình phòng khám → "Thẻ BHYT", chung cả công ty, mặc định TẮT vì nhiều phòng khám không dùng BHYT): tắt thì ẩn hết, máy chủ chặn thêm/sửa thẻ (409), lượt khám mới ghi tự chi trả như cũ. Bật thì hồ sơ bệnh nhân có khung "Thẻ bảo hiểm y tế" (nhiều thẻ, số thẻ **12 chữ số = thẻ mới / 15 ký tự chữ+số = thẻ cũ**, tự nhận diện, sai định dạng chỉ cảnh báo mềm; hiệu lực để trống = "chưa rõ hạn"; nơi đăng ký KCB; mức hưởng; ảnh thẻ 2 mặt; gợi ý điền số CCCD), Tiếp nhận chụp thẻ vào lượt khám (số thẻ mã hoá), tìm bệnh nhân theo số thẻ, gộp hồ sơ chuyển thẻ, và ba ô tích in "Số thẻ BHYT" (đơn thuốc, phiếu thu, bệnh án PDF, mặc định tắt). Liên thông đơn thuốc chỉ gửi thẻ mới 12 số (code đổi từ 10 sang 12; tài liệu cổng ghi 10 → hỏi đơn vị vận hành). Bỏ ô "Số bảo hiểm" cũ khỏi form bệnh nhân. **Còn làm dở ở web**: khối chọn thẻ ở Tiếp nhận, nhãn BHYT ở hàng đợi/màn khám/lịch sử khám, ô tích ở Quản lý mẫu in, kiểm Chrome thật — xem `docs/handoffs/HANDOFF-TheBHYT-S204-2026-10-21.md`. **Môi trường khác**: `db:deploy` (migration `20261021120000_insurance_card`) + khởi động lại API; không có quyền mới nên không cần `db:seed`.
+### Sửa lỗi cả trang cuộn dọc ở tab Kê đơn thuốc (`docs/DECISIONS.md` #240 bổ sung 4)
+
+Ở màn khám, tab **Kê đơn thuốc** của lượt khám đã có đơn làm CẢ TRANG cuộn dọc dài hơn cửa sổ (đo 1051–1229 px so với 1000 px): trang có thêm một lớp cuộn ngoài thừa. Nguyên nhân: nhãn ẩn (`sr-only`, `position: absolute`) của ô nhập "Lời dặn của bác sĩ" nằm trong vùng cuộn nội bộ nhưng không có tổ tiên `relative`, nên neo vào khung gốc của trang và không bị vùng cuộn cắt. Đã sửa ở gốc trong hai thành phần dùng chung (`Textarea` có `hideLabel`, `CheckTile`: thêm `relative`) và thêm kiểm tra "cuộn dọc cả trang" vào `scripts/ui-audit/layout-audit.cjs`. Đã đo lại bằng Chrome thật: 34 lượt khám × 5 tab đều vừa khít cửa sổ; bộ kiểm toàn app (53 trang × 10 cỡ) 0 vấn đề, kể cả kiểm tra mới. Không migration, không đổi API.
+
 ## 2026-10-20
 
 ### Liên thông đơn thuốc: ô bổ sung, dải kiểm, hàng chờ gửi và bộ gửi nền (`docs/DECISIONS.md` #242 bổ sung 17)

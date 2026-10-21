@@ -9,6 +9,7 @@ import { useAllWardsQuery, useProvincesQuery } from '../geo/geo.queries';
 import { formatAddressLine } from '../patient/patient-form.utils';
 import { formatDoseSummaryPreview as formatDoseSummary } from './prescription-dose-preview';
 import { ALL_ON_PRESCRIPTION_INFO, resolvePrescriptionPrintFields, type PrintField } from './prescription-print-fields';
+import { formatInsurancePrintValue } from '../insurance-card/insurance-print';
 import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
 
 interface PrescriptionPrintBodyProps {
@@ -123,6 +124,8 @@ function PrescriptionSheet({
     >
       {({ config }) => {
         const fields = resolvePrescriptionPrintFields({ config: config.prescriptionInfo ?? ALL_ON_PRESCRIPTION_INFO, kind: document?.kind ?? null, printInfo, addressLine });
+        // Dòng "Số thẻ BHYT" (S2-04, #243) — chỉ khi ô tích của bản mẫu BẬT; `printInfo.insurance` đã là null khi công tắc "Áp dụng BHYT" tắt.
+        const insuranceValue = config.insurance?.show ? formatInsurancePrintValue(printInfo?.insurance, config.insurance.whenSelfPay) : null;
         return (
       <>
       {document && (
@@ -148,6 +151,11 @@ function PrescriptionSheet({
         {fields.nationalId.mode !== 'hidden' && (
           <p>
             CCCD: <FieldValue field={fields.nationalId} />
+          </p>
+        )}
+        {insuranceValue && (
+          <p className="col-span-2">
+            Số thẻ BHYT: <strong>{insuranceValue}</strong>
           </p>
         )}
         {fields.weight.mode !== 'hidden' && (

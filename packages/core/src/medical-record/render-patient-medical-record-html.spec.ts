@@ -294,3 +294,55 @@ describe('renderPatientMedicalRecordHtml', () => {
     });
   });
 });
+
+describe('dòng "Thẻ BHYT" của từng lượt khám (S2-04, ô tích của bản mẫu Bệnh án)', () => {
+  const baseEncounter = {
+    encounterNo: 'KB-2610-000009',
+    checkedInAt: '2026-10-06T01:30:00.000Z',
+    doctorName: 'Trần Thị B',
+    chiefComplaint: 'Ho',
+    vitalSigns: null,
+    diagnoses: [],
+    clinicalNoteSections: [],
+    prescriptionItems: [],
+    signedAt: null,
+  };
+  const withCard = {
+    selfPay: false,
+    cardNo: '079193004512',
+    kind: 'NEW_12' as const,
+    validFrom: '2026-01-01',
+    validTo: null,
+    benefitRate: 80,
+    facilityName: 'Trạm Y tế Phường 12',
+  };
+  const selfPay = { selfPay: true, cardNo: null, kind: null, validFrom: null, validTo: null, benefitRate: null, facilityName: null };
+  const baseOptions: MedicalRecordPrintOptions = {
+    header: { showClinicName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
+    title: null,
+    footerNote: null,
+  };
+
+  it('ô tích BẬT: in số thẻ, kiểu thẻ, hiệu lực (hạn trống = chưa rõ hạn), mức hưởng, nơi đăng ký', () => {
+    const html = renderPatientMedicalRecordHtml(buildDoc({ encounters: [{ ...baseEncounter, insurance: withCard }] }), { ...baseOptions, insurance: { show: true, whenSelfPay: 'hide' } });
+    expect(html).toContain('Số thẻ BHYT: 079193004512 (thẻ mới)');
+    expect(html).toContain('từ 01/01/2026, chưa rõ hạn');
+    expect(html).toContain('hưởng 80%');
+    expect(html).toContain('nơi ĐK KCB: Trạm Y tế Phường 12');
+  });
+
+  it('ô tích TẮT hoặc không truyền tuỳ chọn: KHÔNG in dòng BHYT dù lượt khám có thẻ', () => {
+    const doc = buildDoc({ encounters: [{ ...baseEncounter, insurance: withCard }] });
+    expect(renderPatientMedicalRecordHtml(doc, { ...baseOptions, insurance: { show: false, whenSelfPay: 'hide' } })).not.toContain('Số thẻ BHYT');
+    expect(renderPatientMedicalRecordHtml(doc, baseOptions)).not.toContain('Số thẻ BHYT');
+    expect(renderPatientMedicalRecordHtml(doc)).not.toContain('Số thẻ BHYT');
+  });
+
+  it('lượt khám tự chi trả: "Ẩn cả dòng" thì không in; "In Tự chi trả" thì in; không có thông tin BHYT (công tắc tắt) thì không in gì', () => {
+    const selfPayDoc = buildDoc({ encounters: [{ ...baseEncounter, insurance: selfPay }] });
+    expect(renderPatientMedicalRecordHtml(selfPayDoc, { ...baseOptions, insurance: { show: true, whenSelfPay: 'hide' } })).not.toContain('Số thẻ BHYT');
+    expect(renderPatientMedicalRecordHtml(selfPayDoc, { ...baseOptions, insurance: { show: true, whenSelfPay: 'selfPay' } })).toContain('Số thẻ BHYT: Tự chi trả');
+    const noInfoDoc = buildDoc({ encounters: [{ ...baseEncounter, insurance: null }] });
+    expect(renderPatientMedicalRecordHtml(noInfoDoc, { ...baseOptions, insurance: { show: true, whenSelfPay: 'selfPay' } })).not.toContain('Số thẻ BHYT');
+  });
+});

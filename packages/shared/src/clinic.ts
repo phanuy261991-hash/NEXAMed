@@ -341,6 +341,12 @@ export const clinicSettingsSchema = z.object({
    * thì "Hoàn tất khám" ghi thêm cặp "cụm từ bác sĩ gõ ↔ mã đã bấm chọn từ gợi ý" để xếp hạng lần sau.
    */
   icd10SuggestionLearningEnabled: z.boolean(),
+  /**
+   * "Áp dụng BHYT" (S2-04, docs/DECISIONS.md #243) — công tắc TỔNG, chung cả công ty, TẮT (mặc định: nhiều phòng khám không dùng BHYT, giao diện giữ nguyên).
+   * BẬT: hồ sơ bệnh nhân có khung "Thẻ bảo hiểm y tế", Tiếp nhận chọn/chụp thẻ vào lượt khám, hàng đợi/màn khám/lịch sử khám hiện nhãn BHYT, tìm bệnh nhân theo số thẻ,
+   * ba ô tích in (đơn thuốc, phiếu thu, bệnh án PDF) dùng được. TẮT: ẩn hết, máy chủ chặn thêm/sửa thẻ (409), lượt khám mới ghi tự chi trả; thẻ đã nhập giữ nguyên.
+   */
+  insuranceEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -382,6 +388,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   specimenScanRequired: z.boolean().optional(),
   icd10SuggestionEnabled: z.boolean().optional(),
   icd10SuggestionLearningEnabled: z.boolean().optional(),
+  insuranceEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -446,6 +453,8 @@ export const DEFAULT_PARACLINICAL_BEFORE_PAYMENT_ENABLED = false;
 export const DEFAULT_ICD10_SUGGESTION_ENABLED = false;
 /** Tắt theo mặc định ("Học từ lịch sử chọn mã") — không ghi thêm dữ liệu nào tới khi chủ động bật. */
 export const DEFAULT_ICD10_SUGGESTION_LEARNING_ENABLED = false;
+/** Tắt theo mặc định ("Áp dụng BHYT", #243) — phòng khám không dùng BHYT không thấy gì thay đổi tới khi chủ động bật. */
+export const DEFAULT_INSURANCE_ENABLED = false;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý

@@ -66,7 +66,7 @@ export class PatientRepository {
   list(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    params: { cursor?: string; take: number; search?: { raw: string; normalized: string }; sort?: 'asc' | 'desc' },
+    params: { cursor?: string; take: number; search?: { raw: string; normalized: string; cardPatientIds?: string[] }; sort?: 'asc' | 'desc' },
   ): Promise<Patient[]> {
     const where: Prisma.PatientWhereInput = { tenantId, deletedAt: null };
     if (params.search) {
@@ -74,6 +74,8 @@ export class PatientRepository {
         { patientCode: { startsWith: params.search.raw, mode: 'insensitive' } },
         { phone: { startsWith: params.search.raw } },
         { searchKey: { contains: params.search.normalized } },
+        // Số thẻ BHYT khớp chính xác (S2-04, #243) — id đã tra qua mã băm ở service.
+        ...(params.search.cardPatientIds && params.search.cardPatientIds.length > 0 ? [{ id: { in: params.search.cardPatientIds } }] : []),
       ];
     }
     return tx.patient.findMany({

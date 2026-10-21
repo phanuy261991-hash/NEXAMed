@@ -15,6 +15,7 @@ import type {
   StockReceiptDetail,
   StockTransferDetail,
 } from '@nexamed/shared';
+import { SAMPLE_INSURANCE } from '../insurance-card/insurance-print';
 
 /**
  * Dữ liệu MẪU cho phần xem trước ở "Quản lý mẫu in" (docs/DECISIONS.md #211) — để phòng khám mới cài, CHƯA có bệnh nhân/
@@ -81,6 +82,7 @@ export function buildSamplePrescriptionVariant(variant: SamplePrescriptionVarian
     weightGram: 54_000,
     ageMonths: 475,
     guardian: { fullName: 'Nguyễn Văn Nam', relationship: 'Chồng' },
+    insurance: SAMPLE_INSURANCE,
   };
   if (variant === 'CHILD') {
     return {

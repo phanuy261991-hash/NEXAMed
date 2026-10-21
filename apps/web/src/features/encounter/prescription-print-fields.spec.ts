@@ -10,6 +10,7 @@ const adult: PrescriptionPrintInfo = {
   weightGram: 54_000,
   ageMonths: 440,
   guardian: null,
+  insurance: null,
 };
 const child: PrescriptionPrintInfo = { ...adult, nationalId: null, weightGram: null, ageMonths: 48, guardian: { fullName: 'Nguyễn Văn Nam', relationship: 'Bố' } };
 const resolve = (over: Partial<Parameters<typeof resolvePrescriptionPrintFields>[0]> = {}) =>

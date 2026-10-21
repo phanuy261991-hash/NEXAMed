@@ -11,6 +11,7 @@ import { CashBookModule } from '../cash-book/cash-book.module';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
 import { PatientWalletModule } from '../patient-wallet/patient-wallet.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { PatientModule } from '../patient/patient.module';
 
 /**
  * Thu ngân cơ bản (Sprint 5/6, BIL-01→04) — sở hữu bảng `invoice`/`invoice_line`/`payment`.
@@ -39,7 +40,7 @@ import { InventoryModule } from '../inventory/inventory.module';
  * `InventoryModule` đã `forwardRef(BillingModule)` sẵn (vòng phụ thuộc 2 chiều có thật).
  */
 @Module({
-  imports: [ClinicModule, forwardRef(() => CashierShiftModule), CashBookModule, ReferenceCatalogModule, PatientWalletModule, forwardRef(() => InventoryModule)],
+  imports: [ClinicModule, forwardRef(() => CashierShiftModule), CashBookModule, ReferenceCatalogModule, PatientWalletModule, forwardRef(() => InventoryModule), PatientModule],
   controllers: [InvoiceController],
   providers: [InvoiceService, InvoiceRefundService, InvoiceRefundRepository, InvoiceRepository, PaymentRepository],
   exports: [InvoiceRepository, PaymentRepository],

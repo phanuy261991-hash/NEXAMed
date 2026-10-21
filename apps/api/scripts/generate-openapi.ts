@@ -133,6 +133,12 @@ import {
   diagnosisSuggestionRequestSchema,
   diagnosisSuggestionResponseSchema,
   icd10SuggestionStatusSchema,
+  createInsuranceCardRequestSchema,
+  encounterInsuranceSchema,
+  insuranceStatusSchema,
+  listInsuranceCardsResponseSchema,
+  saveInsuranceCardResponseSchema,
+  updateInsuranceCardRequestSchema,
   consultationDetailResponseSchema,
   prescriptionPrintInfoSchema,
   createAppointmentRequestSchema,
@@ -3165,6 +3171,130 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Thành công', envelope(icd10SuggestionStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/insurance-enabled',
+  tags: ['clinic'],
+  summary: '"Áp dụng BHYT" (S2-04, #243) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(insuranceStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+const insuranceCardParams = z.object({ patientId: z.string().uuid(), cardId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/billing/invoices/{encounterId}/insurance',
+  tags: ['billing'],
+  summary: 'Thẻ BHYT đã chụp của lượt khám để IN trên phiếu thu (S2-04, #243) — null khi công tắc "Áp dụng BHYT" tắt',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ encounterId: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Thành công', envelope(encounterInsuranceSchema.nullable())),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.read'),
+    404: errorResponse('Không tìm thấy lượt khám trong chi nhánh đang làm việc'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/patients/{patientId}/insurance-cards',
+  tags: ['patient'],
+  summary: 'Danh sách thẻ BHYT của bệnh nhân + thẻ gợi ý cho lượt khám mới (S2-04, #243) — số thẻ hiện rõ cho người có patient.read',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ patientId: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listInsuranceCardsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.read'),
+    404: errorResponse('Không tìm thấy hồ sơ (không tồn tại hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/patients/{patientId}/insurance-cards',
+  tags: ['patient'],
+  summary: 'Thêm thẻ BHYT — chuẩn hoá số thẻ, sai định dạng chỉ cảnh báo mềm (warnings), vẫn lưu',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ patientId: z.string().uuid() }), body: { content: { 'application/json': { schema: createInsuranceCardRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thêm thành công', envelope(saveInsuranceCardResponseSchema)),
+    400: errorResponse('Dữ liệu không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.update'),
+    404: errorResponse('Không tìm thấy hồ sơ'),
+    409: errorResponse('Công tắc "Áp dụng BHYT" đang tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp (PATIENT_ALREADY_MERGED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/patients/{patientId}/insurance-cards/{cardId}',
+  tags: ['patient'],
+  summary: 'Sửa thẻ BHYT (kèm version) — trường vắng giữ nguyên, null xoá giá trị',
+  security: [{ bearerAuth: [] }],
+  request: { params: insuranceCardParams, body: { content: { 'application/json': { schema: updateInsuranceCardRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Sửa thành công', envelope(saveInsuranceCardResponseSchema)),
+    400: errorResponse('Dữ liệu không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.update'),
+    404: errorResponse('Không tìm thấy thẻ'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), công tắc tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp'),
+  },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/patients/{patientId}/insurance-cards/{cardId}',
+  tags: ['patient'],
+  summary: 'Xoá mềm thẻ BHYT (kèm ?version=)',
+  security: [{ bearerAuth: [] }],
+  request: { params: insuranceCardParams, query: z.object({ version: z.coerce.number().int().positive() }) },
+  responses: {
+    200: jsonResponse('Xoá thành công', envelope(z.object({ removed: z.boolean() }))),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.update'),
+    404: errorResponse('Không tìm thấy thẻ'),
+    409: errorResponse('version không khớp, công tắc tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/patients/{patientId}/insurance-cards/{cardId}/photo',
+  tags: ['patient'],
+  summary: 'Upload ảnh thẻ BHYT (side=front|back) — chỉ JPG/PNG (kiểm magic byte), tối đa 3MB, kèm version',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: insuranceCardParams,
+    body: {
+      content: {
+        'multipart/form-data': {
+          schema: z.object({
+            file: z.string().openapi({ format: 'binary', description: 'Ảnh JPG hoặc PNG' }),
+            side: z.enum(['front', 'back']),
+            version: z.coerce.number().int().positive(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse('Upload thành công', envelope(saveInsuranceCardResponseSchema)),
+    400: errorResponse('Sai định dạng ảnh hoặc quá 3MB'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient.update'),
+    404: errorResponse('Không tìm thấy thẻ'),
+    409: errorResponse('version không khớp, công tắc tắt (INSURANCE_DISABLED) hoặc hồ sơ đã gộp'),
   },
 });
 

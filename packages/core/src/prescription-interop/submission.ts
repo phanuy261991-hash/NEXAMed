@@ -195,7 +195,8 @@ export function toGatewayGender(gender: 'male' | 'female' | 'other'): 1 | 2 | 3 
 
 /**
  * Dựng gói gửi. KHÔNG kiểm đủ/thiếu (dùng `checkInteropReadiness`); trường tuỳ chọn thiếu/sai định dạng thì BỎ khỏi gói thay vì gửi giá trị chắc chắn bị từ chối (CCCD phải đúng 12 số, mã thẻ BHYT
- * đúng 10 ký tự theo tài liệu — HỎI ĐƠN VỊ VẬN HÀNH vì số thẻ BHYT thực tế dài hơn, số điện thoại tối đa 12 số). `signature` (chữ ký số) KHÔNG có vì chưa triển khai.
+ * chỉ gửi thẻ MỚI 12 chữ số — chủ dự án chốt 21/10/2026, #243; thẻ CŨ 15 ký tự bị bỏ vì chưa biết cổng nhận thế nào, và tài liệu QĐ 808 ghi 10 ký tự nên PHẢI xác nhận độ dài với đơn vị vận hành
+ * trước khi gửi thật; số điện thoại tối đa 12 số). `signature` (chữ ký số) KHÔNG có vì chưa triển khai.
  */
 export function buildGuiDonThuocPayload(input: InteropSubmissionInput): GuiDonThuocPayload {
   const p = input.patient;
@@ -231,7 +232,7 @@ export function buildGuiDonThuocPayload(input: InteropSubmissionInput): GuiDonTh
 
   if (/^\d{12}$/.test((p.nationalId ?? '').trim())) payload.ma_dinh_danh_cong_dan = p.nationalId!.trim();
   if (p.weightGram !== null && p.weightGram > 0) payload.can_nang = Math.round(p.weightGram) / 1000;
-  if (present(p.insuranceNumber) && p.insuranceNumber.trim().length === 10) payload.ma_so_the_bao_hiem_y_te = p.insuranceNumber.trim();
+  if (/^\d{12}$/.test((p.insuranceNumber ?? '').trim())) payload.ma_so_the_bao_hiem_y_te = p.insuranceNumber!.trim();
   if (isChild && guardianText !== '') payload.thong_tin_nguoi_giam_ho = clip(guardianText, LIMITS.guardian);
   if (lifestyle !== '') {
     payload.luu_y = clip(advice !== '' ? advice : lifestyle, LIMITS.note);

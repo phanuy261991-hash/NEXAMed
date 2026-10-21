@@ -5,6 +5,7 @@ import { PrintDocument } from '../../shared/print/PrintDocument';
 import { formatPrintDate } from '../../shared/format/print-date';
 import { InvoiceCombinedPrintView } from '../billing/InvoiceCombinedPrintView';
 import { InvoicePrintView } from '../billing/InvoicePrintView';
+import { SAMPLE_INSURANCE, formatInsurancePrintValue } from '../insurance-card/insurance-print';
 import { CashVoucherPrintView } from '../cash-book/CashVoucherPrintView';
 import { CashierShiftReceiptDocument } from '../cashier-shift/CashierShiftReceiptView';
 import { ClinicalOrderPrintView } from '../clinical-order/ClinicalOrderPrintView';
@@ -94,13 +95,14 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
     case 'IMAGING_RESULT':
       return <ParaclinicalResultPrintView form={SAMPLE_IMAGING_RESULT} />;
     case 'INVOICE':
-      return <InvoicePrintView collectedByName="Nguyễn Thị Bích Ngọc" paymentMethodLabel="Tiền mặt" invoice={SAMPLE_INVOICE} />;
+      return <InvoicePrintView collectedByName="Nguyễn Thị Bích Ngọc" paymentMethodLabel="Tiền mặt" invoice={SAMPLE_INVOICE} insurance={SAMPLE_INSURANCE} />;
     case 'INVOICE_COMBINED':
       return (
         <InvoiceCombinedPrintView
           collectedByName="Nguyễn Thị Bích Ngọc"
           paymentMethodName={(code) => (code === 'CASH' ? 'Tiền mặt' : code)}
           data={SAMPLE_COMBINED_INVOICES}
+          insurance={SAMPLE_INSURANCE}
         />
       );
     case 'WALLET_TOPUP_RECEIPT':
@@ -159,6 +161,8 @@ function MedicalRecordPreview() {
       signatureDateText={formatPrintDate('2026-10-01T07:30:00.000Z')}
       signatures={[{ label: 'Bác sĩ điều trị', name: 'BS. Đặng Quốc Hưng' }]}
     >
+      {({ config }) => (
+      <>
       <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
         <p>
           Họ tên: <strong>Lý Thị Hoài Thương</strong>
@@ -172,12 +176,19 @@ function MedicalRecordPreview() {
       </div>
       <div className="mt-5 border-t border-slate-300 pt-3">
         <p className="font-semibold">Lượt khám LK2610000471 — 01/10/2026</p>
+        {config.insurance?.show && formatInsurancePrintValue(SAMPLE_INSURANCE, config.insurance.whenSelfPay) && (
+          <p className="mt-1">
+            Số thẻ BHYT: <strong>{formatInsurancePrintValue(SAMPLE_INSURANCE, config.insurance.whenSelfPay)}</strong>
+          </p>
+        )}
         <p className="mt-1">
           Chẩn đoán: <strong>Viêm phế quản cấp (J20.9)</strong>
         </p>
         <p className="mt-1">Lý do khám: Ho khan, sốt nhẹ 2 ngày. Khám: phổi thô, không rales.</p>
         <p className="mt-1">Đơn thuốc: Amoxicillin + Acid clavulanic 625mg × 14 viên; Acetylcystein 200mg × 21 gói.</p>
       </div>
+      </>
+      )}
     </PrintDocument>
   );
 }

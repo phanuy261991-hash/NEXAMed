@@ -42,7 +42,6 @@ export interface PatientFormValues {
   ethnicity: string;
   nationality: string;
   occupation: string;
-  insuranceNumber: string;
   street: string;
   ward: string;
   neighborhood: string;
@@ -72,7 +71,6 @@ export const EMPTY_PATIENT_FORM: PatientFormValues = {
   ethnicity: '1',
   nationality: 'VNM',
   occupation: '',
-  insuranceNumber: '',
   street: '',
   ward: '',
   neighborhood: '',
@@ -369,16 +367,6 @@ export function PatientFormFields({
               value={values.occupation}
               onChange={(v) => set('occupation', v)}
               options={occupationOptions}
-            />
-          </Field>
-
-          <Field id="insuranceNumber" label="Số bảo hiểm">
-            <input
-              id="insuranceNumber"
-              disabled={disabled}
-              value={values.insuranceNumber}
-              onChange={(e) => set('insuranceNumber', e.target.value)}
-              className={inputClassName}
             />
           </Field>
 

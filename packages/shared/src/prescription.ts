@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { prescriptionKindSchema } from './business-code';
+import { encounterInsuranceSchema } from './insurance-card';
 import { patientAddressSchema } from './patient';
 
 /**
@@ -212,6 +213,8 @@ export const prescriptionPrintInfoSchema = z.object({
   ageMonths: z.number().int().nonnegative(),
   /** Người thân trong hồ sơ (họ tên + quan hệ); `null` nếu hồ sơ chưa ghi. */
   guardian: z.object({ fullName: z.string(), relationship: z.string().nullable() }).nullable(),
+  /** Thẻ BHYT đã chụp lúc tiếp nhận (S2-04, #243) — `null` khi công tắc "Áp dụng BHYT" tắt hoặc người in không có `patient.read`. Web in dòng này khi ô tích của bản mẫu đơn thuốc bật. */
+  insurance: encounterInsuranceSchema.nullable(),
 });
 export type PrescriptionPrintInfo = z.infer<typeof prescriptionPrintInfoSchema>;
 

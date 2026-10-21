@@ -23,6 +23,7 @@ import {
   DEFAULT_EXPIRY_WARNING_DAYS,
   DEFAULT_ICD10_SUGGESTION_ENABLED,
   DEFAULT_ICD10_SUGGESTION_LEARNING_ENABLED,
+  DEFAULT_INSURANCE_ENABLED,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
@@ -145,6 +146,8 @@ const ICD10_SUGGESTION_ENABLED_KEY = 'icd10_suggestion_enabled';
 const icd10SuggestionEnabledSchema = z.boolean();
 const ICD10_SUGGESTION_LEARNING_ENABLED_KEY = 'icd10_suggestion_learning_enabled';
 const icd10SuggestionLearningEnabledSchema = z.boolean();
+const INSURANCE_ENABLED_KEY = 'insurance_enabled';
+const insuranceEnabledSchema = z.boolean();
 // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
@@ -548,6 +551,19 @@ export class ClinicSettingsRepository {
 
   upsertIcd10SuggestionLearningEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, ICD10_SUGGESTION_LEARNING_ENABLED_KEY, value);
+  }
+
+  async getInsuranceEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: INSURANCE_ENABLED_KEY } });
+    if (!setting) {
+      return DEFAULT_INSURANCE_ENABLED;
+    }
+    const parsed = insuranceEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_INSURANCE_ENABLED;
+  }
+
+  upsertInsuranceEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, INSURANCE_ENABLED_KEY, value);
   }
 
   /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc

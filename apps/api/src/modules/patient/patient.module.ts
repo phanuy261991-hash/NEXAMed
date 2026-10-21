@@ -6,6 +6,9 @@ import { PatientRepository } from './patient.repository';
 import { PatientAllergenRepository } from './patient-allergen.repository';
 import { PatientConditionRepository } from './patient-condition.repository';
 import { PatientFamilyHistoryRepository } from './patient-family-history.repository';
+import { PatientInsuranceCardController } from './patient-insurance-card.controller';
+import { PatientInsuranceCardRepository } from './patient-insurance-card.repository';
+import { PatientInsuranceCardService } from './patient-insurance-card.service';
 import { PatientReaderAdapter } from '../../infrastructure/patient/patient-reader.adapter';
 import { ClinicModule } from '../clinic/clinic.module';
 
@@ -25,18 +28,22 @@ import { ClinicModule } from '../clinic/clinic.module';
  * `PatientService` export thẳng (S6-06, ADM-05) — "Xuất bệnh án PDF" ở `EncounterModule` gọi lại
  * `getPatient()` có sẵn (đủ thông tin hành chính + tiền sử ĐÃ giải mã CCCD) thay vì tự lặp lại
  * logic giải mã/lắp ráp `PatientDetail` lần thứ hai.
+ * `PatientInsuranceCardService`/`PatientInsuranceCardRepository` export (S2-04, #243) — Tiếp nhận (`ReceptionModule`) chụp thẻ vào lượt khám, `EncounterModule` đọc bản chụp
+ * để hiện nhãn BHYT/in; gộp hồ sơ (`PatientMergeModule`) chuyển thẻ sang hồ sơ đích — cùng tinh thần các repo dùng chung ở trên.
  */
 @Module({
   imports: [ClinicModule],
-  controllers: [PatientController],
+  controllers: [PatientController, PatientInsuranceCardController],
   providers: [
     PatientService,
     PatientRepository,
     PatientAllergenRepository,
     PatientConditionRepository,
     PatientFamilyHistoryRepository,
+    PatientInsuranceCardRepository,
+    PatientInsuranceCardService,
     { provide: PATIENT_READER_PORT, useClass: PatientReaderAdapter },
   ],
-  exports: [PatientService, PatientRepository, PatientAllergenRepository, PatientConditionRepository, PatientFamilyHistoryRepository, PATIENT_READER_PORT],
+  exports: [PatientService, PatientRepository, PatientAllergenRepository, PatientConditionRepository, PatientFamilyHistoryRepository, PatientInsuranceCardRepository, PatientInsuranceCardService, PATIENT_READER_PORT],
 })
 export class PatientModule {}

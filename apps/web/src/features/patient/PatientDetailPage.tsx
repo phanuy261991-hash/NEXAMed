@@ -18,6 +18,7 @@ import { patientDetailToFormValues, buildHistoryUpdatePayload } from './patient-
 import { PatientProfileHeader } from './PatientProfileHeader';
 import { PatientClinicalKpiRow } from './PatientClinicalKpiRow';
 import { PatientAdministrativeInfoCard } from './PatientAdministrativeInfoCard';
+import { InsuranceCardSection } from '../insurance-card/InsuranceCardSection';
 import { PatientVitalHistoryTable } from './PatientVitalHistoryTable';
 import { PatientHistorySummaryCard } from './PatientHistorySummaryCard';
 import { PatientEditDialog } from './PatientEditDialog';
@@ -170,6 +171,7 @@ export function PatientDetailPage() {
       {activeTab === 'info' && (
         <div className="flex flex-col gap-5">
           <PatientAdministrativeInfoCard patient={patient} onEdit={canEdit ? () => setEditing(true) : undefined} />
+          <InsuranceCardSection patient={patient} canEdit={canEdit} />
           <PatientVitalHistoryTable vitalSigns={summaryQuery.data?.recentVitalSigns ?? []} />
           <PatientHistorySummaryCard
             conditions={patient.conditions}

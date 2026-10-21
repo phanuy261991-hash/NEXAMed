@@ -1,7 +1,8 @@
-import type { CombinedInvoicePrintResponse, Invoice, InvoiceStatus } from '@nexamed/shared';
+import type { CombinedInvoicePrintResponse, EncounterInsurance, Invoice, InvoiceStatus } from '@nexamed/shared';
 import { formatPrintDate } from '../../shared/format/print-date';
 import { formatVnd } from '../../shared/format/currency';
 import { PrintDocument } from '../../shared/print/PrintDocument';
+import { formatInsurancePrintValue } from '../insurance-card/insurance-print';
 
 // Trình duyệt mặc định BỎ nền khi in — nhãn "CHƯA THU" nền đen chữ trắng sẽ biến mất nếu không ép.
 const KEEP_BACKGROUND = '[print-color-adjust:exact] [-webkit-print-color-adjust:exact]';
@@ -84,11 +85,14 @@ export function InvoiceCombinedPrintView({
   collectedByName,
   paymentMethodName,
   data,
+  insurance = null,
 }: {
   collectedByName: string;
   /** Tên hiển thị của mã phương thức (`reference_catalog` PAYMENT_METHOD) — người gọi truyền vào vì component thuần này không tự tra. */
   paymentMethodName: (code: string) => string;
   data: CombinedInvoicePrintResponse;
+  /** Thẻ BHYT đã chụp của lượt khám (S2-04, #243) — in khi ô tích của bản mẫu Phiếu thu tổng hợp bật. */
+  insurance?: EncounterInsurance | null;
 }) {
   const { invoices, totals } = data;
   const head = invoices[0];
@@ -136,6 +140,7 @@ export function InvoiceCombinedPrintView({
       signatureDateText={formatPrintDate(new Date().toISOString())}
       signatures={[{ label: 'Người thu', name: collectedByName }]}
     >
+      {({ config }) => (
       <div className="text-[13px]">
         <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1">
           <p>
@@ -150,6 +155,11 @@ export function InvoiceCombinedPrintView({
           <p>
             Khoa: <strong>{head.departmentName}</strong>
           </p>
+          {config.insurance?.show && formatInsurancePrintValue(insurance, config.insurance.whenSelfPay) && (
+            <p className="col-span-2">
+              Số thẻ BHYT: <strong>{formatInsurancePrintValue(insurance, config.insurance.whenSelfPay)}</strong>
+            </p>
+          )}
         </div>
 
         {invoices.map((invoice) => (
@@ -179,6 +189,7 @@ export function InvoiceCombinedPrintView({
           </div>
         </div>
       </div>
+      )}
     </PrintDocument>
   );
 }

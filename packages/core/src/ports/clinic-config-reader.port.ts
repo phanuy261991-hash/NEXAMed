@@ -200,6 +200,12 @@ export interface ClinicConfigReaderPort {
   getIcd10SuggestionLearningEnabled(tenantId: string): Promise<boolean>;
 
   /**
+   * "Áp dụng BHYT" (S2-04, #243) — công tắc tổng chung cả công ty, tắt (mặc định). Tắt thì máy chủ chặn thêm/sửa thẻ BHYT và Tiếp nhận không chụp thẻ vào lượt khám
+   * (`tenant_setting` key `insurance_enabled`). KHÔNG gọi hàm này bên TRONG một transaction đang mở (port mở transaction riêng) — đọc trước.
+   */
+  getInsuranceEnabled(tenantId: string): Promise<boolean>;
+
+  /**
    * Bảng ánh xạ "loại thuốc → loại đơn Bộ Y tế" (#242, giai đoạn 2) — `tenant_setting` key `prescription_kind_mapping`, vắng thì mặc định (`DEFAULT_PRESCRIPTION_KIND_MAPPING`).
    * Module `encounter` đọc qua port này (TRƯỚC transaction chính) để gắn loại đơn cho từng dòng thuốc và tách đơn khi ký.
    */

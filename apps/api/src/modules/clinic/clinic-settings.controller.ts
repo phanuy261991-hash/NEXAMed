@@ -160,6 +160,17 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Áp dụng BHYT" (S2-04, #243) — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn `getIcd10SuggestionEnabled` ở trên): lễ tân/bác sĩ/thu ngân
+   * (không có `clinic_config.read`) cần biết công tắc để web ẩn/hiện khung thẻ, nhãn BHYT và ô tích in.
+   */
+  @Get('insurance-enabled')
+  async getInsuranceEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getInsuranceEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

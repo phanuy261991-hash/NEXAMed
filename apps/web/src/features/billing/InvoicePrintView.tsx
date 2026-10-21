@@ -1,7 +1,8 @@
-import type { Invoice } from '@nexamed/shared';
+import type { EncounterInsurance, Invoice } from '@nexamed/shared';
 import { formatPrintDate } from '../../shared/format/print-date';
 import { formatVnd } from '../../shared/format/currency';
 import { PrintDocument } from '../../shared/print/PrintDocument';
+import { formatInsurancePrintValue } from '../insurance-card/insurance-print';
 
 /**
  * Bản in phiếu thu (BIL-02) — khung/đầu trang/chữ ký/khổ giấy do `PrintDocument` lo theo bản mẫu `INVOICE` ("Quản lý
@@ -13,11 +14,14 @@ export function InvoicePrintView({
   collectedByName,
   paymentMethodLabel,
   invoice,
+  insurance = null,
 }: {
   collectedByName: string;
   /** Tên hiển thị đã resolve từ mã `reference_catalog` category PAYMENT_METHOD (không tự tra ở component thuần này). */
   paymentMethodLabel: string;
   invoice: Invoice;
+  /** Thẻ BHYT đã chụp của lượt khám (S2-04, #243) — `null` khi công tắc "Áp dụng BHYT" tắt; in khi ô tích của bản mẫu Phiếu thu bật. */
+  insurance?: EncounterInsurance | null;
 }) {
   const perLine = invoice.discountMode === 'PER_LINE';
   return (
@@ -32,7 +36,7 @@ export function InvoicePrintView({
       signatureDateText={formatPrintDate(invoice.paidAt ?? new Date().toISOString())}
       signatures={[{ label: 'Người thu', name: collectedByName }]}
     >
-      {({ compact }) => (
+      {({ compact, config }) => (
         <>
           <div className={`mt-4 grid gap-y-1 ${compact ? 'grid-cols-1' : 'grid-cols-2 gap-x-6'}`}>
             <p>
@@ -47,6 +51,11 @@ export function InvoicePrintView({
             <p>
               Khoa: <strong>{invoice.departmentName}</strong>
             </p>
+            {config.insurance?.show && formatInsurancePrintValue(insurance, config.insurance.whenSelfPay) && (
+              <p className={compact ? '' : 'col-span-2'}>
+                Số thẻ BHYT: <strong>{formatInsurancePrintValue(insurance, config.insurance.whenSelfPay)}</strong>
+              </p>
+            )}
           </div>
 
           {compact ? (

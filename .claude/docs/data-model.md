@@ -117,6 +117,10 @@ Bản ghi RIÊNG trên ca đã đăng ký (ca giữ nguyên, có lịch sử —
 
 **Còn treo**: "Tháng" (month view) ở trang "Lịch làm việc của tôi" chưa xây (chỉ có Tuần, đầy đủ chức năng); chưa verify Playwright/trình duyệt thật.
 
+### insurance_card (`docs/DECISIONS.md` #243, S2-04)
+
+Thẻ BHYT của bệnh nhân, nhiều thẻ/bệnh nhân, CHUNG cả công ty (không `branch_id`). Đủ 8 cột bắt buộc + RLS/FORCE. Số thẻ lưu mã hoá (`card_no_enc`) + băm (`card_no_hash`, tiền tố `insurance-card:`); kiểu thẻ (mới 12 chữ số / cũ 15 ký tự chữ+số) tính ra từ số thẻ, không có cột riêng và không CHECK độ dài. Hạn thẻ trống = "chưa rõ hạn". Lượt khám chụp thẻ vào `encounter.insurance_snapshot` (số thẻ vẫn mã hoá). Chi tiết ở `docs/ERD-2.md` mục 3.14. `patient.insurance_number` cũ ngừng dùng.
+
 ### user_session (S1-04 — xem `security-audit.md` mục Xác thực, `docs/DECISIONS.md` #019)
 
 Phiên refresh token, phục vụ "xoay vòng mỗi lần refresh" (rotation) + phát hiện token bị đánh cắp (reuse detection). Đủ 8 cột bắt buộc, cộng: `user_id` (composite FK `(tenant_id, user_id)` → `user_account`), `refresh_token_hash text UNIQUE NOT NULL` (SHA-256 của refresh token thật — **không** lưu token thô), `issued_at`, `expires_at`, `replaced_by_session_id uuid NULL` (composite FK `(tenant_id, replaced_by_session_id)` → chính bảng này — phiên kế tiếp trong chuỗi rotation), `ip`, `user_agent`.

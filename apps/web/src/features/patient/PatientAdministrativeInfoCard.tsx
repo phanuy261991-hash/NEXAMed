@@ -66,7 +66,6 @@ export function PatientAdministrativeInfoCard({ patient, onEdit }: { patient: Pa
         <Field label="Dân tộc" value={patient.ethnicity ? (ethnicityNameByCode[patient.ethnicity] ?? patient.ethnicity) : ''} />
         <Field label="Quốc tịch" value={patient.nationality ? (nationalityNameByCode[patient.nationality] ?? patient.nationality) : ''} />
         <Field label="Nghề nghiệp" value={patient.occupation ? (occupationNameByCode[patient.occupation] ?? patient.occupation) : ''} />
-        <Field label="Số bảo hiểm" value={patient.insuranceNumber ?? ''} />
         <Field label="Tỉnh/Thành phố" value={patient.address?.province ? (provinceNameByCode[patient.address.province] ?? patient.address.province) : ''} />
         <Field label="Phường/Xã" value={patient.address?.ward ? (wardNameByCode[patient.address.ward] ?? patient.address.ward) : ''} />
         <Field label="Số nhà, đường" value={patient.address?.street ?? ''} />

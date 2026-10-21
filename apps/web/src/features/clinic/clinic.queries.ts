@@ -32,6 +32,7 @@ import {
   getAllowFreeTextPrescriptionStatus,
   getPrescriptionSplitBlockStatus,
   getIcd10SuggestionStatus,
+  getInsuranceStatus,
   getAllowStaffSelfScheduleStatus,
   getBackupConfig,
   getBackupStatus,
@@ -265,6 +266,19 @@ export function useIcd10SuggestionEnabledQuery() {
   });
 }
 
+/**
+ * "Áp dụng BHYT" (S2-04, #243) — hồ sơ bệnh nhân, Tiếp nhận, hàng đợi, màn khám, lịch sử khám và cấu hình mẫu in đọc qua hook tự-phục vụ này (KHÔNG dùng `useClinicSettingsQuery()`,
+ * cần `clinic_config.read`). Tắt thì mọi nơi ẩn hết; trước khi tải xong coi như TẮT để không nháy khung BHYT.
+ */
+export function useInsuranceEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'insurance-enabled'),
+    queryFn: getInsuranceStatus,
+    staleTime: STALE_REFERENCE_MS,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -286,6 +300,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'wallet-mixed-payment-enabled') });
       // "Gợi ý mã ICD-10" — màn khám đọc qua hook tự-phục vụ riêng (useIcd10SuggestionEnabledQuery), làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'icd10-suggestion-enabled') });
+      // "Áp dụng BHYT" (S2-04) — mọi màn đọc qua hook tự-phục vụ riêng (useInsuranceEnabledQuery), làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'insurance-enabled') });
       // "Tự động thu gọn menu khi chuyển trang" — Sidebar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'sidebar-auto-collapse-enabled') });
       // "Chế độ phòng khám 1 người" — TopBar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.

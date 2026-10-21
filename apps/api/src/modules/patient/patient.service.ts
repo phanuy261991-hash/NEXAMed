@@ -38,6 +38,7 @@ import { PatientRepository, type UpdatePatientData } from './patient.repository'
 import { PatientAllergenRepository, type PatientAllergenRow } from './patient-allergen.repository';
 import { PatientConditionRepository, type PatientConditionRow } from './patient-condition.repository';
 import { PatientFamilyHistoryRepository, type PatientFamilyHistoryRow } from './patient-family-history.repository';
+import { PatientInsuranceCardService } from './patient-insurance-card.service';
 
 /** Ảnh đại diện sống 15 phút — bằng access token TTL, tự làm mới mỗi lần gọi lại API chi tiết. */
 const PHOTO_URL_TTL_SECONDS = 15 * 60;
@@ -69,6 +70,7 @@ export class PatientService {
     private readonly patientAllergenRepository: PatientAllergenRepository,
     private readonly patientConditionRepository: PatientConditionRepository,
     private readonly patientFamilyHistoryRepository: PatientFamilyHistoryRepository,
+    private readonly insuranceCardService: PatientInsuranceCardService,
     private readonly businessCodeService: BusinessCodeService,
     private readonly configService: ConfigService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
@@ -158,8 +160,10 @@ export class PatientService {
 
   async listPatients(tenantId: string, query: ListPatientsQuery): Promise<ListPatientsResponse> {
     const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
+    // S2-04 (#243): chuỗi tìm trông giống số thẻ BHYT (12 chữ số / 15 ký tự chữ+số) thì thêm bệnh nhân có thẻ trùng CHÍNH XÁC — đọc công tắc + tra băm TRƯỚC transaction danh sách.
+    const cardPatientIds = query.q ? await this.insuranceCardService.findPatientIdsByCardNo(tenantId, query.q) : [];
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const search = query.q ? { raw: query.q, normalized: stripVietnameseDiacritics(query.q) } : undefined;
+      const search = query.q ? { raw: query.q, normalized: stripVietnameseDiacritics(query.q), cardPatientIds } : undefined;
       const rows = await this.patientRepository.list(tx, tenantId, {
         cursor: query.cursor,
         take: query.limit + 1,

@@ -49,6 +49,7 @@ import {
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
   type MedicalRecordEncounterEntry,
+  type MedicalRecordInsurance,
   type PatientMedicalRecordDocument,
   type ClinicalOrderCancellationPort,
   type EncounterBillingReaderPort,
@@ -115,6 +116,7 @@ import { PatientAllergenRepository } from '../patient/patient-allergen.repositor
 import { PatientConditionRepository } from '../patient/patient-condition.repository';
 import { PatientFamilyHistoryRepository } from '../patient/patient-family-history.repository';
 import { PatientService } from '../patient/patient.service';
+import { PatientInsuranceCardService } from '../patient/patient-insurance-card.service';
 import { InvoiceRepository } from '../billing/invoice.repository';
 import { ClinicProfileService } from '../clinic/clinic-profile.service';
 import { BusinessCodeService } from '../clinic/business-code.service';
@@ -185,6 +187,7 @@ export class EncounterService {
     private readonly patientConditionRepository: PatientConditionRepository,
     private readonly patientFamilyHistoryRepository: PatientFamilyHistoryRepository,
     private readonly patientService: PatientService,
+    private readonly insuranceCardService: PatientInsuranceCardService,
     private readonly invoiceRepository: InvoiceRepository,
     private readonly clinicProfileService: ClinicProfileService,
     private readonly businessCodeService: BusinessCodeService,
@@ -504,13 +507,15 @@ export class EncounterService {
     id: string,
     meta: RequestMeta,
   ): Promise<PrescriptionPrintInfo> {
+    // "Áp dụng BHYT" (#243) — đọc TRƯỚC transaction (port tự mở transaction riêng).
+    const insuranceEnabled = await this.clinicConfigReader.getInsuranceEnabled(tenantId);
     const context = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounter = await this.encounterRepository.findForPrescriptionPrint(tx, tenantId, id);
       if (!encounter || encounter.branchId !== branchId || (dataScope === 'personal' && encounter.doctorId !== actorId)) {
         throw new NotFoundException();
       }
       const patientScope = maxDataScope(await findScopesForUserPermission(tx, tenantId, actorId, 'patient', 'read'));
-      return { patientId: encounter.patientId, weightGram: encounter.vitalSigns[0]?.weightGram ?? null, canReadPatient: patientScope !== 'none' };
+      return { patientId: encounter.patientId, weightGram: encounter.vitalSigns[0]?.weightGram ?? null, canReadPatient: patientScope !== 'none', insuranceSnapshot: encounter.insuranceSnapshot };
     });
     // `PatientService` tự mở transaction riêng — gọi NGOÀI transaction trên (cùng nguyên tắc `exportMedicalRecordPdf()`).
     const patient = await this.patientService.getPatient(tenantId, context.patientId);
@@ -537,6 +542,8 @@ export class EncounterService {
       weightGram: context.weightGram,
       ageMonths: calculateAgeMonths(patient.dob),
       guardian: patient.relativeFullName ? { fullName: patient.relativeFullName, relationship: patient.relativeRelationship } : null,
+      // Số thẻ BHYT hiện rõ cho người có quyền xem hồ sơ bệnh nhân (chủ dự án chốt, #243) — không có quyền thì không trả.
+      insurance: context.canReadPatient ? this.insuranceCardService.toEncounterInsurance(context.insuranceSnapshot, insuranceEnabled) : null,
     };
   }
 
@@ -553,6 +560,8 @@ export class EncounterService {
     const onHandByDrugId = await this.loadDraftOnHand(tenantId, branchId, id);
     // Mã đơn thuốc chuẩn Bộ Y tế (#242): chế độ + bảng ánh xạ đọc TRƯỚC transaction chính (port tự mở transaction riêng).
     const kindCtx = await this.loadKindContext(tenantId);
+    // "Áp dụng BHYT" (#243) — đọc TRƯỚC transaction chính (port tự mở transaction riêng); tắt thì `insurance = null`.
+    const insuranceEnabled = await this.clinicConfigReader.getInsuranceEnabled(tenantId);
 
     const { history: historyWithDoctorId, ...rest } = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const encounter = await this.encounterRepository.findByIdWithConsultationContext(tx, tenantId, id);
@@ -626,6 +635,7 @@ export class EncounterService {
           version: encounter.patient.version,
         },
         vitalSigns,
+        insurance: this.insuranceCardService.toEncounterInsurance(encounter.insuranceSnapshot, insuranceEnabled),
         history,
         diagnoses,
         clinicalNote: this.toClinicalNoteResponse(noteRows, treatmentPlanRow),
@@ -676,6 +686,8 @@ export class EncounterService {
     const permissions = await this.unitOfWork.runInTenantScope(tenantId, (tx) => findAllPermissionsForUser(tx, tenantId, actorId));
     const canViewClinical = 'encounter.read_clinical' in permissions;
     const canViewBilling = 'invoice.read' in permissions;
+    // "Áp dụng BHYT" (#243) — đọc ngoài transaction; tắt thì mỗi lượt khám trả `insurance = null`.
+    const insuranceEnabled = await this.clinicConfigReader.getInsuranceEnabled(tenantId);
 
     const page = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const rows = await this.encounterRepository.listHistoryPageForPatient(tx, tenantId, patientId, query.status === 'COMPLETED', query.cursor, query.limit);
@@ -755,6 +767,8 @@ export class EncounterService {
         branchName: branchNames.get(e.branchId) ?? null,
         isOtherBranch: e.branchId !== branchId,
         billingHidden,
+        // Thẻ đã chụp lúc khám (#243) — không phải dữ liệu tiền nên không bị che theo chi nhánh.
+        insurance: this.insuranceCardService.toEncounterInsurance(e.insuranceSnapshot, insuranceEnabled),
       };
     });
 
@@ -783,6 +797,8 @@ export class EncounterService {
     const patient = await this.patientService.getPatient(tenantId, patientId);
     // Bệnh án PDF gộp lượt khám của MỌI chi nhánh (hồ sơ đi theo người bệnh) → đầu trang của CÔNG TY, không gắn một chi nhánh nào (#233).
     const clinicHeader = await this.clinicProfileService.getPrintHeader(tenantId, null);
+    // "Áp dụng BHYT" (#243) — đọc TRƯỚC transaction (port tự mở transaction riêng); tắt thì không in dòng BHYT nào.
+    const insuranceEnabled = await this.clinicConfigReader.getInsuranceEnabled(tenantId);
 
     const provinceCode = patient.address?.province;
     const wardCode = patient.address?.ward;
@@ -851,6 +867,7 @@ export class EncounterService {
           instruction: i.instruction,
         })),
         prescriptionDocuments: (prescriptionRow?.documents ?? []).map((d) => ({ kind: d.kind, nationalCode: d.nationalCode })),
+        insurance: this.toMedicalRecordInsurance(e.insuranceSnapshot, insuranceEnabled),
         signedAt: prescriptionRow?.signedAt ? prescriptionRow.signedAt.toISOString() : (noteRows[0]?.signedAt?.toISOString() ?? null),
       };
     });
@@ -888,10 +905,27 @@ export class EncounterService {
       header: { showClinicName: header.showClinicName, showAddress: header.showAddress, showPhone: header.showPhone, showTaxCode: header.showTaxCode, showDivider: header.showDivider },
       title: template.config.title.text.trim() || null,
       footerNote: template.config.footer.note.trim() || null,
+      // Ô tích "Số thẻ BHYT" của bản mẫu in Bệnh án (S2-04, #243) — công tắc tổng tắt thì không in.
+      ...(insuranceEnabled && template.config.insurance ? { insurance: template.config.insurance } : {}),
     };
     const html = renderPatientMedicalRecordHtml(document, printOptions);
     const pdf = await this.pdfRenderer.renderHtmlToPdf(html, { marginsMm: { top: margins.topMm, right: margins.rightMm, bottom: margins.bottomMm, left: margins.leftMm } });
     return { pdf, patientCode: patient.patientCode, encounterCount: encounters.length };
+  }
+
+  /** Thẻ BHYT đã chụp của một lượt khám → dạng in trong bệnh án PDF (số thẻ đã giải mã); công tắc tắt → `null`. */
+  private toMedicalRecordInsurance(snapshotJson: unknown, enabled: boolean): MedicalRecordInsurance | null {
+    const insurance = this.insuranceCardService.toEncounterInsurance(snapshotJson, enabled);
+    if (!insurance) return null;
+    return {
+      selfPay: insurance.selfPay,
+      cardNo: insurance.cardNo,
+      kind: insurance.kind,
+      validFrom: insurance.validFrom,
+      validTo: insurance.validTo,
+      benefitRate: insurance.benefitRate,
+      facilityName: insurance.facilityName,
+    };
   }
 
   /**

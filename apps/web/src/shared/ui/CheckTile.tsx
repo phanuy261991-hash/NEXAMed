@@ -28,7 +28,7 @@ export function CheckTile({
   return (
     <label
       htmlFor={id}
-      className={`flex select-none items-center gap-2.5 rounded-md border px-3 py-2.5 text-sm font-semibold transition-colors ${checked ? checkedColors : idleColors} ${
+      className={`relative flex select-none items-center gap-2.5 rounded-md border px-3 py-2.5 text-sm font-semibold transition-colors ${checked ? checkedColors : idleColors} ${
         disabled ? 'cursor-default' : 'cursor-pointer'
       }`}
     >

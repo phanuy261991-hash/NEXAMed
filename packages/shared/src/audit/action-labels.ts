@@ -124,6 +124,11 @@ const ACTION_LABELS: Record<string, string> = {
   'patient.merged': 'Gộp hồ sơ trùng',
   'patient.viewed': 'Xem hồ sơ bệnh nhân',
   'patient.medical_record_exported': 'Xuất bệnh án PDF',
+  // thẻ BHYT (S2-04, #243) — nhật ký không ghi số thẻ
+  'insurance_card.created': 'Thêm thẻ BHYT',
+  'insurance_card.updated': 'Sửa thẻ BHYT',
+  'insurance_card.removed': 'Xoá thẻ BHYT',
+  'insurance_card.photo_updated': 'Đổi ảnh thẻ BHYT',
   'encounter.viewed': 'Xem hồ sơ khám',
 
   // drug

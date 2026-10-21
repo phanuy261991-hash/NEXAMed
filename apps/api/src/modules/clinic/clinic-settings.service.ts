@@ -63,6 +63,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         specimenScanRequired,
         icd10SuggestionEnabled,
         icd10SuggestionLearningEnabled,
+        insuranceEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -95,6 +96,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getSpecimenScanRequired(tx, tenantId),
         this.clinicSettingsRepository.getIcd10SuggestionEnabled(tx, tenantId),
         this.clinicSettingsRepository.getIcd10SuggestionLearningEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getInsuranceEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -128,6 +130,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         specimenScanRequired,
         icd10SuggestionEnabled,
         icd10SuggestionLearningEnabled,
+        insuranceEnabled,
       };
     });
   }
@@ -364,6 +367,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.icd10SuggestionLearningEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertIcd10SuggestionLearningEnabled(tx, tenantId, actorId, dto.icd10SuggestionLearningEnabled);
       }
+      if (dto.insuranceEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertInsuranceEnabled(tx, tenantId, actorId, dto.insuranceEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -396,7 +402,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.paraclinicalBeforePaymentEnabled !== undefined ||
         dto.specimenScanRequired !== undefined ||
         dto.icd10SuggestionEnabled !== undefined ||
-        dto.icd10SuggestionLearningEnabled !== undefined;
+        dto.icd10SuggestionLearningEnabled !== undefined ||
+        dto.insuranceEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -441,6 +448,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         specimenScanRequired,
         icd10SuggestionEnabled,
         icd10SuggestionLearningEnabled,
+        insuranceEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -473,6 +481,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getSpecimenScanRequired(tx, tenantId),
         this.clinicSettingsRepository.getIcd10SuggestionEnabled(tx, tenantId),
         this.clinicSettingsRepository.getIcd10SuggestionLearningEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getInsuranceEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -506,6 +515,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         specimenScanRequired,
         icd10SuggestionEnabled,
         icd10SuggestionLearningEnabled,
+        insuranceEnabled,
       };
     });
   }
@@ -587,5 +597,10 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` ("Học từ lịch sử chọn mã") — module `encounter` đọc qua port này lúc "Hoàn tất khám", không có endpoint tự-phục vụ. */
   getIcd10SuggestionLearningEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getIcd10SuggestionLearningEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getIcd10SuggestionLearningEnabled(tx, tenantId));
+  }
+
+  /** `GET /clinic-settings/insurance-enabled` + `ClinicConfigReaderPort` ("Áp dụng BHYT", #243) — mọi nhân viên cần biết để web ẩn/hiện; module bệnh nhân/tiếp nhận đọc qua port này (ĐỌC TRƯỚC khi mở transaction). */
+  getInsuranceEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getInsuranceEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getInsuranceEnabled(tx, tenantId));
   }
 }

@@ -91,6 +91,18 @@ export interface MedicalRecordTreatment {
   followUpDateLabel: string | null;
 }
 
+/** Thẻ BHYT của một lượt khám để in (đã giải mã số thẻ). `selfPay=true` thì các trường thẻ đều `null`. */
+export interface MedicalRecordInsurance {
+  selfPay: boolean;
+  cardNo: string | null;
+  /** Kiểu thẻ tính ra từ số thẻ (`NEW_12` = thẻ mới 12 số, `OLD_15` = thẻ cũ 15 ký tự). */
+  kind: 'NEW_12' | 'OLD_15' | 'UNKNOWN' | null;
+  validFrom: string | null;
+  validTo: string | null;
+  benefitRate: number | null;
+  facilityName: string | null;
+}
+
 export interface MedicalRecordEncounterEntry {
   encounterNo: string;
   checkedInAt: string;
@@ -106,6 +118,8 @@ export interface MedicalRecordEncounterEntry {
   prescriptionItems: MedicalRecordPrescriptionItem[];
   /** Các đơn pháp lý đã cấp mã chuẩn Bộ Y tế (#242) — bỏ trống/rỗng = không in dòng "Mã đơn" (đơn ký trước ngày bật chế độ chuẩn). */
   prescriptionDocuments?: MedicalRecordPrescriptionDocument[];
+  /** Thẻ BHYT đã chụp lúc khám (S2-04, #243) — `null`/bỏ trống = công tắc "Áp dụng BHYT" tắt, không in dòng nào. */
+  insurance?: MedicalRecordInsurance | null;
   signedAt: string | null;
 }
 
@@ -136,6 +150,8 @@ export interface MedicalRecordPrintOptions {
   title: string | null;
   /** Dòng ghi chú cuối bệnh án — `null`/rỗng = không in. */
   footerNote: string | null;
+  /** Dòng "Thẻ BHYT" từng lượt khám (ô tích của bản mẫu `MEDICAL_RECORD`, S2-04) — vắng = không in. */
+  insurance?: { show: boolean; whenSelfPay: 'hide' | 'selfPay' };
 }
 
 const DEFAULT_PRINT_OPTIONS: MedicalRecordPrintOptions = {
@@ -257,7 +273,21 @@ function renderPrescription(items: MedicalRecordPrescriptionItem[], documents: M
     .join('')}</tbody></table>`;
 }
 
-function renderEncounter(entry: MedicalRecordEncounterEntry, index: number): string {
+function formatInsuranceLine(insurance: MedicalRecordInsurance | null | undefined, whenSelfPay: 'hide' | 'selfPay'): string | null {
+  if (!insurance) return null;
+  if (insurance.selfPay || !insurance.cardNo) return whenSelfPay === 'selfPay' ? 'Số thẻ BHYT: Tự chi trả' : null;
+  const kindText = insurance.kind === 'NEW_12' ? ' (thẻ mới)' : insurance.kind === 'OLD_15' ? ' (thẻ cũ)' : '';
+  const parts = [`Số thẻ BHYT: ${insurance.cardNo}${kindText}`];
+  if (insurance.validFrom && insurance.validTo) parts.push(`hiệu lực ${formatDate(insurance.validFrom)} – ${formatDate(insurance.validTo)}`);
+  else if (insurance.validTo) parts.push(`đến ${formatDate(insurance.validTo)}`);
+  else if (insurance.validFrom) parts.push(`từ ${formatDate(insurance.validFrom)}, chưa rõ hạn`);
+  if (insurance.benefitRate !== null) parts.push(`hưởng ${insurance.benefitRate}%`);
+  if (insurance.facilityName) parts.push(`nơi ĐK KCB: ${insurance.facilityName}`);
+  return parts.join(' · ');
+}
+
+function renderEncounter(entry: MedicalRecordEncounterEntry, index: number, insuranceOption: MedicalRecordPrintOptions['insurance']): string {
+  const insuranceLine = insuranceOption?.show ? formatInsuranceLine(entry.insurance, insuranceOption.whenSelfPay) : null;
   return `
     <section class="encounter${index > 0 ? ' page-break' : ''}">
       <h2>Lượt khám #${index + 1} — ${formatDateTime(entry.checkedInAt)}</h2>
@@ -265,6 +295,7 @@ function renderEncounter(entry: MedicalRecordEncounterEntry, index: number): str
         entry.signedAt ? ` · Đã ký lúc ${formatDateTime(entry.signedAt)}` : ''
       }</p>
       <p class="meta">Lý do khám: ${entry.chiefComplaint ? escapeHtml(entry.chiefComplaint) : '—'}</p>
+      ${insuranceLine ? `<p class="meta">${escapeHtml(insuranceLine)}</p>` : ''}
       <h3>Sinh hiệu</h3>
       ${renderVitalSigns(entry.vitalSigns)}
       <h3>Chẩn đoán</h3>
@@ -351,7 +382,7 @@ export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument
 
   ${
     doc.encounters.length > 0
-      ? doc.encounters.map((e, i) => renderEncounter(e, i)).join('')
+      ? doc.encounters.map((e, i) => renderEncounter(e, i, options.insurance)).join('')
       : '<p class="muted" style="margin-top:16px;">Bệnh nhân chưa có lượt khám nào đã hoàn tất.</p>'
   }
 

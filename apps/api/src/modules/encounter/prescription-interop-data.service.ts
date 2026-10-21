@@ -18,6 +18,7 @@ import { EMPTY_INTEROP_KIND_INFO, calculateAgeMonths, formatDoseSummary, type In
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { GeoRepository } from '../geo/geo.repository';
 import { PatientService } from '../patient/patient.service';
+import { PatientInsuranceCardService } from '../patient/patient-insurance-card.service';
 import { PrescriptionSubmissionRepository, type PrescriptionSubmissionRecord } from '../prescription-interop/prescription-submission.repository';
 import { ClinicalNoteRepository } from './clinical-note.repository';
 import { DiagnosisRepository } from './diagnosis.repository';
@@ -72,6 +73,7 @@ export class PrescriptionInteropDataService {
     private readonly interopInfoRepository: EncounterInteropInfoRepository,
     private readonly submissionRepository: PrescriptionSubmissionRepository,
     private readonly patientService: PatientService,
+    private readonly insuranceCardService: PatientInsuranceCardService,
     private readonly geoRepository: GeoRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
@@ -84,9 +86,10 @@ export class PrescriptionInteropDataService {
    */
   async gather(tenantId: string, encounterId: string, opts: { branchId?: string; now?: Date } = {}): Promise<GatheredInteropEncounter | null> {
     const now = opts.now ?? new Date();
-    const [standardMode, mapping] = await Promise.all([
+    const [standardMode, mapping, insuranceEnabled] = await Promise.all([
       this.clinicConfigReader.getPrescriptionStandardMode(tenantId),
       this.clinicConfigReader.getPrescriptionKindMapping(tenantId),
+      this.clinicConfigReader.getInsuranceEnabled(tenantId),
     ]);
 
     const rows = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -160,7 +163,8 @@ export class PrescriptionInteropDataService {
           gender: patient.gender,
           phone: patient.phone,
           nationalId: patient.nationalId,
-          insuranceNumber: patient.insuranceNumber,
+          // Số thẻ BHYT lấy từ bản chụp của LƯỢT KHÁM (S2-04, #243), không còn đọc `patient.insurance_number` cũ; lõi chỉ gửi thẻ mới 12 chữ số.
+          insuranceNumber: this.insuranceCardService.toEncounterInsurance(encounter.insuranceSnapshot, insuranceEnabled)?.cardNo ?? null,
           address: addressLine,
           weightGram,
           ageMonths,

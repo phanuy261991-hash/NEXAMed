@@ -137,6 +137,17 @@ export const DEFAULT_PRESCRIPTION_INFO_CONFIG: PrescriptionInfoConfig = {
   showReceiverBox: true,
 };
 
+/**
+ * Dòng "Số thẻ BHYT" trên chứng từ in (S2-04, docs/DECISIONS.md #243, mockup đã chốt 21/10/2026): MỖI loại chứng từ (đơn thuốc, phiếu thu, bệnh án PDF) có ô tích riêng, mặc định TẮT.
+ * Dữ liệu lấy từ thẻ đã chụp vào lượt khám (số thẻ hiện rõ). `whenSelfPay`: lượt khám tự chi trả thì ẩn cả dòng (`hide`) hoặc in "Tự chi trả" (`selfPay`).
+ * Chỉ có tác dụng khi công tắc "Áp dụng BHYT" của phòng khám đang BẬT.
+ */
+export const insurancePrintConfigSchema = z.object({ show: z.boolean(), whenSelfPay: z.enum(['hide', 'selfPay']) });
+export type InsurancePrintConfig = z.infer<typeof insurancePrintConfigSchema>;
+export const DEFAULT_INSURANCE_PRINT_CONFIG: InsurancePrintConfig = { show: false, whenSelfPay: 'hide' };
+/** Chứng từ có dòng "Số thẻ BHYT" (S2-04). */
+export const INSURANCE_PRINT_DOCUMENT_TYPES: PrintDocumentType[] = ['PRESCRIPTION', 'INVOICE', 'MEDICAL_RECORD'];
+
 export const printTemplateConfigSchema = z.object({
   margins: z.object({ topMm: marginMm, rightMm: marginMm, bottomMm: marginMm, leftMm: marginMm }),
   header: z.object({
@@ -163,6 +174,8 @@ export const printTemplateConfigSchema = z.object({
   label: z.object({ showPatientCode: z.boolean(), showGroup: z.boolean(), showCapColor: z.boolean(), showDate: z.boolean() }).optional(),
   /** Thông tin in THÊM trên đơn thuốc (chỉ chứng từ PRESCRIPTION, #242): thông tin bệnh nhân dùng chung mọi loại đơn + các mục riêng của đơn "N"/"H" (Thông tư 52/2017). Vắng = bật hết (xem `withDefaultPrescriptionInfo`). Họ tên, ngày sinh, giới tính, bác sĩ, chẩn đoán luôn in nên không có công tắc. */
   prescriptionInfo: prescriptionInfoConfigSchema.optional(),
+  /** Dòng "Số thẻ BHYT" (S2-04, #243) — chỉ chứng từ ở `INSURANCE_PRINT_DOCUMENT_TYPES`. Vắng = tắt (xem `withDefaultInsuranceOptions`). */
+  insurance: insurancePrintConfigSchema.optional(),
   /** Số liên in mỗi lần bấm In (1-3) + nhãn từng liên ("Liên 1 — Lưu"...). */
   copies: z.object({ count: z.number().int().min(1).max(3), labels: z.array(z.string().max(40)).max(3) }),
 });
@@ -202,9 +215,20 @@ export function withDefaultPrescriptionInfo(documentType: PrintDocumentType, con
   return { ...config, prescriptionInfo: config.prescriptionInfo ?? { ...DEFAULT_PRESCRIPTION_INFO_CONFIG } };
 }
 
-/** Mọi phần mặc định phụ thuộc loại chứng từ (khuyến cáo, thông tin đơn thuốc) — một chỗ gọi cho API lẫn dựng bản mẫu sẵn. */
+/** Điền khối `insurance` mặc định (TẮT) cho chứng từ có dòng BHYT nếu CHƯA có, và bỏ khối này ở chứng từ khác — để web chỉ đọc `config.insurance`. */
+export function withDefaultInsuranceOptions(documentType: PrintDocumentType, config: PrintTemplateConfig): PrintTemplateConfig {
+  if (!INSURANCE_PRINT_DOCUMENT_TYPES.includes(documentType)) {
+    if (config.insurance === undefined) return config;
+    const { insurance: _dropped, ...rest } = config;
+    void _dropped;
+    return rest;
+  }
+  return { ...config, insurance: config.insurance ?? { ...DEFAULT_INSURANCE_PRINT_CONFIG } };
+}
+
+/** Mọi phần mặc định phụ thuộc loại chứng từ (khuyến cáo, thông tin đơn thuốc, dòng BHYT) — một chỗ gọi cho API lẫn dựng bản mẫu sẵn. */
 export function withDefaultPrintOptions(documentType: PrintDocumentType, config: PrintTemplateConfig): PrintTemplateConfig {
-  return withDefaultPrescriptionInfo(documentType, withDefaultPrintNotice(documentType, config));
+  return withDefaultInsuranceOptions(documentType, withDefaultPrescriptionInfo(documentType, withDefaultPrintNotice(documentType, config)));
 }
 
 export const DEFAULT_PRINT_COPY_LABELS = ['Liên 1 — Lưu', 'Liên 2 — Khách hàng', 'Liên 3'];
@@ -407,6 +431,8 @@ export function deriveConfigForPaper(paperSize: PrintPaperSize, base: PrintTempl
     ...(base.notice ? { notice: base.notice } : {}),
     // Công tắc thông tin trên đơn thuốc (#242) cũng kế thừa — nếu không, in ra khổ giấy khác khổ mặc định sẽ quay về "bật hết" và các lựa chọn của phòng khám không áp được.
     ...(base.prescriptionInfo ? { prescriptionInfo: base.prescriptionInfo } : {}),
+    // Dòng "Số thẻ BHYT" (S2-04, #243) cũng kế thừa — cùng lý do `prescriptionInfo`.
+    ...(base.insurance ? { insurance: base.insurance } : {}),
     copies: base.copies,
   };
 }

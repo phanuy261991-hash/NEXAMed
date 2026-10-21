@@ -58,6 +58,17 @@ function measure() {
   };
 
   if (doc.scrollWidth > doc.clientWidth + 1) issues.push({ t: 'cuộn-ngang-trang', d: 'scrollWidth ' + doc.scrollWidth + ' > ' + doc.clientWidth });
+  // AppShell cố định h-dvh, mỗi trang tự cuộn trong khung của nó — tài liệu mà còn cuộn dọc nghĩa là có phần tử `position: absolute` (thường là `sr-only`) thiếu tổ tiên `relative` trong vùng cuộn, neo vào khung gốc của trang (#240 bổ sung 4).
+  if (doc.scrollHeight > doc.clientHeight + 1) {
+    const stray = [];
+    for (const el of document.body.querySelectorAll('*')) {
+      const cs = getComputedStyle(el);
+      if (cs.position !== 'absolute' && cs.position !== 'fixed') continue;
+      const r = el.getBoundingClientRect();
+      if (r.height > 0 && r.bottom > doc.clientHeight + 1 && stray.length < 3) stray.push((el.tagName + '.' + String(el.className).slice(0, 40)).toLowerCase());
+    }
+    issues.push({ t: 'cuộn-dọc-trang', d: 'scrollHeight ' + doc.scrollHeight + ' > ' + doc.clientHeight + (stray.length ? ' · ' + stray.join(' | ') : '') });
+  }
 
   const seen = new Set();
   const all = document.body.querySelectorAll('*');

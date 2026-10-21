@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Buildings, CalendarBlank, CalendarCheck, Clock, CreditCard, Database as DatabaseIcon, MapPinLine, SlidersHorizontal, TreeStructure, Vault } from '@phosphor-icons/react';
+import { Buildings, CalendarBlank, CalendarCheck, Clock, CreditCard, Database as DatabaseIcon, MapPinLine, ShieldCheck, SlidersHorizontal, TreeStructure, Vault } from '@phosphor-icons/react';
 import { useLocation } from 'react-router-dom';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -18,6 +18,7 @@ import { ClinicHoursPane } from './ClinicHoursPane';
 import { ClinicInfoPane } from './ClinicInfoPane';
 import { ExamConfigPane } from './ExamConfigPane';
 import { GeneralConfigPane } from './GeneralConfigPane';
+import { InsuranceConfigPane } from './InsuranceConfigPane';
 import { PaymentConfigPane } from './PaymentConfigPane';
 import { RoomPane } from './RoomPane';
 import { WorkShiftPane } from './WorkShiftPane';
@@ -61,6 +62,7 @@ const BASE_PILLS: ConfigScreenPill[] = [
       { key: 'appointments', label: 'Lịch hẹn', icon: CalendarBlank },
       { key: 'shifts', label: 'Ca làm việc', icon: CalendarCheck },
       { key: 'general', label: 'Cấu hình chung', icon: SlidersHorizontal },
+      { key: 'insurance', label: 'Thẻ BHYT', icon: ShieldCheck },
     ],
   },
   {
@@ -182,6 +184,7 @@ export function ClinicConfigPage() {
       {activePillKey === 'clinic' && activeItemKey === 'appointments' && <AppointmentConfigPane />}
       {activePillKey === 'clinic' && activeItemKey === 'shifts' && <WorkShiftPane />}
       {activePillKey === 'clinic' && activeItemKey === 'general' && <GeneralConfigPane />}
+      {activePillKey === 'clinic' && activeItemKey === 'insurance' && <InsuranceConfigPane />}
       {activePillKey === 'payment' && activeItemKey === 'config' && <PaymentConfigPane />}
       {activePillKey === 'payment' && activeItemKey === 'cash-accounts' && <CashAccountPane />}
       {activePillKey === 'exam' && <ExamConfigPane />}

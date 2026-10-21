@@ -49,6 +49,14 @@ export class InvoiceController {
     return this.invoiceService.getByEncounterId(tenantId, requireBranchId(req.user!), encounterId, invoiceId);
   }
 
+  /** Thẻ BHYT đã chụp của lượt khám, để in trên phiếu thu (S2-04, #243). `null` khi công tắc "Áp dụng BHYT" tắt. */
+  @Get(':encounterId/insurance')
+  @RequirePermission('invoice', 'read', { entityIdParam: 'encounterId' })
+  async getInsurance(@Param('encounterId') encounterId: string, @Req() req: Request) {
+    const { tenantId } = req.user!;
+    return this.invoiceService.getInsuranceForEncounter(tenantId, requireBranchId(req.user!), encounterId);
+  }
+
   @Post(':encounterId/pay')
   @RequirePermission('invoice', 'update', { entityIdParam: 'encounterId' })
   @HttpCode(200)

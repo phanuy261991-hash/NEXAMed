@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { invoiceStatusSchema } from './billing';
 import { patientAllergenItemSchema, patientConditionItemSchema, patientFamilyHistoryItemSchema } from './patient';
 import { prescriptionKindSchema } from './business-code';
+import { encounterInsuranceBadgeSchema, encounterInsuranceSchema, insuranceCardChoiceSchema } from './insurance-card';
 import { prescriptionResponseSchema } from './prescription';
 
 /**
@@ -47,6 +48,11 @@ const intakeExtendedFieldsSchema = z.object({
   examFormCode: z.string().min(1),
   isPriority: z.boolean().default(false),
   priorityReasonCode: z.string().optional(),
+  /**
+   * Thẻ BHYT dùng cho lượt khám (S2-04, #243): vắng = máy chủ tự gợi ý thẻ còn hiệu lực mới nhất, `null` = "Không dùng
+   * thẻ" (tự chi trả), uuid = đúng thẻ đó (phải thuộc bệnh nhân). Công tắc "Áp dụng BHYT" tắt thì bị bỏ qua.
+   */
+  insuranceCardId: insuranceCardChoiceSchema,
   /**
    * "Thanh toán sau" (Thu ngân cơ bản, Sprint 5/6) — ý nghĩa thật đã ghi nhận từ #080: `true` =
    * lượt khám được PHÉP vào Hàng đợi khám dù phiếu thu chưa "Đã thu". Chỉ có hiệu lực khi
@@ -364,6 +370,8 @@ export const receptionListItemSchema = z.object({
   paraclinicalPendingCount: z.number().int().nonnegative(),
   /** Hàng đợi khám (#221) — số kết quả cận lâm sàng đã duyệt mà bác sĩ phụ trách chưa mở xem ("Có kết quả mới"). */
   paraclinicalUnseenResultCount: z.number().int().nonnegative(),
+  /** Nhãn BHYT gọn (S2-04, #243) — `null` khi công tắc "Áp dụng BHYT" tắt (web không hiện gì). Không chứa số thẻ. */
+  insurance: encounterInsuranceBadgeSchema.nullable(),
   version: z.number().int(),
 });
 export type ReceptionListItem = z.infer<typeof receptionListItemSchema>;
@@ -699,6 +707,8 @@ export const consultationDetailResponseSchema = z.object({
   encounter: encounterSummarySchema,
   patient: consultationPatientSchema,
   vitalSigns: vitalSignResponseSchema.nullable(),
+  /** Thẻ BHYT đã chụp của lượt khám (S2-04, #243) — `null` khi công tắc "Áp dụng BHYT" tắt. */
+  insurance: encounterInsuranceSchema.nullable(),
   history: z.array(encounterHistoryItemSchema),
   diagnoses: z.array(diagnosisItemSchema),
   clinicalNote: clinicalNoteResponseSchema,
@@ -813,6 +823,8 @@ export const patientEncounterHistoryItemSchema = z.object({
   isOtherBranch: z.boolean(),
   /** Tiền là của chi nhánh: tài khoản KHÔNG được gán chi nhánh của lượt khám này thì máy chủ che cột tiền (web hiện gạch ngang). */
   billingHidden: z.boolean(),
+  /** Thẻ BHYT đã chụp lúc khám (S2-04, #243) — `null` khi công tắc "Áp dụng BHYT" tắt. Không phải dữ liệu tiền nên không bị che theo chi nhánh. */
+  insurance: encounterInsuranceSchema.nullable(),
 });
 export type PatientEncounterHistoryItem = z.infer<typeof patientEncounterHistoryItemSchema>;
 

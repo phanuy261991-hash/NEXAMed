@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type Encounter, type VitalSign } from '@prisma/client';
 import {
   AppointmentNotCancellableError,
+  CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
   DoctorNoShiftOnDateError,
@@ -15,6 +16,7 @@ import {
   getVietnamDateString,
   resolveDoctorDepartmentRouting,
   vietnamDayRange,
+  type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
   type ParaclinicalProgressReaderPort,
 } from '@nexamed/core';
@@ -28,6 +30,7 @@ import {
   type ReceptionListResponse,
   type RecordVitalSignRequest,
   type RegisterReceptionRequest,
+  type StoredInsuranceSnapshot,
   type VitalSignResponse,
   type VitalSignWarning,
 } from '@nexamed/shared';
@@ -42,6 +45,7 @@ import { InvoiceRepository } from '../billing/invoice.repository';
 import { PaymentRepository } from '../billing/payment.repository';
 import { PatientWalletService } from '../patient-wallet/patient-wallet.service';
 import { PatientRepository } from '../patient/patient.repository';
+import { PatientInsuranceCardService } from '../patient/patient-insurance-card.service';
 import { VitalSignRepository } from './vital-sign.repository';
 import { EncounterServiceItemRepository, type CreateEncounterServiceItemData } from './encounter-service-item.repository';
 
@@ -113,6 +117,8 @@ export class ReceptionService {
     private readonly walletService: PatientWalletService,
     private readonly businessCodeService: BusinessCodeService,
     private readonly patientRepository: PatientRepository,
+    private readonly insuranceCardService: PatientInsuranceCardService,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfig: ClinicConfigReaderPort,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(PARACLINICAL_PROGRESS_READER_PORT) private readonly paraclinicalProgress: ParaclinicalProgressReaderPort,
     @Inject(WORK_SHIFT_ASSIGNMENT_READER_PORT) private readonly workShiftAssignmentReader: WorkShiftAssignmentReaderPort,
@@ -166,6 +172,8 @@ export class ReceptionService {
     // nhau (đúng nguyên tắc "không dùng port cho phần cần atomic cùng check-in", docs/DECISIONS.md).
     const routing = await this.resolveRouting(tenantId, dto);
     await this.assertDoctorHasShift(tenantId, branchId, routing.doctorId, getVietnamDateString());
+    // "Áp dụng BHYT" (#243) — port mở transaction riêng nên ĐỌC TRƯỚC transaction chính.
+    const insuranceEnabled = await this.clinicConfig.getInsuranceEnabled(tenantId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const appointment = await this.appointmentRepository.findById(tx, tenantId, branchId, dto.appointmentId);
@@ -177,8 +185,10 @@ export class ReceptionService {
         throw new AppointmentNotCancellableError();
       }
       await this.assertPatientNotMerged(tx, tenantId, dto.patientId);
+      const insuranceSnapshot = await this.insuranceCardService.buildEncounterSnapshot(tx, tenantId, dto.patientId, dto.insuranceCardId, insuranceEnabled);
 
       const created = await this.createEncounterAndConvert(tx, tenantId, branchId, actorId, {
+        insuranceSnapshot,
         appointmentId: appointment.id,
         doctorId: routing.doctorId,
         departmentId: routing.departmentId,
@@ -212,9 +222,12 @@ export class ReceptionService {
     // Resolve routing TRƯỚC transaction chính — cùng lý do đã ghi ở checkIn().
     const routing = await this.resolveRouting(tenantId, dto);
     await this.assertDoctorHasShift(tenantId, branchId, routing.doctorId, getVietnamDateString(new Date(dto.checkedInAt)));
+    // "Áp dụng BHYT" (#243) — port mở transaction riêng nên ĐỌC TRƯỚC transaction chính.
+    const insuranceEnabled = await this.clinicConfig.getInsuranceEnabled(tenantId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       await this.assertPatientNotMerged(tx, tenantId, dto.patientId);
+      const insuranceSnapshot = await this.insuranceCardService.buildEncounterSnapshot(tx, tenantId, dto.patientId, dto.insuranceCardId, insuranceEnabled);
 
       const encounterNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'ENCOUNTER', new Date());
 
@@ -228,8 +241,7 @@ export class ReceptionService {
           appointmentId: null,
           checkedInAt: new Date(dto.checkedInAt),
           chiefComplaint: dto.chiefComplaint ?? null,
-          // v1: chưa làm S2-04 (lưu thẻ BHYT) — luôn tự chi trả, xem docs/DECISIONS.md.
-          insuranceSnapshot: { selfPay: true },
+          insuranceSnapshot,
           patientSourceCode: dto.patientSourceCode ?? null,
           receptionTypeCode: dto.receptionTypeCode,
           examFormCode: dto.examFormCode,
@@ -365,6 +377,8 @@ export class ReceptionService {
     branchId: string,
     actorId: string,
     params: {
+      /** Bản chụp thẻ BHYT (S2-04, #243) — dựng sẵn trong transaction của caller. */
+      insuranceSnapshot: StoredInsuranceSnapshot;
       appointmentId: string;
       doctorId: string | null;
       departmentId: string;
@@ -392,8 +406,7 @@ export class ReceptionService {
         appointmentId: params.appointmentId,
         checkedInAt: new Date(),
         chiefComplaint: params.chiefComplaint,
-        // v1: chưa làm S2-04 (lưu thẻ BHYT) — luôn tự chi trả, xem docs/DECISIONS.md.
-        insuranceSnapshot: { selfPay: true },
+        insuranceSnapshot: params.insuranceSnapshot,
         patientSourceCode: params.patientSourceCode,
         // Trước đây bị BỎ SÓT (bug phát hiện thật lúc chạm lại hàm này cho #064) — checkIn() từ
         // lịch hẹn có sẵn không lưu 4 trường "Thông tin tiếp nhận" dù registerDirect() (Tiếp nhận
@@ -478,6 +491,8 @@ export class ReceptionService {
     // transaction riêng, tránh $transaction lồng nhau).
     const poolDepartmentId =
       includeDepartmentPool && doctorId ? ((await this.doctorDirectory.getDoctorDepartmentId(tenantId, doctorId)) ?? undefined) : undefined;
+    // "Áp dụng BHYT" (#243) — tắt thì danh sách không mang nhãn BHYT nào; đọc ngoài transaction (port tự mở transaction riêng).
+    const insuranceEnabled = await this.clinicConfig.getInsuranceEnabled(tenantId);
 
     const encounters = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
       this.encounterRepository.listForDay(tx, tenantId, branchId, {
@@ -516,6 +531,7 @@ export class ReceptionService {
       completedAt: e.completedAt?.toISOString() ?? null,
       paraclinicalPendingCount: progress.get(e.id)?.pendingCount ?? 0,
       paraclinicalUnseenResultCount: progress.get(e.id)?.unseenResultCount ?? 0,
+      insurance: this.insuranceCardService.toBadge(e.insuranceSnapshot, insuranceEnabled),
       version: e.version,
     }));
 

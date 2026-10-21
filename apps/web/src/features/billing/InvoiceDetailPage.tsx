@@ -25,6 +25,8 @@ import { useCashierShiftRequiredEnabledQuery } from '../clinic/clinic.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useWalletQuery } from '../patient-wallet/patient-wallet.queries';
 import { InvoiceCombinedPrintView } from './InvoiceCombinedPrintView';
+import { useInsuranceEnabledQuery } from '../clinic/clinic.queries';
+import { useInvoiceInsuranceQuery } from '../insurance-card/insurance-card.queries';
 import { InvoicePrintView } from './InvoicePrintView';
 import { RefundDrugItemsDialog } from './RefundDrugItemsDialog';
 import {
@@ -99,6 +101,9 @@ export function InvoiceDetailPage() {
   const [combinedPrint, setCombinedPrint] = useState<CombinedInvoicePrintResponse | null>(null);
 
   const invoiceQuery = useBillingInvoiceQuery(encounterId, invoiceIdParam);
+  // Thẻ BHYT đã chụp để IN trên phiếu thu (S2-04, #243) — chỉ gọi khi công tắc "Áp dụng BHYT" bật; ô tích của bản mẫu quyết định có in hay không.
+  const insuranceEnabledQuery = useInsuranceEnabledQuery();
+  const invoiceInsuranceQuery = useInvoiceInsuranceQuery(encounterId, insuranceEnabledQuery.data?.enabled === true);
   const paymentMethodQuery = useReferenceCatalogQuery('PAYMENT_METHOD');
   // "Thu tiền" đòi có ca thu ngân đang mở (đối soát tiền mặt, #chốt-ca) — không chặn cả trang, chỉ
   // chặn đúng thao tác chạm tới tiền (chốt qua AskUserQuestion, đảo hướng 2026-09-03). Công tắc
@@ -991,12 +996,14 @@ export function InvoiceDetailPage() {
               collectedByName={collectedByName}
               paymentMethodName={paymentMethodName}
               data={combinedPrint}
+              insurance={invoiceInsuranceQuery.data ?? null}
             />
           ) : (
             <InvoicePrintView
               collectedByName={collectedByName}
               paymentMethodLabel={paymentMethodName(invoice.paymentMethod)}
               invoice={invoice}
+              insurance={invoiceInsuranceQuery.data ?? null}
             />
           )}
         </>

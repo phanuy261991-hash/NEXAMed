@@ -6,7 +6,7 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { buildDefaultPrintTemplateConfig, type PrintTemplate, type ResolvedPrintTemplate } from '@nexamed/shared';
+import { buildDefaultPrintTemplateConfig, withDefaultPrintOptions, type PrintTemplate, type ResolvedPrintTemplate } from '@nexamed/shared';
 import { AppModule } from '../../app.module';
 import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
@@ -127,7 +127,8 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
     expect(items.every((i) => i.id === null && i.isBuiltin && i.isDefault && i.version === null)).toBe(true);
     expect(ofType(items, 'PRESCRIPTION')[0]).toMatchObject({ paperSize: 'A4', name: 'Đơn thuốc A4' });
     expect(ofType(items, 'INVOICE')[0]!.paperSize).toBe('A5');
-    expect(ofType(items, 'INVOICE')[0]!.config).toEqual(buildDefaultPrintTemplateConfig('A5'));
+    // Phiếu thu có thêm khối "Số thẻ BHYT" (S2-04, #243, mặc định tắt) do máy chủ điền.
+    expect(ofType(items, 'INVOICE')[0]!.config).toEqual(withDefaultPrintOptions('INVOICE', buildDefaultPrintTemplateConfig('A5')));
   });
 
   it('GET resolved: MỌI nhân viên đăng nhập đọc được (bác sĩ, lễ tân) → 15 mục; không token → 401', async () => {
@@ -214,7 +215,7 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
     }
     const ok = await request(app.getHttpServer()).post(API).set(authed(adminToken)).send({ documentType: 'INVOICE', name: 'Phiếu thu K80', paperSize: 'K80' });
     expect(ok.status).toBe(200);
-    expect(ok.body.data.config).toEqual(buildDefaultPrintTemplateConfig('K80'));
+    expect(ok.body.data.config).toEqual(withDefaultPrintOptions('INVOICE', buildDefaultPrintTemplateConfig('K80')));
     expect(ok.body.data.config.footer.showSignature).toBe(false);
     expect(ok.body.data.config.header.showLogo).toBe(false);
   });
