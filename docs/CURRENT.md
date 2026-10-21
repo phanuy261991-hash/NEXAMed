@@ -28,7 +28,7 @@ Mockup (https://claude.ai/artifact/FAi8GCjycj94s6EwTT9t6b, bản 3) **đã chố
 
 ## Hiệu năng & bảo mật (21/10/2026, #244)
 
-Đo tải toàn ứng dụng **ĐẠT** (p95 58 ms/500 ms, 0 lỗi). Đã sửa 2 lỗi nghiêm trọng: đăng nhập đồng thời làm cạn bể kết nối (100 người → 64 lỗi, nay 0 lỗi; SaaS 320 lượt → 0 lỗi) và một công ty chặn được đăng nhập của mọi công ty khác. Đã thêm: giới hạn 5 phiên/tài khoản, hạn phiên 7 ngày (từ 30), job dọn phiên hết hạn, biến `TRUST_PROXY_HOPS`. Sửa thêm: hai job dọn dẹp từng hẹn 2 giờ sáng (máy phòng khám tắt buổi tối nên chưa từng chạy) nay chạy sau khi bật máy + lặp trong ngày. **Còn mở**: OTP khu quản trị dùng lại được trong ±90 giây (cần thêm cột `last_otp_step`, chờ chủ dự án quyết); tham số argon2 mặc định; CSP Report-Only.
+Đo tải toàn ứng dụng **ĐẠT** (p95 58 ms/500 ms, 0 lỗi). Đã sửa 2 lỗi nghiêm trọng: đăng nhập đồng thời làm cạn bể kết nối (100 người → 64 lỗi, nay 0 lỗi; SaaS 320 lượt → 0 lỗi) và một công ty chặn được đăng nhập của mọi công ty khác. Đã thêm: giới hạn 5 phiên/tài khoản, hạn phiên 7 ngày (từ 30), job dọn phiên hết hạn, biến `TRUST_PROXY_HOPS`. Sửa thêm: hai job dọn dẹp từng hẹn 2 giờ sáng (máy phòng khám tắt buổi tối nên chưa từng chạy) nay chạy sau khi bật máy + lặp trong ngày. Kiểm thử tấn công chủ động trên bản SaaS chạy thật: **23/24 mục ĐẠT, 0 rò rỉ dữ liệu** (cách ly công ty, giả mạo tên miền, giả mạo token, phân quyền, rò rỉ thông tin) — đã trình diễn trên Chrome. **Còn mở**: `GET /encounters/by-patient/:id/history` trả 200 rỗng thay vì 404 cho bệnh nhân công ty khác (không rò rỉ, chỉ thiếu nhất quán; sửa cần port dùng chung); OTP khu quản trị dùng lại được trong ±90 giây (cần thêm cột `last_otp_step`, chờ chủ dự án quyết); tham số argon2 mặc định; CSP Report-Only.
 
 ## Đang chờ / việc treo
 
