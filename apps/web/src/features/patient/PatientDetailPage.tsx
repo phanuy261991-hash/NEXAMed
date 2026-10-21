@@ -65,7 +65,8 @@ export function PatientDetailPage() {
   useBreadcrumb([
     { label: 'Hồ sơ Bệnh nhân' },
     { label: 'Danh sách bệnh nhân', to: '/patients' },
-    { label: query.data?.fullName ?? 'Đang tải...' },
+    // Tra hồ sơ hỏng/không tồn tại thì KHÔNG để đường dẫn kẹt ở "Đang tải..." vĩnh viễn (lỗi thật 21/10/2026) — đổi sang đúng điều đang hiện ở thân trang.
+    { label: query.isError ? 'Không tìm thấy hồ sơ' : (query.data?.fullName ?? 'Đang tải...') },
   ]);
 
   if (query.isPending) {

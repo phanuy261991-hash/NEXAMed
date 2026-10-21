@@ -94,7 +94,9 @@ export function SupplierDetailPage() {
   const summaryQuery = useSupplierDebtSummaryQuery(supplierId);
   const supplier = suppliersQuery.data?.items.find((s) => s.id === supplierId);
 
-  useBreadcrumb([{ label: 'Quản lý nhà cung cấp' }, { label: 'Nhà cung cấp', to: '/suppliers' }, { label: supplier?.name ?? 'Đang tải...' }]);
+  // Nhà cung cấp không tồn tại/tải hỏng thì đường dẫn KHÔNG kẹt ở "Đang tải..." (cùng lỗi đã sửa ở `PatientDetailPage`, 21/10/2026).
+  const breadcrumbName = suppliersQuery.isError ? 'Không tìm thấy' : suppliersQuery.isSuccess ? (supplier?.name ?? 'Không tìm thấy') : 'Đang tải...';
+  useBreadcrumb([{ label: 'Quản lý nhà cung cấp' }, { label: 'Nhà cung cấp', to: '/suppliers' }, { label: breadcrumbName }]);
 
   const isLoading = suppliersQuery.isLoading || summaryQuery.isLoading;
   const isError = suppliersQuery.isError || summaryQuery.isError;
