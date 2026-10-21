@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectInsuranceCardKind, formatValidityRange, formatWarningMessage, insuranceBadgeLabel, normalizeInsuranceCardNo } from './insurance-card-view';
+import { deriveReceptionInsuranceView, detectInsuranceCardKind, formatValidityRange, formatWarningMessage, insuranceBadgeLabel, normalizeInsuranceCardNo } from './insurance-card-view';
 
 /** Bộ vector DÙNG CHUNG với `packages/core/src/insurance/insurance-card.spec.ts` — đổi một bên phải đổi bên kia. */
 const KIND_VECTORS: { raw: string; normalized: string; kind: 'NEW_12' | 'OLD_15' | 'UNKNOWN' }[] = [
@@ -44,5 +44,34 @@ describe('định dạng hiển thị', () => {
   it('cảnh báo định dạng nêu số ký tự hiện có và chỉ ra khi chỉ gồm chữ số', () => {
     expect(formatWarningMessage('0791930045')).toContain('10 ký tự (chỉ gồm chữ số)');
     expect(formatWarningMessage('07919300451A')).toContain('12 ký tự,');
+  });
+});
+
+describe('deriveReceptionInsuranceView (khối chọn thẻ ở Tiếp nhận)', () => {
+  const card = (id: string, validity: 'VALID' | 'UNKNOWN_EXPIRY' | 'EXPIRED' | 'NOT_STARTED') => ({ id, validity, validTo: null });
+
+  it('chưa có thẻ nào', () => {
+    expect(deriveReceptionInsuranceView([], null, undefined)).toEqual({ mode: 'NO_CARDS' });
+  });
+
+  it('chỉ có thẻ hết hạn / chưa hiệu lực → không chọn được, báo thẻ hết hạn', () => {
+    const view = deriveReceptionInsuranceView([card('a', 'NOT_STARTED'), card('b', 'EXPIRED')], null, undefined);
+    expect(view).toMatchObject({ mode: 'INELIGIBLE', card: { id: 'b' } });
+  });
+
+  it('theo gợi ý khi chưa bấm gì; thẻ hết hạn không nằm trong danh sách chọn', () => {
+    const view = deriveReceptionInsuranceView([card('a', 'VALID'), card('b', 'UNKNOWN_EXPIRY'), card('c', 'EXPIRED')], 'a', undefined);
+    expect(view).toMatchObject({ mode: 'PICK', selected: { id: 'a' }, isSuggested: true });
+    expect(view.mode === 'PICK' && view.picks.map((c) => c.id)).toEqual(['a', 'b']);
+  });
+
+  it('lễ tân chọn thẻ khác hoặc "Không dùng thẻ" thì không còn là gợi ý', () => {
+    const cards = [card('a', 'VALID'), card('b', 'UNKNOWN_EXPIRY')];
+    expect(deriveReceptionInsuranceView(cards, 'a', 'b')).toMatchObject({ selected: { id: 'b' }, isSuggested: false });
+    expect(deriveReceptionInsuranceView(cards, 'a', null)).toMatchObject({ selected: null, isSuggested: false });
+  });
+
+  it('lựa chọn cũ trỏ thẻ không còn trong danh sách → coi như không dùng thẻ', () => {
+    expect(deriveReceptionInsuranceView([card('a', 'VALID')], 'a', 'đã-xoá')).toMatchObject({ selected: null });
   });
 });

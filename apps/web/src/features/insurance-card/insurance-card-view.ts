@@ -78,3 +78,28 @@ export function formatWarningMessage(normalized: string): string {
 
 /** Mức hưởng chọn nhanh (mockup câu b) — ngoài danh sách là "Khác" (nhập số 0–100). */
 export const QUICK_BENEFIT_RATES = [100, 95, 80] as const;
+
+/** Phần của thẻ mà khối chọn thẻ ở Tiếp nhận cần — nhận cả `InsuranceCard` đầy đủ. */
+export interface ReceptionCardLike {
+  id: string;
+  validity: InsuranceCardValidity;
+  validTo: string | null;
+}
+
+/**
+ * Cách khối "Thẻ bảo hiểm y tế" ở Tiếp nhận hiện (mockup màn 3, 4 trạng thái): chưa có thẻ nào; chỉ có thẻ KHÔNG dùng được (hết hạn / chưa hiệu lực → lượt khám
+ * tự chi trả, kèm dải hổ phách); hoặc có thẻ để chọn (còn hiệu lực + chưa rõ hạn). `choice`: `undefined` = theo gợi ý của máy chủ, `null` = "Không dùng thẻ", uuid = thẻ đó.
+ */
+export type ReceptionInsuranceView<C extends ReceptionCardLike> =
+  | { mode: 'NO_CARDS' }
+  | { mode: 'INELIGIBLE'; card: C }
+  | { mode: 'PICK'; picks: C[]; selected: C | null; isSuggested: boolean };
+
+export function deriveReceptionInsuranceView<C extends ReceptionCardLike>(cards: C[], suggestedCardId: string | null, choice: string | null | undefined): ReceptionInsuranceView<C> {
+  if (cards.length === 0) return { mode: 'NO_CARDS' };
+  const picks = cards.filter((c) => c.validity === 'VALID' || c.validity === 'UNKNOWN_EXPIRY');
+  if (picks.length === 0) return { mode: 'INELIGIBLE', card: cards.find((c) => c.validity === 'EXPIRED') ?? cards[0]! };
+  const effectiveId = choice === undefined ? suggestedCardId : choice;
+  const selected = effectiveId === null ? null : (picks.find((c) => c.id === effectiveId) ?? null);
+  return { mode: 'PICK', picks, selected, isSuggested: choice === undefined && selected !== null };
+}

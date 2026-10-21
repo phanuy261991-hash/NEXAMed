@@ -37,6 +37,7 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useOnlineRetry } from '../../shared/hooks/useOnlineRetry';
 import { formatClockTime } from '../../shared/format/time';
 import { ActionMenu } from '../../shared/ui/ActionMenu';
+import { InsuranceBadge } from '../insurance-card/InsuranceBadge';
 import { Button } from '../../shared/ui/Button';
 import { BreakGlassDialog } from '../../shared/ui/BreakGlassDialog';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
@@ -830,7 +831,7 @@ export function EncounterConsultationPage() {
     );
   }
 
-  const { encounter, patient, vitalSigns, history, prescription } = query.data;
+  const { encounter, patient, vitalSigns, history, prescription, insurance } = query.data;
   const bmi =
     vitalSigns?.weightGram && vitalSigns.heightMm
       ? vitalSigns.weightGram / 1000 / (vitalSigns.heightMm / 1000) ** 2
@@ -862,6 +863,7 @@ export function EncounterConsultationPage() {
             <span className="whitespace-nowrap rounded-full bg-brand-teal-tint px-2.5 py-0.5 text-[11px] font-semibold text-brand-teal-active">
               {encounter.encounterNo}
             </span>
+            <InsuranceBadge badge={insurance} cardNo={insurance?.cardNo} />
             {isCompleted && (
               <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">
                 <CheckCircle size={12} weight="fill" aria-hidden="true" />

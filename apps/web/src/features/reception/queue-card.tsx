@@ -1,6 +1,7 @@
 import { CalendarCheck, Clock, Flask, Microscope, PlusCircle, Play, Star, Warning, XCircle, type Icon } from '@phosphor-icons/react';
 import type { DoctorAvailabilityStatus, ReceptionListItem } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
+import { InsuranceBadge } from '../insurance-card/InsuranceBadge';
 
 /**
  * Badge trạng thái ca trực (`doctor-availability`, #094) — dùng chung giữa `ReassignDoctorDialog.tsx`
@@ -152,6 +153,7 @@ export function WaitingCard({
         <div className="min-w-0 truncate">
           <span className="text-[15px] font-semibold text-slate-900">{item.fullName}</span>
           <span className="ml-1.5 text-[11px] font-semibold text-slate-500">{item.patientCode}</span>
+          <span className="ml-1.5"><InsuranceBadge badge={item.insurance} /></span>
         </div>
         {criticalState === 'overdue' && (
           <span className="badge-urgent-pulse flex flex-shrink-0 items-center gap-1 rounded-full bg-rose-600 px-2.5 py-1 text-[11px] font-semibold text-white">

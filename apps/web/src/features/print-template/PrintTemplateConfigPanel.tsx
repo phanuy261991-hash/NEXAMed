@@ -6,6 +6,8 @@ import { useAuthStore } from '../auth/auth.store';
 import { showBranchInfo } from '../branch/branch-visibility';
 import { Textarea } from '../../shared/ui/Textarea';
 import { ALL_ON_PRESCRIPTION_INFO } from '../encounter/prescription-print-fields';
+import { useInsuranceEnabledQuery } from '../clinic/clinic.queries';
+import { DEFAULT_INSURANCE_PRINT, INSURANCE_PRINT_DOCUMENT_TYPES } from '../insurance-card/insurance-print';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -47,6 +49,47 @@ const RX_CONTROLLED_TOGGLES: RxToggle[] = [
   { key: 'showReceiverBox', label: 'Ô người nhận thuốc', hint: 'Ký, ghi rõ họ tên và số CCCD/CMND của người nhận thuốc.', tag: 'Đơn N · H' },
 ];
 
+/**
+ * Ô tích "Số thẻ BHYT" + lựa chọn khi lượt khám tự chi trả (S2-04, docs/DECISIONS.md #243, mockup màn 5). Khoá mờ khi công tắc tổng "Áp dụng BHYT" tắt.
+ * Dùng chung cho đơn thuốc (nằm cạnh CCCD), phiếu thu và bệnh án PDF.
+ */
+function InsurancePrintRow({
+  idPrefix,
+  value,
+  onChange,
+  enabled,
+}: {
+  idPrefix: string;
+  value: NonNullable<PrintTemplateConfig['insurance']>;
+  onChange: (value: NonNullable<PrintTemplateConfig['insurance']>) => void;
+  enabled: boolean;
+}) {
+  return (
+    <div className={enabled ? undefined : 'opacity-60'}>
+      <Check id={`${idPrefix}-show`} label="Số thẻ BHYT" checked={value.show} onChange={(v) => onChange({ ...value, show: v })} disabled={!enabled} />
+      <p className="ml-6 mt-0.5 text-[11px] leading-snug text-slate-500">
+        {enabled
+          ? 'Lấy từ thẻ đã chụp vào lượt khám lúc Tiếp nhận (số thẻ, hiệu lực, mức hưởng, nơi đăng ký KCB).'
+          : 'Đang khoá vì phòng khám chưa bật "Áp dụng BHYT" (Cấu hình phòng khám → Thẻ BHYT).'}
+      </p>
+      {value.show && enabled && (
+        <div className="mb-1 ml-6 mt-1.5 flex flex-wrap items-center gap-2 text-[12px] text-slate-600">
+          <label htmlFor={`${idPrefix}-whenSelfPay`}>Khi lượt khám tự chi trả:</label>
+          <select
+            id={`${idPrefix}-whenSelfPay`}
+            value={value.whenSelfPay}
+            onChange={(e) => onChange({ ...value, whenSelfPay: e.target.value === 'selfPay' ? 'selfPay' : 'hide' })}
+            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[12px] font-semibold text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          >
+            <option value="hide">Ẩn cả dòng</option>
+            <option value="selfPay">In &quot;Tự chi trả&quot;</option>
+          </select>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RxToggleRow({ toggle, checked, onChange }: { toggle: RxToggle; checked: boolean; onChange: (value: boolean) => void }) {
   return (
     <div className="border-b border-slate-100 py-2 first:pt-0 last:border-b-0 last:pb-0">
@@ -85,10 +128,10 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Check({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (value: boolean) => void }) {
+function Check({ id, label, checked, onChange, disabled }: { id: string; label: string; checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
   return (
     <label htmlFor={id} className="flex items-center gap-2 text-sm text-slate-700">
-      <input id={id} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+      <input id={id} type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-blue-600" />
       {label}
     </label>
   );
@@ -171,6 +214,11 @@ export function PrintTemplateConfigPanel({
   const setRxInfo = (patch: Partial<PrescriptionInfoConfig>) => {
     if (rxInfo) onConfigChange({ ...config, prescriptionInfo: { ...rxInfo, ...patch } });
   };
+  // Dòng "Số thẻ BHYT" (S2-04): chỉ đơn thuốc/phiếu thu/bệnh án PDF; khoá khi công tắc tổng "Áp dụng BHYT" tắt (chưa tải xong coi như tắt).
+  const insuranceEnabled = useInsuranceEnabledQuery().data?.enabled === true;
+  const hasInsuranceRow = INSURANCE_PRINT_DOCUMENT_TYPES.includes(documentType as (typeof INSURANCE_PRINT_DOCUMENT_TYPES)[number]);
+  const insurancePrint = config.insurance ?? DEFAULT_INSURANCE_PRINT;
+  const setInsurancePrint = (value: NonNullable<PrintTemplateConfig['insurance']>) => onConfigChange({ ...config, insurance: value });
   const setHeader = (key: HeaderKey, value: boolean) => onConfigChange({ ...config, header: { ...config.header, [key]: value } });
   const setMargin = (key: MarginKey, value: number) => onConfigChange({ ...config, margins: { ...config.margins, [key]: value } });
   const setCopyCount = (count: number) => onConfigChange({ ...config, copies: { ...config.copies, count } });
@@ -271,6 +319,11 @@ export function PrintTemplateConfigPanel({
                     </select>
                   </div>
                 )}
+                {toggle.key === 'showNationalId' && hasInsuranceRow && (
+                  <div className="border-b border-slate-100 py-2">
+                    <InsurancePrintRow idPrefix="pt-insurance" value={insurancePrint} onChange={setInsurancePrint} enabled={insuranceEnabled} />
+                  </div>
+                )}
               </div>
             ))}
           </Block>
@@ -283,8 +336,14 @@ export function PrintTemplateConfigPanel({
               <span className="font-semibold text-slate-700">Số bản:</span> đơn “N” và “H” theo quy định in 03 bản. Mục “Số liên” ở phần Cuối trang vẫn do phòng khám chọn; không tự đổi.
             </p>
           </Block>
-          <p className="px-1 text-[11px] leading-snug text-slate-400">Tiêu đề đơn “N” và “H” được cố định theo mẫu, bản mẫu in không đổi được. Số thẻ BHYT sẽ làm cùng việc lưu thẻ BHYT sau này.</p>
+          <p className="px-1 text-[11px] leading-snug text-slate-400">Tiêu đề đơn “N” và “H” được cố định theo mẫu, bản mẫu in không đổi được.</p>
         </>
+      )}
+
+      {hasInsuranceRow && !rxInfo && (
+        <Block title="Thông tin bảo hiểm y tế">
+          <InsurancePrintRow idPrefix="pt-insurance" value={insurancePrint} onChange={setInsurancePrint} enabled={insuranceEnabled} />
+        </Block>
       )}
 
       {notice && currentNotice && (

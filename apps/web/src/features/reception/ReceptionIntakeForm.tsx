@@ -36,6 +36,7 @@ import {
 import { patientDetailToFormValues, toCreatePatientRequest, toUpdatePatientRequest } from '../patient/patient-form.utils';
 import { EMPTY_PATIENT_FORM, PatientFormFields, type PatientFormValues } from '../patient/PatientFormFields';
 import { PatientMatchDialog } from '../patient/PatientMatchDialog';
+import { ReceptionInsuranceBlock } from '../insurance-card/ReceptionInsuranceBlock';
 import { PatientSearchDialog } from './PatientSearchDialog';
 import { resolvePrices } from '../pricing/pricing.api';
 import { useResolvedPriceQuery } from '../pricing/pricing.queries';
@@ -144,6 +145,8 @@ export function ReceptionIntakeForm({
   /** Popup "Tìm kiếm khách hàng" (Sprint 5) — icon cạnh ô Mã bệnh nhân, chọn xong tái dùng đúng pipeline `pendingMatchId` ở trên. */
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [duplicates, setDuplicates] = useState<PatientSummary[] | null>(null);
+  /** Thẻ BHYT dùng cho lượt khám (S2-04, #243): `undefined` = máy chủ tự gợi ý, `null` = "Không dùng thẻ", uuid = thẻ đó. Đổi hồ sơ khớp thì quay về gợi ý. */
+  const [insuranceCardChoice, setInsuranceCardChoice] = useState<string | null | undefined>(undefined);
   /** Đóng popup "trùng SĐT"/"trùng CCCD" thì không tự bật lại cho tới khi giá trị field đó đổi khác. */
   const [phoneMatchDismissed, setPhoneMatchDismissed] = useState(false);
   const [nationalIdMatchDismissed, setNationalIdMatchDismissed] = useState(false);
@@ -250,6 +253,10 @@ export function ReceptionIntakeForm({
   const examTypeQuery = useReferenceCatalogQuery('EXAM_TYPE');
   const registerMutation = useRegisterReceptionMutation();
   const checkInMutation = useCheckInMutation();
+  const matchedPatientId = matchedPatient?.id;
+  useEffect(() => {
+    setInsuranceCardChoice(undefined);
+  }, [matchedPatientId]);
   const createPatientMutation = useCreatePatientMutation();
   const updatePatientMutation = useUpdatePatientMutation(matchedPatient?.id ?? '');
   const submitting =
@@ -555,6 +562,7 @@ export function ReceptionIntakeForm({
         examFormCode,
         isPriority,
         priorityReasonCode: isPriority && priorityReasonCode !== '' ? priorityReasonCode : undefined,
+        insuranceCardId: insuranceCardChoice,
         // Tắt tính năng ở cấp phòng khám thì LUÔN gửi false, bất kể state cục bộ còn giữ gì (checkbox
         // đã ẩn khỏi giao diện lúc đó — xem khối "Chỉ định dịch vụ khám" bên dưới).
         allowsDeferredPayment: deferredPaymentFeatureEnabled && allowsDeferredPayment,
@@ -658,6 +666,8 @@ export function ReceptionIntakeForm({
           }}
         />
       )}
+
+      <ReceptionInsuranceBlock patient={matchedPatient} choice={insuranceCardChoice} onChoiceChange={setInsuranceCardChoice} />
 
       <div className={sectionBoxClassName}>
         <span className={sectionBadgeClassName}>Thông tin tiếp nhận</span>

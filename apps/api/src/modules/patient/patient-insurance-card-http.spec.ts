@@ -172,6 +172,30 @@ describe('HTTP e2e — thẻ BHYT (S2-04)', () => {
       expect(row.cardNoHash.length).toBeGreaterThan(20);
     });
 
+    it('mã băm số thẻ KHÔNG trùng mã băm CCCD dù hai số giống hệt nhau (tiền tố riêng)', async () => {
+      const nationalId = randomNationalId();
+      const patient = await createPatient(receptionistToken, { nationalId });
+      const res = await addCard(receptionistToken, patient.id, { cardNo: nationalId });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      const card = await privileged.insuranceCard.findUniqueOrThrow({ where: { id: res.body.data.card.id }, select: { cardNoHash: true } });
+      const patientRow = await privileged.patient.findUniqueOrThrow({ where: { id: patient.id }, select: { nationalIdHash: true } });
+      expect(card.cardNoHash).not.toBe(patientRow.nationalIdHash);
+    });
+
+    it('nhật ký KHÔNG ghi số thẻ: thêm, sửa, xoá chỉ ghi id bệnh nhân/kiểu thẻ/tên trường đổi', async () => {
+      const patient = await createPatient(receptionistToken);
+      const card = (await addCard(receptionistToken, patient.id, { cardNo: NEW_CARD })).body.data.card;
+      await http().patch(`/api/v1/patients/${patient.id}/insurance-cards/${card.id}`).set(authed(receptionistToken)).send({ version: 1, cardNo: OLD_CARD });
+      await http().delete(`/api/v1/patients/${patient.id}/insurance-cards/${card.id}?version=2`).set(authed(receptionistToken));
+      const rows = await privileged.auditLog.findMany({ where: { tenantId: fixture.tenantA.id, entityId: card.id, entityType: 'insurance_card' } });
+      expect(rows.map((r) => r.action).sort()).toEqual(['insurance_card.created', 'insurance_card.removed', 'insurance_card.updated']);
+      for (const row of rows) {
+        const text = JSON.stringify(row.afterJson ?? {}) + JSON.stringify(row.beforeJson ?? {});
+        expect(text).not.toContain(NEW_CARD);
+        expect(text).not.toContain(OLD_CARD);
+      }
+    });
+
     it('thẻ cũ 15 ký tự chữ+số: chữ thường tự đổi sang chữ hoa, nhận diện OLD_15', async () => {
       const patient = await createPatient(receptionistToken);
       const res = await addCard(receptionistToken, patient.id, { cardNo: 'dn4797915123456', validFrom: '2026-01-01', validTo: '2099-12-31' });
@@ -490,6 +514,15 @@ describe('HTTP e2e — thẻ BHYT (S2-04)', () => {
         const other = await createPatient(receptionistToken);
         const foreign = await register(receptionistToken, other.id, { insuranceCardId: expired.id });
         expect(foreign.status).toBe(404);
+      });
+
+      it('thẻ CHƯA đến ngày hiệu lực (kể cả lễ tân chọn tay) → NOT_STARTED, không chụp vào BHYT', async () => {
+        const patient = await createPatient(receptionistToken);
+        const future = (await addCard(receptionistToken, patient.id, { cardNo: OLD_CARD, validFrom: '2099-01-01', validTo: '2099-12-31' })).body.data.card;
+        expect(future.validity).toBe('NOT_STARTED');
+        expect(await snapshotOf((await register(receptionistToken, patient.id)).body.data.id)).toEqual({ selfPay: true, reason: 'NOT_STARTED' });
+        const manual = await register(receptionistToken, patient.id, { insuranceCardId: future.id });
+        expect(await snapshotOf(manual.body.data.id)).toEqual({ selfPay: true, reason: 'NOT_STARTED' });
       });
 
       it('chọn tay thẻ "chưa rõ hạn" cho lượt khám → chụp bình thường (BHYT)', async () => {

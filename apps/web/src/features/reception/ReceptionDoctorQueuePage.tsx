@@ -20,6 +20,7 @@ import {
 import type { ReceptionListItem } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { InsuranceBadge } from '../insurance-card/InsuranceBadge';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ReleaseEncounterDialog } from '../../shared/ui/ReleaseEncounterDialog';
@@ -286,6 +287,7 @@ export function ReceptionDoctorQueuePage() {
                     <div className="truncate text-[15px] font-semibold text-slate-900">{item.fullName}</div>
                     <div className="text-[11.5px] font-semibold text-slate-500">
                       {item.patientCode} · Bắt đầu lúc {item.startedAt ? formatTime(item.startedAt) : '—'}
+                      <span className="ml-1.5"><InsuranceBadge badge={item.insurance} /></span>
                     </div>
                   </div>
                   {item.startedAt && (

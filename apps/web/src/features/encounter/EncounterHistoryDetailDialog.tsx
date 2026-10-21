@@ -6,6 +6,7 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { Button } from '../../shared/ui/Button';
 import { PrescriptionKindChip } from '../../shared/ui/PrescriptionKindChip';
 import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCode';
+import { EncounterInsuranceSection } from '../insurance-card/EncounterInsuranceSection';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { ENCOUNTER_STATUS_META } from '../reception/encounter-status';
 import { TREATMENT_DIRECTION_LABEL } from './treatment-plan';
@@ -125,7 +126,7 @@ function DialogContent({
   doctorName: string | null;
   receptionTypeName: string | null;
 }) {
-  const { encounter, vitalSigns, diagnoses, clinicalNote, prescription } = data;
+  const { encounter, vitalSigns, diagnoses, clinicalNote, prescription, insurance } = data;
   const statusMeta = ENCOUNTER_STATUS_META[encounter.status];
   const signedAt = clinicalNote.reasonForVisit?.signedAt ?? null;
   const amended = Boolean(clinicalNote.reasonForVisit?.amendmentReason);
@@ -202,6 +203,8 @@ function DialogContent({
               <p className="text-xs text-slate-400">Chưa ghi nhận sinh hiệu ở đợt khám này.</p>
             )}
           </div>
+
+          <EncounterInsuranceSection insurance={insurance} />
 
           <div className="relative rounded-lg border border-slate-200 bg-white p-5 pt-8 shadow-sm">
             <span className="absolute -top-3 left-4 flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">

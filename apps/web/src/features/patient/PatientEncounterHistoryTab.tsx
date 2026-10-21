@@ -60,10 +60,10 @@ const COLUMNS: ColumnDef[] = [
   { key: 'followup', label: 'Hẹn tái khám', width: 140, align: 'center', needs: 'clinical', group: GROUP_CLINICAL },
   { key: 'rx', label: 'Đơn thuốc', width: 130, align: 'center', needs: 'clinical', group: GROUP_CLINICAL, defaultVisible: true },
   { key: 'cls', label: 'Cận lâm sàng', width: 140, align: 'center', needs: 'clinical', group: GROUP_CLINICAL, defaultVisible: true },
-  { key: 'cost', label: 'Tổng chi phí', width: 130, align: 'center', needs: 'billing', group: GROUP_COST, defaultVisible: true },
+  { key: 'cost', label: 'Tổng chi phí', width: 150, align: 'center', needs: 'billing', group: GROUP_COST, defaultVisible: true },
   { key: 'paid', label: 'Thu tiền', width: 110, align: 'center', needs: 'billing', group: GROUP_COST, defaultVisible: true },
   { key: 'status', label: 'Trạng thái', width: 120, align: 'center', needs: 'any', group: GROUP_INFO },
-  { key: 'action', label: 'Thao tác', width: 90, align: 'center', needs: 'clinical', fixed: true, sticky: 'right' },
+  { key: 'action', label: 'Thao tác', width: 112, align: 'center', needs: 'clinical', fixed: true, sticky: 'right' },
 ];
 
 const DASH = <span className="text-slate-400">—</span>;

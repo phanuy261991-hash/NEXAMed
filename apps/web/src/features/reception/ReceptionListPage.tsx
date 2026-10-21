@@ -22,6 +22,7 @@ import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
+import { InsuranceBadge } from '../insurance-card/InsuranceBadge';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useRowSelection } from '../../shared/hooks/useRowSelection';
@@ -366,7 +367,10 @@ export function ReceptionListPage() {
                                 />
                               </div>
                               <div role="cell" className="min-w-0 truncate">
-                                <div className={`truncate font-semibold ${dimmed ? 'text-slate-600' : 'text-slate-800'}`}>{item.encounterNo}</div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`truncate font-semibold ${dimmed ? 'text-slate-600' : 'text-slate-800'}`}>{item.encounterNo}</span>
+                                  <span className="flex-none"><InsuranceBadge badge={item.insurance} /></span>
+                                </div>
                                 <div className={`truncate text-[13px] font-semibold ${dimmed ? 'text-slate-500' : 'text-slate-600'}`}>
                                   {item.fullName} <span className="font-medium text-slate-400">· {item.dob.slice(0, 4)} · {computeAgeLabel(item.dob)}</span>
                                 </div>
