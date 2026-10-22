@@ -72,6 +72,7 @@ const PUBLIC_ROUTES = new Set<string>([
   'PATCH /api/v1/platform/tenants/:id',
   'POST /api/v1/platform/tenants/:id/suspend',
   'POST /api/v1/platform/tenants/:id/unsuspend',
+  'POST /api/v1/platform/tenants/:id/change-code',
   'POST /api/v1/platform/tenants/:id/reset-admin-password',
   'GET /api/v1/platform/audit-logs',
 ]);

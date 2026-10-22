@@ -71,3 +71,21 @@ export class TenantAdminNotFoundError extends DomainError {
     super('Công ty này chưa có tài khoản quản trị đang hoạt động.');
   }
 }
+
+/** Mã mới trùng mã hiện tại của chính công ty — đổi mã phải ra một mã KHÁC (docs/DECISIONS.md #245). */
+export class TenantCodeUnchangedError extends DomainError {
+  readonly code = 'PLATFORM_TENANT_CODE_UNCHANGED';
+
+  constructor() {
+    super('Mã mới trùng với mã hiện tại của công ty.');
+  }
+}
+
+/** Mã đang được "giữ chỗ" vì một công ty vừa đổi đi khỏi mã đó (chưa hết thời gian giữ lối tắt) — chưa cấp lại cho ai, tránh chiếm đúng tên cũ để dụ khách (docs/DECISIONS.md #245). */
+export class TenantCodeReservedError extends DomainError {
+  readonly code = 'PLATFORM_TENANT_CODE_RESERVED';
+
+  constructor(until: Date) {
+    super(`Mã này vừa được một công ty dùng trước đó và đang được giữ chỗ đến ${until.toISOString().slice(0, 10)}, hãy chọn mã khác.`);
+  }
+}

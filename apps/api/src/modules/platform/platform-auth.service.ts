@@ -10,7 +10,7 @@ import type { PlatformOperator } from '@prisma/client';
 import type { Env } from '../../config/env.schema';
 import type { RequestMeta } from '../../common/request-meta';
 import { decryptPii } from '../../infrastructure/crypto/pii-encryption';
-import { verifyTotp } from '../../infrastructure/crypto/totp';
+import { matchTotpStep } from '../../infrastructure/crypto/totp';
 import { PlatformAuditRepository } from './platform-audit.repository';
 import { PlatformOperatorRepository } from './platform-operator.repository';
 
@@ -57,12 +57,21 @@ export class PlatformAuthService {
     const now = new Date();
     if (isAccountLocked(operator, now)) throw new AccountLockedError(operator.lockedUntil!, now);
     const secret = decryptPii(Buffer.from(operator.totpSecretEnc, 'base64'), this.config.getOrThrow('ENCRYPTION_KEY', { infer: true }));
-    if (!verifyTotp(secret, dto.code, now.getTime())) {
+    const step = matchTotpStep(secret, dto.code, now.getTime());
+    if (step === null) {
       const failed = await this.registerFailure(operator, now, meta);
       if (failed.lockedUntil) throw new AccountLockedError(failed.lockedUntil, now);
       throw new PlatformOtpInvalidError();
     }
-    await this.operators.recordSuccessfulLogin(operator, now);
+    // Mỗi mã chỉ dùng MỘT lần (RFC 6238 mục 5.2, docs/DECISIONS.md #244): mã đúng nhưng bước thời gian đã được dùng (mã bị lộ rồi dùng lại, hoặc hai yêu cầu cùng một mã chạy song song)
+    // bị từ chối với CÙNG thông báo như mã sai — không cho kẻ tấn công biết mã đã đúng. Tính như một lần sai để cũng bị khoá tạm khi thử dồn dập.
+    const consumed = await this.operators.consumeOtpStepAndRecordLogin(operator.id, step, now);
+    if (!consumed) {
+      await this.audit.append({ operatorId: operator.id, action: 'platform.otp_replay_blocked', ip: meta.ip, userAgent: meta.userAgent });
+      const failed = await this.registerFailure(operator, now, meta);
+      if (failed.lockedUntil) throw new AccountLockedError(failed.lockedUntil, now);
+      throw new PlatformOtpInvalidError();
+    }
     await this.audit.append({ operatorId: operator.id, action: 'platform.login', ip: meta.ip, userAgent: meta.userAgent });
     return { accessToken: this.sign(operator.id, 'platform_access', ACCESS_TOKEN_TTL_SECONDS), expiresIn: ACCESS_TOKEN_TTL_SECONDS, operator: toDto(operator) };
   }

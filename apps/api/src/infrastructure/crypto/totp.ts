@@ -58,20 +58,32 @@ export function totpAt(secretBase32: string, timeMs: number, digits = DIGITS): s
   return String(binary % 10 ** digits).padStart(digits, '0');
 }
 
+/** Số thứ tự bước 30 giây của một thời điểm (`timeMs` mili-giây) — khoá để biết một mã đã dùng chưa. */
+export function totpStepAt(timeMs: number): number {
+  return Math.floor(timeMs / 1000 / STEP_SECONDS);
+}
+
 /**
- * Kiểm mã người dùng nhập, chấp nhận lệch ±`window` bước (mặc định ±1 = ±30 giây, bù đồng hồ lệch). So sánh thời gian hằng số.
- * Trả `true` nếu khớp một bước nào đó trong cửa sổ.
+ * Tìm bước thời gian mà mã người dùng nhập khớp, chấp nhận lệch ±`window` bước (mặc định ±1 = ±30 giây, bù đồng hồ lệch). So sánh thời gian hằng số.
+ * Trả SỐ THỨ TỰ BƯỚC khớp (xem `totpStepAt`), hoặc `null` nếu không khớp bước nào. Nơi gọi PHẢI ghi lại bước đã dùng và từ chối bước không lớn hơn bước đã ghi
+ * (RFC 6238 mục 5.2) — nếu không thì một mã bị lộ dùng lại được suốt cửa sổ ~90 giây (docs/DECISIONS.md #244).
  */
-export function verifyTotp(secretBase32: string, code: string, nowMs: number, window = 1): boolean {
-  if (!/^\d{6}$/.test(code)) return false;
+export function matchTotpStep(secretBase32: string, code: string, nowMs: number, window = 1): number | null {
+  if (!/^\d{6}$/.test(code)) return null;
   const given = Buffer.from(code);
-  let ok = false;
-  for (let step = -window; step <= window; step += 1) {
-    const expected = Buffer.from(totpAt(secretBase32, nowMs + step * STEP_SECONDS * 1000));
+  let matched: number | null = null;
+  for (let offset = -window; offset <= window; offset += 1) {
+    const at = nowMs + offset * STEP_SECONDS * 1000;
+    const expected = Buffer.from(totpAt(secretBase32, at));
     // Không dừng sớm khi khớp để thời gian xử lý không lộ bước nào đúng.
-    if (timingSafeEqual(given, expected)) ok = true;
+    if (timingSafeEqual(given, expected)) matched = totpStepAt(at);
   }
-  return ok;
+  return matched;
+}
+
+/** Chỉ kiểm mã đúng/sai, KHÔNG chống dùng lại — chỉ dùng cho kiểm tra không có tác dụng đăng nhập (test, công cụ). Đăng nhập phải dùng `matchTotpStep` + ghi bước đã dùng. */
+export function verifyTotp(secretBase32: string, code: string, nowMs: number, window = 1): boolean {
+  return matchTotpStep(secretBase32, code, nowMs, window) !== null;
 }
 
 /** Địa chỉ `otpauth://` để quét mã QR hoặc nhập vào ứng dụng xác thực. */

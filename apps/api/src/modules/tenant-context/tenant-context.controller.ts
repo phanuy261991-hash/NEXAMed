@@ -20,7 +20,12 @@ export class TenantContextController {
     const host = this.hostService.resolveRequestHost(req);
     if (host.kind === 'platform') return { kind: 'platform' };
     const tenant = await this.hostService.resolveTenant(req);
-    if (!tenant) throw new TenantNotFoundError();
+    if (!tenant) {
+      // Mã cũ còn trong thời gian giữ lối tắt sau khi công ty đổi mã (#245): báo địa chỉ mới để web chuyển trình duyệt sang.
+      const loginUrl = await this.hostService.resolveMovedLoginUrl(req);
+      if (loginUrl) return { kind: 'moved', loginUrl };
+      throw new TenantNotFoundError();
+    }
     return { kind: 'tenant', tenantId: tenant.tenantId, name: tenant.name, code: tenant.code, suspended: tenant.suspended };
   }
 }

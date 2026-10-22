@@ -434,6 +434,8 @@ Mẫu sai đã gặp 2 lần liên tiếp ở `WaitingCard`/`InProgressCard` (`a
 | Số liệu nổi bật (KPI, tổng tiền) | `text-xl`–`text-2xl` + `tabular-nums` | semibold | `text-slate-900` |
 | Đoạn mô tả, ghi chú, trợ giúp | `text-sm`/`text-xs` | normal | `text-slate-600`/`text-slate-500` |
 
+**ĐÃ CHỐT ĐỔI (22/10/2026, `docs/DECISIONS.md` #246 — chủ dự án: "nét chữ ô nhập vẫn đậm, nhìn vỡ nét")**: hàng "Giá trị trong ô nhập" ở bảng trên và mục 4.1c (`text-[15px] font-semibold`) **chuyển thành `font-normal` (400)** cho MỌI ô nhập (nhãn trường vẫn semibold). Đo thật: 400 nét mảnh và sắc hơn rõ rệt. **UI MỚI viết từ giờ dùng `font-normal` cho giá trị ô nhập.** Các ô cũ (71 file/130 chỗ) đang được chuyển dần — kế hoạch ở `docs/handoffs/HANDOFF-HieuNangBaoMat-DoiMaTenMien-NetChuOCuoi-2026-10-22.md` mục 2; khi xong thì sửa luôn bảng và 4.1c cho khớp và bỏ ghi chú này.
+
 **Lưu ý hiển thị thật (phát hiện 16/10/2026, đo bằng Chrome thật trên Windows)**: font hệ thống Segoe UI KHÔNG có bậc 500, nên `font-medium` (500) hiển thị GIỐNG HỆT `font-semibold` (600) — chỉ còn 2 mức nhìn thấy (400 và ≥500). Vì thế **chữ trong ô bảng danh sách dùng 400** (tên, mã, SĐT, ngày...; `app/index.css` có luật `@media screen` hạ mọi `font-medium/semibold` màu slate/blue trong `[role=cell]`/`td` về 400, trừ số liệu `tabular-nums`, badge `rounded`, chữ `uppercase`, `button`), phân cấp bằng MÀU (tên `text-slate-900`, giá trị thường `text-slate-600`) và cỡ chữ; số tiền giữ semibold. Chủ dự án: "tên trong các danh sách quá đậm nét".
 
 **Thẻ KPI** (vd `ReceptionListPage.tsx`): nền trắng + viền `slate-200` mảnh, KHÔNG đổ bóng, KHÔNG nền pha màu mờ (`bg-*-50/30`); màu chỉ ở ô biểu tượng nền ĐẶC (`bg-amber-500`... chữ trắng), con số `text-slate-900`.

@@ -14,7 +14,7 @@ import { PrismaClient } from '@prisma/client';
 // `reference_catalog`, `allergen`, `allergen_group`, `global_code_sequence` KHÔNG còn ở đây: từ docs/DECISIONS.md #230 danh mục riêng
 // theo tenant (mỗi phòng khám/công ty một bản).
 // Cộng thêm 2 bảng của khu quản trị nền tảng SaaS (#237): người vận hành không thuộc công ty nào, nhật ký vận hành không theo công ty.
-const SHARED_TABLES = ['icd10_catalog', 'permission', 'platform_audit_log', 'platform_operator', 'province', 'tenant', 'ward'];
+const SHARED_TABLES = ['icd10_catalog', 'permission', 'platform_audit_log', 'platform_operator', 'province', 'tenant', 'tenant_code_alias', 'ward'];
 
 describe('Cô lập tenant — kiểm tra toàn lược đồ', () => {
   let prisma: PrismaClient;

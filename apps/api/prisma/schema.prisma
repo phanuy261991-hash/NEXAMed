@@ -79,6 +79,7 @@ model Tenant {
 
   tenantSettings              TenantSetting[]
   branches                    Branch[]
+  codeAliases                 TenantCodeAlias[]
   userBranches                UserBranch[]
   floors                      Floor[]
   referenceCatalogs           ReferenceCatalog[]
@@ -4827,6 +4828,8 @@ model PlatformOperator {
   lastFailedLoginAt DateTime? @map("last_failed_login_at") @db.Timestamptz(6)
   lockedUntil       DateTime? @map("locked_until") @db.Timestamptz(6)
   lastLoginAt       DateTime? @map("last_login_at") @db.Timestamptz(6)
+  // Bước thời gian (30 giây) của mã OTP đã dùng thành công gần nhất — chống dùng lại mã (RFC 6238 §5.2, #244).
+  lastTotpStep      BigInt?   @map("last_totp_step")
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   version           Int       @default(1)
@@ -5112,4 +5115,27 @@ model PrescriptionSubmission {
 
   @@unique([tenantId, id])
   @@map("prescription_submission")
+}
+
+// Lối tắt mã công ty cũ (docs/DECISIONS.md #245): sau khi người vận hành đổi mã tên miền, mã cũ còn dẫn sang mã mới đến `expires_at` và không được cấp lại cho công ty khác. Bảng nền tảng — không RLS
+// (tra theo tên miền TRƯỚC khi biết công ty), chỉ thêm không sửa.
+model TenantCodeAlias {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  targetTenantId String @map("target_tenant_id") @db.Uuid
+  oldCode   String    @map("old_code")
+  newCode   String    @map("new_code")
+  reason    String
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version   Int       @default(1)
+  createdBy String    @map("created_by") @db.Uuid
+  updatedBy String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [targetTenantId], references: [id])
+
+  @@index([oldCode, expiresAt(sort: Desc)])
+  @@index([targetTenantId])
+  @@map("tenant_code_alias")
 }

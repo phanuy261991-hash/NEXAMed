@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Que
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 import {
+  changePlatformTenantCodeRequestSchema,
   createPlatformTenantRequestSchema,
   listPlatformAuditQuerySchema,
   listPlatformTenantsQuerySchema,
@@ -88,6 +89,13 @@ export class PlatformTenantController {
   @HttpCode(200)
   async unsuspend(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown, @Req() req: Request) {
     return this.tenants.unsuspend(id, unsuspendPlatformTenantRequestSchema.parse(body), req.platformOperator!.id, extractRequestMeta(req));
+  }
+
+  /** Đổi MÃ công ty (tên miền phụ) — docs/DECISIONS.md #245. Mã cũ giữ làm lối tắt chuyển hướng 90 ngày, mọi phiên đăng nhập của công ty bị thu hồi. */
+  @Post('tenants/:id/change-code')
+  @HttpCode(200)
+  async changeCode(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown, @Req() req: Request) {
+    return this.tenants.changeCode(id, changePlatformTenantCodeRequestSchema.parse(body), req.platformOperator!.id, extractRequestMeta(req));
   }
 
   @Post('tenants/:id/reset-admin-password')

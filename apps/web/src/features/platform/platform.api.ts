@@ -1,4 +1,5 @@
 import type {
+  ChangePlatformTenantCodeResponse,
   CreatePlatformTenantRequest,
   CreatePlatformTenantResponse,
   ListPlatformAuditResponse,
@@ -66,6 +67,8 @@ export const createTenant = (body: CreatePlatformTenantRequest) => call<CreatePl
 export const updateTenant = (id: string, body: UpdatePlatformTenantRequest) => call<PlatformTenantDetail>('PATCH', `/platform/tenants/${id}`, body);
 export const suspendTenant = (id: string, version: number, reason: string) => call<PlatformTenantDetail>('POST', `/platform/tenants/${id}/suspend`, { version, reason });
 export const unsuspendTenant = (id: string, version: number) => call<PlatformTenantDetail>('POST', `/platform/tenants/${id}/unsuspend`, { version });
+export const changeTenantCode = (id: string, version: number, newCode: string, reason: string) =>
+  call<ChangePlatformTenantCodeResponse>('POST', `/platform/tenants/${id}/change-code`, { version, newCode, reason });
 export const resetTenantAdminPassword = (id: string) => call<ResetTenantAdminPasswordResponse>('POST', `/platform/tenants/${id}/reset-admin-password`);
 
 export function listAuditLogs(params: { tenantId?: string; cursor?: string }) {

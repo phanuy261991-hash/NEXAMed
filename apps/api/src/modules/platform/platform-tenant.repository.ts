@@ -109,6 +109,32 @@ export class PlatformTenantRepository {
     return result.count;
   }
 
+  /**
+   * Đổi mã công ty (docs/DECISIONS.md #245). Trigger DB `tenant_code_immutable` CHẶN mọi lệnh đổi mã trừ khi giao dịch bật cờ cục bộ `app.allow_tenant_code_change` — đây là chỗ DUY NHẤT đặt cờ.
+   * `set_config(..., true)` chỉ có hiệu lực trong giao dịch hiện tại (như `SET LOCAL`), hết giao dịch là hết cờ nên không "rò" sang yêu cầu khác dùng chung kết nối.
+   * Kèm điều kiện `version` (khoá lạc quan) và `code = oldCode` để hai người vận hành đổi cùng lúc không đè nhau.
+   */
+  async changeCode(tx: Prisma.TransactionClient, id: string, version: number, oldCode: string, newCode: string, operatorId: string): Promise<number> {
+    await tx.$executeRaw`SELECT set_config('app.allow_tenant_code_change', 'on', true)`;
+    const result = await tx.tenant.updateMany({
+      where: { id, version, code: oldCode, deletedAt: null },
+      data: { code: newCode, updatedBy: operatorId, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  addCodeAlias(tx: Prisma.TransactionClient, data: { tenantId: string; oldCode: string; newCode: string; reason: string; expiresAt: Date; operatorId: string }): Promise<unknown> {
+    return tx.tenantCodeAlias.create({
+      data: { targetTenantId: data.tenantId, oldCode: data.oldCode, newCode: data.newCode, reason: data.reason, expiresAt: data.expiresAt, createdBy: data.operatorId, updatedBy: data.operatorId },
+    });
+  }
+
+  /** Mã đang được giữ chỗ (lối tắt còn hạn) bởi MỘT công ty — trả hạn giữ chỗ muộn nhất, hoặc `null` nếu không có. Dùng để KHÔNG cấp lại mã cũ trong thời gian giữ lối tắt. */
+  async activeAliasUntil(tx: Prisma.TransactionClient, code: string, now: Date): Promise<Date | null> {
+    const alias = await tx.tenantCodeAlias.findFirst({ where: { oldCode: code, expiresAt: { gt: now }, deletedAt: null }, orderBy: { expiresAt: 'desc' }, select: { expiresAt: true } });
+    return alias?.expiresAt ?? null;
+  }
+
   /** Thu hồi MỌI phiên đăng nhập đang mở của công ty (khoá công ty) — gọi trong `runInTenantScope(tenantId)`. */
   async revokeAllSessions(tx: Prisma.TransactionClient, tenantId: string, reason: string, operatorId: string): Promise<number> {
     const result = await tx.userSession.updateMany({

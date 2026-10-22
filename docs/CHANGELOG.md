@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-10-22
+
+### Khu quản trị SaaS: mã OTP chỉ dùng một lần + đổi mã tên miền công ty (`docs/DECISIONS.md` #245)
+
+**Mã OTP** của người vận hành nền tảng nay chỉ dùng được đúng một lần: mã bị lộ (lừa đảo, nhìn trộm) không còn dùng lại được trong ~90 giây như trước; mã dùng lại bị từ chối như mã sai và ghi nhật ký. **Đổi mã tên miền công ty** (trước đây khoá cứng): người vận hành vào chi tiết công ty → "Đổi mã tên miền" → nhập mã mới + lý do. Hệ thống giữ địa chỉ cũ tự chuyển sang địa chỉ mới trong 90 ngày, không cấp lại mã cũ cho công ty khác, đăng xuất mọi nhân viên của công ty đó (đăng nhập lại ở địa chỉ mới, mật khẩu không đổi), ghi nhật ký. Cơ sở dữ liệu vẫn chặn mọi cách đổi mã khác. Tên phòng khám thì khách tự đổi như cũ. Cũng sửa: lịch sử khám của mã bệnh nhân công ty khác nay báo 404 thay vì danh sách rỗng (đồng bộ với các màn khác). **Môi trường khác**: `db:deploy` (2 migration `20261021150000_platform_operator_totp_step`, `20261021160000_tenant_code_change`) + khởi động lại API.
+
 ## 2026-10-21
 
 ### Sửa 2 lỗi nghiêm trọng về đăng nhập đồng thời và chặn chéo công ty, dọn phiên cũ (`docs/DECISIONS.md` #244)

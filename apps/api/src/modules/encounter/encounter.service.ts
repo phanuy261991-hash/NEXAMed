@@ -7,9 +7,11 @@ import {
   groupByPrescriptionKind,
   resolvePrescriptionKind,
   type PrescriptionKindMapping,
+  type PatientReaderPort,
   ConcurrentModificationError,
   DiagnosisPrimaryRequiredError,
   DOCTOR_DIRECTORY_PORT,
+  PATIENT_READER_PORT,
   DoctorNoShiftOnDateError,
   WORK_SHIFT_ASSIGNMENT_READER_PORT,
   type WorkShiftAssignmentReaderPort,
@@ -193,6 +195,7 @@ export class EncounterService {
     private readonly businessCodeService: BusinessCodeService,
     private readonly geoRepository: GeoRepository,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
+    @Inject(PATIENT_READER_PORT) private readonly patientReader: PatientReaderPort,
     @Inject(SIGNATURE_PORT) private readonly signaturePort: SignaturePort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
     @Inject(BRANCH_DIRECTORY_PORT) private readonly branchDirectory: BranchDirectoryPort,
@@ -683,6 +686,10 @@ export class EncounterService {
    * đang dở không lộ bản nháp.
    */
   async listPatientEncounterHistory(tenantId: string, branchId: string, actorId: string, patientId: string, query: ListPatientEncounterHistoryQuery): Promise<PatientEncounterHistoryResponse> {
+    // Mã bệnh nhân không thuộc công ty này → 404 như MỌI endpoint theo bệnh nhân khác (`/patients/:id`, thẻ BHYT, ví, kết quả cận lâm sàng). Trước đây trả 200 + danh sách rỗng: không rò rỉ
+    // dữ liệu (đã kiểm chứng ở bản SaaS chạy thật, docs/DECISIONS.md #244) nhưng khác biệt với các endpoint còn lại, và để lộ được 'mã này có tồn tại hay không' qua so sánh phản hồi.
+    const [patient] = await this.patientReader.findSummariesByIds(tenantId, [patientId]);
+    if (!patient) throw new NotFoundException();
     const permissions = await this.unitOfWork.runInTenantScope(tenantId, (tx) => findAllPermissionsForUser(tx, tenantId, actorId));
     const canViewClinical = 'encounter.read_clinical' in permissions;
     const canViewBilling = 'invoice.read' in permissions;

@@ -48,3 +48,9 @@ export function resolveHost(hostHeader: string | undefined, config: HostResoluti
   if (label === config.adminSubdomain) return { kind: 'platform' };
   return TENANT_CODE_PATTERN.test(label) ? { kind: 'tenant', code: label } : { kind: 'unknown' };
 }
+
+/**
+ * Số ngày một mã công ty cũ còn được giữ làm "lối tắt chuyển hướng" sang mã mới sau khi đổi (docs/DECISIONS.md #245): đường dẫn khách đã lưu vẫn dẫn tới đúng công ty.
+ * Trong thời gian này mã cũ KHÔNG được cấp lại cho công ty khác (tránh chiếm đúng tên cũ để dụ khách). Hết hạn thì lối tắt tắt và mã được tự do trở lại.
+ */
+export const TENANT_CODE_ALIAS_DAYS = 90;

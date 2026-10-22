@@ -17,6 +17,8 @@ export const tenantContextResponseSchema = z.discriminatedUnion('kind', [
     suspended: z.boolean(),
   }),
   z.object({ kind: z.literal('platform') }),
+  /** Mã công ty cũ đang trong thời gian giữ lối tắt (docs/DECISIONS.md #245): web chuyển trình duyệt sang `loginUrl` của địa chỉ mới. */
+  z.object({ kind: z.literal('moved'), loginUrl: z.string() }),
 ]);
 export type TenantContextResponse = z.infer<typeof tenantContextResponseSchema>;
 
@@ -123,7 +125,27 @@ export const updatePlatformTenantRequestSchema = z.object({
 });
 export type UpdatePlatformTenantRequest = z.infer<typeof updatePlatformTenantRequestSchema>;
 
-export const suspendPlatformTenantRequestSchema = z.object({ version: z.number().int().min(1), reason: z.string().trim().min(3, 'Bắt buộc nhập lý do').max(500) });
+/**
+ * Đổi MÃ công ty (tên miền phụ) — chỉ người vận hành nền tảng, bắt buộc lý do (docs/DECISIONS.md #245). Mã cũ giữ làm lối tắt chuyển hướng 90 ngày; mọi phiên đăng nhập của công ty bị thu hồi.
+ * Chi tiết kiểm tra mã ở máy chủ (`checkTenantCode`); khác với TÊN phòng khám (khách tự đổi ở "Cấu hình phòng khám").
+ */
+export const changePlatformTenantCodeRequestSchema = z.object({
+  version: z.number().int().min(1),
+  newCode: z.string().trim().min(1).max(60),
+  reason: z.string().trim().min(3, 'Bắt buộc nhập lý do').max(500),
+});
+export type ChangePlatformTenantCodeRequest = z.infer<typeof changePlatformTenantCodeRequestSchema>;
+
+export const changePlatformTenantCodeResponseSchema = z.object({
+  tenant: platformTenantDetailSchema,
+  /** Mã cũ còn dẫn sang mã mới đến ngày này (ISO). */
+  oldCodeValidUntil: z.string(),
+  /** Số phiên đăng nhập vừa bị thu hồi — nhân viên phải đăng nhập lại ở địa chỉ mới. */
+  revokedSessionCount: z.number().int().nonnegative(),
+});
+export type ChangePlatformTenantCodeResponse = z.infer<typeof changePlatformTenantCodeResponseSchema>;
+
+export const suspendPlatformTenantRequestSchema =z.object({ version: z.number().int().min(1), reason: z.string().trim().min(3, 'Bắt buộc nhập lý do').max(500) });
 export type SuspendPlatformTenantRequest = z.infer<typeof suspendPlatformTenantRequestSchema>;
 
 export const unsuspendPlatformTenantRequestSchema = z.object({ version: z.number().int().min(1) });
@@ -140,6 +162,8 @@ export type ResetTenantAdminPasswordResponse = z.infer<typeof resetTenantAdminPa
 export const PLATFORM_AUDIT_ACTION_LABELS = {
   'platform.login': 'Đăng nhập khu quản trị',
   'platform.login_failed': 'Đăng nhập khu quản trị thất bại',
+  'platform.otp_replay_blocked': 'Chặn dùng lại mã OTP đã dùng',
+  'platform.tenant_code_changed': 'Đổi mã tên miền của công ty',
   'platform.tenant_created': 'Tạo công ty và tài khoản quản trị đầu tiên',
   'platform.tenant_updated': 'Sửa thông tin liên hệ',
   'platform.tenant_suspended': 'Khoá công ty',

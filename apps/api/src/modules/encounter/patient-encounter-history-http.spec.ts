@@ -242,12 +242,27 @@ describe('HTTP e2e — Lịch sử khám chữa bệnh của bệnh nhân (#223)
     expect(second.body.data.nextCursor).toBeNull();
   });
 
-  it('cách ly tenant: tenant B không thấy lượt khám của bệnh nhân tenant A (danh sách rỗng, không 403)', async () => {
+  it('cách ly tenant: tenant B gọi mã bệnh nhân của tenant A → 404 (như mọi endpoint theo bệnh nhân khác), không lộ lượt khám nào', async () => {
     const { patientId } = await patientWithTwoEncounters();
     const res = await http().get(historyUrl(patientId, '?status=ALL')).set(authed(tenantBAdminToken));
+    expect(res.status).toBe(404);
+    // Không lộ dữ liệu trong thân lỗi, và KHÔNG phân biệt được "mã không tồn tại" với "mã của công ty khác".
+    expect(JSON.stringify(res.body)).not.toContain(patientId);
+  });
+
+  it('mã bệnh nhân không tồn tại ở đâu cả → 404, cùng phản hồi với mã của công ty khác (không dò được mã nào có thật)', async () => {
+    const { patientId } = await patientWithTwoEncounters();
+    const foreign = await http().get(historyUrl(patientId, '?status=ALL')).set(authed(tenantBAdminToken));
+    const unknown = await http().get(historyUrl(randomUUID(), '?status=ALL')).set(authed(tenantBAdminToken));
+    expect(unknown.status).toBe(404);
+    expect(unknown.body).toEqual(foreign.body);
+  });
+
+  it('bệnh nhân của chính công ty nhưng chưa có lượt khám nào → vẫn 200 với danh sách rỗng (khác với "không tồn tại")', async () => {
+    const patientId = await createPatient();
+    const res = await http().get(historyUrl(patientId, '?status=ALL')).set(authed(doctorToken));
     expect(res.status).toBe(200);
     expect(res.body.data.items).toEqual([]);
-    expect(res.body.data.totalCount).toBe(0);
   });
 
   it('patientId không phải UUID → 400; thiếu token → 401', async () => {

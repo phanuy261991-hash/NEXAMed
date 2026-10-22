@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import { App } from './App';
 import { CompanyNotFoundPage } from './CompanyNotFoundPage';
-import { resolveBootstrap } from './config';
+import { CompanyMovedPage } from './CompanyMovedPage';
+import { buildMovedTarget, resolveBootstrap } from './config';
 import { configureApiClient } from '../shared/api/client';
 
 // Khu quản trị nền tảng (chỉ tên miền quản trị của hệ thống SaaS) — lazy để bản phòng khám không tải mã của nó.
@@ -30,6 +31,14 @@ async function bootstrap(root: HTMLElement) {
     }
     if (result.kind === 'company_not_found') {
       createRoot(root).render(<CompanyNotFoundPage />);
+      return;
+    }
+
+    if (result.kind === 'moved') {
+      const target = buildMovedTarget(result.loginUrl, window.location);
+      if (target) window.location.replace(target);
+      // Hiện trang báo (kèm đường dẫn mới) trong lúc chuyển, và khi trình duyệt chặn chuyển hướng hoặc địa chỉ mới không an toàn để chuyển tự động.
+      createRoot(root).render(<CompanyMovedPage loginUrl={result.loginUrl} />);
       return;
     }
 

@@ -24,6 +24,20 @@ export class TenantDirectoryRepository implements TenantAccessPort {
     return this.prisma.tenant.findFirst({ where: { code, deletedAt: null }, select: SELECT });
   }
 
+  /**
+   * Mã công ty cũ còn trong thời gian giữ lối tắt (docs/DECISIONS.md #245) → MÃ HIỆN TẠI của công ty đó (đi theo `tenant_id`, nên đổi mã nhiều lần vẫn dẫn tới mã mới nhất).
+   * `null` nếu không có lối tắt còn hạn, công ty đã xoá, hoặc mã hiện tại trùng chính mã đang tra.
+   */
+  async findCurrentCodeByAlias(code: string, now: Date): Promise<string | null> {
+    const alias = await this.prisma.tenantCodeAlias.findFirst({
+      where: { oldCode: code, expiresAt: { gt: now }, deletedAt: null, tenant: { deletedAt: null } },
+      orderBy: { createdAt: 'desc' },
+      select: { tenant: { select: { code: true } } },
+    });
+    const current = alias?.tenant.code ?? null;
+    return current !== null && current !== code ? current : null;
+  }
+
   findById(id: string): Promise<TenantDirectoryEntry | null> {
     return this.prisma.tenant.findFirst({ where: { id, deletedAt: null }, select: SELECT });
   }

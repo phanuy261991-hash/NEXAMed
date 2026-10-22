@@ -28,7 +28,11 @@ Mockup (https://claude.ai/artifact/FAi8GCjycj94s6EwTT9t6b, bản 3) **đã chố
 
 ## Hiệu năng & bảo mật (21/10/2026, #244)
 
-Đo tải toàn ứng dụng **ĐẠT** (p95 58 ms/500 ms, 0 lỗi). Đã sửa 2 lỗi nghiêm trọng: đăng nhập đồng thời làm cạn bể kết nối (100 người → 64 lỗi, nay 0 lỗi; SaaS 320 lượt → 0 lỗi) và một công ty chặn được đăng nhập của mọi công ty khác. Đã thêm: giới hạn 5 phiên/tài khoản, hạn phiên 7 ngày (từ 30), job dọn phiên hết hạn, biến `TRUST_PROXY_HOPS`. Sửa thêm: hai job dọn dẹp từng hẹn 2 giờ sáng (máy phòng khám tắt buổi tối nên chưa từng chạy) nay chạy sau khi bật máy + lặp trong ngày. Kiểm thử tấn công chủ động trên bản SaaS chạy thật: **23/24 mục ĐẠT, 0 rò rỉ dữ liệu** (cách ly công ty, giả mạo tên miền, giả mạo token, phân quyền, rò rỉ thông tin) — đã trình diễn trên Chrome. **Còn mở**: `GET /encounters/by-patient/:id/history` trả 200 rỗng thay vì 404 cho bệnh nhân công ty khác (không rò rỉ, chỉ thiếu nhất quán; sửa cần port dùng chung); OTP khu quản trị dùng lại được trong ±90 giây (cần thêm cột `last_otp_step`, chờ chủ dự án quyết); tham số argon2 mặc định; CSP Report-Only.
+Đo tải toàn ứng dụng **ĐẠT** (p95 58 ms/500 ms, 0 lỗi). Đã sửa 2 lỗi nghiêm trọng: đăng nhập đồng thời làm cạn bể kết nối (100 người → 64 lỗi, nay 0 lỗi; SaaS 320 lượt → 0 lỗi) và một công ty chặn được đăng nhập của mọi công ty khác. Đã thêm: giới hạn 5 phiên/tài khoản, hạn phiên 7 ngày (từ 30), job dọn phiên hết hạn, biến `TRUST_PROXY_HOPS`. Sửa thêm: hai job dọn dẹp từng hẹn 2 giờ sáng (máy phòng khám tắt buổi tối nên chưa từng chạy) nay chạy sau khi bật máy + lặp trong ngày. Kiểm thử tấn công chủ động trên bản SaaS chạy thật: **23/24 mục ĐẠT, 0 rò rỉ dữ liệu** (cách ly công ty, giả mạo tên miền, giả mạo token, phân quyền, rò rỉ thông tin) — đã trình diễn trên Chrome. `GET /encounters/by-patient/:id/history` đã đồng bộ trả 404 cho bệnh nhân công ty khác (dùng `PATIENT_READER_PORT` sẵn có). Đã làm tiếp (#245): OTP khu quản trị chỉ dùng một lần; quy trình đổi MÃ công ty (tên miền phụ) có kiểm soát — giữ mã cũ làm lối tắt 90 ngày, thu hồi phiên, ghi nhật ký; tên phòng khám khách vẫn tự đổi được. **Còn mở**: hộp thoại "Đổi mã tên miền" chưa có mockup duyệt (dựng theo khuôn hộp "Đặt lại mật khẩu"); tham số argon2; CSP Report-Only (cần thêm cột `last_otp_step`, chờ chủ dự án quyết); tham số argon2 mặc định; CSP Report-Only.
+
+## VIỆC ĐẦU TIÊN PHIÊN SAU — chuẩn nét chữ ô nhập (22/10/2026, #246)
+
+Chủ dự án chốt đổi giá trị trong MỌI ô nhập từ semibold (600) sang normal (400) vì nét 600 trên Windows "vỡ nét" khi gõ. Mới làm ở hộp thoại "Đổi mã tên miền"; phần còn lại (71 file, 130 chỗ) giao phiên sau — đọc `docs/handoffs/HANDOFF-HieuNangBaoMat-DoiMaTenMien-NetChuOCuoi-2026-10-22.md` mục 2 (phạm vi, cách làm một chỗ bằng `index.css`, việc kèm theo). Bàn giao mới nhất của phiên 21–22/10 (hiệu năng, bảo mật SaaS, đổi mã tên miền): cùng file đó.
 
 ## Đang chờ / việc treo
 
@@ -39,6 +43,8 @@ Mockup (https://claude.ai/artifact/FAi8GCjycj94s6EwTT9t6b, bản 3) **đã chố
 - Môi trường khác cần `db:deploy` (các migration `20261016110000_…`, `20261020090000_…`, `20261020110000_…`, `20261020120000_…`, `20261021090000_…`, `20261021100000_…`, `20261021120000_…`) + `db:seed` + khởi động lại API.
 
 ## Bàn giao mới nhất
+
+**`docs/handoffs/HANDOFF-HieuNangBaoMat-DoiMaTenMien-NetChuOCuoi-2026-10-22.md`** (mới nhất, 22/10/2026: hiệu năng + bảo mật SaaS + đổi mã tên miền + việc đầu tiên phiên sau là chuẩn nét chữ ô nhập). Bản trước: `docs/handoffs/HANDOFF-TheBHYT-S204-2026-10-21.md` (đã xong hoàn toàn).
 
 **`docs/handoffs/HANDOFF-TheBHYT-S204-2026-10-21.md`** (mới nhất, 21/10/2026: thẻ BHYT backend xong + web làm dở, việc còn lại theo thứ tự, bẫy). Bản trước: `HANDOFF-LienThong-GD3-HangCho-OBoSung-2026-10-20-p4.md` (20/10/2026 phần 4: GĐ3 liên thông xong ô 8b/dải 8a/hàng chờ/bộ gửi nền/trang 8c).
 

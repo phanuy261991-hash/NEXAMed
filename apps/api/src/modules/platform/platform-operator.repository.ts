@@ -26,10 +26,16 @@ export class PlatformOperatorRepository {
     });
   }
 
-  async recordSuccessfulLogin(operator: PlatformOperator, now: Date): Promise<void> {
-    await this.prisma.platformOperator.updateMany({
-      where: { id: operator.id, version: operator.version },
-      data: { failedLoginCount: 0, lastFailedLoginAt: null, lockedUntil: null, lastLoginAt: now, version: { increment: 1 } },
+  /**
+   * Ghi nhận đăng nhập thành công VÀ "tiêu thụ" bước OTP trong CÙNG MỘT lệnh có điều kiện (RFC 6238 mục 5.2, docs/DECISIONS.md #244): chỉ thành công khi bước này LỚN HƠN bước đã
+   * ghi. Trả `false` = mã đã dùng rồi (hoặc một yêu cầu song song vừa dùng nó) → nơi gọi từ chối. Không đọc-rồi-ghi nên hai yêu cầu cùng gửi một mã cùng lúc chỉ một yêu cầu qua.
+   * Cố ý KHÔNG kèm điều kiện `version`: điều kiện bước OTP chính là chốt chặn, và điều kiện version sẽ làm đăng nhập đúng bị từ chối oan khi vừa có lần đăng nhập sai chen vào.
+   */
+  async consumeOtpStepAndRecordLogin(operatorId: string, step: number, now: Date): Promise<boolean> {
+    const result = await this.prisma.platformOperator.updateMany({
+      where: { id: operatorId, OR: [{ lastTotpStep: null }, { lastTotpStep: { lt: BigInt(step) } }] },
+      data: { lastTotpStep: BigInt(step), failedLoginCount: 0, lastFailedLoginAt: null, lockedUntil: null, lastLoginAt: now, version: { increment: 1 } },
     });
+    return result.count === 1;
   }
 }

@@ -51,6 +51,17 @@ export class TenantHostService {
     return resolveHost(req.header('host'), { baseDomain: this.baseDomain(), adminSubdomain: this.config.get('PLATFORM_ADMIN_SUBDOMAIN', { infer: true }) });
   }
 
+  /**
+   * Địa chỉ đăng nhập MỚI của công ty khi request đến bằng MÃ CŨ còn trong thời gian giữ lối tắt (docs/DECISIONS.md #245); `null` nếu không phải trường hợp đó.
+   * Chỉ dùng để chuyển hướng trình duyệt: mọi thao tác khác trên tên miền cũ vẫn bị coi là không có công ty (token/cookie gắn với tên miền mới).
+   */
+  async resolveMovedLoginUrl(req: Request): Promise<string | null> {
+    const host = this.resolveRequestHost(req);
+    if (host.kind !== 'tenant') return null;
+    const currentCode = await this.directory.findCurrentCodeByAlias(host.code, new Date());
+    return currentCode ? this.loginUrlFor(currentCode) : null;
+  }
+
   /** Công ty ứng với tên miền phụ của request; `null` nếu không phải tên miền công ty hoặc công ty không tồn tại. */
   async resolveTenant(req: Request): Promise<ResolvedTenant | null> {
     const host = this.resolveRequestHost(req);

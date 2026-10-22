@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Buildings, Clock, Users } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { PlatformTenantDetail, ResetTenantAdminPasswordResponse } from '@nexamed/shared';
+import type { ChangePlatformTenantCodeResponse, PlatformTenantDetail, ResetTenantAdminPasswordResponse } from '@nexamed/shared';
 import { copyText } from '../../shared/format/clipboard';
 import { formatDateTimeVn } from '../../shared/format/time';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
@@ -15,9 +15,12 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { Textarea } from '../../shared/ui/Textarea';
 import { AuditTable } from './AuditTable';
 import { PlatformApiError } from './platform.api';
-import { formatDateVn, loginHostOf } from './platform-format';
-import { useAuditLogsQuery, useResetAdminPasswordMutation, useSuspendTenantMutation, useTenantQuery, useUnsuspendTenantMutation, useUpdateTenantMutation } from './platform.queries';
+import { TENANT_CODE_PATTERN, formatDateVn, loginHostOf, previewLoginHost } from './platform-format';
+import { useAuditLogsQuery, useChangeTenantCodeMutation, useResetAdminPasswordMutation, useSuspendTenantMutation, useTenantQuery, useUnsuspendTenantMutation, useUpdateTenantMutation } from './platform.queries';
 
+/** Ô nhập có chữ nét MẢNH (400) cho hộp thoại "Đổi mã tên miền": trên Windows font Segoe UI không có bậc 500 nên semibold (chuẩn hiện hành cho giá trị ô nhập) ra nét dày, dấu tiếng Việt dễ dính — chủ dự án phản hồi 22/10/2026. Chờ chốt có áp cho mọi ô nhập không. */
+const lightInputClassName =
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50';
 
@@ -128,6 +131,127 @@ function OperationsInfo({ tenant }: { tenant: PlatformTenantDetail }) {
   );
 }
 
+/**
+ * Đổi MÃ công ty (tên miền phụ) — docs/DECISIONS.md #245. Khác với TÊN phòng khám (khách tự đổi ở "Cấu hình phòng khám"): mã gắn với địa chỉ đăng nhập nên chỉ người vận hành đổi, có lý do, ghi nhật ký.
+ * Ba bước: nhập mã mới + lý do (xem trước địa chỉ mới và hậu quả) → xác nhận → kết quả (địa chỉ mới, hạn lối tắt, số phiên bị đăng xuất, nút sao chép gửi khách).
+ */
+function ChangeCodeDialog({ tenant, onClose }: { tenant: PlatformTenantDetail; onClose: () => void }) {
+  const mutation = useChangeTenantCodeMutation(tenant.id);
+  const [newCode, setNewCode] = useState('');
+  const [reason, setReason] = useState('');
+  const [result, setResult] = useState<ChangePlatformTenantCodeResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<'idle' | 'ok' | 'failed'>('idle');
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  const codeValid = TENANT_CODE_PATTERN.test(newCode);
+  const sameAsCurrent = newCode === tenant.code;
+  const canSubmit = codeValid && !sameAsCurrent && reason.trim().length >= 3;
+  const newHost = previewLoginHost(newCode, window.location.host);
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!canSubmit) return;
+    setError(null);
+    try {
+      setResult(await mutation.mutateAsync({ version: tenant.version, newCode, reason: reason.trim() }));
+    } catch (err) {
+      setError(err instanceof PlatformApiError ? err.message : 'Không đổi được mã. Thử lại.');
+    }
+  }
+
+  async function handleCopy() {
+    if (!result) return;
+    const ok = await copyText(`Địa chỉ đăng nhập mới của ${tenant.name}: ${result.tenant.loginUrl ?? ''}\nĐịa chỉ cũ vẫn tự chuyển sang địa chỉ mới đến ${formatDateVn(result.oldCodeValidUntil)}. Nhân viên cần đăng nhập lại.`);
+    setCopied(ok ? 'ok' : 'failed');
+  }
+
+  return (
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="change-code-title">
+      <form onSubmit={handleSubmit} className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+        <h2 id="change-code-title" className="text-base font-semibold text-slate-900">
+          Đổi mã tên miền của "{tenant.name}"
+        </h2>
+        {result ? (
+          <div className="mt-3 space-y-3">
+            <p className="text-sm font-medium text-slate-700">
+              Đã đổi mã. Địa chỉ đăng nhập mới:
+            </p>
+            <p className="break-all rounded-md border border-emerald-500 bg-emerald-50 px-3 py-2 text-base font-normal text-slate-900">{loginHostOf(result.tenant.loginUrl)}</p>
+            <ul className="list-disc space-y-1 pl-5 text-sm font-medium text-slate-600">
+              <li>Địa chỉ cũ tự chuyển sang địa chỉ mới đến hết ngày {formatDateVn(result.oldCodeValidUntil)}.</li>
+              <li>
+                {result.revokedSessionCount > 0
+                  ? `${result.revokedSessionCount} phiên đăng nhập đã bị đăng xuất; nhân viên đăng nhập lại ở địa chỉ mới (mật khẩu không đổi).`
+                  : 'Chưa có phiên đăng nhập nào đang mở. Nhân viên đăng nhập ở địa chỉ mới (mật khẩu không đổi).'}
+              </li>
+            </ul>
+            <div className="flex items-center justify-between gap-2">
+              <span role="status" aria-live="polite" className={`text-sm font-semibold ${copied === 'failed' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                {copied === 'ok' ? 'Đã sao chép' : copied === 'failed' ? 'Không sao chép được' : ''}
+              </span>
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" onClick={() => void handleCopy()}>
+                  Sao chép thông báo cho khách
+                </Button>
+                <Button type="button" onClick={onClose}>
+                  Đóng
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="mt-2 text-sm font-medium text-slate-600">
+              Hiện tại: <span className="font-semibold text-slate-800">{loginHostOf(tenant.loginUrl)}</span>
+            </p>
+            <div className="mt-3">
+              <label htmlFor="new-code" className="mb-1 block text-sm font-semibold text-slate-800">
+                Mã mới <span className="text-rose-500">*</span>
+              </label>
+              <input id="new-code" value={newCode} onChange={(e) => setNewCode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className={lightInputClassName} autoComplete="off" autoFocus />
+              <p className={`mt-1 text-xs font-medium ${newCode && (!codeValid || sameAsCurrent) ? 'text-rose-600' : 'text-slate-500'}`}>
+                {sameAsCurrent ? 'Mã mới trùng mã hiện tại.' : newCode && !codeValid ? 'Mã gồm 3-30 ký tự: chữ thường không dấu, số và gạch ngang, không bắt đầu hoặc kết thúc bằng gạch ngang.' : `Địa chỉ mới: ${newHost}`}
+              </p>
+            </div>
+            <div className="mt-3">
+              <label htmlFor="change-code-reason" className="mb-1 block text-sm font-semibold text-slate-800">
+                Lý do <span className="text-rose-500">*</span>
+              </label>
+              <textarea id="change-code-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} className={lightInputClassName} />
+            </div>
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs font-medium text-slate-600">
+              <li>Mã cũ được giữ làm lối tắt tự chuyển sang địa chỉ mới trong 90 ngày, không cấp cho công ty khác trong thời gian đó.</li>
+              <li>Mọi nhân viên của công ty bị đăng xuất, đăng nhập lại ở địa chỉ mới.</li>
+              <li>Cần xin chứng chỉ HTTPS cho địa chỉ mới nếu hệ thống không dùng chứng chỉ chung cho mọi công ty.</li>
+            </ul>
+            {error && (
+              <div className="mt-3">
+                <ErrorBanner message={error} />
+              </div>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={onClose} disabled={mutation.isPending}>
+                Huỷ
+              </Button>
+              <Button type="submit" loading={mutation.isPending} disabled={!canSubmit}>
+                Đổi mã
+              </Button>
+            </div>
+          </>
+        )}
+      </form>
+    </div>
+  );
+}
+
 /** Đặt lại mật khẩu của tài khoản quản trị đầu tiên của công ty: xác nhận → hiện mật khẩu tạm MỘT lần kèm nút sao chép. */
 function ResetAdminPasswordDialog({ tenant, onClose }: { tenant: PlatformTenantDetail; onClose: () => void }) {
   const mutation = useResetAdminPasswordMutation(tenant.id);
@@ -220,6 +344,7 @@ export function TenantDetailPage() {
   const unsuspend = useUnsuspendTenantMutation(id);
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [changeCodeOpen, setChangeCodeOpen] = useState(false);
   const [unsuspendError, setUnsuspendError] = useState<string | null>(null);
 
   if (query.isPending) return <Skeleton className="h-64 w-full" />;
@@ -289,10 +414,15 @@ export function TenantDetailPage() {
       />
       <p className="text-xs font-medium text-slate-500">Khu này không hiển thị bệnh nhân, hồ sơ hay số liệu doanh thu của công ty, chỉ có số đếm vận hành.</p>
 
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button type="button" variant="secondary" onClick={() => setResetOpen(true)}>
           Đặt lại mật khẩu quản trị của công ty
         </Button>
+        {tenant.code && (
+          <Button type="button" variant="secondary" onClick={() => setChangeCodeOpen(true)}>
+            Đổi mã tên miền
+          </Button>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -313,6 +443,7 @@ export function TenantDetailPage() {
         />
       )}
       {resetOpen && <ResetAdminPasswordDialog tenant={tenant} onClose={() => setResetOpen(false)} />}
+      {changeCodeOpen && <ChangeCodeDialog tenant={tenant} onClose={() => setChangeCodeOpen(false)} />}
     </div>
   );
 }

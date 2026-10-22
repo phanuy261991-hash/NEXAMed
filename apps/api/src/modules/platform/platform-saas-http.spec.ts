@@ -92,6 +92,8 @@ describe('HTTP e2e — SaaS: tên miền phụ, cô lập công ty, khu quản t
   const hostA = `${codeA}.${BASE}`;
   const hostB = `${codeB}.${BASE}`;
   const hostC = `${codeC}.${BASE}`;
+  const codeD = `td-${suffix}`;
+  const hostD = `${codeD}.${BASE}`;
   const adminHost = `admin.${BASE}`;
   const operatorIds: string[] = [];
   let usernameA: string;
@@ -100,6 +102,7 @@ describe('HTTP e2e — SaaS: tên miền phụ, cô lập công ty, khu quản t
   let operatorSecret: string;
   let platformToken: string;
   let tenantCId: string;
+  let tenantDId: string;
   let tenantCVersion: number;
   let adminCUsername: string;
   let tempPasswordC: string;
@@ -140,7 +143,8 @@ describe('HTTP e2e — SaaS: tên miền phụ, cô lập công ty, khu quản t
   }, 90_000);
 
   afterAll(async () => {
-    await ctx.privileged.platformAuditLog.deleteMany({ where: { OR: [{ operatorId: { in: operatorIds } }, { targetTenantId: { in: [fixture.tenantA.id, fixture.tenantB.id, ...(tenantCId ? [tenantCId] : [])] } }] } });
+    await ctx.privileged.tenantCodeAlias.deleteMany({ where: { targetTenantId: { in: [fixture.tenantA.id, fixture.tenantB.id, ...(tenantCId ? [tenantCId] : []), ...(tenantDId ? [tenantDId] : [])] } } });
+    await ctx.privileged.platformAuditLog.deleteMany({ where: { OR: [{ operatorId: { in: operatorIds } }, { targetTenantId: { in: [fixture.tenantA.id, fixture.tenantB.id, ...(tenantCId ? [tenantCId] : []), ...(tenantDId ? [tenantDId] : [])] } }] } });
     await ctx.fixture.cleanup();
     await ctx.privileged.platformOperator.deleteMany({ where: { id: { in: operatorIds } } });
     await ctx.privileged.$disconnect();
@@ -327,6 +331,150 @@ describe('HTTP e2e — SaaS: tên miền phụ, cô lập công ty, khu quản t
     expect(fresh.res.status).toBe(200);
     expect(fresh.res.body.data.user.mustChangePassword).toBe(true);
   }, 60_000);
+
+
+  // ---- Chống dùng lại mã OTP (RFC 6238 mục 5.2, docs/DECISIONS.md #244) ----
+  it('mã OTP chỉ dùng MỘT lần: dùng lại cùng mã, hoặc mã của bước cũ hơn, đều bị từ chối như mã sai; mã của bước mới hơn vào được', async () => {
+    const op = await createOperator('otp-mot-lan');
+    const loginMfa = async () => (await P().post('/platform/auth/login', { username: op.username, password: PASSWORD })).body.data.mfaToken as string;
+    const verify = (mfaToken: string, code: string) => P().post('/platform/auth/verify-otp', { mfaToken, code });
+    const now = Date.now();
+    const current = totpAt(op.secret, now);
+    const previous = totpAt(op.secret, now - 30_000);
+    const next = totpAt(op.secret, now + 30_000);
+
+    const mfa = await loginMfa();
+    const first = await verify(mfa, current);
+    expect(first.status, JSON.stringify(first.body)).toBe(200);
+
+    // Kẻ lấy được mã (lừa đảo/nhìn trộm) dùng lại ngay trong cửa sổ ~90 giây: bị chặn, thông báo Y HỆT mã sai để không lộ "mã đã đúng".
+    const replay = await verify(await loginMfa(), current);
+    expect(replay.status).toBe(401);
+    const wrong = await verify(await loginMfa(), totpAt(op.secret, now + 10 * 60_000));
+    expect(replay.body.error.code).toBe(wrong.body.error.code);
+    expect(replay.body.error.message).toBe(wrong.body.error.message);
+
+    // Mã của bước CŨ hơn bước đã dùng cũng không được chấp nhận (bước chỉ được đi tới).
+    expect((await verify(await loginMfa(), previous)).status).toBe(401);
+
+    // Mã của bước kế tiếp thì vào được — người vận hành thật chỉ cần chờ tối đa một bước.
+    expect((await verify(await loginMfa(), next)).status).toBe(200);
+
+    const audit = await ctx.privileged.platformAuditLog.count({ where: { operatorId: op.id, action: 'platform.otp_replay_blocked' } });
+    expect(audit).toBeGreaterThanOrEqual(1);
+  }, 60_000);
+
+  it('hai yêu cầu gửi CÙNG một mã cùng lúc: chỉ một yêu cầu qua (cập nhật có điều kiện, không đọc-rồi-ghi)', async () => {
+    const op = await createOperator('otp-song-song');
+    const code = totpAt(op.secret, Date.now());
+    const mfaTokens = await Promise.all(
+      [1, 2, 3, 4].map(async () => (await P().post('/platform/auth/login', { username: op.username, password: PASSWORD })).body.data.mfaToken as string),
+    );
+    const results = await Promise.all(mfaTokens.map((mfaToken) => P().post('/platform/auth/verify-otp', { mfaToken, code })));
+    expect(results.filter((r) => r.status === 200)).toHaveLength(1);
+    expect(results.filter((r) => r.status === 401)).toHaveLength(3);
+  }, 60_000);
+
+  // ---- Đổi MÃ công ty (docs/DECISIONS.md #245) ----
+  it('đổi mã công ty: kiểm tra đầu vào, giữ mã cũ làm lối tắt chuyển hướng, thu hồi phiên, không cấp lại mã cũ, DB vẫn chặn đổi tay', async () => {
+    // Công ty RIÊNG cho test này (giới hạn đăng nhập tính theo IP + công ty).
+    const baseD = { name: 'Phòng khám Đổi mã D', contactName: 'Liên hệ D', contactPhone: '0900000004', adminFullName: 'Quản trị D', adminUsername: 'quantri-d' };
+    const createdD = await P().post('/platform/tenants', { ...baseD, code: codeD }, platformToken);
+    expect(createdD.status, JSON.stringify(createdD.body)).toBe(200);
+    tenantDId = createdD.body.data.tenant.id;
+    fixture.trackTenant(tenantDId);
+    const tempPasswordD = createdD.body.data.temporaryPassword as string;
+    const D = () => api(ctx.app, hostD);
+    const detail = async () => (await P().get(`/platform/tenants/${tenantDId}`, platformToken)).body.data as { version: number; code: string };
+    const change = (body: object) => P().post(`/platform/tenants/${tenantDId}/change-code`, body, platformToken);
+    const newCode = `tn-${suffix}`;
+    const newHost = `${newCode}.${BASE}`;
+
+    // Có phiên đang mở để kiểm tra việc thu hồi.
+    const currentPassword = tempPasswordD;
+    const sessionLogin = await clinicLogin(D(), tenantDId, 'quantri-d', currentPassword);
+    expect(sessionLogin.res.status).toBe(200);
+
+    let v = (await detail()).version;
+    // Đầu vào sai.
+    expect((await change({ version: v, newCode: 'admin', reason: 'Đổi thương hiệu' })).status).toBe(422); // dành riêng
+    expect((await change({ version: v, newCode: 'Co Dau', reason: 'Đổi thương hiệu' })).status).toBe(422); // sai định dạng
+    const same = await change({ version: v, newCode: codeD, reason: 'Đổi thương hiệu' });
+    expect(same.status).toBe(422);
+    expect(same.body.error.code).toBe('PLATFORM_TENANT_CODE_UNCHANGED');
+    expect((await change({ version: v, newCode: codeA, reason: 'Đổi thương hiệu' })).status).toBe(409); // công ty khác đang dùng
+    expect((await change({ version: v, newCode })).status).toBe(400); // thiếu lý do
+    expect((await change({ version: v + 5, newCode, reason: 'Đổi thương hiệu' })).status).toBe(409); // sai phiên bản
+    expect((await detail()).code).toBe(codeD); // chưa đổi gì
+
+    const ok = await change({ version: v, newCode, reason: 'Khách đổi tên thương hiệu' });
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+    expect(ok.body.data.tenant).toMatchObject({ code: newCode, loginUrl: `https://${newHost}` });
+    expect(ok.body.data.revokedSessionCount).toBeGreaterThanOrEqual(1);
+    const days = (new Date(ok.body.data.oldCodeValidUntil).getTime() - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(89);
+    expect(days).toBeLessThanOrEqual(90);
+    v = ok.body.data.tenant.version;
+
+    // Tên miền MỚI hoạt động đầy đủ; tên miền CŨ chỉ dùng để chuyển hướng.
+    const N = () => api(ctx.app, newHost);
+
+    // Phiên cũ bị thu hồi: làm mới phiên thất bại ở tên miền mới (401); ở tên miền cũ thì không còn là công ty nào (404).
+    expect((await N().post('/auth/refresh', {}, undefined, sessionLogin.cookie)).status).toBe(401);
+    expect((await D().post('/auth/refresh', {}, undefined, sessionLogin.cookie)).status).toBe(404);
+    // Chỉ còn phiên của lần đăng nhập lại ở tên miền mới (xem bên dưới) — phiên cũ đã bị thu hồi hết.
+    expect(await ctx.privileged.userSession.count({ where: { tenantId: tenantDId, deletedAt: null } })).toBe(0);
+
+    expect((await N().get('/public/tenant-context')).body.data).toMatchObject({ kind: 'tenant', code: newCode });
+    expect((await clinicLogin(N(), tenantDId, 'quantri-d', currentPassword)).res.status).toBe(200); // đăng nhập lại ở địa chỉ mới
+    const moved = await D().get('/public/tenant-context');
+    expect(moved.status).toBe(200);
+    expect(moved.body.data).toEqual({ kind: 'moved', loginUrl: `https://${newHost}` });
+    expect((await clinicLogin(D(), tenantDId, 'quantri-d', currentPassword)).res.status).toBe(404); // đăng nhập KHÔNG qua tên miền cũ
+
+    // Mã cũ được GIỮ CHỖ: không cấp cho công ty mới, không cho công ty khác đổi sang.
+    const base = { name: 'Phòng khám chiếm tên cũ', contactName: 'Liên hệ', contactPhone: '0900000009', adminFullName: 'Quản trị', adminUsername: 'quantri-x' };
+    const squat = await P().post('/platform/tenants', { ...base, code: codeD }, platformToken);
+    expect(squat.status).toBe(409);
+    expect(squat.body.error.code).toBe('PLATFORM_TENANT_CODE_RESERVED');
+
+    // Đổi lần nữa: lối tắt của mã đầu tiên vẫn dẫn tới mã MỚI NHẤT (đi theo công ty, không theo mã trung gian).
+    const third = `tt-${suffix}`;
+    const again = await change({ version: v, newCode: third, reason: 'Đổi lần hai' });
+    expect(again.status, JSON.stringify(again.body)).toBe(200);
+    expect((await D().get('/public/tenant-context')).body.data).toEqual({ kind: 'moved', loginUrl: `https://${third}.${BASE}` });
+    expect((await N().get('/public/tenant-context')).body.data).toEqual({ kind: 'moved', loginUrl: `https://${third}.${BASE}` });
+    // Trả về đúng mã đang giữ chỗ của chính mình cũng không được (tránh vòng lặp lối tắt).
+    const back = await change({ version: again.body.data.tenant.version, newCode: codeD, reason: 'Quay lại' });
+    expect(back.status).toBe(409);
+
+    // Chốt chặn ở CƠ SỞ DỮ LIỆU: vẫn không đổi được mã bằng lệnh UPDATE thường, kể cả có quyền cao.
+    await expect(ctx.privileged.tenant.update({ where: { id: tenantDId }, data: { code: `tay-${suffix}` } })).rejects.toThrow(/không được đổi/);
+    // Và vẫn không thể đặt mã về rỗng bằng đường đổi mã.
+    expect((await detail()).code).toBe(third);
+
+    // Lối tắt HẾT HẠN thì tắt: tên miền cũ không còn chuyển hướng, và mã cũ được cấp lại cho công ty khác.
+    await ctx.privileged.tenantCodeAlias.updateMany({ where: { targetTenantId: tenantDId, oldCode: codeD }, data: { expiresAt: new Date(Date.now() - 60_000) } });
+    const expired = await D().get('/public/tenant-context');
+    expect(expired.status).toBe(404);
+    expect(expired.body.error.code).toBe('TENANT_NOT_FOUND');
+    const reuse = await P().post('/platform/tenants', { ...base, code: codeD, adminUsername: 'quantri-e' }, platformToken);
+    expect(reuse.status, JSON.stringify(reuse.body)).toBe(200);
+    fixture.trackTenant(reuse.body.data.tenant.id as string);
+    // Mã trung gian vẫn còn lối tắt (chưa hết hạn) nên vẫn dẫn tới mã mới nhất.
+    expect((await N().get('/public/tenant-context')).body.data).toMatchObject({ kind: 'moved' });
+
+    const alias = await ctx.privileged.tenantCodeAlias.findMany({ where: { targetTenantId: tenantDId }, orderBy: { createdAt: 'asc' } });
+    expect(alias.map((a) => [a.oldCode, a.newCode])).toEqual([[codeD, newCode], [newCode, third]]);
+    expect(alias[0]!.reason).toBe('Khách đổi tên thương hiệu');
+
+    const logs = await P().get(`/platform/audit-logs?tenantId=${tenantDId}`, platformToken);
+    const entries = logs.body.data.items.filter((i: { action: string }) => i.action === 'platform.tenant_code_changed') as { actionLabel: string; note: string }[];
+    expect(entries).toHaveLength(2); // hai lần đổi mã thành công (các lần bị từ chối KHÔNG ghi)
+    expect(entries.every((e) => e.actionLabel === 'Đổi mã tên miền của công ty')).toBe(true);
+    // Nhật ký ghi cả mã cũ → mã mới lẫn LÝ DO của từng lần.
+    expect(entries.map((e) => e.note).sort()).toEqual([`${newCode} → ${third}: Đổi lần hai`, `${codeD} → ${newCode}: Khách đổi tên thương hiệu`].sort());
+  }, 120_000);
 
   it('nhật ký vận hành: ghi đủ thao tác kèm lý do, lọc theo công ty, không chứa mật khẩu', async () => {
     const res = await P().get(`/platform/audit-logs?tenantId=${tenantCId}`, platformToken);

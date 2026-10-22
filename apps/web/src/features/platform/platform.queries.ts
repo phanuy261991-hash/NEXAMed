@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreatePlatformTenantRequest, UpdatePlatformTenantRequest } from '@nexamed/shared';
 import {
+  changeTenantCode,
   createTenant,
   getTenant,
   listAuditLogs,
@@ -48,6 +49,11 @@ export function useSuspendTenantMutation(id: string) {
 export function useUnsuspendTenantMutation(id: string) {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (version: number) => unsuspendTenant(id, version), onSuccess: invalidate });
+}
+
+export function useChangeTenantCodeMutation(id: string) {
+  const invalidate = useInvalidate();
+  return useMutation({ mutationFn: (vars: { version: number; newCode: string; reason: string }) => changeTenantCode(id, vars.version, vars.newCode, vars.reason), onSuccess: invalidate });
 }
 
 export function useResetAdminPasswordMutation(id: string) {
