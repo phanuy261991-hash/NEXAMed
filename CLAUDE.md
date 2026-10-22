@@ -38,7 +38,7 @@ Monorepo: `apps/web` (SPA React), `apps/api` (NestJS), `packages/shared` (type +
 
 - React 18.3 + Vite 5.4 + TypeScript 5.6 (strict mode)
 - Tailwind CSS — styling duy nhất cho `apps/web`. Không dùng CSS-in-JS, không viết class CSS tự do ngoài hệ thống token (xem `.claude/docs/ui-guidelines.md`)
-- NestJS 10.4 trên Node 20 LTS, REST + OpenAPI
+- NestJS 11 trên Node 20 LTS, REST + OpenAPI
 - PostgreSQL 18, Prisma 5.x làm ORM/migration
 - Zod (validation dùng chung web/api), TanStack Query 5 (server state), Zustand (client state)
 - pnpm 9 workspaces — bắt buộc, lockfile là `pnpm-lock.yaml`. Không dùng npm/yarn.

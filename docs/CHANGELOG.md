@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-22
 
+### Nâng NestJS 10 → 11 (`docs/DECISIONS.md` #249)
+
+Lên NestJS 11 / Express 5 để hết nốt các cảnh báo thư viện của phần chạy thật: `pnpm audit --prod` nay **0 cảnh báo** (trước đợt vá hôm nay: 1 nghiêm trọng, 11 cao, 13 trung bình). Chỉ phải sửa một dòng cú pháp đường dẫn của middleware tenant. Toàn bộ test xanh, đo tải đọc/ghi sau nâng không chậm hơn (ghi p95 65 ms, 0 lỗi). Đo argon2: giữ nguyên tham số hiện tại được đề xuất, chờ chủ dự án chốt. **Môi trường khác**: `pnpm install` rồi dựng lại API.
+
 ### Hộp thoại "Đổi mã tên miền" làm lại theo mockup đã duyệt (`docs/DECISIONS.md` #245)
 
 Khu quản trị SaaS: hộp thoại dùng khuôn chung (biểu tượng + tên hành động + tên công ty + nút đóng), các dòng mã hiện tại / địa chỉ hiện tại có đường kẻ, ba gạch đầu dòng hậu quả thành bảng "Sau khi đổi", màn kết quả có biểu tượng xanh lá (`ModalHeader` thêm `tone="success"`). Hành vi không đổi. Mockup: https://claude.ai/artifact/KAAFi6LDmcdHgjCQSLDCtC.
