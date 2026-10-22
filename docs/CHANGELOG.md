@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-22
 
+### Vá thư viện phụ thuộc có lỗ hổng (`docs/DECISIONS.md` #247)
+
+Quét `pnpm audit`: phần chạy thật có 12 cảnh báo cao/nghiêm trọng (chủ yếu `multer` — tấn công làm treo khi tải tệp, `proxy-addr`, `lodash`, `brace-expansion`). Đã nâng các thư viện này lên bản đã vá bằng `pnpm.overrides`; toàn bộ test xanh. Còn 4 cảnh báo mức trung bình chỉ hết khi nâng NestJS 10 → 11 (đang làm). Không đổi chức năng, không migration. Môi trường khác: `pnpm install` rồi dựng lại.
+
 ### Nét chữ giá trị trong MỌI ô nhập: 600 → 400 (`docs/DECISIONS.md` #246)
 
 Chủ dự án thấy chữ gõ vào ô nhập "đậm, vỡ nét" (Windows không có bậc 500 nên 600 làm dấu tiếng Việt dính). Nay giá trị trong mọi ô nhập (ô văn bản, ô chọn, ô ngày/giờ/tiền, mật khẩu, ô nhiều dòng, ô chỉ-đọc) dùng nét thường 400, mảnh và sắc hơn; nhãn trường vẫn đậm để phân cấp. Làm bằng một luật chung ở `index.css` (ô viết sau này tự đúng) và dọn ~140 chỗ ở 86 file cho mã khớp thực tế. Sửa `ui-guidelines.md` mục 4.1c/16; bộ kiểm `weight-audit` thêm vai trò ô nhập (đo thật: 270 ô đều 400). Chỉ đổi giao diện web; không migration, không đổi API. Cùng ngày: sửa tài liệu `CURRENT.md` (ngày cập nhật, mục bàn giao trùng, câu lặp ở phần bảo mật).

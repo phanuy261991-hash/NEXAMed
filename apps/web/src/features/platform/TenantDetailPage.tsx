@@ -18,9 +18,6 @@ import { PlatformApiError } from './platform.api';
 import { TENANT_CODE_PATTERN, formatDateVn, loginHostOf, previewLoginHost } from './platform-format';
 import { useAuditLogsQuery, useChangeTenantCodeMutation, useResetAdminPasswordMutation, useSuspendTenantMutation, useTenantQuery, useUnsuspendTenantMutation, useUpdateTenantMutation } from './platform.queries';
 
-/** Ô nhập có chữ nét MẢNH (400) cho hộp thoại "Đổi mã tên miền": trên Windows font Segoe UI không có bậc 500 nên semibold (chuẩn hiện hành cho giá trị ô nhập) ra nét dày, dấu tiếng Việt dễ dính — chủ dự án phản hồi 22/10/2026. Chờ chốt có áp cho mọi ô nhập không. */
-const lightInputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50';
 
@@ -216,7 +213,7 @@ function ChangeCodeDialog({ tenant, onClose }: { tenant: PlatformTenantDetail; o
               <label htmlFor="new-code" className="mb-1 block text-sm font-semibold text-slate-800">
                 Mã mới <span className="text-rose-500">*</span>
               </label>
-              <input id="new-code" value={newCode} onChange={(e) => setNewCode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className={lightInputClassName} autoComplete="off" autoFocus />
+              <input id="new-code" value={newCode} onChange={(e) => setNewCode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className={inputClassName} autoComplete="off" autoFocus />
               <p className={`mt-1 text-xs font-medium ${newCode && (!codeValid || sameAsCurrent) ? 'text-rose-600' : 'text-slate-500'}`}>
                 {sameAsCurrent ? 'Mã mới trùng mã hiện tại.' : newCode && !codeValid ? 'Mã gồm 3-30 ký tự: chữ thường không dấu, số và gạch ngang, không bắt đầu hoặc kết thúc bằng gạch ngang.' : `Địa chỉ mới: ${newHost}`}
               </p>
@@ -225,7 +222,7 @@ function ChangeCodeDialog({ tenant, onClose }: { tenant: PlatformTenantDetail; o
               <label htmlFor="change-code-reason" className="mb-1 block text-sm font-semibold text-slate-800">
                 Lý do <span className="text-rose-500">*</span>
               </label>
-              <textarea id="change-code-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} className={lightInputClassName} />
+              <textarea id="change-code-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} className={inputClassName} />
             </div>
             <ul className="mt-3 list-disc space-y-1 pl-5 text-xs font-medium text-slate-600">
               <li>Mã cũ được giữ làm lối tắt tự chuyển sang địa chỉ mới trong 90 ngày, không cấp cho công ty khác trong thời gian đó.</li>
