@@ -155,7 +155,7 @@ export function RefundDrugItemsDialog({ invoice, onClose }: { invoice: Invoice; 
                                   const clamped = Number.isFinite(raw) ? Math.min(Math.max(raw, 1), remaining) : 1;
                                   updateLine(line.id, { quantity: clamped });
                                 }}
-                                className="w-16 rounded-md border border-slate-300 px-2 py-1 text-right text-sm font-semibold tabular-nums text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                className="w-16 rounded-md border border-slate-300 px-2 py-1 text-right text-sm font-normal tabular-nums text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                               />
                               <span className="text-xs tabular-nums text-slate-500">/ {remaining}</span>
                             </span>

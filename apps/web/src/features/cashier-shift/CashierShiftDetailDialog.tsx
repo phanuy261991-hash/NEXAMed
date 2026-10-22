@@ -145,7 +145,7 @@ export function CashierShiftDetailDialog({ id, onClose }: { id: string; onClose:
                         value={resolutionNote}
                         onChange={(e) => setResolutionNote(e.target.value)}
                         placeholder="Ghi chú xử lý (tuỳ chọn)..."
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                       />
                       <Button type="button" variant="amber" onClick={() => void handleResolve()} loading={resolveMutation.isPending}>
                         Lưu cách xử lý
@@ -262,11 +262,11 @@ function EditShiftPanel({ shiftId, onDone }: { shiftId: string; onDone: () => vo
 
       <div className="mt-3">
         <label className="mb-1 block text-sm font-semibold text-slate-800">Lý do chênh lệch</label>
-        <textarea rows={2} value={discrepancyReason} onChange={(e) => setDiscrepancyReason(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900" />
+        <textarea rows={2} value={discrepancyReason} onChange={(e) => setDiscrepancyReason(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900" />
       </div>
       <div className="mt-3">
         <label className="mb-1 block text-sm font-semibold text-slate-800">Ghi chú bàn giao</label>
-        <textarea rows={2} value={handoverNote} onChange={(e) => setHandoverNote(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900" />
+        <textarea rows={2} value={handoverNote} onChange={(e) => setHandoverNote(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900" />
       </div>
 
       <div className="mt-3 flex items-center gap-2">

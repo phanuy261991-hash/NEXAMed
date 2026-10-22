@@ -79,7 +79,7 @@ export function DoseInput({
         onKeyDown={(e) => {
           if (e.key === 'Enter') commit();
         }}
-        className="w-full border-0 border-b-2 border-slate-300 bg-transparent px-0 py-1 text-center text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none disabled:text-slate-400"
+        className="w-full border-0 border-b-2 border-slate-300 bg-transparent px-0 py-1 text-center text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none disabled:text-slate-400"
       />
     </label>
   );

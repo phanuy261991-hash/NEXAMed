@@ -24,7 +24,7 @@ import { SERVICE_PACKAGE_PRICING_MODE_LABELS } from './pricing-labels';
 import { useCreateServicePackageMutation, usePriceableItemSearch, useServicePackageQuery, useUpdateServicePackageMutation } from './pricing.queries';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800';
 const labelClassName = 'text-sm font-semibold text-slate-800';
 
 const MODE_CARDS: { mode: ServicePackagePricingMode; hint: string }[] = [
@@ -466,7 +466,7 @@ function PackageForm({
                             inputMode="numeric"
                             value={row.quantity}
                             onChange={(e) => updateQuantity(index, Number(e.target.value.replace(/\D/g, '')))}
-                            className="w-14 rounded-md border border-slate-300 px-2 py-1.5 text-center text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            className="w-14 rounded-md border border-slate-300 px-2 py-1.5 text-center text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                           />
                         )}
                       </td>

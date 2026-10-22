@@ -16,7 +16,7 @@ import { useReferenceCatalogQuery } from './reference-catalog.queries';
 import type { ExamTypePriceInput, ReferenceCatalogItem } from '@nexamed/shared';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-6 pt-8';
 const sectionBadgeClassName =
   'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';

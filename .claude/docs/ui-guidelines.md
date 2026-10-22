@@ -72,7 +72,7 @@ Claude PHẢI luôn code đủ 4 trạng thái này cho mọi màn hình/compone
 
 Chủ dự án phản hồi giá trị trong ô nhập quá mảnh/nhạt, khó chú ý — đối chiếu ảnh tham khảo đã gửi (nhãn nhỏ nhạt phía trên, giá trị đậm rõ phía dưới, khung viền rõ ràng).
 
-- Mọi ô nhập giá trị dữ liệu (input/textarea/Combobox) trong form nghiệp vụ: `text-[15px] font-semibold text-slate-900` — không còn `text-sm` thường (không đậm) như trước.
+- Mọi ô nhập giá trị dữ liệu (input/textarea/Combobox) trong form nghiệp vụ: `text-[15px] font-normal text-slate-900` (**đổi 22/10/2026, `docs/DECISIONS.md` #246**: trước đây `font-semibold`; 600 trên Windows làm dấu tiếng Việt dính, "vỡ nét" khi gõ — 400 mảnh và sắc hơn rõ rệt; phân cấp nhãn đậm / giá trị mảnh vẫn giữ vì nhãn là semibold). Luật `@media screen` ở `app/index.css` ép `font-weight: 400` cho mọi `input`/`textarea` (trừ checkbox/radio/range/nút) nên ô viết sau này lỡ để `font-semibold` vẫn ra nét 400 — nhưng vẫn viết `font-normal` cho đúng, không dựa vào luật. Ô tự vẽ bằng `<button>`/`<div>` giả làm ô (Combobox nút, SearchableCombobox, ô chỉ-đọc) PHẢI tự để `font-normal`.
 - Ô readonly/disabled (mã tự sinh, năm sinh tính sẵn...): vẫn giữ nền `bg-slate-50` để phân biệt không sửa được, nhưng chữ đổi từ `text-slate-500` (nhạt) sang `text-slate-800` (đậm, vẫn đọc rõ) — **không dùng `text-slate-500` cho giá trị nữa**, chỉ dùng màu nhạt cho nhãn.
 - **Nhãn (`label`) — chốt lại 2026-08-20, ĐẢO NGƯỢC quy tắc "nhạt hơn để tương phản" ở trên**: chủ dự án phản hồi nhãn `text-xs font-medium text-slate-500` quá nhỏ/nhạt, khó đọc — bắt buộc `text-sm font-semibold text-slate-800` cho **MỌI** nhãn trường, kể cả biến thể "dense" (nhiều ô ngắn trong cùng khung, ví dụ `Textarea dense` ở màn hình khám) — thử nghiệm giữ dense nhỏ hơn 1 bậc (`text-xs`) bị chủ dự án phản hồi "vẫn nhỏ hơn trang khác", nên **dense KHÔNG còn giảm cỡ chữ nhãn nữa, chỉ giảm cỡ/khoảng đệm của chính ô nhập** (input/textarea) để giữ mật độ. Không còn dùng màu nhạt `slate-500`/`slate-600`/`slate-700` cho bất kỳ nhãn trường nào. Nhãn mang ý nghĩa cảnh báo riêng (ví dụ "Tiền sử dị ứng" màu `rose-600`) giữ nguyên màu semantic, chỉ đồng bộ **cỡ chữ** (`text-sm`) và **độ đậm** (`font-semibold`) theo quy tắc này, không đổi màu. **Đây là quy tắc bắt buộc cho MỌI nhãn trường trong form nghiệp vụ hiện có lẫn form mới phát sinh sau này** — không quay lại màu/cỡ nhạt/nhỏ nêu ở lịch sử "chốt 2026-08-14" phía trên.
 - **Tiêu đề phụ chia nhóm trong 1 khung** (ví dụ "TIỀN SỬ"/"THĂM KHÁM" ở màn hình khám, khác nhãn trường ở trên — đây là tiêu đề một CỤM nhiều trường, không phải nhãn của riêng 1 ô nhập): cùng đợt chốt 2026-08-20, đổi từ `text-slate-400`/`text-slate-500` (quá nhạt, chủ dự án khoanh đỏ yêu cầu sửa) sang `text-slate-700` — giữ nguyên `text-[11px]`/`text-xs font-bold uppercase tracking-wide`, chỉ đổi màu.
@@ -411,7 +411,7 @@ Mẫu sai đã gặp 2 lần liên tiếp ở `WaitingCard`/`InProgressCard` (`a
 
 **Nguyên tắc**: chữ tiếng Việt có dấu ở cỡ nhỏ mà quá đậm thì dấu dính vào chữ, nét bị "vỡ". Vì vậy **TỐI ĐA `font-semibold` (600) trên giao diện màn hình**. KHÔNG dùng `font-bold`/`font-extrabold`/`font-black` (700–900) và `fontWeight` ≥ 700 — ESLint chặn (`no-restricted-syntax` ở `eslint.config.js`); CSS nền ở `app/index.css` cũng hạ `<b>`/`<strong>`/`<th>` về 600. **Nhấn mạnh bằng cỡ chữ, màu và khoảng cách, KHÔNG bằng độ đậm.** Bản IN (`*PrintView.tsx`, `shared/print/PrintDocument.tsx`) được miễn: chứng từ in cần chữ đậm thật (ví dụ chỉ số xét nghiệm vượt mức phải in đậm) — và CSS in giữ 700 cho `<b>`/`<strong>`/`<th>`.
 
-**Thang 3 mức**: `font-normal` 400 (đoạn mô tả, ghi chú, dòng phụ) · `font-medium` 500 (giá trị trong bảng, nút, mục điều hướng, chữ cần chắc hơn một chút) · `font-semibold` 600 (MỌI chữ cần nhấn: tiêu đề, đầu cột, tên chính, nhãn, giá trị nhập, badge, số liệu nổi bật).
+**Thang 3 mức**: `font-normal` 400 (đoạn mô tả, ghi chú, dòng phụ) · `font-medium` 500 (giá trị trong bảng, nút, mục điều hướng, chữ cần chắc hơn một chút) · `font-semibold` 600 (MỌI chữ cần nhấn: tiêu đề, đầu cột, tên chính, nhãn, badge, số liệu nổi bật). **Giá trị trong ô nhập là ngoại lệ: `font-normal` 400** (xem bảng và ghi chú ngay dưới).
 
 **Theo vai trò** (cỡ / độ đậm / màu):
 
@@ -427,14 +427,14 @@ Mẫu sai đã gặp 2 lần liên tiếp ở `WaitingCard`/`InProgressCard` (`a
 | Ô bảng — dòng phụ/meta | `text-xs` | normal | `text-slate-500` |
 | Mã định danh (link) | `text-sm` | medium | `text-blue-600` |
 | Nhãn trường (`label`) | `text-sm` | semibold | `text-slate-800` |
-| Giá trị trong ô nhập | `text-[15px]` | semibold | `text-slate-900` |
+| Giá trị trong ô nhập | `text-[15px]` | normal | `text-slate-900` |
 | Badge trạng thái | `text-[11px]` | semibold | theo tín hiệu |
 | Nút (`Button`) | `text-sm` | medium | theo variant |
 | Mục sidebar | `text-sm` | medium (đang chọn: semibold) | — |
 | Số liệu nổi bật (KPI, tổng tiền) | `text-xl`–`text-2xl` + `tabular-nums` | semibold | `text-slate-900` |
 | Đoạn mô tả, ghi chú, trợ giúp | `text-sm`/`text-xs` | normal | `text-slate-600`/`text-slate-500` |
 
-**ĐÃ CHỐT ĐỔI (22/10/2026, `docs/DECISIONS.md` #246 — chủ dự án: "nét chữ ô nhập vẫn đậm, nhìn vỡ nét")**: hàng "Giá trị trong ô nhập" ở bảng trên và mục 4.1c (`text-[15px] font-semibold`) **chuyển thành `font-normal` (400)** cho MỌI ô nhập (nhãn trường vẫn semibold). Đo thật: 400 nét mảnh và sắc hơn rõ rệt. **UI MỚI viết từ giờ dùng `font-normal` cho giá trị ô nhập.** Các ô cũ (71 file/130 chỗ) đang được chuyển dần — kế hoạch ở `docs/handoffs/HANDOFF-HieuNangBaoMat-DoiMaTenMien-NetChuOCuoi-2026-10-22.md` mục 2; khi xong thì sửa luôn bảng và 4.1c cho khớp và bỏ ghi chú này.
+**Giá trị trong ô nhập = `font-normal` 400 (chốt 22/10/2026, `docs/DECISIONS.md` #246 — chủ dự án: "nét chữ ô nhập vẫn đậm, nhìn vỡ nét"; ĐÃ ÁP DỤNG toàn app cùng ngày: ~140 chỗ ở 86 file + luật `index.css`; `weight-audit` có vai trò "giá-trị-ô-nhập" mong đợi 400)**. Nhãn trường vẫn semibold. Đo thật bằng Chrome: 400 nét mảnh, sắc hơn rõ rệt so với 600.
 
 **Lưu ý hiển thị thật (phát hiện 16/10/2026, đo bằng Chrome thật trên Windows)**: font hệ thống Segoe UI KHÔNG có bậc 500, nên `font-medium` (500) hiển thị GIỐNG HỆT `font-semibold` (600) — chỉ còn 2 mức nhìn thấy (400 và ≥500). Vì thế **chữ trong ô bảng danh sách dùng 400** (tên, mã, SĐT, ngày...; `app/index.css` có luật `@media screen` hạ mọi `font-medium/semibold` màu slate/blue trong `[role=cell]`/`td` về 400, trừ số liệu `tabular-nums`, badge `rounded`, chữ `uppercase`, `button`), phân cấp bằng MÀU (tên `text-slate-900`, giá trị thường `text-slate-600`) và cỡ chữ; số tiền giữ semibold. Chủ dự án: "tên trong các danh sách quá đậm nét".
 

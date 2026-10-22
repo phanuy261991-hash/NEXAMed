@@ -7,7 +7,7 @@ import { PlatformApiError, platformLogin, platformVerifyOtp } from './platform.a
 import { usePlatformSession } from './platform.store';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 /** Đăng nhập người vận hành: bước 1 tên đăng nhập + mật khẩu, bước 2 mã xác thực 6 số từ ứng dụng OTP (docs/DECISIONS.md #237). Mỗi bước là một `<form>` — Enter xác nhận. */
 export function PlatformLoginPage() {

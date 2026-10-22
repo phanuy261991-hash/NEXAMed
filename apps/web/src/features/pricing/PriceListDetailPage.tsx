@@ -36,7 +36,7 @@ import { PriceListImportDialog } from './PriceListImportDialog';
 import { useCreatePriceListMutation, usePriceableItemSearch, usePriceListQuery, useUpdatePriceListMutation } from './pricing.queries';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800';
 const labelClassName = 'text-sm font-semibold text-slate-800';
 
 // Cột phải của bố cục 2 cột (cột trái 340px) — ≈ 900px tối thiểu; tên mặt hàng co giãn.
@@ -434,7 +434,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                 inputMode="numeric"
                 value={bulkPercent}
                 onChange={(e) => setBulkPercent(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                className="w-16 rounded-md border border-slate-300 bg-white px-2 py-2 text-right text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-16 rounded-md border border-slate-300 bg-white px-2 py-2 text-right text-[13px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
               <Button type="button" variant="secondary" disabled={selectedCount === 0} onClick={applyBulkPercent}>
                 Áp dụng
@@ -546,7 +546,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                                 const digits = e.target.value.replace(/\D/g, '').slice(0, 3);
                                 updateLine(line.key, { value: digits === '' ? undefined : Math.min(100, Number(digits)) });
                               }}
-                              className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                              className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-[13px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
                             />
                             <span className="text-[13px] font-semibold text-slate-600">%</span>
                           </div>
@@ -556,7 +556,7 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                             value={line.value}
                             onChange={(v) => updateLine(line.key, { value: v })}
                             disabled={!canWrite}
-                            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-[13px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
                           />
                         )}
                       </div>

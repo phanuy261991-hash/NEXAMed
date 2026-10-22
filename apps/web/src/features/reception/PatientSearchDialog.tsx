@@ -8,7 +8,7 @@ import { formatAddressLine } from '../patient/patient-form.utils';
 import { usePatientByNationalIdQuery, usePatientsQuery, useRecentPatientsQuery } from '../patient/patient.queries';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 const thClassName = 'border-b-2 border-blue-600 px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-800';
 const thClassNameLeft = `${thClassName} text-left`;

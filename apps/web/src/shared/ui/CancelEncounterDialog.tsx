@@ -94,7 +94,7 @@ export function CancelEncounterDialog({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Ví dụ: khách chờ lâu, tự bỏ về"
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         />
       </ConfirmDialog>
     </form>

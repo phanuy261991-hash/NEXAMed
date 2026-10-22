@@ -7,7 +7,7 @@ import { PasswordInput } from '../../shared/ui/PasswordInput';
 import { ApiError } from '../../shared/api/client';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 export interface InteropCredentialDialogProps {
   /** "Mã liên thông cơ sở" / "Mã liên thông bác sĩ". */

@@ -21,9 +21,9 @@ import {
 } from './paraclinical.queries';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800';
 const cellInputClassName =
-  'w-full rounded-md border border-slate-300 px-2 py-1.5 text-center text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50';
+  'w-full rounded-md border border-slate-300 px-2 py-1.5 text-center text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50';
 const labelClassName = 'text-sm font-semibold text-slate-800';
 
 const VALUE_TYPE_OPTIONS = [
@@ -485,7 +485,7 @@ function IndicatorForm({
                         </td>
                       )}
                       <td className="px-1.5 py-2">
-                        <input aria-label="Ghi chú" value={r.note} onChange={(e) => patchRow(r.draftId, { note: e.target.value })} className={`${cellInputClassName} text-left font-medium`} />
+                        <input aria-label="Ghi chú" value={r.note} onChange={(e) => patchRow(r.draftId, { note: e.target.value })} className={`${cellInputClassName} text-left font-normal`} />
                       </td>
                       <td className="px-1.5 py-2 text-center">
                         <button
@@ -505,7 +505,7 @@ function IndicatorForm({
                           value={r.displayText}
                           onChange={(e) => patchRow(r.draftId, { displayText: e.target.value })}
                           placeholder="Chữ in trên phiếu (tuỳ chọn) — để trống = tự sinh từ ngưỡng, ví dụ “< 0.03” hoặc nhiều dòng kiểu HbA1c"
-                          className="w-full rounded-md border border-dashed border-slate-300 px-2.5 py-1.5 text-left text-[13px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                          className="w-full rounded-md border border-dashed border-slate-300 px-2.5 py-1.5 text-left text-[13px] font-normal text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
                         />
                       </td>
                     </tr>

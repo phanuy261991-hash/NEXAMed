@@ -154,7 +154,7 @@ export function PriceListGroupDialog({
               inputMode="numeric"
               value={percent}
               onChange={(e) => setPercent(e.target.value.replace(/\D/g, '').slice(0, 3))}
-              className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-right text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-right text-[13px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
             <span className="text-[13px] font-semibold text-slate-600">%</span>
           </div>

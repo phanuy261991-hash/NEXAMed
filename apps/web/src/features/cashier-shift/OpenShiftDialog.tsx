@@ -76,7 +76,7 @@ export function OpenShiftDialog({
             {branchName && (
               <div>
                 <div className="mb-1.5 text-sm font-semibold text-slate-800">Chi nhánh</div>
-                <p className="break-words rounded-md border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-[15px] font-semibold text-slate-800" title={branchName}>{branchName}</p>
+                <p className="break-words rounded-md border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-[15px] font-normal text-slate-800" title={branchName}>{branchName}</p>
                 <p className="mt-1 text-xs text-slate-500">Vốn ca trước lấy từ ca đã chốt gần nhất của chính chi nhánh này.</p>
               </div>
             )}
@@ -114,7 +114,7 @@ export function OpenShiftDialog({
                       value={countedAmount}
                       onChange={(v) => setCountedAmount(v ?? 0)}
                       required
-                      className="w-full rounded-md border border-slate-300 px-3.5 py-2.5 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full rounded-md border border-slate-300 px-3.5 py-2.5 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     />
                     <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">đ</span>
                   </div>
@@ -164,7 +164,7 @@ export function OpenShiftDialog({
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="Ví dụ: chủ phòng khám bổ sung quỹ đầu ngày, thiếu tiền lẻ từ ca trước..."
-                    className="w-full rounded-md border border-amber-300 bg-white px-3.5 py-2.5 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-amber-300 bg-white px-3.5 py-2.5 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
               </div>

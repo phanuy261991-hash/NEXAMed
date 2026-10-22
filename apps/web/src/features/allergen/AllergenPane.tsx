@@ -30,7 +30,7 @@ import {
 } from './allergen.queries';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 /**
  * "Dị nguyên" (docs/DECISIONS.md #069) — bố cục master-detail (cột trái "Nhóm dị nguyên" lọc cột

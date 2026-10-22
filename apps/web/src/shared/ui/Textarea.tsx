@@ -26,7 +26,7 @@ export function Textarea({ id, label, required, dense = false, hideLabel = false
       <textarea
         id={id}
         required={required}
-        className={`w-full rounded-md border border-slate-300 font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+        className={`w-full rounded-md border border-slate-300 font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
           dense ? 'px-2 py-1.5 text-[13px]' : 'px-3 py-2 text-[15px]'
         } ${className}`}
         {...rest}

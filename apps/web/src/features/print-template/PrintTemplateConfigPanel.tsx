@@ -10,7 +10,7 @@ import { useInsuranceEnabledQuery } from '../clinic/clinic.queries';
 import { DEFAULT_INSURANCE_PRINT, INSURANCE_PRINT_DOCUMENT_TYPES } from '../insurance-card/insurance-print';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 type HeaderKey = keyof PrintTemplateConfig['header'];
 type LabelKey = keyof NonNullable<PrintTemplateConfig['label']>;
@@ -79,7 +79,7 @@ function InsurancePrintRow({
             id={`${idPrefix}-whenSelfPay`}
             value={value.whenSelfPay}
             onChange={(e) => onChange({ ...value, whenSelfPay: e.target.value === 'selfPay' ? 'selfPay' : 'hide' })}
-            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[12px] font-semibold text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[12px] font-normal text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           >
             <option value="hide">Ẩn cả dòng</option>
             <option value="selfPay">In &quot;Tự chi trả&quot;</option>
@@ -312,7 +312,7 @@ export function PrintTemplateConfigPanel({
                       id="pt-rx-nationalIdWhenMissing"
                       value={rxInfo.nationalIdWhenMissing}
                       onChange={(e) => setRxInfo({ nationalIdWhenMissing: e.target.value === 'dots' ? 'dots' : 'hide' })}
-                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[12px] font-semibold text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[12px] font-normal text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                       <option value="hide">Ẩn cả dòng</option>
                       <option value="dots">In dòng chấm để viết tay</option>

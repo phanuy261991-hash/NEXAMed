@@ -55,7 +55,7 @@ export function DenominationCounter({ value, onChange }: { value: number; onChan
                   onChange={(e) => setQuantity(denom, e.target.value === '' ? 0 : Number(e.target.value.replace(/\D/g, '')))}
                   aria-label={`Số tờ ${formatVnd(denom)}`}
                   placeholder="0"
-                  className="h-8 w-12 rounded-md border border-slate-300 bg-slate-50 text-center text-sm font-semibold text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="h-8 w-12 rounded-md border border-slate-300 bg-slate-50 text-center text-sm font-normal text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
                 <button
                   type="button"

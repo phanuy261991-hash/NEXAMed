@@ -183,7 +183,7 @@ export function CloseShiftCountStep({
               id="direct-total"
               value={countedAmount}
               onChange={(v) => onChangeCountedAmount(v ?? 0)}
-              className="w-full rounded-md border border-slate-300 px-3.5 py-2.5 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-md border border-slate-300 px-3.5 py-2.5 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
             <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">đ</span>
           </div>
@@ -238,7 +238,7 @@ export function CloseShiftReconcileStep({
             value={discrepancyReason}
             onChange={(e) => onChangeDiscrepancyReason(e.target.value)}
             placeholder="Ví dụ: trả nhầm tiền thừa cho khách lúc 10:20, khách chuyển khoản nhưng quên ghi nhận..."
-            className="w-full rounded-md border border-rose-300 bg-white px-3.5 py-2.5 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full rounded-md border border-rose-300 bg-white px-3.5 py-2.5 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
       )}
@@ -276,7 +276,7 @@ export function CloseShiftHandoverStep({
           id="handover-keep"
           value={keepAmount}
           onChange={(v) => onChangeKeepAmount(v ?? 0)}
-          className="w-full rounded-md border border-slate-300 px-3.5 py-2.5 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="w-full rounded-md border border-slate-300 px-3.5 py-2.5 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         />
         <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">đ</span>
       </div>
@@ -296,7 +296,7 @@ export function CloseShiftHandoverStep({
           value={handoverNote}
           onChange={(e) => onChangeHandoverNote(e.target.value)}
           placeholder="Ví dụ: đã kiểm tra cùng Quản lý ca, tiền đã cất vào két sắt văn phòng."
-          className="w-full rounded-md border border-slate-300 px-3.5 py-2.5 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="w-full rounded-md border border-slate-300 px-3.5 py-2.5 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         />
       </div>
 

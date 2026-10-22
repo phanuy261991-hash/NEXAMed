@@ -7,7 +7,7 @@ import { ArrowFatUp, Eye, EyeSlash, Lock, User } from '@phosphor-icons/react';
  * Chỉ dùng ở màn đăng nhập nên đặt cạnh `LoginPage` — không thay `PasswordInput` dùng chung (kiểu viền cũ của các form nghiệp vụ).
  */
 const INPUT_CLASS =
-  'peer h-12 w-full rounded-lg border-[1.5px] border-transparent bg-slate-100 pl-[42px] text-base font-semibold text-slate-900 transition-colors hover:bg-slate-200/70 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-600/15 disabled:bg-slate-50 disabled:text-slate-500 desktop:h-[46px] desktop:text-[15px]';
+  'peer h-12 w-full rounded-lg border-[1.5px] border-transparent bg-slate-100 pl-[42px] text-base font-normal text-slate-900 transition-colors hover:bg-slate-200/70 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-600/15 disabled:bg-slate-50 disabled:text-slate-500 desktop:h-[46px] desktop:text-[15px]';
 const ICON_CLASS = 'pointer-events-none absolute left-[13px] top-1/2 -translate-y-1/2 text-slate-500 peer-focus:text-blue-600';
 
 function FieldLabel({ htmlFor, children }: { htmlFor: string; children: string }) {

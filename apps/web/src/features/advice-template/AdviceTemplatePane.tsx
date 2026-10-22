@@ -25,7 +25,7 @@ import { listAdviceTemplates } from './advice-template.api';
 import { useAdviceTemplatesQuery, useCreateAdviceTemplateMutation, useUpdateAdviceTemplateMutation } from './advice-template.queries';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 /** Tìm không phân biệt hoa thường và dấu tiếng Việt (web không import giá trị `stripVietnameseDiacritics` từ `@nexamed/core`, #073). */
 function normalizeForSearch(text: string): string {

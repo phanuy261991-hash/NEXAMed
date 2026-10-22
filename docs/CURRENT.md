@@ -1,6 +1,6 @@
 # Current — NEXAMed
 
-Trạng thái HIỆN TẠI của dự án (cập nhật 21/10/2026, cuối ngày). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
+Trạng thái HIỆN TẠI của dự án (cập nhật 22/10/2026). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
 
 Nhật ký trạng thái đầy đủ cũ (từng đợt, đến 16/10/2026) ở `docs/archive/CURRENT-den-2026-10-16.md` — **chỉ mở khi cần tra một mục cụ thể**. Khi file này vượt ~40 KB thì chuyển phần cũ sang `docs/archive/CURRENT-*.md` mới và viết lại bản ngắn (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
@@ -28,14 +28,15 @@ Mockup (https://claude.ai/artifact/FAi8GCjycj94s6EwTT9t6b, bản 3) **đã chố
 
 ## Hiệu năng & bảo mật (21/10/2026, #244)
 
-Đo tải toàn ứng dụng **ĐẠT** (p95 58 ms/500 ms, 0 lỗi). Đã sửa 2 lỗi nghiêm trọng: đăng nhập đồng thời làm cạn bể kết nối (100 người → 64 lỗi, nay 0 lỗi; SaaS 320 lượt → 0 lỗi) và một công ty chặn được đăng nhập của mọi công ty khác. Đã thêm: giới hạn 5 phiên/tài khoản, hạn phiên 7 ngày (từ 30), job dọn phiên hết hạn, biến `TRUST_PROXY_HOPS`. Sửa thêm: hai job dọn dẹp từng hẹn 2 giờ sáng (máy phòng khám tắt buổi tối nên chưa từng chạy) nay chạy sau khi bật máy + lặp trong ngày. Kiểm thử tấn công chủ động trên bản SaaS chạy thật: **23/24 mục ĐẠT, 0 rò rỉ dữ liệu** (cách ly công ty, giả mạo tên miền, giả mạo token, phân quyền, rò rỉ thông tin) — đã trình diễn trên Chrome. `GET /encounters/by-patient/:id/history` đã đồng bộ trả 404 cho bệnh nhân công ty khác (dùng `PATIENT_READER_PORT` sẵn có). Đã làm tiếp (#245): OTP khu quản trị chỉ dùng một lần; quy trình đổi MÃ công ty (tên miền phụ) có kiểm soát — giữ mã cũ làm lối tắt 90 ngày, thu hồi phiên, ghi nhật ký; tên phòng khám khách vẫn tự đổi được. **Còn mở**: hộp thoại "Đổi mã tên miền" chưa có mockup duyệt (dựng theo khuôn hộp "Đặt lại mật khẩu"); tham số argon2; CSP Report-Only (cần thêm cột `last_otp_step`, chờ chủ dự án quyết); tham số argon2 mặc định; CSP Report-Only.
+Đo tải toàn ứng dụng **ĐẠT** (p95 58 ms/500 ms, 0 lỗi). Đã sửa 2 lỗi nghiêm trọng: đăng nhập đồng thời làm cạn bể kết nối (100 người → 64 lỗi, nay 0 lỗi; SaaS 320 lượt → 0 lỗi) và một công ty chặn được đăng nhập của mọi công ty khác. Đã thêm: giới hạn 5 phiên/tài khoản, hạn phiên 7 ngày (từ 30), job dọn phiên hết hạn, biến `TRUST_PROXY_HOPS`. Sửa thêm: hai job dọn dẹp từng hẹn 2 giờ sáng (máy phòng khám tắt buổi tối nên chưa từng chạy) nay chạy sau khi bật máy + lặp trong ngày. Kiểm thử tấn công chủ động trên bản SaaS chạy thật: **23/24 mục ĐẠT, 0 rò rỉ dữ liệu** (cách ly công ty, giả mạo tên miền, giả mạo token, phân quyền, rò rỉ thông tin) — đã trình diễn trên Chrome. `GET /encounters/by-patient/:id/history` đã đồng bộ trả 404 cho bệnh nhân công ty khác (dùng `PATIENT_READER_PORT` sẵn có). Đã làm tiếp (#245): OTP khu quản trị chỉ dùng một lần; quy trình đổi MÃ công ty (tên miền phụ) có kiểm soát — giữ mã cũ làm lối tắt 90 ngày, thu hồi phiên, ghi nhật ký; tên phòng khám khách vẫn tự đổi được. **Còn mở**: hộp thoại "Đổi mã tên miền" chưa có mockup duyệt (dựng theo khuôn hộp "Đặt lại mật khẩu"); tham số argon2 (đang mặc định thư viện, chờ chủ dự án quyết); CSP vẫn Report-Only.
 
-## VIỆC ĐẦU TIÊN PHIÊN SAU — chuẩn nét chữ ô nhập (22/10/2026, #246)
+## Chuẩn nét chữ ô nhập (22/10/2026, #246) — ĐÃ XONG
 
-Chủ dự án chốt đổi giá trị trong MỌI ô nhập từ semibold (600) sang normal (400) vì nét 600 trên Windows "vỡ nét" khi gõ. Mới làm ở hộp thoại "Đổi mã tên miền"; phần còn lại (71 file, 130 chỗ) giao phiên sau — đọc `docs/handoffs/HANDOFF-HieuNangBaoMat-DoiMaTenMien-NetChuOCuoi-2026-10-22.md` mục 2 (phạm vi, cách làm một chỗ bằng `index.css`, việc kèm theo). Bàn giao mới nhất của phiên 21–22/10 (hiệu năng, bảo mật SaaS, đổi mã tên miền): cùng file đó.
+Giá trị trong MỌI ô nhập dùng `font-normal` 400 (trước là semibold 600 làm "vỡ nét" trên Windows); nhãn trường vẫn semibold. Một luật `@media screen` ở `app/index.css` + dọn ~140 chỗ ở 86 file + sửa `ui-guidelines.md` mục 4.1c/16 + `weight-audit.cjs` có vai trò "giá-trị-ô-nhập". Đo Chrome thật: 270 ô nhập đều 400. **Chủ dự án đã xem ảnh và DUYỆT nét chữ mới (22/10/2026).**
 
 ## Đang chờ / việc treo
 
+- Ô cỡ nhỏ 13px (`dense`) nếu sau này khó đọc: dùng `text-slate-900` đậm màu hơn thay vì tăng độ đậm (nét 400 đã được chủ dự án duyệt 22/10/2026; Thu ngân/Kê đơn chưa chụp ảnh nhưng cùng luật CSS).
 - Hỏi đơn vị vận hành cổng đơn thuốc: sandbox, chữ ký số bắt buộc?, chữ hoa/thường mã đơn, cách cập nhật đơn đã gửi khi đính chính, "72 tháng", danh mục hình thức điều trị, tên trường chẩn đoán, app-name/app-key, địa chỉ API nhà thuốc. API nhà thuốc (lấy đơn, báo số lượng bán) làm SAU giai đoạn 1–3, duyệt riêng.
 - Bố cục: bộ kiểm toàn app (53 trang × 10 cỡ) đã **0 vấn đề** (20/10/2026); độ đậm chữ đo tối đa 600. Còn lại ưu tiên thấp: ghi chú 2 dòng của hộp "Bác sĩ đang nghỉ"/"Không có ca làm việc hôm nay" ở Tiếp nhận vượt gợi ý ≤ ~40 ký tự (ui-guidelines 15b), chưa kiểm hộp in thật của trình duyệt.
 - Gói thuê bao + giấy phép ký số (làm SAU; mockup trang Giấy phép chờ duyệt; đảo ngược #070/#072 khi bắt đầu).
@@ -44,9 +45,7 @@ Chủ dự án chốt đổi giá trị trong MỌI ô nhập từ semibold (600
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-HieuNangBaoMat-DoiMaTenMien-NetChuOCuoi-2026-10-22.md`** (mới nhất, 22/10/2026: hiệu năng + bảo mật SaaS + đổi mã tên miền + việc đầu tiên phiên sau là chuẩn nét chữ ô nhập). Bản trước: `docs/handoffs/HANDOFF-TheBHYT-S204-2026-10-21.md` (đã xong hoàn toàn).
-
-**`docs/handoffs/HANDOFF-TheBHYT-S204-2026-10-21.md`** (mới nhất, 21/10/2026: thẻ BHYT backend xong + web làm dở, việc còn lại theo thứ tự, bẫy). Bản trước: `HANDOFF-LienThong-GD3-HangCho-OBoSung-2026-10-20-p4.md` (20/10/2026 phần 4: GĐ3 liên thông xong ô 8b/dải 8a/hàng chờ/bộ gửi nền/trang 8c).
+**`docs/handoffs/HANDOFF-HieuNangBaoMat-DoiMaTenMien-NetChuOCuoi-2026-10-22.md`** (mới nhất, 22/10/2026: hiệu năng + bảo mật SaaS + đổi mã tên miền; mục 2 về nét chữ ô nhập nay ĐÃ LÀM XONG trong phiên sau cùng ngày, xem #246). Bản trước: `docs/handoffs/HANDOFF-TheBHYT-S204-2026-10-21.md` (thẻ BHYT, đã xong hoàn toàn) và `HANDOFF-LienThong-GD3-HangCho-OBoSung-2026-10-20-p4.md` (liên thông đơn thuốc GĐ3).
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 

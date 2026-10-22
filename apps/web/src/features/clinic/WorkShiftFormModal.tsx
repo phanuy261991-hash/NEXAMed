@@ -11,7 +11,7 @@ import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 /** 8 màu cố định — không color-picker tự do (tránh chọn hex lệch tông với giao diện app). */
 const COLOR_OPTIONS: { value: WorkShiftColor; hex: string; label: string }[] = [

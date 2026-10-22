@@ -39,6 +39,18 @@
 }
 
 /**
+ * GIÁ TRỊ TRONG Ô NHẬP dùng 400 (ui-guidelines mục 4.1c/16, `docs/DECISIONS.md` #246, chủ dự án 22/10/2026: "nét chữ ô nhập đậm, nhìn vỡ nét" — 600 trên Windows làm dấu tiếng Việt dính).
+ * Đặt MỘT chỗ ở đây thay vì dựa vào từng class: luật ngoài layer luôn thắng utility của Tailwind nên ô nhập viết sau này lỡ để `font-semibold` vẫn ra nét 400. Nhãn trường (`label`) vẫn semibold.
+ * Không áp cho ô chọn (checkbox/radio/range/button/submit/file/color...). Chỉ trên màn hình — bản in giữ nguyên.
+ */
+@media screen {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='button'], [type='submit'], [type='reset'], [type='file'], [type='color'], [type='image']),
+  textarea {
+    font-weight: 400;
+  }
+}
+
+/**
  * Brand phụ — màu nhấn cho các thành phần LỰA CHỌN (chip/thẻ chọn 1-trong-nhiều: Nguồn đặt lịch,
  * chọn Bác sĩ, và các trường hợp tương tự sau này) — tách khỏi `blue-600` (brand chính, dành cho
  * điều hướng/hành động chính) để đỡ lạm dụng một màu xanh cho mọi trạng thái "đang chọn". Chốt

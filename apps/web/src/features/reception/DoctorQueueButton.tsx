@@ -139,7 +139,7 @@ export function DoctorQueueButton() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Tìm theo tên hoặc mã BN..."
-                  className="w-full rounded-md border border-slate-300 py-1.5 pl-8 pr-3 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full rounded-md border border-slate-300 py-1.5 pl-8 pr-3 text-[13px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
             </div>

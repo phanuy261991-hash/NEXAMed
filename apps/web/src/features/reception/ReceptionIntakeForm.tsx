@@ -46,7 +46,7 @@ import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog
 import { useCheckInMutation, useReceptionListQuery, useRegisterReceptionMutation } from './reception.queries';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const labelClassName = 'mb-1.5 block text-sm font-semibold text-slate-800';
 /** Boxed Section Form Pattern — .claude/docs/ui-guidelines.md mục 9b. */
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-5 pt-7';
@@ -1118,7 +1118,7 @@ export function ReceptionIntakeForm({
           </div>
           <div className="w-28 flex-none">
             <span className={labelClassName}>Đơn vị</span>
-            <div className="flex h-[38px] items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-[15px] font-semibold text-slate-800">
+            <div className="flex h-[38px] items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-[15px] font-normal text-slate-800">
               {draftUnitLabel}
             </div>
           </div>

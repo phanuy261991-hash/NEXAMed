@@ -617,7 +617,7 @@ export function InvoiceDetailPage() {
                                     onChange={(e) => updateLineDiscount(line.id, { value: e.target.value === '' ? undefined : Number(e.target.value) })}
                                     onBlur={() => void saveLineDiscounts()}
                                     placeholder="0"
-                                    className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
+                                    className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
                                   />
                                   {/* Mặc định %, giống khung tổng — "không chiết khấu dòng này" chỉ cần
                                       để trống ô số, không cần bỏ chọn kiểu (chốt theo yêu cầu trực tiếp). */}
@@ -668,7 +668,7 @@ export function InvoiceDetailPage() {
                           onChange={(e) => setTotalDiscountValue(e.target.value === '' ? undefined : Number(e.target.value))}
                           onBlur={() => void saveTotalDiscount()}
                           placeholder="0"
-                          className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
+                          className="w-20 rounded-md border-2 border-slate-300 px-2 py-1.5 text-right text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-300"
                         />
                         {/* Luôn có 1 kiểu đang chọn (bỏ chiết khấu = xoá Ô GIÁ TRỊ, không phải bỏ
                             chọn kiểu) — bấm lại đúng kiểu đang chọn không làm gì. */}
@@ -707,7 +707,7 @@ export function InvoiceDetailPage() {
                       value={discountReason}
                       onChange={(e) => setDiscountReason(e.target.value)}
                       placeholder="Bắt buộc trước khi lưu chiết khấu"
-                      className="rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      className="rounded-md border border-slate-300 px-3 py-2 text-[14px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     />
                     {discountError && <p className="text-xs font-semibold text-rose-600">{discountError}</p>}
                   </div>
@@ -761,7 +761,7 @@ export function InvoiceDetailPage() {
                         id="invoice-cash-received"
                         value={cashReceived}
                         onChange={setCashReceived}
-                        className="rounded-md border-2 border-slate-300 px-3 py-2 text-right text-base font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
+                        className="rounded-md border-2 border-slate-300 px-3 py-2 text-right text-base font-normal text-slate-900 focus:border-blue-500 focus:outline-none"
                       />
                       {/* Pill mệnh giá — bấm cộng dồn vào ô trên (chốt qua AskUserQuestion), cộng nút "Vừa đủ" tự điền đúng dueAmount. */}
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -1068,7 +1068,7 @@ export function InvoiceDetailPage() {
               autoFocus
               value={refundReason}
               onChange={(e) => setRefundReason(e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               placeholder="Ví dụ: khách bỏ về, chưa dùng dịch vụ nào"
             />
           </ConfirmDialog>

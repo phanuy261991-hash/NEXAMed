@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-22
 
+### Nét chữ giá trị trong MỌI ô nhập: 600 → 400 (`docs/DECISIONS.md` #246)
+
+Chủ dự án thấy chữ gõ vào ô nhập "đậm, vỡ nét" (Windows không có bậc 500 nên 600 làm dấu tiếng Việt dính). Nay giá trị trong mọi ô nhập (ô văn bản, ô chọn, ô ngày/giờ/tiền, mật khẩu, ô nhiều dòng, ô chỉ-đọc) dùng nét thường 400, mảnh và sắc hơn; nhãn trường vẫn đậm để phân cấp. Làm bằng một luật chung ở `index.css` (ô viết sau này tự đúng) và dọn ~140 chỗ ở 86 file cho mã khớp thực tế. Sửa `ui-guidelines.md` mục 4.1c/16; bộ kiểm `weight-audit` thêm vai trò ô nhập (đo thật: 270 ô đều 400). Chỉ đổi giao diện web; không migration, không đổi API. Cùng ngày: sửa tài liệu `CURRENT.md` (ngày cập nhật, mục bàn giao trùng, câu lặp ở phần bảo mật).
+
 ### Khu quản trị SaaS: mã OTP chỉ dùng một lần + đổi mã tên miền công ty (`docs/DECISIONS.md` #245)
 
 **Mã OTP** của người vận hành nền tảng nay chỉ dùng được đúng một lần: mã bị lộ (lừa đảo, nhìn trộm) không còn dùng lại được trong ~90 giây như trước; mã dùng lại bị từ chối như mã sai và ghi nhật ký. **Đổi mã tên miền công ty** (trước đây khoá cứng): người vận hành vào chi tiết công ty → "Đổi mã tên miền" → nhập mã mới + lý do. Hệ thống giữ địa chỉ cũ tự chuyển sang địa chỉ mới trong 90 ngày, không cấp lại mã cũ cho công ty khác, đăng xuất mọi nhân viên của công ty đó (đăng nhập lại ở địa chỉ mới, mật khẩu không đổi), ghi nhật ký. Cơ sở dữ liệu vẫn chặn mọi cách đổi mã khác. Tên phòng khám thì khách tự đổi như cũ. Cũng sửa: lịch sử khám của mã bệnh nhân công ty khác nay báo 404 thay vì danh sách rỗng (đồng bộ với các màn khác). **Môi trường khác**: `db:deploy` (2 migration `20261021150000_platform_operator_totp_step`, `20261021160000_tenant_code_change`) + khởi động lại API.

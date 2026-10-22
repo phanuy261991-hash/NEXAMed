@@ -740,7 +740,7 @@ function OpeningBalanceDialog({ supplierId, supplierName, onClose }: { supplierI
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
             <p className="text-xs text-slate-500">Nhập số âm nếu NCC đang nợ lại phòng khám.</p>
           </div>
@@ -753,7 +753,7 @@ function OpeningBalanceDialog({ supplierId, supplierName, onClose }: { supplierI
               type="date"
               value={occurredAt}
               onChange={(e) => setOccurredAt(e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -765,7 +765,7 @@ function OpeningBalanceDialog({ supplierId, supplierName, onClose }: { supplierI
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="VD: Biên bản đối chiếu 31/08"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           <p className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900">
@@ -849,7 +849,7 @@ function PaymentDialog({ supplierId, supplierName, balance, onClose }: { supplie
                     id="payment-amount"
                     value={amount}
                     onChange={setAmount}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   <div className="flex flex-wrap gap-1.5">
                     <button
@@ -901,7 +901,7 @@ function PaymentDialog({ supplierId, supplierName, balance, onClose }: { supplie
                     rows={2}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
               </div>
@@ -992,7 +992,7 @@ function RefundDialog({ supplierId, supplierName, balance, onClose }: { supplier
                     id="refund-amount"
                     value={amount}
                     onChange={setAmount}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   <div className="flex flex-wrap gap-1.5">
                     <button
@@ -1044,7 +1044,7 @@ function RefundDialog({ supplierId, supplierName, balance, onClose }: { supplier
                     rows={2}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
               </div>

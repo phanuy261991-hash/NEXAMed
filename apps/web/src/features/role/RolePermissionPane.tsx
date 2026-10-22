@@ -402,7 +402,7 @@ function RoleNameDialog({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ví dụ: Lễ tân trưởng"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
           {hint && <p className="text-xs text-slate-400">{hint}</p>}
         </div>

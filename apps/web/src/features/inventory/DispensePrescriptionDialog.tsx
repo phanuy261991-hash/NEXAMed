@@ -479,7 +479,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                                     value={line.quantity}
                                     disabled={!line.selected}
                                     onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
-                                    className="w-24 rounded-md border border-slate-300 px-2 py-1.5 text-right text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100 disabled:text-slate-400"
+                                    className="w-24 rounded-md border border-slate-300 px-2 py-1.5 text-right text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100 disabled:text-slate-400"
                                   />
                                 </div>
                               )}
@@ -515,7 +515,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
                                       value={row.quantity}
                                       disabled={!line.selected}
                                       onChange={(e) => updateBatchRow(line.key, row.key, { quantity: e.target.value })}
-                                      className="w-16 shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-right text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                      className="w-16 shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-right text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
                                     />
                                     {line.batchRows.length > 1 && (
                                       <button

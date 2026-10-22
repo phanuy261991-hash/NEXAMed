@@ -96,7 +96,7 @@ export function DateInput({
         onFocus={() => setFocused(true)}
         onBlur={handleBlur}
         onChange={(e) => commitText(applyMask(e.target.value))}
-        className={`w-full rounded-md border border-slate-300 pl-3 pr-9 font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800 ${dense ? 'py-1.5 text-[13px]' : 'py-2 text-[15px]'}`}
+        className={`w-full rounded-md border border-slate-300 pl-3 pr-9 font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-800 ${dense ? 'py-1.5 text-[13px]' : 'py-2 text-[15px]'}`}
       />
       <button
         type="button"

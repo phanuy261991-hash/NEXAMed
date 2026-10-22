@@ -121,7 +121,7 @@ export function StockTransferResolvePanel({ transfer, onDone, onCancel }: { tran
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Vd: Đã gọi chi nhánh nhận xác nhận; băng gạc đã gửi trả bằng xe nội bộ."
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         />
         <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
           {error && <p className="mr-auto text-sm font-medium text-rose-600">{error}</p>}

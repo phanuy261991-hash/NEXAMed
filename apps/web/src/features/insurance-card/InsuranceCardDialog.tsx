@@ -10,7 +10,7 @@ import { useSaveInsuranceCardMutation, useUploadInsuranceCardPhotoMutation } fro
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 const inputClassName =
-  'w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-[15px] font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-[15px] font-normal text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const labelClassName = 'mb-1 block text-sm font-semibold text-slate-800';
 
 type BenefitChoice = '100' | '95' | '80' | 'other' | null;

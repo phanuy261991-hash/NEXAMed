@@ -104,7 +104,7 @@ export function SupplierDebtAdjustmentDialog({ supplierId, supplierName, onClose
                     id="adj-amount"
                     value={amount}
                     onChange={setAmount}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5 sm:col-span-2">
@@ -122,7 +122,7 @@ export function SupplierDebtAdjustmentDialog({ supplierId, supplierName, onClose
                     rows={2}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5 sm:col-span-2">
@@ -134,7 +134,7 @@ export function SupplierDebtAdjustmentDialog({ supplierId, supplierName, onClose
                     type="text"
                     value={evidenceRef}
                     onChange={(e) => setEvidenceRef(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
               </div>

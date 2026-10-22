@@ -1,7 +1,7 @@
 /* global require, process, __dirname, console, fetch, document, window, getComputedStyle, innerWidth, innerHeight */
 // Công cụ kiểm giao diện (docs/DECISIONS.md #240, .claude/docs/ui-guidelines.md mục 15–16). Cần: `npm i playwright-core` ở thư mục tạm + Chrome; web (5173) và API (3001) đang chạy.
 // Cấu hình qua biến môi trường: UI_AUDIT_WEB, UI_AUDIT_API, UI_AUDIT_TENANT, UI_AUDIT_USER, UI_AUDIT_PASS, CHROME_PATH. Chỉ mở trang (GET), không ghi dữ liệu.
-// Đo độ đậm chữ THẬT (getComputedStyle) theo vai trò trên các trang chính: tiêu đề trang, đầu cột, ô bảng, nhãn, badge, nút.
+// Đo độ đậm chữ THẬT (getComputedStyle) theo vai trò trên các trang chính: tiêu đề trang, đầu cột, ô bảng, nhãn, badge, nút, giá trị trong ô nhập (mong đợi 400, #246).
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require(process.env.PLAYWRIGHT_CORE || 'playwright-core');
@@ -11,17 +11,18 @@ const ROUTES = [
   '/inventory/balances', '/inventory/receipts', '/inventory/issues', '/inventory/counts', '/inventory/transfers', '/suppliers', '/suppliers/debts',
   '/paraclinical/queue', '/paraclinical/orders', '/work-schedule/staff', '/admin/catalog', '/admin/catalog-organization', '/admin/catalog-pharmacy',
   '/admin/catalog-warehouse', '/admin/price-lists', '/admin/activity-log', '/admin/system-config',
+  '/reception/new', '/patients/new', '/inventory/receipts/new', '/admin/print-templates',
 ];
 
 function collect() {
-  const roles = { 'tiêu-đề-trang(h1/h2)': 'h1,h2', 'đầu-cột': 'th,[role=columnheader]', 'ô-bảng': 'td,[role=cell]', 'nhãn(label)': 'label', 'nút(button)': 'button' };
+  const roles = { 'tiêu-đề-trang(h1/h2)': 'h1,h2', 'đầu-cột': 'th,[role=columnheader]', 'ô-bảng': 'td,[role=cell]', 'nhãn(label)': 'label', 'nút(button)': 'button', 'giá-trị-ô-nhập(input/textarea)': "input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]):not([type=submit]):not([type=file]),textarea" };
   const out = {};
   for (const [name, sel] of Object.entries(roles)) {
     const hist = {};
     document.querySelectorAll(sel).forEach((el) => {
       const r = el.getBoundingClientRect();
       if (r.width < 2 || r.height < 2) return;
-      if (!(el.innerText || '').trim()) return;
+      if (!(el.innerText || '').trim() && !/^(INPUT|TEXTAREA)$/.test(el.tagName)) return;
       const cs = getComputedStyle(el);
       if (cs.display === 'none' || cs.visibility === 'hidden') return;
       const w = cs.fontWeight;

@@ -259,7 +259,7 @@ function ResultForm({ group, itemId, form }: { group: ParaclinicalGroup; itemId:
               <label htmlFor="pr-by" className="mb-1 block text-sm font-semibold text-slate-800">
                 Người thực hiện
               </label>
-              <input id="pr-by" value={form.performedByName ?? ''} readOnly className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-[15px] font-semibold text-slate-800" />
+              <input id="pr-by" value={form.performedByName ?? ''} readOnly className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-[15px] font-normal text-slate-800" />
             </div>
             <div>
               <span className="mb-1 block text-sm font-semibold text-slate-800">Thời gian có kết quả</span>
@@ -268,7 +268,7 @@ function ResultForm({ group, itemId, form }: { group: ParaclinicalGroup; itemId:
                   <DateInput id="pr-date" value={resultDate} onChange={(v) => v && setResultDate(v)} disabled={!editable} />
                 </div>
                 <div className="w-24">
-                  <TimeInput id="pr-time" value={resultTime} onChange={setResultTime} disabled={!editable} className="w-full rounded-md border border-slate-300 px-3 py-2 text-center text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50" />
+                  <TimeInput id="pr-time" value={resultTime} onChange={setResultTime} disabled={!editable} className="w-full rounded-md border border-slate-300 px-3 py-2 text-center text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50" />
                 </div>
               </div>
             </div>
@@ -558,7 +558,7 @@ function SectionCard({
                         inputMode={ind.valueType === 'NUMBER' ? 'decimal' : 'text'}
                         onChange={(e) => onValue(section, ind.indicatorId, { valueText: e.target.value })}
                         onKeyDown={focusNext}
-                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
                       />
                     )}
                   </div>
@@ -577,7 +577,7 @@ function SectionCard({
                       disabled={!editable}
                       placeholder="—"
                       onChange={(e) => onValue(section, ind.indicatorId, { note: e.target.value })}
-                      className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-[13px] font-medium text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+                      className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-[13px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
                     />
                   </div>
                 </div>

@@ -291,7 +291,7 @@ export function PatientHistoryDialog({
                         value={row.ageOfOnsetYears}
                         onChange={(e) => updateFamilyRow(row.draftId, { ageOfOnsetYears: e.target.value })}
                         placeholder="Tuổi"
-                        className="w-full rounded-md border border-slate-300 px-2 py-2 text-center text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        className="w-full rounded-md border border-slate-300 px-2 py-2 text-center text-[13px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                       />
                     </div>
                     <button
@@ -360,7 +360,7 @@ export function PatientHistoryDialog({
                 value={allergenFilter}
                 onChange={(e) => setAllergenFilter(e.target.value)}
                 placeholder="Lọc dị nguyên theo tên hoặc nhóm..."
-                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-[13px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
               <button
                 type="button"
@@ -381,7 +381,7 @@ export function PatientHistoryDialog({
                     value={newAllergenName}
                     onChange={(e) => setNewAllergenName(e.target.value)}
                     placeholder="Tên dị nguyên mới..."
-                    className="min-w-40 flex-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="min-w-40 flex-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-[13px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   <div className="w-44">
                     <Combobox

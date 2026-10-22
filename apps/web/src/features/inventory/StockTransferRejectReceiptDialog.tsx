@@ -77,7 +77,7 @@ export function StockTransferRejectReceiptDialog({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Vd: Hàng không đúng danh mục đã đề nghị, đề nghị gửi lại."
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-[14px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 

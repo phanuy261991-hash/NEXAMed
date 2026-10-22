@@ -131,7 +131,7 @@ const ABBREVIATION_CODE_PATTERN = /^[\p{L}\p{N}]+$/u;
 const TREATMENT_FORM_CODE_PATTERN = /^\d{1,9}$/;
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 interface ModalState {
   mode: 'create' | 'edit';

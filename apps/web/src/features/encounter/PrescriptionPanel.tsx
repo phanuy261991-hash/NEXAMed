@@ -1245,7 +1245,7 @@ function PrescriptionTemplateModal({
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Ví dụ: Phác đồ viêm hô hấp trên"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
             <div className="mt-4 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setMode('list')}>
@@ -1306,7 +1306,7 @@ export function LineInput({
         className={
           isUnderline
             ? `w-full border-0 border-b-2 border-slate-300 bg-transparent px-0 py-1 text-sm ${dense ? 'font-semibold' : 'font-medium'} text-slate-900 focus:border-blue-500 focus:outline-none disabled:text-slate-400 ${dense ? 'text-center' : ''}`
-            : 'rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50'
+            : 'rounded-md border border-slate-300 px-2 py-1.5 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50'
         }
       />
     </label>

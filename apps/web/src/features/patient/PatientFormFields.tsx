@@ -94,7 +94,7 @@ const GENDER_OPTIONS: ComboboxOption[] = [
 /** Giá trị đã nhập BẮT BUỘC nổi bật (`font-semibold` + `text-slate-900`) — chốt 2026-08-14, xem
  * `.claude/docs/ui-guidelines.md` mục 4.1c: nhãn nhỏ/nhạt phía trên, giá trị đậm/rõ phía dưới. */
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 const readOnlyInputClassName = `${inputClassName} bg-slate-50 text-slate-800`;
 const labelClassName = 'mb-1 block text-sm font-semibold text-slate-800';
 /** Khung viền quanh mỗi nhóm trường + badge tiêu đề nổi trên viền — bố cục tham khảo theo ảnh chủ dự án gửi. */

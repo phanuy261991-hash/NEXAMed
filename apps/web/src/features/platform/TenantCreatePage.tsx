@@ -12,7 +12,7 @@ import { TENANT_CODE_PATTERN, previewLoginHost } from './platform-format';
 import { useCreateTenantMutation } from './platform.queries';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 function Field({ id, label, required, hint, className, children }: { id: string; label: string; required?: boolean; hint?: string; className?: string; children: ReactNode }) {
   return (
@@ -129,7 +129,7 @@ export function TenantCreatePage() {
           </Field>
           <div className="md:col-span-3">
             <span className="mb-1 block text-sm font-semibold text-slate-800">Địa chỉ đăng nhập của khách</span>
-            <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[15px] font-semibold text-blue-700">{loginHost}</p>
+            <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[15px] font-normal text-blue-700">{loginHost}</p>
             <p className={`mt-1 text-xs font-medium ${code && !codeValid ? 'text-rose-600' : 'text-slate-500'}`}>
               Tạo từ mã công ty, không dấu, 3 đến 30 ký tự (chữ thường, số, gạch ngang); đặt một lần, không đổi được sau này.
             </p>
@@ -156,7 +156,7 @@ export function TenantCreatePage() {
           </Field>
           <div>
             <span className="mb-1 block text-sm font-semibold text-slate-800">Mật khẩu tạm</span>
-            <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[15px] font-semibold text-slate-700">Tự sinh khi tạo, hiện một lần</p>
+            <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[15px] font-normal text-slate-700">Tự sinh khi tạo, hiện một lần</p>
           </div>
         </div>
       </BoxedSection>

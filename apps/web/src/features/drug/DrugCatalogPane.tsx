@@ -40,7 +40,7 @@ import { DrugItemTypeBadge, ITEM_TYPE_LABEL } from './drug-item-type';
 import { useUnitNameByCode } from './useUnitNameByCode';
 
 const inputClassName =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-lg border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 /** Phân loại kiểm soát đặc biệt (Thông tư 20/2017/TT-BYT, docs/DECISIONS.md #151) — enum CỐ ĐỊNH,
  * KHÔNG dùng `reference_catalog` (tenant không tự thêm/sửa được). CHỈ có ý nghĩa với `itemType==='MEDICINE'`. */
@@ -1466,7 +1466,7 @@ function DrugFormModal({
                     value={row.factorToUnitBelow}
                     onChange={(e) => setUnits((rows) => rows.map((r, idx) => (idx === i ? { ...r, factorToUnitBelow: e.target.value } : r)))}
                     inputMode="numeric"
-                    className="w-20 rounded-lg border border-slate-300 px-2.5 py-2 text-[15px] font-semibold tabular-nums text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-20 rounded-lg border border-slate-300 px-2.5 py-2 text-[15px] font-normal tabular-nums text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   <span className="text-sm font-semibold text-slate-700">{i === 0 ? unitLabel(baseUnitCode) : unitLabel(units[i - 1]?.unitCode ?? '')}</span>
                   {unitPricingEnabled && (
@@ -1476,7 +1476,7 @@ function DrugFormModal({
                         value={row.sellPriceDisplay === '' ? undefined : Number(row.sellPriceDisplay)}
                         onChange={(v) => setUnits((rows) => rows.map((r, idx) => (idx === i ? { ...r, sellPriceDisplay: v === undefined ? '' : String(v) } : r)))}
                         placeholder="Giá bán"
-                        className="w-full rounded-lg border border-slate-300 px-2.5 py-2 pr-6 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        className="w-full rounded-lg border border-slate-300 px-2.5 py-2 pr-6 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                       />
                       <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500">đ</span>
                     </div>

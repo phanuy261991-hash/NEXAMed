@@ -188,7 +188,7 @@ export function GeneralConfigPane() {
                 max={27}
                 value={graceDays}
                 onChange={(e) => setGraceDays(e.target.value)}
-                className="w-16 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-16 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
               <span className="text-sm text-slate-500">ngày</span>
               <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={handleCancelGraceDays} disabled={updateMutation.isPending}>
@@ -235,7 +235,7 @@ export function GeneralConfigPane() {
                 max={6}
                 value={minDaysOff}
                 onChange={(e) => setMinDaysOff(e.target.value)}
-                className="w-16 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-16 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
               <span className="text-sm text-slate-500">ngày/tuần</span>
               <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={handleCancelMinDaysOff} disabled={updateMutation.isPending}>
@@ -299,7 +299,7 @@ export function GeneralConfigPane() {
                 max={365}
                 value={expiryWarningDays}
                 onChange={(e) => setExpiryWarningDays(e.target.value)}
-                className="w-20 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-20 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
               <span className="text-sm text-slate-500">ngày</span>
               <Button

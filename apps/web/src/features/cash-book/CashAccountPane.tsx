@@ -29,7 +29,7 @@ import { getCashAccounts } from './cash-account.api';
 import { useCashAccountsQuery, useCreateCashAccountMutation, useUpdateCashAccountMutation } from './cash-account.queries';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 const TYPE_LABEL: Record<CashAccountType, string> = { CASH: 'Tiền mặt', BANK: 'Ngân hàng', DRAWER: 'Két thu ngân' };
 
@@ -154,7 +154,7 @@ function CashAccountFormModal({
               {mode === 'create' ? (
                 <Combobox id="ca-branch" value={values.branchId} onChange={(v) => set('branchId', v)} options={branchOptions} />
               ) : (
-                <p id="ca-branch" className="break-words rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[15px] font-semibold text-slate-700">{item?.branchName}</p>
+                <p id="ca-branch" className="break-words rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[15px] font-normal text-slate-700">{item?.branchName}</p>
               )}
               <p className="text-[11px] text-slate-400">Quỹ thuộc đúng một chi nhánh, không đổi được sau khi tạo. Chuyển quỹ chỉ giữa hai quỹ cùng chi nhánh.</p>
             </div>

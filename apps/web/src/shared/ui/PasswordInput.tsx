@@ -36,7 +36,7 @@ export function PasswordInput({
         autoComplete={autoComplete}
         required={required}
         disabled={disabled}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
+        className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
       />
       <button
         type="button"

@@ -21,7 +21,7 @@ import { roleLabel } from '../role/role-labels';
 import { UserAccountSignatureUpload } from './UserAccountSignatureUpload';
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50';
+  'w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50';
 const labelClassName = 'mb-1 block text-sm font-semibold text-slate-800';
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-6 pt-8';
 const sectionBadgeClassName =

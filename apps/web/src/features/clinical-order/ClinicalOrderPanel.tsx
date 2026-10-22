@@ -105,7 +105,7 @@ function signature(draft: Draft): string {
 }
 
 const inputClassName =
-  'w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50';
+  'w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50';
 
 /**
  * Tab "Chỉ định cận lâm sàng" của màn khám (Cận lâm sàng GĐ3, docs/DECISIONS.md #212, mockup màn 5). Bác sĩ chọn 2 đường: "Làm tại phòng khám" (có giá, vào
@@ -447,7 +447,7 @@ export function ClinicalOrderPanel({
                         inputMode="numeric"
                         value={item.quantity}
                         onChange={(e) => updateItem(item.key, { quantity: Math.min(999, Math.max(1, Number(e.target.value.replace(/\D/g, '')) || 1)) })}
-                        className="w-14 rounded-md border border-slate-300 px-2 py-1.5 text-center text-sm font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        className="w-14 rounded-md border border-slate-300 px-2 py-1.5 text-center text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                       />
                     ) : (
                       <span className="font-medium text-slate-700">{item.quantity}</span>

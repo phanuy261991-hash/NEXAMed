@@ -97,7 +97,7 @@ export function SupplierDebtReconciliationDialog({ supplierId, supplierName, onC
                     id="recon-confirmed"
                     value={confirmedBalance}
                     onChange={setConfirmedBalance}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   <p className="text-xs text-slate-500">Số âm nếu NCC xác nhận đang nợ lại phòng khám.</p>
                 </div>
@@ -110,7 +110,7 @@ export function SupplierDebtReconciliationDialog({ supplierId, supplierName, onC
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="VD: Đối chiếu qua email ngày ..."
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-[15px] font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
               </div>

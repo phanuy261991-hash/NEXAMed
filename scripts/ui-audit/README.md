@@ -11,7 +11,7 @@ Hai script Playwright chạy trên Chrome thật. Xem quy tắc ở `.claude/doc
 ```
 node scripts/ui-audit/layout-audit.cjs     # ~53 trang × 10 cỡ màn hình: cuộn ngang, cuộn dọc cả trang (phần tử `absolute`/`sr-only` thiếu tổ tiên `relative`), tràn phải, chữ bị cắt, bó hẹp, trang trắng, lỗi JS → ui-audit-out/report.json + ảnh
 ONLY=inventory/transfers,suppliers node scripts/ui-audit/layout-audit.cjs   # chỉ vài trang (không có / đầu)
-node scripts/ui-audit/weight-audit.cjs     # font-weight THẬT theo vai trò (tiêu đề, đầu cột, ô bảng, nhãn, nút): mong đợi KHÔNG có giá trị >= 700
+node scripts/ui-audit/weight-audit.cjs     # font-weight THẬT theo vai trò (tiêu đề, đầu cột, ô bảng, nhãn, nút, giá trị trong ô nhập): mong đợi KHÔNG có giá trị >= 700; ô nhập = 400 (#246)
 ```
 Biến môi trường: `UI_AUDIT_EXTRA` (thêm trang cần dữ liệu riêng, dạng `/nhan|/duong-dan,...`), `UI_AUDIT_WEB`, `UI_AUDIT_API`, `UI_AUDIT_TENANT`, `UI_AUDIT_USER`, `UI_AUDIT_PASS`, `UI_AUDIT_OUT`. Chạy TUẦN TỰ một phiên đăng nhập (refresh token xoay vòng — không chạy hai bản cùng lúc). Mặc định dùng tài khoản dev của tenant test cố định.
 
