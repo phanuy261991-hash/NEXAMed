@@ -46,7 +46,7 @@ Giá trị trong MỌI ô nhập dùng `font-normal` 400 (trước là semibold 
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-HieuNangBaoMat-DoiMaTenMien-NetChuOCuoi-2026-10-22.md`** (mới nhất, 22/10/2026: hiệu năng + bảo mật SaaS + đổi mã tên miền; mục 2 về nét chữ ô nhập nay ĐÃ LÀM XONG trong phiên sau cùng ngày, xem #246). Bản trước: `docs/handoffs/HANDOFF-TheBHYT-S204-2026-10-21.md` (thẻ BHYT, đã xong hoàn toàn) và `HANDOFF-LienThong-GD3-HangCho-OBoSung-2026-10-20-p4.md` (liên thông đơn thuốc GĐ3).
+**`docs/handoffs/HANDOFF-NestJS11-DoTaiGhi-DanhSachTheoLo-2026-10-22-p2.md`** (mới nhất, 22/10/2026 phần 2: nét chữ ô nhập 400, vá thư viện, NestJS 11, đo tải đọc/ghi, tăng tốc + tải theo lô hai danh sách trong ngày). **Không còn việc treo làm được một mình** — việc kế tiếp đều cần máy chủ pilot / hạ tầng SaaS / ảnh Docker / đơn vị vận hành cổng đơn thuốc. Bản trước: `docs/handoffs/HANDOFF-HieuNangBaoMat-DoiMaTenMien-NetChuOCuoi-2026-10-22.md` (phần 1 cùng ngày; việc đầu tiên của nó — nét chữ ô nhập — đã xong).
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 
