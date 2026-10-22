@@ -1993,6 +1993,24 @@
                           "required": [
                             "kind"
                           ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "moved"
+                              ]
+                            },
+                            "loginUrl": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "loginUrl"
+                          ]
                         }
                       ]
                     },

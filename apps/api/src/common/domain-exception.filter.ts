@@ -296,9 +296,27 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    // Lỗi 4xx do thư viện Express/body-parser ném (kiểu `http-errors`, `expose: true`) — ví dụ thân yêu cầu quá lớn (413) hay JSON hỏng (400). Trước đây rơi xuống nhánh 500 và ghi log lỗi oan
+    // (phát hiện khi kiểm nâng NestJS 11 / Express 5, docs/DECISIONS.md #249).
+    const clientStatus = clientErrorStatusOf(exception);
+    if (clientStatus !== null) {
+      response.status(clientStatus).json({
+        error: { code: HttpStatus[clientStatus] ?? 'BAD_REQUEST', message: clientStatus === HttpStatus.PAYLOAD_TOO_LARGE ? 'Dữ liệu gửi lên quá lớn.' : 'Yêu cầu không hợp lệ.' },
+      });
+      return;
+    }
+
     this.logger.error(exception instanceof Error ? exception.stack : exception);
     response
       .status(HttpStatus.INTERNAL_SERVER_ERROR)
       .json({ error: { code: 'INTERNAL_ERROR', message: 'Có lỗi xảy ra, vui lòng thử lại.' } });
   }
+}
+
+/** Mã 4xx của lỗi kiểu `http-errors` (có `status`/`statusCode` 400-499 và `expose: true`); `null` nếu không phải. */
+function clientErrorStatusOf(exception: unknown): number | null {
+  if (typeof exception !== 'object' || exception === null) return null;
+  const e = exception as { status?: unknown; statusCode?: unknown; expose?: unknown };
+  const status = typeof e.status === 'number' ? e.status : typeof e.statusCode === 'number' ? e.statusCode : null;
+  return status !== null && status >= 400 && status < 500 && e.expose === true ? status : null;
 }

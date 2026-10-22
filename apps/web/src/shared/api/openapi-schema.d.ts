@@ -939,6 +939,10 @@ export interface paths {
                             } | {
                                 /** @enum {string} */
                                 kind: "platform";
+                            } | {
+                                /** @enum {string} */
+                                kind: "moved";
+                                loginUrl: string;
                             };
                             meta: Record<string, never>;
                         };
