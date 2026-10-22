@@ -22,6 +22,12 @@ export interface ParaclinicalProgressReaderPort {
   getResultCountsByEncounter(tenantId: string, encounterIds: string[]): Promise<Map<string, ParaclinicalResultCounts>>;
   /** Chỉ trả các lượt khám có ít nhất 1 dịch vụ cận lâm sàng tại phòng khám; lượt không có thì không có khoá. */
   getProgressByEncounter(tenantId: string, encounterIds: string[]): Promise<Map<string, ParaclinicalProgress>>;
+  /**
+   * Như `getProgressByEncounter` nhưng cho MỌI lượt khám của một chi nhánh trong khoảng `[dayStart, dayEnd)` (theo `checked_in_at`) — dùng cho danh sách trong ngày. Không truyền danh sách id:
+   * đo thật 22/10/2026, mỗi lần gửi ~1.200 id làm truy vấn mất ~50 ms (chi phí chuyển tham số), còn lọc theo khoảng ngày chỉ ~3 ms (docs/DECISIONS.md #250). Trả cả lượt khám ngoài bộ lọc
+   * của nơi gọi (bác sĩ, hàng chờ) — nơi gọi tra theo id nên dư không hại.
+   */
+  getProgressForDay(tenantId: string, branchId: string, dayStart: Date, dayEnd: Date): Promise<Map<string, ParaclinicalProgress>>;
   /** Số bệnh nhân (lượt khám đang khám của bác sĩ) có kết quả mới chưa xem — chấm số ở menu "Hàng đợi khám". */
   countEncountersWithUnseenResults(tenantId: string, branchId: string, doctorId: string): Promise<number>;
 }

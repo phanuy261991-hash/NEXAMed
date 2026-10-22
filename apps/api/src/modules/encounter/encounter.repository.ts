@@ -30,9 +30,25 @@ export interface CreateEncounterData {
   allowsDeferredPayment?: boolean;
 }
 
-export interface EncounterWithPatientContact extends Encounter {
+/** Một dòng "Danh sách tiếp nhận"/"Hàng đợi khám" — chỉ các cột màn hình cần (xem `listForDay`). */
+export interface EncounterListRow {
+  id: string;
+  encounterNo: string;
+  appointmentId: string | null;
+  patientId: string;
+  doctorId: string | null;
+  departmentId: string;
+  isPriority: boolean;
+  chiefComplaint: string | null;
+  createdBy: string;
+  status: Encounter['status'];
+  checkedInAt: Date;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  insuranceSnapshot: unknown;
+  version: number;
   patient: { patientCode: string; fullName: string; phone: string; dob: Date };
-  /** "Trung tâm Điều phối Tiếp nhận" — `null` khi lượt khám không có phiếu thu nào. */
+  /** "Trung tâm Điều phối Tiếp nhận" — `null` khi lượt khám không có phiếu thu dịch vụ nào. */
   invoice: { status: 'UNPAID' | 'PAID' | 'CANCELLED' | 'REFUNDED' } | null;
 }
 
@@ -180,52 +196,93 @@ export class EncounterRepository {
    * khám": khi `true`, loại khỏi kết quả các lượt khám còn phiếu thu `UNPAID` và không được phép
    * nợ (`allowsDeferredPayment=false`). "Danh sách tiếp nhận" (lễ tân) KHÔNG set cờ này — vẫn thấy
    * đủ mọi lượt khám kể cả chưa thu tiền để xử lý ở Thu ngân.
+   *
+   * MỘT câu SQL JOIN (bệnh nhân + trạng thái phiếu thu dịch vụ) chỉ lấy đúng cột màn hình cần, thay cho `findMany` + `include` của Prisma: đo thật 22/10/2026 với 1.203 lượt khám/ngày
+   * Prisma mất 187 ms, câu SQL này 23 ms (Postgres chạy nhanh, phần chậm là Prisma dựng đối tượng + truy vấn lồng `IN` 1.200 id), `docs/DECISIONS.md` #250. Chỉ tính phiếu thu CHƯA bị xoá mềm (`deleted_at IS NULL`, cũng là điều kiện của chỉ mục từng phần trên `invoice` — thiếu nó Postgres quét tuần tự bảng phiếu thu cho từng lượt khám, đo thật 186 ms thay vì 26 ms).
    */
   async listForDay(
     tx: Prisma.TransactionClient,
     tenantId: string,
     branchId: string,
     params: { dayStart: Date; dayEnd: Date; doctorId?: string; poolDepartmentId?: string; requirePaymentCleared?: boolean },
-  ): Promise<EncounterWithPatientContact[]> {
-    const where: Prisma.EncounterWhereInput = {
-      tenantId,
-      branchId,
-      deletedAt: null,
-      status: { in: ['CHECKED_IN', 'IN_CONSULTATION', 'COMPLETED', 'CANCELLED'] },
-      checkedInAt: { gte: params.dayStart, lt: params.dayEnd },
-    };
-    if (params.doctorId && params.poolDepartmentId) {
-      where.OR = [{ doctorId: params.doctorId }, { departmentId: params.poolDepartmentId, doctorId: null }];
-    } else if (params.doctorId) {
-      where.doctorId = params.doctorId;
-    }
-    if (params.requirePaymentCleared) {
-      // Kho Thuốc GĐ3 (#163) — lọc tường minh invoiceType='SERVICE' (đúng lý do
-      // findByIdWithInvoiceStatus() ở trên), `invoices` nay là quan hệ 1-N.
-      where.AND = [
-        {
-          OR: [
-            { allowsDeferredPayment: true },
-            { invoices: { none: { invoiceType: 'SERVICE' } } },
-            { invoices: { some: { invoiceType: 'SERVICE', status: 'PAID' } } },
-          ],
-        },
-      ];
-    }
-    const rows = await tx.encounter.findMany({
-      where,
-      include: {
-        patient: { select: { patientCode: true, fullName: true, phone: true, dob: true } },
-        // "Trung tâm Điều phối Tiếp nhận" — trạng thái phiếu thu qua quan hệ sẵn có của Encounter
-        // (không gọi thẳng tx.invoice..., đúng nguyên tắc đã áp dụng ở findByIdWithInvoiceStatus()).
-        invoices: { where: { invoiceType: 'SERVICE' }, select: { status: true }, take: 1 },
-      },
-      orderBy: [{ checkedInAt: 'asc' }, { id: 'asc' }],
-    });
-    return rows.map((row) => {
-      const { invoices, ...rest } = row;
-      return { ...rest, invoice: invoices[0] ?? null } as EncounterWithPatientContact;
-    });
+  ): Promise<EncounterListRow[]> {
+    const doctorFilter =
+      params.doctorId && params.poolDepartmentId
+        ? Prisma.sql`AND (e.doctor_id = ${params.doctorId}::uuid OR (e.department_id = ${params.poolDepartmentId}::uuid AND e.doctor_id IS NULL))`
+        : params.doctorId
+          ? Prisma.sql`AND e.doctor_id = ${params.doctorId}::uuid`
+          : Prisma.empty;
+    // Kho Thuốc GĐ3 (#163) — lọc tường minh invoice_type='SERVICE' (phiếu thuốc/cận lâm sàng không chặn hàng đợi khám).
+    const paymentFilter = params.requirePaymentCleared
+      ? Prisma.sql`AND (
+          e.allows_deferred_payment
+          OR NOT EXISTS (SELECT 1 FROM invoice x WHERE x.tenant_id = e.tenant_id AND x.encounter_id = e.id AND x.invoice_type = 'SERVICE' AND x.deleted_at IS NULL)
+          OR EXISTS (SELECT 1 FROM invoice x WHERE x.tenant_id = e.tenant_id AND x.encounter_id = e.id AND x.invoice_type = 'SERVICE' AND x.deleted_at IS NULL AND x.status = 'PAID')
+        )`
+      : Prisma.empty;
+
+    const rows = await tx.$queryRaw<
+      Array<{
+        id: string;
+        encounter_no: string;
+        appointment_id: string | null;
+        patient_id: string;
+        doctor_id: string | null;
+        department_id: string;
+        is_priority: boolean;
+        chief_complaint: string | null;
+        created_by: string;
+        status: EncounterListRow['status'];
+        checked_in_at: Date;
+        started_at: Date | null;
+        completed_at: Date | null;
+        insurance_snapshot: unknown;
+        version: number;
+        patient_code: string;
+        full_name: string;
+        phone: string;
+        dob: Date;
+        invoice_status: 'UNPAID' | 'PAID' | 'CANCELLED' | 'REFUNDED' | null;
+      }>
+    >`
+      SELECT e.id, e.encounter_no, e.appointment_id, e.patient_id, e.doctor_id, e.department_id, e.is_priority, e.chief_complaint, e.created_by, e.status,
+             e.checked_in_at, e.started_at, e.completed_at, e.insurance_snapshot, e.version,
+             p.patient_code, p.full_name, p.phone, p.dob, i.status AS invoice_status
+        FROM encounter e
+        JOIN patient p ON p.tenant_id = e.tenant_id AND p.id = e.patient_id
+        LEFT JOIN LATERAL (
+          SELECT status FROM invoice
+           WHERE tenant_id = e.tenant_id AND encounter_id = e.id AND invoice_type = 'SERVICE' AND deleted_at IS NULL
+           ORDER BY created_at ASC LIMIT 1
+        ) i ON true
+       WHERE e.tenant_id = ${tenantId}::uuid
+         AND e.branch_id = ${branchId}::uuid
+         AND e.deleted_at IS NULL
+         AND e.status IN ('CHECKED_IN', 'IN_CONSULTATION', 'COMPLETED', 'CANCELLED')
+         AND e.checked_in_at >= ${params.dayStart} AND e.checked_in_at < ${params.dayEnd}
+         ${doctorFilter}
+         ${paymentFilter}
+       ORDER BY e.checked_in_at ASC, e.id ASC
+    `;
+    return rows.map((r) => ({
+      id: r.id,
+      encounterNo: r.encounter_no,
+      appointmentId: r.appointment_id,
+      patientId: r.patient_id,
+      doctorId: r.doctor_id,
+      departmentId: r.department_id,
+      isPriority: r.is_priority,
+      chiefComplaint: r.chief_complaint,
+      createdBy: r.created_by,
+      status: r.status,
+      checkedInAt: r.checked_in_at,
+      startedAt: r.started_at,
+      completedAt: r.completed_at,
+      insuranceSnapshot: r.insurance_snapshot,
+      version: r.version,
+      patient: { patientCode: r.patient_code, fullName: r.full_name, phone: r.phone, dob: r.dob },
+      invoice: r.invoice_status ? { status: r.invoice_status } : null,
+    }));
   }
 
   /** Encounter kèm đủ trường bệnh nhân màn khám cần (S3-05) — join `patient`, cùng khuôn `findByIdWithPatientDob`. */

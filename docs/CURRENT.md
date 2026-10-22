@@ -37,7 +37,7 @@ Giá trị trong MỌI ô nhập dùng `font-normal` 400 (trước là semibold 
 ## Đang chờ / việc treo
 
 - Ô cỡ nhỏ 13px (`dense`) nếu sau này khó đọc: dùng `text-slate-900` đậm màu hơn thay vì tăng độ đậm (nét 400 đã được chủ dự án duyệt 22/10/2026; Thu ngân/Kê đơn chưa chụp ảnh nhưng cùng luật CSS).
-- Hai danh sách trong ngày (tiếp nhận, thu ngân) không phân trang: đo 1.039 lượt khám/ngày → p95 290–530 ms (phòng khám thật ~100–300/ngày nên chưa cần; xem #248).
+- Hai danh sách trong ngày (tiếp nhận, thu ngân) vẫn trả cả ngày không phân trang nhưng đã tăng tốc (1.200 lượt/ngày: p95 80/75 ms, #250); phân trang thật làm khi có cơ sở > ~3.000 lượt/ngày.
 - Hỏi đơn vị vận hành cổng đơn thuốc: sandbox, chữ ký số bắt buộc?, chữ hoa/thường mã đơn, cách cập nhật đơn đã gửi khi đính chính, "72 tháng", danh mục hình thức điều trị, tên trường chẩn đoán, app-name/app-key, địa chỉ API nhà thuốc. API nhà thuốc (lấy đơn, báo số lượng bán) làm SAU giai đoạn 1–3, duyệt riêng.
 - Bố cục: bộ kiểm toàn app (53 trang × 10 cỡ) đã **0 vấn đề** (20/10/2026); độ đậm chữ đo tối đa 600. Còn lại ưu tiên thấp: ghi chú 2 dòng của hộp "Bác sĩ đang nghỉ"/"Không có ca làm việc hôm nay" ở Tiếp nhận vượt gợi ý ≤ ~40 ký tự (ui-guidelines 15b), chưa kiểm hộp in thật của trình duyệt.
 - Gói thuê bao + giấy phép ký số (làm SAU; mockup trang Giấy phép chờ duyệt; đảo ngược #070/#072 khi bắt đầu).

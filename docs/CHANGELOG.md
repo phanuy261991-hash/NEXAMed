@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-22
 
+### Tăng tốc Danh sách tiếp nhận và Thu ngân khi một ngày có hơn 1.000 lượt khám (`docs/DECISIONS.md` #250)
+
+Hai màn danh sách trong ngày chậm lên 300–560 ms khi có ~1.200 lượt khám/ngày. Nguyên nhân là cách truy vấn (nạp quan hệ lồng và gửi danh sách ~1.200 mã), không phải dữ liệu: nay mỗi màn dùng vài câu SQL gọn theo khoảng ngày. Đo lại cùng dữ liệu: Danh sách tiếp nhận p95 313 → 80 ms, Thu ngân 560 → 75 ms. Giao diện và dữ liệu trả về không đổi (đã so 135 phản hồi 45 ngày trên dữ liệu thật: giống hệt, trừ thứ tự các phiếu của cùng một lượt khám nay cố định: phiếu dịch vụ trước). Không migration.
+
 ### Nâng NestJS 10 → 11 (`docs/DECISIONS.md` #249)
 
 Lên NestJS 11 / Express 5 để hết nốt các cảnh báo thư viện của phần chạy thật: `pnpm audit --prod` nay **0 cảnh báo** (trước đợt vá hôm nay: 1 nghiêm trọng, 11 cao, 13 trung bình). Phải sửa cú pháp đường dẫn của middleware tenant và bộ lọc lỗi (thân yêu cầu quá lớn từng trả 500 thay vì 413 — tìm ra khi kiểm thực tế 39 mục trên API chạy thật, đã có test hồi quy). Toàn bộ test xanh, đo tải đọc/ghi sau nâng không chậm hơn (ghi p95 65 ms, 0 lỗi). Đo argon2: giữ nguyên tham số hiện tại được đề xuất, chờ chủ dự án chốt. **Môi trường khác**: `pnpm install` rồi dựng lại API.

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { EncounterServiceItem, EncounterStatus, Invoice, InvoiceLine, InvoiceRefund, InvoiceRefundLine, Payment, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import type { EncounterServiceItem, EncounterStatus, Invoice, InvoiceLine, InvoiceRefund, InvoiceRefundLine, Payment } from '@prisma/client';
 import { computeInvoiceFromServiceItems, type ServiceItemForInvoice } from '@nexamed/core';
 import type { ApplyInvoiceDiscountRequest } from '@nexamed/shared';
 import { BusinessCodeService } from '../clinic/business-code.service';
@@ -483,15 +484,101 @@ export class InvoiceRepository {
     });
   }
 
-  /** BIL-04 — theo `encounter.checkedInAt` trong biên ngày (giờ Việt Nam, `vietnamDayRange()` ở service). */
-  listForDay(tx: Prisma.TransactionClient, tenantId: string, branchId: string, dayStart: Date, dayEnd: Date): Promise<BillingListRow[]> {
-    return tx.invoice
-      .findMany({
-        where: { tenantId, deletedAt: null, encounter: { branchId, checkedInAt: { gte: dayStart, lt: dayEnd } } },
-        include: { ...ENCOUNTER_CONTEXT_INCLUDE, ...ACTIVE_PAYMENT_INCLUDE, ...LINE_DISCOUNT_INCLUDE },
-        orderBy: { encounter: { checkedInAt: 'asc' } },
-      })
-      .then((rows) => rows.map((row) => ({ ...row, ...toPaymentSides(row.payments) })));
+  /**
+   * BIL-04 — phiếu thu trong ngày theo `encounter.checkedInAt` trong biên ngày (giờ Việt Nam, `vietnamDayRange()` ở service) cho danh sách + tổng kết ngày. BA câu SQL phẳng theo chi nhánh + khoảng `checked_in_at` (phiếu, dòng chiết khấu, các lần thu/hoàn) rồi ghép bằng JS thay cho
+   * `findMany` + `include` lồng của Prisma: đo thật 22/10/2026 với ~1.100 phiếu/ngày — Prisma ~330 ms, các câu SQL này vài chục ms (docs/DECISIONS.md #250). Không truyền danh sách id
+   * (mỗi lần gửi ~1.200 id tốn ~50 ms chi phí tham số). Công thức chiết khấu/tiền thật vẫn ở `computeDue()` của `@nexamed/core` — chỗ này chỉ nạp dữ liệu, KHÔNG tính tiền.
+   */
+  async listForDay(tx: Prisma.TransactionClient, tenantId: string, branchId: string, dayStart: Date, dayEnd: Date): Promise<BillingListRow[]> {
+    const dayFilter = Prisma.sql`i.tenant_id = ${tenantId}::uuid AND i.deleted_at IS NULL AND e.branch_id = ${branchId}::uuid AND e.checked_in_at >= ${dayStart} AND e.checked_in_at < ${dayEnd}`;
+    const [invoices, lines, payments] = await Promise.all([
+      tx.$queryRaw<
+        Array<{
+          id: string;
+          invoice_no: string;
+          invoice_type: Invoice['invoiceType'];
+          status: Invoice['status'];
+          total_amount: bigint;
+          discount_type: Invoice['discountType'];
+          discount_value: bigint | null;
+          printed_at: Date | null;
+          encounter_id: string;
+          encounter_no: string;
+          checked_in_at: Date;
+          department_id: string;
+          encounter_status: EncounterContext['status'];
+          encounter_version: number;
+          department_name: string;
+          patient_id: string;
+          patient_code: string;
+          full_name: string;
+        }>
+      >`
+        SELECT i.id, i.invoice_no, i.invoice_type, i.status, i.total_amount, i.discount_type, i.discount_value, i.printed_at,
+               e.id AS encounter_id, e.encounter_no, e.checked_in_at, e.department_id, e.status AS encounter_status, e.version AS encounter_version,
+               d.name AS department_name, p.id AS patient_id, p.patient_code, p.full_name
+          FROM invoice i
+          JOIN encounter e ON e.tenant_id = i.tenant_id AND e.id = i.encounter_id
+          JOIN department d ON d.tenant_id = e.tenant_id AND d.id = e.department_id
+          JOIN patient p ON p.tenant_id = e.tenant_id AND p.id = e.patient_id
+         WHERE ${dayFilter}
+         ORDER BY e.checked_in_at ASC, i.created_at ASC, i.id ASC
+      `,
+      tx.$queryRaw<Array<{ invoice_id: string; line_total: bigint; discount_type: Invoice['discountType']; discount_value: bigint | null }>>`
+        SELECT l.invoice_id, l.line_total, l.discount_type, l.discount_value
+          FROM invoice_line l
+          JOIN invoice i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
+          JOIN encounter e ON e.tenant_id = i.tenant_id AND e.id = i.encounter_id
+         WHERE l.deleted_at IS NULL AND ${dayFilter}
+      `,
+      tx.$queryRaw<
+        Array<{ id: string; invoice_id: string; type: Payment['type']; method: Payment['method']; amount: bigint; paid_at: Date; cash_account_id: string | null; reason: string | null }>
+      >`
+        SELECT pay.id, pay.invoice_id, pay.type, pay.method, pay.amount, pay.paid_at, pay.cash_account_id, pay.reason
+          FROM payment pay
+          JOIN invoice i ON i.tenant_id = pay.tenant_id AND i.id = pay.invoice_id
+          JOIN encounter e ON e.tenant_id = i.tenant_id AND e.id = i.encounter_id
+         WHERE pay.deleted_at IS NULL AND ${dayFilter}
+         ORDER BY pay.paid_at DESC, pay.created_at ASC
+      `,
+    ]);
+
+    const linesByInvoice = new Map<string, LineDiscountFields[]>();
+    for (const l of lines) {
+      const list = linesByInvoice.get(l.invoice_id) ?? [];
+      list.push({ lineTotal: l.line_total, discountType: l.discount_type, discountValue: l.discount_value });
+      linesByInvoice.set(l.invoice_id, list);
+    }
+    const paymentsByInvoice = new Map<string, Payment[]>();
+    for (const pay of payments) {
+      const list = paymentsByInvoice.get(pay.invoice_id) ?? [];
+      // `toPaymentSides` chỉ đọc các trường dưới đây của `Payment`.
+      list.push({ id: pay.id, type: pay.type, method: pay.method, amount: pay.amount, paidAt: pay.paid_at, cashAccountId: pay.cash_account_id, reason: pay.reason } as Payment);
+      paymentsByInvoice.set(pay.invoice_id, list);
+    }
+
+    return invoices.map((r) => ({
+      id: r.id,
+      invoiceNo: r.invoice_no,
+      invoiceType: r.invoice_type,
+      status: r.status,
+      totalAmount: r.total_amount,
+      discountType: r.discount_type,
+      discountValue: r.discount_value,
+      lines: linesByInvoice.get(r.id) ?? [],
+      printedAt: r.printed_at,
+      encounter: {
+        id: r.encounter_id,
+        encounterNo: r.encounter_no,
+        checkedInAt: r.checked_in_at,
+        departmentId: r.department_id,
+        status: r.encounter_status,
+        version: r.encounter_version,
+        department: { name: r.department_name },
+        patient: { id: r.patient_id, patientCode: r.patient_code, fullName: r.full_name },
+      },
+      ...toPaymentSides(paymentsByInvoice.get(r.id) ?? []),
+    }));
   }
 
   /**

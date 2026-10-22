@@ -346,26 +346,48 @@ export class ClinicalOrderRepository {
   async progressByEncounterIds(tx: Prisma.TransactionClient, tenantId: string, encounterIds: string[]): Promise<Map<string, { pendingCount: number; unseenResultCount: number }>> {
     const result = new Map<string, { pendingCount: number; unseenResultCount: number }>();
     if (encounterIds.length === 0) return result;
-    const rows = await tx.clinicalOrderItem.findMany({
-      where: {
-        tenantId,
-        deletedAt: null,
-        itemKind: 'TECHNICAL_SERVICE',
-        performance: 'IN_HOUSE',
-        status: { in: ['ORDERED', 'IN_PROGRESS', 'RESULTED', 'COMPLETED'] },
-        order: { encounterId: { in: encounterIds }, deletedAt: null },
-      },
-      select: { status: true, doctorSeenAt: true, order: { select: { encounterId: true } } },
-    });
-    for (const r of rows) {
-      const entry = result.get(r.order.encounterId) ?? { pendingCount: 0, unseenResultCount: 0 };
-      if (r.status === 'COMPLETED') {
-        if (r.doctorSeenAt === null) entry.unseenResultCount += 1;
-      } else {
-        entry.pendingCount += 1;
-      }
-      result.set(r.order.encounterId, entry);
-    }
+    // Đếm NGAY trong Postgres (GROUP BY) thay vì kéo từng dòng về rồi đếm bằng JS: danh sách tiếp nhận 1.200 lượt khám/ngày giảm ~57 ms xuống vài ms (docs/DECISIONS.md #250).
+    const rows = await tx.$queryRaw<Array<{ encounter_id: string; pending: bigint; unseen: bigint }>>`
+      SELECT o.encounter_id,
+             count(*) FILTER (WHERE i.status <> 'COMPLETED') AS pending,
+             count(*) FILTER (WHERE i.status = 'COMPLETED' AND i.doctor_seen_at IS NULL) AS unseen
+        FROM clinical_order_item i
+        JOIN clinical_order o ON o.tenant_id = i.tenant_id AND o.id = i.clinical_order_id
+       WHERE i.tenant_id = ${tenantId}::uuid
+         AND i.deleted_at IS NULL
+         AND i.item_kind = 'TECHNICAL_SERVICE'
+         AND i.performance = 'IN_HOUSE'
+         AND i.status IN ('ORDERED', 'IN_PROGRESS', 'RESULTED', 'COMPLETED')
+         AND o.deleted_at IS NULL
+         AND o.encounter_id = ANY(${encounterIds}::uuid[])
+       GROUP BY o.encounter_id
+    `;
+    for (const r of rows) result.set(r.encounter_id, { pendingCount: Number(r.pending), unseenResultCount: Number(r.unseen) });
+    return result;
+  }
+
+  /** Như `progressByEncounterIds` nhưng theo chi nhánh + khoảng `checked_in_at` của lượt khám, không truyền danh sách id (xem `ParaclinicalProgressReaderPort.getProgressForDay`, #250). */
+  async progressForDay(tx: Prisma.TransactionClient, tenantId: string, branchId: string, dayStart: Date, dayEnd: Date): Promise<Map<string, { pendingCount: number; unseenResultCount: number }>> {
+    const result = new Map<string, { pendingCount: number; unseenResultCount: number }>();
+    const rows = await tx.$queryRaw<Array<{ encounter_id: string; pending: bigint; unseen: bigint }>>`
+      SELECT o.encounter_id,
+             count(*) FILTER (WHERE i.status <> 'COMPLETED') AS pending,
+             count(*) FILTER (WHERE i.status = 'COMPLETED' AND i.doctor_seen_at IS NULL) AS unseen
+        FROM clinical_order_item i
+        JOIN clinical_order o ON o.tenant_id = i.tenant_id AND o.id = i.clinical_order_id
+        JOIN encounter e ON e.tenant_id = o.tenant_id AND e.id = o.encounter_id
+       WHERE i.tenant_id = ${tenantId}::uuid
+         AND i.deleted_at IS NULL
+         AND i.item_kind = 'TECHNICAL_SERVICE'
+         AND i.performance = 'IN_HOUSE'
+         AND i.status IN ('ORDERED', 'IN_PROGRESS', 'RESULTED', 'COMPLETED')
+         AND o.deleted_at IS NULL
+         AND e.branch_id = ${branchId}::uuid
+         AND e.deleted_at IS NULL
+         AND e.checked_in_at >= ${dayStart} AND e.checked_in_at < ${dayEnd}
+       GROUP BY o.encounter_id
+    `;
+    for (const r of rows) result.set(r.encounter_id, { pendingCount: Number(r.pending), unseenResultCount: Number(r.unseen) });
     return result;
   }
 

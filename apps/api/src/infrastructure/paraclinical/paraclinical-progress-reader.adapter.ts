@@ -18,6 +18,10 @@ export class ParaclinicalProgressReaderAdapter implements ParaclinicalProgressRe
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.orderRepository.progressByEncounterIds(tx, tenantId, encounterIds));
   }
 
+  getProgressForDay(tenantId: string, branchId: string, dayStart: Date, dayEnd: Date): Promise<Map<string, ParaclinicalProgress>> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.orderRepository.progressForDay(tx, tenantId, branchId, dayStart, dayEnd));
+  }
+
   getResultCountsByEncounter(tenantId: string, encounterIds: string[]): Promise<Map<string, ParaclinicalResultCounts>> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.orderRepository.resultCountsByEncounterIds(tx, tenantId, encounterIds));
   }

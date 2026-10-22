@@ -508,7 +508,7 @@ export class ReceptionService {
     // transaction riêng (cùng nguyên tắc đã áp dụng cho routing ở checkIn()/registerDirect()).
     const receivedByNames = await this.doctorDirectory.getUserFullNames(tenantId, encounters.map((e) => e.createdBy));
     // Tiến độ cận lâm sàng (#221) — port tự mở transaction riêng, cùng nguyên tắc trên.
-    const progress = await this.paraclinicalProgress.getProgressByEncounter(tenantId, encounters.map((e) => e.id));
+    const progress = await this.paraclinicalProgress.getProgressForDay(tenantId, branchId, dayRange.startUtc, dayRange.endUtc);
 
     const items: ReceptionListItem[] = encounters.map((e) => ({
       encounterId: e.id,
