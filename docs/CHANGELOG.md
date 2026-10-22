@@ -14,9 +14,13 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-22
 
+### Hộp thoại "Đổi mã tên miền" làm lại theo mockup đã duyệt (`docs/DECISIONS.md` #245)
+
+Khu quản trị SaaS: hộp thoại dùng khuôn chung (biểu tượng + tên hành động + tên công ty + nút đóng), các dòng mã hiện tại / địa chỉ hiện tại có đường kẻ, ba gạch đầu dòng hậu quả thành bảng "Sau khi đổi", màn kết quả có biểu tượng xanh lá (`ModalHeader` thêm `tone="success"`). Hành vi không đổi. Mockup: https://claude.ai/artifact/KAAFi6LDmcdHgjCQSLDCtC.
+
 ### Đo lại tải sau vá thư viện + đo tải luồng ghi (`docs/DECISIONS.md` #248)
 
-Đo lại tải đọc sau bản vá thư viện: p95 59 ms (trước 58 ms), 0 lỗi. Công cụ mới `perf:load:write` đo cả LUỒNG GHI (10 bác sĩ ảo, mỗi lượt tạo bệnh nhân → tiếp nhận → thu tiền → khám → kê đơn → ký → hoàn tất): 223/223 lượt thành công, p95 65 ms, 0 lỗi. Khi đo tìm ra 2 lỗi thật chưa sửa: tắt chế độ mã đơn "Chuẩn Bộ Y tế" làm hỏng ký đơn; lưu khuôn mã giữa tháng có thể gây trùng mã. Xem `docs/DECISIONS.md` #248.
+Đo lại tải đọc sau bản vá thư viện: p95 59 ms (trước 58 ms), 0 lỗi. Công cụ mới `perf:load:write` đo cả LUỒNG GHI (10 bác sĩ ảo, mỗi lượt tạo bệnh nhân → tiếp nhận → thu tiền → khám → kê đơn → ký → hoàn tất): 223/223 lượt thành công, p95 65 ms, 0 lỗi. Đo trộn đọc + ghi cùng lúc: ghi vẫn p95 66 ms, 0 lỗi; hai danh sách trong ngày chậm lên (p95 300–400 ms) vì tenant thử đã có hơn 1.000 lượt khám hôm nay. Khi đo tìm ra và ĐÃ SỬA 2 lỗi thật làm hỏng ký đơn: (1) khuôn mã đơn thuốc tuỳ chỉnh có `[Mã cơ sở KCB]` — mọi lần ký lỗi 400, nay ký được (hoặc báo rõ thiếu mã cơ sở KCB); (2) lưu khuôn mã giữa tháng làm bộ đếm trùng mã đã cấp → lỗi 500 kẹt mãi, nay bộ đếm kỳ mới nối tiếp số đã cấp. Có test hồi quy. Xem `docs/DECISIONS.md` #248.
 
 ### Vá thư viện phụ thuộc có lỗ hổng (`docs/DECISIONS.md` #247)
 

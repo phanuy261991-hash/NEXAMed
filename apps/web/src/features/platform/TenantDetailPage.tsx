@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { Buildings, Clock, Users } from '@phosphor-icons/react';
+import { Buildings, CheckCircle, Clock, LinkSimple, Users } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ChangePlatformTenantCodeResponse, PlatformTenantDetail, ResetTenantAdminPasswordResponse } from '@nexamed/shared';
 import { copyText } from '../../shared/format/clipboard';
@@ -8,6 +8,7 @@ import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Button } from '../../shared/ui/Button';
 import { EditIconButton } from '../../shared/ui/EditIconButton';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { ReasonConfirmDialog } from '../../shared/ui/ReasonConfirmDialog';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatCardRow } from '../../shared/ui/StatCard';
@@ -170,67 +171,108 @@ function ChangeCodeDialog({ tenant, onClose }: { tenant: PlatformTenantDetail; o
     setCopied(ok ? 'ok' : 'failed');
   }
 
+  const currentHost = loginHostOf(tenant.loginUrl) ?? '—';
+  const codeInvalid = newCode !== '' && (!codeValid || sameAsCurrent);
+  const title = result ? 'Đã đổi mã tên miền' : 'Đổi mã tên miền';
+
+  // Bố cục theo mockup đã duyệt 22/10/2026 (https://claude.ai/artifact/KAAFi6LDmcdHgjCQSLDCtC): khuôn hộp xác nhận dùng chung — tiêu đề `ModalHeader`, dòng nhãn | giá trị có đường kẻ, khối hậu quả ngắn.
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-labelledby="change-code-title">
-      <form onSubmit={handleSubmit} className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
-        <h2 id="change-code-title" className="text-base font-semibold text-slate-900">
-          Đổi mã tên miền của "{tenant.name}"
-        </h2>
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-label={title}>
+      <form onSubmit={handleSubmit} className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
+        <ModalHeader icon={result ? CheckCircle : LinkSimple} tone={result ? 'success' : 'primary'} title={title} subtitle={tenant.name} onClose={onClose} />
         {result ? (
-          <div className="mt-3 space-y-3">
-            <p className="text-sm font-medium text-slate-700">
-              Đã đổi mã. Địa chỉ đăng nhập mới:
-            </p>
-            <p className="break-all rounded-md border border-emerald-500 bg-emerald-50 px-3 py-2 text-base font-normal text-slate-900">{loginHostOf(result.tenant.loginUrl)}</p>
-            <ul className="list-disc space-y-1 pl-5 text-sm font-medium text-slate-600">
-              <li>Địa chỉ cũ tự chuyển sang địa chỉ mới đến hết ngày {formatDateVn(result.oldCodeValidUntil)}.</li>
-              <li>
-                {result.revokedSessionCount > 0
-                  ? `${result.revokedSessionCount} phiên đăng nhập đã bị đăng xuất; nhân viên đăng nhập lại ở địa chỉ mới (mật khẩu không đổi).`
-                  : 'Chưa có phiên đăng nhập nào đang mở. Nhân viên đăng nhập ở địa chỉ mới (mật khẩu không đổi).'}
-              </li>
-            </ul>
-            <div className="flex items-center justify-between gap-2">
-              <span role="status" aria-live="polite" className={`text-sm font-semibold ${copied === 'failed' ? 'text-rose-700' : 'text-emerald-700'}`}>
+          <>
+            <div className="rounded-md border border-emerald-500 bg-emerald-50 px-3 py-2.5">
+              <span className="block text-xs font-semibold text-emerald-700">Địa chỉ đăng nhập mới</span>
+              <span className="break-all text-base text-slate-900">{loginHostOf(result.tenant.loginUrl)}</span>
+            </div>
+            <dl className="mt-2.5 divide-y divide-slate-100 border-y border-slate-100 text-sm">
+              <div className="flex justify-between gap-4 py-2.5">
+                <dt className="flex-none text-slate-500">Địa chỉ cũ tự chuyển đến</dt>
+                <dd className="text-right font-semibold text-slate-900">{formatDateVn(result.oldCodeValidUntil)}</dd>
+              </div>
+              <div className="flex justify-between gap-4 py-2.5">
+                <dt className="flex-none text-slate-500">Phiên đã đăng xuất</dt>
+                <dd className="text-right font-semibold text-slate-900">{result.revokedSessionCount} phiên</dd>
+              </div>
+              <div className="flex justify-between gap-4 py-2.5">
+                <dt className="flex-none text-slate-500">Mật khẩu nhân viên</dt>
+                <dd className="text-right font-semibold text-slate-900">Không đổi</dd>
+              </div>
+            </dl>
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+              <span role="status" aria-live="polite" className={`mr-auto text-sm font-semibold ${copied === 'failed' ? 'text-rose-700' : 'text-emerald-700'}`}>
                 {copied === 'ok' ? 'Đã sao chép' : copied === 'failed' ? 'Không sao chép được' : ''}
               </span>
-              <div className="flex gap-2">
-                <Button type="button" variant="secondary" onClick={() => void handleCopy()}>
-                  Sao chép thông báo cho khách
-                </Button>
-                <Button type="button" onClick={onClose}>
-                  Đóng
-                </Button>
-              </div>
+              <Button type="button" variant="secondary" onClick={() => void handleCopy()}>
+                Sao chép thông báo cho khách
+              </Button>
+              <Button type="button" onClick={onClose}>
+                Đóng
+              </Button>
             </div>
-          </div>
+          </>
         ) : (
           <>
-            <p className="mt-2 text-sm font-medium text-slate-600">
-              Hiện tại: <span className="font-semibold text-slate-800">{loginHostOf(tenant.loginUrl)}</span>
-            </p>
-            <div className="mt-3">
+            <dl className="divide-y divide-slate-100 border-b border-slate-100 text-sm">
+              <div className="flex justify-between gap-4 py-2.5">
+                <dt className="flex-none text-slate-500">Mã hiện tại</dt>
+                <dd className="text-right font-semibold text-slate-900">{tenant.code}</dd>
+              </div>
+              <div className="flex justify-between gap-4 py-2.5">
+                <dt className="flex-none text-slate-500">Địa chỉ đăng nhập hiện tại</dt>
+                <dd className="min-w-0 break-all text-right font-semibold text-slate-900">{currentHost}</dd>
+              </div>
+            </dl>
+            <div className="mt-3.5">
               <label htmlFor="new-code" className="mb-1 block text-sm font-semibold text-slate-800">
                 Mã mới <span className="text-rose-500">*</span>
               </label>
-              <input id="new-code" value={newCode} onChange={(e) => setNewCode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className={inputClassName} autoComplete="off" autoFocus />
-              <p className={`mt-1 text-xs font-medium ${newCode && (!codeValid || sameAsCurrent) ? 'text-rose-600' : 'text-slate-500'}`}>
-                {sameAsCurrent ? 'Mã mới trùng mã hiện tại.' : newCode && !codeValid ? 'Mã gồm 3-30 ký tự: chữ thường không dấu, số và gạch ngang, không bắt đầu hoặc kết thúc bằng gạch ngang.' : `Địa chỉ mới: ${newHost}`}
+              <input
+                id="new-code"
+                value={newCode}
+                onChange={(e) => setNewCode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                className={`${inputClassName} ${codeInvalid ? 'border-rose-300' : ''}`}
+                autoComplete="off"
+                aria-invalid={codeInvalid}
+                aria-describedby="new-code-hint"
+                autoFocus
+              />
+              <p id="new-code-hint" className={`mt-1 text-xs ${codeInvalid ? 'text-rose-600' : 'text-slate-500'}`}>
+                {sameAsCurrent ? (
+                  'Mã mới trùng mã hiện tại.'
+                ) : codeInvalid ? (
+                  'Mã gồm 3-30 ký tự: chữ thường không dấu, số và gạch ngang, không bắt đầu hoặc kết thúc bằng gạch ngang.'
+                ) : (
+                  <>
+                    Địa chỉ mới: <span className="font-semibold text-slate-700">{newHost}</span>
+                  </>
+                )}
               </p>
             </div>
-            <div className="mt-3">
+            <div className="mt-3.5">
               <label htmlFor="change-code-reason" className="mb-1 block text-sm font-semibold text-slate-800">
                 Lý do <span className="text-rose-500">*</span>
               </label>
-              <textarea id="change-code-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} className={inputClassName} />
+              <textarea id="change-code-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} className={`${inputClassName} resize-none`} />
             </div>
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs font-medium text-slate-600">
-              <li>Mã cũ được giữ làm lối tắt tự chuyển sang địa chỉ mới trong 90 ngày, không cấp cho công ty khác trong thời gian đó.</li>
-              <li>Mọi nhân viên của công ty bị đăng xuất, đăng nhập lại ở địa chỉ mới.</li>
-              <li>Cần xin chứng chỉ HTTPS cho địa chỉ mới nếu hệ thống không dùng chứng chỉ chung cho mọi công ty.</li>
-            </ul>
+            <div className="mt-4 border-y border-slate-100 text-[13px]">
+              <div className="pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">Sau khi đổi</div>
+              <div className="flex justify-between gap-4 border-t border-slate-100 py-1.5">
+                <span className="flex-none text-slate-500">Địa chỉ cũ</span>
+                <span className="text-right font-semibold text-slate-900">Tự chuyển sang địa chỉ mới, 90 ngày</span>
+              </div>
+              <div className="flex justify-between gap-4 border-t border-slate-100 py-1.5">
+                <span className="flex-none text-slate-500">Nhân viên</span>
+                <span className="text-right font-semibold text-slate-900">Bị đăng xuất, đăng nhập lại</span>
+              </div>
+              <div className="flex justify-between gap-4 border-t border-slate-100 py-1.5">
+                <span className="flex-none text-slate-500">Chứng chỉ HTTPS</span>
+                <span className="text-right font-semibold text-slate-900">Cần cho địa chỉ mới</span>
+              </div>
+            </div>
             {error && (
-              <div className="mt-3">
+              <div className="mt-3.5">
                 <ErrorBanner message={error} />
               </div>
             )}

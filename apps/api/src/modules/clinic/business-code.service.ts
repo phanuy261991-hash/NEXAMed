@@ -109,8 +109,7 @@ export class BusinessCodeService {
     // lưu khuôn riêng (`explicitConfig` tồn tại) — đúng lời hứa "tương thích ngược tuyệt đối,
     // CHO TỚI KHI tenant chủ động cấu hình" đã chốt ở docs/DECISIONS.md #114.
     // Entry do hệ thống tạo khi bật chế độ chuẩn (`implicitPeriod`) vẫn coi như CHƯA cấu hình: giữ bộ đếm liên tục, không đếm lại từ 1 (#242).
-    const isExplicit = explicitConfig !== undefined && !explicitConfig.implicitPeriod;
-    const periodKey = isExplicit || businessCodeResetsByDefault(codeType) ? computeBusinessCodePeriodKey(parseResult.parsed, dateParts) : '';
+    const periodKey = this.periodKeyOf(codeType, config, explicitConfig, dateParts);
     const prefix = BUSINESS_CODE_TYPE_REGISTRY[codeType].internalPrefix;
 
     // Token riêng của mã đơn thuốc (#242): cần chi nhánh/loại đơn do nơi gọi truyền vào.
@@ -131,6 +130,50 @@ export class BusinessCodeService {
     });
 
     return formatBusinessCode(config.template, config.counterDigits, dateParts, seq, extras);
+  }
+
+  /**
+   * Khoá kỳ của bộ đếm theo khuôn + ngày. Chỉ tính kỳ thật khi tenant ĐÃ chủ động lưu khuôn riêng (`explicitConfig` tồn tại, không phải entry do hệ thống tạo — `implicitPeriod`) hoặc loại mã
+   * mặc định đã reset theo kỳ; ngược lại bộ đếm chạy liên tục (kỳ ''), xem chú thích ở `generate()`.
+   */
+  private periodKeyOf(codeType: BusinessCodeType, config: BusinessCodeTemplateEntry, explicitConfig: BusinessCodeTemplateEntry | undefined, dateParts: { year: number; month: number; day: number }): string {
+    const isExplicit = explicitConfig !== undefined && !explicitConfig.implicitPeriod;
+    if (!isExplicit && !businessCodeResetsByDefault(codeType)) return '';
+    const parsed = parseBusinessCodeTemplate(config.template, codeType);
+    return parsed.ok ? computeBusinessCodePeriodKey(parsed.parsed, dateParts) : '';
+  }
+
+  /**
+   * Lưu khuôn có thể đổi cách chia kỳ (liên tục → theo tháng, thêm/bớt token năm/tháng/ngày). Bộ đếm của kỳ MỚI phải nối tiếp số đã cấp trong kỳ hiện tại — nếu để tính lại từ 1 thì
+   * trùng mã đã cấp (docs/DECISIONS.md #248: UNIQUE vi phạm → mọi lần ký đơn/tạo mã sau đó lỗi 500 vĩnh viễn vì bộ đếm hoàn tác cùng giao dịch). Chỉ NÂNG, không bao giờ hạ; kỳ kế tiếp vẫn đếm lại từ 1 đúng thiết kế.
+   */
+  private async carryCounterIntoNewPeriod(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    codeType: BusinessCodeType,
+    previous: BusinessCodeTemplateEntry | undefined,
+    next: BusinessCodeTemplateEntry,
+  ): Promise<void> {
+    const today = toVietnamDateParts(new Date());
+    const prefix = BUSINESS_CODE_TYPE_REGISTRY[codeType].internalPrefix;
+    const oldKey = this.periodKeyOf(codeType, previous ?? this.defaultConfig(codeType), previous, today);
+    const newKey = this.periodKeyOf(codeType, next, next, today);
+    if (oldKey === newKey) return;
+    const issued = await this.codeSequenceRepository.peekCurrentValue(tx, tenantId, prefix, oldKey);
+    if (issued === null) return;
+    await this.codeSequenceRepository.raiseTo(tx, tenantId, prefix, newKey, issued, actorId);
+  }
+
+  /**
+   * Mã cơ sở KCB cần đưa vào bộ sinh mã khi khuôn mã đơn thuốc (chế độ tuỳ chỉnh) có token `[Mã cơ sở KCB]` (docs/DECISIONS.md #248). `undefined` nếu khuôn không dùng token này.
+   * Tự mở transaction ngắn của riêng nó (qua port chi nhánh) nên PHẢI gọi TRƯỚC khi nơi gọi mở transaction ký đơn. Khuôn dùng token mà không có mã hợp lệ → `PrescriptionFacilityCodeMissingError`.
+   */
+  async resolveFacilityCodeIfPrescriptionTemplateNeedsIt(tenantId: string, branchId: string): Promise<string | undefined> {
+    const stored = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getBusinessCodeTemplatesConfig(tx, tenantId));
+    const template = (stored.PRESCRIPTION ?? this.defaultConfig('PRESCRIPTION')).template;
+    if (!template.includes(BUSINESS_CODE_TOKEN.FACILITY_CODE)) return undefined;
+    return this.resolveFacilityCodeForBranch(tenantId, branchId);
   }
 
   /** Chế độ "Chuẩn Bộ Y tế" của mã đơn thuốc đang bật cho tenant này không (đọc trong transaction của nơi gọi). */
@@ -286,6 +329,7 @@ export class BusinessCodeService {
           ...(keepImplicit ? { implicitPeriod: true as const } : {}),
         };
       }
+      await this.carryCounterIntoNewPeriod(tx, tenantId, actorId, codeType, existingEntry, newEntry);
       await this.clinicSettingsRepository.upsertBusinessCodeTemplateEntry(tx, tenantId, actorId, codeType, newEntry);
 
       await writeAuditLog(tx, tenantId, {

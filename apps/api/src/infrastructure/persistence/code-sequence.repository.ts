@@ -71,6 +71,23 @@ export class CodeSequenceRepository {
     return existing[0]?.exists ? 1n : initialValueIfNeverUsed;
   }
 
+  /**
+   * Nâng bộ đếm của MỘT kỳ lên ÍT NHẤT `value` (tạo dòng nếu chưa có, không bao giờ HẠ giá trị đang có). Dùng khi khuôn mã đổi cách chia kỳ (docs/DECISIONS.md #248):
+   * bộ đếm của kỳ mới phải nối tiếp số đã cấp trong kỳ hiện tại, nếu không nó tính lại từ 1 và trùng mã đã cấp (UNIQUE vi phạm, giao dịch hoàn tác, bộ đếm không bao giờ tiến lên).
+   */
+  async raiseTo(tx: Prisma.TransactionClient, tenantId: string, prefix: string, periodKey: string, value: bigint, actorId: string): Promise<void> {
+    await tx.$executeRaw`
+      INSERT INTO code_sequence (tenant_id, prefix, period_key, current_value, created_by, updated_by)
+      VALUES (${tenantId}::uuid, ${prefix}, ${periodKey}, ${value}, ${actorId}::uuid, ${actorId}::uuid)
+      ON CONFLICT (tenant_id, prefix, period_key)
+      DO UPDATE SET
+        current_value = GREATEST(code_sequence.current_value, EXCLUDED.current_value),
+        updated_by = ${actorId}::uuid,
+        updated_at = now(),
+        version = code_sequence.version + 1
+    `;
+  }
+
   /** Có tồn tại bất kỳ dòng nào cho `(tenantId, prefix)` chưa (bỏ qua chu kỳ) — dùng để tính
    * `locked` của "Số bắt đầu đếm" ở "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114). */
   async hasEverBeenUsed(tx: Prisma.TransactionClient, tenantId: string, prefix: string): Promise<boolean> {

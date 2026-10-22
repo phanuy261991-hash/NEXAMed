@@ -1530,6 +1530,8 @@ export class EncounterService {
     const kindCtx = await this.loadKindContext(tenantId);
     // Tra mã cơ sở KCB TRƯỚC khi mở transaction ký (tra qua port chi nhánh mở transaction riêng — gọi từ bên trong sẽ cạn bể kết nối khi nhiều người ký cùng lúc).
     const facilityCode = kindCtx.standardMode ? await this.businessCodeService.resolveFacilityCodeForBranch(tenantId, branchId) : null;
+    // Khuôn mã TUỲ CHỈNH có token [Mã cơ sở KCB] cũng cần mã cơ sở khi sinh `prescription_no` (#248) — tra TRƯỚC transaction ký, cùng lý do như trên.
+    const templateFacilityCode = kindCtx.standardMode ? facilityCode : await this.businessCodeService.resolveFacilityCodeIfPrescriptionTemplateNeedsIt(tenantId, branchId);
     const prescriptionSplitBlockEnabled = await this.clinicConfigReader.getPrescriptionSplitBlockEnabled(tenantId);
     // Liên thông đơn thuốc quốc gia (#242 GĐ3): công tắc tổng đọc TRƯỚC transaction (service tự mở transaction riêng) — bật thì xếp mỗi đơn pháp lý vào hàng chờ gửi ngay trong giao dịch ký.
     const interopEnabled = (await this.interopService.getRawSettings(tenantId)).enabled;
@@ -1575,7 +1577,7 @@ export class EncounterService {
       const warnings = this.computeWarnings(active.items, allergenNames, onHandByDrugId);
 
       const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'prescription', entityId: active.id });
-      const prescriptionNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'PRESCRIPTION', signature.signedAt);
+      const prescriptionNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'PRESCRIPTION', signature.signedAt, { facilityCode: templateFacilityCode ?? undefined });
       // Chế độ "Chuẩn Bộ Y tế": tách theo loại đơn C/N/H/Y, mỗi loại một đơn pháp lý có mã chuẩn riêng (#242).
       if (kindCtx.standardMode && facilityCode !== null) {
         const documents = await this.issuePrescriptionDocuments(tx, tenantId, actorId, active.id, active.items, kindCtx.mapping, facilityCode, null);
