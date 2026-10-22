@@ -24,7 +24,7 @@ Hai màn danh sách trong ngày chậm lên 300–560 ms khi có ~1.200 lượt 
 
 ### Nâng NestJS 10 → 11 (`docs/DECISIONS.md` #249)
 
-Lên NestJS 11 / Express 5 để hết nốt các cảnh báo thư viện của phần chạy thật: `pnpm audit --prod` nay **0 cảnh báo** (trước đợt vá hôm nay: 1 nghiêm trọng, 11 cao, 13 trung bình). Phải sửa cú pháp đường dẫn của middleware tenant và bộ lọc lỗi (thân yêu cầu quá lớn từng trả 500 thay vì 413 — tìm ra khi kiểm thực tế 39 mục trên API chạy thật, đã có test hồi quy). Toàn bộ test xanh, đo tải đọc/ghi sau nâng không chậm hơn (ghi p95 65 ms, 0 lỗi). Đo argon2: giữ nguyên tham số hiện tại được đề xuất, chờ chủ dự án chốt. **Môi trường khác**: `pnpm install` rồi dựng lại API.
+Lên NestJS 11 / Express 5 để hết nốt các cảnh báo thư viện của phần chạy thật: `pnpm audit --prod` nay **0 cảnh báo** (trước đợt vá hôm nay: 1 nghiêm trọng, 11 cao, 13 trung bình). Phải sửa cú pháp đường dẫn của middleware tenant và bộ lọc lỗi (thân yêu cầu quá lớn từng trả 500 thay vì 413 — tìm ra khi kiểm thực tế 39 mục trên API chạy thật, đã có test hồi quy). Toàn bộ test xanh, đo tải đọc/ghi sau nâng không chậm hơn (ghi p95 65 ms, 0 lỗi). Đo argon2: chủ dự án đã chốt GIỮ NGUYÊN tham số hiện tại. **Môi trường khác**: `pnpm install` rồi dựng lại API.
 
 ### Hộp thoại "Đổi mã tên miền" làm lại theo mockup đã duyệt (`docs/DECISIONS.md` #245)
 
