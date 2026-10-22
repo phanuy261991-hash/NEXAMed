@@ -23,7 +23,8 @@
     "openapi:generate": "tsx scripts/generate-openapi.ts",
     "perf:patient-search": "tsx scripts/perf-patient-search.ts",
     "perf:consultation": "tsx scripts/perf-consultation.ts",
-    "perf:load": "tsx scripts/perf-load.ts"
+    "perf:load": "tsx scripts/perf-load.ts",
+    "perf:load:write": "tsx scripts/perf-load-write.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed/index.ts"

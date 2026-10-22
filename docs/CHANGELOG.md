@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-22
 
+### Đo lại tải sau vá thư viện + đo tải luồng ghi (`docs/DECISIONS.md` #248)
+
+Đo lại tải đọc sau bản vá thư viện: p95 59 ms (trước 58 ms), 0 lỗi. Công cụ mới `perf:load:write` đo cả LUỒNG GHI (10 bác sĩ ảo, mỗi lượt tạo bệnh nhân → tiếp nhận → thu tiền → khám → kê đơn → ký → hoàn tất): 223/223 lượt thành công, p95 65 ms, 0 lỗi. Khi đo tìm ra 2 lỗi thật chưa sửa: tắt chế độ mã đơn "Chuẩn Bộ Y tế" làm hỏng ký đơn; lưu khuôn mã giữa tháng có thể gây trùng mã. Xem `docs/DECISIONS.md` #248.
+
 ### Vá thư viện phụ thuộc có lỗ hổng (`docs/DECISIONS.md` #247)
 
 Quét `pnpm audit`: phần chạy thật có 12 cảnh báo cao/nghiêm trọng (chủ yếu `multer` — tấn công làm treo khi tải tệp, `proxy-addr`, `lodash`, `brace-expansion`). Đã nâng các thư viện này lên bản đã vá bằng `pnpm.overrides`; toàn bộ test xanh. Còn 4 cảnh báo mức trung bình chỉ hết khi nâng NestJS 10 → 11 (đang làm). Không đổi chức năng, không migration. Môi trường khác: `pnpm install` rồi dựng lại.

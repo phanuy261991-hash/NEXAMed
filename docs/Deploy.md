@@ -409,6 +409,10 @@ Mục tiêu (PRD mục 5): p95 thời gian phản hồi API < 500 ms với 10 ng
 - **Đọc kết quả**: `ĐẠT` khi p95 tổng hợp < 500 ms VÀ không có lỗi (mã khác 2xx/429). Dòng đăng nhập báo riêng (Argon2id cố ý chậm, chỉ xảy ra một lần mỗi phiên). Số 429 được đếm riêng, KHÔNG tính vào độ trễ — nếu có, đó là giới hạn tốc độ theo IP đang chặn người dùng chung một địa chỉ (xem `iam.module.ts`). Mục "5 yêu cầu chậm nhất" cho biết chậm tập trung đầu phiên (nhiễu khởi động) hay rải đều (chậm thật).
 - **Ghi lại**: dán dòng "TỔNG HỢP" và thông số máy chủ (CPU, RAM, ổ đĩa, số bệnh nhân/lượt khám) vào `docs/GA-checklist.md` mục 2, dòng "p95 API".
 
+### 2.5b. Đo tải LUỒNG GHI (bổ sung cho S6-04, 22/10/2026)
+
+`perf:load` chỉ đọc nên không phản ánh lúc nhiều người cùng tiếp nhận/kê đơn/thu tiền (tranh chấp bộ đếm mã, ca thu ngân, khoá dòng). Công cụ: `apps/api/scripts/perf-load-write.ts` (`pnpm --filter @nexamed/api run perf:load:write`) — mỗi người dùng ảo lặp MỘT LƯỢT KHÁM TRỌN VẸN (tạo bệnh nhân → tiếp nhận → sinh hiệu → thu tiền → bắt đầu khám → chẩn đoán → ghi chú → kê đơn → ký đơn → hoàn tất) và báo p50/p95/p99 TỪNG BƯỚC. **GHI DỮ LIỆU THẬT và dữ liệu lâm sàng đã ký không xoá được → CHỈ chạy trên phòng khám THỬ** (bắt buộc `PERF_ALLOW_WRITE=yes`; bệnh nhân tạo ra có họ tên bắt đầu `ZZPERF`; tài khoản đo `zzperf.letan`/`zzperf.bs01…` tự tạo bằng tài khoản quản trị `PERF_ADMIN_USERNAME`/`PERF_ADMIN_PASSWORD`). Biến môi trường khác như `perf:load` + `PERF_STEP_THINK_*`/`PERF_VISIT_THINK_*`. Điều kiện nền: danh mục có thuốc, ICD-10 `A00`, khuôn mã đơn thuốc KHÔNG chứa `[Mã cơ sở KCB]` khi chế độ "Chuẩn Bộ Y tế" đang tắt (xem DECISIONS #248), đang có ca thu ngân nếu phòng khám bắt buộc. Ngưỡng `ĐẠT`: p95 tổng hợp < 500 ms và 0 lỗi.
+
 ### Ràng buộc bắt buộc khi viết script/cấu hình on-prem (đã chốt, không tự đổi)
 
 - Toàn bộ cấu hình đọc từ biến môi trường, validate bằng Zod ở `apps/api/src/config` — không đọc `process.env` rải rác, không hard-code đường dẫn tuyệt đối/tên máy chủ/giá trị riêng của một phòng khám.
