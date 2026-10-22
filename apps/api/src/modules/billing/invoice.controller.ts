@@ -36,7 +36,7 @@ export class InvoiceController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listBillingInvoicesQuerySchema.parse(query);
     const { tenantId } = req.user!;
-    return this.invoiceService.listForDay(tenantId, requireBranchId(req.user!), dto.date);
+    return this.invoiceService.listForDay(tenantId, requireBranchId(req.user!), dto.date, { tab: dto.tab, q: dto.q, limit: dto.limit, cursor: dto.cursor });
   }
 
   /** `?invoiceId=` tuỳ chọn (Kho Thuốc GĐ3, #165) — mở đúng 1 hoá đơn cụ thể của lượt khám (hoá đơn

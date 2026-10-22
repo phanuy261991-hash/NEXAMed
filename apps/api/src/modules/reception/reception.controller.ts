@@ -44,7 +44,12 @@ export class ReceptionController {
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = receptionListQuerySchema.parse(query);
     const { userId, tenantId } = req.user!;
-    return this.receptionService.listReceptions(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto.date, dto.doctorId, dto.includeDepartmentPool, dto.queueView);
+    return this.receptionService.listReceptions(tenantId, requireBranchId(req.user!), userId, req.dataScope!, dto.date, dto.doctorId, dto.includeDepartmentPool, dto.queueView, {
+      tab: dto.tab,
+      q: dto.q,
+      limit: dto.limit,
+      cursor: dto.cursor,
+    });
   }
 
   /** Chấm số ở menu "Hàng đợi khám" (#221) — số bệnh nhân đang khám của chính bác sĩ có kết quả cận lâm sàng mới chưa xem. Đặt riêng path, không đụng `list`. */

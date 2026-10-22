@@ -8,6 +8,8 @@ import {
   CLINIC_CONFIG_READER_PORT,
   computeCombinedInvoiceTotals,
   computeDailyBillingTotals,
+  decodeKeysetCursor,
+  computeBillingTabCounts,
   computeDiscountAmount,
   computeInvoiceDiscount,
   ConcurrentModificationError,
@@ -19,12 +21,16 @@ import {
   InvoiceNotPaidError,
   InvoiceNotRefundableError,
   isInvoiceClosed,
+  matchesBillingSearch,
+  matchesBillingTab,
+  pageAfterCursor,
   needsRefund as computeNeedsRefund,
   REFERENCE_CATALOG_READER_PORT,
   vietnamDayRange,
   WalletInsufficientBalanceError,
   type CashierShiftReaderPort,
   type ClinicConfigReaderPort,
+  type BillingListTab,
   type ReferenceCatalogReaderPort,
 } from '@nexamed/core';
 import type {
@@ -270,7 +276,7 @@ export class InvoiceService {
     return toInvoiceResponse(row, otherInvoices);
   }
 
-  async listForDay(tenantId: string, branchId: string, date?: string): Promise<ListBillingInvoicesResponse> {
+  async listForDay(tenantId: string, branchId: string, date?: string, paging?: { tab?: BillingListTab; q?: string; limit?: number; cursor?: string }): Promise<ListBillingInvoicesResponse> {
     const targetDate = date ?? getVietnamDateString();
     const dayRange = vietnamDayRange(targetDate);
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.invoiceRepository.listForDay(tx, tenantId, branchId, dayRange.startUtc, dayRange.endUtc));
@@ -283,10 +289,20 @@ export class InvoiceService {
       rows.map((row) => ({ status: row.status, dueAmount: computeDue(row).dueAmount, refundedAmount: Number(row.refundedTotal) })),
     );
 
-    return {
-      items: rows.map((row) => this.toBillingListItem(row)),
-      ...totals,
-    };
+    // Tổng kết ngày (`totals`) luôn trên TOÀN BỘ phiếu của ngày; số trên tab áp từ khoá `q`; tab + con trỏ chỉ quyết định các dòng trả về (docs/DECISIONS.md #251).
+    const allItems = rows.map((row) => this.toBillingListItem(row));
+    const searched = allItems.filter((i) => matchesBillingSearch(i, paging?.q));
+    const tabCounts = computeBillingTabCounts(searched);
+    const tabbed = searched.filter((i) => matchesBillingTab(i, paging?.tab ?? 'ALL'));
+    if (paging?.limit === undefined) {
+      return { items: tabbed, ...totals, tabCounts, nextCursor: null };
+    }
+    const cursor = paging.cursor ? decodeKeysetCursor(paging.cursor) : null;
+    if (paging.cursor && !cursor) throw new BadRequestException('Con trỏ phân trang không hợp lệ.');
+    // Sắp bằng CHÍNH khoá của con trỏ (`checkedInAt` ISO, `invoiceId`) — id UUIDv7 tăng theo thời gian nên phiếu cùng lượt khám vẫn theo thứ tự tạo.
+    const ordered = [...tabbed].sort((a, b) => (a.checkedInAt === b.checkedInAt ? (a.invoiceId < b.invoiceId ? -1 : a.invoiceId > b.invoiceId ? 1 : 0) : a.checkedInAt < b.checkedInAt ? -1 : 1));
+    const { page, nextCursor } = pageAfterCursor(ordered, (i) => ({ sortKey: i.checkedInAt, id: i.invoiceId }), { limit: paging.limit, cursor });
+    return { items: page, ...totals, tabCounts, nextCursor };
   }
 
   private toBillingListItem(row: BillingListRow): ListBillingInvoicesResponse['items'][number] {

@@ -5,6 +5,7 @@ import type {
   EncounterSummary,
   ReassignEncounterRequest,
   ReceptionListResponse,
+  ReceptionListTabValue,
   RegisterReceptionRequest,
   ReleaseEncounterRequest,
   StartConsultationRequest,
@@ -19,14 +20,25 @@ export async function registerReception(body: RegisterReceptionRequest): Promise
   return unwrap(await getApiClient().POST('/api/v1/reception/direct', { body })) as EncounterSummary;
 }
 
+/** Tham số tải THEO LÔ (docs/DECISIONS.md #251) — bỏ trống toàn bộ thì máy chủ trả cả ngày như trước. `tab=ACTIVE` (đang chờ + đang khám) cho bảng "Tải theo Bác sĩ". */
+export interface ReceptionListPaging {
+  tab?: ReceptionListTabValue;
+  q?: string;
+  limit?: number;
+  cursor?: string;
+}
+
 export async function getReceptionList(
   date?: string,
   doctorId?: string,
   includeDepartmentPool?: boolean,
   queueView?: boolean,
+  paging?: ReceptionListPaging,
 ): Promise<ReceptionListResponse> {
   return unwrap(
-    await getApiClient().GET('/api/v1/reception/list', { params: { query: { date, doctorId, includeDepartmentPool, queueView } } }),
+    await getApiClient().GET('/api/v1/reception/list', {
+      params: { query: { date, doctorId, includeDepartmentPool, queueView, tab: paging?.tab, q: paging?.q || undefined, limit: paging?.limit, cursor: paging?.cursor } },
+    }),
   ) as ReceptionListResponse;
 }
 

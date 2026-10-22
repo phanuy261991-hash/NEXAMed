@@ -401,10 +401,26 @@ export const getBillingInvoiceQuerySchema = z.object({
 });
 export type GetBillingInvoiceQuery = z.infer<typeof getBillingInvoiceQuerySchema>;
 
+export const BILLING_LIST_MAX_PAGE_SIZE = 200;
+export const billingListTabSchema = z.enum(['UNPAID', 'PAID', 'ALL']);
+export type BillingListTabValue = z.infer<typeof billingListTabSchema>;
+
+/**
+ * Tải THEO LÔ (docs/DECISIONS.md #251) — chỉ khi truyền `limit`; không truyền thì trả toàn bộ như trước. `tab`/`q` lọc ở máy chủ trên CẢ NGÀY; `cursor` là `nextCursor` của lô trước.
+ * Tổng kết ngày (`paidTotalAmount`...) luôn tính trên TOÀN BỘ phiếu của ngày, không phụ thuộc tab/từ khoá/lô.
+ */
 export const listBillingInvoicesQuerySchema = z.object({
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'date phải theo định dạng YYYY-MM-DD')
+    .optional(),
+  tab: billingListTabSchema.optional(),
+  q: z.string().trim().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(BILLING_LIST_MAX_PAGE_SIZE).optional(),
+  cursor: z
+    .string()
+    .max(300)
+    .regex(/^[A-Za-z0-9_-]+$/, 'cursor không hợp lệ')
     .optional(),
 });
 export type ListBillingInvoicesQuery = z.infer<typeof listBillingInvoicesQuerySchema>;
@@ -458,5 +474,9 @@ export const listBillingInvoicesResponseSchema = z.object({
   refundedTotalAmount: z.number().int(),
   /** `paidTotalAmount - refundedTotalAmount` — khớp tiền còn lại trong két cuối ngày. */
   netTotalAmount: z.number().int(),
+  /** Số trên 3 tab Chờ thu / Đã thu / Tất cả — của CẢ NGÀY, đã áp từ khoá `q` (docs/DECISIONS.md #251). */
+  tabCounts: z.object({ unpaid: z.number().int().nonnegative(), paid: z.number().int().nonnegative(), all: z.number().int().nonnegative() }),
+  /** Con trỏ lô kế tiếp (gửi lại nguyên văn ở `cursor`); `null` khi đã hết hoặc khi không phân trang. */
+  nextCursor: z.string().nullable(),
 });
 export type ListBillingInvoicesResponse = z.infer<typeof listBillingInvoicesResponseSchema>;

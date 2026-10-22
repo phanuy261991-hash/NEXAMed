@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowCounterClockwise, Bank, CaretLeft, CaretRight, ClockCounterClockwise, Clock, LockKey, MagnifyingGlass, Receipt, Vault, Wallet, Warning } from '@phosphor-icons/react';
-import type { BillingListItem, CashierShiftDetail } from '@nexamed/shared';
+import type { CashierShiftDetail } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
+import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
+import { useInfiniteScrollSentinel } from '../../shared/hooks/useInfiniteScrollSentinel';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { InfiniteListFooter, InfiniteScrollTail } from '../../shared/ui/InfiniteListFooter';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
@@ -23,7 +26,7 @@ import { useHasPermission } from '../auth/usePermission';
 import { CashVoucherFormDialog, type CashVoucherSubmitDto } from '../cash-book/CashVoucherFormDialog';
 import { MyShiftVouchersDialog } from '../cash-book/MyShiftVouchersDialog';
 import { useCreateCashVoucherMutation } from '../cash-book/cash-voucher.queries';
-import { useBillingInvoiceListQuery } from './invoice.queries';
+import { useBillingInvoiceListInfiniteQuery } from './invoice.queries';
 import { INVOICE_STATUS_META } from './invoice-status';
 
 /** Cùng khuôn `ReceptionListPage.tsx` (List Screen Pattern, .claude/docs/ui-guidelines.md mục 9).
@@ -44,17 +47,6 @@ function formatDateTime(iso: string): string {
   return `${hh}:${min} ${dd}/${mm}`;
 }
 
-function matchesSearch(item: BillingListItem, q: string): boolean {
-  if (q === '') return true;
-  const needle = q.trim().toLowerCase();
-  return (
-    item.invoiceNo.toLowerCase().includes(needle) ||
-    item.encounterNo.toLowerCase().includes(needle) ||
-    item.fullName.toLowerCase().includes(needle) ||
-    item.patientCode.toLowerCase().includes(needle)
-  );
-}
-
 /**
  * "Thu ngân" (Sprint 5/6, BIL-01→04) — danh sách phiếu thu trong ngày (tự động tạo lúc tiếp
  * nhận, xem `reception.service.ts`), đồng thời là màn tổng kết cuối ngày (thanh cố định phía
@@ -69,14 +61,22 @@ export function InvoiceListPage() {
   const [tab, setTab] = useState<StatusTab>('UNPAID');
   const [search, setSearch] = useState('');
 
-  const listQuery = useBillingInvoiceListQuery(date);
-  const allItems = listQuery.data?.items ?? [];
-  const unpaidItems = allItems.filter((i) => i.status === 'UNPAID');
-  const paidItems = allItems.filter((i) => i.status === 'PAID');
-  const tabItems = tab === 'UNPAID' ? unpaidItems : tab === 'PAID' ? paidItems : allItems;
-  const items = tabItems.filter((i) => matchesSearch(i, search));
+  // Danh sách tải THEO LÔ khi cuộn (docs/DECISIONS.md #251): tab + từ khoá lọc ở máy chủ trên CẢ NGÀY; tổng kết ngày và số trên tab là số cả ngày do máy chủ trả (lấy ở lô đầu).
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const listQuery = useBillingInvoiceListInfiniteQuery({ date, tab, q: debouncedSearch.trim() });
+  const pages = listQuery.data?.pages ?? [];
+  const items = pages.flatMap((p) => p.items);
+  const totals = pages[0];
   const itemIds = items.map((i) => i.invoiceId);
   const rowSelection = useRowSelection(itemIds);
+  const hasNextPage = listQuery.hasNextPage;
+  const loadMore = () => {
+    if (hasNextPage && !listQuery.isFetchingNextPage) void listQuery.fetchNextPage();
+  };
+  // Lỗi tải thêm: dừng tự tải (tránh vòng lặp lỗi), chờ người dùng bấm "Thử lại".
+  const isLoadMoreError = listQuery.isFetchNextPageError;
+  const sentinelRef = useInfiniteScrollSentinel({ enabled: hasNextPage && !listQuery.isFetchingNextPage && !isLoadMoreError, onReach: loadMore, watchKey: items.length });
+  const currentTabTotal = totals ? { UNPAID: totals.tabCounts.unpaid, PAID: totals.tabCounts.paid, ALL: totals.tabCounts.all }[tab] : 0;
 
   // Chụp lại đúng ca đang chốt tại thời điểm bấm nút — KHÔNG dùng lại `openShift` sống trong lúc
   // dialog mở: chốt ca thành công làm `openShift` về `null` ngay (query bị invalidate), nếu dialog
@@ -246,9 +246,9 @@ export function InvoiceListPage() {
 
       <TabBar
         tabs={[
-          { id: 'UNPAID', label: `Chờ thu (${unpaidItems.length})` },
-          { id: 'PAID', label: `Đã thu (${paidItems.length})` },
-          { id: 'ALL', label: `Tất cả (${allItems.length})` },
+          { id: 'UNPAID', label: `Chờ thu (${totals?.tabCounts.unpaid ?? 0})` },
+          { id: 'PAID', label: `Đã thu (${totals?.tabCounts.paid ?? 0})` },
+          { id: 'ALL', label: `Tất cả (${totals?.tabCounts.all ?? 0})` },
         ]}
         active={tab}
         onChange={setTab}
@@ -279,8 +279,8 @@ export function InvoiceListPage() {
       )}
 
       {listQuery.isSuccess && items.length > 0 && (
-        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div role="table" aria-label="Danh sách thu ngân" className="scroll-hover h-full overflow-x-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div role="table" aria-label="Danh sách thu ngân" className="scroll-hover min-h-0 flex-1 overflow-x-auto">
             <div className="flex h-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
               <div
                 role="row"
@@ -362,13 +362,22 @@ export function InvoiceListPage() {
                     </div>
                   </div>
                 ))}
+                <InfiniteScrollTail sentinelRef={sentinelRef} hasNextPage={hasNextPage} isFetchingNextPage={listQuery.isFetchingNextPage} />
               </div>
             </div>
           </div>
+          <InfiniteListFooter
+            loaded={items.length}
+            total={currentTabTotal}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={listQuery.isFetchingNextPage}
+            isLoadMoreError={isLoadMoreError}
+            onRetry={() => void listQuery.fetchNextPage()}
+          />
         </div>
       )}
 
-      {listQuery.isSuccess && (
+      {listQuery.isSuccess && totals && (
         <div className="flex flex-shrink-0 flex-wrap items-stretch overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="flex min-w-[190px] flex-1 items-center justify-center gap-3 px-5 py-3.5">
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
@@ -376,7 +385,7 @@ export function InvoiceListPage() {
             </div>
             <div className="flex flex-col">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Đã thu hôm nay</span>
-              <span className="text-xl font-semibold tabular-nums text-slate-900">{formatVnd(listQuery.data.paidTotalAmount)}</span>
+              <span className="text-xl font-semibold tabular-nums text-slate-900">{formatVnd(totals.paidTotalAmount)}</span>
             </div>
           </div>
           {/* #085 — tách riêng "Đã hoàn"/"Thực thu" (paidTotalAmount VẪN gồm cả phiếu đã hoàn — xem
@@ -389,9 +398,9 @@ export function InvoiceListPage() {
               <ArrowCounterClockwise size={20} weight="bold" aria-hidden="true" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Đã hoàn ({listQuery.data.refundedCount})</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Đã hoàn ({totals.refundedCount})</span>
               <span className="text-xl font-semibold tabular-nums text-violet-700">
-                {listQuery.data.refundedTotalAmount > 0 ? `-${formatVnd(listQuery.data.refundedTotalAmount)}` : formatVnd(0)}
+                {totals.refundedTotalAmount > 0 ? `-${formatVnd(totals.refundedTotalAmount)}` : formatVnd(0)}
               </span>
             </div>
           </div>
@@ -404,7 +413,7 @@ export function InvoiceListPage() {
             </div>
             <div className="flex flex-col">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Thực thu</span>
-              <span className="text-xl font-semibold tabular-nums text-slate-900">{formatVnd(listQuery.data.netTotalAmount)}</span>
+              <span className="text-xl font-semibold tabular-nums text-slate-900">{formatVnd(totals.netTotalAmount)}</span>
             </div>
           </div>
           {/* Cố ý tô nền đặc (khác các khối trên) — đây là mục CẦN HÀNH ĐỘNG (còn phiếu chưa thu),
@@ -418,7 +427,7 @@ export function InvoiceListPage() {
             <div className="flex flex-col">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-50">Còn chờ thu</span>
               <span className="whitespace-nowrap text-xl font-semibold tabular-nums">
-                {listQuery.data.unpaidCount} phiếu · {formatVnd(listQuery.data.unpaidTotalAmount)}
+                {totals.unpaidCount} phiếu · {formatVnd(totals.unpaidTotalAmount)}
               </span>
             </div>
           </div>

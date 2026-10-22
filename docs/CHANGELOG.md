@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-22
 
+### "Bệnh nhân trong ngày" và "Thu ngân" cuộn tới đâu tải tới đó (`docs/DECISIONS.md` #251)
+
+Hai danh sách trong ngày nay tải 50 dòng một lần và tự tải tiếp khi cuộn gần cuối, thay vì tải cả ngày: ngày đông bệnh nhân (hơn 1.000 lượt) vẫn mở nhanh. Thẻ KPI, số trên các tab và dải tổng kết cuối trang Thu ngân luôn là số của CẢ NGÀY; tìm kiếm chạy trên cả ngày (không chỉ phần đã tải). Chân bảng ghi "Đang hiển thị 50 / 1.203 dòng", báo đang tải, tải lỗi (có nút "Thử lại", dòng đã có vẫn giữ nguyên) và "Đã hiển thị hết". Ô chọn đầu cột chỉ chọn các dòng đã tải. Hàng đợi khám của bác sĩ, form Tiếp nhận và xuất Excel không đổi. Không migration.
+
 ### Tăng tốc Danh sách tiếp nhận và Thu ngân khi một ngày có hơn 1.000 lượt khám (`docs/DECISIONS.md` #250)
 
 Hai màn danh sách trong ngày chậm lên 300–560 ms khi có ~1.200 lượt khám/ngày. Nguyên nhân là cách truy vấn (nạp quan hệ lồng và gửi danh sách ~1.200 mã), không phải dữ liệu: nay mỗi màn dùng vài câu SQL gọn theo khoảng ngày. Đo lại cùng dữ liệu: Danh sách tiếp nhận p95 313 → 80 ms, Thu ngân 560 → 75 ms. Giao diện và dữ liệu trả về không đổi (đã so 135 phản hồi 45 ngày trên dữ liệu thật: giống hệt, trừ thứ tự các phiếu của cùng một lượt khám nay cố định: phiếu dịch vụ trước). Không migration.

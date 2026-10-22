@@ -351,6 +351,14 @@ Rà soát toàn app phát hiện nhiều bảng danh sách để tiêu đề c�
 - **Ảnh/file đính kèm đặt ở khối đầu tiên**, cạnh các trường định danh cơ bản (không tách khối riêng) — dùng flex `flex-col gap-4 sm:flex-row` với khung ảnh cố định kích thước (`h-28 w-28`, hoặc tỷ lệ khác nếu ảnh không vuông — ví dụ logo phòng khám 220×110/110×110) đứng cạnh lưới trường.
 - **Upload ảnh CHỈ bấm được khi đang ở chế độ Sửa** (chốt 2026-08-13, `docs/DECISIONS.md` #041) — ẩn hẳn nút "Chọn ảnh" (không chỉ `disabled`) lúc form ở chế độ xem, hiện lại khi bấm "Sửa". Nhất quán với mọi trường văn bản khác trong form — đổi lại từ `PatientAvatarUpload.tsx` bản đầu (cho phép upload độc lập với chế độ Sửa, chủ dự án phản hồi gây nhầm lẫn khi làm logo phòng khám theo đúng khuôn đó) — áp dụng cho mọi nơi upload ảnh từ nay, kể cả khi upload là request API riêng không đi qua nút "Lưu" của form.
 
+### 9h. Danh sách trong ngày tải THEO LÔ khi cuộn (chốt 2026-10-22, `docs/DECISIONS.md` #251, mockup https://claude.ai/artifact/7UcUL7EkvP5jV7KjR3k15b)
+
+Áp dụng cho "Bệnh nhân trong ngày" và "Thu ngân", và cho mọi danh sách trong ngày có thể phình tới hàng nghìn dòng sau này. Cuộn tới đâu tải tới đó (**không** số trang): `useInfiniteQuery` + `useInfiniteScrollSentinel` (tải trước ~8 dòng), mỗi lô **50 dòng cố định** (không có ô chọn cỡ trang). Bắt buộc:
+- **Số liệu cả ngày lấy từ máy chủ, không đếm trên dòng đã tải**: thẻ KPI, số trên tab, dải tổng kết đều do API trả; lọc tab + tìm kiếm chạy ở máy chủ trên CẢ NGÀY (gõ xong chờ ~400 ms), đổi tab/từ khoá/ngày thì bảng về đầu nhưng giữ bảng cũ tới khi có dữ liệu mới (`keepPreviousData`) để ô tìm không mất tiêu điểm.
+- **Chân bảng** dùng `InfiniteListFooter` ("Đang hiển thị X / Y dòng", "Đang tải thêm…", "Đã hiển thị hết", lỗi tải thêm giữ nguyên dòng đã có + nút "Thử lại") và `InfiniteScrollTail` trong vùng cuộn. **Chân bảng đặt NGOÀI vùng cuộn ngang** của bảng — đặt trong đó thì bị cắt mép phải khi màn hẹp hơn bề rộng tối thiểu của bảng (lỗi thật đã gặp).
+- **Ô chọn đầu cột** chỉ chọn các dòng đã tải (`useRowSelection`), không có "chọn cả ngày". Xuất Excel vẫn xuất toàn bộ trong ngày.
+- API phía sau: tham số `limit`/`cursor`/`tab`/`q`, con trỏ khoá (`packages/core/src/list-paging`); không truyền `limit` thì trả toàn bộ như trước.
+
 ## 10. Mẫu màn hình Cấu hình 2 cột (Two-panel Config Screen Pattern — chốt 2026-08-13)
 
 Dựng mockup Artifact trước, chọn qua hỏi-đáp giữa 2 kiểu (đã chốt **Kiểu 2 — thanh nhóm + thẻ**), áp dụng lần đầu ở trang "Danh mục" (`/admin/catalog`, gộp `reference_catalog` + `geo` + cấu hình giờ phòng khám).

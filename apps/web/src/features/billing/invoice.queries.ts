@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ApplyInvoiceDiscountRequest,
+  BillingListTabValue,
   MarkInvoicePaidRequest,
   PayInvoiceWithWalletRequest,
   RefundInvoiceItemsRequest,
@@ -27,6 +28,27 @@ import {
 } from './invoice.api';
 
 /** "Thu ngân" (danh sách trong ngày) + tổng kết cuối ngày (BIL-04) — 1 ngày/tenant nhỏ, không cursor. */
+/** Số dòng mỗi lô của "Thu ngân" (mockup đã duyệt, docs/DECISIONS.md #251) — cố định, danh sách cuộn tải tiếp. */
+export const BILLING_LIST_PAGE_SIZE = 50;
+
+/**
+ * "Thu ngân" tải THEO LÔ khi cuộn (docs/DECISIONS.md #251): tab + từ khoá lọc ở máy chủ trên CẢ NGÀY; tổng kết ngày (`paidTotalAmount`...) và số trên tab do máy chủ tính trên cả ngày nên lấy ở
+ * lô ĐẦU. Khoá bắt đầu bằng `'invoice','list'` nên các mutation vẫn làm mới qua `invalidateQueries` theo tiền tố; `keepPreviousData` giữ bảng cũ khi đổi tab/từ khoá/ngày.
+ */
+export function useBillingInvoiceListInfiniteQuery(params: { date?: string; tab: BillingListTabValue; q: string }) {
+  const { tenantId } = useAppConfig();
+  const { date, tab, q } = params;
+  return useInfiniteQuery({
+    queryKey: queryKey(tenantId, 'invoice', 'list', 'paged', date, tab, q),
+    queryFn: ({ pageParam }) => getBillingInvoiceList(date, { tab, q, limit: BILLING_LIST_PAGE_SIZE, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    placeholderData: keepPreviousData,
+    // Làm mới định kỳ chạy lại TẤT CẢ lô đã tải: đã cuộn sâu (> 8 lô) thì giãn ra 2 phút để không gọi hàng chục yêu cầu mỗi 30 giây.
+    refetchInterval: (query) => ((query.state.data?.pages.length ?? 0) > 8 ? 120_000 : 30_000),
+  });
+}
+
 export function useBillingInvoiceListQuery(date?: string) {
   const { tenantId } = useAppConfig();
   return useQuery({

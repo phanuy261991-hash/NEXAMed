@@ -1,5 +1,6 @@
 import type {
   ApplyInvoiceDiscountRequest,
+  BillingListTabValue,
   CombinedInvoicePrintResponse,
   Invoice,
   InvoiceResponse,
@@ -14,8 +15,18 @@ import type {
 } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
 
-export async function getBillingInvoiceList(date?: string): Promise<ListBillingInvoicesResponse> {
-  return unwrap(await getApiClient().GET('/api/v1/billing/invoices', { params: { query: { date } } })) as ListBillingInvoicesResponse;
+/** Tham số tải THEO LÔ (docs/DECISIONS.md #251) — bỏ trống thì máy chủ trả cả ngày như trước. */
+export interface BillingListPaging {
+  tab?: BillingListTabValue;
+  q?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export async function getBillingInvoiceList(date?: string, paging?: BillingListPaging): Promise<ListBillingInvoicesResponse> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/billing/invoices', { params: { query: { date, tab: paging?.tab, q: paging?.q || undefined, limit: paging?.limit, cursor: paging?.cursor } } }),
+  ) as ListBillingInvoicesResponse;
 }
 
 export async function getBillingInvoice(encounterId: string, invoiceId?: string): Promise<InvoiceResponse> {

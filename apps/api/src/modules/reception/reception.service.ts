@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type Encounter, type VitalSign } from '@prisma/client';
 import {
   AppointmentNotCancellableError,
@@ -12,13 +12,20 @@ import {
   EncounterAlreadyExistsError,
   EncounterNotCheckedInError,
   PatientAlreadyMergedError,
+  computeReceptionDayCounts,
+  computeReceptionTabCounts,
+  decodeKeysetCursor,
   evaluateVitalSignWarnings,
   getVietnamDateString,
+  matchesReceptionSearch,
+  matchesReceptionTab,
+  pageAfterCursor,
   resolveDoctorDepartmentRouting,
   vietnamDayRange,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
   type ParaclinicalProgressReaderPort,
+  type ReceptionListTab,
 } from '@nexamed/core';
 import {
   calculateAgeYears,
@@ -482,6 +489,7 @@ export class ReceptionService {
     doctorIdFilter?: string,
     includeDepartmentPool?: boolean,
     queueView?: boolean,
+    paging?: { tab?: ReceptionListTab; q?: string; limit?: number; cursor?: string },
   ): Promise<ReceptionListResponse> {
     const targetDate = date ?? getVietnamDateString();
     const dayRange = vietnamDayRange(targetDate);
@@ -535,7 +543,23 @@ export class ReceptionService {
       version: e.version,
     }));
 
-    return { items };
+    // Số liệu CẢ NGÀY tính một lần ở đây (docs/DECISIONS.md #251) — web không đếm lại trên các dòng đã tải. `counts` KHÔNG áp tab/từ khoá (thẻ KPI); `tabCounts` áp từ khoá (số trên tab khớp từ khoá).
+    const counts = computeReceptionDayCounts(items);
+    const doctorIdsWithEncounters = [...new Set(items.filter((i) => i.doctorId !== null && i.status !== 'CANCELLED' && i.status !== 'NO_SHOW').map((i) => i.doctorId as string))];
+    const searched = items.filter((i) => matchesReceptionSearch(i, paging?.q));
+    const tabCounts = computeReceptionTabCounts(searched);
+    const tabbed = searched.filter((i) => matchesReceptionTab(i, paging?.tab ?? 'ALL'));
+
+    if (paging?.limit === undefined) {
+      // Không phân trang (Hàng đợi khám của bác sĩ, form Tiếp nhận, xuất Excel, bảng "Tải theo Bác sĩ" với `tab=ACTIVE`): trả toàn bộ phần đã lọc như trước.
+      return { items: tabbed, counts, tabCounts, nextCursor: null, doctorIdsWithEncounters };
+    }
+    const cursor = paging.cursor ? decodeKeysetCursor(paging.cursor) : null;
+    if (paging.cursor && !cursor) throw new BadRequestException('Con trỏ phân trang không hợp lệ.');
+    // Sắp lại bằng CHÍNH khoá của con trỏ (`checkedInAt` ISO, `encounterId`) — thứ tự do Postgres trả (micro-giây) có thể lệch khoá này khi hai lượt khám cùng một mili-giây.
+    const ordered = [...tabbed].sort((a, b) => (a.checkedInAt === b.checkedInAt ? (a.encounterId < b.encounterId ? -1 : a.encounterId > b.encounterId ? 1 : 0) : a.checkedInAt < b.checkedInAt ? -1 : 1));
+    const { page, nextCursor } = pageAfterCursor(ordered, (i) => ({ sortKey: i.checkedInAt, id: i.encounterId }), { limit: paging.limit, cursor });
+    return { items: page, counts, tabCounts, nextCursor, doctorIdsWithEncounters };
   }
 
   /** Chấm số ở menu "Hàng đợi khám" (#221) — số bệnh nhân đang khám của CHÍNH bác sĩ có kết quả cận lâm sàng mới chưa xem. */

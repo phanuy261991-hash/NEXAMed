@@ -380,7 +380,39 @@ export type ReceptionListItem = z.infer<typeof receptionListItemSchema>;
 export const doctorUnseenResultsResponseSchema = z.object({ patientCount: z.number().int().nonnegative() });
 export type DoctorUnseenResultsResponse = z.infer<typeof doctorUnseenResultsResponseSchema>;
 
-export const receptionListResponseSchema = z.object({ items: z.array(receptionListItemSchema) });
+/** Số liệu CẢ NGÀY cho dải thẻ KPI (không áp tab/từ khoá) — máy chủ tính một lần, web không đếm lại trên các dòng đã tải (docs/DECISIONS.md #251). */
+export const receptionDayCountsSchema = z.object({
+  /** Không gồm lượt khám đã huỷ/không đến. */
+  total: z.number().int().nonnegative(),
+  waiting: z.number().int().nonnegative(),
+  inProgress: z.number().int().nonnegative(),
+  unpaid: z.number().int().nonnegative(),
+  done: z.number().int().nonnegative(),
+  cancelled: z.number().int().nonnegative(),
+});
+export type ReceptionDayCounts = z.infer<typeof receptionDayCountsSchema>;
+
+/** Số trên các tab — đã áp từ khoá tìm (`q`) nên khớp với từ khoá; "Tất cả" gồm cả lượt đã huỷ. */
+export const receptionTabCountsSchema = z.object({
+  all: z.number().int().nonnegative(),
+  waiting: z.number().int().nonnegative(),
+  inProgress: z.number().int().nonnegative(),
+  unpaid: z.number().int().nonnegative(),
+  done: z.number().int().nonnegative(),
+});
+export type ReceptionTabCounts = z.infer<typeof receptionTabCountsSchema>;
+
+export const receptionListResponseSchema = z.object({
+  items: z.array(receptionListItemSchema),
+  /** Số liệu cả ngày (thẻ KPI). */
+  counts: receptionDayCountsSchema,
+  /** Số trên tab (đã áp `q`). */
+  tabCounts: receptionTabCountsSchema,
+  /** Con trỏ lô kế tiếp (gửi lại nguyên văn ở `cursor`); `null` khi đã hết hoặc khi không phân trang (không truyền `limit`). */
+  nextCursor: z.string().nullable(),
+  /** Mã bác sĩ có ít nhất một lượt khám KHÔNG huỷ trong ngày — bảng "Tải theo Bác sĩ" dùng để vẫn hiện bác sĩ chưa đăng ký ca nhưng có bệnh nhân. */
+  doctorIdsWithEncounters: z.array(z.string().uuid()),
+});
 export type ReceptionListResponse = z.infer<typeof receptionListResponseSchema>;
 
 /**
@@ -389,7 +421,7 @@ export type ReceptionListResponse = z.infer<typeof receptionListResponseSchema>;
  * theo 1 bác sĩ cụ thể; chỉ có tác dụng khi actor có scope `global` trên `encounter.read` (scope
  * `personal` luôn tự ép về chính actor ở service, bỏ qua giá trị này).
  */
-export const receptionListQuerySchema = z.object({
+const receptionListBaseQuerySchema = z.object({
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'date phải theo định dạng YYYY-MM-DD')
@@ -419,6 +451,25 @@ export const receptionListQuerySchema = z.object({
     .default(false)
     .transform((v) => (typeof v === 'string' ? v === 'true' : v)),
 });
+/**
+ * Tải danh sách THEO LÔ (docs/DECISIONS.md #251) — chỉ khi truyền `limit`; không truyền thì trả TOÀN BỘ như trước (Hàng đợi khám của bác sĩ, form Tiếp nhận, xuất Excel không đổi).
+ * `tab`/`q` lọc ở máy chủ trên CẢ NGÀY; `cursor` là `nextCursor` của lô trước. `tab=ACTIVE` (đang chờ + đang khám) dành cho bảng "Tải theo Bác sĩ".
+ */
+export const RECEPTION_LIST_MAX_PAGE_SIZE = 200;
+export const receptionListTabSchema = z.enum(['ALL', 'WAITING', 'IN_PROGRESS', 'UNPAID', 'DONE', 'ACTIVE']);
+export type ReceptionListTabValue = z.infer<typeof receptionListTabSchema>;
+export const receptionListPagingQuerySchema = z.object({
+  tab: receptionListTabSchema.optional(),
+  q: z.string().trim().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(RECEPTION_LIST_MAX_PAGE_SIZE).optional(),
+  cursor: z
+    .string()
+    .max(300)
+    .regex(/^[A-Za-z0-9_-]+$/, 'cursor không hợp lệ')
+    .optional(),
+});
+
+export const receptionListQuerySchema = receptionListBaseQuerySchema.merge(receptionListPagingQuerySchema);
 export type ReceptionListQuery = z.infer<typeof receptionListQuerySchema>;
 
 /**

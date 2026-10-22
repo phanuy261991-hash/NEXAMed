@@ -4922,6 +4922,10 @@ export interface paths {
                     doctorId?: string;
                     includeDepartmentPool?: boolean | ("true" | "false");
                     queueView?: boolean | ("true" | "false");
+                    tab?: "ALL" | "WAITING" | "IN_PROGRESS" | "UNPAID" | "DONE" | "ACTIVE";
+                    q?: string;
+                    limit?: number;
+                    cursor?: string;
                 };
                 header?: never;
                 path?: never;
@@ -4971,6 +4975,23 @@ export interface paths {
                                     } | null;
                                     version: number;
                                 }[];
+                                counts: {
+                                    total: number;
+                                    waiting: number;
+                                    inProgress: number;
+                                    unpaid: number;
+                                    done: number;
+                                    cancelled: number;
+                                };
+                                tabCounts: {
+                                    all: number;
+                                    waiting: number;
+                                    inProgress: number;
+                                    unpaid: number;
+                                    done: number;
+                                };
+                                nextCursor: string | null;
+                                doctorIdsWithEncounters: string[];
                             };
                             meta: Record<string, never>;
                         };
@@ -8429,6 +8450,10 @@ export interface paths {
             parameters: {
                 query?: {
                     date?: string;
+                    tab?: "UNPAID" | "PAID" | "ALL";
+                    q?: string;
+                    limit?: number;
+                    cursor?: string;
                 };
                 header?: never;
                 path?: never;
@@ -8478,6 +8503,12 @@ export interface paths {
                                 refundedCount: number;
                                 refundedTotalAmount: number;
                                 netTotalAmount: number;
+                                tabCounts: {
+                                    unpaid: number;
+                                    paid: number;
+                                    all: number;
+                                };
+                                nextCursor: string | null;
                             };
                             meta: Record<string, never>;
                         };

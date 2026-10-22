@@ -16,11 +16,14 @@ import {
 } from '@phosphor-icons/react';
 import type { DoctorOption, ReceptionListItem } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
+import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
+import { useInfiniteScrollSentinel } from '../../shared/hooks/useInfiniteScrollSentinel';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { InfiniteListFooter, InfiniteScrollTail } from '../../shared/ui/InfiniteListFooter';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { InsuranceBadge } from '../insurance-card/InsuranceBadge';
 import { SelectionToolbar } from '../../shared/ui/SelectionToolbar';
@@ -34,7 +37,7 @@ import { computeAgeLabel } from '../patient/patient-form.utils';
 import { ENCOUNTER_STATUS_META } from './encounter-status';
 import { doctorAvailabilityBadgeMeta, waitMinutes } from './queue-card';
 import { ReassignDoctorDialog } from './ReassignDoctorDialog';
-import { useExportReceptionListMutation, useReceptionListQuery } from './reception.queries';
+import { useExportReceptionListMutation, useReceptionListInfiniteQuery, useReceptionListQuery } from './reception.queries';
 
 /** Fallback trước khi `useScheduleConfigQuery()` tải xong — khớp `DEFAULT_OVERDUE_WAIT_WARNING_MINUTES`
  * ở `@nexamed/shared`, khai riêng ở đây (Rollup không dò được named export hằng số qua barrel
@@ -53,14 +56,6 @@ const CANCELLABLE_STATUSES: ReceptionListItem['status'][] = ['CHECKED_IN', 'IN_C
 type TabKey = 'ALL' | 'WAITING' | 'IN_PROGRESS' | 'UNPAID' | 'DONE';
 type KpiTone = 'slate' | 'amber' | 'emerald' | 'rose' | 'blue' | 'violet';
 
-const TAB_FILTERS: Record<TabKey, (item: ReceptionListItem) => boolean> = {
-  ALL: () => true,
-  WAITING: (item) => item.status === 'CHECKED_IN',
-  IN_PROGRESS: (item) => item.status === 'IN_CONSULTATION',
-  UNPAID: (item) => item.invoiceStatus === 'UNPAID',
-  DONE: (item) => item.status === 'COMPLETED',
-};
-
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
   const vn = new Date(d.getTime() + 7 * 60 * 60_000);
@@ -69,17 +64,6 @@ function formatDateTime(iso: string): string {
   const hh = String(vn.getUTCHours()).padStart(2, '0');
   const min = String(vn.getUTCMinutes()).padStart(2, '0');
   return `${dd}/${mm}/${vn.getUTCFullYear()} ${hh}:${min}`;
-}
-
-function matchesSearch(item: ReceptionListItem, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (q === '') return true;
-  return (
-    item.fullName.toLowerCase().includes(q) ||
-    item.encounterNo.toLowerCase().includes(q) ||
-    item.patientCode.toLowerCase().includes(q) ||
-    item.phone.includes(q)
-  );
 }
 
 /** Trạng thái hiển thị duy nhất (KHÔNG xếp chồng 2 badge, phản hồi trực tiếp): `CHECKED_IN` chưa
@@ -116,7 +100,11 @@ export function ReceptionListPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
 
-  const listQuery = useReceptionListQuery(date);
+  // Danh sách tải THEO LÔ khi cuộn (docs/DECISIONS.md #251): tab + từ khoá lọc ở máy chủ trên CẢ NGÀY; thẻ KPI và số trên tab là số cả ngày do máy chủ trả, không đếm lại trên các dòng đã tải.
+  const debouncedSearch = useDebouncedValue(search, 400);
+  const listQuery = useReceptionListInfiniteQuery({ date, tab: activeTab, q: debouncedSearch.trim() });
+  // Bảng "Tải theo Bác sĩ" chỉ cần các lượt đang chờ/đang khám (ít) — truy vấn riêng, không phân trang.
+  const activeQuery = useReceptionListQuery(date, undefined, undefined, undefined, true, 'ACTIVE');
   const exportMutation = useExportReceptionListMutation();
   const doctorsQuery = useDoctorsQuery();
   const availabilityQuery = useDoctorAvailabilityTodayQuery();
@@ -127,33 +115,37 @@ export function ReceptionListPage() {
   const scheduleConfigQuery = useScheduleConfigQuery();
   const warningMinutes = scheduleConfigQuery.data?.overdueWaitWarningMinutes ?? DEFAULT_OVERDUE_WAIT_WARNING_MINUTES;
 
-  const items = listQuery.data?.items ?? [];
+  const pages = listQuery.data?.pages ?? [];
+  const items = pages.flatMap((p) => p.items);
+  const dayCounts = pages[0]?.counts;
+  const tabCounts = pages[0]?.tabCounts;
+  const activeItems = activeQuery.data?.items ?? [];
   const doctors = doctorsQuery.data?.items ?? [];
   const doctorNameById = new Map(doctors.map((d) => [d.id, doctorDisplayName(d)]));
   const departmentNameById = new Map((departmentsQuery.data?.items ?? []).map((d) => [d.id, d.name]));
   const availabilityByDoctorId = new Map((availabilityQuery.data?.items ?? []).map((i) => [i.doctorId, i.status]));
 
-  const kpi = {
-    total: items.filter((i) => i.status !== 'CANCELLED' && i.status !== 'NO_SHOW').length,
-    waiting: items.filter((i) => i.status === 'CHECKED_IN').length,
-    inProgress: items.filter((i) => i.status === 'IN_CONSULTATION').length,
-    unpaid: items.filter((i) => i.invoiceStatus === 'UNPAID').length,
-    done: items.filter((i) => i.status === 'COMPLETED').length,
-    cancelled: items.filter((i) => i.status === 'CANCELLED' || i.status === 'NO_SHOW').length,
-  };
-
-  const visibleItems = items.filter(TAB_FILTERS[activeTab]).filter((i) => matchesSearch(i, search));
+  const kpi = dayCounts ?? { total: 0, waiting: 0, inProgress: 0, unpaid: 0, done: 0, cancelled: 0 };
+  const visibleItems = items;
   const cancellingItem = items.find((i) => i.encounterId === cancellingId) ?? null;
   const reassigningItem = items.find((i) => i.encounterId === reassigningId) ?? null;
   const itemIds = visibleItems.map((i) => i.encounterId);
   const rowSelection = useRowSelection(itemIds);
+  const hasNextPage = listQuery.hasNextPage;
+  const loadMore = () => {
+    if (hasNextPage && !listQuery.isFetchingNextPage) void listQuery.fetchNextPage();
+  };
+  // Lỗi tải thêm: dừng tự tải (tránh vòng lặp lỗi), chờ người dùng bấm "Thử lại".
+  const isLoadMoreError = listQuery.isFetchNextPageError;
+  const sentinelRef = useInfiniteScrollSentinel({ enabled: hasNextPage && !listQuery.isFetchingNextPage && !isLoadMoreError, onReach: loadMore, watchKey: items.length });
+  const currentTabTotal = tabCounts ? { ALL: tabCounts.all, WAITING: tabCounts.waiting, IN_PROGRESS: tabCounts.inProgress, UNPAID: tabCounts.unpaid, DONE: tabCounts.done }[activeTab] : 0;
 
   const TABS: { key: TabKey; label: string; count: number }[] = [
-    { key: 'ALL', label: 'Tất cả', count: items.length },
-    { key: 'WAITING', label: 'Chờ khám', count: kpi.waiting },
-    { key: 'IN_PROGRESS', label: 'Đang khám', count: kpi.inProgress },
-    { key: 'UNPAID', label: 'Chờ thanh toán', count: kpi.unpaid },
-    { key: 'DONE', label: 'Hoàn tất', count: kpi.done },
+    { key: 'ALL', label: 'Tất cả', count: tabCounts?.all ?? 0 },
+    { key: 'WAITING', label: 'Chờ khám', count: tabCounts?.waiting ?? 0 },
+    { key: 'IN_PROGRESS', label: 'Đang khám', count: tabCounts?.inProgress ?? 0 },
+    { key: 'UNPAID', label: 'Chờ thanh toán', count: tabCounts?.unpaid ?? 0 },
+    { key: 'DONE', label: 'Hoàn tất', count: tabCounts?.done ?? 0 },
   ];
 
   const KPI_ITEMS: { key: string; label: string; value: number; icon: typeof ClipboardText; tone: KpiTone }[] = [
@@ -183,17 +175,15 @@ export function ReceptionListPage() {
     shiftsByDoctor: doctorWorkShiftsQuery.data?.byDoctorId ?? {},
     leaveByDoctor: doctorWorkShiftsQuery.data?.leaveByDoctorId ?? {},
     // Bác sĩ còn bệnh nhân trong ngày vẫn hiện dù không có ca, để không mất điều phối.
-    appointments: items
-      .filter((i) => i.doctorId !== null && i.status !== 'CANCELLED' && i.status !== 'NO_SHOW')
-      .map((i) => ({ doctorId: i.doctorId as string, status: i.status })),
+    appointments: (activeQuery.data?.doctorIdsWithEncounters ?? []).map((doctorId) => ({ doctorId, status: 'CHECKED_IN' })),
     showUnregistered,
   });
   const unregisteredTotal = doctors.filter((d) => (doctorWorkShiftsQuery.data?.byDoctorId[d.id] ?? []).length === 0).length;
   const doctorLoad = panelSelection.doctors
     .map((doctor) => {
       const status = availabilityByDoctorId.get(doctor.id) ?? 'ACTIVE';
-      const waitingItems = items.filter((i) => i.doctorId === doctor.id && i.status === 'CHECKED_IN');
-      const inProgressItems = items.filter((i) => i.doctorId === doctor.id && i.status === 'IN_CONSULTATION');
+      const waitingItems = activeItems.filter((i) => i.doctorId === doctor.id && i.status === 'CHECKED_IN');
+      const inProgressItems = activeItems.filter((i) => i.doctorId === doctor.id && i.status === 'IN_CONSULTATION');
       const stuck = status === 'ENDED' && waitingItems.length > 0;
       return { doctor, status, waitingItems, inProgressItems, stuck };
     })
@@ -319,8 +309,8 @@ export function ReceptionListPage() {
                   />
                 </div>
               ) : (
-                <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <div role="table" aria-label="Bệnh nhân trong ngày" className="scroll-hover h-full overflow-x-auto">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                  <div role="table" aria-label="Bệnh nhân trong ngày" className="scroll-hover min-h-0 flex-1 overflow-x-auto">
                     <div className="flex h-full w-full flex-col" style={{ minWidth: TABLE_MIN_WIDTH_PX }}>
                       <div
                         role="row"
@@ -438,9 +428,18 @@ export function ReceptionListPage() {
                             </div>
                           );
                         })}
+                        <InfiniteScrollTail sentinelRef={sentinelRef} hasNextPage={hasNextPage} isFetchingNextPage={listQuery.isFetchingNextPage} />
                       </div>
                     </div>
                   </div>
+                  <InfiniteListFooter
+                    loaded={items.length}
+                    total={currentTabTotal}
+                    hasNextPage={hasNextPage}
+                    isFetchingNextPage={listQuery.isFetchingNextPage}
+                    isLoadMoreError={isLoadMoreError}
+                    onRetry={() => void listQuery.fetchNextPage()}
+                  />
                 </div>
               )}
             </div>
