@@ -88,7 +88,10 @@ describe('HTTP e2e — Liên thông đơn thuốc: kết nối cổng, token, th
   const loginFacility = (branchId: string, token = adminToken) => http().post(`/api/v1/prescription-interop/facilities/${branchId}/login`).set(authed(token));
   const addDoctor = (userId: string, token = adminToken) => http().post(`/api/v1/prescription-interop/doctors/${userId}/add-to-facility`).set(authed(token));
   const removeDoctor = (userId: string, token = adminToken) => http().post(`/api/v1/prescription-interop/doctors/${userId}/remove-from-facility`).set(authed(token));
+  // Phản hồi JSON của test không có kiểu: các test bên dưới đọc sâu vào `row.token.*` nên cần `any`.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const facilityRow = async (branchId = branchA) => ((await http().get('/api/v1/prescription-interop/facilities').set(authed(adminToken))).body.data.items as Array<Record<string, any>>).find((i) => i.branchId === branchId)!;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const doctorRow = async (userId: string) => ((await http().get('/api/v1/prescription-interop/doctors').set(authed(adminToken))).body.data.items as Array<Record<string, any>>).find((i) => i.userId === userId)!;
   const storedFacility = () => privileged.interopFacilityCredential.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, branchId: branchA, deletedAt: null } });
   const key = () => process.env.ENCRYPTION_KEY!;

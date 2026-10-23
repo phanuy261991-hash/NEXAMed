@@ -2,8 +2,9 @@
 # Dựng từ gốc repo: docker build -f apps/setup/Dockerfile -t nexamed-setup:<phiên bản> .   (build-and-export.ps1 làm việc này cùng 3 ảnh còn lại)
 
 # ---- Stage 1: biên dịch + gom dependency chạy thật ----
-FROM node:20-alpine AS build
-RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+FROM node:26-alpine AS build
+# Node 25+ không còn kèm corepack trong ảnh chính thức nên cài pnpm bằng npm — ghim ĐÚNG phiên bản của `packageManager` (docs/DECISIONS.md #253).
+RUN npm install -g pnpm@9.15.9
 WORKDIR /repo
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
@@ -21,7 +22,7 @@ RUN pnpm --filter @nexamed/setup run build
 RUN pnpm --filter @nexamed/setup deploy --prod /out
 
 # ---- Stage 2: chạy ----
-FROM node:20-alpine
+FROM node:26-alpine
 # docker-cli + docker-cli-compose: trình cài đặt điều khiển Docker của máy qua docker.sock.
 RUN apk add --no-cache docker-cli docker-cli-compose
 WORKDIR /app

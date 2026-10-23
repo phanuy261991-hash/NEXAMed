@@ -4,8 +4,9 @@
 # docs/DECISIONS.md #020). Ảnh chỉ chứa `config.example.json` làm placeholder phòng khi quên mount.
 
 # ---- Stage 1: build static assets ----
-FROM node:20-bookworm-slim AS build
-RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+FROM node:26-bookworm-slim AS build
+# Node 25+ không còn kèm corepack trong ảnh chính thức nên cài pnpm bằng npm — ghim ĐÚNG phiên bản của `packageManager` (docs/DECISIONS.md #253).
+RUN npm install -g pnpm@9.15.9
 WORKDIR /repo
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./

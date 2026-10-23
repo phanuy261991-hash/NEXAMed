@@ -38,9 +38,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Node 20 = đúng phiên bản production (apps/*/Dockerfile). `@testcontainers/postgresql` ghim ở bản 11.x vì bản 12
-          # kéo undici@8 (engines >=22.19) — KHÔNG nâng lên 12 trừ khi production cũng chuyển Node 22.
-          node-version: '20'
+          # Node 26 (LTS từ 28/10/2026) = đúng phiên bản production (apps/*/Dockerfile). `@testcontainers/postgresql` còn ghim ở bản 11.x từ thời Node 20 (bản 12 đòi
+          # Node >=22.19); nay production đã Node 26 nên CÓ THỂ nâng lên 12 — để dành, chưa cần.
+          node-version: '26'
           cache: 'pnpm'
 
       - name: Install dependencies

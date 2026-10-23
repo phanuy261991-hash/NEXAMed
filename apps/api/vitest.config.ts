@@ -1,8 +1,11 @@
 import swc from 'unplugin-swc';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Vitest 4 không còn loại `dist` khỏi danh sách mặc định; `nest build` để lại `dist/**/*.spec.js` (CommonJS)
+    // nên phải loại ra, nếu không bị chạy lại và lỗi "Vitest cannot be imported in a CommonJS module".
+    exclude: [...configDefaults.exclude, '**/dist/**'],
     setupFiles: ['./vitest.setup.ts'],
     // S1-07: dựng Postgres tạm bằng testcontainers + migrate deploy trước toàn bộ test —
     // xem src/testing/global-setup.ts.

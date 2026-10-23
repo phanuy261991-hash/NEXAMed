@@ -20,3 +20,5 @@ apps/web/public/config.json
 deploy/on-prem/.env
 deploy/on-prem/backup-data
 deploy/on-prem/package
+**/.scripts-dist
+apps/api/.env

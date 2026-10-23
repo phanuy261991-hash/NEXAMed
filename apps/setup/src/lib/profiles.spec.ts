@@ -88,6 +88,13 @@ describe('buildPlan', () => {
   it('Caddyfile VPS không có khối tls thủ công (Caddy tự xin chứng chỉ)', () => {
     expect(buildCaddyfile('vps', 'a.vn', 'x@a.vn')).not.toContain('tls ');
   });
+  it('Caddyfile VPS và SaaS đều gửi HSTS 180 ngày, chưa includeSubDomains/preload (#252)', () => {
+    for (const file of [buildCaddyfile('vps', 'a.vn', 'x@a.vn'), buildCaddyfile('saas', 'a.vn')]) {
+      expect(file).toContain('header Strict-Transport-Security "max-age=15552000"');
+      expect(file).not.toMatch(/includeSubDomains|preload/i);
+      expect(file.indexOf('Strict-Transport-Security')).toBeLessThan(file.indexOf('reverse_proxy'));
+    }
+  });
 });
 
 describe('validateAnswers', () => {

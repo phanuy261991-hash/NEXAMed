@@ -24,7 +24,8 @@
     "perf:patient-search": "tsx scripts/perf-patient-search.ts",
     "perf:consultation": "tsx scripts/perf-consultation.ts",
     "perf:load": "tsx scripts/perf-load.ts",
-    "perf:load:write": "tsx scripts/perf-load-write.ts"
+    "perf:load:write": "tsx scripts/perf-load-write.ts",
+    "script:run": "node scripts/run-script.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed/index.ts"
@@ -57,7 +58,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/multer": "^2.2.0",
-    "@types/node": "^20.17.6",
+    "@types/node": "^26.6.5",
     "@types/supertest": "^7.2.1",
     "dotenv": "^16.4.5",
     "prisma": "^5.22.0",
@@ -65,6 +66,6 @@
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "unplugin-swc": "^1.5.10",
-    "vitest": "^2.1.4"
+    "vitest": "^4.1.12"
   }
 }

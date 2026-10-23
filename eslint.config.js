@@ -19,10 +19,18 @@ const CORE_RESTRICTED_MESSAGE =
 const WEB_RESTRICTED_MESSAGE =
   'apps/web không được import @nexamed/core (kéo theo dữ liệu seed lớn vào bundle trình duyệt) — dùng @nexamed/shared, hoặc chuyển hàm thuần cần dùng chung sang packages/shared. Xem .claude/docs/coding-standards.md mục Hiệu suất.';
 
+/**
+ * `apps/web` chỉ được import KIỂU từ `@nexamed/shared` (bản dist của nó là CommonJS, Vite không gộp giá trị của nó vào bundle
+ * trình duyệt ổn định — docs/handoffs/HANDOFF-NestJS11-DoTaiGhi-DanhSachTheoLo-2026-10-22-p2.md mục 4). Hằng/hàm giá trị cần ở web thì khai riêng
+ * ở `apps/web/src` (hoặc chuyển phần thuần sang một gói ESM). File `*.spec.*` được miễn vì chạy trong Node.
+ */
+const WEB_SHARED_VALUE_IMPORT_MESSAGE =
+  'apps/web chỉ được import KIỂU từ @nexamed/shared (dùng `import type { ... }` hoặc `import { type X }`): bản dist là CommonJS nên import giá trị sẽ hỏng/phình bundle. Cần hằng/hàm thì khai riêng trong apps/web/src.';
+
 export default tseslint.config(
   {
     // scripts/ui-audit: công cụ kiểm giao diện chạy tay bằng Node + Playwright (không phải mã sản phẩm).
-    ignores: ['**/dist/**', '**/build/**', '**/node_modules/**', '**/coverage/**', 'scripts/ui-audit/**'],
+    ignores: ['**/dist/**', '**/.scripts-dist/**', '**/build/**', '**/node_modules/**', '**/coverage/**', 'scripts/ui-audit/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -88,6 +96,12 @@ export default tseslint.config(
           patterns: [{ group: ['@nexamed/core', '@nexamed/core/*'], message: WEB_RESTRICTED_MESSAGE }],
         },
       ],
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [{ group: ['@nexamed/shared', '@nexamed/shared/*'], allowTypeImports: true, message: WEB_SHARED_VALUE_IMPORT_MESSAGE }],
+        },
+      ],
       // Chỉ bật 2 rule cổ điển (đúng thứ mã nguồn đang có `eslint-disable-next-line` tham chiếu tới
       // — trước đây báo lỗi "Definition for rule ... was not found" vì plugin chưa từng cài/đăng
       // ký, 2026-08-26). KHÔNG bật cả bộ `recommended`/`recommended-latest` của plugin (v7 gộp
@@ -96,6 +110,11 @@ export default tseslint.config(
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
     },
+  },
+  {
+    // Test của web chạy trong Node (vitest), import giá trị từ bản dist CommonJS của shared được.
+    files: ['apps/web/**/*.spec.ts', 'apps/web/**/*.spec.tsx'],
+    rules: { '@typescript-eslint/no-restricted-imports': 'off' },
   },
   {
     // CHUẨN ĐỘ ĐẬM CHỮ (chủ dự án chốt 16/10/2026, .claude/docs/ui-guidelines.md mục 16): giao diện màn hình TỐI ĐA font-semibold (600) — ưu tiên nét chữ sắc, chữ quá đậm bị

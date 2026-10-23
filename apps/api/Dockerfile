@@ -8,9 +8,10 @@
 # đơn giản hơn: cài đủ devDependencies + build, không tách stage runtime rút gọn. Đổi lại: ảnh
 # nặng hơn vài trăm MB (typescript/vitest/prisma CLI...) — chấp nhận được cho một bản cài một máy
 # tại phòng khám, ưu tiên đúng/dễ bảo trì hơn tối ưu dung lượng ở giai đoạn pilot.
-FROM node:20-bookworm-slim
+FROM node:26-bookworm-slim
 
-RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+# Node 25+ không còn kèm corepack trong ảnh chính thức nên cài pnpm bằng npm — ghim ĐÚNG phiên bản của `packageManager` (docs/DECISIONS.md #253).
+RUN npm install -g pnpm@9.15.9
 WORKDIR /repo
 
 # `argon2` (S1-04) không có prebuilt binary cho mọi tổ hợp glibc/Node — cần biên dịch native từ

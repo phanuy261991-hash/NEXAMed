@@ -95,13 +95,19 @@ function lanOrigin(address: string, port: number): string {
   return `http://${address}${port === 80 ? '' : `:${port}`}`;
 }
 
+/**
+ * Tiêu đề HSTS (docs/DECISIONS.md #252): 180 ngày, CHƯA `includeSubDomains`/`preload` — khó gỡ khi đã gửi
+ * (tên miền gốc còn dùng cho khu quản trị nền tảng), nâng dần sau khi chạy ổn định.
+ */
+export const HSTS_HEADER = 'header Strict-Transport-Security "max-age=15552000"';
+
 export function buildCaddyfile(profile: 'vps' | 'saas', domain: string, acmeEmail?: string): string {
   const lines: string[] = [];
   lines.push('# Do trình cài đặt NEXAMed sinh ra (docs/DECISIONS.md #238). Caddy giữ nguyên tiêu đề Host nên ứng dụng nhận ra đúng công ty theo tên miền.');
   if (profile === 'vps') {
-    lines.push('{', `\temail ${acmeEmail}`, '}', '', `${domain} {`, '\treverse_proxy web:80', '}');
+    lines.push('{', `\temail ${acmeEmail}`, '}', '', `${domain} {`, `\t${HSTS_HEADER}`, '\treverse_proxy web:80', '}');
   } else {
-    lines.push(`https://*.${domain}, https://${domain} {`, '\ttls /certs/fullchain.crt /certs/privkey.key', '\treverse_proxy web:80', '}');
+    lines.push(`https://*.${domain}, https://${domain} {`, '\ttls /certs/fullchain.crt /certs/privkey.key', `\t${HSTS_HEADER}`, '\treverse_proxy web:80', '}');
   }
   return lines.join('\n') + '\n';
 }
