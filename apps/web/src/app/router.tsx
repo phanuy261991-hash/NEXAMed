@@ -8,6 +8,7 @@ import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, PARACLINICAL_LOOKUP_PERMI
 import { ChooseBranchPage } from '../features/branch/ChooseBranchPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { AppShell } from '../shared/layout/AppShell';
+import { RouteErrorScreen } from '../shared/ui/RouteErrorScreen';
 import { NotFoundPage } from './NotFoundPage';
 
 /**
@@ -129,11 +130,12 @@ const StaffWorkSchedulePage = lazy(() =>
 );
 
 export const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
+  { path: '/login', element: <LoginPage />, errorElement: <RouteErrorScreen /> },
   // Mở rộng ADM-01 — bắt buộc đổi mật khẩu lần đầu. Đứng NGOÀI AppShell (không sidebar), nhưng
   // vẫn bọc RequireAuth (cần đăng nhập để gọi POST /auth/change-password).
   {
     path: '/change-password',
+    errorElement: <RouteErrorScreen />,
     element: (
       <RequireAuth>
         <ChangePasswordPage />
@@ -143,6 +145,7 @@ export const router = createBrowserRouter([
   // Tầng chi nhánh (docs/DECISIONS.md #231) — "Chọn chi nhánh làm việc" sau đăng nhập khi tài khoản được gán từ 2 chi nhánh. Ngoài AppShell, cùng khuôn `/change-password`.
   {
     path: '/choose-branch',
+    errorElement: <RouteErrorScreen />,
     element: (
       <RequireAuth>
         <ChooseBranchPage />
@@ -151,6 +154,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
+    errorElement: <RouteErrorScreen />,
     element: (
       <RequireAuth>
         <AppShell>
@@ -159,6 +163,11 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
+      // Nhóm route không đường dẫn chỉ để gắn `errorElement` (docs/DECISIONS.md #255): lỗi không lường trước ở MỘT trang chỉ thay vùng nội dung, thanh bên và
+      // thanh trên còn nguyên để người dùng đi tiếp.
+      {
+        errorElement: <RouteErrorScreen embedded />,
+        children: [
       { index: true, element: <DashboardPage /> },
       { path: 'patients', element: <RequirePermissionRoute module="patient" action="read"><PatientListPage /></RequirePermissionRoute> },
       { path: 'patients/new', element: <RequirePermissionRoute module="patient" action="create"><PatientNewPage /></RequirePermissionRoute> },
@@ -342,6 +351,8 @@ export const router = createBrowserRouter([
       // thật (`RequireAuth` chặn lúc chưa đăng nhập, chuyển `/login` TRƯỚC khi Outlet render tới
       // route này — không cần thêm `*` cấp gốc ngoài `AppShell`, sẽ không bao giờ khớp tới).
       { path: '*', element: <NotFoundPage /> },
+        ],
+      },
     ],
   },
 ]);

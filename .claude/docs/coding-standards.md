@@ -39,6 +39,7 @@ Transaction mở ở service, truyền client transaction xuống repository đ�
 - Filter toàn cục map lỗi core sang HTTP: nghiệp vụ → 409/422, không tìm thấy hoặc khác tenant → 404, thiếu quyền → 403.
 - Message lỗi trả client không chứa PII/PHI, không lộ tên bảng hay câu SQL.
 - Không nuốt lỗi bằng `catch {}` rỗng. Không `console.log` để debug trong code merge vào `main`.
+- **Phía giao diện, MỌI chức năng mới tự xử lý lỗi và gắn màn lỗi tương ứng** (chủ dự án chốt 23/10/2026, `docs/DECISIONS.md` #255): tải dữ liệu → `ErrorBanner`/`RecordLoadError`; thao tác ghi → thông báo cụ thể giữ dữ liệu; route mới ngoài `AppShell` → `errorElement: <RouteErrorScreen />`; không hiện `code`/thông điệp thô. Checklist 5 mục ở `.claude/docs/ui-guidelines.md` mục 17b — làm đủ trước khi báo xong, không đợi nhắc.
 
 ## TypeScript
 
