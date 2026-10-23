@@ -17,3 +17,9 @@ Biến môi trường: `UI_AUDIT_EXTRA` (thêm trang cần dữ liệu riêng, d
 
 ## Phạm vi chưa phủ
 Tab/pill con trong trang, hộp thoại, trạng thái có dữ liệu lớn, trang cần dữ liệu riêng chưa có ở tenant dev.
+
+## Kiểm các trạng thái lỗi (#255, thêm 23/10/2026)
+
+- `error-states.cjs` — URL lạ, lưu gặp 503/mất mạng (hộp thông báo, dữ liệu form còn nguyên), lỗi nghiệp vụ 409 hiện tại chỗ, thông điệp tiếng Anh của máy chủ bị thay, hết phiên, mã khởi động hỏng → khung báo tĩnh. Kỳ vọng 15/15.
+- `error-sweep.cjs` — quét MỌI route tĩnh của router, giả lập "không tải được mã trang": mỗi route phải hiện màn "Phần mềm vừa được cập nhật" trong khung ứng dụng. Kỳ vọng 47/47 (đổi theo số route).
+- Cùng biến môi trường như trên + `UI_AUDIT_OUT` (nơi lưu ảnh chụp, mặc định thư mục tạm, KHÔNG để trong repo). Quy tắc xử lý lỗi cho chức năng mới: `.claude/docs/ui-guidelines.md` mục 17b.
