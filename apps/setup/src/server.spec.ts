@@ -77,6 +77,16 @@ describe('máy chủ trình cài đặt', () => {
     expect((await fetch(base + '/%2e%2e/%2e%2e/etc/passwd')).status).toBe(404);
   });
 
+  it('thân RẤT lớn (3 MB) vẫn nhận được 413 (không treo, không bị đóng kết nối) và máy chủ còn phục vụ yêu cầu kế tiếp', async () => {
+    await start('');
+    const huge = JSON.stringify({ crt: 'x'.repeat(3 * 1024 * 1024), key: 'k', baseDomain: 'a.vn' });
+    for (let i = 0; i < 3; i++) {
+      const res = await fetch(base + '/api/cert', { method: 'POST', headers: { 'content-type': 'application/json' }, body: huge });
+      expect(res.status).toBe(413);
+    }
+    expect((await fetch(base + '/api/khong-co')).status).toBe(404);
+  });
+
   it('cài với câu trả lời sai → 422 kèm lỗi theo ô; file bàn giao tải về dạng đính kèm', async () => {
     await start('');
     const res = await fetch(base + '/api/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });

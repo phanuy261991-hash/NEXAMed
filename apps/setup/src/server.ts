@@ -43,14 +43,43 @@ function hostAllowed(req: IncomingMessage, extra: string[]): boolean {
   return extra.map((h) => h.toLowerCase()).includes(host);
 }
 
+/** Sau khi trả 413, vẫn rút cạn phần thân còn lại nhưng không quá chừng này (chặn thân vô tận). */
+const DRAIN_LIMIT_MS = 10_000;
+
+/**
+ * Đọc thân JSON có giới hạn. KHÔNG dùng `for await (const chunk of req)` rồi ném lỗi giữa chừng: thoát vòng lặp sớm làm Node HUỶ luồng yêu cầu
+ * và đóng kết nối TRƯỚC khi kịp gửi 413, nên máy khách (nhất là trên máy chậm) chờ mãi — lỗi chập chờn phát hiện ở CI GitHub 23/10/2026 (docs/DECISIONS.md #254).
+ * Vượt giới hạn: báo 413 ngay nhưng vẫn rút cạn (bỏ) phần thân còn lại để phản hồi tới được máy khách, có hạn chót.
+ */
+function readBody(req: IncomingMessage): Promise<Buffer[]> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    let tooBig = false;
+    let drainTimer: NodeJS.Timeout | undefined;
+    req.on('data', (chunk: Buffer) => {
+      if (tooBig) return;
+      size += chunk.length;
+      if (size > MAX_BODY) {
+        tooBig = true;
+        chunks.length = 0;
+        drainTimer = setTimeout(() => req.destroy(), DRAIN_LIMIT_MS);
+        reject(new HttpError(413, 'Dữ liệu gửi lên quá lớn.'));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      if (drainTimer) clearTimeout(drainTimer);
+      if (!tooBig) resolve(chunks);
+    });
+    req.on('close', () => drainTimer && clearTimeout(drainTimer));
+    req.on('error', (err) => reject(err));
+  });
+}
+
 async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += (chunk as Buffer).length;
-    if (size > MAX_BODY) throw new HttpError(413, 'Dữ liệu gửi lên quá lớn.');
-    chunks.push(chunk as Buffer);
-  }
+  const chunks = await readBody(req);
   if (chunks.length === 0) return {};
   try {
     const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
