@@ -4,7 +4,7 @@ Hướng dẫn chạy NEXAMed ở máy dev để xem/thử giao diện trong lú
 
 ## Yêu cầu môi trường
 
-- Node **20.x LTS** (`package.json` → `engines.node`). Máy dev hiện tại có thể chạy bản khác (xem ghi chú trong `docs/CURRENT.md`) — chỉ cảnh báo, chưa chặn chạy, nhưng nên dùng đúng 20 LTS khi có thể.
+- Node **26.x** (`package.json` → `engines.node`; LTS từ 28/10/2026, `docs/DECISIONS.md` #253). Dùng bản khác chỉ bị cảnh báo của pnpm, chưa chặn chạy, nhưng nên dùng đúng 26 để kết quả test khớp CI và ảnh Docker.
 - pnpm 9 (`packageManager: pnpm@9.15.9` trong `package.json`). Không dùng npm/yarn.
 - Docker Desktop (chạy PostgreSQL qua `docker-compose.yml`).
 
@@ -54,7 +54,7 @@ Cập nhật tới thời điểm viết (xem `docs/CURRENT.md` để biết tr�
 |---|---|---|
 | API crash lúc khởi động | Thiếu `DATABASE_URL`/`JWT_SECRET`/`ENCRYPTION_KEY` trong `apps/api/.env` | Copy lại từ `.env.example`, không xoá biến nào |
 | Không kết nối được Postgres ở cổng 5432 | Container map ra 5433, không phải 5432 | Dùng đúng `.env.example` (đã trỏ 5433); nếu đổi máy dev không xung đột cổng, có thể đổi lại 5432 trong `docker-compose.yml` |
-| pnpm cảnh báo Node version | Máy dev chạy Node khác 20 LTS | Chỉ warning, không chặn dev; dùng đúng Node 20 khi đóng gói triển khai |
+| pnpm cảnh báo Node version | Máy dev chạy Node khác 26.x | Chỉ warning, không chặn dev; dùng đúng Node 26 để khớp CI và ảnh Docker |
 | Web hiện lỗi đỏ "Không tải được /config.json" hoặc "/config.json không hợp lệ" | Chưa copy `config.example.json` → `config.json` (bước 3), hoặc `tenantId` không phải UUID hợp lệ | Copy lại file, dán đúng `tenantId` in ra ở bước 6 |
 | Đăng nhập báo sai thông tin dù đúng `username`/`password` | `tenantId` trong `apps/web/public/config.json` không khớp tenant chứa tài khoản đó | Chạy `pnpm --filter @nexamed/api run db:seed:dev-tenant`, dán đúng `tenantId` mới in ra |
 | Đăng nhập xong không thấy mục "Quản trị" | Tài khoản không có vai trò `clinic_admin`/`system_admin` | Bình thường nếu test tài khoản khác — `db:seed:dev-tenant` luôn tạo tài khoản vai trò `clinic_admin` |

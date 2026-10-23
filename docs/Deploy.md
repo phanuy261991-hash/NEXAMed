@@ -83,7 +83,7 @@ Thuật ngữ "on-premise" chỉ *vị trí vật lý của máy chủ*, nhưng 
 
 **Chỉ cột SaaS mới đổi bản chất**, và đây là nơi tập trung rủi ro nguy hiểm nhất — xem Phần 3 và `docs/product/multi-specialty-analysis.md` mục 5: cache/state không khoá theo `tenantId` là vô hại suốt nhiều năm single-tenant, rồi rò dữ liệu y tế xuyên tenant ngay ngày đầu lên SaaS.
 
-**Lưu ý riêng cho NAS** (Synology/QNAP): cần (1) hỗ trợ Docker — Container Manager/Container Station, (2) RAM ≥ 4 GB, (3) RAID **không phải** backup, vẫn phải có `pg_dump` ra ổ ngoài theo ADM-04. Image `postgres:18` và Node 20 đều có bản `arm64` nên **về nguyên tắc** chạy được trên NAS CPU ARM, nhưng **dự án chưa từng kiểm chứng thật trên NAS** — phải chạy thử trên đúng model trước khi cam kết với khách.
+**Lưu ý riêng cho NAS** (Synology/QNAP): cần (1) hỗ trợ Docker — Container Manager/Container Station, (2) RAM ≥ 4 GB, (3) RAID **không phải** backup, vẫn phải có `pg_dump` ra ổ ngoài theo ADM-04. Image `postgres:18` và Node 26 đều có bản `arm64` nên **về nguyên tắc** chạy được trên NAS CPU ARM, nhưng **dự án chưa từng kiểm chứng thật trên NAS** — phải chạy thử trên đúng model trước khi cam kết với khách.
 
 **Lưu ý riêng cho VPS**: khác biệt so với máy tại chỗ nằm ở vận hành, không ở code — bắt buộc TLS (dữ liệu y tế đi qua internet công cộng), và chi phí vận hành tăng **tuyến tính theo số khách** nếu bạn quản lý nhiều VPS (khác SaaS chỉ một hệ thống). Ai chịu trách nhiệm vận hành/sao lưu VPS là đúng câu hỏi **Q4** đang treo trong PRD.
 
@@ -236,6 +236,8 @@ docker compose run --rm -e ADMIN_USERNAME=quantri migrate pnpm run db:reset-admi
 ### 2.3a. Phát hành một phiên bản (SemVer, từ 15/10/2026, `docs/DECISIONS.md` #236)
 
 Số phiên bản người dùng thấy (hộp "Giới thiệu", chân trang đăng nhập) chỉ đổi khi BẠN chủ động phát hành, không đổi theo commit hay lần dựng. Quy trình trên máy dev:
+
+**Yêu cầu máy dựng (máy dev/CI, từ 22/10/2026, `docs/DECISIONS.md` #253):** Node **26.x** (LTS từ 28/10/2026; Node 20 đã hết hỗ trợ bảo mật từ 30/04/2026), pnpm **9.15.9** (`packageManager`), Docker. Ảnh Docker tự mang Node 26 bên trong (API `node:26-bookworm-slim`, trình cài đặt `node:26-alpine`, web chỉ là nginx) nên **máy khách chỉ cần Docker, KHÔNG phải cài Node**. Ảnh Node 26 không còn `corepack` nên các Dockerfile cài pnpm bằng `npm install -g pnpm@9.15.9` (đừng đổi lại `corepack enable`). **Nâng một hệ thống đang chạy ảnh Node 20 lên bản dựng Node 26** làm như một lần cập nhật bình thường (mục 2.3b): dữ liệu, mật khẩu đã băm và dữ liệu mã hoá không đổi; không có bước nào riêng cho Node.
 
 1. **Viết ghi chú phát hành** cho số sắp phát hành: `apps/api/release-notes/<phiên bản>.json` (nhóm `features` / `improvements` / `fixes`, viết cho người dùng cuối, không phải nhật ký kỹ thuật). Commit file này.
 2. **Chốt phiên bản:** `node scripts/release.mjs <major|minor|patch|beta|X.Y.Z[-beta.N]>` (cần `packages/core` và `packages/shared` đã build; thêm `--dry-run` để chỉ kiểm tra). Script từ chối nếu cây git chưa sạch, số mới không lớn hơn số cũ, đã có tag, hoặc thiếu/ sai ghi chú phát hành. Nó ghi cùng một số vào `package.json` gốc và 4 gói con, tạo commit `chore(release): vX.Y.Z` và tag `vX.Y.Z`. Lần đầu chốt chính số hiện có (chưa có tag) dùng `node scripts/release.mjs 0.9.0` (chỉ tạo tag). Không tự push: kiểm tra rồi `git push origin master --tags`.
@@ -412,6 +414,8 @@ Mục tiêu (PRD mục 5): p95 thời gian phản hồi API < 500 ms với 10 ng
 ### 2.5b. Đo tải LUỒNG GHI (bổ sung cho S6-04, 22/10/2026)
 
 `perf:load` chỉ đọc nên không phản ánh lúc nhiều người cùng tiếp nhận/kê đơn/thu tiền (tranh chấp bộ đếm mã, ca thu ngân, khoá dòng). Công cụ: `apps/api/scripts/perf-load-write.ts` (`pnpm --filter @nexamed/api run perf:load:write`) — mỗi người dùng ảo lặp MỘT LƯỢT KHÁM TRỌN VẸN (tạo bệnh nhân → tiếp nhận → sinh hiệu → thu tiền → bắt đầu khám → chẩn đoán → ghi chú → kê đơn → ký đơn → hoàn tất) và báo p50/p95/p99 TỪNG BƯỚC. **GHI DỮ LIỆU THẬT và dữ liệu lâm sàng đã ký không xoá được → CHỈ chạy trên phòng khám THỬ** (bắt buộc `PERF_ALLOW_WRITE=yes`; bệnh nhân tạo ra có họ tên bắt đầu `ZZPERF`; tài khoản đo `zzperf.letan`/`zzperf.bs01…` tự tạo bằng tài khoản quản trị `PERF_ADMIN_USERNAME`/`PERF_ADMIN_PASSWORD`). Biến môi trường khác như `perf:load` + `PERF_STEP_THINK_*`/`PERF_VISIT_THINK_*`. Điều kiện nền: danh mục có thuốc, ICD-10 `A00`, chi nhánh có mã cơ sở KCB nếu khuôn mã đơn thuốc dùng `[Mã cơ sở KCB]` (xem DECISIONS #248), đang có ca thu ngân nếu phòng khám bắt buộc. Ngưỡng `ĐẠT`: p95 tổng hợp < 500 ms và 0 lỗi.
+
+**Dữ liệu đo không xoá được → dùng công ty thử dùng một lần** (22/10/2026, #252): trên máy dev chạy `pnpm --filter @nexamed/api run db:seed:dev-tenant` (mỗi lần tạo một công ty mới + `dev.admin`, không đụng `config.json`), rồi đặt `PERF_TENANT_ID` bằng id in ra. Công ty mới chưa có thuốc nên bước kê đơn/ký đơn bị bỏ qua — thêm thuốc trước nếu muốn đo đủ luồng. Script tự chờ rồi thử lại khi gặp 429 khi đăng nhập.
 
 ### Ràng buộc bắt buộc khi viết script/cấu hình on-prem (đã chốt, không tự đổi)
 

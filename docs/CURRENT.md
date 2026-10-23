@@ -42,7 +42,8 @@ Giá trị trong MỌI ô nhập dùng `font-normal` 400 (trước là semibold 
 - Bố cục: bộ kiểm toàn app (53 trang × 10 cỡ) đã **0 vấn đề** (20/10/2026); độ đậm chữ đo tối đa 600. Còn lại ưu tiên thấp: ghi chú 2 dòng của hộp "Bác sĩ đang nghỉ"/"Không có ca làm việc hôm nay" ở Tiếp nhận vượt gợi ý ≤ ~40 ký tự (ui-guidelines 15b), chưa kiểm hộp in thật của trình duyệt.
 - Gói thuê bao + giấy phép ký số (làm SAU; mockup trang Giấy phép chờ duyệt; đảo ngược #070/#072 khi bắt đầu).
 - Việc cần pilot thật: S6-02 diễn tập phục hồi, S6-04 đo tải trên máy chủ pilot (công cụ `perf:load` đã có), phát hành `1.0.0`, CSP đang Report-Only. Gói on-prem chưa dựng lại cho các thay đổi từ 16/10 (dựng khi sắp giao khách). Chọn nhà cung cấp hạ tầng SaaS (chờ báo giá, `docs/product/saas-hosting-comparison.md`).
-- Môi trường khác cần `db:deploy` (các migration `20261016110000_…`, `20261020090000_…`, `20261020110000_…`, `20261020120000_…`, `20261021090000_…`, `20261021100000_…`, `20261021120000_…`) + `db:seed` + khởi động lại API.
+- Thư viện dev (22/10/2026, #252): vitest 2 → 4 + Vite 5 → 6 ở web, `pnpm audit` đầy đủ 0 cảnh báo; HSTS vào Caddyfile của `nexamed-setup` (180 ngày). Test API không còn chạy job nền (nguyên nhân test liên thông chập chờn). Đã dựng thử ảnh Docker web/API (Vite 6) và mô phỏng CI trên Node 20: đạt. **Chưa kiểm**: chạy CI GitHub thật (cần đẩy mã lên). **Node 26 ĐÃ CHỐT và đã đổi (23/10/2026, `docs/DECISIONS.md` #253)**: kiểm đủ (API 1687/1687 ×3 + Linux sạch + diễn tập nâng cấp Docker 23/23). Còn: chạy CI GitHub thật và dựng gói on-prem chính thức (cần phát hành `release.mjs`) khi sắp giao khách. Lệnh mới `script:run` (script cần DI của Nest) và hướng dẫn đo tải ghi trên công ty thử dùng một lần (`Deploy.md` 2.5b).
+- Môi trường khác cần `pnpm install` (vitest 4, Vite 6, overrides mới) + `db:deploy` (các migration `20261016110000_…`, `20261020090000_…`, `20261020110000_…`, `20261020120000_…`, `20261021090000_…`, `20261021100000_…`, `20261021120000_…`) + `db:seed` + khởi động lại API.
 
 ## Bàn giao mới nhất
 
@@ -54,7 +55,7 @@ Giá trị trong MỌI ô nhập dùng `font-normal` 400 (trước là semibold 
 
 ## Lưu ý môi trường
 
-- Máy dev hiện chạy Node v26.5.0, khác Node 20 LTS ghi trong `CLAUDE.md`/`package.json.engines`. Chưa gây lỗi (chỉ warning), nhưng cần dùng đúng Node 20 khi triển khai thật.
+- Node: toàn bộ dự án chuyển sang **Node 26** (22–23/10/2026, `docs/DECISIONS.md` #253): `engines`, CI, Dockerfile, `@types/node`, CLAUDE.md, hướng dẫn. Máy dev (v26.5.0) nay KHỚP CI và ảnh Docker. Máy khách không cần cài Node (Node nằm trong ảnh Docker).
 - Docker đã cài trên máy dev. Migration `20260807090207_init` **đã được áp thật lên Postgres 18.4** qua `prisma migrate deploy` và xác minh bằng insert thử — `id` sinh ra đúng UUID v7 (time-ordered, ví dụ `019fdc38-6d2f-7ff2-...`). Không còn là "chưa test".
 - **Postgres container map ra cổng 5433, không phải 5432 mặc định** — máy dev này có sẵn một Postgres native (Windows service `postgres.exe`, không liên quan tới dự án) đang chiếm 5432. `DATABASE_URL` trong `.env.example`/`.env` đã trỏ sang `5433`. Nếu đổi máy dev khác không có xung đột này, có thể đổi lại 5432 trong `docker-compose.yml`.
 - UUID v7 (`DECISIONS.md` #009) và cột `audit_log` (`DECISIONS.md` #007) đã chốt xong, không còn treo.

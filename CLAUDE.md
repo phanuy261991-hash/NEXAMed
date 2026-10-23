@@ -36,9 +36,10 @@ Monorepo: `apps/web` (SPA React), `apps/api` (NestJS), `packages/shared` (type +
 
 ## Tech Stack
 
-- React 18.3 + Vite 5.4 + TypeScript 5.6 (strict mode)
+- React 18.3 + Vite 6.4 + TypeScript 5.6 (strict mode) — Vite 5 → 6 và Vitest 2 → 4 từ 22/10/2026 (`docs/DECISIONS.md` #252)
 - Tailwind CSS — styling duy nhất cho `apps/web`. Không dùng CSS-in-JS, không viết class CSS tự do ngoài hệ thống token (xem `.claude/docs/ui-guidelines.md`)
-- NestJS 11 trên Node 20 LTS, REST + OpenAPI
+- NestJS 11 trên Node 26 (LTS từ 28/10/2026; nâng từ Node 20 đã hết hỗ trợ bảo mật — `docs/DECISIONS.md` #253), REST + OpenAPI
+- **Runtime là Node 26 — viết mã mới theo Node 26** (chủ dự án chốt 23/10/2026): máy dev, CI (`.github/workflows/ci.yml`), mọi Dockerfile và `engines` đều Node 26; máy khách KHÔNG cần cài Node (Node nằm trong ảnh Docker). Quy ước: (1) ảnh Node 25+ không còn `corepack` → Dockerfile cài pnpm bằng `npm install -g pnpm@9.15.9`, đừng dùng `corepack enable`; (2) mã server (`apps/api`, `apps/setup`, `scripts/`) được dùng API Node 26 ổn định (`fetch`/`structuredClone`/`AbortSignal.timeout`…), KHÔNG dùng API đã bị gỡ/deprecated (`http.Server.writeHeader`, `_stream_*`, `module.register`, `url.parse`); (3) `packages/shared` và `apps/web` chạy trong trình duyệt nên KHÔNG được giả định API riêng của Node; (4) Temporal, `Map.getOrInsert`, `Iterator.concat` (V8 14.6) KHÔNG dùng và không có kế hoạch dùng (chủ dự án thấy không cần nâng TypeScript chỉ vì chúng): TypeScript 5.9.3 của dự án không có kiểu cho Temporal; chỉ TypeScript 7.x mới có (đã kiểm 23/10/2026) mà `typescript-eslint` 8.66 chỉ hỗ trợ TypeScript < 6.1 nên nâng TypeScript 7 sẽ làm hỏng lint kiểm kiểu; `target`/`lib` giữ `ES2022`; xử lý ngày giờ giữ quy ước hiện có (`timestamptz` UTC, quy đổi `Asia/Ho_Chi_Minh` ở tầng hiển thị); (5) nâng `@types/node` cùng bậc với Node. Chi tiết: `.claude/docs/coding-standards.md` mục "Node 26".
 - PostgreSQL 18, Prisma 5.x làm ORM/migration
 - Zod (validation dùng chung web/api), TanStack Query 5 (server state), Zustand (client state)
 - pnpm 9 workspaces — bắt buộc, lockfile là `pnpm-lock.yaml`. Không dùng npm/yarn.
@@ -132,6 +133,6 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 - `docs/CURRENT.md` — dùng để biết trạng thái HIỆN TẠI của dự án trước khi bắt đầu việc mới (bản ngắn; nhật ký cũ ở `docs/archive/CURRENT-*.md`).
 - `docs/TASK.md` — dùng để biết việc nào đang làm, việc nào chưa xong, việc mới nhất (phần đã xong cũ ở `docs/archive/TASK-*.md`).
 - `docs/CHANGELOG.md` — dùng để tra thay đổi MỚI NHẤT; cập nhật khi hoàn thành một thay đổi đáng kể (phần cũ ở `docs/archive/CHANGELOG-*.md`).
-- `docs/DECISIONS.md` — dùng để tra quyết định MỚI NHẤT (từ #230); cập nhật khi có quyết định mới cần lưu vết (quyết định cũ ở `docs/archive/DECISIONS-*.md`, chỉ grep khi cần tra số cụ thể).
+- `docs/DECISIONS.md` — dùng để tra quyết định MỚI NHẤT (từ #242); cập nhật khi có quyết định mới cần lưu vết (quyết định cũ ở `docs/archive/DECISIONS-*.md`, chỉ grep khi cần tra số cụ thể).
 - `docs/archive/` — kho lưu trữ phần cũ của các file trên, KHÔNG đọc mặc định (xem "Quy ước tài liệu dài").
 - `docs/Hybrid Authorization.md` — định hướng kiến trúc phân quyền cho giai đoạn platform/đa module (v3+): Centralized Identity (SSO) + Module-Specific Authorization. **Chưa triển khai ở v1** — chỉ tham khảo, chủ động gợi ý khi thấy phù hợp (ví dụ khi bàn về mở rộng đa module/tenant liên hệ thống), không tự ý bắt đầu code theo hướng này.

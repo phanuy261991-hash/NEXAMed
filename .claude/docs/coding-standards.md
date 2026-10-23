@@ -94,3 +94,14 @@ Yêu cầu thường trực của chủ dự án: **luôn đảm bảo hiệu su
 ## Import từ `@nexamed/shared` ở `apps/web` (bài học 15/10/2026, `docs/DECISIONS.md` #235/#236)
 
 `apps/web` chỉ được import **KIỂU** (`import type`) từ `@nexamed/shared` — bản dist của gói là CommonJS nên Vite dev không nạp được giá trị (hằng số, schema Zod, hàm): trang trắng ở trình duyệt dù test, typecheck và build đều xanh, chỉ lộ khi chạy thật. Cần một hằng số/danh sách dùng ở web thì khai báo tại chỗ (`as const satisfies readonly Kiểu[]` để giữ khớp kiểu dùng chung), không import giá trị.
+
+## Node 26 (chốt 23/10/2026, `docs/DECISIONS.md` #253)
+
+Runtime của dự án là **Node 26** (LTS từ 28/10/2026; Node 20 đã hết hỗ trợ bảo mật từ 30/04/2026). Khi viết mã mới:
+
+- **Mã server** (`apps/api`, `apps/setup`, `scripts/`, `packages/core`) được dùng API ổn định của Node 26. KHÔNG dùng API đã gỡ/deprecated ở Node 26: `http.Server.prototype.writeHeader` (dùng `writeHead`), module `_stream_*`, `module.register()`, `url.parse()` (dùng `new URL()`), cờ `--experimental-transform-types`.
+- **Mã chạy ở trình duyệt** (`apps/web`, `packages/shared`) không được giả định API riêng của Node; `packages/shared` chỉ có KIỂU được `apps/web` import (xem mục ngay dưới).
+- **KHÔNG dùng** Temporal, `Map.getOrInsert`/`getOrInsertComputed`, `Iterator.concat` (V8 14.6) và không có kế hoạch dùng: TypeScript 5.9.3 của dự án không có kiểu cho Temporal (báo `TS2304`); chỉ TypeScript 7.x có (đã kiểm 23/10/2026) nhưng `typescript-eslint` 8.66 chỉ hỗ trợ TypeScript < 6.1 nên chưa nâng được mà không hỏng lint. `tsconfig.base.json` giữ `target`/`lib` `ES2022`. Ngày giờ giữ quy ước `timestamptz` UTC + quy đổi `Asia/Ho_Chi_Minh` ở tầng hiển thị. Chỉ xét lại khi có nhu cầu nghiệp vụ thật và được chủ dự án duyệt.
+- **Dockerfile**: ảnh Node 25+ không còn `corepack` → cài pnpm bằng `npm install -g pnpm@9.15.9` (đúng `packageManager`). Ảnh API `node:26-bookworm-slim`, trình cài đặt `node:26-alpine`.
+- **`@types/node` cùng bậc với Node** (hiện `^26`); đổi Node thì đổi cả `engines`, `node-version` trong CI, các `FROM` trong Dockerfile, CLAUDE.md và `docs/Deploy.md` trong CÙNG một lần.
+- Kiểm sau khi đổi Node: typecheck + lint + build + test mọi gói (≥ 3 lượt toàn bộ API liên tiếp), dựng ảnh Docker thật và chạy thử chuỗi nginx → API → Postgres.

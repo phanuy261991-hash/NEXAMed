@@ -14,6 +14,18 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-22
 
+### Nâng runtime Node 20 → Node 26 (`docs/DECISIONS.md` #253)
+
+Node 20 đã hết hỗ trợ bảo mật (30/04/2026); dự án chuyển sang **Node 26** (LTS từ 28/10/2026, hỗ trợ đến 30/04/2029). Chỉ đổi cấu hình/công cụ/tài liệu (Dockerfile, `engines`, CI, `@types/node`, CLAUDE.md, hướng dẫn triển khai); không sửa mã nghiệp vụ. Ảnh Node 26 không còn `corepack` nên Dockerfile cài pnpm bằng `npm install -g pnpm@9.15.9`. Máy khách vẫn chỉ cần Docker (Node nằm trong ảnh). Đã kiểm: typecheck/lint/build, `pnpm audit` 0 cảnh báo, test API 1687/1687 ba lượt liên tiếp trên máy dev và một lượt trên Linux sạch, và **diễn tập nâng cấp bằng Docker thật 23/23 đạt** (dữ liệu, mật khẩu băm, CCCD mã hoá, xuất PDF, trình cài đặt đều giữ nguyên/hoạt động). Quy ước mới: không dùng Temporal/API V8 mới (không cần nâng TypeScript). **Môi trường khác**: `pnpm install`, dùng Node 26.
+
+### Nâng vitest 2 → 4 (hết 28 cảnh báo thư viện dev), HSTS cho bản HTTPS, sửa test chập chờn (`docs/DECISIONS.md` #252)
+
+`pnpm audit` đầy đủ nay **0 cảnh báo** (trước 28, chỉ ở công cụ phát triển): nâng vitest 2 → 4.1.12 (web lên Vite 6.4.5 theo) và vá thư viện con bằng `pnpm.overrides`. Đã kiểm kỹ tác động: thêm `@types/node` cho core/web, loại `dist` khỏi vitest, và **tắt job nền khi test API** (nguyên nhân test liên thông đơn thuốc chập chờn — job quét mọi công ty tranh dòng với test song song). Xanh: typecheck, build, lint sạch hoàn toàn, test shared 96 / core 528 / web 248 / setup 77, API 1687 chạy **3 lượt liên tiếp đều xanh**; Chrome thật 53 trang × 10 cỡ = 0 vấn đề, độ đậm chữ tối đa 600. Bản HTTPS (VPS/SaaS) nay gửi `Strict-Transport-Security` 180 ngày (chưa `includeSubDomains`/preload) — chỉ có hiệu lực khi cài/nâng cấp bằng `nexamed-setup` mới. Công cụ: lệnh `script:run` chạy script cần DI của Nest, luật ESLint chặn import giá trị từ shared ở web, hướng dẫn đo tải ghi trên công ty thử dùng một lần. Không đổi chức năng, không migration. **Môi trường khác**: `pnpm install`. Đã dựng thử ảnh Docker web/API và mô phỏng CI trên Node 20 sạch: đều đạt (API 1687/1687). `docs/DECISIONS.md` vượt ngưỡng nên #230–#241 đã chuyển sang `docs/archive/DECISIONS-230-241.md`. Đang cân nhắc nâng Node 20 (đã hết hỗ trợ bảo mật) lên 24 hoặc 26 — xem phân tích cuối #252, chưa quyết.
+
+### Kiểm lại thư viện và thử qua proxy HTTPS (`docs/DECISIONS.md` #252)
+
+`pnpm audit --prod` vẫn **0 cảnh báo** (phần chạy thật). Dựng thử chuỗi giống bản SaaS thật (Caddy HTTPS wildcard → nginx của gói cài → API chạy `DEPLOYMENT_MODE=saas`, `TRUST_PROXY_HOPS=2`) trên máy dev: nhận đúng công ty theo tên miền phụ, cookie làm mới `HttpOnly; Secure; SameSite=Lax`, token/cookie của công ty này bị từ chối ở tên miền công ty khác, giả mạo `X-Forwarded-For` không né được giới hạn đăng nhập và không đổi được IP ghi vào phiên: 14/14 đạt. Phát hiện: thiếu tiêu đề `Strict-Transport-Security` ở bản HTTPS (đã xử lý, xem mục trên).
+
 ### "Bệnh nhân trong ngày" và "Thu ngân" cuộn tới đâu tải tới đó (`docs/DECISIONS.md` #251)
 
 Hai danh sách trong ngày nay tải 50 dòng một lần và tự tải tiếp khi cuộn gần cuối, thay vì tải cả ngày: ngày đông bệnh nhân (hơn 1.000 lượt) vẫn mở nhanh. Thẻ KPI, số trên các tab và dải tổng kết cuối trang Thu ngân luôn là số của CẢ NGÀY; tìm kiếm chạy trên cả ngày (không chỉ phần đã tải). Chân bảng ghi "Đang hiển thị 50 / 1.203 dòng", báo đang tải, tải lỗi (có nút "Thử lại", dòng đã có vẫn giữ nguyên) và "Đã hiển thị hết". Ô chọn đầu cột chỉ chọn các dòng đã tải. Hàng đợi khám của bác sĩ, form Tiếp nhận và xuất Excel không đổi. Không migration.
