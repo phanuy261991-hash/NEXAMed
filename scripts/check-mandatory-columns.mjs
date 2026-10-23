@@ -22,6 +22,9 @@ const APPEND_ONLY_EXEMPT = ['created_at', 'updated_at', 'deleted_at', 'version',
 
 const EXEMPTIONS = {
   Tenant: ['tenant_id'], // là gốc của tenant, không tự tham chiếu chính mình
+  // Bí danh mã công ty lúc ĐỔI MÃ tên miền (docs/DECISIONS.md #245): được tra theo tên miền cũ TRƯỚC khi biết công ty nào (cùng giai đoạn với tra `tenant.code`),
+  // nên không có `tenant_id` — khoá tham chiếu là `target_tenant_id` (FK tới tenant). CI đỏ từ lúc thêm bảng vì thiếu miễn trừ này (phát hiện 23/10/2026).
+  TenantCodeAlias: ['tenant_id'],
   AuditLog: APPEND_ONLY_EXEMPT,
   BreakGlassSession: APPEND_ONLY_EXEMPT, // append-only như audit_log, xem security-audit.md
   Permission: [...APPEND_ONLY_EXEMPT, 'tenant_id'], // danh mục toàn hệ thống, giống icd10_catalog
