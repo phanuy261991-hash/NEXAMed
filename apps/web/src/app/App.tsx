@@ -1,7 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
 import { ApiError } from '../shared/api/client';
+import { classifySystemFailure } from '../shared/errors/system-failure';
+import { useSystemFailureStore } from '../shared/errors/system-failure.store';
 import { AppErrorBoundary } from '../shared/ui/AppErrorBoundary';
+import { SystemFailureDialog } from '../shared/ui/SystemFailureDialog';
 import { AppBootstrap } from './AppBootstrap';
 import { AppConfigProvider } from './AppConfigProvider';
 import type { AppConfig } from './config';
@@ -14,6 +17,14 @@ import { router } from './router';
  * với id không tồn tại). Lỗi khác (mất mạng, 5xx) vẫn retry tối đa 3 lần như mặc định.
  */
 const queryClient = new QueryClient({
+  // Lỗi HỆ THỐNG khi đang thực hiện một thao tác (mất mạng, máy chủ chưa bật, 5xx) → MỘT hộp thông báo giữ nguyên dữ liệu đang nhập (docs/DECISIONS.md
+  // #255). Áp cho MỌI `useMutation` của ứng dụng tại một chỗ; lỗi nghiệp vụ 4xx vẫn hiện tại chỗ như cũ.
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      const kind = classifySystemFailure(error);
+      if (kind) useSystemFailureStore.getState().show(kind);
+    },
+  }),
   defaultOptions: {
     queries: {
       retry: (failureCount, error) => {
@@ -31,6 +42,7 @@ export function App({ config }: { config: AppConfig }) {
         <QueryClientProvider client={queryClient}>
           <AppBootstrap />
           <RouterProvider router={router} />
+          <SystemFailureDialog />
         </QueryClientProvider>
       </AppConfigProvider>
     </AppErrorBoundary>

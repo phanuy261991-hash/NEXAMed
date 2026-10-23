@@ -12,7 +12,11 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
-## 2026-10-22
+## 2026-10-23
+
+### Mọi lỗi trên ứng dụng đều hiện thông báo tiếng Việt cụ thể, không lộ mã/lỗi thô; khảo sát mất kết nối (`docs/DECISIONS.md` #255, #256)
+
+Làm hết #255: lỗi điều hướng → màn toàn trang (trang "không mở được" thay trang kiểu 404, màn lỗi toàn cục, khung báo tĩnh khi mã khởi động hỏng thay màn hình trắng); lỗi hệ thống khi đang thao tác (mất mạng, máy chủ chưa bật, 5xx) → hộp thông báo, dữ liệu đang nhập còn nguyên; thông điệp lỗi từ máy chủ luôn được kiểm tra theo mã HTTP, câu tiếng Anh/kỹ thuật bị thay bằng câu tiếng Việt; hết phiên đăng nhập có lời giải thích. Máy chủ web (nginx) và Caddy trả thông báo tiếng Việt khi máy chủ ứng dụng chưa lên. **Sửa một lỗi có sẵn**: nginx chặn tải lên tệp > 1 MB bằng trang HTML thô dù API cho phép tới 5 MB — nay 8 MB (máy khách cần cập nhật ảnh web mới). Khảo sát mất kết nối (#256): CSDL không mất giao dịch đã báo xong khi sập đột ngột (đo 53/53); thu tiền và tạo bệnh nhân có CCCD an toàn khi bấm lại, **Tiếp nhận bấm hai lần ra hai lượt khám** — đề xuất chống ghi trùng đang chờ duyệt. Web 301 test, Chrome thật 15/15 và quét 47/47 route.
 
 ### CI GitHub đỏ từ #245 đã được sửa; quy tắc mới về lỗi giao diện (`docs/DECISIONS.md` #254, #255)
 
@@ -21,6 +25,8 @@ CI GitHub đỏ ở mọi commit trên `master` từ 22/10/2026 (không liên qu
 ### Nâng runtime Node 20 → Node 26 (`docs/DECISIONS.md` #253)
 
 Node 20 đã hết hỗ trợ bảo mật (30/04/2026); dự án chuyển sang **Node 26** (LTS từ 28/10/2026, hỗ trợ đến 30/04/2029). Chỉ đổi cấu hình/công cụ/tài liệu (Dockerfile, `engines`, CI, `@types/node`, CLAUDE.md, hướng dẫn triển khai); không sửa mã nghiệp vụ. Ảnh Node 26 không còn `corepack` nên Dockerfile cài pnpm bằng `npm install -g pnpm@9.15.9`. Máy khách vẫn chỉ cần Docker (Node nằm trong ảnh). Đã kiểm: typecheck/lint/build, `pnpm audit` 0 cảnh báo, test API 1687/1687 ba lượt liên tiếp trên máy dev và một lượt trên Linux sạch, và **diễn tập nâng cấp bằng Docker thật 23/23 đạt** (dữ liệu, mật khẩu băm, CCCD mã hoá, xuất PDF, trình cài đặt đều giữ nguyên/hoạt động). Quy ước mới: không dùng Temporal/API V8 mới (không cần nâng TypeScript). **Môi trường khác**: `pnpm install`, dùng Node 26.
+
+## 2026-10-22
 
 ### Nâng vitest 2 → 4 (hết 28 cảnh báo thư viện dev), HSTS cho bản HTTPS, sửa test chập chờn (`docs/DECISIONS.md` #252)
 

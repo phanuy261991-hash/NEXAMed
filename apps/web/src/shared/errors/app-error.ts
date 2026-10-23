@@ -6,8 +6,9 @@
  *   tên tệp cũ không còn trên máy chủ. Cách xử lý đúng là tải lại trang.
  * - `unreachable`: không kết nối được tới hệ thống lúc khởi động (máy chủ chưa bật, mất mạng, thiếu cấu hình).
  * - `unexpected`: mọi ngoại lệ còn lại khi hiển thị giao diện.
+ * - `notFound`: đường dẫn không khớp trang nào (KHÔNG do `classifyAppError` chọn — route `*` chọn thẳng); hiện thông báo tiếng Việt thay cho trang kiểu 404.
  */
-export type AppErrorKind = 'outdated' | 'unexpected' | 'unreachable';
+export type AppErrorKind = 'outdated' | 'unexpected' | 'unreachable' | 'notFound';
 
 const OUTDATED_PATTERNS: readonly RegExp[] = [
   /dynamically imported module/i, // Chrome/Edge/Firefox: "Failed to fetch dynamically imported module: <url>"

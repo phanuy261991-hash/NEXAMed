@@ -1,5 +1,5 @@
 import type { Icon } from '@phosphor-icons/react';
-import { ArrowClockwise, ArrowsClockwise, House, Warning, WifiSlash } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowLeft, ArrowsClockwise, Compass, House, Warning, WifiSlash } from '@phosphor-icons/react';
 import type { AppErrorKind } from '../errors/app-error';
 import { WEB_BUILD_ID, WEB_VERSION, formatDisplayVersion } from '../version/app-version';
 import { Button } from './Button';
@@ -30,6 +30,12 @@ const CONTENT: Record<AppErrorKind, ErrorContent> = {
     title: 'Phần mềm vừa được cập nhật',
     description: 'Cần tải lại trang để dùng phiên bản mới. Thông tin đang nhập dở chưa lưu có thể không còn.',
   },
+  notFound: {
+    icon: Compass,
+    tone: 'bg-slate-100 text-slate-500',
+    title: 'Không mở được trang này',
+    description: 'Đường dẫn có thể đã đổi chỗ hoặc nhập chưa đúng. Hãy quay về trang chủ hoặc chọn mục trong thanh bên.',
+  },
   unreachable: {
     icon: WifiSlash,
     tone: 'bg-amber-50 text-amber-600',
@@ -51,6 +57,8 @@ const CONTENT: Record<AppErrorKind, ErrorContent> = {
  */
 export function AppErrorScreen({ kind, embedded = false }: { kind: AppErrorKind; embedded?: boolean }) {
   const content = CONTENT[kind];
+  // Còn trang trước trong chính ứng dụng thì quay lại; mở thẳng bằng đường dẫn (không có trang trước) thì về trang chủ.
+  const goBack = () => (window.history.length > 1 ? window.history.back() : window.location.assign('/'));
   const IconComponent = content.icon;
 
   const body = (
@@ -63,14 +71,29 @@ export function AppErrorScreen({ kind, embedded = false }: { kind: AppErrorKind;
       </h1>
       <p className="mt-2 text-sm text-slate-600">{content.description}</p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <Button type="button" autoFocus onClick={() => window.location.reload()}>
-          <ArrowClockwise size={16} weight="bold" aria-hidden="true" />
-          Tải lại trang
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => window.location.assign('/')}>
-          <House size={16} weight="bold" aria-hidden="true" />
-          Về trang chủ
-        </Button>
+        {kind === 'notFound' ? (
+          <>
+            <Button type="button" autoFocus onClick={() => window.location.assign('/')}>
+              <House size={16} weight="bold" aria-hidden="true" />
+              Về trang chủ
+            </Button>
+            <Button type="button" variant="secondary" onClick={goBack}>
+              <ArrowLeft size={16} weight="bold" aria-hidden="true" />
+              Quay lại trang trước
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button type="button" autoFocus onClick={() => window.location.reload()}>
+              <ArrowClockwise size={16} weight="bold" aria-hidden="true" />
+              Tải lại trang
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => window.location.assign('/')}>
+              <House size={16} weight="bold" aria-hidden="true" />
+              Về trang chủ
+            </Button>
+          </>
+        )}
       </div>
     </section>
   );

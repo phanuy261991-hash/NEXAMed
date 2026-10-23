@@ -88,6 +88,14 @@ describe('buildPlan', () => {
   it('Caddyfile VPS không có khối tls thủ công (Caddy tự xin chứng chỉ)', () => {
     expect(buildCaddyfile('vps', 'a.vn', 'x@a.vn')).not.toContain('tls ');
   });
+  it('Caddyfile VPS và SaaS có trang báo tiếng Việt khi không nối được tới web (không để lộ "Bad Gateway" thô, #255)', () => {
+    for (const file of [buildCaddyfile('vps', 'a.vn', 'x@a.vn'), buildCaddyfile('saas', 'a.vn')]) {
+      expect(file).toContain('handle_errors');
+      expect(file).toContain('Hệ thống tạm thời không truy cập được');
+      expect(file).toMatch(/respond `[^`]+` 503/);
+      expect(file.indexOf('reverse_proxy')).toBeLessThan(file.indexOf('handle_errors'));
+    }
+  });
   it('Caddyfile VPS và SaaS đều gửi HSTS 180 ngày, chưa includeSubDomains/preload (#252)', () => {
     for (const file of [buildCaddyfile('vps', 'a.vn', 'x@a.vn'), buildCaddyfile('saas', 'a.vn')]) {
       expect(file).toContain('header Strict-Transport-Security "max-age=15552000"');

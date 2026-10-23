@@ -6,6 +6,7 @@ import { getVietnamDayPeriod, getVietnamGreeting, type DayPeriod } from '../../s
 import { Button } from '../../shared/ui/Button';
 import { WEB_BUILD_ID, WEB_VERSION, formatDisplayVersion } from '../../shared/version/app-version';
 import { login } from './auth.api';
+import { clearSessionExpiredNotice, peekSessionExpiredNotice } from './session-expired-notice';
 import { useAuthStore } from './auth.store';
 import { LoginBackdrop } from './LoginBackdrop';
 import { LoginPasswordField, LoginUsernameField } from './LoginFields';
@@ -65,6 +66,9 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<LoginFailure | null>(null);
   const [emptyHint, setEmptyHint] = useState(false);
+  // Vừa bị đưa về đây vì hết phiên (docs/DECISIONS.md #255): đọc cờ MỘT lần lúc mở màn đăng nhập.
+  const [sessionExpired] = useState(() => peekSessionExpiredNotice());
+  useEffect(() => clearSessionExpiredNotice(), []);
   const [now, setNow] = useState(() => new Date());
   const usernameRef = useRef<HTMLInputElement>(null);
 
@@ -114,7 +118,13 @@ export function LoginPage() {
         </AlertBox>
       );
     }
-    if (!failure) return null;
+    if (!failure) {
+      return sessionExpired ? (
+        <AlertBox tone="amber" icon={<Lock size={18} weight="bold" aria-hidden="true" />}>
+          Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.
+        </AlertBox>
+      ) : null;
+    }
     switch (failure.kind) {
       case 'locked':
         return lockRemaining > 0 ? (

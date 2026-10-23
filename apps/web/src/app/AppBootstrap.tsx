@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { getMe, refresh } from '../features/auth/auth.api';
 import { hasSessionHint, useAuthStore } from '../features/auth/auth.store';
+import { markSessionExpiredNotice } from '../features/auth/session-expired-notice';
 import { setSessionExpiredHandler } from '../shared/api/client';
 
 /**
@@ -37,7 +38,11 @@ export function AppBootstrap() {
 
     // Access token hết hạn giữa chừng và refresh token (cookie) cũng không còn dùng được nữa —
     // client.ts đã tự thử làm mới trước khi tới đây; chỉ khi đó thất bại mới coi là hết phiên thật.
-    setSessionExpiredHandler(clear);
+    // Hết phiên thật: dọn phiên VÀ để lại lời nhắn cho màn đăng nhập (docs/DECISIONS.md #255) thay vì đẩy người dùng về /login không một lời giải thích.
+    setSessionExpiredHandler(() => {
+      markSessionExpiredNotice();
+      clear();
+    });
 
     async function bootstrap() {
       if (!hasSessionHint()) {
@@ -49,6 +54,8 @@ export function AppBootstrap() {
         const user = await getMe();
         setSession(token.accessToken, user);
       } catch {
+        // Có dấu hiệu từng đăng nhập nhưng không khôi phục được (cookie làm mới hết hạn) → cũng là hết phiên, báo cho người dùng biết.
+        markSessionExpiredNotice();
         clear();
       }
     }

@@ -50,10 +50,12 @@ export default tseslint.config(
   },
   {
     // Giao diện tĩnh của trình cài đặt (apps/setup/public) chạy trong trình duyệt, không qua bộ dựng — khai các biến toàn cục của trình duyệt.
-    files: ['apps/setup/public/**/*.js'],
+    // + apps/web/public: `boot-fallback.js` (khung báo lỗi tĩnh khi mã ứng dụng không tải được, docs/DECISIONS.md #255) cũng là JavaScript thuần chạy ở trình duyệt.
+    files: ['apps/setup/public/**/*.js', 'apps/web/public/**/*.js'],
     languageOptions: {
       sourceType: 'script',
       globals: {
+        MutationObserver: 'readonly',
         window: 'readonly',
         document: 'readonly',
         navigator: 'readonly',

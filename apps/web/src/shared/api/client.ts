@@ -1,5 +1,6 @@
 import createClient, { type Middleware } from 'openapi-fetch';
 import type { AppConfig } from '../../app/config';
+import { friendlyApiMessage, resolveApiErrorCode } from './api-message';
 import type { paths } from './openapi-schema';
 
 /**
@@ -112,15 +113,31 @@ const authMiddleware: Middleware = {
 
 let client = createClient<paths>({ baseUrl: '', credentials: 'include' });
 
+/**
+ * `message` LUÔN đã qua `friendlyApiMessage` (docs/DECISIONS.md #255) — là câu tiếng Việt dùng được cho người dùng cuối, không bao giờ là
+ * thông điệp thô/tiếng Anh của máy chủ hay proxy. `status` là mã HTTP khi lỗi đến từ một phản hồi thật (để phân biệt lỗi nghiệp vụ 4xx với
+ * lỗi hệ thống 5xx); thiếu khi lỗi do phía giao diện tự tạo.
+ */
 export class ApiError extends Error {
   constructor(
     public readonly code: string,
     message: string,
     public readonly details?: unknown,
+    public readonly status?: number,
   ) {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+/**
+ * Dựng `ApiError` từ một phản hồi HTTP KHÔNG thành công mà không đi qua `openapi-fetch` (tải/tải lên tệp, xuất bệnh án) — thân phản hồi có thể
+ * không phải JSON (trang HTML 502/413 của nginx...), nên đọc an toàn rồi chuẩn hoá thông điệp theo mã HTTP.
+ */
+export async function apiErrorFromResponse(response: Response, fallbackMessage?: string): Promise<ApiError> {
+  const body: unknown = await response.json().catch(() => null);
+  const err = (body as { error?: { code?: unknown; message?: unknown; details?: unknown } } | null)?.error;
+  return new ApiError(resolveApiErrorCode(response.status, err?.code), friendlyApiMessage(response.status, err?.message, fallbackMessage), err?.details, response.status);
 }
 
 /**
@@ -177,10 +194,8 @@ export async function uploadFile<T>(path: string, formData: FormData): Promise<T
     headers: currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : undefined,
     body: formData,
   });
-  const body: unknown = await response.json();
-  return response.ok
-    ? unwrap<T>({ data: body as Envelope<T> })
-    : unwrap<T>({ error: body as ErrorEnvelope });
+  if (!response.ok) throw await apiErrorFromResponse(response, 'Không tải lên được.');
+  return unwrap<T>({ data: (await response.json()) as Envelope<T> });
 }
 
 /**
@@ -198,11 +213,7 @@ export async function downloadFile(path: string, filenameFallback: string): Prom
     credentials: 'include',
     headers: currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : undefined,
   });
-  if (!response.ok) {
-    const body: unknown = await response.json().catch(() => null);
-    const err = (body as ErrorEnvelope | null)?.error;
-    throw new ApiError(err?.code ?? 'UNKNOWN_ERROR', err?.message ?? 'Không tải được file.', err?.details);
-  }
+  if (!response.ok) throw await apiErrorFromResponse(response, 'Không tải được file.');
   const disposition = response.headers.get('Content-Disposition') ?? '';
   const match = /filename="?([^"]+)"?/.exec(disposition);
   const filename = match?.[1] ?? filenameFallback;
@@ -225,14 +236,19 @@ interface ErrorEnvelope {
   error: { code: string; message: string; details?: unknown };
 }
 
-/** Bóc `{data,meta}` thành `T`, hoặc ném `ApiError` từ `{error}` — theo .claude/docs/architecture.md. */
-export function unwrap<T>(result: { data?: Envelope<T>; error?: ErrorEnvelope }): T {
-  if (result.error) {
-    const err = result.error.error;
-    throw new ApiError(err?.code ?? 'UNKNOWN_ERROR', err?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.', err?.details);
+/**
+ * Bóc `{data,meta}` thành `T`, hoặc ném `ApiError` — theo .claude/docs/architecture.md. Mã HTTP lấy từ `response` của `openapi-fetch` (callers truyền
+ * nguyên `result`): lỗi nào cũng được chuẩn hoá thông điệp theo mã HTTP, KHÔNG đưa nguyên `message` của máy chủ lên giao diện (docs/DECISIONS.md #255).
+ */
+export function unwrap<T>(result: { data?: Envelope<T>; error?: ErrorEnvelope; response?: { status: number } }): T {
+  const status = result.response?.status;
+  if (result.error !== undefined || (status !== undefined && status >= 400)) {
+    // `error` có thể là chuỗi/HTML (proxy trả trang lỗi) chứ không phải `{error:{...}}` — đọc phòng thủ.
+    const err = typeof result.error === 'object' && result.error !== null ? result.error.error : undefined;
+    throw new ApiError(resolveApiErrorCode(status, err?.code), friendlyApiMessage(status, err?.message), err?.details, status);
   }
   if (!result.data) {
-    throw new ApiError('UNKNOWN_ERROR', 'Không nhận được dữ liệu từ server.');
+    throw new ApiError('UNKNOWN_ERROR', 'Không nhận được dữ liệu từ máy chủ.', undefined, status);
   }
   return result.data.data;
 }

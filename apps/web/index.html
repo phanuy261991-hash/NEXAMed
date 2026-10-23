@@ -5,9 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>NEXAMed</title>
+    <!-- Khung báo lỗi TĨNH khi mã ứng dụng không tải được (docs/DECISIONS.md #255) — KHÔNG phụ thuộc React/Tailwind nên vẫn hiện khi chính chúng không tải
+         được (vd. trình duyệt giữ trang cũ sau khi phần mềm cập nhật, mất mạng giữa chừng). Bật/tắt bởi /boot-fallback.js. -->
+    <style>
+      #boot-fallback { position: fixed; inset: 0; z-index: 2147483647; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 24px; text-align: center; background: #f8fafc; color: #0f172a; font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif; }
+      #boot-fallback[hidden] { display: none; }
+      #boot-fallback .boot-icon { width: 64px; height: 64px; border-radius: 9999px; background: #fffbeb; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 600; }
+      #boot-fallback h1 { margin: 20px 0 0; font-size: 20px; font-weight: 600; line-height: 1.3; }
+      #boot-fallback p { margin: 8px 0 0; max-width: 460px; font-size: 14px; line-height: 1.5; color: #475569; }
+      #boot-fallback button { margin-top: 24px; padding: 8px 16px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+      #boot-fallback button:hover { background: #1d4ed8; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot-fallback" role="alert" hidden>
+      <div class="boot-icon" aria-hidden="true">!</div>
+      <h1>Không tải được ứng dụng</h1>
+      <p>Phần mềm có thể vừa được cập nhật hoặc kết nối mạng bị gián đoạn. Hãy tải lại trang; nếu vẫn không được, vui lòng báo cho người quản trị.</p>
+      <button type="button">Tải lại trang</button>
+    </div>
+    <noscript>Cần bật JavaScript trên trình duyệt để sử dụng NEXAMed.</noscript>
+    <script src="/boot-fallback.js"></script>
     <script type="module" src="/src/app/main.tsx"></script>
   </body>
 </html>

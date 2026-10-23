@@ -8,7 +8,7 @@ import type {
   PatientDetail,
   UpdatePatientRequest,
 } from '@nexamed/shared';
-import { ApiError, getAccessToken, getApiClient, resolveApiUrl, unwrap } from '../../shared/api/client';
+import { apiErrorFromResponse, getAccessToken, getApiClient, resolveApiUrl, unwrap } from '../../shared/api/client';
 
 export async function listPatients(params: {
   q?: string;
@@ -48,11 +48,7 @@ export async function exportPatientMedicalRecord(patientId: string, reason: stri
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({ reason }),
   });
-  if (!response.ok) {
-    const body: unknown = await response.json().catch(() => null);
-    const err = (body as { error?: { code?: string; message?: string; details?: unknown } } | null)?.error;
-    throw new ApiError(err?.code ?? 'UNKNOWN_ERROR', err?.message ?? 'Không xuất được bệnh án.', err?.details);
-  }
+  if (!response.ok) throw await apiErrorFromResponse(response, 'Không xuất được bệnh án.');
   const disposition = response.headers.get('Content-Disposition') ?? '';
   const filename = /filename="?([^"]+)"?/.exec(disposition)?.[1] ?? `benh-an-${patientId}.pdf`;
   const blob = await response.blob();

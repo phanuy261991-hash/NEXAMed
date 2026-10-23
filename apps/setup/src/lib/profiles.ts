@@ -101,13 +101,31 @@ function lanOrigin(address: string, port: number): string {
  */
 export const HSTS_HEADER = 'header Strict-Transport-Security "max-age=15552000"';
 
+const CADDY_UNAVAILABLE_HTML =
+  '<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>NEXAMed</title>' +
+  '<body style="margin:0;padding:15vh 24px;text-align:center;background:#f8fafc;color:#0f172a;font-family:Segoe UI,system-ui,sans-serif">' +
+  '<h1 style="margin:0;font-size:20px;font-weight:600">Hệ thống tạm thời không truy cập được</h1>' +
+  '<p style="margin:8px auto 0;max-width:460px;font-size:14px;line-height:1.5;color:#475569">Hệ thống có thể đang khởi động hoặc bảo trì. Vui lòng đợi 1–2 phút rồi tải lại trang.</p>' +
+  '<p style="margin:24px 0 0"><a href="/" style="display:inline-block;padding:8px 16px;border-radius:8px;background:#2563eb;color:#fff;font-size:14px;font-weight:600;text-decoration:none">Tải lại trang</a></p></body></html>';
+
+/**
+ * Khi Caddy không nối được tới container `web` (chưa lên, đang khởi động lại) hiện trang tiếng Việt thay vì "Bad Gateway" thô (docs/DECISIONS.md #255).
+ * Chuỗi HTML đặt trong cặp dấu huyền (chuỗi thô của Caddyfile) nên KHÔNG được chứa dấu huyền.
+ */
+export const CADDY_HANDLE_ERRORS: readonly string[] = [
+  '\thandle_errors {',
+  '\t\theader Content-Type "text/html; charset=utf-8"',
+  `\t\trespond \`${CADDY_UNAVAILABLE_HTML}\` 503`,
+  '\t}',
+];
+
 export function buildCaddyfile(profile: 'vps' | 'saas', domain: string, acmeEmail?: string): string {
   const lines: string[] = [];
   lines.push('# Do trình cài đặt NEXAMed sinh ra (docs/DECISIONS.md #238). Caddy giữ nguyên tiêu đề Host nên ứng dụng nhận ra đúng công ty theo tên miền.');
   if (profile === 'vps') {
-    lines.push('{', `\temail ${acmeEmail}`, '}', '', `${domain} {`, `\t${HSTS_HEADER}`, '\treverse_proxy web:80', '}');
+    lines.push('{', `\temail ${acmeEmail}`, '}', '', `${domain} {`, `\t${HSTS_HEADER}`, '\treverse_proxy web:80', ...CADDY_HANDLE_ERRORS, '}');
   } else {
-    lines.push(`https://*.${domain}, https://${domain} {`, '\ttls /certs/fullchain.crt /certs/privkey.key', `\t${HSTS_HEADER}`, '\treverse_proxy web:80', '}');
+    lines.push(`https://*.${domain}, https://${domain} {`, '\ttls /certs/fullchain.crt /certs/privkey.key', `\t${HSTS_HEADER}`, '\treverse_proxy web:80', ...CADDY_HANDLE_ERRORS, '}');
   }
   return lines.join('\n') + '\n';
 }
