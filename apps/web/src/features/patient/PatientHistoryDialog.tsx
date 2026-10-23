@@ -10,6 +10,7 @@ import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { Textarea } from '../../shared/ui/Textarea';
 import { Button } from '../../shared/ui/Button';
 import { Icd10SearchPicker } from '../../shared/ui/Icd10SearchPicker';
+import { makeDraftId } from '../../shared/make-draft-id';
 import { useAllergenGroupsQuery, useAllergensQuery, useCreateAllergenMutation } from '../allergen/allergen.queries';
 
 /**
@@ -55,9 +56,6 @@ function stripDiacritics(value: string): string {
 /** Số chip "chọn nhanh" tối đa hiện mặc định cho MỖI nhóm dị nguyên khi chưa gõ tìm. */
 const ALLERGEN_QUICK_LIMIT = 5;
 
-function makeDraftId(): string {
-  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `draft-${Math.random().toString(36).slice(2)}`;
-}
 
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-5 pt-7';
 const sectionBadgeClassName =

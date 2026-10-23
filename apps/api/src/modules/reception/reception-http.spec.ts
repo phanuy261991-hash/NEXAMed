@@ -389,6 +389,22 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect(await privileged.invoice.count({ where: { tenantId: fixture.tenantA.id, encounterId: { in: [first.body.data.id, second.body.data.id] } } })).toBe(2);
     });
 
+    it('CÓ Idempotency-Key (#257): tiếp nhận cùng nội dung hai lần liên tiếp VÀ hai lần đồng thời → chỉ MỘT lượt khám, một hoá đơn, cùng mã LK', async () => {
+      const patient = await createPatient(receptionistToken);
+      const key = randomUUID();
+      const direct = () =>
+        request(app.getHttpServer()).post('/api/v1/reception/direct').set(authed(receptionistToken)).set('Idempotency-Key', key).send(directPayload(patient.id, doctorAUserId, isoAt(9, 43, 28)));
+
+      const first = await direct();
+      const second = await direct();
+      const [c, d] = await Promise.all([direct(), direct()]);
+      expect([first.status, second.status, c.status, d.status]).toEqual([200, 200, 200, 200]);
+      expect(new Set([first, second, c, d].map((r) => r.body.data.id)).size).toBe(1);
+      expect(second.body.data.encounterNo).toBe(first.body.data.encounterNo);
+      expect(await privileged.encounter.count({ where: { tenantId: fixture.tenantA.id, patientId: patient.id, deletedAt: null } })).toBe(1);
+      expect(await privileged.invoice.count({ where: { tenantId: fixture.tenantA.id, encounterId: first.body.data.id } })).toBe(1);
+    });
+
     it('hồ sơ đã bị gộp (mergedIntoId khác null, S5-06 PAT-04) → 409 PATIENT_ALREADY_MERGED, không tạo được lượt khám mới', async () => {
       const source = await createPatient(receptionistToken);
       const target = await createPatient(receptionistToken);
@@ -1105,6 +1121,16 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect((await record()).status).toBe(200);
       expect((await record()).status).toBe(200);
       expect(await privileged.vitalSign.count({ where: { tenantId: fixture.tenantA.id, encounterId, deletedAt: null } })).toBe(2);
+    });
+
+    it('CÓ Idempotency-Key (#257): nhập sinh hiệu hai lần cùng khoá → chỉ MỘT lần đo', async () => {
+      const encounterId = await checkInFreshEncounter(22);
+      const key = randomUUID();
+      const record = () => request(app.getHttpServer()).post(`/api/v1/reception/encounters/${encounterId}/vital-signs`).set(authed(nurseToken)).set('Idempotency-Key', key).send({ pulse: 80, temperatureC: 36.8 });
+
+      expect((await record()).status).toBe(200);
+      expect((await record()).status).toBe(200);
+      expect(await privileged.vitalSign.count({ where: { tenantId: fixture.tenantA.id, encounterId, deletedAt: null } })).toBe(1);
     });
 
     it('mạch ngoài ngưỡng người lớn (150) → vẫn lưu 200, kèm warnings out_of_range', async () => {

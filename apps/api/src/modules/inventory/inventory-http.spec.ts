@@ -240,6 +240,23 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
     expect(second.body.data.status).toBe('DRAFT');
   });
 
+  it('CÓ Idempotency-Key (#257): lập phiếu nhập nháp cùng khoá hai lần → chỉ MỘT phiếu nháp', async () => {
+    const drugId = await createDrug(clinicAdminToken);
+    const key = randomUUID();
+    const draft = () =>
+      request(app.getHttpServer())
+        .post('/api/v1/inventory/receipts')
+        .set(authed(clinicAdminToken))
+        .set('Idempotency-Key', key)
+        .send({ warehouseId, supplierId, receiptType: 'PURCHASE', lines: [{ drugId, unitCode: 'VIEN', quantity: 10, unitCost: 100, batchNo: 'DUPK', expiryDate: '2027-01-01' }] });
+
+    const first = await draft();
+    const second = await draft();
+    expect([first.status, second.status]).toEqual([200, 200]);
+    expect(second.body.data.id).toBe(first.body.data.id);
+    expect(await privileged.stockReceipt.count({ where: { tenantId: fixture.tenantA.id, receiptNo: first.body.data.receiptNo } })).toBe(1);
+  });
+
   it('Duyệt trùng (2 request đồng thời) — chỉ 1 thành công', async () => {
     const drugId = await createDrug(clinicAdminToken);
     const created = await createReceipt(clinicAdminToken, { lines: [{ drugId, unitCode: 'VIEN', quantity: 10, unitCost: 100, batchNo: 'RACE1', expiryDate: '2027-01-01' }] });

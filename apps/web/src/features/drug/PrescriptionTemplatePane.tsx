@@ -22,6 +22,7 @@ import { LineInput } from '../encounter/PrescriptionPanel';
 import { DoseInput } from '../encounter/dose-controls';
 import { useCreatePrescriptionTemplateMutation, usePrescriptionTemplatesQuery, useUpdatePrescriptionTemplateMutation } from './prescription-template.queries';
 import { listPrescriptionTemplates } from './prescription-template.api';
+import { makeDraftId } from '../../shared/make-draft-id';
 
 interface TemplateDraftLine {
   key: string;
@@ -383,7 +384,7 @@ function PrescriptionTemplateFormDialog({
             onSelect={(drug) =>
               setLines((prev) => [
                 ...prev,
-                { key: crypto.randomUUID(), drugId: drug.drugId, drugName: drug.drugName, unitCode: drug.unitCode, doseMorning: '', doseNoon: '', doseAfternoon: '', doseEvening: '', durationDays: '5', instruction: '' },
+                { key: makeDraftId(), drugId: drug.drugId, drugName: drug.drugName, unitCode: drug.unitCode, doseMorning: '', doseNoon: '', doseAfternoon: '', doseEvening: '', durationDays: '5', instruction: '' },
               ])
             }
             onAddFreeText={() => {}}

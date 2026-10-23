@@ -32,6 +32,12 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   PATIENT_DUPLICATE_NATIONAL_ID: HttpStatus.CONFLICT,
   // S5-06 (PAT-04) — hồ sơ đã gộp vào hồ sơ khác, cùng nhóm xung đột trạng thái hiện có.
   PATIENT_ALREADY_MERGED: HttpStatus.CONFLICT,
+  // Khoá chống ghi trùng (docs/DECISIONS.md #257) — khoá sai định dạng là lỗi input (400); dùng lại khoá cho nội dung khác là không xử lý được (422);
+  // lần gửi đầu còn đang chạy / đã xong nhưng không lưu được kết quả là xung đột trạng thái (409).
+  IDEMPOTENCY_KEY_INVALID: HttpStatus.BAD_REQUEST,
+  IDEMPOTENCY_KEY_REUSED: HttpStatus.UNPROCESSABLE_ENTITY,
+  IDEMPOTENCY_IN_PROGRESS: HttpStatus.CONFLICT,
+  IDEMPOTENCY_REPLAY_UNAVAILABLE: HttpStatus.CONFLICT,
   // Sai định dạng/kích thước ảnh — lỗi input của client, không phải xung đột trạng thái.
   PATIENT_INVALID_PHOTO: HttpStatus.BAD_REQUEST,
   CLINIC_INVALID_LOGO: HttpStatus.BAD_REQUEST,

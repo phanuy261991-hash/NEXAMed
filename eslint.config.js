@@ -114,6 +114,19 @@ export default tseslint.config(
     },
   },
   {
+    // Bản cài tại phòng khám chạy HTTP thường trong LAN → trình duyệt KHÔNG cấp `crypto.randomUUID` (chỉ có ở HTTPS/localhost). Đã làm hỏng Kê đơn/Đơn thuốc mẫu/Phát thuốc (docs/DECISIONS.md #257).
+    // Mọi nơi dùng `generateUuid()` (`apps/web/src/shared/uuid.ts`, có đường dự phòng `getRandomValues`) hoặc `makeDraftId()` (key React của dòng nháp).
+    files: ['apps/web/**/*.ts', 'apps/web/**/*.tsx'],
+    ignores: ['apps/web/src/shared/uuid.ts', '**/*.spec.ts', '**/*.spec.tsx'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        { object: 'crypto', property: 'randomUUID', message: 'Không gọi thẳng crypto.randomUUID (không có ở HTTP thường trong LAN). Dùng generateUuid() ở shared/uuid.ts hoặc makeDraftId() ở shared/make-draft-id.ts.' },
+        { object: 'globalThis', property: 'crypto', message: 'Dùng generateUuid() ở shared/uuid.ts thay vì truy cập crypto trực tiếp.' },
+      ],
+    },
+  },
+  {
     // Test của web chạy trong Node (vitest), import giá trị từ bản dist CommonJS của shared được.
     files: ['apps/web/**/*.spec.ts', 'apps/web/**/*.spec.tsx'],
     rules: { '@typescript-eslint/no-restricted-imports': 'off' },

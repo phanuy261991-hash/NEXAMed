@@ -30,6 +30,7 @@ import { PrescriptionPrintView } from './PrescriptionPrintView';
 import { PrescriptionKindChip, PRESCRIPTION_KIND_TEXT, type PrescriptionKindLetter } from '../../shared/ui/PrescriptionKindChip';
 import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCode';
 import { InteropInfoBlock } from '../prescription-interop/InteropInfoBlock';
+import { makeDraftId } from '../../shared/make-draft-id';
 import {
   useAmendPrescriptionMutation,
   useGetPreviousPrescriptionMutation,
@@ -89,7 +90,7 @@ function markDaysOwn(lines: DraftLine[]): DraftLine[] {
 
 function emptyDoseLine(drug: { drugId: string | null; drugName: string; unitCode: string | null; isSplittable: boolean }, durationDays: string): DraftLine {
   return {
-    key: crypto.randomUUID(),
+    key: makeDraftId(),
     drugId: drug.drugId,
     drugName: drug.drugName,
     unitCode: drug.unitCode,
@@ -331,7 +332,7 @@ export function PrescriptionPanel({
     const additions: DraftLine[] = template.items
       .filter((item) => !existingIds.has(item.drugId))
       .map((item) => ({
-        key: crypto.randomUUID(),
+        key: makeDraftId(),
         drugId: item.drugId,
         drugName: item.drugName,
         unitCode: item.unitCode,
@@ -361,7 +362,7 @@ export function PrescriptionPanel({
           return;
         }
         const existingIds = new Set(draftLines.map((l) => l.drugId));
-        const additions: DraftLine[] = previous.items.filter((item) => !existingIds.has(item.drugId)).map((item) => ({ ...itemToDraft(item), key: crypto.randomUUID() }));
+        const additions: DraftLine[] = previous.items.filter((item) => !existingIds.has(item.drugId)).map((item) => ({ ...itemToDraft(item), key: makeDraftId() }));
         persistDraft(markDaysOwn([...draftLines, ...additions]));
       },
       onError: (err) => setCopyPreviousError(err instanceof ApiError ? err.message : 'Không sao chép được đơn lần trước, vui lòng thử lại.'),

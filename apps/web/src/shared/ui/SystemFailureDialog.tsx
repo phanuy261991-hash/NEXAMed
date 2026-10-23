@@ -6,9 +6,9 @@ import { Button } from './Button';
 import { ConfirmDialog } from './ConfirmDialog';
 
 const KEEP_DATA = 'Dữ liệu bạn đã nhập vẫn còn nguyên trên màn hình.';
-// Khi mất kết nối, máy chủ CÓ THỂ đã ghi xong mà chỉ chưa kịp trả lời — nên KHÔNG được khẳng định "chưa thực hiện", và phải nhắc kiểm tra trước khi bấm
-// lại để tránh ghi trùng (đã đo: bấm "Tiếp nhận" hai lần ra hai lượt khám, docs/DECISIONS.md #255 bổ sung).
-const CHECK_FIRST = 'Chưa xác nhận được thao tác đã được ghi hay chưa. Hãy kiểm tra lại dữ liệu vừa thao tác trước khi thử lại để tránh ghi trùng.';
+// Khi mất kết nối, máy chủ CÓ THỂ đã ghi xong mà chỉ chưa kịp trả lời — nên KHÔNG được khẳng định "chưa thực hiện". Từ #257 (khoá chống ghi trùng) bấm lại là AN TOÀN:
+// giao diện giữ nguyên khoá của thao tác và máy chủ trả lại đúng kết quả lần đầu nếu nó đã được ghi (trước đó phải dặn người dùng kiểm tra lại vì bấm "Tiếp nhận" hai lần ra hai lượt khám, #255 bổ sung).
+const CHECK_FIRST = 'Chưa xác nhận được thao tác đã hoàn tất hay chưa. Bạn có thể bấm thử lại — hệ thống tự nhận ra để không ghi trùng.';
 
 const CONTENT: Record<SystemFailureKind, { icon: Icon; title: string; body: string }> = {
   network: {
@@ -24,7 +24,7 @@ const CONTENT: Record<SystemFailureKind, { icon: Icon; title: string; body: stri
   server: {
     icon: Warning,
     title: 'Hệ thống đang gặp sự cố',
-    body: `Thao tác có thể chưa được ghi nhận. Hãy kiểm tra lại dữ liệu vừa thao tác trước khi thử lại; nếu vẫn lỗi, báo cho người quản trị. ${KEEP_DATA}`,
+    body: `Thao tác có thể chưa được ghi nhận. Bạn có thể bấm thử lại — hệ thống tự nhận ra để không ghi trùng; nếu vẫn lỗi, báo cho người quản trị. ${KEEP_DATA}`,
   },
 };
 

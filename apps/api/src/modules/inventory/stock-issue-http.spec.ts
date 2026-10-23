@@ -1307,6 +1307,28 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
       expect(await issuesOf(prescriptionId)).toBe(2);
     });
 
+    it('(b2) CÓ Idempotency-Key (#257): phát MỘT PHẦN rồi gửi lại cùng khoá (liên tiếp + đồng thời) → chỉ MỘT phiếu xuất, tồn kho trừ đúng một lần', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Dup phát có khoá' });
+      const batchId = await receiveStock(clinicAdminToken, drugId, 100, 500);
+      const { encounterId } = await prepareEncounterInConsultation(23);
+      const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 10 }]);
+      const key = randomUUID();
+      const issueKeyed = () =>
+        request(app.getHttpServer())
+          .post('/api/v1/inventory/issues')
+          .set(authed(doctorToken))
+          .set('Idempotency-Key', key)
+          .send({ prescriptionId, warehouseId, lines: [{ prescriptionItemId: items[0]!.id, drugId, batchId: batchId ?? undefined, quantity: 4 }] });
+
+      const first = await issueKeyed();
+      const second = await issueKeyed();
+      const [c, d] = await Promise.all([issueKeyed(), issueKeyed()]);
+      expect([first.status, second.status, c.status, d.status]).toEqual([200, 200, 200, 200]);
+      expect(await issuesOf(prescriptionId)).toBe(1);
+      const balance = await privileged.stockBalance.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, batchId, warehouseId } });
+      expect(balance.quantityOnHand).toBe(96);
+    });
+
     it('(c) hai yêu cầu phát ĐỦ số lượng của đơn ĐỒNG THỜI → đúng MỘT phiếu xuất, tồn kho chỉ trừ một lần', async () => {
       const drugId = await createDrug(clinicAdminToken, { name: 'Dup phát đồng thời' });
       const batchId = await receiveStock(clinicAdminToken, drugId, 100, 500);

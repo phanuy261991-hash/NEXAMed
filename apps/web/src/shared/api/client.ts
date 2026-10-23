@@ -1,6 +1,7 @@
 import createClient, { type Middleware } from 'openapi-fetch';
 import type { AppConfig } from '../../app/config';
 import { friendlyApiMessage, resolveApiErrorCode } from './api-message';
+import { IDEMPOTENCY_KEY_HEADER, createIdempotencyKeyStore, shouldAttachIdempotencyKey } from './idempotency-key';
 import type { paths } from './openapi-schema';
 
 /**
@@ -47,6 +48,13 @@ function isAuthTokenEndpoint(url: string): boolean {
   return url.includes('/api/v1/auth/refresh') || url.includes('/api/v1/auth/login');
 }
 
+/**
+ * Khoá chống ghi trùng (docs/DECISIONS.md #257): mọi POST JSON tự mang `Idempotency-Key`; cùng thao tác (cùng địa chỉ + nội dung) bấm lại thì dùng lại khoá cũ cho tới khi có kết luận.
+ * `idempotencyFingerprints` nhớ thao tác của từng request đang bay (theo `id` của openapi-fetch) để báo kết luận khi có phản hồi.
+ */
+const idempotencyKeys = createIdempotencyKeyStore();
+const idempotencyFingerprints = new Map<string, string>();
+
 /** Bản sao request CHƯA gửi, lưu theo `id` — request body chỉ đọc được một lần nên phải clone
  * TRƯỚC khi fetch thật sự tiêu thụ nó, để có thể thử lại đúng 1 lần sau khi làm mới token. */
 const pendingRetryClones = new Map<string, Request>();
@@ -83,9 +91,16 @@ async function refreshAccessToken(): Promise<string | null> {
  * ra. Refresh thất bại (cookie refresh cũng hết hạn/không hợp lệ) thì mới coi là hết phiên thật.
  */
 const authMiddleware: Middleware = {
-  onRequest({ request, id }) {
+  async onRequest({ request, id }) {
     if (currentAccessToken) {
       request.headers.set('Authorization', `Bearer ${currentAccessToken}`);
+    }
+    // Gắn khoá TRƯỚC khi clone để lần thử lại sau khi làm mới phiên (bên dưới) mang cùng khoá.
+    if (shouldAttachIdempotencyKey(request.method, request.url, request.headers.get('Content-Type'))) {
+      const fingerprint = `${request.method} ${request.url}
+${await request.clone().text()}`;
+      request.headers.set(IDEMPOTENCY_KEY_HEADER, idempotencyKeys.acquire(fingerprint));
+      idempotencyFingerprints.set(id, fingerprint);
     }
     if (!isAuthTokenEndpoint(request.url)) {
       pendingRetryClones.set(id, request.clone());
@@ -95,19 +110,33 @@ const authMiddleware: Middleware = {
   async onResponse({ request, response, id }) {
     const retryClone = pendingRetryClones.get(id);
     pendingRetryClones.delete(id);
+    const fingerprint = idempotencyFingerprints.get(id);
+    idempotencyFingerprints.delete(id);
 
     if (response.status !== 401 || !retryClone || isAuthTokenEndpoint(request.url)) {
+      if (fingerprint) idempotencyKeys.settle(fingerprint, response.status);
       return undefined;
     }
 
     const newToken = await refreshAccessToken();
     if (!newToken) {
       sessionExpiredHandler?.();
+      if (fingerprint) idempotencyKeys.settle(fingerprint, response.status);
       return undefined;
     }
 
     retryClone.headers.set('Authorization', `Bearer ${newToken}`);
-    return fetch(retryClone);
+    // Thử lại cùng khoá: lần đầu 401 thì chưa chạy gì nên lần này chạy bình thường, và không bao giờ ghi hai lần. Mất mạng đúng lúc này thì `fetch` ném lỗi trước khi `settle`
+    // → khoá được GIỮ, người dùng bấm lại vẫn an toàn.
+    const retried = await fetch(retryClone);
+    if (fingerprint) idempotencyKeys.settle(fingerprint, retried.status);
+    return retried;
+  },
+  /** Mất mạng / fetch thất bại: không có phản hồi để báo kết luận — chỉ dọn bản ghi nhớ của request này; khoá vẫn được giữ cho lần bấm lại. */
+  onError({ id }) {
+    idempotencyFingerprints.delete(id);
+    pendingRetryClones.delete(id);
+    return undefined;
   },
 };
 

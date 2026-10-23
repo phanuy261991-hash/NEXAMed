@@ -999,6 +999,20 @@ describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần
       expect(await balanceOf(supplierId)).toBe(40000);
     });
 
+    it('(b2) CÓ Idempotency-Key (#257): trả MỘT PHẦN rồi gửi lại cùng khoá (liên tiếp + đồng thời) → chỉ 1 lần trả, còn nợ đúng', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 10, unitCost: 10000 });
+      const key = randomUUID();
+      const payKeyed = () =>
+        request(app.getHttpServer()).post(`/api/v1/supplier-debt/${supplierId}/payment`).set(authed(clinicAdminToken)).set('Idempotency-Key', key).send({ amount: 30000, paymentMethodCode: 'CASH', cashAccountId });
+
+      const first = await payKeyed();
+      const second = await payKeyed();
+      const [c, d] = await Promise.all([payKeyed(), payKeyed()]);
+      expect([first.status, second.status, c.status, d.status]).toEqual([200, 200, 200, 200]);
+      expect(await balanceOf(supplierId)).toBe(70000);
+    });
+
     it('(c) hai yêu cầu ĐỒNG THỜI mỗi cái ≤ nợ nhưng TỔNG vượt nợ → không bao giờ trả vượt: số dư không âm, đúng số lần được nhận', async () => {
       const supplierId = await createSupplier(clinicAdminToken);
       await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 10, unitCost: 10000 }); // nợ 100.000

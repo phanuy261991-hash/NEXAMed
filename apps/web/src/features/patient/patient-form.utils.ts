@@ -1,6 +1,7 @@
 import type { ConsultationPatient, CreatePatientRequest, PatientAddress, PatientDetail, PatientGender, UpdatePatientRequest } from '@nexamed/shared';
 import { EMPTY_PATIENT_FORM, type FamilyHistoryRowDraft, type PatientFormValues } from './PatientFormFields';
 import { FAMILY_RELATION_LABELS } from './family-relation';
+import { makeDraftId } from '../../shared/make-draft-id';
 
 export { FAMILY_RELATION_LABELS };
 
@@ -77,10 +78,6 @@ export function toUpdatePatientRequest(values: PatientFormValues, version: numbe
   return { ...toCreatePatientRequest(values), version };
 }
 
-/** Khoá tạm cho React key/thao tác xoá dòng khi CHỈNH SỬA — KHÔNG gửi lên server (xem `toCreatePatientRequest`). */
-function makeDraftId(): string {
-  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `draft-${Math.random().toString(36).slice(2)}`;
-}
 
 /**
  * Chuyển `PatientDetail` (dữ liệu server, dùng chung cả `ReceptionIntakeForm.tsx` — trùng lặp lần 2

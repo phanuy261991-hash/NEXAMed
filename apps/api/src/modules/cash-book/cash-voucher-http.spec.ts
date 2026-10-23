@@ -480,6 +480,24 @@ describe('HTTP e2e — /api/v1/cash-vouchers', () => {
    * GỬI TRÙNG (#256) — lập phiếu thu/chi không có khoá tự nhiên (mỗi lần gửi là một chứng từ mới, mã số mới): bấm lại sau khi mạng đứt ra hai phiếu cùng nội dung,
    * làm lệch "Tiền mặt dự kiến trong két" của ca. Ca này khẳng định HIỆN TRẠNG; khi có `Idempotency-Key` thì sửa thành "chỉ 1 phiếu".
    */
+  it('CÓ Idempotency-Key (#257): lập phiếu THU cùng khoá hai lần liên tiếp và hai lần đồng thời → chỉ MỘT phiếu, cùng số phiếu', async () => {
+    const description = `Khoá ${randomUUID()}`;
+    const key = randomUUID();
+    const create = () =>
+      request(app.getHttpServer())
+        .post('/api/v1/cash-vouchers')
+        .set(authed(cashierToken))
+        .set('Idempotency-Key', key)
+        .send({ direction: 'INCOME', incomeExpenseTypeCode: 'TC00001', cashAccountId, paymentMethodCode: 'CASH', amount: 123_000, description });
+
+    const first = await create();
+    const second = await create();
+    const [c, d] = await Promise.all([create(), create()]);
+    expect([first.status, second.status, c.status, d.status]).toEqual([200, 200, 200, 200]);
+    expect(new Set([first, second, c, d].map((r) => r.body.data.voucherNo)).size).toBe(1);
+    expect(await privileged.cashVoucher.count({ where: { tenantId: fixture.tenantA.id, description } })).toBe(1);
+  });
+
   it('KHOẢNG TRỐNG ĐÃ BIẾT — GỬI TRÙNG (#256): lập phiếu THU cùng nội dung hai lần liên tiếp và hai lần đồng thời → ra 4 phiếu riêng biệt', async () => {
     const description = `Trùng ${randomUUID()}`;
     const create = () => createVoucher(cashierToken, 'INCOME', 123_000, { description });

@@ -125,6 +125,7 @@ model Tenant {
   interopDoctorFacilities     InteropDoctorFacility[]
   encounterInteropKindInfos   EncounterInteropKindInfo[]
   prescriptionSubmissions     PrescriptionSubmission[]
+  idempotencyKeys             IdempotencyKey[]
   prescriptionTemplates       PrescriptionTemplate[]
   printTemplates              PrintTemplate[]
   technicalServices           TechnicalService[]
@@ -757,6 +758,8 @@ model UserAccount {
   interopDoctorFacilities  InteropDoctorFacility[]
   // Hàng chờ gửi đơn thuốc liên thông (#242 GĐ3) — bác sĩ ký đơn.
   prescriptionSubmissions  PrescriptionSubmission[]
+  // Khoá chống ghi trùng (#257) — người gửi yêu cầu.
+  idempotencyKeys          IdempotencyKey[]
 
   // Đích của composite FK (tenant_id, id) từ user_role — chống trỏ chéo tenant (C5 trong ERD.md).
   @@unique([tenantId, id])
@@ -5138,4 +5141,38 @@ model TenantCodeAlias {
   @@index([oldCode, expiresAt(sort: Desc)])
   @@index([targetTenantId])
   @@map("tenant_code_alias")
+}
+
+/// Khoá chống ghi trùng khi mạng đứt giữa chừng (docs/DECISIONS.md #257). Dữ liệu KỸ THUẬT, không phải hồ sơ nghiệp vụ: theo (công ty, người gửi, khoá do giao diện sinh),
+/// không theo chi nhánh. `response_body_enc` = phản hồi thành công đã MÃ HOÁ (có thể chứa dữ liệu bệnh nhân), hết hạn sau 24 giờ rồi bị job dọn xoá cứng.
+model IdempotencyKey {
+  id              String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  requestKey      String    @map("request_key")
+  requestHash     String    @map("request_hash")
+  method          String
+  path            String
+  status          String    @default("IN_PROGRESS")
+  lockedAt        DateTime  @default(now()) @map("locked_at") @db.Timestamptz(6)
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  responseBodyEnc Bytes?    @map("response_body_enc")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id])
+  user   UserAccount @relation(fields: [tenantId, userId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, userId, requestKey])
+  @@index([tenantId, expiresAt])
+  @@map("idempotency_key")
 }

@@ -50,6 +50,8 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // Thứ tự xoá theo FK: bảng con trước bảng cha. deleteMany trên bảng không có dòng nào
       // khớp là no-op an toàn — không cần biết trước caller có seed role/session hay không.
       await prisma.auditLog.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // idempotency_key (#257) tham chiếu tenant + user_account (FK RESTRICT), không bảng nào tham chiếu nó — mọi POST có header `Idempotency-Key` đều để lại dòng.
+      await prisma.idempotencyKey.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // exam_type_price (docs/DECISIONS.md #079) — không bảng nào khác tham chiếu tới, xoá sớm an toàn.
       await prisma.examTypePrice.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // break_glass_session (S1-04c) tham chiếu tenant (FK RESTRICT) — trước đây chưa spec nào

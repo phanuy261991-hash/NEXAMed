@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { cpus, totalmem } from 'node:os';
 
@@ -21,6 +22,7 @@ import { cpus, totalmem } from 'node:os';
  *   PERF_STEP_THINK_MIN_MS (300) · PERF_STEP_THINK_MAX_MS (900)  nghỉ giữa các bước của một lượt khám
  *   PERF_VISIT_THINK_MIN_MS (500) · PERF_VISIT_THINK_MAX_MS (1500)  nghỉ giữa hai lượt khám
  *   PERF_OUT (tuỳ chọn) file JSON lưu kết quả
+ *   PERF_IDEMPOTENCY=yes  mọi POST mang header `Idempotency-Key` mới (đo chi phí của khoá chống ghi trùng, docs/DECISIONS.md #257) — so với lần chạy không đặt
  */
 
 function env(name: string, fallback?: string): string {
@@ -48,6 +50,7 @@ const TARGET_P95 = envInt('PERF_TARGET_P95_MS', 500);
 const STEP_THINK: [number, number] = [envInt('PERF_STEP_THINK_MIN_MS', 300), envInt('PERF_STEP_THINK_MAX_MS', 900)];
 const VISIT_THINK: [number, number] = [envInt('PERF_VISIT_THINK_MIN_MS', 500), envInt('PERF_VISIT_THINK_MAX_MS', 1500)];
 const OUT = process.env.PERF_OUT;
+const WITH_IDEMPOTENCY = process.env.PERF_IDEMPOTENCY === 'yes';
 const PERF_PASSWORD = 'Perf@12345678';
 
 interface Sample {
@@ -70,7 +73,12 @@ async function call(path: string, token: string | null, init?: RequestInit): Pro
   const t0 = performance.now();
   const res = await fetch(`${BASE_URL}/api/v1${path}`, {
     ...init,
-    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...(init?.headers ?? {}) },
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(WITH_IDEMPOTENCY && init?.method === 'POST' && token ? { 'idempotency-key': randomUUID() } : {}),
+      ...(init?.headers ?? {}),
+    },
   });
   const text = await res.text();
   const ms = performance.now() - t0;

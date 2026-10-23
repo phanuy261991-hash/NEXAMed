@@ -234,6 +234,20 @@ describe('HTTP e2e — /api/v1/wallet', () => {
    * GỬI TRÙNG (#256) — mạng đứt sau khi máy chủ đã ghi xong, người dùng bấm lại. Hiện KHÔNG có khoá chống ghi trùng: nạp ví là phép CỘNG nên mỗi lần gửi là
    * một lần nạp thật (hai phiếu thu PTU, số dư gấp đôi). Ca này khẳng định HIỆN TRẠNG để khoanh vùng thiệt hại; khi có `Idempotency-Key` thì sửa thành "chỉ 1 lần".
    */
+  it('CÓ Idempotency-Key (#257): nạp tạm ứng cùng khoá hai lần liên tiếp và hai lần đồng thời → chỉ MỘT lần nạp, một phiếu thu PTU, số dư không nhân đôi', async () => {
+    const patientId = await createPatient(receptionistToken);
+    const key = randomUUID();
+    const topup = () => request(app.getHttpServer()).post('/api/v1/wallet/topup').set(authed(receptionistToken)).set('Idempotency-Key', key).send({ patientId, amount: 1_000_000, paymentMethodCode: 'CASH' });
+
+    const first = await topup();
+    const second = await topup();
+    const [c, d] = await Promise.all([topup(), topup()]);
+    expect([first.status, second.status, c.status, d.status]).toEqual([200, 200, 200, 200]);
+    expect(new Set([first, second, c, d].map((r) => r.body.data.voucherNo)).size).toBe(1);
+    const wallet = (await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId })).body.data as { topUpCount: number; balance: number };
+    expect(wallet).toMatchObject({ topUpCount: 1, balance: 1_000_000 });
+  });
+
   it('KHOẢNG TRỐNG ĐÃ BIẾT — GỬI TRÙNG (#256): nạp tạm ứng cùng nội dung hai lần LIÊN TIẾP → hai lần nạp thật; hai lần ĐỒNG THỜI → ví chặn bớt bằng 409 (xung đột phiên bản), nhưng gửi lại vẫn ghi thêm', async () => {
     const patientId = await createPatient(receptionistToken);
     const topup = () => request(app.getHttpServer()).post('/api/v1/wallet/topup').set(authed(receptionistToken)).send({ patientId, amount: 1_000_000, paymentMethodCode: 'CASH' });

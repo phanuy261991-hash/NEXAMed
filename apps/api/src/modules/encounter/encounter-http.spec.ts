@@ -1244,6 +1244,21 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(await privileged.auditLog.count({ where: { tenantId: fixture.tenantA.id, entityId: encounterId, action: 'diagnosis.amended' } })).toBe(2);
     });
 
+    it('CÓ Idempotency-Key (#257): "Đính chính chẩn đoán" gửi lại cùng khoá → chỉ MỘT bản đính chính, vết đính chính không nhân đôi', async () => {
+      const encounterId = await completedEncounter(8);
+      const key = randomUUID();
+      const amend = () =>
+        request(app.getHttpServer())
+          .post(`/api/v1/encounters/${encounterId}/diagnoses/amend`)
+          .set(authed(doctorAToken))
+          .set('Idempotency-Key', key)
+          .send({ amendmentReason: 'Sửa lại sau khi xem lại hồ sơ', diagnoses: [{ icd10Code: 'A00.1', type: 'PRIMARY' as const }] });
+
+      expect((await amend()).status).toBe(200);
+      expect((await amend()).status).toBe(200);
+      expect(await privileged.auditLog.count({ where: { tenantId: fixture.tenantA.id, entityId: encounterId, action: 'diagnosis.amended' } })).toBe(1);
+    });
+
     it('bác sĩ KHÁC (không phải người khám ca đó, scope personal) đính chính → 404', async () => {
       const encounterId = await completedEncounter(17);
 

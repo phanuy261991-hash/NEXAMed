@@ -106,3 +106,12 @@ Runtime của dự án là **Node 26** (LTS từ 28/10/2026; Node 20 đã hết 
 - **Dockerfile**: ảnh Node 25+ không còn `corepack` → cài pnpm bằng `npm install -g pnpm@9.15.9` (đúng `packageManager`). Ảnh API `node:26-bookworm-slim`, trình cài đặt `node:26-alpine`.
 - **`@types/node` cùng bậc với Node** (hiện `^26`); đổi Node thì đổi cả `engines`, `node-version` trong CI, các `FROM` trong Dockerfile, CLAUDE.md và `docs/Deploy.md` trong CÙNG một lần.
 - Kiểm sau khi đổi Node: typecheck + lint + build + test mọi gói (≥ 3 lượt toàn bộ API liên tiếp), dựng ảnh Docker thật và chạy thử chuỗi nginx → API → Postgres.
+
+## Triển khai on-prem LAN: HTTP thường, truy cập qua IP (chốt 23/10/2026, `docs/DECISIONS.md` #257)
+
+Mô hình giao hàng chính là máy chủ trong LAN phòng khám, máy trạm mở `http://<IP>` — **HTTP thường, không HTTPS, có thể không có Internet**. Dev chạy `localhost` nên KHÔNG thấy các lỗi dưới đây; phải chủ động kiểm.
+
+- **API trình duyệt chỉ có ở ngữ cảnh bảo mật** (HTTPS hoặc `localhost`; `http://192.168.x.x` KHÔNG phải): `crypto.randomUUID`, `navigator.clipboard`, `crypto.subtle`, `getUserMedia`, service worker, `Notification`, `navigator.locks`, WebAuthn. Dùng thì phải có đường dự phòng. UUID: `generateUuid()` (`apps/web/src/shared/uuid.ts`, dự phòng `crypto.getRandomValues`) hoặc `makeDraftId()` cho key React; ESLint (`no-restricted-properties`) chặn `crypto.randomUUID` trần ở `apps/web`. Sao chép: `copyText` (`shared/format/clipboard.ts`, có dự phòng `execCommand`).
+- **Không tài nguyên ngoài**: CSP `default-src 'self'` (nginx) — không CDN/font/bản đồ/script bên thứ ba; mọi thứ đóng gói trong bundle. Tích hợp cần Internet đi qua port (`packages/core/ports`) và phải suy giảm êm khi mất mạng.
+- **Cùng nguồn gốc**: `apiBaseUrl` rỗng (trình cài đặt sinh sẵn), nginx proxy `/api`; không cứng `localhost`/IP trong mã hay trong URL trả về cho trình duyệt. Cookie phiên `COOKIE_SECURE=false` ở LAN (`true` chỉ khi có HTTPS thật).
+- **Cách kiểm trên Chrome thật qua địa chỉ LAN**: `VITE_DEV_API_PROXY=http://localhost:3001 pnpm exec vite --host 0.0.0.0 --port 5174` (Vite phụ có proxy `/api` giống nginx), rồi `PLAYWRIGHT_CORE=<thư mục tạm>/node_modules/playwright-core node scripts/ui-audit/lan-http-check.cjs` (kiểm `isSecureContext=false`, đăng nhập + làm mới phiên bằng cookie, quét các trang không có lỗi JS kiểu `is not a function`). Chức năng có giao diện mới BẮT BUỘC chạy kịch bản này (hoặc mở thủ công `http://<IP LAN máy dev>:5174`) trước khi báo xong.

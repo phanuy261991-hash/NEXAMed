@@ -18,6 +18,7 @@ import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/us
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { useCreateStockIssueMutation, usePrescriptionDispenseStatusQuery } from './inventory.queries';
+import { makeDraftId } from '../../shared/make-draft-id';
 
 interface BatchOption {
   batchId: string;
@@ -73,13 +74,13 @@ function autoSplitFefo(batches: BatchOption[], totalNeeded: number): BatchRow[] 
     if (remaining <= 0) break;
     const take = Math.min(b.quantityOnHand, remaining);
     if (take > 0) {
-      rows.push({ key: crypto.randomUUID(), batchId: b.batchId, quantity: String(take) });
+      rows.push({ key: makeDraftId(), batchId: b.batchId, quantity: String(take) });
       remaining -= take;
     }
   }
   if (rows.length === 0) {
     const first = batches[0];
-    if (first) rows.push({ key: crypto.randomUUID(), batchId: first.batchId, quantity: '0' });
+    if (first) rows.push({ key: makeDraftId(), batchId: first.batchId, quantity: '0' });
   }
   return rows;
 }
@@ -201,7 +202,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
             const usedIds = new Set(l.batchRows.map((r) => r.batchId));
             const nextOption = l.batchOptions.find((b) => !usedIds.has(b.batchId)) ?? l.batchOptions[0];
             if (!nextOption) return l;
-            return { ...l, batchRows: [...l.batchRows, { key: crypto.randomUUID(), batchId: nextOption.batchId, quantity: '0' }] };
+            return { ...l, batchRows: [...l.batchRows, { key: makeDraftId(), batchId: nextOption.batchId, quantity: '0' }] };
           })
         : prev,
     );
@@ -215,7 +216,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
     setLines((prev) => [
       ...(prev ?? []),
       {
-        key: crypto.randomUUID(),
+        key: makeDraftId(),
         prescriptionItemId: null,
         drugId: drug.id,
         drugName: drug.name,
