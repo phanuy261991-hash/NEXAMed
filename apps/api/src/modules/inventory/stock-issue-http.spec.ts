@@ -1276,11 +1276,11 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
    * hai lần tính tiền); (c) hai yêu cầu phát đủ ĐỒNG THỜI → đúng một phiếu.
    */
   describe('GỬI TRÙNG (#256) — Phát thuốc theo đơn', () => {
-    const issueOf = (prescriptionId: string, prescriptionItemId: string, drugId: string, batchId: string, quantity: number) =>
+    const issueOf = (prescriptionId: string, prescriptionItemId: string, drugId: string, batchId: string | null, quantity: number) =>
       request(app.getHttpServer())
         .post('/api/v1/inventory/issues')
         .set(authed(doctorToken))
-        .send({ prescriptionId, warehouseId, lines: [{ prescriptionItemId, drugId, batchId, quantity }] });
+        .send({ prescriptionId, warehouseId, lines: [{ prescriptionItemId, drugId, batchId: batchId ?? undefined, quantity }] });
     const issuesOf = (prescriptionId: string) => privileged.stockIssue.count({ where: { tenantId: fixture.tenantA.id, prescriptionId, status: 'POSTED' } });
 
     it('(a) phát ĐỦ số lượng của đơn rồi gửi lại cùng yêu cầu → lần 2 bị chặn 422 STOCK_ISSUE_EXCEEDS_PRESCRIBED_QUANTITY, chỉ 1 phiếu xuất', async () => {
