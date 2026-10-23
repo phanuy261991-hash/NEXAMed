@@ -716,6 +716,10 @@ model UserAccount {
   // Khoá luỹ tiến → vĩnh viễn của nhân viên (#239): bậc khoá tạm liên tiếp (0..3) và mốc khoá vĩnh viễn (null = chưa).
   lockoutLevel        Int       @default(0) @map("lockout_level") @db.SmallInt
   lockedPermanentlyAt DateTime? @map("locked_permanently_at") @db.Timestamptz(6)
+  // Khoá THÔNG MINH theo "máy quen" (#259): đăng nhập SAI từ máy quen đếm riêng ở đây (khoá tạm, không bao giờ vĩnh viễn); 4 cột khoá ở trên chỉ đếm máy LẠ.
+  familiarFailedLoginCount   Int       @default(0) @map("familiar_failed_login_count")
+  familiarLastFailedLoginAt  DateTime? @map("familiar_last_failed_login_at") @db.Timestamptz(6)
+  familiarLockedUntil        DateTime? @map("familiar_locked_until") @db.Timestamptz(6)
 
   // Chi nhánh làm việc lần gần nhất (#231) — "Nhớ lựa chọn": đăng nhập lần sau vào thẳng chi nhánh này nếu còn được gán.
   lastBranchId String? @map("last_branch_id") @db.Uuid

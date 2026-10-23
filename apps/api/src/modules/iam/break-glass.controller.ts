@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { TenantThrottlerGuard } from '../../common/tenant-throttler.guard';
 import type { Request } from 'express';
 import { breakGlassRequestSchema } from '@nexamed/shared';
@@ -21,6 +22,7 @@ export class BreakGlassController {
 
   @Post()
   @UseGuards(TenantThrottlerGuard)
+  @SkipThrottle({ 'patient-lookup': true })
   @HttpCode(200)
   async request(@Body() body: unknown, @Req() req: Request) {
     const dto = breakGlassRequestSchema.parse(body);

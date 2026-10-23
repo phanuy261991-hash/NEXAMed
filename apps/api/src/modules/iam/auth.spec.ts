@@ -23,6 +23,7 @@ import { TokenService } from './token.service';
 import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
 import { BranchAccessService } from './branch-access.service';
+import { DeviceTrustService } from './device-trust.service';
 import { BranchRepository } from './branch.repository';
 
 // Integration test thật trên Postgres cục bộ (docker-compose), không mock — cùng pattern với
@@ -49,7 +50,7 @@ describe('AuthService — login/refresh/logout', () => {
   const tokenService = new TokenService(new JwtService({}), fakeConfigService());
   const sessionRepository = new SessionRepository();
   const userAccountAuthRepository = new UserAccountAuthRepository();
-  const authService = new AuthService(unitOfWork, userAccountAuthRepository, sessionRepository, tokenService, new BranchAccessService(new BranchRepository()), new TenantDirectoryRepository(appPrisma));
+  const authService = new AuthService(unitOfWork, userAccountAuthRepository, sessionRepository, tokenService, new BranchAccessService(new BranchRepository()), new DeviceTrustService(fakeConfigService() as never), new TenantDirectoryRepository(appPrisma));
 
   let tenantAId: string;
   let tenantBId: string;

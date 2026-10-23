@@ -52,6 +52,7 @@ const ACTION_LABELS: Record<string, string> = {
   'auth.login_success': 'Đăng nhập thành công',
   'auth.login_failed': 'Đăng nhập thất bại',
   'auth.account_locked_permanently': 'Tài khoản bị khoá vĩnh viễn do đăng nhập sai nhiều lần',
+  'auth.account_unlocked_by_trusted_device': 'Tài khoản được mở khoá nhờ đăng nhập đúng từ máy quen',
   'auth.refresh_reuse_detected': 'Phát hiện dùng lại refresh token (thu hồi phiên)',
   'auth.logout': 'Đăng xuất',
   'auth.password_changed': 'Đổi mật khẩu',

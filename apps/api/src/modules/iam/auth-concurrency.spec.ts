@@ -15,6 +15,7 @@ import { TokenService } from './token.service';
 import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
 import { BranchAccessService } from './branch-access.service';
+import { DeviceTrustService } from './device-trust.service';
 import { BranchRepository } from './branch.repository';
 
 /**
@@ -62,7 +63,7 @@ describe('AuthService — nhiều người đăng nhập đồng thời (bể k�
     new SessionRepository(),
     new TokenService(new JwtService({}), fakeConfigService()),
     new BranchAccessService(new BranchRepository()),
-    new TenantDirectoryRepository(appPrisma),
+    new DeviceTrustService(fakeConfigService() as never), new TenantDirectoryRepository(appPrisma),
   );
 
   let tenantId: string;

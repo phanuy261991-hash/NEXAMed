@@ -11,10 +11,10 @@ import {
   RefreshTokenReuseDetectedError,
   TENANT_ACCESS_PORT,
   TenantSuspendedError,
-  isAccountLocked,
-  isAccountLockedPermanently,
+  recordFailedFamiliarLogin,
   recordFailedStaffLogin,
   resolveBranchId,
+  resolveLoginBlock,
   type TenantAccessPort,
 } from '@nexamed/core';
 import type { BranchLite, ChangePasswordRequest, DataScope, LoginRequest, SwitchBranchRequest } from '@nexamed/shared';
@@ -25,6 +25,7 @@ import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
 import { TokenService } from './token.service';
 import { BranchAccessService, toBranchLite } from './branch-access.service';
+import { DeviceTrustService, type DeviceCookie } from './device-trust.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 
 export interface RequestMeta {
@@ -55,6 +56,8 @@ export interface LoginResult {
   user: CurrentUserResult;
   refreshToken: string;
   refreshExpiresIn: number;
+  /** Dấu hiệu "máy quen" cấp sau khi đăng nhập ĐÚNG (#259) — controller đặt thành cookie. */
+  deviceCookie: DeviceCookie;
 }
 
 export interface RefreshResult {
@@ -96,10 +99,15 @@ export class AuthService {
     private readonly sessionRepository: SessionRepository,
     private readonly tokenService: TokenService,
     private readonly branchAccess: BranchAccessService,
+    private readonly deviceTrust: DeviceTrustService,
     @Inject(TENANT_ACCESS_PORT) private readonly tenantAccess: TenantAccessPort,
   ) {}
 
-  async login(request: LoginRequest, meta: RequestMeta): Promise<LoginResult> {
+  /**
+   * `cookies` = cookie của yêu cầu đăng nhập, để nhận ra MÁY QUEN (#259): khoá do máy LẠ gây ra chỉ chặn máy lạ, nên người khác gõ sai nhiều lần không tê liệt được tài khoản của chính chủ.
+   * Mật khẩu đúng + máy quen còn GỠ mọi khoá. Máy lạ giữ nguyên chính sách khoá luỹ tiến → vĩnh viễn của #239.
+   */
+  async login(request: LoginRequest, meta: RequestMeta, cookies?: Record<string, string | undefined>): Promise<LoginResult> {
     // Công ty tạm ngưng (#237): chặn trước mọi thao tác khác. Công ty không tồn tại thì không báo gì riêng — rơi xuống luồng "sai thông tin" như cũ.
     if (await this.tenantAccess.isSuspended(request.tenantId)) throw new TenantSuspendedError();
 
@@ -118,14 +126,12 @@ export class AuthService {
       }
 
       const now = new Date();
-      // Khoá vĩnh viễn (#239) chặn TRƯỚC khi kiểm mật khẩu — mật khẩu đúng cũng không vào được tới khi quản trị mở khoá.
-      if (isAccountLockedPermanently(user)) {
+      // Khoá (#239) chặn TRƯỚC khi kiểm mật khẩu — mật khẩu đúng cũng không vào được tới khi hết khoá/quản trị mở khoá. Từ #259: khoá do máy LẠ gây ra chỉ chặn máy lạ; máy quen không bị liên luỵ.
+      const familiar = this.deviceTrust.isFamiliar(cookies, request.tenantId, user, now);
+      const block = resolveLoginBlock(user, familiar, now);
+      if (block) {
         await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
-        return { kind: 'account_locked_permanently' };
-      }
-      if (isAccountLocked(user, now)) {
-        await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
-        return { kind: 'account_locked', lockedUntil: user.lockedUntil!, now };
+        return block.kind === 'permanent' ? { kind: 'account_locked_permanently' } : { kind: 'account_locked', lockedUntil: block.until, now };
       }
       return { kind: 'verify', passwordHash: user.passwordHash };
     });
@@ -145,13 +151,27 @@ export class AuthService {
         return { kind: 'account_disabled' };
       }
       const now = new Date();
-      if (isAccountLockedPermanently(user)) {
+      const familiar = this.deviceTrust.isFamiliar(cookies, request.tenantId, user, now);
+      const block = resolveLoginBlock(user, familiar, now);
+      if (block) {
         await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
-        return { kind: 'account_locked_permanently' };
+        return block.kind === 'permanent' ? { kind: 'account_locked_permanently' } : { kind: 'account_locked', lockedUntil: block.until, now };
       }
-      if (isAccountLocked(user, now)) {
+
+      if (!passwordOk && familiar) {
+        // MÁY QUEN gõ sai: đếm riêng, chỉ khoá tạm (không bao giờ vĩnh viễn) và không chạm bộ đếm của máy lạ (#259).
+        const nextFamiliar = recordFailedFamiliarLogin(
+          {
+            familiarFailedLoginCount: user.familiarFailedLoginCount,
+            familiarLastFailedLoginAt: user.familiarLastFailedLoginAt,
+            familiarLockedUntil: user.familiarLockedUntil,
+          },
+          now,
+        );
+        await this.userAccountAuthRepository.recordFailedFamiliarLogin(tx, request.tenantId, user.id, nextFamiliar);
         await this.recordFailedAttempt(tx, request.tenantId, user.id, meta);
-        return { kind: 'account_locked', lockedUntil: user.lockedUntil!, now };
+        if (nextFamiliar.familiarLockedUntil) return { kind: 'account_locked', lockedUntil: nextFamiliar.familiarLockedUntil, now };
+        return { kind: 'invalid_credentials' };
       }
 
       if (!passwordOk) {
@@ -183,6 +203,17 @@ export class AuthService {
         return { kind: 'invalid_credentials' };
       }
 
+      // Máy quen đăng nhập ĐÚNG khi tài khoản đang bị khoá do máy lạ → gỡ khoá và để lại dấu vết (#259).
+      if (familiar && (user.lockedPermanentlyAt !== null || (user.lockedUntil !== null && user.lockedUntil.getTime() > now.getTime()))) {
+        await writeAuditLog(tx, request.tenantId, {
+          actorId: user.id,
+          action: 'auth.account_unlocked_by_trusted_device',
+          entityType: 'user_account',
+          entityId: user.id,
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+      }
       await this.userAccountAuthRepository.recordSuccessfulLogin(tx, request.tenantId, user.id);
       const assignedBranches = await this.branchAccess.resolveAssigned(tx, request.tenantId, user.id);
       const currentBranchId = resolveBranchId(
@@ -224,6 +255,7 @@ export class AuthService {
           },
           refreshToken: issued.rawRefreshToken,
           refreshExpiresIn: issued.expiresIn,
+          deviceCookie: this.deviceTrust.issue(request.tenantId, user),
         },
       };
     });

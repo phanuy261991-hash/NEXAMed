@@ -55,6 +55,10 @@ export interface UpdateUserAccountData {
   /** Khoá luỹ tiến → vĩnh viễn (#239) — gán cùng 3 field trên qua `resetStaffLoginAttempts()` (`@nexamed/core`). */
   lockoutLevel?: number;
   lockedPermanentlyAt?: Date | null;
+  /** Khoá thông minh theo máy quen (#259) — xoá cùng lúc qua `resetFamiliarLoginAttempts()` (`@nexamed/core`). */
+  familiarFailedLoginCount?: number;
+  familiarLastFailedLoginAt?: Date | null;
+  familiarLockedUntil?: Date | null;
 }
 
 /**

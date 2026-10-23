@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SkipThrottle } from '@nestjs/throttler';
 import { TenantThrottlerGuard } from '../../common/tenant-throttler.guard';
 import type { Request, Response } from 'express';
 import { changePasswordRequestSchema, loginRequestSchema, switchBranchRequestSchema } from '@nexamed/shared';
@@ -7,6 +8,7 @@ import { RefreshTokenInvalidError } from '@nexamed/core';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { TenantHostService } from '../tenant-context/tenant-host.service';
 import { AuthService, type RequestMeta } from './auth.service';
+import { DEVICE_COOKIE_PATH } from './device-trust.service';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
 const REFRESH_COOKIE_PATH = '/api/v1/auth';
@@ -21,13 +23,22 @@ export class AuthController {
 
   @Post('login')
   @UseGuards(TenantThrottlerGuard)
+  @SkipThrottle({ 'patient-lookup': true })
   @HttpCode(200)
   async login(@Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const dto = loginRequestSchema.parse(body);
     // Chế độ SaaS: tenantId gửi lên phải là công ty của tên miền phụ đang truy cập (#237).
     await this.tenantHost.assertRequestTenant(req, dto.tenantId);
-    const result = await this.authService.login(dto, this.requestMeta(req));
+    const result = await this.authService.login(dto, this.requestMeta(req), req.cookies as Record<string, string | undefined> | undefined);
     this.setRefreshCookie(res, result.refreshToken, result.refreshExpiresIn);
+    // "Máy quen" (#259): cookie ký gắn với tài khoản này, giúp chính chủ vẫn vào được khi người khác làm tài khoản bị khoá.
+    res.cookie(result.deviceCookie.name, result.deviceCookie.value, {
+      httpOnly: true,
+      secure: this.isCookieSecure(),
+      sameSite: 'lax',
+      path: DEVICE_COOKIE_PATH,
+      maxAge: result.deviceCookie.maxAgeMs,
+    });
     return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user };
   }
 

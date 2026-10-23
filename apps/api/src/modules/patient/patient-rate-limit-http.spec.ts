@@ -90,4 +90,23 @@ describe('HTTP e2e — /api/v1/patients (rate limit patient-lookup)', () => {
     expect(throttledCount).toBe(1);
     expect(results[50]).toBe(429);
   }, 30_000);
+
+  /**
+   * #258: giới hạn tính theo NGƯỜI DÙNG, không theo IP — nhân viên một phòng khám dùng chung IP (router văn phòng ở SaaS; Docker Desktop trên PC Windows che IP máy trạm). Ở test trên,
+   * lễ tân A đã dùng hết 50 lượt/phút; lễ tân B cùng IP + cùng công ty vẫn tra cứu bình thường.
+   */
+  it('lễ tân B (cùng IP, cùng công ty) KHÔNG bị chặn khi lễ tân A đã chạm trần tra cứu — giới hạn tính theo người dùng', async () => {
+    const password = 'Test@12345';
+    const username = `e2e-receptionist-b-${randomUUID()}`;
+    const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+    const user = await privileged.userAccount.create({
+      data: { tenantId: fixture.tenantA.id, username, passwordHash, fullName: 'User receptionist B', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+    });
+    const role = await privileged.role.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, name: 'receptionist' } });
+    await privileged.userRole.create({ data: { tenantId: fixture.tenantA.id, userId: user.id, roleId: role.id, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+    const tokenB = (await request(app.getHttpServer()).post('/api/v1/auth/login').send({ tenantId: fixture.tenantA.id, username, password })).body.data.accessToken as string;
+
+    expect((await request(app.getHttpServer()).get('/api/v1/patients').set(authed(receptionistToken))).status).toBe(429);
+    expect((await request(app.getHttpServer()).get('/api/v1/patients').set(authed(tokenB))).status).toBe(200);
+  });
 });

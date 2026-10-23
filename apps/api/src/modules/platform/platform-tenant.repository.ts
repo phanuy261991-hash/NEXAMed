@@ -163,7 +163,7 @@ export class PlatformTenantRepository {
   async setPasswordAndUnlock(tx: Prisma.TransactionClient, tenantId: string, userId: string, passwordHash: string, operatorId: string): Promise<void> {
     await tx.userAccount.update({
       where: { tenantId_id: { tenantId, id: userId } },
-      data: { passwordHash, mustChangePassword: true, failedLoginCount: 0, lastFailedLoginAt: null, lockedUntil: null, updatedBy: operatorId, version: { increment: 1 } },
+      data: { passwordHash, mustChangePassword: true, failedLoginCount: 0, lastFailedLoginAt: null, lockedUntil: null, lockoutLevel: 0, lockedPermanentlyAt: null, familiarFailedLoginCount: 0, familiarLastFailedLoginAt: null, familiarLockedUntil: null, updatedBy: operatorId, version: { increment: 1 } },
     });
   }
 }

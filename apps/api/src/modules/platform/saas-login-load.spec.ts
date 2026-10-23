@@ -15,6 +15,7 @@ import { TokenService } from '../iam/token.service';
 import { SessionRepository } from '../iam/session.repository';
 import { UserAccountAuthRepository } from '../iam/user-account-auth.repository';
 import { BranchAccessService } from '../iam/branch-access.service';
+import { DeviceTrustService } from '../iam/device-trust.service';
 import { BranchRepository } from '../iam/branch.repository';
 
 /**
@@ -61,7 +62,7 @@ describe.skipIf(!ENABLED)(`SaaS — ${COMPANIES} công ty × ${USERS_PER_COMPANY
     new SessionRepository(),
     new TokenService(new JwtService({}), fakeConfigService()),
     new BranchAccessService(new BranchRepository()),
-    new TenantDirectoryRepository(appPrisma),
+    new DeviceTrustService(fakeConfigService() as never), new TenantDirectoryRepository(appPrisma),
   );
 
   const tenantIds: string[] = [];

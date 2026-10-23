@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, UserAccount } from '@prisma/client';
-import type { StaffLoginAttemptState } from '@nexamed/core';
+import type { FamiliarLoginAttemptState, StaffLoginAttemptState } from '@nexamed/core';
 
 /**
  * Chỉ phần đọc/ghi `user_account` phục vụ đăng nhập (tra cứu, đếm đăng nhập sai, khoá tạm).
@@ -36,6 +36,20 @@ export class UserAccountAuthRepository {
     });
   }
 
+  /** Đăng nhập sai từ MÁY QUEN (#259) — đếm riêng, khoá tạm không bao giờ vĩnh viễn. */
+  recordFailedFamiliarLogin(tx: Prisma.TransactionClient, tenantId: string, userId: string, state: FamiliarLoginAttemptState): Promise<UserAccount> {
+    return tx.userAccount.update({
+      where: { tenantId_id: { tenantId, id: userId } },
+      data: {
+        familiarFailedLoginCount: state.familiarFailedLoginCount,
+        familiarLastFailedLoginAt: state.familiarLastFailedLoginAt,
+        familiarLockedUntil: state.familiarLockedUntil,
+        updatedBy: userId,
+        version: { increment: 1 },
+      },
+    });
+  }
+
   recordSuccessfulLogin(tx: Prisma.TransactionClient, tenantId: string, userId: string): Promise<UserAccount> {
     return tx.userAccount.update({
       where: { tenantId_id: { tenantId, id: userId } },
@@ -45,6 +59,9 @@ export class UserAccountAuthRepository {
         lockedUntil: null,
         lockoutLevel: 0,
         lockedPermanentlyAt: null,
+        familiarFailedLoginCount: 0,
+        familiarLastFailedLoginAt: null,
+        familiarLockedUntil: null,
         updatedBy: userId,
         version: { increment: 1 },
       },

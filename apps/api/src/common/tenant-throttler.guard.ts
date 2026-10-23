@@ -1,27 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { ipTenantTracker } from './throttle-trackers';
 
 /**
- * Giới hạn tần suất tính theo (IP + CÔNG TY) thay vì chỉ IP (docs/DECISIONS.md #244).
+ * Guard giới hạn tần suất dùng chung. Khoá đếm KHÔNG còn một cách tính duy nhất theo IP (docs/DECISIONS.md #258, sửa #244): từng giới hạn khai báo `getTracker` riêng ở `ThrottlerModule`
+ * (`iam.module.ts`, hàm ở `throttle-trackers.ts`) — đăng nhập theo tài khoản + theo IP, tra cứu bệnh nhân theo người dùng. Hàm dưới đây chỉ là mặc định cho giới hạn nào không tự khai báo.
  *
- * Lỗi thật đã kiểm chứng 21/10/2026 ở chế độ SaaS: `ThrottlerGuard` mặc định khoá theo `req.ip`, mà sau reverse proxy MỌI người dùng của MỌI công ty đều có chung một IP
- * (của proxy). Hậu quả: một người gõ sai mật khẩu 10 lần là chặn luôn đăng nhập của tất cả các công ty khác trên cùng hệ thống — chỉ cần một người lạ cũng làm tê liệt
- * được cả nền tảng. Thêm mã công ty vào khoá đếm nên mỗi công ty có hạn mức riêng.
- *
- * Mã công ty lấy từ thân yêu cầu đăng nhập (hoặc token đã xác thực). Người lạ tự bịa mã công ty KHÔNG giúp dò mật khẩu (tài khoản chỉ thuộc đúng một công ty, mã sai thì
- * không có tài khoản nào khớp) — chỉ tạo thêm ô đếm rỗng, mỗi ô tự hết hạn sau đúng cửa sổ giới hạn. Chỉ nhận mã đúng dạng UUID để không nhận chuỗi rác dài làm khoá.
- * Lưu ý: muốn khoá theo ĐÚNG máy trạm thì còn cần đặt `TRUST_PROXY_HOPS` (xem `env.schema.ts`), nếu không mọi máy trong cùng một phòng khám vẫn dùng chung hạn mức.
+ * Lịch sử #244: `ThrottlerGuard` mặc định khoá theo `req.ip`, mà sau reverse proxy MỌI người dùng của MỌI công ty chung một IP — một người gõ sai mật khẩu chặn cả hệ thống; nên mã công ty
+ * luôn nằm trong khoá. Muốn khoá theo ĐÚNG máy trạm thì cần `TRUST_PROXY_HOPS` (xem `env.schema.ts`); riêng PC Windows chạy Docker Desktop vẫn che IP máy trạm (đo thật 23/10/2026)
+ * nên đừng dựa vào IP một mình.
  */
 @Injectable()
 export class TenantThrottlerGuard extends ThrottlerGuard {
-  protected override async getTracker(req: Record<string, unknown>): Promise<string> {
-    const ip = await super.getTracker(req);
-    const body = req.body as { tenantId?: unknown } | undefined;
-    const user = req.user as { tenantId?: unknown } | undefined;
-    const raw = typeof body?.tenantId === 'string' ? body.tenantId : typeof user?.tenantId === 'string' ? user.tenantId : null;
-    const tenantId = raw && UUID_PATTERN.test(raw) ? raw : 'khong-xac-dinh';
-    return `${ip}|${tenantId}`;
+  protected override getTracker(req: Record<string, unknown>): Promise<string> {
+    return Promise.resolve(ipTenantTracker(req));
   }
 }

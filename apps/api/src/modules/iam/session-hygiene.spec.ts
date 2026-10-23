@@ -15,6 +15,7 @@ import { TokenService } from './token.service';
 import { SessionRepository } from './session.repository';
 import { UserAccountAuthRepository } from './user-account-auth.repository';
 import { BranchAccessService } from './branch-access.service';
+import { DeviceTrustService } from './device-trust.service';
 import { BranchRepository } from './branch.repository';
 import { purgeExpiredSessionsForAllTenants } from './expired-session-purge';
 
@@ -46,7 +47,7 @@ describe('Phiên đăng nhập — giới hạn số phiên và dọn phiên h�
     sessionRepository,
     new TokenService(new JwtService({}), fakeConfigService()),
     new BranchAccessService(new BranchRepository()),
-    new TenantDirectoryRepository(appPrisma),
+    new DeviceTrustService(fakeConfigService() as never), new TenantDirectoryRepository(appPrisma),
   );
 
   let tenantId: string;

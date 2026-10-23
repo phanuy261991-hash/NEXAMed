@@ -1,7 +1,10 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { BRANCH_DIRECTORY_PORT, DOCTOR_DIRECTORY_PORT, NOTIFICATION_PORT } from '@nexamed/core';
+import { BRANCH_DIRECTORY_PORT, DOCTOR_DIRECTORY_PORT, LOGIN_ACCOUNT_LIMIT_PER_MINUTE, NOTIFICATION_PORT, resolveLoginIpLimit } from '@nexamed/core';
+import type { Env } from '../../config/env.schema';
+import { THROTTLE_LOGIN_ACCOUNT, THROTTLE_LOGIN_IP, THROTTLE_PATIENT_LOOKUP, accountTracker, ipTenantTracker, userTracker } from '../../common/throttle-trackers';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
@@ -27,12 +30,19 @@ import { BranchController } from './branch.controller';
 import { BranchService } from './branch.service';
 import { BranchRepository } from './branch.repository';
 import { BranchAccessService } from './branch-access.service';
+import { DeviceTrustService } from './device-trust.service';
 import { ExpiredSessionPurgeJob } from './expired-session-purge.job';
 import { NoopNotificationAdapter } from '../../infrastructure/notification/noop.adapter';
 import { DoctorDirectoryAdapter } from '../../infrastructure/directory/doctor-directory.adapter';
 import { BranchDirectoryAdapter } from '../../infrastructure/directory/branch-directory.adapter';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
 import { ClinicModule } from '../clinic/clinic.module';
+
+/** `ConfigService` có thể trả biến môi trường ở dạng chuỗi (chưa qua ép kiểu của schema) — đổi về số; rỗng/thiếu = không đặt giá trị riêng. */
+function loginIpLimitOverride(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  return Number(value);
+}
 
 /**
  * Rate limit riêng cho /auth/login và /break-glass (10 request/phút/IP mỗi endpoint — mỗi
@@ -69,10 +79,23 @@ import { ClinicModule } from '../clinic/clinic.module';
 @Module({
   imports: [
     JwtModule.register({}),
-    ThrottlerModule.forRoot([
-      { name: 'login', ttl: 60_000, limit: 10 },
-      { name: 'patient-lookup', ttl: 60_000, limit: 50 },
-    ]),
+    // Giới hạn tần suất (docs/DECISIONS.md #258, sửa #244) — KHÔNG còn chỉ theo IP vì nhân viên một phòng khám dùng chung IP:
+    //  - 'login' (đăng nhập + xin quyền khẩn cấp): theo TÀI KHOẢN/người dùng, 10/phút;
+    //  - 'login-ip' (cùng hai route): theo IP + công ty, trần RỘNG hơn (SaaS 30, một công ty 60, chỉnh bằng LOGIN_IP_LIMIT_PER_MINUTE) — chỉ còn chặn "rải" mật khẩu qua nhiều tài khoản;
+    //  - 'patient-lookup' (tra cứu bệnh nhân): theo NGƯỜI DÙNG, 50/phút.
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) => [
+        { name: THROTTLE_LOGIN_ACCOUNT, ttl: 60_000, limit: LOGIN_ACCOUNT_LIMIT_PER_MINUTE, getTracker: accountTracker },
+        {
+          name: THROTTLE_LOGIN_IP,
+          ttl: 60_000,
+          limit: resolveLoginIpLimit(config.get('DEPLOYMENT_MODE', { infer: true }) ?? 'single', loginIpLimitOverride(config.get('LOGIN_IP_LIMIT_PER_MINUTE', { infer: true }))),
+          getTracker: ipTenantTracker,
+        },
+        { name: THROTTLE_PATIENT_LOOKUP, ttl: 60_000, limit: 50, getTracker: userTracker },
+      ],
+    }),
     // Cần REFERENCE_CATALOG_READER_PORT cho UserAccountService (mở rộng ADM-01, tự động vô hiệu
     // hoá tài khoản theo Trạng thái làm việc) — không có chiều ngược lại (ReferenceCatalogModule
     // không import IamModule), không circular.
@@ -110,6 +133,7 @@ import { ClinicModule } from '../clinic/clinic.module';
     BranchService,
     BranchRepository,
     BranchAccessService,
+    DeviceTrustService,
     // Dọn phiên hết hạn mỗi đêm (#244) — cùng khuôn `SystemLogPurgeJob` của module audit.
     ExpiredSessionPurgeJob,
     { provide: NOTIFICATION_PORT, useClass: NoopNotificationAdapter },

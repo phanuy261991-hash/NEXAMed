@@ -24,6 +24,9 @@ export const envSchema = z.object({
   // đứng sau ĐÚNG MỘT reverse proxy do mình quản (nginx của bản on-prem, hoặc proxy của SaaS) —
   // lúc đó giới hạn tần suất mới tính đúng theo từng máy trạm và nhật ký mới ghi đúng IP người dùng.
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+  // Trần đăng nhập theo IP + công ty mỗi phút (docs/DECISIONS.md #258). Bỏ trống = mặc định theo kiểu triển khai (SaaS 30, một công ty 60 — `resolveLoginIpLimit` ở core). Giới hạn theo
+  // TÀI KHOẢN (10/phút) thì cố định, không chỉnh ở đây.
+  LOGIN_IP_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(100000).optional(),
   // Đường dẫn file trạng thái sao lưu do `deploy/on-prem/backup/backup.sh` ghi ra (S6-01, ADM-04)
   // — CHỈ đặt ở bản on-prem thật (docker-compose.yml mount volume dùng chung với container
   // `backup`). Để trống (mặc định, đúng cho máy dev — không chạy container backup) thì

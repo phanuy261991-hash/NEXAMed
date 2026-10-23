@@ -36,7 +36,7 @@ export class AccountLockedPermanentlyError extends DomainError {
   readonly code = 'AUTH_ACCOUNT_LOCKED_PERMANENT';
 
   constructor() {
-    super('Tài khoản đã bị khoá do đăng nhập sai nhiều lần. Vui lòng liên hệ quản trị viên để được mở khoá.');
+    super('Tài khoản đã bị khoá do đăng nhập sai nhiều lần từ thiết bị này. Hãy đăng nhập từ máy bạn vẫn thường dùng (khoá sẽ tự gỡ) hoặc liên hệ quản trị viên để được mở khoá.');
   }
 }
 

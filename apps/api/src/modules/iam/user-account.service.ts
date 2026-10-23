@@ -7,8 +7,8 @@ import {
   ConcurrentModificationError,
   InvalidSignatureError,
   REFERENCE_CATALOG_READER_PORT,
+  resetFamiliarLoginAttempts,
   resetStaffLoginAttempts,
-  isAccountLocked,
   isAccountLockedPermanently,
   resolveAccountActiveState,
   RoleInvalidReferenceError,
@@ -427,6 +427,7 @@ export class UserAccountService {
       const count = await this.userAccountRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, {
         passwordHash,
         ...resetStaffLoginAttempts(),
+        ...resetFamiliarLoginAttempts(),
         ...(dto.mustChangePassword !== undefined ? { mustChangePassword: dto.mustChangePassword } : {}),
       });
       if (count === 0) {
@@ -480,7 +481,7 @@ export class UserAccountService {
         return this.toSummary(existing, roleNames, targetBranches);
       }
 
-      const count = await this.userAccountRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, { ...resetStaffLoginAttempts() });
+      const count = await this.userAccountRepository.updateIfVersionMatches(tx, tenantId, id, dto.version, actorId, { ...resetStaffLoginAttempts(), ...resetFamiliarLoginAttempts() });
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
@@ -579,7 +580,10 @@ export class UserAccountService {
   /** Tình trạng khoá đăng nhập để hiện ở danh sách tài khoản (#239). */
   private lockSummary(user: UserAccount): Pick<UserAccountSummary, 'lockStatus' | 'lockedUntil'> {
     if (isAccountLockedPermanently(user)) return { lockStatus: 'PERMANENT', lockedUntil: null };
-    if (isAccountLocked(user, new Date())) return { lockStatus: 'TEMPORARY', lockedUntil: user.lockedUntil!.toISOString() };
+    // Khoá tạm gồm cả khoá do máy lạ (`lockedUntil`) lẫn khoá do máy quen gõ sai (`familiarLockedUntil`, #259) — danh sách quản trị báo mốc hết MUỘN nhất.
+    const now = Date.now();
+    const untils = [user.lockedUntil, user.familiarLockedUntil].filter((d): d is Date => d !== null && d.getTime() > now);
+    if (untils.length > 0) return { lockStatus: 'TEMPORARY', lockedUntil: new Date(Math.max(...untils.map((d) => d.getTime()))).toISOString() };
     return { lockStatus: 'NONE', lockedUntil: null };
   }
 

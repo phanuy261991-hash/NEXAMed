@@ -63,12 +63,12 @@ export class PatientController {
    * mã") — trước đây 4 endpoint GET dưới đây (list/check-duplicate/by-phone/by-national-id) không
    * có giới hạn nào. `@SkipThrottle({ login: true })` vì `ThrottlerGuard` mặc định áp MỌI throttler
    * đã đăng ký (`iam.module.ts`) lên route được gắn guard — bỏ qua bucket `login` (10/phút, quá
-   * chặt cho tra cứu bình thường), chỉ giữ `patient-lookup` (30/phút).
+   * chặt cho tra cứu bình thường), chỉ giữ `patient-lookup` (50/phút, tính theo NGƯỜI DÙNG đã đăng nhập chứ không theo IP — docs/DECISIONS.md #258; `login-ip` cũng bỏ qua).
    */
   @Get()
   @RequirePermission('patient', 'read')
   @UseGuards(TenantThrottlerGuard)
-  @SkipThrottle({ login: true })
+  @SkipThrottle({ login: true, 'login-ip': true })
   async list(@Query() query: unknown, @Req() req: Request) {
     const dto = listPatientsQuerySchema.parse(query);
     const { tenantId } = req.user!;
@@ -82,7 +82,7 @@ export class PatientController {
   @Get('check-duplicate')
   @RequirePermission('patient', 'read')
   @UseGuards(TenantThrottlerGuard)
-  @SkipThrottle({ login: true })
+  @SkipThrottle({ login: true, 'login-ip': true })
   async checkDuplicate(@Query() query: unknown, @Req() req: Request) {
     const dto = checkPatientDuplicateQuerySchema.parse(query);
     const { tenantId } = req.user!;
@@ -96,7 +96,7 @@ export class PatientController {
   @Get('by-phone')
   @RequirePermission('patient', 'read')
   @UseGuards(TenantThrottlerGuard)
-  @SkipThrottle({ login: true })
+  @SkipThrottle({ login: true, 'login-ip': true })
   async findByPhone(@Query() query: unknown, @Req() req: Request) {
     const dto = patientByPhoneQuerySchema.parse(query);
     const { tenantId } = req.user!;
@@ -110,7 +110,7 @@ export class PatientController {
   @Get('by-national-id')
   @RequirePermission('patient', 'read')
   @UseGuards(TenantThrottlerGuard)
-  @SkipThrottle({ login: true })
+  @SkipThrottle({ login: true, 'login-ip': true })
   async findByNationalId(@Query() query: unknown, @Req() req: Request) {
     const dto = patientByNationalIdQuerySchema.parse(query);
     const { tenantId } = req.user!;

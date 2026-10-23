@@ -77,3 +77,4 @@ export * from './version/semver';
 export * from './version/update-state';
 export * from './platform/tenant-host';
 export * from './idempotency/idempotency';
+export * from './iam/login-throttle';
