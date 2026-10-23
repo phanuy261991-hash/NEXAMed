@@ -164,6 +164,8 @@ Mã nguồn `.ts`, lịch sử `.git`, và tài liệu nội bộ là tài sản
 
 `.env`/`config.json` (2 file thật, không commit — xem `.gitignore`) nằm cạnh `docker-compose.yml` tại `deploy/on-prem/`.
 
+Biến tuỳ chọn (không có trong `.env` mới cài, thêm khi cần): `LOGIN_IP_LIMIT_PER_MINUTE` — trần đăng nhập theo IP mỗi phút (mặc định 60 bản một công ty, 30 SaaS; xem 2.3e). Nâng cấp lên bản có khoá chống ghi trùng và khoá đăng nhập thông minh chạy thêm 2 migration (`20261023100000`, `20261023110000`) tự động qua service `migrate` — không cần thao tác tay.
+
 ### 2.3. Cách chạy — hướng dẫn từng bước (cách duy nhất, từ 15/10/2026, `docs/DECISIONS.md` #238)
 
 `install.ps1`/`install.cmd`/`install.sh` cũ đã BỎ — mọi cài đặt và nâng cấp đi qua trình cài đặt `nexamed-setup`. Đã kiểm chứng thật bằng Docker và Chrome: cài kiểu "Tại phòng khám" (Windows và từ container Linux), cài kiểu SaaS, nâng cấp, quay lui, tự quay lui khi nâng cấp lỗi. **Đã kiểm chứng thêm**: nâng cấp một hệ thống cài bằng script `install.*` CŨ (mục 2.3b) và lệnh đặt lại mật khẩu quản trị trên ảnh Docker thật. **Chưa kiểm chứng**: xin chứng chỉ Let's Encrypt thật (kiểu VPS), máy Linux/NAS thật, máy Windows sạch.
@@ -384,6 +386,27 @@ docker compose exec postgres psql -U nexamed -d nexamed -c "CREATE OR REPLACE FU
 | `docker images` | Liệt kê mọi ảnh Docker đang có trên máy | Kiểm tra đã nạp đúng ảnh/đúng phiên bản chưa |
 | `docker image inspect <tên>:<version>` | Xem chi tiết 1 ảnh — dùng để xác nhận đã nạp đúng | Nghi ngờ nạp sai/thiếu ảnh |
 | `docker ps -a` | Liệt kê MỌI container (kể cả đã dừng) trên máy, không riêng dự án này | Tìm container nào đó đã tắt, hoặc kiểm tra cổng bị chiếm |
+
+### 2.3e. Mạng nội bộ (LAN, HTTP thường): máy trạm truy cập, tường lửa, IP, khoá đăng nhập (23/10/2026, `docs/DECISIONS.md` #257–#259)
+
+Mô hình giao hàng chính: máy chủ đặt trong mạng nội bộ phòng khám, nhân viên mở trình duyệt ở máy trạm vào **`http://<IP máy chủ>`** (thêm `:<cổng>` nếu cổng web khác 80). **HTTP thường, KHÔNG HTTPS, có thể không có Internet.** Phần mềm đã được kiểm theo đúng mô hình này (stack Docker thật, máy trạm thật trong LAN): không phụ thuộc tài nguyên ngoài Internet, giao diện gọi máy chủ qua chính địa chỉ đang mở (`apiBaseUrl` rỗng, nginx chuyển `/api`) nên **đổi IP máy chủ không phải sửa cấu hình ứng dụng** — nhân viên chỉ cần mở địa chỉ mới; cookie phiên `COOKIE_SECURE=false` (chỉ đặt `true` khi có HTTPS thật phía trước).
+
+**1. Tường lửa Windows (máy chủ là PC Windows chạy Docker Desktop).** Nếu máy trạm không vào được dù máy chủ vào bình thường: tường lửa đang chặn cổng web với mạng ở hồ sơ "Public" (hay gặp với Wi-Fi). Mở cổng cho đúng mạng nội bộ — chạy PowerShell **với quyền Administrator** trên máy chủ (đổi `80` nếu dùng cổng khác):
+
+```powershell
+New-NetFirewallRule -DisplayName "NEXAMed web (LAN)" -Direction Inbound -Protocol TCP -LocalPort 80 -RemoteAddress LocalSubnet -Profile Any -Action Allow
+# Gỡ khi không cần nữa:  Remove-NetFirewallRule -DisplayName "NEXAMed web (LAN)"
+```
+
+`-RemoteAddress LocalSubnet` chỉ cho máy cùng mạng con vào, không mở ra Internet. Kiểm bằng cách mở `http://<IP máy chủ>` từ MỘT máy khác. Nên đặt IP cố định (hoặc "DHCP reservation" ở router) cho máy chủ để địa chỉ không đổi theo ngày.
+
+**2. IP của máy trạm trong nhật ký.** Trên **PC Windows chạy Docker Desktop**, cơ chế chuyển tiếp cổng của Docker Desktop làm máy chủ ứng dụng thấy MỌI máy trạm là cùng một IP của cổng mạng Docker (thường dạng `172.x.0.1`; đo thật 23/10/2026 với máy trạm `192.168.3.27`). Hệ quả: cột IP trong nhật ký đăng nhập không phân biệt được máy trạm, và mọi giới hạn tính theo IP bị cả phòng khám dùng chung — phần mềm đã tính đến việc này (giới hạn theo tài khoản/người dùng, mục 3). Trên **Linux/NAS (Docker Engine)** IP máy trạm được giữ nguyên (cần `TRUST_PROXY_HOPS=1`, trình cài đặt đã đặt).
+
+**3. Giới hạn tần suất đăng nhập (#258).** Đăng nhập: tối đa **10 lần/phút cho mỗi tài khoản** (không phụ thuộc IP) cộng trần theo IP + công ty, mặc định **60 lần/phút** ở bản một công ty (đủ cho cả phòng khám đăng nhập đầu ca). Tra cứu bệnh nhân: 50 lần/phút **cho mỗi người dùng**. Gặp lỗi "thao tác quá nhanh" (429) hiếm khi cần chỉnh; nếu phòng khám rất đông, đặt `LOGIN_IP_LIMIT_PER_MINUTE=<số>` trong `.env` rồi `docker compose up -d` (chỉ ảnh hưởng trần IP, không đổi giới hạn theo tài khoản).
+
+**4. Khoá đăng nhập và "máy quen" (#259).** Nhập sai mật khẩu 5 lần từ một máy sẽ khoá tạm tài khoản (5, rồi 15, rồi 30 phút, sau đó khoá vĩnh viễn). Để người khác gõ sai không làm tê liệt tài khoản của bạn: trình duyệt đã **đăng nhập đúng ít nhất một lần** được nhận là **máy quen** — khoá do máy lạ gây ra không chặn máy quen, và đăng nhập đúng từ máy quen sẽ tự gỡ khoá. Vì vậy: (a) mỗi nhân viên nên đăng nhập một lần bằng trình duyệt thường dùng của mình (không dùng cửa sổ ẩn danh); (b) xoá cookie/dữ liệu trình duyệt, đổi trình duyệt hay đổi mật khẩu thì máy đó thành máy lạ (đăng nhập lại một lần để thành máy quen); (c) tài khoản đang bị khoá mà nhân viên chỉ có máy mới → quản trị viên mở khoá ở "Quản trị → Tài khoản" (quyền `user_account.unlock`), hoặc dùng lệnh đặt lại mật khẩu quản trị (mục 2.3). Máy quen gõ sai 10 lần chỉ bị khoá 15 phút, không bao giờ khoá vĩnh viễn.
+
+**5. Kiểm sau khi cài/nâng cấp (5 phút, nên làm một lần).** Từ MỘT máy trạm khác máy chủ: mở `http://<IP máy chủ>` → đăng nhập → tải lại trang (phải vẫn đăng nhập) → vào Kê đơn/Đơn thuốc mẫu và chọn một thuốc (trước đây từng hỏng ở HTTP LAN vì trình duyệt không cấp `crypto.randomUUID`, nay đã có dự phòng) → thử in/xuất PDF. Trên máy dev có công cụ tự động: `scripts/ui-audit/lan-http-check.cjs` (quét mọi trang qua địa chỉ LAN, xem đầu tệp để biết cách dựng Vite phụ và biến môi trường).
 
 ### 2.4. PC không có server nội bộ — tự chạy lại sau khi khởi động lại, không cần nhân viên thao tác
 
