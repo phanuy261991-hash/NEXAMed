@@ -1228,6 +1228,22 @@ describe('HTTP e2e — /api/v1/encounters', () => {
       expect(versionMismatch.body.error.code).toBe('CONCURRENT_MODIFICATION');
     });
 
+    it('KHOẢNG TRỐNG ĐÃ BIẾT — GỬI TRÙNG (#256): "Đính chính chẩn đoán" gửi lại cùng nội dung (không có version) → thêm MỘT bản đính chính nữa; dữ liệu chẩn đoán vẫn đúng (1 dòng còn hiệu lực) nhưng vết đính chính bị nhân đôi', async () => {
+      const encounterId = await completedEncounter(21);
+      const amend = () =>
+        request(app.getHttpServer())
+          .post(`/api/v1/encounters/${encounterId}/diagnoses/amend`)
+          .set(authed(doctorAToken))
+          .send({ amendmentReason: 'Sửa lại sau khi xem lại hồ sơ', diagnoses: [{ icd10Code: 'A00.1', type: 'PRIMARY' as const }] });
+
+      expect((await amend()).status).toBe(200);
+      expect((await amend()).status).toBe(200);
+
+      const active = await privileged.diagnosis.findMany({ where: { tenantId: fixture.tenantA.id, encounterId, deletedAt: null } });
+      expect(active.map((d) => d.icd10Code)).toEqual(['A00.1']);
+      expect(await privileged.auditLog.count({ where: { tenantId: fixture.tenantA.id, entityId: encounterId, action: 'diagnosis.amended' } })).toBe(2);
+    });
+
     it('bác sĩ KHÁC (không phải người khám ca đó, scope personal) đính chính → 404', async () => {
       const encounterId = await completedEncounter(17);
 

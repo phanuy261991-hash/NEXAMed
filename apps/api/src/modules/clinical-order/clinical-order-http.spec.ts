@@ -230,6 +230,26 @@ describe('HTTP e2e — /api/v1/encounters/:id/clinical-orders (Chỉ định c�
       expect(invoice.lines.some((l) => l.examTypeName.startsWith('CT scan'))).toBe(false);
     });
 
+    it('GỬI TRÙNG (#256): lưu CÙNG danh sách chỉ định hai lần liên tiếp và hai lần đồng thời → vẫn đúng 1 phiếu, đúng số dòng, hoá đơn không bị cộng đôi', async () => {
+      const { encounterId } = await prepareEncounterInConsultation();
+      const body = { items: [inHouse(glucoseId, { quantity: 2 }), inHouse(imagingId)] };
+      const expectedTotal = 150_000 + 2 * 80_000 + 420_000;
+
+      const first = await savedOrder(encounterId, body);
+      const second = await savedOrder(encounterId, body);
+      expect(second.orderNo).toBe(first.orderNo);
+      const [a, b] = await Promise.all([save(encounterId, body), save(encounterId, body)]);
+      expect([a.status, b.status], JSON.stringify([a.body, b.body])).toEqual([200, 200]);
+
+      const orders = await privileged.clinicalOrder.findMany({ where: { tenantId: fixture.tenantA.id, encounterId, deletedAt: null } });
+      expect(orders).toHaveLength(1);
+      const items = await privileged.clinicalOrderItem.findMany({ where: { tenantId: fixture.tenantA.id, clinicalOrderId: orders[0]!.id, deletedAt: null } });
+      expect(items).toHaveLength(2);
+      const invoice = await invoiceOf(encounterId);
+      expect(invoice.totalAmount).toBe(expectedTotal);
+      expect(invoice.lines.filter((l) => l.lineSource === 'PARACLINICAL')).toHaveLength(2);
+    });
+
     it('validate: làm tại phòng khám với dịch vụ không tự làm → 422; chưa có đơn giá → 422; tên tự do kèm IN_HOUSE → 400; dịch vụ lạ → 400', async () => {
       const { encounterId } = await prepareEncounterInConsultation();
       const notInHouse = await save(encounterId, { items: [inHouse(outsideOnlyId)] });

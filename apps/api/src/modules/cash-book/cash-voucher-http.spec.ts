@@ -475,4 +475,22 @@ describe('HTTP e2e — /api/v1/cash-vouchers', () => {
       expect(ids).toContain(oldVoucherId);
     });
   });
+
+  /**
+   * GỬI TRÙNG (#256) — lập phiếu thu/chi không có khoá tự nhiên (mỗi lần gửi là một chứng từ mới, mã số mới): bấm lại sau khi mạng đứt ra hai phiếu cùng nội dung,
+   * làm lệch "Tiền mặt dự kiến trong két" của ca. Ca này khẳng định HIỆN TRẠNG; khi có `Idempotency-Key` thì sửa thành "chỉ 1 phiếu".
+   */
+  it('KHOẢNG TRỐNG ĐÃ BIẾT — GỬI TRÙNG (#256): lập phiếu THU cùng nội dung hai lần liên tiếp và hai lần đồng thời → ra 4 phiếu riêng biệt', async () => {
+    const description = `Trùng ${randomUUID()}`;
+    const create = () => createVoucher(cashierToken, 'INCOME', 123_000, { description });
+
+    expect((await create()).status).toBe(200);
+    expect((await create()).status).toBe(200);
+    const [a, b] = await Promise.all([create(), create()]);
+    expect([a.status, b.status]).toEqual([200, 200]);
+
+    const rows = await privileged.cashVoucher.findMany({ where: { tenantId: fixture.tenantA.id, description }, select: { voucherNo: true } });
+    expect(rows).toHaveLength(4);
+    expect(new Set(rows.map((r) => r.voucherNo)).size).toBe(4);
+  });
 });

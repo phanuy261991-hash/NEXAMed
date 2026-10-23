@@ -228,6 +228,18 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
     expect(row.quantityOnHand).toBe(300);
   });
 
+  it('KHOẢNG TRỐNG ĐÃ BIẾT — GỬI TRÙNG (#256): lập phiếu nhập NHÁP cùng nội dung hai lần → ra HAI phiếu nháp, hai mã (chưa nhập kho: tồn chỉ đổi khi Duyệt, và Duyệt đã chặn trùng ở ca ngay dưới)', async () => {
+    const drugId = await createDrug(clinicAdminToken);
+    const draft = () => createReceipt(clinicAdminToken, { lines: [{ drugId, unitCode: 'VIEN', quantity: 10, unitCost: 100, batchNo: 'DUP1', expiryDate: '2027-01-01' }] });
+    const first = await draft();
+    const second = await draft();
+    expect([first.status, second.status]).toEqual([200, 200]);
+    expect(first.body.data.id).not.toBe(second.body.data.id);
+    expect(first.body.data.receiptNo).not.toBe(second.body.data.receiptNo);
+    expect(first.body.data.status).toBe('DRAFT');
+    expect(second.body.data.status).toBe('DRAFT');
+  });
+
   it('Duyệt trùng (2 request đồng thời) — chỉ 1 thành công', async () => {
     const drugId = await createDrug(clinicAdminToken);
     const created = await createReceipt(clinicAdminToken, { lines: [{ drugId, unitCode: 'VIEN', quantity: 10, unitCost: 100, batchNo: 'RACE1', expiryDate: '2027-01-01' }] });

@@ -1270,4 +1270,54 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
     });
   });
 
+  /**
+   * GỬI TRÙNG (#256) — "Phát thuốc" khi mạng đứt rồi bấm lại. Hàng rào là "không phát vượt số lượng còn lại của đơn" (1 đơn ↔ N phiếu xuất hợp lệ nên không thể
+   * chặn theo đơn): (a) phát ĐỦ rồi bấm lại → lần 2 bị chặn; (b) phát MỘT PHẦN rồi bấm lại → ghi trùng (KHOẢNG TRỐNG ĐÃ BIẾT, hai phiếu xuất, hai lần trừ kho,
+   * hai lần tính tiền); (c) hai yêu cầu phát đủ ĐỒNG THỜI → đúng một phiếu.
+   */
+  describe('GỬI TRÙNG (#256) — Phát thuốc theo đơn', () => {
+    const issueOf = (prescriptionId: string, prescriptionItemId: string, drugId: string, batchId: string, quantity: number) =>
+      request(app.getHttpServer())
+        .post('/api/v1/inventory/issues')
+        .set(authed(doctorToken))
+        .send({ prescriptionId, warehouseId, lines: [{ prescriptionItemId, drugId, batchId, quantity }] });
+    const issuesOf = (prescriptionId: string) => privileged.stockIssue.count({ where: { tenantId: fixture.tenantA.id, prescriptionId, status: 'POSTED' } });
+
+    it('(a) phát ĐỦ số lượng của đơn rồi gửi lại cùng yêu cầu → lần 2 bị chặn 422 STOCK_ISSUE_EXCEEDS_PRESCRIBED_QUANTITY, chỉ 1 phiếu xuất', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Dup phát đủ' });
+      const batchId = await receiveStock(clinicAdminToken, drugId, 100, 500);
+      const { encounterId } = await prepareEncounterInConsultation(18);
+      const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 10 }]);
+
+      expect((await issueOf(prescriptionId, items[0]!.id, drugId, batchId, 10)).status).toBe(200);
+      const again = await issueOf(prescriptionId, items[0]!.id, drugId, batchId, 10);
+      expect(again.status).toBe(422);
+      expect(again.body.error.code).toBe('STOCK_ISSUE_EXCEEDS_PRESCRIBED_QUANTITY');
+      expect(await issuesOf(prescriptionId)).toBe(1);
+    });
+
+    it('(b) KHOẢNG TRỐNG ĐÃ BIẾT: phát MỘT PHẦN rồi gửi lại cùng yêu cầu → ghi trùng (2 phiếu xuất); nếu sau này có khoá chống ghi trùng thì sửa ca này', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Dup phát một phần' });
+      const batchId = await receiveStock(clinicAdminToken, drugId, 100, 500);
+      const { encounterId } = await prepareEncounterInConsultation(19);
+      const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 10 }]);
+
+      expect((await issueOf(prescriptionId, items[0]!.id, drugId, batchId, 4)).status).toBe(200);
+      expect((await issueOf(prescriptionId, items[0]!.id, drugId, batchId, 4)).status).toBe(200);
+      expect(await issuesOf(prescriptionId)).toBe(2);
+    });
+
+    it('(c) hai yêu cầu phát ĐỦ số lượng của đơn ĐỒNG THỜI → đúng MỘT phiếu xuất, tồn kho chỉ trừ một lần', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Dup phát đồng thời' });
+      const batchId = await receiveStock(clinicAdminToken, drugId, 100, 500);
+      const { encounterId } = await prepareEncounterInConsultation(22);
+      const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 10 }]);
+
+      const [a, b] = await Promise.all([issueOf(prescriptionId, items[0]!.id, drugId, batchId, 10), issueOf(prescriptionId, items[0]!.id, drugId, batchId, 10)]);
+      expect([a.status, b.status].filter((s) => s === 200), JSON.stringify([a.body, b.body])).toHaveLength(1);
+      expect(await issuesOf(prescriptionId)).toBe(1);
+      const balance = await privileged.stockBalance.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, batchId, warehouseId } });
+      expect(balance.quantityOnHand).toBe(90);
+    });
+  });
 });

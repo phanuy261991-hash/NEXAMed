@@ -371,6 +371,24 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect(serviceItem.examTypePrice).toBe(150_000n);
     });
 
+    /**
+     * GỬI TRÙNG (#256) — mạng đứt giữa lúc máy chủ đã ghi xong, lễ tân bấm "Tiếp nhận" lại. Tiếp nhận trực tiếp không có khoá tự nhiên (một bệnh nhân hợp lệ có thể
+     * khám nhiều lần trong ngày) nên hiện KHÔNG chặn: ra hai lượt khám, hai mã LK, hai phiếu thu. Ca này khẳng định HIỆN TRẠNG (đã đo trên máy dev 23/10/2026: LK2610000022
+     * + LK2610000023); khi có \`Idempotency-Key\` hoặc quy tắc "đã có lượt khám đang hoạt động trong ngày" thì sửa ca này.
+     */
+    it('KHOẢNG TRỐNG ĐÃ BIẾT — GỬI TRÙNG (#256): tiếp nhận cùng bệnh nhân cùng nội dung hai lần liên tiếp → ra HAI lượt khám (hai mã LK, hai hoá đơn)', async () => {
+      const patient = await createPatient(receptionistToken);
+      const direct = () => request(app.getHttpServer()).post('/api/v1/reception/direct').set(authed(receptionistToken)).send(directPayload(patient.id, doctorAUserId, isoAt(9, 41, 28)));
+
+      const first = await direct();
+      const second = await direct();
+      expect([first.status, second.status]).toEqual([200, 200]);
+      expect(first.body.data.id).not.toBe(second.body.data.id);
+      expect(first.body.data.encounterNo).not.toBe(second.body.data.encounterNo);
+      expect(await privileged.encounter.count({ where: { tenantId: fixture.tenantA.id, patientId: patient.id, deletedAt: null } })).toBe(2);
+      expect(await privileged.invoice.count({ where: { tenantId: fixture.tenantA.id, encounterId: { in: [first.body.data.id, second.body.data.id] } } })).toBe(2);
+    });
+
     it('hồ sơ đã bị gộp (mergedIntoId khác null, S5-06 PAT-04) → 409 PATIENT_ALREADY_MERGED, không tạo được lượt khám mới', async () => {
       const source = await createPatient(receptionistToken);
       const target = await createPatient(receptionistToken);
@@ -1078,6 +1096,15 @@ describe('HTTP e2e — /api/v1/reception', () => {
       expect(res.body.data.pulse).toBe(75);
       expect(res.body.data.temperatureC).toBe(37.0);
       expect(res.body.data.warnings).toEqual([]);
+    });
+
+    it('KHOẢNG TRỐNG ĐÃ BIẾT — GỬI TRÙNG (#256): nhập sinh hiệu hai lần cùng nội dung → ghi hai lần đo riêng (mỗi lần gửi là một lần đo; lịch sử hiện hai dòng giống nhau)', async () => {
+      const encounterId = await checkInFreshEncounter(21);
+      const record = () => request(app.getHttpServer()).post(`/api/v1/reception/encounters/${encounterId}/vital-signs`).set(authed(nurseToken)).send({ pulse: 80, temperatureC: 36.8 });
+
+      expect((await record()).status).toBe(200);
+      expect((await record()).status).toBe(200);
+      expect(await privileged.vitalSign.count({ where: { tenantId: fixture.tenantA.id, encounterId, deletedAt: null } })).toBe(2);
     });
 
     it('mạch ngoài ngưỡng người lớn (150) → vẫn lưu 200, kèm warnings out_of_range', async () => {

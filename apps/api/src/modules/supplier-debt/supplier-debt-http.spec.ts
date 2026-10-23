@@ -971,4 +971,41 @@ describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần
       });
     });
   });
+
+  /**
+   * GỬI TRÙNG (#256) — thanh toán công nợ NCC khi mạng đứt giữa chừng (người dùng bấm lại / bấm hai lần). Chặn "trả vượt" là hàng rào DUY NHẤT; không có khoá
+   * chống ghi trùng. Ba tình huống đã đo: (a) trả ĐÚNG hết nợ rồi bấm lại → lần 2 bị chặn; (b) trả MỘT PHẦN rồi bấm lại → ghi trùng (KHOẢNG TRỐNG ĐÃ BIẾT);
+   * (c) hai yêu cầu ĐỒNG THỜI có tổng vượt nợ → không bao giờ trả vượt (số dư không âm).
+   */
+  describe('GỬI TRÙNG (#256) — Thanh toán công nợ NCC', () => {
+    const pay = (supplierId: string, amount: number) =>
+      request(app.getHttpServer()).post(`/api/v1/supplier-debt/${supplierId}/payment`).set(authed(clinicAdminToken)).send({ amount, paymentMethodCode: 'CASH', cashAccountId });
+    const balanceOf = async (supplierId: string) => (await request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(clinicAdminToken))).body.data.balance as number;
+
+    it('(a) trả ĐÚNG hết nợ rồi gửi lại cùng yêu cầu → lần 2 bị chặn (422), chỉ 1 lần trả', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 4, unitCost: 10000 });
+      expect((await pay(supplierId, 40000)).status).toBe(200);
+      const again = await pay(supplierId, 40000);
+      expect(again.status).toBe(422);
+      expect(await balanceOf(supplierId)).toBe(0);
+    });
+
+    it('(b) KHOẢNG TRỐNG ĐÃ BIẾT: trả MỘT PHẦN rồi gửi lại cùng yêu cầu → ghi trùng (2 lần trả); nếu sau này có khoá chống ghi trùng thì sửa ca này', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 10, unitCost: 10000 });
+      expect((await pay(supplierId, 30000)).status).toBe(200);
+      expect((await pay(supplierId, 30000)).status).toBe(200);
+      expect(await balanceOf(supplierId)).toBe(40000);
+    });
+
+    it('(c) hai yêu cầu ĐỒNG THỜI mỗi cái ≤ nợ nhưng TỔNG vượt nợ → không bao giờ trả vượt: số dư không âm, đúng số lần được nhận', async () => {
+      const supplierId = await createSupplier(clinicAdminToken);
+      await createAndApprovePurchase(clinicAdminToken, supplierId, { quantity: 10, unitCost: 10000 }); // nợ 100.000
+      const [a, b] = await Promise.all([pay(supplierId, 60000), pay(supplierId, 60000)]);
+      const ok = [a.status, b.status].filter((s) => s === 200).length;
+      expect(ok, JSON.stringify([a.body, b.body])).toBe(1);
+      expect(await balanceOf(supplierId)).toBe(40000);
+    });
+  });
 });

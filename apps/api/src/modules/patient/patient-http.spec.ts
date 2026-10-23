@@ -152,6 +152,18 @@ describe('HTTP e2e — /api/v1/patients', () => {
     expect(res.body.data.nationalId).toBeNull();
   });
 
+  it('KHOẢNG TRỐNG ĐÃ BIẾT — GỬI TRÙNG (#256): tạo hồ sơ trẻ em KHÔNG CCCD cùng nội dung hai lần → ra HAI hồ sơ, hai mã BN (có CCCD thì bị chặn 409 — ca ngay dưới); công cụ "Gộp hồ sơ" xử lý sau', async () => {
+    const fullName = `Bé trùng ${randomUUID().slice(0, 8)}`;
+    const create = () => request(app.getHttpServer()).post('/api/v1/patients').set(authed(receptionistToken)).send({ ...validPayload, fullName, nationalId: undefined, dob: '2016-03-04', phone: '0987000222' });
+
+    const first = await create();
+    const second = await create();
+    expect([first.status, second.status]).toEqual([200, 200]);
+    expect(first.body.data.id).not.toBe(second.body.data.id);
+    expect(first.body.data.patientCode).not.toBe(second.body.data.patientCode);
+    expect(await privileged.patient.count({ where: { tenantId: fixture.tenantA.id, fullName, deletedAt: null } })).toBe(2);
+  });
+
   it('trùng CCCD trong cùng tenant → 409 PATIENT_DUPLICATE_NATIONAL_ID', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/patients')

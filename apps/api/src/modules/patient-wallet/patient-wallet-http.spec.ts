@@ -229,4 +229,26 @@ describe('HTTP e2e — /api/v1/wallet', () => {
     const found = (list.body.data.items as Array<{ patientId: string }>).find((i) => i.patientId === patientId);
     expect(found).toBeUndefined();
   });
+
+  /**
+   * GỬI TRÙNG (#256) — mạng đứt sau khi máy chủ đã ghi xong, người dùng bấm lại. Hiện KHÔNG có khoá chống ghi trùng: nạp ví là phép CỘNG nên mỗi lần gửi là
+   * một lần nạp thật (hai phiếu thu PTU, số dư gấp đôi). Ca này khẳng định HIỆN TRẠNG để khoanh vùng thiệt hại; khi có `Idempotency-Key` thì sửa thành "chỉ 1 lần".
+   */
+  it('KHOẢNG TRỐNG ĐÃ BIẾT — GỬI TRÙNG (#256): nạp tạm ứng cùng nội dung hai lần LIÊN TIẾP → hai lần nạp thật; hai lần ĐỒNG THỜI → ví chặn bớt bằng 409 (xung đột phiên bản), nhưng gửi lại vẫn ghi thêm', async () => {
+    const patientId = await createPatient(receptionistToken);
+    const topup = () => request(app.getHttpServer()).post('/api/v1/wallet/topup').set(authed(receptionistToken)).send({ patientId, amount: 1_000_000, paymentMethodCode: 'CASH' });
+    const walletOf = async () => (await request(app.getHttpServer()).get('/api/v1/wallet').set(authed(receptionistToken)).query({ patientId })).body.data as { topUpCount: number; balance: number };
+
+    expect((await topup()).status).toBe(200);
+    expect((await topup()).status).toBe(200);
+    expect(await walletOf()).toMatchObject({ topUpCount: 2, balance: 2_000_000 });
+
+    const [a, b] = await Promise.all([topup(), topup()]);
+    const statuses = [a.status, b.status];
+    expect(statuses.every((s) => s === 200 || s === 409), JSON.stringify([a.body, b.body])).toBe(true);
+    expect(statuses).toContain(200);
+    const okCount = statuses.filter((s) => s === 200).length;
+    // Không bao giờ lệch giữa số lần "200" và số dư thật: mỗi lần báo thành công là một lần nạp, mỗi lần 409 là không nạp.
+    expect(await walletOf()).toMatchObject({ topUpCount: 2 + okCount, balance: (2 + okCount) * 1_000_000 });
+  });
 });
