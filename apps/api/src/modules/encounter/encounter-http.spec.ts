@@ -6,7 +6,7 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { getVietnamDateString } from '@nexamed/core';
+import { getVietnamDateString, PDF_RENDERER_PORT, type PdfRendererPort } from '@nexamed/core';
 import { AppModule } from '../../app.module';
 import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
@@ -1511,6 +1511,13 @@ describe('HTTP e2e — /api/v1/encounters', () => {
    * ở `cash-book-report-http.spec.ts` — chỉ kiểm status/header/audit log).
    */
   describe('POST /api/v1/encounters/patient-medical-record/export — S6-06', () => {
+    // Khởi động nguội Chromium trên runner CI đang chạy nhiều file test song song đo được 10–30 giây (lần đỏ
+    // 22/10–23/10/2026 chết đúng ở test PDF ĐẦU TIÊN ở mốc 30 giây). Làm nóng trình duyệt một lần ở đây, hạn riêng,
+    // để hạn 30 giây của từng test chỉ còn đo đường render, không đo chi phí khởi động một lần.
+    beforeAll(async () => {
+      await app.get<PdfRendererPort>(PDF_RENDERER_PORT).renderHtmlToPdf('<html><body>warm-up</body></html>');
+    }, 120_000);
+
     async function patientWithCompletedEncounter(hour: number) {
       const patientRes = await request(app.getHttpServer())
         .post('/api/v1/patients')
