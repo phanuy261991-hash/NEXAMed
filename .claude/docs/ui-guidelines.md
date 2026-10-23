@@ -449,3 +449,13 @@ Mẫu sai đã gặp 2 lần liên tiếp ở `WaitingCard`/`InProgressCard` (`a
 **Thẻ KPI** (vd `ReceptionListPage.tsx`): nền trắng + viền `slate-200` mảnh, KHÔNG đổ bóng, KHÔNG nền pha màu mờ (`bg-*-50/30`); màu chỉ ở ô biểu tượng nền ĐẶC (`bg-amber-500`... chữ trắng), con số `text-slate-900`.
 
 **Kiểm tra**: đo độ đậm THẬT bằng `getComputedStyle` (script `weight-audit`: gom `font-weight` theo vai trò — tiêu đề, đầu cột, ô bảng, nhãn, nút — trên các trang chính); kết quả mong đợi: KHÔNG có giá trị ≥ 700 ngoài bản in. Lần đo đầu 16/10/2026 trước khi chuẩn hoá: 220 ô bảng và 155 đầu cột ở 700; sau chuẩn hoá: tối đa 600. UI mới phải đối chiếu bảng trên trước khi báo xong — không tự chọn độ đậm theo cảm tính.
+
+## 17. Mọi lỗi phải dẫn về một màn thông báo cụ thể, không lộ mã hay lỗi thô (chốt 23/10/2026, `docs/DECISIONS.md` #255)
+
+Quy tắc (chủ dự án): **không chỉ trang 404 — tổng quát mọi lỗi trên ứng dụng đều phải trỏ về một màn thông báo cụ thể, không hiện code lộ hoặc lỗi thô.**
+
+- **Phạm vi**: URL lạ / bản ghi không tồn tại, không đủ quyền, hết phiên, lỗi máy chủ (5xx), mất mạng / quá thời gian, ngoại lệ không lường trước khi hiển thị, lỗi nhập/lưu biểu mẫu, lỗi tải tệp / in / xuất.
+- **Mỗi lỗi** có một màn (hoặc khối) thông báo CỤ THỂ bằng tiếng Việt dễ hiểu: nói chuyện gì đã xảy ra và làm gì tiếp, kèm nút dẫn tới một trang có thật.
+- **Tuyệt đối không hiện** ra người dùng cuối: mã lỗi (`NOT_FOUND`, `500`, `ECONNRESET`…), thông điệp thô của máy chủ/thư viện, dấu vết ngăn xếp, JSON thô, tiếng Anh mặc định, trang trắng, màn lỗi mặc định của `react-router`.
+- Màn hình mới không được thêm trang/khối kiểu 404 hay mã lỗi thô; dùng thành phần lỗi dùng chung (`ErrorBanner`, `RecordLoadError`, `AccessDeniedState`, `SaveErrorBanner`) cho tới khi có bộ thiết kế mới.
+- **Trạng thái**: nguyên tắc đã chốt; thiết kế chi tiết và triển khai CHƯA làm — chờ chủ dự án chốt câu mở (lỗi khi đang nhập biểu mẫu: trang thay thế hay hộp thông báo giữ dữ liệu) và duyệt mockup. Lỗ hổng lớn nhất hiện nay: chưa có `ErrorBoundary`/`errorElement` toàn ứng dụng; route `*` còn là trang "Không tìm thấy trang". Khi triển khai, không được làm mất dữ liệu người dùng đang nhập dở.

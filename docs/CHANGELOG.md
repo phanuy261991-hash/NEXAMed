@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-22
 
+### CI GitHub đỏ từ #245 đã được sửa; quy tắc mới về lỗi giao diện (`docs/DECISIONS.md` #254, #255)
+
+CI GitHub đỏ ở mọi commit trên `master` từ 22/10/2026 (không liên quan Node 26): (1) bảng `tenant_code_alias` thiếu miễn trừ `tenant_id` trong bước kiểm schema; (2) trình cài đặt trả 413 sai cách (đóng kết nối trước khi gửi phản hồi) làm một test chập chờn trên máy chậm — đã tái hiện được ở cả Node 20 lẫn Node 26 và đã sửa (15/15 lần dưới 0,5 CPU). Quy tắc mới (chủ dự án chốt, #255): MỌI lỗi trên ứng dụng (không chỉ 404) phải dẫn về một màn thông báo cụ thể, không lộ mã hay lỗi thô — nguyên tắc đã ghi; khảo sát cho thấy chưa có màn lỗi toàn cục (ErrorBoundary); thiết kế và triển khai chờ mockup duyệt.
+
 ### Nâng runtime Node 20 → Node 26 (`docs/DECISIONS.md` #253)
 
 Node 20 đã hết hỗ trợ bảo mật (30/04/2026); dự án chuyển sang **Node 26** (LTS từ 28/10/2026, hỗ trợ đến 30/04/2029). Chỉ đổi cấu hình/công cụ/tài liệu (Dockerfile, `engines`, CI, `@types/node`, CLAUDE.md, hướng dẫn triển khai); không sửa mã nghiệp vụ. Ảnh Node 26 không còn `corepack` nên Dockerfile cài pnpm bằng `npm install -g pnpm@9.15.9`. Máy khách vẫn chỉ cần Docker (Node nằm trong ảnh). Đã kiểm: typecheck/lint/build, `pnpm audit` 0 cảnh báo, test API 1687/1687 ba lượt liên tiếp trên máy dev và một lượt trên Linux sạch, và **diễn tập nâng cấp bằng Docker thật 23/23 đạt** (dữ liệu, mật khẩu băm, CCCD mã hoá, xuất PDF, trình cài đặt đều giữ nguyên/hoạt động). Quy ước mới: không dùng Temporal/API V8 mới (không cần nâng TypeScript). **Môi trường khác**: `pnpm install`, dùng Node 26.
