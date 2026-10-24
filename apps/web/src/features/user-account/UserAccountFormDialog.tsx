@@ -170,14 +170,16 @@ export function UserAccountFormDialog({
     setValues((prev) => ({ ...prev, [key]: value }));
   }
 
-  const academicTitleQuery = useReferenceCatalogQuery('ACADEMIC_TITLE');
-  const positionQuery = useReferenceCatalogQuery('STAFF_POSITION');
-  const employmentStatusQuery = useReferenceCatalogQuery('EMPLOYMENT_STATUS');
-  const employmentTypeQuery = useReferenceCatalogQuery('EMPLOYMENT_TYPE');
+  // Chỉ gọi tra cứu khi có quyền đọc (vai trò `system_admin` mặc định quản lý tài khoản nhưng không đọc được danh mục dùng chung/danh sách vai trò → máy chủ trả 403).
+  const catalogLookup = { enabled: useHasPermission('reference_catalog', 'read') };
+  const academicTitleQuery = useReferenceCatalogQuery('ACADEMIC_TITLE', undefined, catalogLookup);
+  const positionQuery = useReferenceCatalogQuery('STAFF_POSITION', undefined, catalogLookup);
+  const employmentStatusQuery = useReferenceCatalogQuery('EMPLOYMENT_STATUS', undefined, catalogLookup);
+  const employmentTypeQuery = useReferenceCatalogQuery('EMPLOYMENT_TYPE', undefined, catalogLookup);
   const departmentsQuery = useDepartmentsQuery();
   const createDepartmentMutation = useCreateDepartmentMutation();
   const roomsQuery = useRoomsQuery();
-  const rolesQuery = useRolesQuery();
+  const rolesQuery = useRolesQuery({ enabled: useHasPermission('role_permission', 'manage') });
   // Ô "Chi nhánh làm việc" CHỈ hiện khi công ty có từ 2 chi nhánh hoạt động (mockup Màn 3) — 1 chi nhánh: mọi tài khoản tự thuộc chi nhánh mặc định, form không đổi.
   const canReadBranch = useHasPermission('branch', 'read');
   const branchesQuery = useBranchesQuery(false, canReadBranch);

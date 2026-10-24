@@ -3,7 +3,8 @@ import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { ConfigScreenShell, type ConfigScreenPill } from '../../shared/ui/ConfigScreenShell';
 import { AdviceTemplatePane } from '../advice-template/AdviceTemplatePane';
 import { AllergenPane } from '../allergen/AllergenPane';
-import { useHasPermission } from '../auth/usePermission';
+import { useFilterByPermission } from '../auth/usePermission';
+import { PermissionDeniedPage } from '../../shared/ui/PermissionDeniedPage';
 import { Icd10Pane } from './Icd10Pane';
 import { ReferenceCatalogPane } from '../reference-catalog/ReferenceCatalogPane';
 
@@ -17,26 +18,28 @@ import { ReferenceCatalogPane } from '../reference-catalog/ReferenceCatalogPane'
  * ICD-10", đặt cạnh ICD-10 (cùng chủ đề lâm sàng). Dùng `ConfigScreenShell` chế độ pill phẳng (không
  * `items`), đúng khuôn `CatalogAdminPage.tsx`. Pill "Mẫu lời dặn" (docs/DECISIONS.md #222) — mẫu lời dặn bác sĩ dùng ở màn khám, chỉ hiện với người có `advice_template.read`.
  */
+// `permission` = quyền của API mỗi pill gọi (phải khớp `CLINICAL_CATALOG_PILL_PERMISSIONS` ở `auth/admin-permissions.ts`, dùng chung cho route/menu): chỉ hiện pill dùng được.
 const PILLS: ConfigScreenPill[] = [
-  { key: 'icd10', label: 'ICD-10' },
-  { key: 'icd10-abbreviation', label: 'Từ viết tắt chẩn đoán' },
-  { key: 'allergen', label: 'Dị nguyên' },
-  { key: 'exam-type', label: 'Dịch vụ khám' },
+  { key: 'icd10', label: 'ICD-10', permission: ['patient', 'read'] },
+  { key: 'icd10-abbreviation', label: 'Từ viết tắt chẩn đoán', permission: ['reference_catalog', 'read'] },
+  { key: 'allergen', label: 'Dị nguyên', permission: ['allergen_catalog', 'read'] },
+  { key: 'exam-type', label: 'Dịch vụ khám', permission: ['reference_catalog', 'read'] },
+  { key: 'advice-template', label: 'Mẫu lời dặn', permission: ['advice_template', 'read'] },
 ];
-const ADVICE_TEMPLATE_PILL: ConfigScreenPill = { key: 'advice-template', label: 'Mẫu lời dặn' };
-const FIRST_PILL = PILLS[0]!;
 
 export function CatalogClinicalPage() {
-  const canSeeAdviceTemplates = useHasPermission('advice_template', 'read');
-  const pills = canSeeAdviceTemplates ? [...PILLS, ADVICE_TEMPLATE_PILL] : PILLS;
-  const [activePillKey, setActivePillKey] = useState(FIRST_PILL.key);
-  const activePill = pills.find((p) => p.key === activePillKey) ?? FIRST_PILL;
+  const pills = useFilterByPermission(PILLS);
+  const [selectedPillKey, setActivePillKey] = useState<string | null>(null);
+  const activePill = pills.find((p) => p.key === selectedPillKey) ?? pills[0];
+  const activePillKey = activePill?.key ?? '';
 
   useBreadcrumb([
     { label: 'Quản trị' },
     { label: 'Danh mục Chuyên môn', to: '/admin/catalog-clinical' },
-    { label: activePill.label },
+    { label: activePill?.label ?? 'Không có quyền truy cập' },
   ]);
+
+  if (!activePill) return <PermissionDeniedPage />;
 
   return (
     <ConfigScreenShell pageLabel="Danh mục Chuyên môn" pills={pills} activePillKey={activePillKey} onSelectPill={setActivePillKey}>
@@ -44,7 +47,7 @@ export function CatalogClinicalPage() {
       {activePillKey === 'icd10-abbreviation' && <ReferenceCatalogPane category="ICD10_ABBREVIATION" categoryLabel="Từ viết tắt chẩn đoán" />}
       {activePillKey === 'allergen' && <AllergenPane />}
       {activePillKey === 'exam-type' && <ReferenceCatalogPane category="EXAM_TYPE" categoryLabel="Dịch vụ khám" />}
-      {activePillKey === 'advice-template' && canSeeAdviceTemplates && <AdviceTemplatePane />}
+      {activePillKey === 'advice-template' && <AdviceTemplatePane />}
     </ConfigScreenShell>
   );
 }

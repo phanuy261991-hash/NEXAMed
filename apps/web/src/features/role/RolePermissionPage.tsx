@@ -5,6 +5,8 @@ import { RolePermissionPane } from './RolePermissionPane';
 import { UserAccountPane } from '../user-account/UserAccountPane';
 import { DepartmentPane } from '../department/DepartmentPane';
 import { ReferenceCatalogPane } from '../reference-catalog/ReferenceCatalogPane';
+import { useFilterByPermission } from '../auth/usePermission';
+import { PermissionDeniedPage } from '../../shared/ui/PermissionDeniedPage';
 
 /**
  * "Danh mục Tổ chức và Nhân sự" (`/admin/catalog-organization`, thay `ComingSoonPage`) — ADM-07 +
@@ -13,29 +15,33 @@ import { ReferenceCatalogPane } from '../reference-catalog/ReferenceCatalogPane'
  * Hình thức làm việc) tái dùng nguyên `ReferenceCatalogPane` với `category` khác nhau — không
  * viết component mới, đúng khuôn `CatalogClinicalPage.tsx`.
  */
+// `permission` = quyền của API mỗi pill gọi: tài khoản chỉ thấy pill dùng được (vd. `system_admin` chỉ có Quản lý tài khoản/Khoa-Phòng, không có Vai trò & Danh mục dùng chung).
 const PILLS: ConfigScreenPill[] = [
-  { key: 'roles', label: 'Vai trò & Phân quyền' },
-  { key: 'accounts', label: 'Quản lý tài khoản' },
-  { key: 'departments', label: 'Khoa/Phòng' },
-  { key: 'academic-title', label: 'Học vị/Học hàm' },
-  { key: 'position', label: 'Chức danh' },
-  { key: 'employment-status', label: 'Trạng thái làm việc' },
-  { key: 'employment-type', label: 'Hình thức làm việc' },
+  { key: 'roles', label: 'Vai trò & Phân quyền', permission: ['role_permission', 'manage'] },
+  { key: 'accounts', label: 'Quản lý tài khoản', permission: ['user_account', 'manage'] },
+  { key: 'departments', label: 'Khoa/Phòng', permission: ['user_account', 'read'] },
+  { key: 'academic-title', label: 'Học vị/Học hàm', permission: ['reference_catalog', 'read'] },
+  { key: 'position', label: 'Chức danh', permission: ['reference_catalog', 'read'] },
+  { key: 'employment-status', label: 'Trạng thái làm việc', permission: ['reference_catalog', 'read'] },
+  { key: 'employment-type', label: 'Hình thức làm việc', permission: ['reference_catalog', 'read'] },
 ];
-const FIRST_PILL = PILLS[0]!;
 
 export function RolePermissionPage() {
-  const [activePillKey, setActivePillKey] = useState(FIRST_PILL.key);
-  const activePill = PILLS.find((p) => p.key === activePillKey) ?? FIRST_PILL;
+  const pills = useFilterByPermission(PILLS);
+  const [selectedPillKey, setActivePillKey] = useState<string | null>(null);
+  const activePill = pills.find((p) => p.key === selectedPillKey) ?? pills[0];
+  const activePillKey = activePill?.key ?? '';
 
   useBreadcrumb([
     { label: 'Quản trị' },
     { label: 'Danh mục Tổ chức và Nhân sự', to: '/admin/catalog-organization' },
-    { label: activePill.label },
+    { label: activePill?.label ?? 'Không có quyền truy cập' },
   ]);
 
+  if (!activePill) return <PermissionDeniedPage />;
+
   return (
-    <ConfigScreenShell pageLabel="Danh mục Tổ chức và Nhân sự" pills={PILLS} activePillKey={activePillKey} onSelectPill={setActivePillKey}>
+    <ConfigScreenShell pageLabel="Danh mục Tổ chức và Nhân sự" pills={pills} activePillKey={activePillKey} onSelectPill={setActivePillKey}>
       {activePillKey === 'roles' && <RolePermissionPane />}
       {activePillKey === 'accounts' && <UserAccountPane />}
       {activePillKey === 'departments' && <DepartmentPane />}

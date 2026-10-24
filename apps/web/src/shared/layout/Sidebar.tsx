@@ -41,9 +41,10 @@ import {
 } from '@phosphor-icons/react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/auth.store';
-import { useHasAnyPermission, useDataScope, useHasPermission } from '../../features/auth/usePermission';
+import { useHasAnyPermission, useDataScope, useHasPermission, useHasPermissionAtLeast } from '../../features/auth/usePermission';
 import {
   ADMIN_ANY_PERMISSIONS,
+  CLINICAL_CATALOG_PILL_PERMISSIONS,
   SYSTEM_CONFIG_PERMISSIONS,
   ADMIN_ORG_PERMISSIONS,
   DRUG_MANAGE_PERMISSIONS,
@@ -237,7 +238,9 @@ export function Sidebar() {
   // .claude/docs/multi-tenancy.md) — sẽ lộ menu này cho cả bác sĩ/điều dưỡng/lễ tân nếu tra thẳng
   // patient.read (họ đều có), sai tinh thần "chỉ Quản trị" của cả nhóm — theo BẤT KỲ quyền quản
   // trị nào thay vì permission route thật sự dùng, xem comment ADMIN_ANY_PERMISSIONS phía trên.
-  const canSeeCatalogClinical = isAdmin;
+  // Cùng điều kiện route: thuộc nhóm Quản trị VÀ có quyền dùng ít nhất một pill (`system_admin` thì không có pill nào).
+  const canSeeCatalogClinicalPills = useHasAnyPermission(CLINICAL_CATALOG_PILL_PERMISSIONS);
+  const canSeeCatalogClinical = isAdmin && canSeeCatalogClinicalPills;
   // "Danh mục Cận lâm sàng" (#212) — gate theo ĐÚNG quyền của route guard (`PARACLINICAL_CATALOG_PERMISSIONS`).
   const canSeeCatalogParaclinical = useHasAnyPermission(PARACLINICAL_CATALOG_PERMISSIONS);
   const canSeeCatalogPharmacy = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
@@ -290,7 +293,8 @@ export function Sidebar() {
   // Mỗi mục menu phải khớp ĐÚNG quyền của route guard tương ứng (`router.tsx`) — không mượn quyền của mục
   // cùng nhóm (docs/DECISIONS.md #207: quét 80 quyền phát hiện vai trò tuỳ biến thấy mục menu mà bấm vào bị chặn).
   const canCreateReception = useHasPermission('encounter', 'create');
-  const canSeeCashierShifts = useHasPermission('cashier_shift', 'read');
+  // Danh sách phiếu chốt ca chỉ cho quản lý/kế toán (phạm vi từ khoa trở lên) — phạm vi cá nhân (thu ngân) có quyền nhưng máy chủ từ chối danh sách, khớp route guard.
+  const canSeeCashierShifts = useHasPermissionAtLeast('cashier_shift', 'read', 'department');
   // "Hàng đợi khám" — quyết định workflow (không phải quyền), giữ theo tên vai trò, xem DOCTOR_QUEUE_ROLES.
   const canSeeDoctorQueue = user?.roles.some((role) => DOCTOR_QUEUE_ROLES.includes(role)) ?? false;
   // Chấm số bệnh nhân có kết quả cận lâm sàng mới chưa xem ở "Hàng đợi khám" (#221).

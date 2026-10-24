@@ -1,4 +1,4 @@
-import { ApiError } from '../api/client';
+import { ApiError, isPermissionDeniedError } from '../api/client';
 import { AccessDeniedState } from './AccessDeniedState';
 import { ErrorBanner } from './ErrorBanner';
 
@@ -20,7 +20,7 @@ export function RecordLoadError({
   fallbackTo?: string;
   fallbackLabel?: string;
 }) {
-  if (error instanceof ApiError && (error.code === 'NOT_FOUND' || error.code === 'PERMISSION_DENIED')) {
+  if (isPermissionDeniedError(error) || (error instanceof ApiError && error.code === 'NOT_FOUND')) {
     return <AccessDeniedState fallbackTo={fallbackTo} fallbackLabel={fallbackLabel} />;
   }
   return <ErrorBanner message={error instanceof ApiError ? error.message : fallbackMessage} onRetry={onRetry} />;

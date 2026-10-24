@@ -5,7 +5,7 @@ import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Combobox } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
-import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { ListLoadError } from '../../shared/ui/ListLoadError';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -116,7 +116,7 @@ export function CashierShiftListPage() {
         </div>
       )}
 
-      {listQuery.isError && <ErrorBanner message="Không tải được danh sách phiếu chốt ca." onRetry={() => void listQuery.refetch()} />}
+      {listQuery.isError && <ListLoadError error={listQuery.error} fallbackMessage="Không tải được danh sách phiếu chốt ca." onRetry={() => void listQuery.refetch()} />}
 
       {listQuery.isSuccess && items.length === 0 && (
         <EmptyState icon={Receipt} title="Không có phiếu chốt ca nào" description="Chưa có ca nào được chốt trong khoảng thời gian đang lọc." />

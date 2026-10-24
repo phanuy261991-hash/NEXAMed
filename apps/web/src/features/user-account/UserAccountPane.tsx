@@ -62,8 +62,11 @@ export function UserAccountPane() {
 
   const accountsQuery = useUserAccountsQuery();
   const departmentsQuery = useDepartmentsQuery();
-  const employmentStatusQuery = useReferenceCatalogQuery('EMPLOYMENT_STATUS');
-  const rolesQuery = useRolesQuery();
+  // Tra cứu phụ chỉ gọi khi có quyền đọc — vai trò `system_admin` mặc định quản lý tài khoản/mở khoá nhưng không đọc được danh mục dùng chung và danh sách vai trò (máy chủ trả 403).
+  const canReadReferenceCatalog = useHasPermission('reference_catalog', 'read');
+  const canReadRoles = useHasPermission('role_permission', 'manage');
+  const employmentStatusQuery = useReferenceCatalogQuery('EMPLOYMENT_STATUS', undefined, { enabled: canReadReferenceCatalog });
+  const rolesQuery = useRolesQuery({ enabled: canReadRoles });
   const createMutation = useCreateUserAccountMutation();
   const updateMutation = useUpdateUserAccountMutation();
 

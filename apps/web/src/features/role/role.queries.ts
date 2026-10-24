@@ -5,9 +5,9 @@ import { queryKey } from '../../shared/api/query-keys';
 import { createRole, getRoleMatrix, hideRole, listRoles, renameRole, updateRoleMatrix } from './role.api';
 
 /** Chỉ `clinic_admin` vào được màn hình này (`role_permission.manage`) — không invalidate quá thường xuyên, đây là dữ liệu cấu hình ít đổi. */
-export function useRolesQuery() {
+export function useRolesQuery(options?: { enabled?: boolean }) {
   const { tenantId } = useAppConfig();
-  return useQuery({ queryKey: queryKey(tenantId, 'roles'), queryFn: listRoles });
+  return useQuery({ queryKey: queryKey(tenantId, 'roles'), queryFn: listRoles, enabled: options?.enabled ?? true });
 }
 
 export function useRoleMatrixQuery(roleId: string | null) {

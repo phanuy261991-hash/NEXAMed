@@ -92,7 +92,7 @@ export class CashVoucherService {
         // lúc Chốt ca (Thủ quỹ riêng) KHÔNG qua nhánh này (gọi thẳng repository, không qua Service).
         const scopes = await findScopesForUserPermission(tx, tenantId, actorId, 'cash_account', 'manage');
         if (maxDataScope(scopes) === 'none') {
-          throw new ForbiddenException();
+          throw new ForbiddenException({ code: 'PERMISSION_SCOPE_DENIED', message: 'Chỉ tài khoản có quyền quản lý quỹ mới lập được phiếu chuyển quỹ.' });
         }
       }
 

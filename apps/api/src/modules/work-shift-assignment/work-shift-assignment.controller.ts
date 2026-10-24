@@ -29,7 +29,7 @@ const importFormBodySchema = z.object({ month: workShiftAssignmentMonthSchema })
  * personal/global (không có khái niệm "chỉ global" trong guard), nên kiểm tay ở đây. */
 function assertGlobalScope(req: Request): void {
   if (req.dataScope !== 'global') {
-    throw new ForbiddenException('Chỉ áp dụng cho tài khoản quản lý toàn bộ lịch làm việc nhân viên.');
+    throw new ForbiddenException({ code: 'PERMISSION_SCOPE_DENIED', message: 'Chỉ áp dụng cho tài khoản quản lý toàn bộ lịch làm việc nhân viên.' });
   }
 }
 

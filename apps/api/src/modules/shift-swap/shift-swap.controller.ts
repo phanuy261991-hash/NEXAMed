@@ -17,7 +17,7 @@ import { ShiftSwapService } from './shift-swap.service';
 /** Chấm số + đánh dấu đã xem chỉ của người xem TOÀN BỘ lịch sử (scope `global`, mặc định quản lý). */
 function assertGlobalScope(req: Request): void {
   if (req.dataScope !== 'global') {
-    throw new ForbiddenException('Chỉ áp dụng cho tài khoản xem toàn bộ lịch sử đổi ca.');
+    throw new ForbiddenException({ code: 'PERMISSION_SCOPE_DENIED', message: 'Chỉ áp dụng cho tài khoản xem toàn bộ lịch sử đổi ca.' });
   }
 }
 

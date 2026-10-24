@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-10-24
+
+### Trang cho vào nhưng máy chủ từ chối theo phạm vi → nay ra "Không có quyền truy cập" (`docs/DECISIONS.md` #260)
+
+Sửa lớp lỗi phát hiện từ phiếu chốt ca trên iPad: lễ tân có quyền xem phiếu chốt ca ở phạm vi cá nhân nên menu/route cho vào, nhưng danh sách chỉ dành cho quản lý nên trang báo "Không tải được danh sách". Nay route và menu kiểm theo PHẠM VI (Phiếu chốt ca: từ khoa trở lên; Lịch làm việc nhân viên: toàn bộ), máy chủ trả mã `PERMISSION_DENIED` kèm câu tiếng Việt thay vì 403 thô, danh sách gặp lỗi quyền hiện màn "Không có quyền xem nội dung này", và các trang cấu hình (Danh mục Tổ chức và Nhân sự, Danh mục Chuyên môn) chỉ hiện những thẻ mà tài khoản dùng được — vai trò Quản trị hệ thống không còn thấy trang toàn lỗi. Script quét `role-access-sweep.cjs` nay bấm cả từng thẻ; trước sửa ra 14 điểm lỗi ở 4 trang. Không migration.
+
 ## 2026-10-23
 
 ### Giới hạn đăng nhập không còn chỉ theo IP + khoá tài khoản thông minh theo "máy quen" (`docs/DECISIONS.md` #258, #259)

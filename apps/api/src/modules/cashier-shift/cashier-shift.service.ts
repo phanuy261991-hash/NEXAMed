@@ -356,7 +356,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
     // "Danh sách phiếu chốt ca" là màn Quản lý/Kế toán — scope `personal` (thu ngân) không có gì để
     // duyệt qua đây (chỉ xem ca hiện tại của mình qua `GET .../current`).
     if (dataScope === 'personal') {
-      throw new ForbiddenException();
+      throw new ForbiddenException({ code: 'PERMISSION_SCOPE_DENIED', message: 'Danh sách phiếu chốt ca chỉ dành cho tài khoản quản lý. Bạn xem được ca đang mở của chính mình ở màn Thu ngân.' });
     }
 
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>

@@ -160,6 +160,14 @@ export class ApiError extends Error {
 }
 
 /**
+ * Máy chủ từ chối vì thiếu quyền: `PERMISSION_DENIED` (cổng phân quyền — không có quyền nào cho thao tác) hoặc `PERMISSION_SCOPE_DENIED` (có quyền nhưng phạm vi dữ liệu hẹp hơn mức trang/thao tác
+ * đòi hỏi, ví dụ danh sách phiếu chốt ca chỉ cho quản lý). Giao diện hiện màn "Không có quyền" cho cả hai, không hiện banner "Không tải được".
+ */
+export function isPermissionDeniedError(error: unknown): error is ApiError {
+  return error instanceof ApiError && (error.code === 'PERMISSION_DENIED' || error.code === 'PERMISSION_SCOPE_DENIED');
+}
+
+/**
  * Dựng `ApiError` từ một phản hồi HTTP KHÔNG thành công mà không đi qua `openapi-fetch` (tải/tải lên tệp, xuất bệnh án) — thân phản hồi có thể
  * không phải JSON (trang HTML 502/413 của nginx...), nên đọc an toàn rồi chuẩn hoá thông điệp theo mã HTTP.
  */

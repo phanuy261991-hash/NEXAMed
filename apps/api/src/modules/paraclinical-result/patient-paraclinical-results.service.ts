@@ -190,7 +190,7 @@ export class PatientParaclinicalResultsService {
   private async assertCanSeeContent(tenantId: string, actorId: string, scope: ResultAccessScope): Promise<void> {
     const permissions = await this.unitOfWork.runInTenantScope(tenantId, (tx) => findAllPermissionsForUser(tx, tenantId, actorId));
     if (!(`${scope.permissionModule}.enter` in permissions) && !(`${scope.permissionModule}.approve` in permissions)) {
-      throw new ForbiddenException('Tài khoản chỉ có quyền xem danh sách kết quả — không xem được nội dung kết quả của bệnh nhân.');
+      throw new ForbiddenException({ code: 'PERMISSION_SCOPE_DENIED', message: 'Tài khoản chỉ có quyền xem danh sách kết quả — không xem được nội dung kết quả của bệnh nhân.' });
     }
   }
 

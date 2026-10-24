@@ -68,6 +68,18 @@ export const ADMIN_ANY_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
   ['price_list', 'update'],
 ];
 
+/**
+ * "Danh mục Chuyên môn" (`/admin/catalog-clinical`): quyền của API mỗi pill gọi (ICD-10 dùng `patient.read`, Từ viết tắt/Dịch vụ khám dùng `reference_catalog.read`, Dị nguyên
+ * `allergen_catalog.read`, Mẫu lời dặn `advice_template.read`). Cần ÍT NHẤT MỘT thì trang mới có pill để hiện — vai trò `system_admin` (chỉ quản lý tài khoản/sao lưu) không có cái nào,
+ * nên mục menu ẩn và route chặn thay vì mở ra một trang chỉ toàn lỗi 403. Phải khớp các pill ở `CatalogClinicalPage.tsx`; đi cùng `ADMIN_ANY_PERMISSIONS` (nhóm "Quản trị") — cả hai điều kiện đều phải đúng.
+ */
+export const CLINICAL_CATALOG_PILL_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
+  ['patient', 'read'],
+  ['reference_catalog', 'read'],
+  ['allergen_catalog', 'read'],
+  ['advice_template', 'read'],
+];
+
 /** "Danh mục Thuốc và Vật Tư"/"Quản lý nhà cung cấp"/"Kho" — trước gộp `drug.manage`, tách thành
  * `create`/`update` (docs/DECISIONS.md #156). Dùng chung cho route guard (`router.tsx`) và ẩn/hiện
  * menu (`Sidebar.tsx`), tránh lặp mảng ở 2 nơi như comment đầu file đã nêu. */

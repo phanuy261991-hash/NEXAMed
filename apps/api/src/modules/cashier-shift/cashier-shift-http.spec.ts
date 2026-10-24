@@ -363,6 +363,9 @@ describe('HTTP e2e — /api/v1/cashier-shifts', () => {
     it('receptionist (scope personal) gọi danh sách → 403 (đây là màn Quản lý, không phải "ca của tôi")', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/cashier-shifts').set(authed(cashierAToken));
       expect(res.status).toBe(403);
+      // Mã lỗi chuẩn (không phải 403 thô tiếng Anh) để giao diện hiện màn "Không có quyền" thay vì "Không tải được" (#260).
+      expect(res.body.error.code).toBe('PERMISSION_SCOPE_DENIED');
+      expect(res.body.error.message).toMatch(/quản lý/);
     });
 
     it('clinic_admin (scope global) → thấy đủ 2 phiếu đã chốt, không thấy ca đang OPEN', async () => {

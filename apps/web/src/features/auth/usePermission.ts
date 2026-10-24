@@ -1,5 +1,6 @@
 import type { DataScope } from '@nexamed/shared';
 import { useAuthStore } from './auth.store';
+import { isScopeAtLeast } from './scope-rank';
 
 /**
  * Quyền THẬT của actor (2026-09-04, bug thu hồi quyền không có tác dụng — xem
@@ -17,6 +18,24 @@ export function useDataScope(module: string, action: string): DataScope | undefi
 /** Có quyền `<module>.<action>` hay không, bất kể scope cụ thể (`personal` cũng tính) — dùng ẩn/hiện menu, nút. */
 export function useHasPermission(module: string, action: string): boolean {
   return useDataScope(module, action) !== undefined;
+}
+
+/**
+ * Có quyền `<module>.<action>` với phạm vi ÍT NHẤT `minScope` hay không — dùng cho trang/mục menu chỉ dành cho người xem được dữ liệu của người khác
+ * (ví dụ danh sách phiếu chốt ca: phạm vi `personal` có quyền nhưng máy chủ từ chối danh sách, nên không được cho vào trang rồi mới báo lỗi tải).
+ */
+export function useHasPermissionAtLeast(module: string, action: string, minScope: Exclude<DataScope, 'none'>): boolean {
+  const scope = useDataScope(module, action);
+  return scope !== undefined && isScopeAtLeast(scope, minScope);
+}
+
+/**
+ * Giữ lại các mục có `permission` mà actor đang giữ (mục không khai báo `permission` luôn giữ). Dùng cho thanh pill/tab của trang gộp nhiều màn hình khác quyền nhau:
+ * pill nào cần API mà actor không có quyền thì KHÔNG hiện, tránh mở ra rồi mới báo "Không tải được" (403).
+ */
+export function useFilterByPermission<T extends { permission?: readonly [string, string] }>(items: readonly T[]): T[] {
+  const permissions = useAuthStore((s) => s.user?.permissions);
+  return items.filter((item) => item.permission === undefined || permissions?.[`${item.permission[0]}.${item.permission[1]}`] !== undefined);
 }
 
 /** Có ÍT NHẤT MỘT trong danh sách quyền — dùng cho khu vực gộp nhiều mục con khác quyền nhau (ví dụ nhóm "Quản trị"). */

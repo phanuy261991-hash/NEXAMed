@@ -156,6 +156,7 @@ describe('HTTP e2e — đổi ca', () => {
     expect(unseen.body.data.count).toBe(1);
     const denied = await api().get('/api/v1/shift-swaps/unseen-count').set(authed(docAToken));
     expect(denied.status).toBe(403);
+    expect(denied.body.error.code).toBe('PERMISSION_SCOPE_DENIED'); // mã chuẩn (#260) để giao diện hiện màn "Không có quyền"
   });
 
   it('nhân viên đã nghỉ việc (tài khoản vô hiệu hoá) không còn trong danh sách đồng nghiệp đổi ca', async () => {

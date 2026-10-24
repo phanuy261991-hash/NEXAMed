@@ -4,7 +4,7 @@ import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { RequireAnyPermissionRoute, RequireDoctorQueueRoute, RequirePermissionRoute } from '../features/auth/RequirePermissionRoute';
-import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, PARACLINICAL_LOOKUP_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS, PRICE_LIST_ADMIN_PERMISSIONS, SYSTEM_CONFIG_PERMISSIONS } from '../features/auth/admin-permissions';
+import { ADMIN_ANY_PERMISSIONS, ADMIN_ORG_PERMISSIONS, CLINICAL_CATALOG_PILL_PERMISSIONS, PARACLINICAL_LOOKUP_PERMISSIONS, DRUG_MANAGE_PERMISSIONS, PARACLINICAL_CATALOG_PERMISSIONS, PRICE_LIST_ADMIN_PERMISSIONS, SYSTEM_CONFIG_PERMISSIONS } from '../features/auth/admin-permissions';
 import { ChooseBranchPage } from '../features/branch/ChooseBranchPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { AppShell } from '../shared/layout/AppShell';
@@ -196,7 +196,7 @@ export const router = createBrowserRouter([
       // Thu ngân cơ bản (Sprint 5/6) — không có mục sidebar riêng cho chi tiết (cùng cách
       // patient/appointment/encounter detail không có mục sidebar riêng).
       { path: 'billing', element: <RequirePermissionRoute module="invoice" action="read"><InvoiceListPage /></RequirePermissionRoute> },
-      { path: 'billing/cashier-shifts', element: <RequirePermissionRoute module="cashier_shift" action="read"><CashierShiftListPage /></RequirePermissionRoute> },
+      { path: 'billing/cashier-shifts', element: <RequirePermissionRoute module="cashier_shift" action="read" minScope="department"><CashierShiftListPage /></RequirePermissionRoute> },
       { path: 'billing/:encounterId', element: <RequirePermissionRoute module="invoice" action="read"><InvoiceDetailPage /></RequirePermissionRoute> },
       // Sổ quỹ & Thu chi (GĐ1) — không có mục sidebar riêng cho chi tiết (mở bằng dialog tại chỗ).
       { path: 'cash-book/vouchers', element: <RequirePermissionRoute module="cash_voucher" action="read"><CashVoucherListPage /></RequirePermissionRoute> },
@@ -225,7 +225,7 @@ export const router = createBrowserRouter([
       { path: 'inventory/reports/transfer-shrinkage', element: <Navigate to="/inventory/reports/stock-ledger?tab=shrinkage" replace /> },
       // "Đăng ký ca làm việc" (Giai đoạn 2 #101).
       { path: 'work-schedule/mine', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><MyWorkSchedulePage /></RequirePermissionRoute> },
-      { path: 'work-schedule/staff', element: <RequirePermissionRoute module="work_shift_assignment" action="read"><StaffWorkSchedulePage /></RequirePermissionRoute> },
+      { path: 'work-schedule/staff', element: <RequirePermissionRoute module="work_shift_assignment" action="read" minScope="global"><StaffWorkSchedulePage /></RequirePermissionRoute> },
       // Trình duyệt hay gợi ý gõ tắt "/admin" (rút gọn từ lịch sử "/admin/catalog") — chưa từng
       // là route thật, trước đây báo lỗi 404 mặc định của react-router (docs/DECISIONS.md #048).
       { path: 'admin', element: <Navigate to="/admin/catalog" replace /> },
@@ -248,7 +248,9 @@ export const router = createBrowserRouter([
         path: 'admin/catalog-clinical',
         element: (
           <RequireAnyPermissionRoute permissions={ADMIN_ANY_PERMISSIONS}>
-            <CatalogClinicalPage />
+            <RequireAnyPermissionRoute permissions={CLINICAL_CATALOG_PILL_PERMISSIONS}>
+              <CatalogClinicalPage />
+            </RequireAnyPermissionRoute>
           </RequireAnyPermissionRoute>
         ),
       },

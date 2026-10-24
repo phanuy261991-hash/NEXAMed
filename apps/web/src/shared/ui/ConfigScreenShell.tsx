@@ -11,6 +11,11 @@ export interface ConfigScreenPill {
   key: string;
   label: string;
   /**
+   * Quyền `[module, action]` mà màn hình của pill này cần để TẢI được dữ liệu (quyền của API nó gọi). Khung này không tự lọc — trang gọi `useFilterByPermission(pills)`
+   * (`features/auth/usePermission.ts`) để chỉ hiện pill mà tài khoản dùng được, thay vì hiện pill rồi báo lỗi 403 khi bấm vào.
+   */
+  permission?: readonly [string, string];
+  /**
    * Danh sách màn hình con của pill này. Bỏ trống/`undefined` khi pill đã tự là một màn hình lá
    * (chế độ "pill phẳng" — xem `docs/DECISIONS.md` #045) — khi đó KHÔNG render cột trái, nội dung
    * cột phải chiếm hết phần còn lại ngay sau thanh pill.

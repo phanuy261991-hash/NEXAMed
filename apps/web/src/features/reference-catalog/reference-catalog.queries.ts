@@ -16,13 +16,15 @@ import {
 } from './reference-catalog.api';
 
 /** Dữ liệu do `clinic_admin` sửa qua UI quản lý — không `staleTime: Infinity`, invalidate sau mỗi mutation. */
-export function useReferenceCatalogQuery(category: ReferenceCatalogCategory, includeInactive?: boolean, options?: { fresh?: boolean }) {
+export function useReferenceCatalogQuery(category: ReferenceCatalogCategory, includeInactive?: boolean, options?: { fresh?: boolean; enabled?: boolean }) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'reference-catalog', category, includeInactive ? 'all' : 'active'),
     queryFn: () => listReferenceCatalog(category, includeInactive),
     // `fresh`: màn QUẢN TRỊ danh mục luôn lấy bản mới nhất khi mở/focus (người khác có thể vừa sửa); nơi chỉ dùng làm tuỳ chọn thì cache.
     staleTime: options?.fresh ? 0 : STALE_REFERENCE_MS,
+    // `enabled: false` cho người không có quyền xem danh mục (máy chủ trả 403) — danh mục chỉ là phần phụ của màn hình, không được gọi API biết trước sẽ bị từ chối.
+    enabled: options?.enabled ?? true,
   });
 }
 

@@ -359,6 +359,7 @@ describe('HTTP e2e — /api/v1/work-shift-assignments', () => {
         .query({ month: '2026-09' })
         .set(authed(doctorAToken));
       expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('PERMISSION_SCOPE_DENIED'); // mã chuẩn (#260) để giao diện hiện màn "Không có quyền"
     });
   });
 

@@ -58,6 +58,21 @@ const ERROR_TEXT = /Không tải được|Không thể tải|Đã xảy ra lỗi
     }
     const menuHrefs = new Set(await page.$$eval('nav a[href]', (as) => as.map((a) => new URL(a.href).pathname)));
 
+    // Đọc trạng thái hiện tại của trang: API 403/5xx đã thu trong `bad`, chữ lỗi, khung cảnh báo.
+    async function inspect(route, label) {
+      const text = await page.evaluate(() => {
+        const clone = (document.querySelector('main') || document.body).cloneNode(true);
+        // Bỏ khung báo tĩnh `#boot-fallback` (luôn nằm sẵn trong trang, ẩn; chứa chữ "Không tải được ứng dụng") — nếu không mọi trang đều bị báo nhầm.
+        clone.querySelectorAll('#boot-fallback').forEach((e) => e.remove());
+        return clone.innerText ?? clone.textContent ?? '';
+      });
+      const banner = ERROR_TEXT.exec(text)?.[0] ?? null;
+      const alerts = await page.$$eval('[role=alert]', (els) => els.filter((e) => !e.closest('#boot-fallback')).map((e) => e.innerText.replace(/s+/g, ' ').slice(0, 90)));
+      if (bad.size > 0 || banner || alerts.length > 0) {
+        findings.push({ role, route: label ? `${route} [${label}]` : route, inMenu: menuHrefs.has(route), apis: [...bad.keys()], banner: banner ?? alerts[0] ?? '' });
+      }
+    }
+
     for (const route of routes) {
       bad.clear();
       current = route;
@@ -66,16 +81,16 @@ const ERROR_TEXT = /Không tải được|Không thể tải|Đã xảy ra lỗi
       await page.waitForTimeout(500);
       const denied = (await page.locator('#access-denied-title').count()) > 0;
       if (denied) continue; // route chặn đúng cách bằng trang "không có quyền"
-      // Bỏ khung báo tĩnh `#boot-fallback` (luôn nằm sẵn trong trang, ẩn; chứa chữ "Không tải được ứng dụng") — nếu không mọi trang đều bị báo nhầm.
-      const text = await page.evaluate(() => {
-        const clone = (document.querySelector('main') || document.body).cloneNode(true);
-        clone.querySelectorAll('#boot-fallback').forEach((e) => e.remove());
-        return clone.innerText ?? clone.textContent ?? '';
-      });
-      const banner = ERROR_TEXT.exec(text)?.[0] ?? null;
-      const alerts = await page.$$eval('[role=alert]', (els) => els.filter((e) => !e.closest('#boot-fallback')).map((e) => e.innerText.replace(/\s+/g, ' ').slice(0, 90)));
-      if (bad.size > 0 || banner || alerts.length > 0) {
-        findings.push({ role, route, inMenu: menuHrefs.has(route), apis: [...bad.keys()], banner: banner ?? alerts[0] ?? '' });
+      await inspect(route, '');
+      // Trang có thanh "pill" (ConfigScreenShell): bấm lần lượt từng pill, mỗi pill là một màn hình riêng có API riêng.
+      const pillTexts = await page.$$eval('main button.rounded-full', (bs) => bs.map((b) => (b.textContent || '').trim()));
+      for (let k = 1; k < pillTexts.length; k += 1) {
+        bad.clear();
+        const btn = page.locator('main button.rounded-full').nth(k);
+        await btn.click({ timeout: 2000 }).catch(() => {});
+        await page.waitForLoadState('networkidle').catch(() => {});
+        await page.waitForTimeout(400);
+        await inspect(route, pillTexts[k]);
       }
     }
     await ctx.close();
