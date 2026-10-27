@@ -1,3 +1,4 @@
+import { UNREADABLE_LABEL } from '../encryption-key/encryption-key-view';
 import { PencilSimple, Plus, ShieldCheck, Trash, WarningCircle } from '@phosphor-icons/react';
 import { useState } from 'react';
 import type { InsuranceCard, InsuranceCardWarning, PatientDetail } from '@nexamed/shared';
@@ -124,7 +125,7 @@ export function InsuranceCardSection({ patient, canEdit }: { patient: PatientDet
             {items.map((card) => (
               <div key={card.id} role="row" className={`${GRID} items-center border-t border-slate-100 px-5 py-2.5 text-sm`}>
                 <span role="cell" className="font-semibold tracking-wide text-slate-900 tabular-nums">
-                  {card.cardNo}
+                  {card.cardNoUnreadable ? <span className="text-rose-700">{UNREADABLE_LABEL}</span> : card.cardNo}
                 </span>
                 <span role="cell">
                   <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${KIND_CHIP_CLASS[card.kind]}`}>{KIND_LABEL[card.kind]}</span>

@@ -174,6 +174,8 @@ export const patientSummarySchema = z.object({
   phone: z.string(),
   hasNationalId: z.boolean(),
   nationalIdMasked: z.string().nullable(),
+  /** Có CCCD nhưng KHÔNG giải mã được (khoá hệ thống không khớp dữ liệu, #262) — giao diện hiện "Không đọc được" thay vì để trống. */
+  nationalIdUnreadable: z.boolean(),
   address: patientAddressSchema.nullable(),
   version: z.number().int(),
 });

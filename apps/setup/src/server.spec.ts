@@ -18,6 +18,8 @@ const service = {
   validate: () => ({ ok: false, errors: { profile: 'x' } }),
   startInstall: () => ({ ok: false, errors: { _: 'sai' } }),
   handoff: () => 'NOI DUNG',
+  takeResult: () => ({ publicUrl: 'http://x', username: 'a', tempPassword: 'p', profile: 'lan', version: '0.9.0' }),
+  keyInfo: vi.fn(async () => ({ fingerprint: 'BE19-5018', text: 'ENCRYPTION_KEY=abc' })),
   checkCertificate: vi.fn(() => ({ ok: true, errors: [], names: [] })),
 } as unknown as SetupService;
 
@@ -95,6 +97,29 @@ describe('máy chủ trình cài đặt', () => {
     const file = await fetch(base + '/api/handoff.txt');
     expect(file.headers.get('content-disposition')).toContain('attachment');
     expect(await file.text()).toContain('NOI DUNG');
+  });
+
+  it('file khoá hệ thống tải về dạng đính kèm; kết quả cài kèm MÃ KIỂM khoá (không phải khoá) (#262)', async () => {
+    await start('');
+    const file = await fetch(base + '/api/key.txt');
+    expect(file.status).toBe(200);
+    expect(file.headers.get('content-disposition')).toContain('attachment');
+    expect(file.headers.get('cache-control')).toBe('no-store');
+    expect(await file.text()).toContain('ENCRYPTION_KEY=abc');
+    const result = await (await fetch(base + '/api/result')).json();
+    expect(result.data.keyFingerprint).toBe('BE19-5018');
+    expect(JSON.stringify(result)).not.toContain('abc');
+  });
+
+  it('chưa cài xong (không có thông tin khoá) → /api/key.txt trả 404, không lộ gì', async () => {
+    (service.keyInfo as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+    await start('');
+    expect((await fetch(base + '/api/key.txt')).status).toBe(404);
+  });
+
+  it('đặt mã truy cập: /api/key.txt cũng cần đúng mã (không tải được khoá khi chưa xác thực)', async () => {
+    await start('AAAA-BBBB-CCCC');
+    expect((await fetch(base + '/api/key.txt')).status).toBe(401);
   });
 
   it('/api/finish gọi onFinish sau khi trả lời', async () => {

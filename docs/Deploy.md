@@ -229,6 +229,9 @@ docker compose run --rm -e ADMIN_USERNAME=quantri migrate pnpm run db:reset-admi
 #### Xử lý sự cố thường gặp
 
 - **Cổng 80 bị chiếm** (rất phổ biến trên Windows, ví dụ IIS): bước "Kiểm tra máy" báo vàng và tự đề xuất cổng 8080; nhân viên gõ thêm `:8080` sau địa chỉ.
+- **Mở lại `nexamed-setup` thấy "Hệ thống đã là bản mới nhất" nhưng lần cài trước bị lỗi giữa chừng (chưa tạo phòng khám, giao diện chưa chạy):** bản trình cài đặt trước 24/10/2026 coi `.env` là dấu hiệu "đã cài". Dùng bản mới (nhận ra lần cài dở, hiện khung "Lần cài trước chưa xong" và cho nhập lại thông tin để cài tiếp, khoá bí mật được giữ) — `docs/DECISIONS.md` #261.
+- **`nexamed-setup.cmd` chạy nhưng trình duyệt không tự mở:** trang cài đặt vẫn chạy — mở tay `http://127.0.0.1:8090` (cổng đã đổi bằng `-Port` thì dùng cổng đó). Nguyên nhân ở bản trước 24/10/2026: script chờ trang bằng `localhost` nên PowerShell 5.1 thử IPv6 trước và hết thời hạn (`docs/DECISIONS.md` #261).
+- **Cài báo lỗi "Cổng web … đang bị chương trình khác trên máy dùng"** (hoặc lỗi Docker `ports are not available … bind: Only one usage of each socket address`): có chương trình khác (thường Apache/XAMPP `httpd` trên 8080, IIS trên 80) đang giữ cổng web đã chọn. Trên trang cài đặt bấm **Sửa thông tin**, đổi sang cổng trống (ví dụ 8081), rồi cài lại — khoá bí mật đã sinh được giữ nguyên. Tìm chương trình đang chiếm: `netstat -ano | findstr :8080` rồi tra PID trong Task Manager. Bản trình cài đặt trước 24/10/2026 có lỗi bỏ qua cổng mới sau khi lỗi (`docs/DECISIONS.md` #261): với bản cũ phải đóng cửa sổ `nexamed-setup.cmd` rồi chạy lại để có phiên mới.
 - **Router không giữ được IP cố định cho máy:** ứng dụng vẫn chạy khi IP đổi (`config.json.apiBaseUrl` để trống), nhưng nhân viên phải mở địa chỉ IP mới. Nên đặt IP tĩnh trên máy; bước "Thông tin" có mục "Xem hướng dẫn" (tìm dải DHCP của router, chọn IP ngoài dải, đặt trong Windows).
 - **Cài lỗi giữa chừng:** trang hiện bước lỗi kèm nguyên nhân; sửa nguyên nhân rồi bấm **Thử lại** (tiếp tục từ bước lỗi, không làm lại bước đã xong, không sinh lại khoá hệ thống). Lỗi "phòng khám đã được tạo ở lần cài trước" nghĩa là lần cài trước đã chạy tới bước tạo phòng khám; muốn cài lại từ đầu phải xoá dữ liệu cũ (`docker compose down -v` trong thư mục cài đặt) rồi chạy lại.
 - **Lỡ đóng trang trước khi lưu mật khẩu tạm, hoặc quản trị viên quên mật khẩu:** mật khẩu cũ không xem lại được nhưng ĐẶT LẠI được, không cần cài lại. Có quản trị viên khác đăng nhập được thì đặt lại ở "Danh mục quản lý tài khoản"; không còn ai đăng nhập được thì dùng lệnh ở mục "Quên mật khẩu quản trị" ngay dưới.
@@ -394,7 +397,7 @@ Mô hình giao hàng chính: máy chủ đặt trong mạng nội bộ phòng kh
 **1. Tường lửa Windows (máy chủ là PC Windows chạy Docker Desktop).** Nếu máy trạm không vào được dù máy chủ vào bình thường: tường lửa đang chặn cổng web với mạng ở hồ sơ "Public" (hay gặp với Wi-Fi). Mở cổng cho đúng mạng nội bộ — chạy PowerShell **với quyền Administrator** trên máy chủ (đổi `80` nếu dùng cổng khác):
 
 ```powershell
-New-NetFirewallRule -DisplayName "NEXAMed web (LAN)" -Direction Inbound -Protocol TCP -LocalPort 80 -RemoteAddress LocalSubnet -Profile Any -Action Allow
+New-NetFirewallRule -DisplayName "NEXAMed web (LAN) 8081" -Direction Inbound -Protocol TCP -LocalPort 8081 -RemoteAddress LocalSubnet -Profile Any -Action Allow
 # Gỡ khi không cần nữa:  Remove-NetFirewallRule -DisplayName "NEXAMed web (LAN)"
 ```
 
@@ -407,6 +410,25 @@ New-NetFirewallRule -DisplayName "NEXAMed web (LAN)" -Direction Inbound -Protoco
 **4. Khoá đăng nhập và "máy quen" (#259).** Nhập sai mật khẩu 5 lần từ một máy sẽ khoá tạm tài khoản (5, rồi 15, rồi 30 phút, sau đó khoá vĩnh viễn). Để người khác gõ sai không làm tê liệt tài khoản của bạn: trình duyệt đã **đăng nhập đúng ít nhất một lần** được nhận là **máy quen** — khoá do máy lạ gây ra không chặn máy quen, và đăng nhập đúng từ máy quen sẽ tự gỡ khoá. Vì vậy: (a) mỗi nhân viên nên đăng nhập một lần bằng trình duyệt thường dùng của mình (không dùng cửa sổ ẩn danh); (b) xoá cookie/dữ liệu trình duyệt, đổi trình duyệt hay đổi mật khẩu thì máy đó thành máy lạ (đăng nhập lại một lần để thành máy quen); (c) tài khoản đang bị khoá mà nhân viên chỉ có máy mới → quản trị viên mở khoá ở "Quản trị → Tài khoản" (quyền `user_account.unlock`), hoặc dùng lệnh đặt lại mật khẩu quản trị (mục 2.3). Máy quen gõ sai 10 lần chỉ bị khoá 15 phút, không bao giờ khoá vĩnh viễn.
 
 **5. Kiểm sau khi cài/nâng cấp (5 phút, nên làm một lần).** Từ MỘT máy trạm khác máy chủ: mở `http://<IP máy chủ>` → đăng nhập → tải lại trang (phải vẫn đăng nhập) → vào Kê đơn/Đơn thuốc mẫu và chọn một thuốc (trước đây từng hỏng ở HTTP LAN vì trình duyệt không cấp `crypto.randomUUID`, nay đã có dự phòng) → thử in/xuất PDF. Trên máy dev có công cụ tự động: `scripts/ui-audit/lan-http-check.cjs` (quét mọi trang qua địa chỉ LAN, xem đầu tệp để biết cách dựng Vite phụ và biến môi trường).
+
+### 2.3f. Khoá mã hoá hệ thống: cất khoá, khoá không khớp, xoay khoá (24/10/2026, `docs/DECISIONS.md` #262)
+
+`ENCRYPTION_KEY` trong `.env` mã hoá số CCCD, số thẻ BHYT, mật khẩu cổng liên thông và bí mật OTP. **Bản sao lưu tự động KHÔNG chứa khoá** (có chủ đích: để lộ bản sao lưu vẫn không lộ dữ liệu). Mất khoá = các thông tin đó không đọc lại được và không có cách lấy lại.
+
+**1. Cất khoá ngay lúc cài.** Trang "Hoàn tất" của bộ cài có hộp "Cất khoá hệ thống": tải file `NEXAMed-khoa-he-thong.txt` (chứa khoá + mã kiểm dạng `7F3A-91C2` + cách khôi phục) và cất ở NƠI KHÁC máy chủ (USB, két). Không gửi qua Zalo/nhóm chat. Hệ thống đã cài từ trước: copy dòng `ENCRYPTION_KEY=...` trong `.env` ra nơi an toàn; mã kiểm hiện ở cảnh báo khi khoá lệch.
+
+**2. Cảnh báo "Khoá hệ thống KHÔNG khớp với dữ liệu đã lưu"** (đỏ ở đầu trang, chỉ quản trị thấy): thường do khôi phục sao lưu sang máy mới mà thiếu `.env` gốc. Trong lúc lệch: CCCD/thẻ BHYT hiện "Không đọc được", hệ thống từ chối lưu CCCD/thẻ BHYT mới (409), mọi việc khác bình thường. **ĐỪNG nhập lại CCCD/thẻ BHYT để "sửa".** Cách xử lý: tìm file khoá, sửa dòng `ENCRYPTION_KEY=` trong `.env` cho đúng, `docker compose restart api`. Mã kiểm trong cảnh báo cho biết khoá nào đang chạy (đối chiếu với file khoá). Không có file khoá: dữ liệu mã hoá KHÔNG khôi phục được — liên hệ đơn vị hỗ trợ trước khi làm bất cứ điều gì khác (đừng tự sửa cơ sở dữ liệu).
+
+**3. Xoay khoá** (đổi khoá định kỳ hoặc khi nghi lộ khoá). Làm ngoài giờ khám, hệ thống sẽ tắt vài phút:
+```
+# 1. SAO LƯU TRƯỚC: đăng nhập tài khoản quản trị, Cấu hình hệ thống → Sao lưu dữ liệu → bấm "Sao lưu ngay", đợi báo thành công
+docker compose stop api web                                          # 2. tắt ứng dụng
+docker compose run --rm -e OLD_ENCRYPTION_KEY=<khoá hiện tại> -e GENERATE_NEW_KEY=yes -e DRY_RUN=yes migrate pnpm run db:rotate-encryption-key     # 3. chạy thử, chỉ báo cáo
+docker compose run --rm -e OLD_ENCRYPTION_KEY=<khoá hiện tại> -e NEW_ENCRYPTION_KEY=<khoá mới> -e CONFIRMED_BACKUP=yes migrate pnpm run db:rotate-encryption-key   # 4. xoay thật
+```
+Rồi sửa `ENCRYPTION_KEY=` trong `.env` thành khoá MỚI, cất file khoá mới, `docker compose up -d`. Lệnh mã hoá lại CCCD, thẻ BHYT (kể cả bản chụp ở lượt khám), mật khẩu liên thông, OTP người vận hành trong MỘT giao dịch (lỗi giữa chừng không đổi gì); giá trị không giải mã được bằng khoá cũ làm lệnh DỪNG (kiểm lại khoá cũ; `-e ALLOW_UNREADABLE=yes` để bỏ qua). Liên kết ảnh đã ký cũ hết hiệu lực. Quên sửa `.env` sau khi xoay: ứng dụng báo "Khoá hệ thống không khớp" ngay.
+
+**4. Quyền file `.env` trên Windows.** `nexamed-setup.cmd` khoá quyền `.env` (chỉ SYSTEM, Administrators và người chạy lệnh) mỗi lần mở và sau khi cài xong. Người dùng Windows khác không phải Administrator sẽ không đọc được file này — đúng chủ đích.
 
 ### 2.4. PC không có server nội bộ — tự chạy lại sau khi khởi động lại, không cần nhân viên thao tác
 

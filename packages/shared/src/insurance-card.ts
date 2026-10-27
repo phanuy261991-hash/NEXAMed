@@ -78,6 +78,8 @@ export const insuranceCardSchema = z.object({
   patientId: z.string().uuid(),
   /** Số thẻ ĐÃ chuẩn hoá, hiện rõ cho người có quyền xem bệnh nhân (chủ dự án chốt, #243 mục 5). */
   cardNo: z.string(),
+  /** Số thẻ KHÔNG giải mã được (khoá hệ thống không khớp dữ liệu, #262): `cardNo` rỗng, giao diện hiện "Không đọc được". */
+  cardNoUnreadable: z.boolean(),
   kind: insuranceCardKindSchema,
   validFrom: z.string().nullable(),
   validTo: z.string().nullable(),
@@ -140,6 +142,8 @@ export const encounterInsuranceSchema = z.object({
   selfPay: z.boolean(),
   reason: insuranceSelfPayReasonSchema.nullable(),
   cardNo: z.string().nullable(),
+  /** Lượt khám có thẻ nhưng số thẻ KHÔNG giải mã được (#262): `cardNo` null, giao diện KHÔNG coi là tự chi trả. */
+  cardNoUnreadable: z.boolean(),
   kind: insuranceCardKindSchema.nullable(),
   validFrom: z.string().nullable(),
   validTo: z.string().nullable(),

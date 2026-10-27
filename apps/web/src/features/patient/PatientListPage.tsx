@@ -1,3 +1,4 @@
+import { UNREADABLE_LABEL } from '../encryption-key/encryption-key-view';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlass, Users } from '@phosphor-icons/react';
@@ -232,7 +233,7 @@ export function PatientListPage() {
                         {patient.patientCode}
                       </div>
                       <div role="cell" className="truncate font-medium text-slate-900">{patient.fullName}</div>
-                      <div role="cell" className="text-center font-medium text-slate-600">{patient.nationalIdMasked ?? '—'}</div>
+                      <div role="cell" className="text-center font-medium text-slate-600">{patient.nationalIdUnreadable ? <span className="text-rose-700">{UNREADABLE_LABEL}</span> : (patient.nationalIdMasked ?? '—')}</div>
                       <div role="cell" className="text-center font-medium text-slate-600">{GENDER_LABEL[patient.gender]}</div>
                       <div role="cell" className="text-center font-medium text-slate-600">{computeBirthYear(patient.dob)}</div>
                       <div role="cell" className="text-center font-medium text-slate-600">{patient.phone}</div>

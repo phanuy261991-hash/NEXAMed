@@ -27,3 +27,4 @@ export * from './pricing.port';
 export * from './leave-reader.port';
 export * from './appointment-impact-reader.port';
 export * from './tenant-access.port';
+export * from './encryption-key-guard.port';

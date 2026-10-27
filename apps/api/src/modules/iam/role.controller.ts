@@ -14,9 +14,8 @@ import { RoleService } from './role.service';
 
 /**
  * Vai trò tuỳ biến + ma trận phân quyền (ADM-07). Dùng chung permission `role_permission.manage`
- * cho mọi endpoint (đọc lẫn ghi) — danh mục `permission` chỉ có đúng quyền này cho cả domain
- * "vai trò/phân quyền" (không có `role_permission.read` riêng), và chỉ `clinic_admin` cần vào
- * màn hình này (.claude/docs/security-audit.md). Không gắn `entityIdParam` — break-glass không
+ * cho mọi endpoint ghi và đọc ma trận; RIÊNG danh sách vai trò (`GET /roles`) chỉ cần `role_permission.read`
+ * (#260, để hộp tài khoản chọn được vai trò). Chỉ `clinic_admin` cần vào màn hình cấu hình này (.claude/docs/security-audit.md). Không gắn `entityIdParam` — break-glass không
  * có ý nghĩa với cấu hình phân quyền (không phải dữ liệu lâm sàng có chủ sở hữu), `none` bị chặn
  * hẳn, cùng tinh thần `ReferenceCatalogController`.
  */
@@ -25,8 +24,9 @@ import { RoleService } from './role.service';
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
+  // Danh sách vai trò chỉ cần quyền ĐỌC (`role_permission.read`): hộp thêm/sửa tài khoản dùng nó để chọn vai trò, vai trò `system_admin` không sửa được ma trận (#260).
   @Get('roles')
-  @RequirePermission('role_permission', 'manage')
+  @RequirePermission('role_permission', 'read')
   async list(@Req() req: Request) {
     const { tenantId } = req.user!;
     return { items: await this.roleService.listRoles(tenantId) };

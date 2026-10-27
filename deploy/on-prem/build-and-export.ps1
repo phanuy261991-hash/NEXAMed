@@ -27,12 +27,14 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$Version,
-    [string]$PackageDir = "$PSScriptRoot\package",
+    # Mặc định đặt SAU khối param: khi chạy bằng `powershell -File`, $PSScriptRoot RỖNG trong giá trị mặc định của tham số nên gói bị ghi nhầm ra C:\package (24/10/2026).
+    [string]$PackageDir = '',
     [string]$Platform = 'linux/amd64',
     [switch]$AllowUnreleased
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $PackageDir) { $PackageDir = Join-Path $PSScriptRoot 'package' }
 
 function Write-Step($text) {
     Write-Host ""

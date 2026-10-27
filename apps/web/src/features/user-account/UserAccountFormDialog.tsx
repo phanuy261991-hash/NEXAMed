@@ -179,7 +179,7 @@ export function UserAccountFormDialog({
   const departmentsQuery = useDepartmentsQuery();
   const createDepartmentMutation = useCreateDepartmentMutation();
   const roomsQuery = useRoomsQuery();
-  const rolesQuery = useRolesQuery({ enabled: useHasPermission('role_permission', 'manage') });
+  const rolesQuery = useRolesQuery({ enabled: useHasPermission('role_permission', 'read') });
   // Ô "Chi nhánh làm việc" CHỈ hiện khi công ty có từ 2 chi nhánh hoạt động (mockup Màn 3) — 1 chi nhánh: mọi tài khoản tự thuộc chi nhánh mặc định, form không đổi.
   const canReadBranch = useHasPermission('branch', 'read');
   const branchesQuery = useBranchesQuery(false, canReadBranch);

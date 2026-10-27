@@ -169,7 +169,7 @@ export function createSetupServer(options: ServerOptions): Server {
         return sendJson(res, 200, { data: { ok: true, ...service.review(checked.value) } });
       }
       case 'POST /api/install': {
-        const started = service.startInstall(body as never);
+        const started = service.startInstall(body as never, { retry: (body as { retry?: unknown }).retry === true });
         return sendJson(res, started.ok ? 200 : 422, started.ok ? { data: { ok: true } } : { error: { message: 'Câu trả lời chưa hợp lệ.', details: started.errors } });
       }
       case 'POST /api/upgrade': {
@@ -191,7 +191,8 @@ export function createSetupServer(options: ServerOptions): Server {
       case 'GET /api/result': {
         const result = service.takeResult();
         if (!result) throw new HttpError(404, 'Chưa có kết quả.');
-        return sendJson(res, 200, { data: result });
+        // Mã kiểm khoá (không phải khoá) để trang Hoàn tất hiện cho người cài đối chiếu với file khoá (#262).
+        return sendJson(res, 200, { data: { ...result, keyFingerprint: (await service.keyInfo())?.fingerprint ?? null } });
       }
       case 'POST /api/ack':
         service.acknowledge();
@@ -232,6 +233,13 @@ export function createSetupServer(options: ServerOptions): Server {
             if (!text) throw new HttpError(404, 'Không có file bàn giao.');
             res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': 'attachment; filename="NEXAMed-ban-giao.txt"', 'Cache-Control': 'no-store' });
             res.end('﻿' + text);
+            return;
+          }
+          if (url.pathname === '/api/key.txt' && method === 'GET') {
+            const info = await service.keyInfo();
+            if (!info) throw new HttpError(404, 'Chưa có file khoá (lần cài chưa xong).');
+            res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': 'attachment; filename="NEXAMed-khoa-he-thong.txt"', 'Cache-Control': 'no-store' });
+            res.end('﻿' + info.text);
             return;
           }
           await api(req, res, method, url.pathname, url);

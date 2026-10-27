@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import type { DockerClient } from './docker';
 import { setEnvValues } from './env-file';
 import type { StepDef } from './job';
-import { APP_IMAGES, THIRD_PARTY_IMAGES, discoverPackage, fileExists } from './package-files';
+import { APP_IMAGES, PLACEHOLDER_TENANT, THIRD_PARTY_IMAGES, discoverPackage, fileExists } from './package-files';
 import { type InstallAnswers, type InstallPlan, buildPlan } from './profiles';
 
 export interface InstallDeps {
@@ -34,8 +34,10 @@ export interface InstallResult {
   plan: InstallPlan;
 }
 
-const PLACEHOLDER_TENANT = '00000000-0000-0000-0000-000000000000';
 export const SEED_RESULT_PREFIX = 'NEXAMED_RESULT ';
+
+/** Lỗi của Docker khi cổng máy đã bị chiếm (Windows: "Only one usage of each socket address"; Linux: "address already in use"). */
+const PORT_BUSY = /ports are not available|port is already allocated|address already in use|Only one usage of each socket address/i;
 
 /** Lấy JSON của dòng `NEXAMED_RESULT {...}` trong đầu ra của script tạo tài khoản. */
 export function parseSeedResult<T>(output: string): T {
@@ -157,7 +159,12 @@ export function buildInstallSteps(answers: InstallAnswers, deps: InstallDeps, st
       if (up.code !== 0) {
         const logs = await docker.compose(['logs', '--no-color', '--tail', '40', 'migrate']);
         ctx.log(logs.stdout.trim());
-        throw new Error(`Khởi động hệ thống thất bại: ${up.stderr.trim().split(/\r?\n/).pop()}`);
+        const reason = up.stderr.trim().split(/\r?\n/).pop() ?? '';
+        // Cổng web bị chương trình khác trên máy chiếm (Apache/XAMPP, IIS, ...): nói rõ bằng tiếng Việt và chỉ cách sửa thay vì hiện nguyên lỗi của Docker.
+        if (PORT_BUSY.test(reason)) {
+          throw new Error(`Cổng web ${answers.webPort ?? 80} đang bị chương trình khác trên máy dùng. Bấm "Sửa thông tin", đổi sang cổng khác (ví dụ 8081) rồi cài lại; hoặc tắt chương trình đang chiếm cổng đó.`);
+        }
+        throw new Error(`Khởi động hệ thống thất bại: ${reason}`);
       }
     },
   });

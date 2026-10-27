@@ -84,6 +84,8 @@ const PUBLIC_ROUTES = new Set<string>([
  */
 const LOGIN_ONLY_ROUTES = new Set<string>([
   'GET /api/v1/auth/me',
+  // Trạng thái khoá mã hoá hệ thống (#262): mọi tài khoản đã đăng nhập hỏi được `state` (giao diện cần biết để hiện "không đọc được"); mã kiểm khoá chỉ trả cho quản trị (kiểm trong controller).
+  'GET /api/v1/encryption-key/status',
   'POST /api/v1/auth/change-password',
   // Đổi chi nhánh làm việc của CHÍNH PHIÊN mình (docs/DECISIONS.md #231) — chỉ sang chi nhánh tài khoản được gán (kiểm ở dịch vụ), tự phục vụ như /auth/me.
   'POST /api/v1/auth/switch-branch',

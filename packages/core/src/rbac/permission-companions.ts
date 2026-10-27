@@ -14,6 +14,9 @@ export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> 
   'encounter.create': ['encounter.read', 'patient.read', 'appointment.read', 'allergen_catalog.read', 'reference_catalog.read'],
   'invoice.read': ['cashier_shift.read', 'reference_catalog.read'],
   'cashier_shift.read': ['user_account.read'],
+  // Hộp thêm/sửa tài khoản cần danh sách vai trò + danh mục nhân sự (#260).
+  'user_account.manage': ['user_account.read', 'role_permission.read', 'reference_catalog.read'],
+  'role_permission.manage': ['role_permission.read'],
   'cash_voucher.read': ['cash_account.read', 'reference_catalog.read'],
   'stock_receipt.read': ['drug.read', 'cash_account.read', 'reference_catalog.read'],
   'stock_receipt.create': ['drug.read', 'cash_account.read', 'reference_catalog.read'],

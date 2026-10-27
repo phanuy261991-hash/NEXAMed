@@ -1,3 +1,4 @@
+import { UNREADABLE_LABEL } from '../encryption-key/encryption-key-view';
 import { useMemo, useState } from 'react';
 import { MagnifyingGlass, UsersThree, X } from '@phosphor-icons/react';
 import type { PatientSummary } from '@nexamed/shared';
@@ -166,7 +167,7 @@ export function PatientSearchDialog({
                 results.map((patient) => (
                   <tr key={patient.id} className="border-b border-slate-100">
                     <td className="px-4 py-2.5 font-medium text-slate-900">{patient.fullName}</td>
-                    <td className="px-4 py-2.5 text-center font-medium text-slate-600">{patient.nationalIdMasked ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-center font-medium text-slate-600">{patient.nationalIdUnreadable ? <span className="text-rose-700">{UNREADABLE_LABEL}</span> : (patient.nationalIdMasked ?? '—')}</td>
                     <td className="px-4 py-2.5 text-center font-medium text-slate-600">{patient.phone}</td>
                     <td className="px-4 py-2.5 font-medium text-slate-600">{formatAddressLine(patient.address, provinceNameByCode, wardNameByCode) || '—'}</td>
                     <td className="px-4 py-2.5 text-center">

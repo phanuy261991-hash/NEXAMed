@@ -35,6 +35,7 @@ function draftToCard(draft: InsuranceCardDraft): InsuranceCard {
     id: DRAFT_CARD_ID,
     patientId: '',
     cardNo: draft.cardNo,
+    cardNoUnreadable: false,
     kind: detectInsuranceCardKind(draft.cardNo),
     validFrom: draft.validFrom,
     validTo: draft.validTo,

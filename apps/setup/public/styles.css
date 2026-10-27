@@ -54,6 +54,15 @@ a.btn { text-decoration: none; color: var(--fg); align-self: flex-start; }
 .ic { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 700; }
 .ic.ok { background: var(--ok); } .ic.bad { background: var(--bad); } .ic.warn { background: var(--warn); color: #1f1300; } .ic.run { background: var(--brand); } .ic.wait { background: var(--line); color: var(--muted); }
 .val { font-family: var(--mono); font-size: 12.5px; color: var(--fg2); text-align: right; }
+.keybox { position: relative; margin-top: 12px; border: 2px solid var(--warn); border-radius: 10px; padding: 28px 20px 18px; background: var(--amber-bg); display: flex; flex-direction: column; gap: 12px; }
+.keybox > .t { position: absolute; top: -12px; left: 16px; background: var(--warn); color: #1a1608; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 3px 10px; border-radius: 5px; }
+.keybox .keyhead { font-size: 15px; font-weight: 700; color: var(--amber-ink); }
+.keybox ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.keybox .keyrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; border: 1px solid var(--amber-line); border-radius: 8px; padding: 12px 14px; background: var(--surface); }
+.keybox .keyrow > div { display: flex; flex-direction: column; gap: 2px; }
+.keybox .keyfp { font-family: var(--mono); font-size: 22px; font-weight: 800; letter-spacing: .06em; color: var(--amber-ink); }
+.btn.amber { background: var(--warn); border-color: var(--warn); color: #1a1608; }
+.btn.amber:hover { background: #d98a06; }
 .alert { border: 1px solid var(--amber-line); background: var(--amber-bg); color: var(--amber-ink); border-radius: 6px; padding: 9px 12px; font-size: 13px; font-weight: 600; }
 .err { border: 1px solid #fda4af; background: var(--bad-tint); color: var(--bad); border-radius: 6px; padding: 10px 12px; font-weight: 600; font-size: 13.5px; display: flex; flex-direction: column; gap: 6px; }
 .err ol { margin: 0; padding-left: 20px; font-weight: 500; color: var(--fg2); }

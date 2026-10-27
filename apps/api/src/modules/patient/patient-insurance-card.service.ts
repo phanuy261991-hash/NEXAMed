@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client';
 import {
   CLINIC_CONFIG_READER_PORT,
   ConcurrentModificationError,
+  ENCRYPTION_KEY_GUARD_PORT,
   InsuranceDisabledError,
   InvalidPhotoError,
   PatientAlreadyMergedError,
@@ -15,6 +16,7 @@ import {
   resolveInsuranceCardValidity,
   sniffImageExtension,
   type ClinicConfigReaderPort,
+  type EncryptionKeyGuardPort,
   type StoragePort,
 } from '@nexamed/core';
 import {
@@ -33,7 +35,8 @@ import {
 import { randomUUID } from 'node:crypto';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
-import { decryptPii, encryptPii, hashForLookup } from '../../infrastructure/crypto/pii-encryption';
+import { insuranceCardHashInput as cardHashInput } from '../../infrastructure/crypto/lookup-hash-inputs';
+import { encryptPii, hashForLookup, tryDecryptPii } from '../../infrastructure/crypto/pii-encryption';
 import { signFileToken } from '../../infrastructure/storage/signed-url';
 import type { RequestMeta } from '../../common/request-meta';
 import { PatientRepository } from './patient.repository';
@@ -43,11 +46,6 @@ import { PatientInsuranceCardRepository, type InsuranceCardRow, type UpdateInsur
 const PHOTO_URL_TTL_SECONDS = 15 * 60;
 /** Cũng dùng ở controller (giới hạn `FileInterceptor`). */
 export const MAX_INSURANCE_PHOTO_SIZE_BYTES = 3 * 1024 * 1024;
-
-/** Mã băm tra trùng/tìm theo số thẻ — thêm tiền tố để một số trùng chữ với CCCD KHÔNG cho cùng mã băm. */
-function cardHashInput(cardNo: string): string {
-  return `insurance-card:${cardNo}`;
-}
 
 function isoDate(date: Date | null): string | null {
   return date ? date.toISOString().slice(0, 10) : null;
@@ -66,6 +64,7 @@ export class PatientInsuranceCardService {
     private readonly configService: ConfigService,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfig: ClinicConfigReaderPort,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+    @Inject(ENCRYPTION_KEY_GUARD_PORT) private readonly encryptionKeyGuard: EncryptionKeyGuardPort,
   ) {}
 
   // ---------------------------------------------------------------- danh sách / gợi ý
@@ -90,6 +89,8 @@ export class PatientInsuranceCardService {
 
   async createCard(tenantId: string, actorId: string, patientId: string, dto: CreateInsuranceCardRequest, meta: RequestMeta): Promise<SaveInsuranceCardResponse> {
     await this.assertEnabled(tenantId);
+    // Khoá mã hoá không khớp dữ liệu thì không ghi số thẻ mới (#262) — kiểm TRƯỚC khi mở transaction.
+    await this.encryptionKeyGuard.assertWritable(tenantId);
     const key = this.encryptionKey();
     const cardNo = this.requireCardNo(dto.cardNo);
     const today = getVietnamDateString(new Date());
@@ -130,6 +131,7 @@ export class PatientInsuranceCardService {
     meta: RequestMeta,
   ): Promise<SaveInsuranceCardResponse> {
     await this.assertEnabled(tenantId);
+    if (dto.cardNo !== undefined) await this.encryptionKeyGuard.assertWritable(tenantId);
     const key = this.encryptionKey();
     const cardNo = dto.cardNo !== undefined ? this.requireCardNo(dto.cardNo) : undefined;
     const today = getVietnamDateString(new Date());
@@ -173,7 +175,7 @@ export class PatientInsuranceCardService {
       });
       const updated = await this.cardRepository.findById(tx, tenantId, patientId, cardId);
       if (!updated) throw new NotFoundException();
-      const effectiveNo = cardNo ?? decryptPii(Buffer.from(updated.cardNoEnc), key);
+      const effectiveNo = cardNo ?? tryDecryptPii(Buffer.from(updated.cardNoEnc), key) ?? '';
       return { card: this.toCard(tenantId, updated, key, today), warnings: this.warnings(effectiveNo, duplicate) };
     });
   }
@@ -322,13 +324,16 @@ export class PatientInsuranceCardService {
     const parsed = storedInsuranceSnapshotSchema.safeParse(snapshotJson);
     const snap: StoredInsuranceSnapshot = parsed.success ? parsed.data : { selfPay: true };
     let cardNo: string | null = null;
+    let cardNoUnreadable = false;
     if (!snap.selfPay && snap.cardNoEnc) {
-      cardNo = decryptPii(Buffer.from(snap.cardNoEnc, 'base64'), this.encryptionKey());
+      cardNo = tryDecryptPii(Buffer.from(snap.cardNoEnc, 'base64'), this.encryptionKey());
+      cardNoUnreadable = cardNo === null;
     }
     return {
       selfPay: snap.selfPay,
       reason: snap.reason ?? null,
       cardNo,
+      cardNoUnreadable,
       kind: cardNo ? detectInsuranceCardKind(cardNo) : null,
       validFrom: snap.validFrom ?? null,
       validTo: snap.validTo ?? null,
@@ -382,13 +387,16 @@ export class PatientInsuranceCardService {
   }
 
   private toCard(tenantId: string, row: InsuranceCardRow, key: string, today: string): InsuranceCard {
-    const cardNo = decryptPii(Buffer.from(row.cardNoEnc), key);
+    // Khoá không khớp → số thẻ rỗng (thẻ vẫn hiện trong danh sách, kiểu "không rõ"); không để cả danh sách lỗi 500 (#262).
+    const decrypted = tryDecryptPii(Buffer.from(row.cardNoEnc), key);
+    const cardNo = decrypted ?? '';
     const validFrom = isoDate(row.validFrom);
     const validTo = isoDate(row.validTo);
     return {
       id: row.id,
       patientId: row.patientId,
       cardNo,
+      cardNoUnreadable: decrypted === null,
       kind: detectInsuranceCardKind(cardNo),
       validFrom,
       validTo,

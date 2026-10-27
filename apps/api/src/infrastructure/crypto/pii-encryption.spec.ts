@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { decryptPii, encryptPii, hashForLookup } from './pii-encryption';
+import { decryptPii, encryptPii, hashForLookup, tryDecryptPii } from './pii-encryption';
 
 const KEY = 'test-encryption-key-at-least-32-characters-long';
 const OTHER_KEY = 'khac-key-32-ky-tu-tro-len-000000000000';
+
+describe('tryDecryptPii (đọc không ném lỗi, #262)', () => {
+  it('đúng khoá → plaintext; sai khoá hoặc dữ liệu hỏng/rỗng → null (không ném)', () => {
+    const encrypted = encryptPii('012345678901', KEY);
+    expect(tryDecryptPii(encrypted, KEY)).toBe('012345678901');
+    expect(tryDecryptPii(encrypted, OTHER_KEY)).toBeNull();
+    expect(tryDecryptPii(Buffer.from('rac'), KEY)).toBeNull();
+    expect(tryDecryptPii(Buffer.alloc(0), KEY)).toBeNull();
+  });
+});
 
 describe('pii-encryption', () => {
   it('encrypt rồi decrypt trả lại đúng plaintext gốc', () => {

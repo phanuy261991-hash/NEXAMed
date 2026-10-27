@@ -33,6 +33,18 @@ export function decryptPii(payload: Buffer, key: string): string {
 }
 
 /**
+ * Giải mã KHÔNG ném lỗi: khoá sai/dữ liệu hỏng → `null` (thẻ xác thực GCM không khớp). Dùng ở chỗ ĐỌC để hiển thị — trường mã hoá hiện "không đọc được" thay vì cả danh sách/hồ sơ lỗi 500
+ * khi khoá hệ thống không khớp dữ liệu (#262). KHÔNG dùng để quyết định nghiệp vụ.
+ */
+export function tryDecryptPii(payload: Buffer, key: string): string | null {
+  try {
+    return decryptPii(payload, key);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Hash một chiều, xác định (HMAC-SHA256 dùng `ENCRYPTION_KEY` làm khoá) để tra trùng chính xác
  * mà không phải giải mã hàng loạt để so sánh — .claude/docs/data-model.md gọi đây là "SHA-256 +
  * salt hệ thống". Dùng HMAC (keyed hash chuẩn) thay vì nối chuỗi `SHA256(salt + value)`, tái

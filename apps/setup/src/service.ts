@@ -2,6 +2,8 @@
  * Bộ điều phối của trình cài đặt (docs/DECISIONS.md #238): giữ trạng thái một phiên cài/nâng cấp trong bộ nhớ và nối giao diện web với các hàm ở `lib/`.
  * Tách khỏi `server.ts` (HTTP) để test được mà không cần mở cổng mạng.
  */
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { resolve4 } from 'node:dns/promises';
 import { type CertCheck, checkWildcardCertificate } from './lib/cert';
 import { type DnsCheck, checkDomainPointsHere } from './lib/dns';
@@ -9,12 +11,15 @@ import type { DockerClient } from './lib/docker';
 import { buildHandoffText } from './lib/handoff';
 import { buildInstallSteps, type InstallResult } from './lib/install';
 import { Job, type JobView } from './lib/job';
-import { discoverPackage, readInstalledVersion } from './lib/package-files';
+import { discoverPackage, hasPlaceholderTenant, readInstalledVersion } from './lib/package-files';
+import { getEnvValue } from './lib/env-file';
+import { keyFingerprint } from './lib/key-fingerprint';
+import { buildKeyFileText } from './lib/keyfile';
 import { type InstallAnswers, buildPlan, validateAnswers } from './lib/profiles';
 import { qrSvg } from './lib/qr';
 import { generateTempPassword, randomHex } from './lib/secrets';
 import { base32Encode, buildOtpAuthUri, groupSecret, verifyTotp } from './lib/totp';
-import { type UpgradeRecord, buildManualRollbackSteps, buildUpgradeSteps, readSetupState } from './lib/upgrade';
+import { type UpgradeRecord, buildManualRollbackSteps, buildUpgradeSteps, readSetupState, writeSetupState } from './lib/upgrade';
 import { randomBytes } from 'node:crypto';
 
 export interface SetupEnv {
@@ -49,6 +54,8 @@ export interface DetectView {
   packageVersion: string | null;
   services: Array<{ service: string; state: string; health: string }>;
   upToDate: boolean;
+  /** Lần cài trước CHƯA xong (đã có `.env` nhưng chưa tạo phòng khám/chưa hoàn tất): chế độ cài mới, nhập lại thông tin để cài tiếp — khoá bí mật cũ được giữ. */
+  incompleteInstall: boolean;
   lastUpgrade: UpgradeRecord | null;
   hostInstallDir: string;
   hostIps: string[];
@@ -93,13 +100,17 @@ export class SetupService {
   }
 
   async detect(): Promise<DetectView> {
-    const installedVersion = await readInstalledVersion(this.env.workDir);
+    const envVersion = await readInstalledVersion(this.env.workDir);
     const pkg = await discoverPackage(this.env.workDir);
-    const services = installedVersion ? await this.docker.services() : [];
     const packageVersion = pkg.versions[0] ?? null;
     const state = await readSetupState(this.env.workDir);
+    // `.env` có phiên bản ngay từ bước "Ghi cấu hình" (bước 2/6) — chưa đủ để coi là đã cài. Lần cài dở: cờ `installInProgress`, hoặc (bản cũ chưa có cờ) `config.json` còn mã phòng khám giữ chỗ.
+    const incompleteInstall = envVersion !== null && (state.installInProgress === true || (await hasPlaceholderTenant(this.env.workDir)));
+    const installedVersion = incompleteInstall ? null : envVersion;
+    const services = installedVersion ? await this.docker.services() : [];
     return {
       mode: installedVersion ? 'upgrade' : 'install',
+      incompleteInstall,
       setupVersion: this.env.setupVersion,
       installedVersion,
       packageVersion,
@@ -209,12 +220,18 @@ export class SetupService {
     return this.job && this.jobKind ? { ...this.job.view(), kind: this.jobKind } : null;
   }
 
-  /** Bắt đầu (hoặc thử lại) cài mới. Câu trả lời đã được kiểm tra lại ở đây — không tin giao diện. */
-  startInstall(raw: Parameters<typeof validateAnswers>[0]): { ok: true } | { ok: false; errors: Record<string, string> } {
-    if (this.job && this.jobKind === 'install' && this.job.view().state === 'failed' && this.answers) {
-      // Thử lại: giữ nguyên câu trả lời và các bước đã xong.
-      void this.job.run();
-      return { ok: true };
+  /**
+   * Bắt đầu cài mới, hoặc (`retry`) tiếp tục lần cài vừa lỗi. Câu trả lời đã được kiểm tra lại ở đây — không tin giao diện.
+   * Chỉ nút "Thử lại" (`retry: true`) mới dùng lại câu trả lời CŨ; gửi câu trả lời mới (sau "Sửa thông tin", ví dụ đổi cổng vì cổng cũ bị chiếm) luôn dựng chuỗi bước mới từ câu trả lời đó —
+   * trước đây mọi lần gửi sau một lần lỗi đều bị coi là "thử lại" nên cổng mới bị bỏ qua. Dựng lại vẫn an toàn: `.env` đã có thì giữ nguyên khoá bí mật, các bước đều chạy lại được.
+   */
+  startInstall(raw: Parameters<typeof validateAnswers>[0], options: { retry?: boolean } = {}): { ok: true } | { ok: false; errors: Record<string, string> } {
+    if (options.retry) {
+      if (this.job && this.jobKind === 'install' && this.job.view().state === 'failed' && this.answers) {
+        this.runInstallJob(this.job);
+        return { ok: true };
+      }
+      return { ok: false, errors: { _: 'Chưa có lần cài nào vừa lỗi để thử lại.' } };
     }
     if (this.job?.view().state === 'running') return { ok: false, errors: { _: 'Đang cài, vui lòng chờ.' } };
     const checked = validateAnswers(raw);
@@ -222,7 +239,8 @@ export class SetupService {
     const answers = checked.value;
     if (answers.profile === 'saas') {
       if (!this.cert || this.cert.baseDomain !== answers.domain) return { ok: false, errors: { certificate: 'Tải lên chứng chỉ wildcard (.crt và .key) hợp lệ cho tên miền này.' } };
-      this.otp = { secret: base32Encode(randomBytes(20)), verified: false };
+      // Dựng lại sau một lần lỗi thì giữ bí mật OTP đã sinh (có thể đã nạp vào tài khoản vận hành ở bước trước).
+      this.otp ??= { secret: base32Encode(randomBytes(20)), verified: false };
     }
     this.answers = answers;
     this.installState = {};
@@ -243,8 +261,23 @@ export class SetupService {
     );
     this.job = new Job(steps);
     this.jobKind = 'install';
-    void this.job.run();
+    this.runInstallJob(this.job);
     return { ok: true };
+  }
+
+  /** Chạy chuỗi cài và ghi nhận "đang cài dở" trong `.setup-state.json`: xoá cờ khi MỌI bước xong; lỗi/đóng giữa chừng thì cờ còn, lần mở sau cho cài tiếp. */
+  private runInstallJob(job: Job): void {
+    // `job.run()` PHẢI được gọi ngay (đồng bộ) để trạng thái chuyển sang "running" trước khi giao diện hỏi lần đầu: giao diện coi mọi trạng thái khác "running"/"done" là đã kết thúc và ngừng hỏi,
+    // nên nếu chờ ghi cờ xong mới chạy thì trang đứng im ở bước đầu dù việc cài vẫn chạy ngầm (lỗi 24/10/2026, #261).
+    const finished = job.run();
+    void (async () => {
+      const state = await readSetupState(this.env.workDir);
+      await writeSetupState(this.env.workDir, { ...state, installInProgress: true }).catch(() => undefined);
+      await finished;
+      if (job.view().state === 'done') {
+        await writeSetupState(this.env.workDir, { ...(await readSetupState(this.env.workDir)), installInProgress: false }).catch(() => undefined);
+      }
+    })();
   }
 
   startUpgrade(): { ok: true } | { ok: false; error: string } {
@@ -331,6 +364,26 @@ export class SetupService {
     this.acknowledged = true;
     this.handoffText = null;
     if (this.installState.result) this.installState.result.tempPassword = undefined;
+  }
+
+  /**
+   * Khoá mã hoá hệ thống vừa được sinh (đọc từ `.env`) để trang "Hoàn tất" hiện mã kiểm và cho tải FILE KHOÁ (#262). Chỉ có khi lần cài đã xong; luôn trả được (không tự xoá như mật khẩu tạm) vì khoá
+   * nằm trong `.env` suốt đời hệ thống — file này chỉ là bản để cất riêng.
+   */
+  async keyInfo(): Promise<{ fingerprint: string; text: string } | null> {
+    const result = this.installState.result;
+    if (!result || this.jobKind !== 'install' || this.job?.view().state !== 'done') return null;
+    let key: string | null = null;
+    try {
+      key = getEnvValue(await readFile(join(this.env.workDir, '.env'), 'utf8'), 'ENCRYPTION_KEY') ?? null;
+    } catch {
+      key = null;
+    }
+    if (!key) return null;
+    return {
+      fingerprint: keyFingerprint(key),
+      text: buildKeyFileText({ key, version: result.version, publicUrl: result.publicUrl, clinicName: this.answers?.clinicName, createdAt: this.now() }),
+    };
   }
 
   isAcknowledged(): boolean {

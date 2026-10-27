@@ -4789,6 +4789,9 @@
                                   "null"
                                 ]
                               },
+                              "nationalIdUnreadable": {
+                                "type": "boolean"
+                              },
                               "address": {
                                 "type": [
                                   "object",
@@ -4830,6 +4833,7 @@
                               "phone",
                               "hasNationalId",
                               "nationalIdMasked",
+                              "nationalIdUnreadable",
                               "address",
                               "version"
                             ]
@@ -4999,6 +5003,9 @@
                                   "null"
                                 ]
                               },
+                              "nationalIdUnreadable": {
+                                "type": "boolean"
+                              },
                               "address": {
                                 "type": [
                                   "object",
@@ -5040,6 +5047,7 @@
                               "phone",
                               "hasNationalId",
                               "nationalIdMasked",
+                              "nationalIdUnreadable",
                               "address",
                               "version"
                             ]
@@ -5342,6 +5350,9 @@
                             "null"
                           ]
                         },
+                        "nationalIdUnreadable": {
+                          "type": "boolean"
+                        },
                         "address": {
                           "type": [
                             "object",
@@ -5560,6 +5571,7 @@
                         "phone",
                         "hasNationalId",
                         "nationalIdMasked",
+                        "nationalIdUnreadable",
                         "address",
                         "version",
                         "nationalId",
@@ -5794,6 +5806,9 @@
                                   "null"
                                 ]
                               },
+                              "nationalIdUnreadable": {
+                                "type": "boolean"
+                              },
                               "address": {
                                 "type": [
                                   "object",
@@ -5835,6 +5850,7 @@
                               "phone",
                               "hasNationalId",
                               "nationalIdMasked",
+                              "nationalIdUnreadable",
                               "address",
                               "version"
                             ]
@@ -6010,6 +6026,9 @@
                                   "null"
                                 ]
                               },
+                              "nationalIdUnreadable": {
+                                "type": "boolean"
+                              },
                               "address": {
                                 "type": [
                                   "object",
@@ -6051,6 +6070,7 @@
                               "phone",
                               "hasNationalId",
                               "nationalIdMasked",
+                              "nationalIdUnreadable",
                               "address",
                               "version"
                             ]
@@ -6204,6 +6224,9 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "nationalIdUnreadable": {
+                          "type": "boolean"
                         },
                         "address": {
                           "type": [
@@ -6423,6 +6446,7 @@
                         "phone",
                         "hasNationalId",
                         "nationalIdMasked",
+                        "nationalIdUnreadable",
                         "address",
                         "version",
                         "nationalId",
@@ -6778,6 +6802,9 @@
                             "null"
                           ]
                         },
+                        "nationalIdUnreadable": {
+                          "type": "boolean"
+                        },
                         "address": {
                           "type": [
                             "object",
@@ -6996,6 +7023,7 @@
                         "phone",
                         "hasNationalId",
                         "nationalIdMasked",
+                        "nationalIdUnreadable",
                         "address",
                         "version",
                         "nationalId",
@@ -7248,6 +7276,9 @@
                             "null"
                           ]
                         },
+                        "nationalIdUnreadable": {
+                          "type": "boolean"
+                        },
                         "address": {
                           "type": [
                             "object",
@@ -7466,6 +7497,7 @@
                         "phone",
                         "hasNationalId",
                         "nationalIdMasked",
+                        "nationalIdUnreadable",
                         "address",
                         "version",
                         "nationalId",
@@ -12892,6 +12924,9 @@
                                       "null"
                                     ]
                                   },
+                                  "cardNoUnreadable": {
+                                    "type": "boolean"
+                                  },
                                   "kind": {
                                     "type": [
                                       "string",
@@ -12938,6 +12973,7 @@
                                   "selfPay",
                                   "reason",
                                   "cardNo",
+                                  "cardNoUnreadable",
                                   "kind",
                                   "validFrom",
                                   "validTo",
@@ -14705,6 +14741,9 @@
                                 "null"
                               ]
                             },
+                            "cardNoUnreadable": {
+                              "type": "boolean"
+                            },
                             "kind": {
                               "type": [
                                 "string",
@@ -14751,6 +14790,7 @@
                             "selfPay",
                             "reason",
                             "cardNo",
+                            "cardNoUnreadable",
                             "kind",
                             "validFrom",
                             "validTo",
@@ -15879,6 +15919,9 @@
                                 "null"
                               ]
                             },
+                            "cardNoUnreadable": {
+                              "type": "boolean"
+                            },
                             "kind": {
                               "type": [
                                 "string",
@@ -15925,6 +15968,7 @@
                             "selfPay",
                             "reason",
                             "cardNo",
+                            "cardNoUnreadable",
                             "kind",
                             "validFrom",
                             "validTo",
@@ -48058,6 +48102,105 @@
         }
       }
     },
+    "/api/v1/encryption-key/status": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Khoá mã hoá hệ thống có khớp dữ liệu đã lưu không (#262) — mọi tài khoản đăng nhập hỏi được `state`; mã kiểm khoá chỉ trả cho quản trị",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "ok",
+                            "mismatch"
+                          ]
+                        },
+                        "actualFingerprint": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "expectedFingerprint": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "canSeeDetails": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "actualFingerprint",
+                        "expectedFingerprint",
+                        "canSeeDetails"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/backup-config": {
       "get": {
         "tags": [
@@ -49682,6 +49825,9 @@
                             "null"
                           ]
                         },
+                        "cardNoUnreadable": {
+                          "type": "boolean"
+                        },
                         "kind": {
                           "type": [
                             "string",
@@ -49728,6 +49874,7 @@
                         "selfPay",
                         "reason",
                         "cardNo",
+                        "cardNoUnreadable",
                         "kind",
                         "validFrom",
                         "validTo",
@@ -49897,6 +50044,9 @@
                               "cardNo": {
                                 "type": "string"
                               },
+                              "cardNoUnreadable": {
+                                "type": "boolean"
+                              },
                               "kind": {
                                 "type": "string",
                                 "enum": [
@@ -49967,6 +50117,7 @@
                               "id",
                               "patientId",
                               "cardNo",
+                              "cardNoUnreadable",
                               "kind",
                               "validFrom",
                               "validTo",
@@ -50205,6 +50356,9 @@
                             "cardNo": {
                               "type": "string"
                             },
+                            "cardNoUnreadable": {
+                              "type": "boolean"
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -50275,6 +50429,7 @@
                             "id",
                             "patientId",
                             "cardNo",
+                            "cardNoUnreadable",
                             "kind",
                             "validFrom",
                             "validTo",
@@ -50591,6 +50746,9 @@
                             "cardNo": {
                               "type": "string"
                             },
+                            "cardNoUnreadable": {
+                              "type": "boolean"
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -50661,6 +50819,7 @@
                             "id",
                             "patientId",
                             "cardNo",
+                            "cardNoUnreadable",
                             "kind",
                             "validFrom",
                             "validTo",
@@ -51146,6 +51305,9 @@
                             "cardNo": {
                               "type": "string"
                             },
+                            "cardNoUnreadable": {
+                              "type": "boolean"
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -51216,6 +51378,7 @@
                             "id",
                             "patientId",
                             "cardNo",
+                            "cardNoUnreadable",
                             "kind",
                             "validFrom",
                             "validTo",

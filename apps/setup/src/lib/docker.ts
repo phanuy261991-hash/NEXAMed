@@ -129,9 +129,13 @@ export class DockerClient {
     return this.docker(['run', '--rm', '--entrypoint', command[0]!, ...args, this.config.probeImage, ...command.slice(1)], { timeoutMs: 60_000 });
   }
 
-  /** Cổng của máy còn trống không (thử gắn cổng bằng container thăm dò — container cài đặt không tự thấy cổng của máy). */
-  async portFree(port: number): Promise<boolean> {
-    const result = await this.probe(['-p', `${port}:80`], ['/bin/true']);
+  /**
+   * Cổng của máy còn trống không (thử gắn cổng bằng container thăm dò — container cài đặt không tự thấy cổng của máy).
+   * PHẢI gắn kèm địa chỉ IP (`0.0.0.0:<cổng>:80`) giống cách `docker-compose.yml` mở cổng web (`${WEB_BIND_IP}:${WEB_HTTP_PORT}:80`): trên Docker Desktop (Windows)
+   * `-p <cổng>:80` trần KHÔNG phát hiện cổng đã bị chương trình khác (Apache/XAMPP, IIS) giữ, còn gắn kèm IP thì lỗi đúng như lúc khởi động thật (đo 24/10/2026, #261).
+   */
+  async portFree(port: number, bindIp = '0.0.0.0'): Promise<boolean> {
+    const result = await this.probe(['-p', `${bindIp}:${port}:80`], ['/bin/true']);
     return result.code === 0;
   }
 

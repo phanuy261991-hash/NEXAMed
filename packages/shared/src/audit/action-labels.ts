@@ -65,6 +65,9 @@ const ACTION_LABELS: Record<string, string> = {
   'encounter.history_viewed_cross_branch': 'Xem lịch sử khám ở chi nhánh khác',
   'encounter.prescription_printed_with_national_id': 'In đơn thuốc có số CCCD bệnh nhân',
 
+  // Xoay khoá mã hoá hệ thống (db:rotate-encryption-key, #262) — ghi mã kiểm khoá cũ/mới, không bao giờ ghi khoá.
+  'system.encryption_key_rotated': 'Xoay khoá mã hoá hệ thống',
+
   // user-account (user-account.service.ts)
   'user_account.created': 'Tạo tài khoản',
   'user_account.updated': 'Sửa tài khoản',

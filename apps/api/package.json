@@ -20,6 +20,7 @@
     "db:seed:platform-operator": "tsx scripts/seed-platform-operator.ts",
     "db:rotate-app-password": "tsx scripts/rotate-app-role-password.ts",
     "db:reset-admin-password": "tsx scripts/reset-admin-password.ts",
+    "db:rotate-encryption-key": "tsx scripts/rotate-encryption-key.ts",
     "openapi:generate": "tsx scripts/generate-openapi.ts",
     "perf:patient-search": "tsx scripts/perf-patient-search.ts",
     "perf:consultation": "tsx scripts/perf-consultation.ts",

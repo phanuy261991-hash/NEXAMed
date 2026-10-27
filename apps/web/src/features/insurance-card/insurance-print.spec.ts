@@ -6,6 +6,7 @@ const card: EncounterInsurance = {
   selfPay: false,
   reason: null,
   cardNo: 'DN4797915123456',
+  cardNoUnreadable: false,
   kind: 'OLD_15',
   validFrom: '2026-01-01',
   validTo: '2026-12-31',
@@ -13,7 +14,7 @@ const card: EncounterInsurance = {
   facilityName: 'Phòng khám Đa khoa Tân Bình',
   benefitRate: 80,
 };
-const selfPay: EncounterInsurance = { selfPay: true, reason: 'NO_CARD', cardNo: null, kind: null, validFrom: null, validTo: null, facilityCode: null, facilityName: null, benefitRate: null };
+const selfPay: EncounterInsurance = { selfPay: true, reason: 'NO_CARD', cardNo: null, cardNoUnreadable: false, kind: null, validFrom: null, validTo: null, facilityCode: null, facilityName: null, benefitRate: null };
 
 describe('formatInsurancePrintValue (cùng câu chữ với bệnh án PDF của máy chủ)', () => {
   it('thẻ cũ có đủ hiệu lực: số thẻ, kiểu thẻ, hiệu lực, mức hưởng, nơi đăng ký', () => {

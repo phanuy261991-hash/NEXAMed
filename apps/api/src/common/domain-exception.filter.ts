@@ -34,6 +34,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   PATIENT_ALREADY_MERGED: HttpStatus.CONFLICT,
   // Khoá chống ghi trùng (docs/DECISIONS.md #257) — khoá sai định dạng là lỗi input (400); dùng lại khoá cho nội dung khác là không xử lý được (422);
   // lần gửi đầu còn đang chạy / đã xong nhưng không lưu được kết quả là xung đột trạng thái (409).
+  // Khoá mã hoá hệ thống không khớp dữ liệu (#262) — trạng thái hệ thống không cho ghi trường mã hoá: 409.
+  ENCRYPTION_KEY_MISMATCH: HttpStatus.CONFLICT,
   IDEMPOTENCY_KEY_INVALID: HttpStatus.BAD_REQUEST,
   IDEMPOTENCY_KEY_REUSED: HttpStatus.UNPROCESSABLE_ENTITY,
   IDEMPOTENCY_IN_PROGRESS: HttpStatus.CONFLICT,

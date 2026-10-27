@@ -17,7 +17,7 @@
     detect: null, scene: 'install', step: 'check', profile: 'lan',
     a: { backupHourVn: 2, backupRetentionDays: 14, webPort: 80, lanAddress: '' },
     pre: null, errors: {}, extra: [], password: null, cert: null, review: null, job: null, result: null, otp: null,
-    ack: false, busy: false, error: null, closed: false, skipDns: false, timer: null,
+    ack: false, ackKey: false, keyDownloaded: false, busy: false, error: null, closed: false, skipDns: false, timer: null,
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -66,6 +66,8 @@
     var up = S.scene === 'upgrade';
     var head = '<div><h2>' + (up ? 'Nâng cấp NEXAMed' : 'Chào mừng, hãy kiểm tra máy trước khi cài') + '</h2><p class="lead">' +
       (up ? 'Trình cài đặt tìm thấy một hệ thống NEXAMed trên máy này và sẽ nâng cấp mà không mất dữ liệu.' : 'Mất khoảng 5 phút. Bạn không cần biết lệnh nào, chỉ cần bấm chọn.') + '</p></div>';
+    // Lần cài trước dở dang (đã ghi cấu hình nhưng chưa tạo xong phòng khám): nói rõ để người cài không tưởng là cài mới hoàn toàn.
+    if (S.detect && S.detect.incompleteInstall) head += '<div class="done-box" style="margin-top:14px"><b>Lần cài trước chưa xong.</b><span>Nhập lại thông tin để cài tiếp. Mật khẩu và khoá hệ thống đã sinh được giữ nguyên, dữ liệu không bị mất.</span></div>';
     if (!S.pre) return head + '<div class="checks">' + check('run', 'Đang kiểm tra máy…', 'Vui lòng chờ vài giây', '') + '</div>';
     return head + rowsHtml(S.pre) + fixHtml(S.pre);
   }
@@ -177,13 +179,26 @@
     var html = '<div class="done-box"><b style="font-size:18px">Đã cài xong NEXAMed ' + esc(r.version) + '</b><span class="bigurl">' + esc(r.publicUrl) + '</span><span class="muted">' +
       (r.profile === 'lan' ? 'Nhân viên mở địa chỉ này trên trình duyệt bất kỳ trong mạng nội bộ.' : r.profile === 'vps' ? 'HTTPS đã bật, chứng chỉ tự gia hạn.' : 'Công ty khách tạo trong khu quản trị, mỗi công ty một tên miền phụ.') + '</span></div>' +
       '<div class="box"><span class="t">' + (saas ? 'Thông tin đăng nhập khu quản trị' : 'Thông tin bàn giao (chỉ hiện một lần)') + '</span><div class="checks" style="border:0">' + secrets + '</div></div>';
-    if (saas) return html + '<div class="alert">Thêm công ty khách đầu tiên ở khu quản trị: mỗi công ty có một tên miền phụ riêng, hoạt động ngay không cần cấu hình thêm.</div>';
+    if (saas) return html + '<div class="alert">Thêm công ty khách đầu tiên ở khu quản trị: mỗi công ty có một tên miền phụ riêng, hoạt động ngay không cần cấu hình thêm.</div>' + keyBox(r);
     html += '<div class="alert">Mật khẩu tạm không xem lại được. Người dùng bị yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên.</div>' +
-      '<div><a class="btn" href="/api/handoff.txt" download="NEXAMed-ban-giao.txt">Tải file thông tin bàn giao (.txt)</a></div>' +
+      '<div><a class="btn" href="/api/handoff.txt" download="NEXAMed-ban-giao.txt">Tải file thông tin bàn giao (.txt)</a></div>' + keyBox(r) +
       '<label class="check2"><input type="checkbox" id="ack"' + (S.ack ? ' checked' : '') + '><span>Tôi đã lưu thông tin trên. Sau khi đóng trang này sẽ không xem lại được.</span></label>';
     if (r.profile === 'lan') html += '<div class="checks">' + check('ok', 'Tự chạy lại khi máy khởi động lại', 'Các dịch vụ đã đặt tự khởi động. Trên Windows còn bước bật "Start Docker Desktop when you sign in" trong cài đặt Docker Desktop.', 'xem hướng dẫn') + '</div>';
     return html;
   }
+  /* Hộp "Cất khoá hệ thống" (docs/DECISIONS.md #262, mockup đã chốt 24/10/2026): khoá mã hoá dữ liệu nhạy cảm KHÔNG nằm trong bản sao lưu; mất khoá là mất dữ liệu đã mã hoá. Bắt buộc tải file + tick xác nhận mới Hoàn tất. */
+  function keyBox(r) {
+    return '<div class="keybox"><span class="t">Bắt buộc · Cất khoá hệ thống</span>' +
+      '<div class="keyhead">Khoá này mã hoá số CCCD, số thẻ BHYT và các thông tin nhạy cảm của bệnh nhân.</div>' +
+      '<ul><li>Bản sao lưu tự động <b>KHÔNG chứa khoá</b> (để lộ bản sao lưu vẫn không lộ dữ liệu).</li>' +
+      '<li>Mất khoá = các thông tin đã mã hoá <b>không đọc lại được và không có cách lấy lại</b>, kể cả khi còn bản sao lưu.</li>' +
+      '<li>Hãy cất file khoá ở <b>nơi khác máy chủ</b> (USB, két, email nội bộ an toàn). Không gửi qua Zalo/nhóm chat.</li></ul>' +
+      '<div class="keyrow"><div><span class="muted">Mã kiểm khoá (để đối chiếu sau này, không phải khoá)</span><span class="keyfp">' + esc(r.keyFingerprint || '—') + '</span></div>' +
+      '<a class="btn amber big" id="keyDl" href="/api/key.txt" download="NEXAMed-khoa-he-thong.txt">' + (S.keyDownloaded ? 'Đã tải · Tải lại file khoá' : 'Tải file khoá (.txt)') + '</a></div>' +
+      '<label class="check2"><input type="checkbox" id="ackKey"' + (S.ackKey ? ' checked' : '') + '><span>Tôi đã tải file khoá và <b>cất ở nơi khác máy chủ này</b>.</span></label></div>';
+  }
+  /* Nút Hoàn tất chỉ bật khi đã tải file khoá + tick xác nhận khoá (+ tick đã lưu thông tin bàn giao với kiểu không phải SaaS). */
+  function canFinish() { return S.keyDownloaded && S.ackKey && (S.profile === 'saas' || S.ack); }
   function sec(k, v) { return '<div class="secret"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + '</span>' + copyButton(v) + '</div>'; }
 
   /* ---------- Vẽ lại ---------- */
@@ -225,7 +240,7 @@
       case 'otp': return '<span></span><button class="btn primary big" type="submit" form="stepform" disabled id="otpok">Xác nhận và tiếp tục</button>';
       case 'done':
         if (S.scene === 'upgrade') return '<span></span><button class="btn primary big" type="button" id="finishBtn">Hoàn tất</button>';
-        return '<span></span><button class="btn primary big" type="button" id="finishBtn"' + (S.profile === 'saas' || S.ack ? '' : ' disabled') + '>Hoàn tất</button>';
+        return '<span class="muted">' + (canFinish() ? '' : 'Nút Hoàn tất chỉ bật khi đã tải file khoá và tick các ô xác nhận.') + '</span><button class="btn primary big" type="button" id="finishBtn"' + (canFinish() ? '' : ' disabled') + '>Hoàn tất</button>';
     }
     return '';
   }
@@ -271,7 +286,7 @@
       api('/job').then(function (job) {
         S.job = job;
         if (!job) { stop(); return; }
-        if (job.state === 'running') { render(); return; }
+        if (job.state === 'running' || job.state === 'idle') { render(); return; }
         stop();
         if (job.state === 'done') { finishJob(); } else { render(); }
       }).catch(function () { /* tạm mất kết nối: thử lại ở nhịp sau */ });
@@ -380,6 +395,7 @@
       if (!window.confirm('Khôi phục dữ liệu về thời điểm trước lần nâng cấp gần nhất? Dữ liệu nhập SAU lần nâng cấp đó sẽ mất.')) return;
       return api('/rollback', {}).then(function () { S.scene = 'upgrade'; S.job = null; go('progress'); }).catch(function (er) { S.error = er.message; render(); });
     }
+    if (t.closest('#keyDl')) { S.keyDownloaded = true; setTimeout(render, 80); return; }
     if (t.closest('#finishBtn')) {
       return (S.scene === 'install' && S.profile !== 'saas' ? api('/ack', {}) : Promise.resolve()).then(function () { return api('/finish', {}); }).then(function () { S.closed = true; render(); }).catch(function () { S.closed = true; render(); });
     }
@@ -401,7 +417,8 @@
   document.addEventListener('change', function (e) {
     var el = e.target;
     if (el.name === 'addr') { S.a.lanAddress = el.value; delete S.errors.lanAddress; }
-    if (el.id === 'ack') { S.ack = el.checked; var f = $('finishBtn'); if (f) f.disabled = !S.ack; }
+    if (el.id === 'ack') { S.ack = el.checked; var f = $('finishBtn'); if (f) f.disabled = !canFinish(); }
+    if (el.id === 'ackKey') { S.ackKey = el.checked; var fk = $('finishBtn'); if (fk) fk.disabled = !canFinish(); }
     if (el.id === 'skipDns') S.skipDns = el.checked;
     if (el.id === 'crtFile' || el.id === 'keyFile') {
       var file = el.files && el.files[0]; if (!file) return;

@@ -2198,6 +2198,7 @@ export interface paths {
                                     phone: string;
                                     hasNationalId: boolean;
                                     nationalIdMasked: string | null;
+                                    nationalIdUnreadable: boolean;
                                     address: {
                                         street?: string;
                                         ward?: string;
@@ -2291,6 +2292,7 @@ export interface paths {
                                     phone: string;
                                     hasNationalId: boolean;
                                     nationalIdMasked: string | null;
+                                    nationalIdUnreadable: boolean;
                                     address: {
                                         street?: string;
                                         ward?: string;
@@ -2386,6 +2388,7 @@ export interface paths {
                                     phone: string;
                                     hasNationalId: boolean;
                                     nationalIdMasked: string | null;
+                                    nationalIdUnreadable: boolean;
                                     address: {
                                         street?: string;
                                         ward?: string;
@@ -2502,6 +2505,7 @@ export interface paths {
                                 phone: string;
                                 hasNationalId: boolean;
                                 nationalIdMasked: string | null;
+                                nationalIdUnreadable: boolean;
                                 address: {
                                     street?: string;
                                     ward?: string;
@@ -2643,6 +2647,7 @@ export interface paths {
                                     phone: string;
                                     hasNationalId: boolean;
                                     nationalIdMasked: string | null;
+                                    nationalIdUnreadable: boolean;
                                     address: {
                                         street?: string;
                                         ward?: string;
@@ -2734,6 +2739,7 @@ export interface paths {
                                 phone: string;
                                 hasNationalId: boolean;
                                 nationalIdMasked: string | null;
+                                nationalIdUnreadable: boolean;
                                 address: {
                                     street?: string;
                                     ward?: string;
@@ -2906,6 +2912,7 @@ export interface paths {
                                 phone: string;
                                 hasNationalId: boolean;
                                 nationalIdMasked: string | null;
+                                nationalIdUnreadable: boolean;
                                 address: {
                                     street?: string;
                                     ward?: string;
@@ -3069,6 +3076,7 @@ export interface paths {
                                 phone: string;
                                 hasNationalId: boolean;
                                 nationalIdMasked: string | null;
+                                nationalIdUnreadable: boolean;
                                 address: {
                                     street?: string;
                                     ward?: string;
@@ -5333,6 +5341,7 @@ export interface paths {
                                         /** @enum {string|null} */
                                         reason: "DISABLED" | "NO_CARD" | "EXPIRED" | "NOT_STARTED" | "DECLINED" | null;
                                         cardNo: string | null;
+                                        cardNoUnreadable: boolean;
                                         /** @enum {string|null} */
                                         kind: "NEW_12" | "OLD_15" | "UNKNOWN" | null;
                                         validFrom: string | null;
@@ -6052,6 +6061,7 @@ export interface paths {
                                     /** @enum {string|null} */
                                     reason: "DISABLED" | "NO_CARD" | "EXPIRED" | "NOT_STARTED" | "DECLINED" | null;
                                     cardNo: string | null;
+                                    cardNoUnreadable: boolean;
                                     /** @enum {string|null} */
                                     kind: "NEW_12" | "OLD_15" | "UNKNOWN" | null;
                                     validFrom: string | null;
@@ -6345,6 +6355,7 @@ export interface paths {
                                     /** @enum {string|null} */
                                     reason: "DISABLED" | "NO_CARD" | "EXPIRED" | "NOT_STARTED" | "DECLINED" | null;
                                     cardNo: string | null;
+                                    cardNoUnreadable: boolean;
                                     /** @enum {string|null} */
                                     kind: "NEW_12" | "OLD_15" | "UNKNOWN" | null;
                                     validFrom: string | null;
@@ -18588,6 +18599,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/encryption-key/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Khoá mã hoá hệ thống có khớp dữ liệu đã lưu không (#262) — mọi tài khoản đăng nhập hỏi được `state`; mã kiểm khoá chỉ trả cho quản trị */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                state: "ok" | "mismatch";
+                                actualFingerprint: string | null;
+                                expectedFingerprint: string | null;
+                                canSeeDetails: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/backup-config": {
         parameters: {
             query?: never;
@@ -19577,6 +19648,7 @@ export interface paths {
                                 /** @enum {string|null} */
                                 reason: "DISABLED" | "NO_CARD" | "EXPIRED" | "NOT_STARTED" | "DECLINED" | null;
                                 cardNo: string | null;
+                                cardNoUnreadable: boolean;
                                 /** @enum {string|null} */
                                 kind: "NEW_12" | "OLD_15" | "UNKNOWN" | null;
                                 validFrom: string | null;
@@ -19678,6 +19750,7 @@ export interface paths {
                                     /** Format: uuid */
                                     patientId: string;
                                     cardNo: string;
+                                    cardNoUnreadable: boolean;
                                     /** @enum {string} */
                                     kind: "NEW_12" | "OLD_15" | "UNKNOWN";
                                     validFrom: string | null;
@@ -19784,6 +19857,7 @@ export interface paths {
                                     /** Format: uuid */
                                     patientId: string;
                                     cardNo: string;
+                                    cardNoUnreadable: boolean;
                                     /** @enum {string} */
                                     kind: "NEW_12" | "OLD_15" | "UNKNOWN";
                                     validFrom: string | null;
@@ -20029,6 +20103,7 @@ export interface paths {
                                     /** Format: uuid */
                                     patientId: string;
                                     cardNo: string;
+                                    cardNoUnreadable: boolean;
                                     /** @enum {string} */
                                     kind: "NEW_12" | "OLD_15" | "UNKNOWN";
                                     validFrom: string | null;
@@ -20177,6 +20252,7 @@ export interface paths {
                                     /** Format: uuid */
                                     patientId: string;
                                     cardNo: string;
+                                    cardNoUnreadable: boolean;
                                     /** @enum {string} */
                                     kind: "NEW_12" | "OLD_15" | "UNKNOWN";
                                     validFrom: string | null;

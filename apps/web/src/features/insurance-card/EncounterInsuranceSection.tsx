@@ -1,3 +1,4 @@
+import { UNREADABLE_LABEL } from '../encryption-key/encryption-key-view';
 import { ShieldCheck } from '@phosphor-icons/react';
 import type { EncounterInsurance } from '@nexamed/shared';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
@@ -18,7 +19,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
  */
 export function EncounterInsuranceSection({ insurance }: { insurance: EncounterInsurance | null | undefined }) {
   if (!insurance) return null;
-  const selfPay = insurance.selfPay || !insurance.cardNo;
+  // Số thẻ không giải mã được (khoá hệ thống không khớp, #262) KHÔNG phải "tự chi trả" — vẫn hiện khung thẻ, số thẻ ghi "Không đọc được".
+  const selfPay = insurance.selfPay || (!insurance.cardNo && !insurance.cardNoUnreadable);
   return (
     <div className="relative rounded-lg border border-slate-200 bg-white p-5 pt-8 shadow-sm">
       <span className="absolute -top-3 left-4 flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
@@ -37,7 +39,7 @@ export function EncounterInsuranceSection({ insurance }: { insurance: EncounterI
       ) : (
         <dl>
           <Row label="Số thẻ">
-            <span className="tabular-nums tracking-wide">{insurance.cardNo}</span>
+            <span className="tabular-nums tracking-wide">{insurance.cardNoUnreadable ? <span className="text-rose-700">{UNREADABLE_LABEL}</span> : insurance.cardNo}</span>
             {insurance.kind && (
               <span className={`ml-2 inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${KIND_CHIP_CLASS[insurance.kind]}`}>{KIND_LABEL[insurance.kind]}</span>
             )}

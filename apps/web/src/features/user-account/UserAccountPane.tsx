@@ -64,7 +64,7 @@ export function UserAccountPane() {
   const departmentsQuery = useDepartmentsQuery();
   // Tra cứu phụ chỉ gọi khi có quyền đọc — vai trò `system_admin` mặc định quản lý tài khoản/mở khoá nhưng không đọc được danh mục dùng chung và danh sách vai trò (máy chủ trả 403).
   const canReadReferenceCatalog = useHasPermission('reference_catalog', 'read');
-  const canReadRoles = useHasPermission('role_permission', 'manage');
+  const canReadRoles = useHasPermission('role_permission', 'read');
   const employmentStatusQuery = useReferenceCatalogQuery('EMPLOYMENT_STATUS', undefined, { enabled: canReadReferenceCatalog });
   const rolesQuery = useRolesQuery({ enabled: canReadRoles });
   const createMutation = useCreateUserAccountMutation();

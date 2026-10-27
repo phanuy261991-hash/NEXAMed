@@ -28,6 +28,20 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 
 function Write-Step($text) { Write-Host ""; Write-Host "==> $text" -ForegroundColor Cyan }
 
+# Khoá quyền file .env (chứa khoá mã hoá dữ liệu, mật khẩu cơ sở dữ liệu, khoá đăng nhập): trên Windows quyền 0600 của bộ cài không có tác dụng nên máy dùng chung có thể bị người dùng khác đọc.
+# Giữ lại SYSTEM, nhóm Administrators và NGƯỜI ĐANG CHẠY lệnh; bỏ quyền kế thừa từ thư mục cha. Lỗi thì chỉ cảnh báo, không chặn cài đặt (docs/DECISIONS.md #262).
+function Protect-EnvFile($path) {
+    if (-not (Test-Path $path)) { return }
+    try {
+        $me = "$env:USERDOMAIN\$env:USERNAME"
+        & icacls $path /inheritance:r /grant:r "SYSTEM:(F)" "Administrators:(F)" "${me}:(F)" *> $null
+        if ($LASTEXITCODE -ne 0) { throw "icacls mã $LASTEXITCODE" }
+        Write-Host "Đã khoá quyền file .env (chỉ SYSTEM, Administrators và tài khoản $me đọc được)." -ForegroundColor DarkGray
+    } catch {
+        Write-Host "Cảnh báo: không khoá được quyền file .env ($($_.Exception.Message)). Hãy tự giới hạn quyền đọc file này." -ForegroundColor Yellow
+    }
+}
+
 $here = $PSScriptRoot
 Set-Location $here
 
@@ -84,6 +98,9 @@ try {
 
 & docker rm -f nexamed-setup *> $null
 
+# Hệ thống đã cài từ trước (nâng cấp): khoá quyền ngay, không đợi tới lúc trình cài đặt đóng.
+Protect-EnvFile (Join-Path $here '.env')
+
 Write-Step 'Khởi động trình cài đặt'
 $runArgs = @(
     'run', '--rm', '--name', 'nexamed-setup',
@@ -102,7 +119,8 @@ $argLine = ($runArgs | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } e
 $proc = Start-Process -FilePath 'docker' -ArgumentList $argLine -NoNewWindow -PassThru
 
 # Chờ trang sẵn sàng rồi mở trình duyệt.
-$url = "http://localhost:$Port"
+# Dùng 127.0.0.1 chứ KHÔNG dùng "localhost": PowerShell 5.1 thử IPv6 (::1) trước, mà cổng chỉ mở ở 127.0.0.1 nên mỗi lần thử treo tới hết thời hạn → trang không bao giờ được coi là sẵn sàng và trình duyệt không tự mở (24/10/2026, #261).
+$url = "http://127.0.0.1:$Port"
 $ready = $false
 for ($i = 0; $i -lt 40; $i++) {
     Start-Sleep -Milliseconds 500
@@ -118,4 +136,6 @@ if ($ready) {
     Write-Host "Trình cài đặt chưa phản hồi. Thử mở $url sau ít giây." -ForegroundColor Yellow
 }
 $proc.WaitForExit()
+# Cài mới: `.env` vừa được trình cài đặt tạo ra — khoá quyền sau khi nó đóng.
+Protect-EnvFile (Join-Path $here '.env')
 exit $proc.ExitCode

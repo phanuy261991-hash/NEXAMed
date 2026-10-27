@@ -53,6 +53,7 @@ import { SoftwareUpdateModule } from './modules/software-update/software-update.
 import { TenantContextModule } from './modules/tenant-context/tenant-context.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
+import { EncryptionKeyModule } from './modules/encryption-key/encryption-key.module';
 import { TenantContextMiddleware } from './common/tenant-context.middleware';
 
 @Module({
@@ -121,6 +122,8 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     PlatformModule,
     // Chống ghi trùng khi mạng đứt giữa chừng (#257) — interceptor toàn cục, phủ mọi POST có header `Idempotency-Key`.
     IdempotencyModule,
+    // Kiểm tra khoá mã hoá hệ thống có khớp dữ liệu không (#262) — `@Global()` bind `ENCRYPTION_KEY_GUARD_PORT` cho mọi module ghi trường mã hoá.
+    EncryptionKeyModule,
   ],
 })
 export class AppModule implements NestModule {

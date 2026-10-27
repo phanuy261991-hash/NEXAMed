@@ -123,6 +123,7 @@ import {
   updatePrescriptionKindMappingRequestSchema,
   updateBusinessCodeTemplateRequestSchema,
   backupStatusResponseSchema,
+  encryptionKeyStatusResponseSchema,
   backupConfigResponseSchema,
   backupRunRequestResponseSchema,
   updateBackupConfigRequestSchema,
@@ -2996,6 +2997,18 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(backupStatusResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/encryption-key/status',
+  tags: ['system'],
+  summary: 'Khoá mã hoá hệ thống có khớp dữ liệu đã lưu không (#262) — mọi tài khoản đăng nhập hỏi được `state`; mã kiểm khoá chỉ trả cho quản trị',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(encryptionKeyStatusResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
   },
 });
 

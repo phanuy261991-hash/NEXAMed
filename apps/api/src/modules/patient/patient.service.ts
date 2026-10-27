@@ -5,9 +5,11 @@ import {
   ConcurrentModificationError,
   InvalidPhotoError,
   PatientDuplicateNationalIdError,
+  ENCRYPTION_KEY_GUARD_PORT,
   STORAGE_PORT,
   sniffImageExtension,
   stripVietnameseDiacritics,
+  type EncryptionKeyGuardPort,
   type StoragePort,
 } from '@nexamed/core';
 import {
@@ -31,7 +33,7 @@ import { randomUUID } from 'node:crypto';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import { BusinessCodeService } from '../clinic/business-code.service';
-import { decryptPii, encryptPii, hashForLookup } from '../../infrastructure/crypto/pii-encryption';
+import { encryptPii, hashForLookup, tryDecryptPii } from '../../infrastructure/crypto/pii-encryption';
 import { signFileToken } from '../../infrastructure/storage/signed-url';
 import type { RequestMeta } from '../../common/request-meta';
 import { PatientRepository, type UpdatePatientData } from './patient.repository';
@@ -74,6 +76,7 @@ export class PatientService {
     private readonly businessCodeService: BusinessCodeService,
     private readonly configService: ConfigService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+    @Inject(ENCRYPTION_KEY_GUARD_PORT) private readonly encryptionKeyGuard: EncryptionKeyGuardPort,
   ) {}
 
   async createPatient(
@@ -83,6 +86,8 @@ export class PatientService {
     meta: RequestMeta,
   ): Promise<PatientDetail> {
     const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
+    // Khoá mã hoá không khớp dữ liệu thì không ghi CCCD mới (#262) — kiểm TRƯỚC khi mở transaction.
+    if (dto.nationalId) await this.encryptionKeyGuard.assertWritable(tenantId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const patientCode = await this.businessCodeService.generate(tx, tenantId, actorId, 'PATIENT', new Date());
@@ -233,6 +238,7 @@ export class PatientService {
     meta: RequestMeta,
   ): Promise<PatientDetail> {
     const encryptionKey = this.configService.getOrThrow<string>('ENCRYPTION_KEY');
+    if (dto.nationalId) await this.encryptionKeyGuard.assertWritable(tenantId);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.patientRepository.findById(tx, tenantId, id);
@@ -314,6 +320,7 @@ export class PatientService {
    * thuật toán cố ý chậm như hash mật khẩu).
    */
   private toSummary(patient: Patient, encryptionKey: string): PatientSummary {
+    const nationalId = this.readNationalId(patient, encryptionKey);
     return {
       id: patient.id,
       patientCode: patient.patientCode,
@@ -322,10 +329,16 @@ export class PatientService {
       gender: patient.gender as PatientGender,
       phone: patient.phone,
       hasNationalId: patient.nationalIdEnc !== null,
-      nationalIdMasked: patient.nationalIdEnc ? this.maskNationalId(decryptPii(patient.nationalIdEnc, encryptionKey)) : null,
+      nationalIdMasked: nationalId !== null ? this.maskNationalId(nationalId) : null,
+      nationalIdUnreadable: patient.nationalIdEnc !== null && nationalId === null,
       address: (patient.addressJson as PatientAddress | null) ?? null,
       version: patient.version,
     };
+  }
+
+  /** Giải mã CCCD để hiển thị; khoá không khớp/dữ liệu hỏng → `null` (hồ sơ vẫn mở được, #262) thay vì cả danh sách lỗi 500. */
+  private readNationalId(patient: Patient, encryptionKey: string): string | null {
+    return patient.nationalIdEnc ? tryDecryptPii(Buffer.from(patient.nationalIdEnc), encryptionKey) : null;
   }
 
   /** "••••" + 4 ký tự cuối — đủ nhận diện/đối chiếu nhanh mà không lộ nguyên số CCCD trên màn hình dùng chung. */
@@ -342,7 +355,7 @@ export class PatientService {
   ): PatientDetail {
     return {
       ...this.toSummary(patient, encryptionKey),
-      nationalId: patient.nationalIdEnc ? decryptPii(patient.nationalIdEnc, encryptionKey) : null,
+      nationalId: this.readNationalId(patient, encryptionKey),
       nationalIdIssuedAt: patient.nationalIdIssuedAt ? this.formatDob(patient.nationalIdIssuedAt) : null,
       nationalIdIssuedPlace: patient.nationalIdIssuedPlace,
       ethnicity: patient.ethnicity,

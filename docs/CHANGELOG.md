@@ -14,6 +14,14 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-24
 
+### Bảo vệ khoá mã hoá hệ thống: cất khoá lúc cài, cảnh báo khoá không khớp, lệnh xoay khoá, khoá quyền `.env` (`docs/DECISIONS.md` #262)
+
+Chủ dự án hỏi "khoá mã hoá đã có biện pháp an toàn chưa" — rà soát thấy bản sao lưu không chứa khoá, bộ cài không bắt cất khoá, không có cách đổi khoá, `.env` đọc được trên Windows. Đã làm cả bốn theo mockup đã chốt: (A) trang Hoàn tất của bộ cài có hộp "Cất khoá hệ thống" (mã kiểm khoá + tải file khoá, bắt buộc mới Hoàn tất được, cả 3 kiểu cài); (B) máy chủ so khoá đang chạy với dữ liệu — lệch thì cảnh báo đỏ cho quản trị, số CCCD/thẻ BHYT hiện "Không đọc được" thay vì lỗi 500, và từ chối lưu CCCD/thẻ BHYT mới để không trộn hai khoá; (C) lệnh `db:rotate-encryption-key` mã hoá lại mọi dữ liệu sang khoá mới trong một giao dịch (có bước kiểm trước, chế độ chạy thử, bắt buộc xác nhận đã sao lưu); (D) bộ cài khoá quyền file `.env` trên Windows. Quyền mới `role_permission.read` cho quản trị hệ thống (xem danh sách vai trò khi thêm tài khoản). Không migration; hệ thống cũ tự được ghi mã kiểm khoá lần đầu khi có người hỏi trạng thái.
+
+### Trình cài đặt: đổi thông tin sau khi lỗi nay dùng đúng giá trị mới; báo cổng bị chiếm bằng tiếng Việt (`docs/DECISIONS.md` #261)
+
+Cài thử bản on-prem gặp cổng 8080 bị Apache/XAMPP chiếm; đổi sang 8081 ở "Sửa thông tin" nhưng cài vẫn đòi 8080 vì trình cài đặt coi lần gửi mới là "Thử lại" và dùng lại câu trả lời cũ. Nay chỉ nút "Thử lại" mới dùng lại câu trả lời cũ, còn gửi thông tin mới thì cài lại theo thông tin mới (khoá bí mật cũ vẫn được giữ). Lỗi cổng bị chiếm hiện bằng tiếng Việt kèm cách sửa, và bước kiểm cổng nay phát hiện đúng cổng bị Apache/IIS giữ (trước đây báo "còn trống" nhầm trên Docker Desktop vì thăm dò không gắn kèm IP). Script dựng gói không còn ghi nhầm ra `C:\package`. Thêm test và kiểm đột biến. Quyền mới `role_permission.read` (quản trị hệ thống xem được danh sách vai trò khi thêm tài khoản; `GET /roles` chỉ cần quyền này, ma trận vẫn cần `role_permission.manage`) — môi trường khác cần `db:seed`.
+
 ### Trang cho vào nhưng máy chủ từ chối theo phạm vi → nay ra "Không có quyền truy cập" (`docs/DECISIONS.md` #260)
 
 Sửa lớp lỗi phát hiện từ phiếu chốt ca trên iPad: lễ tân có quyền xem phiếu chốt ca ở phạm vi cá nhân nên menu/route cho vào, nhưng danh sách chỉ dành cho quản lý nên trang báo "Không tải được danh sách". Nay route và menu kiểm theo PHẠM VI (Phiếu chốt ca: từ khoa trở lên; Lịch làm việc nhân viên: toàn bộ), máy chủ trả mã `PERMISSION_DENIED` kèm câu tiếng Việt thay vì 403 thô, danh sách gặp lỗi quyền hiện màn "Không có quyền xem nội dung này", và các trang cấu hình (Danh mục Tổ chức và Nhân sự, Danh mục Chuyên môn) chỉ hiện những thẻ mà tài khoản dùng được — vai trò Quản trị hệ thống không còn thấy trang toàn lỗi. Script quét `role-access-sweep.cjs` nay bấm cả từng thẻ; trước sửa ra 14 điểm lỗi ở 4 trang. Không migration.

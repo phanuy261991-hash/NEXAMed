@@ -13,6 +13,7 @@ import { TopBar } from './TopBar';
 // S6-01 (docs/DECISIONS.md #141) — lazy, đúng khuôn các mục nhỏ ở TopBar.tsx: chỉ `clinic_admin`
 // mới thấy nội dung thật, không đáng để cả app tải sẵn code này trong chunk khởi động (đo thật
 // làm chunk chính vượt ngưỡng 500 kB, xem comment lúc build).
+const EncryptionKeyBanner = lazy(() => import('../../features/encryption-key/EncryptionKeyBanner').then((m) => ({ default: m.EncryptionKeyBanner })));
 const BackupStatusBanner = lazy(() => import('./BackupStatusBanner').then((m) => ({ default: m.BackupStatusBanner })));
 
 /**
@@ -57,6 +58,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 `fallback={null}` — không có gì để hiện trong lúc tải chunk, tự thế chỗ khi xong. */}
             <Suspense fallback={null}>
               <BackupStatusBanner />
+            </Suspense>
+            {/* Khoá mã hoá hệ thống không khớp dữ liệu (docs/DECISIONS.md #262) — chỉ quản trị thấy, tự ẩn khi khoá khớp. */}
+            <Suspense fallback={null}>
+              <EncryptionKeyBanner />
             </Suspense>
             {/* Máy chủ vừa được cập nhật mà trình duyệt còn gói web cũ (docs/DECISIONS.md #236) — tự ẩn khi hai bên cùng phiên bản. */}
             <VersionMismatchBanner />

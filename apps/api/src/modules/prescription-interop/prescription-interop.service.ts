@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client';
 import {
   BRANCH_DIRECTORY_PORT,
   DOCTOR_DIRECTORY_PORT,
+  ENCRYPTION_KEY_GUARD_PORT,
   E_PRESCRIPTION_GATEWAY_PORT,
   InteropPasswordRequiredError,
   computeInteropTokenState,
@@ -12,6 +13,7 @@ import {
   type DoctorDirectoryPort,
   type EPrescriptionGatewayEndpoint,
   type EPrescriptionGatewayPort,
+  type EncryptionKeyGuardPort,
   type EPrescriptionGatewayResult,
 } from '@nexamed/core';
 import type {
@@ -53,6 +55,7 @@ export class PrescriptionInteropService {
     @Inject(BRANCH_DIRECTORY_PORT) private readonly branchDirectory: BranchDirectoryPort,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(E_PRESCRIPTION_GATEWAY_PORT) private readonly gateway: EPrescriptionGatewayPort,
+    @Inject(ENCRYPTION_KEY_GUARD_PORT) private readonly encryptionKeyGuard: EncryptionKeyGuardPort,
   ) {}
 
   private encryptionKey(): string {
@@ -130,6 +133,8 @@ export class PrescriptionInteropService {
 
   async saveFacilityCredential(tenantId: string, actorId: string, branchId: string, dto: SaveInteropCredentialRequest, meta: RequestMeta): Promise<ListInteropFacilitiesResponse> {
     await this.assertBranchInCompany(tenantId, branchId);
+    // Khoá mã hoá không khớp dữ liệu thì không lưu mật khẩu cổng mới (#262).
+    if (dto.password) await this.encryptionKeyGuard.assertWritable(tenantId);
     const passwordEnc = dto.password ? encryptPii(dto.password, this.encryptionKey()) : undefined;
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -249,6 +254,7 @@ export class PrescriptionInteropService {
     meta: RequestMeta,
   ): Promise<ListInteropDoctorsResponse> {
     await this.assertDoctorInBranch(tenantId, branchId, userId);
+    if (dto.password) await this.encryptionKeyGuard.assertWritable(tenantId);
     const passwordEnc = dto.password ? encryptPii(dto.password, this.encryptionKey()) : undefined;
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {

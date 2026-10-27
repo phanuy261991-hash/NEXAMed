@@ -27,6 +27,7 @@ describe('HTTP e2e — /api/v1/roles', () => {
 
   let clinicAdminToken: string;
   let doctorToken: string;
+  let systemAdminToken: string;
   let tenantBAdminToken: string;
 
   async function createUserWithRole(tenantId: string, roleName: string, password = adminPassword) {
@@ -72,6 +73,7 @@ describe('HTTP e2e — /api/v1/roles', () => {
 
     clinicAdminToken = (await createUserWithRole(fixture.tenantA.id, 'clinic_admin')).token;
     doctorToken = (await createUserWithRole(fixture.tenantA.id, 'doctor')).token;
+    systemAdminToken = (await createUserWithRole(fixture.tenantA.id, 'system_admin')).token;
     tenantBAdminToken = (await createUserWithRole(fixture.tenantB.id, 'clinic_admin')).token;
   });
 
@@ -86,10 +88,19 @@ describe('HTTP e2e — /api/v1/roles', () => {
     expect(res.status).toBe(401);
   });
 
-  it('vai trò không có role_permission.manage (doctor) → 403 PERMISSION_DENIED', async () => {
+  it('vai trò không có role_permission.read (doctor) → 403 PERMISSION_DENIED', async () => {
     const res = await request(app.getHttpServer()).get('/api/v1/roles').set(authed(doctorToken));
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('PERMISSION_DENIED');
+  });
+
+  it('system_admin (chỉ có role_permission.read) xem được DANH SÁCH vai trò nhưng không xem/sửa được MA TRẬN (#260)', async () => {
+    const list = await request(app.getHttpServer()).get('/api/v1/roles').set(authed(systemAdminToken));
+    expect(list.status).toBe(200);
+    const roleId = list.body.data.items[0].id as string;
+    expect((await request(app.getHttpServer()).get(`/api/v1/roles/${roleId}/permissions`).set(authed(systemAdminToken))).status).toBe(403);
+    expect((await request(app.getHttpServer()).put(`/api/v1/roles/${roleId}/permissions`).set(authed(systemAdminToken)).send({ version: 1, permissions: [] })).status).toBe(403);
+    expect((await request(app.getHttpServer()).post('/api/v1/roles').set(authed(systemAdminToken)).send({ name: 'x' })).status).toBe(403);
   });
 
   it('GET /roles → đủ 7 vai trò mặc định, isSystemDefault đúng', async () => {

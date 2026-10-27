@@ -27,6 +27,8 @@ export interface UpgradeRecord {
 
 export interface SetupState {
   lastUpgrade?: UpgradeRecord;
+  /** Đang cài mới và CHƯA xong (đặt khi bắt đầu cài, xoá khi mọi bước hoàn tất): `.env` đã có phiên bản nhưng hệ thống chưa dùng được — trình cài đặt phải cho cài tiếp, không coi là "đã cài" (#261). */
+  installInProgress?: boolean;
 }
 
 const STATE_FILE = '.setup-state.json';
@@ -40,7 +42,7 @@ export async function readSetupState(workDir: string): Promise<SetupState> {
   }
 }
 
-async function writeSetupState(workDir: string, state: SetupState): Promise<void> {
+export async function writeSetupState(workDir: string, state: SetupState): Promise<void> {
   await writeFile(join(workDir, STATE_FILE), JSON.stringify(state, null, 2) + '\n');
 }
 

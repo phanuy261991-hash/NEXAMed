@@ -29,6 +29,7 @@ export const SAMPLE_INSURANCE: EncounterInsurance = {
   selfPay: false,
   reason: null,
   cardNo: '079187001234',
+  cardNoUnreadable: false,
   kind: 'NEW_12',
   validFrom: '2026-01-01',
   validTo: null,

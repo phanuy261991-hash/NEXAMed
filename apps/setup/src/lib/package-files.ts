@@ -97,6 +97,19 @@ export async function fileExists(path: string): Promise<boolean> {
   }
 }
 
+/** Mã phòng khám GIỮ CHỖ trong `config.json` từ bước "Ghi cấu hình" tới khi bước "Tạo phòng khám" ghi mã thật. */
+export const PLACEHOLDER_TENANT = '00000000-0000-0000-0000-000000000000';
+
+/** `config.json` còn mã phòng khám giữ chỗ = lần cài mới (LAN/VPS) chưa tạo xong phòng khám. */
+export async function hasPlaceholderTenant(workDir: string): Promise<boolean> {
+  try {
+    const config = JSON.parse(await readFile(join(workDir, 'config.json'), 'utf8')) as { tenantId?: string };
+    return config.tenantId === PLACEHOLDER_TENANT;
+  } catch {
+    return false;
+  }
+}
+
 /** Phiên bản đang ghi trong `.env` (null nếu chưa cài hoặc vẫn là giá trị mẫu). */
 export async function readInstalledVersion(workDir: string): Promise<string | null> {
   try {
