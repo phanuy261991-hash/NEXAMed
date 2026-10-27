@@ -304,6 +304,13 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    // Mã/id trong đường dẫn không đúng dạng UUID (gõ tay URL, liên kết hỏng): Prisma báo P2023 trước khi chạm cơ sở dữ liệu. Với người dùng đó là "không có bản ghi này" (404) chứ không phải lỗi máy chủ;
+    // trước đây rơi xuống nhánh 500 và ghi log lỗi oan (phát hiện khi quét quyền route có tham số, 27/10/2026).
+    if (isInvalidUuidError(exception)) {
+      response.status(HttpStatus.NOT_FOUND).json({ error: { code: 'NOT_FOUND', message: 'Không tìm thấy dữ liệu.' } });
+      return;
+    }
+
     // Lỗi 4xx do thư viện Express/body-parser ném (kiểu `http-errors`, `expose: true`) — ví dụ thân yêu cầu quá lớn (413) hay JSON hỏng (400). Trước đây rơi xuống nhánh 500 và ghi log lỗi oan
     // (phát hiện khi kiểm nâng NestJS 11 / Express 5, docs/DECISIONS.md #249).
     const clientStatus = clientErrorStatusOf(exception);
@@ -327,4 +334,11 @@ function clientErrorStatusOf(exception: unknown): number | null {
   const e = exception as { status?: unknown; statusCode?: unknown; expose?: unknown };
   const status = typeof e.status === 'number' ? e.status : typeof e.statusCode === 'number' ? e.statusCode : null;
   return status !== null && status >= 400 && status < 500 && e.expose === true ? status : null;
+}
+
+/** `PrismaClientKnownRequestError` mã P2023 do chuỗi không phải UUID. Nhận diện theo cấu trúc (không import Prisma vào bộ lọc dùng chung). */
+function isInvalidUuidError(exception: unknown): boolean {
+  if (typeof exception !== 'object' || exception === null) return false;
+  const e = exception as { name?: unknown; code?: unknown; message?: unknown };
+  return e.name === 'PrismaClientKnownRequestError' && e.code === 'P2023' && typeof e.message === 'string' && /UUID/i.test(e.message);
 }

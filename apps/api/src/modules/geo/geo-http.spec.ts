@@ -30,6 +30,8 @@ describe('HTTP e2e — /api/v1/geo', () => {
   let receptionistToken: string;
   let systemAdminToken: string;
   let tenantBReceptionistToken: string;
+  let onlyCatalogReadToken: string;
+  let noPermissionToken: string;
 
   async function createUserWithRole(tenantId: string, roleName: string) {
     const username = `e2e-${roleName}-${randomUUID()}`;
@@ -51,6 +53,20 @@ describe('HTTP e2e — /api/v1/geo', () => {
 
     const login = await request(app.getHttpServer()).post('/api/v1/auth/login').send({ tenantId, username, password });
     return login.body.data.accessToken as string;
+  }
+
+  /** Vai trò TUỲ BIẾN chỉ có đúng các quyền cho trước (phạm vi toàn bộ) — để kiểm `/geo/*` nhận `reference_catalog.read` mà KHÔNG cần `patient.read`. */
+  async function createUserWithCustomPermissions(tenantId: string, permissionKeys: string[]) {
+    const roleName = `geo-custom-${randomUUID()}`;
+    const role = await privileged.role.create({ data: { tenantId, name: roleName, isSystemDefault: false, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+    const catalog = await privileged.permission.findMany({ select: { id: true, module: true, action: true } });
+    const rows = permissionKeys.map((key) => {
+      const p = catalog.find((c) => `${c.module}.${c.action}` === key);
+      if (!p) throw new Error(`permission chưa seed: ${key}`);
+      return { tenantId, roleId: role.id, permissionId: p.id, dataScope: 'global' as const, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR };
+    });
+    if (rows.length > 0) await privileged.rolePermission.createMany({ data: rows });
+    return createUserWithRole(tenantId, roleName);
   }
 
   function authed(token: string) {
@@ -78,6 +94,8 @@ describe('HTTP e2e — /api/v1/geo', () => {
     receptionistToken = await createUserWithRole(fixture.tenantA.id, 'receptionist');
     systemAdminToken = await createUserWithRole(fixture.tenantA.id, 'system_admin');
     tenantBReceptionistToken = await createUserWithRole(fixture.tenantB.id, 'receptionist');
+    onlyCatalogReadToken = await createUserWithCustomPermissions(fixture.tenantA.id, ['reference_catalog.read']);
+    noPermissionToken = await createUserWithCustomPermissions(fixture.tenantA.id, []);
   });
 
   afterAll(async () => {
@@ -121,10 +139,32 @@ describe('HTTP e2e — /api/v1/geo', () => {
     expect(res.body.data.items).toHaveLength(3321);
   });
 
-  it('system_admin (patient.read = none) → 403 PERMISSION_DENIED', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/geo/provinces').set(authed(systemAdminToken));
+  it('vai trò KHÔNG có patient.read lẫn reference_catalog.read → 403 PERMISSION_DENIED (cả tỉnh lẫn phường/xã)', async () => {
+    for (const path of ['/api/v1/geo/provinces', '/api/v1/geo/wards?provinceCode=1']) {
+      const res = await request(app.getHttpServer()).get(path).set(authed(noPermissionToken));
+      expect(res.status, path).toBe(403);
+      expect(res.body.error.code).toBe('PERMISSION_DENIED');
+    }
+  });
+
+  it('vai trò CHỈ có reference_catalog.read (không có patient.read) → 200 (người quản danh mục/mẫu in không cần đọc hồ sơ bệnh nhân, #263)', async () => {
+    const provinces = await request(app.getHttpServer()).get('/api/v1/geo/provinces').set(authed(onlyCatalogReadToken));
+    expect(provinces.status).toBe(200);
+    expect(provinces.body.data.items).toHaveLength(34);
+    const wards = await request(app.getHttpServer()).get('/api/v1/geo/wards?provinceCode=1').set(authed(onlyCatalogReadToken));
+    expect(wards.status).toBe(200);
+    expect(wards.body.data.items).toHaveLength(126);
+  });
+
+  it('quyền thay thế KHÔNG mở các route khác: reference_catalog.read không đọc được danh sách bệnh nhân', async () => {
+    const res = await request(app.getHttpServer()).get('/api/v1/patients').set(authed(onlyCatalogReadToken));
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('PERMISSION_DENIED');
+  });
+
+  it('system_admin mặc định (có reference_catalog.read từ #260, không có patient.read) → 200', async () => {
+    const res = await request(app.getHttpServer()).get('/api/v1/geo/provinces').set(authed(systemAdminToken));
+    expect(res.status).toBe(200);
   });
 
   it('không có chủ đích cách ly tenant — tenant B thấy đúng cùng danh mục toàn hệ thống', async () => {

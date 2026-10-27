@@ -35,6 +35,12 @@ describe('formatInsurancePrintValue (cùng câu chữ với bệnh án PDF của
     expect(formatInsurancePrintValue(selfPay, 'selfPay')).toBe('Tự chi trả');
   });
 
+  it('khoá mã hoá lệch dữ liệu (không đọc được số thẻ): KHÔNG in dòng nào, kể cả khi bản mẫu chọn "In Tự chi trả" (in vậy là sai sự thật)', () => {
+    const unreadable: EncounterInsurance = { ...card, cardNo: null, cardNoUnreadable: true, kind: null };
+    expect(formatInsurancePrintValue(unreadable, 'selfPay')).toBeNull();
+    expect(formatInsurancePrintValue(unreadable, 'hide')).toBeNull();
+  });
+
   it('không có thông tin BHYT (công tắc tắt) thì không in gì', () => {
     expect(formatInsurancePrintValue(null, 'selfPay')).toBeNull();
     expect(formatInsurancePrintValue(undefined, 'hide')).toBeNull();

@@ -9,6 +9,7 @@ import { formatDobDisplay } from '../../shared/format/date';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { ApiError } from '../../shared/api/client';
 import { useInsuranceEnabledQuery } from '../clinic/clinic.queries';
+import { UNREADABLE_LABEL } from '../encryption-key/encryption-key-view';
 import { InsuranceCardDialog } from './InsuranceCardDialog';
 import {
   deriveReceptionInsuranceView,
@@ -129,7 +130,7 @@ export function ReceptionInsuranceBlock({
         <div role="status" className="flex flex-wrap items-center gap-2.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-800">
           <WarningCircle size={18} weight="fill" className="flex-none text-amber-500" aria-hidden="true" />
           <span>
-            Thẻ {view.card.cardNo} {notStarted ? 'chưa đến ngày hiệu lực' : view.card.validTo ? `hết hạn ngày ${formatDobDisplay(view.card.validTo)}` : 'đã hết hạn'}. Lượt khám ghi <b>Tự chi trả</b>.
+            Thẻ {view.card.cardNoUnreadable ? UNREADABLE_LABEL : view.card.cardNo} {notStarted ? 'chưa đến ngày hiệu lực' : view.card.validTo ? `hết hạn ngày ${formatDobDisplay(view.card.validTo)}` : 'đã hết hạn'}. Lượt khám ghi <b>Tự chi trả</b>.
           </span>
           <span className="flex-1" />
           {addButton('secondary')}
@@ -154,7 +155,7 @@ export function ReceptionInsuranceBlock({
               onClick={() => onChoiceChange(card.id)}
               className={`${pickBase} ${selected?.id === card.id ? pickSelected : pickIdle}`}
             >
-              <span className="text-[15px] font-semibold tabular-nums tracking-wide">{card.cardNo}</span>
+              <span className="text-[15px] font-semibold tabular-nums tracking-wide">{card.cardNoUnreadable ? UNREADABLE_LABEL : card.cardNo}</span>
               <span className="text-xs">{pickSubtitle(card)}</span>
             </button>
           ))}

@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-10-27
+
+### Quét quyền vai trò tuỳ biến / route có tham số: sửa lỗi 500 khi id sai định dạng, quyền đi kèm, số thẻ BHYT "không đọc được" nhất quán (`docs/DECISIONS.md` #263)
+
+Hoàn tất việc treo của bàn giao 27/10: chạy hết script quét quyền (id giả + 41 vai trò tuỳ biến) trên stack Docker thật. Tìm và sửa: (1) id sai định dạng UUID ở đường dẫn trả **500** nay trả **404** tiếng Việt (`DomainExceptionFilter`); (2) chi tiết nhà cung cấp và chi tiết bảng giá nay ra màn "Không có quyền xem nội dung này" khi bản ghi không tồn tại (trước là banner lỗi); (3) khi khoá mã hoá lệch dữ liệu, bản in đơn thuốc/phiếu thu và PDF bệnh án **không còn in nhầm "Tự chi trả"** cho bệnh nhân có BHYT (bỏ dòng BHYT), các chỗ hiển thị số thẻ ở Tiếp nhận/nhãn màn khám/hộp xoá thẻ hiện "Không đọc được"; (4) bảng quyền đi kèm bổ sung 3 mục (chi tiết lượt khám, chỉ định cận lâm sàng, mẫu in); (5) **`GET /geo/*` nay nhận thêm `reference_catalog.read`** (chủ dự án chốt) — người chỉ quản danh mục/mẫu in không cần quyền đọc hồ sơ bệnh nhân để tải Tỉnh/Phường; cơ chế `alsoAccept` mới ở `@RequirePermission`/`PermissionGuard`; (6) `docs/DECISIONS.md` #242–#252 chuyển sang `docs/archive/DECISIONS-242-252.md` (file gốc từ #253). Script `role-access-sweep.cjs` được làm bền (hạn thời gian, dọn dẹp thật sự ẩn được vai trò, không còn "ĐẠT" suông, bỏ nút không nhãn). Không migration, không đổi hợp đồng API ngoài mã lỗi 404.
+
 ## 2026-10-24
 
 ### Bảo vệ khoá mã hoá hệ thống: cất khoá lúc cài, cảnh báo khoá không khớp, lệnh xoay khoá, khoá quyền `.env` (`docs/DECISIONS.md` #262)

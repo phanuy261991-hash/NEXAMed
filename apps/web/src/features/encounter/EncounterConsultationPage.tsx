@@ -863,7 +863,7 @@ export function EncounterConsultationPage() {
             <span className="whitespace-nowrap rounded-full bg-brand-teal-tint px-2.5 py-0.5 text-[11px] font-semibold text-brand-teal-active">
               {encounter.encounterNo}
             </span>
-            <InsuranceBadge badge={insurance} cardNo={insurance?.cardNo} />
+            <InsuranceBadge badge={insurance} cardNo={insurance?.cardNo} cardNoUnreadable={insurance?.cardNoUnreadable} />
             {isCompleted && (
               <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">
                 <CheckCircle size={12} weight="fill" aria-hidden="true" />

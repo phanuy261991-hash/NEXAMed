@@ -11,6 +11,9 @@
 export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> = {
   'patient.create': ['patient.read', 'allergen_catalog.read', 'reference_catalog.read'],
   'encounter.read': ['appointment.read', 'reference_catalog.read'],
+  // Quét vai trò tuỳ biến 27/10/2026: màn khám cần danh mục loại tiếp nhận; chỉ định cận lâm sàng cần danh sách bác sĩ (`GET /appointments/doctors` gắn `appointment.read`).
+  'encounter.read_clinical': ['reference_catalog.read'],
+  'clinical_order.read': ['appointment.read'],
   'encounter.create': ['encounter.read', 'patient.read', 'appointment.read', 'allergen_catalog.read', 'reference_catalog.read'],
   'invoice.read': ['cashier_shift.read', 'reference_catalog.read'],
   'cashier_shift.read': ['user_account.read'],
@@ -38,8 +41,9 @@ export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> 
   'shift_swap.create': ['shift_swap.read', 'work_shift_assignment.read'],
   'work_shift_assignment.approve': ['work_shift_assignment.read'],
   'leave_request.file_on_behalf': ['leave_request.read', 'work_shift_assignment.read', 'work_shift.read'],
+  // Thẻ Tỉnh/Thành, Phường/Xã của Danh mục dùng chung và địa chỉ trên Mẫu in gọi `GET /geo/*` — endpoint này nhận cả `reference_catalog.read` (#263) nên không cần gợi ý `patient.read`.
   'reference_catalog.manage': ['reference_catalog.read'],
-  'clinic_config.update': ['clinic_config.read'],
+  'clinic_config.update': ['clinic_config.read', 'reference_catalog.read'],
   'audit_log.read': ['user_account.read'],
 };
 

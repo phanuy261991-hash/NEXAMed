@@ -16,9 +16,9 @@ import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
-import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
+import { RecordLoadError } from '../../shared/ui/RecordLoadError';
 import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
@@ -183,7 +183,7 @@ export function PriceListDetailPage() {
       )}
       {!isNew && query.isError && (
         <div className="p-6">
-          <ErrorBanner message="Không tải được bảng giá. Bảng giá có thể đã bị xoá." onRetry={() => query.refetch()} />
+          <RecordLoadError error={query.error} fallbackMessage="Không tải được bảng giá." onRetry={() => query.refetch()} fallbackTo="/admin/price-lists" fallbackLabel="Về danh sách bảng giá" />
         </div>
       )}
       {(isNew || query.data) && <PriceListForm key={`${formKey}-${query.data?.version ?? 0}`} detail={isNew ? undefined : query.data} copySource={copySource} onReload={reload} />}

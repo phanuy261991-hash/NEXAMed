@@ -95,6 +95,8 @@ export interface MedicalRecordTreatment {
 export interface MedicalRecordInsurance {
   selfPay: boolean;
   cardNo: string | null;
+  /** Khoá mã hoá lệch dữ liệu (#262): có thẻ nhưng không giải mã được → không in dòng BHYT (không được in nhầm "Tự chi trả"). */
+  cardNoUnreadable: boolean;
   /** Kiểu thẻ tính ra từ số thẻ (`NEW_12` = thẻ mới 12 số, `OLD_15` = thẻ cũ 15 ký tự). */
   kind: 'NEW_12' | 'OLD_15' | 'UNKNOWN' | null;
   validFrom: string | null;
@@ -275,6 +277,7 @@ function renderPrescription(items: MedicalRecordPrescriptionItem[], documents: M
 
 function formatInsuranceLine(insurance: MedicalRecordInsurance | null | undefined, whenSelfPay: 'hide' | 'selfPay'): string | null {
   if (!insurance) return null;
+  if (insurance.cardNoUnreadable) return null;
   if (insurance.selfPay || !insurance.cardNo) return whenSelfPay === 'selfPay' ? 'Số thẻ BHYT: Tự chi trả' : null;
   const kindText = insurance.kind === 'NEW_12' ? ' (thẻ mới)' : insurance.kind === 'OLD_15' ? ' (thẻ cũ)' : '';
   const parts = [`Số thẻ BHYT: ${insurance.cardNo}${kindText}`];

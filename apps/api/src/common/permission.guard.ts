@@ -49,6 +49,10 @@ export class PermissionGuard implements CanActivate {
 
     const scope = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const scopes = await findScopesForUserPermission(tx, tenantId, userId, metadata.module, metadata.action);
+      // Quyền thay thế (`alsoAccept`): chỉ tra thêm khi quyền chính không cho; scope lấy rộng nhất trong các quyền đủ điều kiện.
+      for (const alt of metadata.alsoAccept ?? []) {
+        scopes.push(...(await findScopesForUserPermission(tx, tenantId, userId, alt.module, alt.action)));
+      }
       return maxDataScope(scopes);
     });
 

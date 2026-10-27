@@ -14,13 +14,19 @@ import { GeoService } from './geo.service';
  * cho tenant cũ" đã ghi ở docs/CURRENT.md khi thêm permission mới — giống cách `appointment.read`
  * được dùng lại cho `GET /appointments/doctors|schedule-config` (S2-09).
  */
+/**
+ * Danh mục hành chính KHÔNG nhạy cảm: ngoài `patient.read` (form bệnh nhân), người quản danh mục/mẫu in có `reference_catalog.read` cũng xem được — khỏi phải cấp
+ * quyền đọc hồ sơ bệnh nhân chỉ để tải danh sách Tỉnh/Phường (docs/DECISIONS.md #263, mở rộng #038).
+ */
+const GEO_ALSO_ACCEPT = [{ module: 'reference_catalog', action: 'read' }];
+
 @Controller('geo')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class GeoController {
   constructor(private readonly geoService: GeoService) {}
 
   @Get('provinces')
-  @RequirePermission('patient', 'read')
+  @RequirePermission('patient', 'read', { alsoAccept: GEO_ALSO_ACCEPT })
   async listProvinces(@Req() req: Request) {
     const { tenantId } = req.user!;
     return this.geoService.listProvinces(tenantId);
@@ -28,7 +34,7 @@ export class GeoController {
 
   /** `provinceCode` bỏ trống → toàn bộ ward (xem `listWardsQuerySchema` ở packages/shared). */
   @Get('wards')
-  @RequirePermission('patient', 'read')
+  @RequirePermission('patient', 'read', { alsoAccept: GEO_ALSO_ACCEPT })
   async listWards(@Query('provinceCode') provinceCode: string | undefined, @Req() req: Request) {
     const { provinceCode: parsedProvinceCode } = listWardsQuerySchema.parse({ provinceCode });
     const { tenantId } = req.user!;

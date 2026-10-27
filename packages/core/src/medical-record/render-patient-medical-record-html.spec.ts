@@ -310,13 +310,14 @@ describe('dòng "Thẻ BHYT" của từng lượt khám (S2-04, ô tích của b
   const withCard = {
     selfPay: false,
     cardNo: '079193004512',
+    cardNoUnreadable: false,
     kind: 'NEW_12' as const,
     validFrom: '2026-01-01',
     validTo: null,
     benefitRate: 80,
     facilityName: 'Trạm Y tế Phường 12',
   };
-  const selfPay = { selfPay: true, cardNo: null, kind: null, validFrom: null, validTo: null, benefitRate: null, facilityName: null };
+  const selfPay = { selfPay: true, cardNo: null, cardNoUnreadable: false, kind: null, validFrom: null, validTo: null, benefitRate: null, facilityName: null };
   const baseOptions: MedicalRecordPrintOptions = {
     header: { showClinicName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
     title: null,
@@ -336,6 +337,13 @@ describe('dòng "Thẻ BHYT" của từng lượt khám (S2-04, ô tích của b
     expect(renderPatientMedicalRecordHtml(doc, { ...baseOptions, insurance: { show: false, whenSelfPay: 'hide' } })).not.toContain('Số thẻ BHYT');
     expect(renderPatientMedicalRecordHtml(doc, baseOptions)).not.toContain('Số thẻ BHYT');
     expect(renderPatientMedicalRecordHtml(doc)).not.toContain('Số thẻ BHYT');
+  });
+
+  it('khoá mã hoá lệch dữ liệu (số thẻ không đọc được): KHÔNG in dòng BHYT, kể cả khi bản mẫu chọn "In Tự chi trả"', () => {
+    const unreadable = { ...withCard, cardNo: null, cardNoUnreadable: true, kind: null };
+    const doc = buildDoc({ encounters: [{ ...baseEncounter, insurance: unreadable }] });
+    expect(renderPatientMedicalRecordHtml(doc, { ...baseOptions, insurance: { show: true, whenSelfPay: 'selfPay' } })).not.toContain('Số thẻ BHYT');
+    expect(renderPatientMedicalRecordHtml(doc, { ...baseOptions, insurance: { show: true, whenSelfPay: 'hide' } })).not.toContain('Số thẻ BHYT');
   });
 
   it('lượt khám tự chi trả: "Ẩn cả dòng" thì không in; "In Tự chi trả" thì in; không có thông tin BHYT (công tắc tắt) thì không in gì', () => {

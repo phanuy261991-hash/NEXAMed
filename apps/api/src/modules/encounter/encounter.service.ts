@@ -927,6 +927,7 @@ export class EncounterService {
     return {
       selfPay: insurance.selfPay,
       cardNo: insurance.cardNo,
+      cardNoUnreadable: insurance.cardNoUnreadable,
       kind: insurance.kind,
       validFrom: insurance.validFrom,
       validTo: insurance.validTo,

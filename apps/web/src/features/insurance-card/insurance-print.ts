@@ -13,6 +13,8 @@ export const DEFAULT_INSURANCE_PRINT = { show: false, whenSelfPay: 'hide' } as c
  */
 export function formatInsurancePrintValue(insurance: EncounterInsurance | null | undefined, whenSelfPay: 'hide' | 'selfPay'): string | null {
   if (!insurance) return null;
+  // Khoá mã hoá lệch dữ liệu (#262): KHÔNG biết số thẻ → không in dòng này (in "Tự chi trả" sẽ sai sự thật với bệnh nhân có BHYT).
+  if (insurance.cardNoUnreadable) return null;
   if (insurance.selfPay || !insurance.cardNo) return whenSelfPay === 'selfPay' ? 'Tự chi trả' : null;
   const kindText = insurance.kind === 'NEW_12' ? ' (thẻ mới)' : insurance.kind === 'OLD_15' ? ' (thẻ cũ)' : '';
   const parts = [`${insurance.cardNo}${kindText}`];

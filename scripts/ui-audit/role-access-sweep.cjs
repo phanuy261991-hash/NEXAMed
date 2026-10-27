@@ -21,6 +21,8 @@ const SECTIONS = (process.env.UI_AUDIT_SECTIONS || 'default,params,custom').spli
 const CUSTOM_LIMIT = Number(process.env.UI_AUDIT_CUSTOM_LIMIT || 0);
 const SWEEP_ROLE_PREFIX = 'sw-sweep-';
 const SWEEP_USER_PREFIX = 'sw.';
+// Mã lần chạy: tên vai trò/tài khoản đã dùng (kể cả bị ẩn/khoá) vẫn chiếm chỗ (409), nên mỗi lần chạy phải dùng tên mới.
+const RUN_ID = Date.now().toString(36).slice(-6);
 
 const src = fs.readFileSync(path.join(__dirname, '../../apps/web/src/app/router.tsx'), 'utf8');
 const SKIP = ['/login', '/change-password', '/choose-branch', '/'];
@@ -34,6 +36,16 @@ for (const m of src.matchAll(/path: '([^']+)',\s*element:\s*<RequirePermissionRo
   guardByRoute.set('/' + m[1].replace(/^\//, ''), { module: m[2], action: m[3] });
 }
 
+// Giới hạn cứng: các lời gọi `page.evaluate`/`$eval` của Playwright KHÔNG có timeout mặc định, trang đang đứng hình thì script treo vô hạn (lần chạy 27/10/2026 treo 14 phút).
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`QUÁ GIỜ ${ms / 1000}s: ${label}`)), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+// Số thẻ/tab tối đa bấm mỗi trang: `/admin/catalog` có 122 thẻ danh mục (mỗi thẻ ~2 giây) nên bấm hết mất > 3 phút. Các thẻ cùng gọi một API theo mã danh mục, bấm 40 thẻ đầu là đủ phủ quyền.
+const MAX_TABS_PER_PAGE = Number(process.env.UI_AUDIT_MAX_PILLS || 150);
+const ROUTE_TIMEOUT_MS = Number(process.env.UI_AUDIT_ROUTE_TIMEOUT_MS || 90000);
+
 const ERROR_TEXT = /Không tải được|Không thể tải|Đã xảy ra lỗi|Tải dữ liệu thất bại/;
 
 // ----------------------------------------------------------------- API (chỉ để chuẩn bị dữ liệu, KHÔNG phải để kiểm)
@@ -43,6 +55,7 @@ async function api(p, { method = 'GET', token, json } = {}) {
     method,
     headers: { ...(json ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
     body: json ? JSON.stringify(json) : undefined,
+    signal: AbortSignal.timeout(30000),
   });
   const body = await res.json().catch(() => null);
   return { status: res.status, data: body && body.data !== undefined ? body.data : body, body };
@@ -86,7 +99,7 @@ async function resolveParamRoutes(token) {
     if (!id) {
       // Công ty thử chưa có dữ liệu: dùng id GIẢ (hợp lệ dạng UUID, không tồn tại). Kiểm được cổng quyền của route và cách trang xử lý "bản ghi không tồn tại" (phải ra màn "Không có quyền xem nội dung này",
       // không phải banner lỗi), nhưng KHÔNG kiểm nội dung trang có dữ liệu thật — muốn kiểm sâu hơn thì tạo dữ liệu mẫu trước.
-      id = '019f0000-0000-7000-8000-00000000f4ke';
+      id = '019f0000-0000-7000-8000-00000000fa4e';
       console.log(`[params] ${pattern}: chưa có dữ liệu mẫu, dùng id giả`);
     }
     // Mẫu id: `invoices/:encounterId` đi theo lượt khám; ở đây dùng đúng id lấy được.
@@ -169,15 +182,21 @@ async function visit(session, who, route, menuHrefs) {
     ['tab', 'main [role=tab]'],
   ]) {
     const labels = await page.$$eval(selector, (bs) => bs.map((b) => (b.textContent || '').replace(/\s+/g, ' ').trim()));
-    for (let k = 0; k < labels.length; k += 1) {
+    if (labels.length > MAX_TABS_PER_PAGE) console.log(`[quét] ${route}: ${labels.length} ${kind} — chỉ bấm ${MAX_TABS_PER_PAGE} đầu (UI_AUDIT_MAX_PILLS)`);
+    for (let k = 0; k < Math.min(labels.length, MAX_TABS_PER_PAGE); k += 1) {
+      if (labels[k] === '') continue; // nút tròn không nhãn (nút biểu tượng trong bảng) — không phải thẻ chuyển màn, bấm vào chỉ tốn 2 giây chờ hết hạn
       state.bad.clear();
       const btn = page.locator(selector).nth(k);
-      const selected = await btn.getAttribute('aria-selected').catch(() => null);
+      const selected = await btn.getAttribute('aria-selected', { timeout: 1000 }).catch(() => null);
       if (selected === 'true' || (kind === 'pill' && k === 0)) continue; // mục đang mở sẵn đã kiểm ở trên
+      const tStep = Date.now();
       await btn.click({ timeout: 2000 }).catch(() => {});
+      const tClick = Date.now() - tStep;
       await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => {});
+      const tIdle = Date.now() - tStep - tClick;
       await page.waitForTimeout(400);
       await inspect(session, who, route, `${kind}: ${labels[k]}`, menuHrefs);
+      if (process.env.UI_AUDIT_TRACE) console.log(`[trace] ${route} ${kind} ${k + 1}/${labels.length} "${labels[k]}": click ${tClick}ms, idle ${tIdle}ms, tổng ${Date.now() - tStep}ms`);
     }
   }
   return true;
@@ -232,7 +251,7 @@ async function visit(session, who, route, menuHrefs) {
     };
     // Dọn lần chạy trước còn sót (lọc ĐÚNG tiền tố).
     const staleRoles = ((await call('/roles')).data.items || []).filter((r) => r.name.startsWith(SWEEP_ROLE_PREFIX) && !r.isHidden);
-    const staleUsers = ((await call('/users')).data.items || []).filter((u) => u.username.startsWith(SWEEP_USER_PREFIX) && u.isActive);
+    const staleUsers = (await listAllUsers(call)).filter((u) => u.username.startsWith(SWEEP_USER_PREFIX) && u.isActive);
     console.log(`[custom] dọn trước: ${staleUsers.length} tài khoản ${SWEEP_USER_PREFIX}*, ${staleRoles.length} vai trò ${SWEEP_ROLE_PREFIX}* còn sót`);
     await cleanup(call, staleUsers, staleRoles);
 
@@ -242,8 +261,8 @@ async function visit(session, who, route, menuHrefs) {
     let n = 0;
     for (const [route, guard] of entries) {
       n += 1;
-      const roleName = `${SWEEP_ROLE_PREFIX}${n}`;
-      const username = `${SWEEP_USER_PREFIX}${n}`;
+      const roleName = `${SWEEP_ROLE_PREFIX}${RUN_ID}-${n}`;
+      const username = `${SWEEP_USER_PREFIX}${RUN_ID}${n}`;
       const roleRes = await call('/roles', { method: 'POST', json: { name: roleName } });
       if (roleRes.status !== 200) {
         console.log(`[custom] ${route}: không tạo được vai trò (${roleRes.status})`);
@@ -280,10 +299,17 @@ async function visit(session, who, route, menuHrefs) {
       }
       customRoutesChecked += 1;
       if (customRoutesChecked % 10 === 0) console.log(`[custom] ${customRoutesChecked}/${entries.length} vai trò (${new Date().toLocaleTimeString('vi-VN')})`);
-      await visit(session, `tuỳ biến(${key}+đi kèm: ${[...want].filter((k) => k !== key).join(',') || 'không'})`, route, null);
-      await session.ctx.close();
+      const who = `tuỳ biến(${key}+đi kèm: ${[...want].filter((k) => k !== key).join(',') || 'không'})`;
+      try {
+        await withTimeout(visit(session, who, route, null), ROUTE_TIMEOUT_MS, route);
+      } catch (e) {
+        // Một trang đứng hình quá hạn là phát hiện thật (hoặc lỗi môi trường) — ghi lại và đi tiếp, không treo cả lượt quét.
+        console.log(`[custom] ${route}: ${e.message}`);
+        findings.push({ who, route, inMenu: false, apis: [], banner: e.message });
+      }
+      await withTimeout(session.ctx.close(), 15000, 'đóng ngữ cảnh trình duyệt').catch(() => {});
     }
-    const usersNow = ((await call('/users')).data.items || []).filter((u) => u.username.startsWith(SWEEP_USER_PREFIX) && u.isActive);
+    const usersNow = (await listAllUsers(call)).filter((u) => u.username.startsWith(SWEEP_USER_PREFIX) && u.isActive);
     const rolesNow = ((await call('/roles')).data.items || []).filter((r) => r.name.startsWith(SWEEP_ROLE_PREFIX) && !r.isHidden);
     await cleanup(call, usersNow, rolesNow);
   }
@@ -292,6 +318,12 @@ async function visit(session, who, route, menuHrefs) {
   if (skipped.length) console.log(`\nBỏ qua (${skipped.length}):\n- ${skipped.join('\n- ')}`);
   if (SECTIONS.includes('custom')) console.log(`\n[custom] đã kiểm ${customRoutesChecked} vai trò tuỳ biến (route khai quyền đơn giản); ${guardByRoute.size} route có quyền đơn giản, route gộp nhiều quyền (RequireAnyPermissionRoute) không phủ.`);
 
+  // Phần custom mà không kiểm được vai trò nào thì KHÔNG được báo ĐẠT (lần chạy 27/10/2026 từng "đạt" suông vì mọi vai trò đều lỗi 409).
+  if (SECTIONS.includes('custom') && customRoutesChecked === 0) {
+    console.log('LỖI KỊCH BẢN: phần custom không kiểm được vai trò nào — kết quả không có giá trị.');
+    process.exitCode = 2;
+    return;
+  }
   if (findings.length === 0) {
     console.log(`\nKhông trang nào vừa cho vào vừa lỗi quyền. ĐẠT.`);
     return;
@@ -309,6 +341,19 @@ async function visit(session, who, route, menuHrefs) {
 });
 
 // Khoá tài khoản `sw.*` và ẩn vai trò `sw-sweep-*` (không xoá cứng). Danh sách đã được lọc ĐÚNG tiền tố trước khi gọi; in ra trước khi sửa.
+// Duyệt hết các trang của GET /users (phân trang theo cursor, limit tối đa 100; trước đây chỉ thấy 20 tài khoản đầu nên không dọn hết).
+async function listAllUsers(call) {
+  const all = [];
+  let cursor = null;
+  for (let i = 0; i < 100; i += 1) {
+    const r = await call(`/users?limit=100${cursor ? `&cursor=${cursor}` : ""}`);
+    all.push(...(r.data.items || []));
+    cursor = r.data.nextCursor;
+    if (!cursor) break;
+  }
+  return all;
+}
+
 async function cleanup(call, users, roles) {
   if (users.length) console.log(`[custom] khoá tài khoản: ${users.map((u) => u.username).join(', ')}`);
   for (const u of users) {
@@ -316,10 +361,23 @@ async function cleanup(call, users, roles) {
     const fresh = (await call(`/users/${u.id}`)).data;
     await call(`/users/${u.id}`, { method: 'PATCH', json: { isActive: false, version: fresh.version } });
   }
-  if (roles.length) console.log(`[custom] ẩn vai trò: ${roles.map((r) => r.name).join(', ')}`);
-  for (const r of roles) {
-    if (!r.name.startsWith(SWEEP_ROLE_PREFIX)) continue;
-    const fresh = ((await call('/roles')).data.items || []).find((x) => x.id === r.id);
-    if (fresh) await call(`/roles/${r.id}/hide`, { method: 'POST', json: { version: fresh.version } });
+  // API từ chối ẩn vai trò còn gán cho tài khoản, kể cả tài khoản đã khoá (409 ROLE_IN_USE) — trước đây lỗi này bị nuốt nên vai trò `sw-sweep-*` dồn lại mỗi lần chạy (41 → 161).
+  // Gán các tài khoản `sw.*` (đã khoá) sang vai trò hệ thống ÍT quyền nhất trước rồi mới ẩn. Danh sách lọc ĐÚNG tiền tố.
+  const allRoles = (await call('/roles')).data.items || [];
+  const fallback = allRoles.find((r) => r.isSystemDefault && r.name === 'receptionist') || allRoles.find((r) => r.isSystemDefault);
+  const sweepUsers = (await listAllUsers(call)).filter((u) => u.username.startsWith(SWEEP_USER_PREFIX));
+  if (fallback) {
+    for (const u of sweepUsers) {
+      const fresh = (await call(`/users/${u.id}`)).data;
+      await call(`/users/${u.id}`, { method: 'PATCH', json: { roleIds: [fallback.id], version: fresh.version } });
+    }
   }
+  const sweepRoles = allRoles.filter((r) => r.name.startsWith(SWEEP_ROLE_PREFIX));
+  if (sweepRoles.length) console.log(`[custom] ẩn ${sweepRoles.length} vai trò ${SWEEP_ROLE_PREFIX}*`);
+  let hideFailed = 0;
+  for (const r of sweepRoles) {
+    const res = await call(`/roles/${r.id}/hide`, { method: 'POST', json: { version: r.version } });
+    if (res.status >= 400) hideFailed += 1;
+  }
+  if (hideFailed) console.log(`[custom] CẢNH BÁO: ${hideFailed} vai trò không ẩn được`);
 }

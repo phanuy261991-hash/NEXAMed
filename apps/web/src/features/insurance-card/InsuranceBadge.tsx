@@ -1,5 +1,6 @@
 import type { EncounterInsuranceBadge } from '@nexamed/shared';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
+import { UNREADABLE_LABEL } from '../encryption-key/encryption-key-view';
 import { insuranceBadgeLabel } from './insurance-card-view';
 
 /**
@@ -7,12 +8,12 @@ import { insuranceBadgeLabel } from './insurance-card-view';
  * (cờ có/không, không phải tín hiệu y tế), "Tự chi trả" nền xám đặc. `badge` là `null` khi phòng khám chưa bật "Áp dụng BHYT" (máy chủ không trả) → không hiện gì.
  * `cardNo`: đầu màn khám kèm số thẻ để bác sĩ đối chiếu nhanh; hàng đợi chỉ hiện mức hưởng cho gọn.
  */
-export function InsuranceBadge({ badge, cardNo }: { badge: EncounterInsuranceBadge | null | undefined; cardNo?: string | null }) {
+export function InsuranceBadge({ badge, cardNo, cardNoUnreadable = false }: { badge: EncounterInsuranceBadge | null | undefined; cardNo?: string | null; cardNoUnreadable?: boolean }) {
   if (!badge) return null;
   const label = insuranceBadgeLabel(badge);
   return (
     <span className="inline-block align-middle">
-      <StatusBadge tone={badge.selfPay ? 'neutral' : 'info'}>{!badge.selfPay && cardNo ? `${label} · ${cardNo}` : label}</StatusBadge>
+      <StatusBadge tone={badge.selfPay ? 'neutral' : 'info'}>{!badge.selfPay && cardNoUnreadable ? `${label} · ${UNREADABLE_LABEL}` : !badge.selfPay && cardNo ? `${label} · ${cardNo}` : label}</StatusBadge>
     </span>
   );
 }

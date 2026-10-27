@@ -136,6 +136,6 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 - `docs/CURRENT.md` — dùng để biết trạng thái HIỆN TẠI của dự án trước khi bắt đầu việc mới (bản ngắn; nhật ký cũ ở `docs/archive/CURRENT-*.md`).
 - `docs/TASK.md` — dùng để biết việc nào đang làm, việc nào chưa xong, việc mới nhất (phần đã xong cũ ở `docs/archive/TASK-*.md`).
 - `docs/CHANGELOG.md` — dùng để tra thay đổi MỚI NHẤT; cập nhật khi hoàn thành một thay đổi đáng kể (phần cũ ở `docs/archive/CHANGELOG-*.md`).
-- `docs/DECISIONS.md` — dùng để tra quyết định MỚI NHẤT (từ #242); cập nhật khi có quyết định mới cần lưu vết (quyết định cũ ở `docs/archive/DECISIONS-*.md`, chỉ grep khi cần tra số cụ thể).
+- `docs/DECISIONS.md` — dùng để tra quyết định MỚI NHẤT (từ #253); cập nhật khi có quyết định mới cần lưu vết (quyết định cũ ở `docs/archive/DECISIONS-*.md`, chỉ grep khi cần tra số cụ thể).
 - `docs/archive/` — kho lưu trữ phần cũ của các file trên, KHÔNG đọc mặc định (xem "Quy ước tài liệu dài").
 - `docs/Hybrid Authorization.md` — định hướng kiến trúc phân quyền cho giai đoạn platform/đa module (v3+): Centralized Identity (SSO) + Module-Specific Authorization. **Chưa triển khai ở v1** — chỉ tham khảo, chủ động gợi ý khi thấy phù hợp (ví dụ khi bàn về mở rộng đa module/tenant liên hệ thống), không tự ý bắt đầu code theo hướng này.

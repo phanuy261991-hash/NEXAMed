@@ -47,6 +47,11 @@ const METHOD_NAME: Partial<Record<number, RouteInfo['method']>> = {
   [RequestMethod.DELETE]: 'delete',
 };
 
+/** Mọi quyền mà route CHẤP NHẬN: quyền chính + quyền thay thế (`alsoAccept`, vd. `/geo/*` nhận thêm `reference_catalog.read`, #263). */
+function acceptedKeys(p: PermissionMetadata): string[] {
+  return [`${p.module}.${p.action}`, ...(p.alsoAccept ?? []).map((a) => `${a.module}.${a.action}`)];
+}
+
 /** Route CÔNG KHAI có chủ đích (không cần đăng nhập). */
 const PUBLIC_ROUTES = new Set<string>([
   'POST /api/v1/auth/login',
@@ -300,8 +305,8 @@ describe('HTTP e2e — ma trận phân quyền áp đúng ở MỌI route', () =
       await putProbeMatrix([...(previousId ? [{ permissionId: previousId, dataScope: 'none' as const }] : []), { permissionId, dataScope: scope }]);
       previousId = permissionId;
 
-      // (a) route của đúng quyền này không còn bị PERMISSION_DENIED.
-      for (const route of byPermission.get(key)!) {
+      // (a) route nhận quyền này (chính hoặc thay thế) không còn bị PERMISSION_DENIED.
+      for (const route of routes.filter((r) => r.permission && acceptedKeys(r.permission).includes(key))) {
         const res = await send(route, probeToken);
         if (res.status === 401 || res.body?.error?.code === 'PERMISSION_DENIED') {
           failures.push(`CẤP ${key}=${scope} nhưng ${route.label} vẫn → ${res.status} ${res.body?.error?.code ?? ''}`);
@@ -312,7 +317,9 @@ describe('HTTP e2e — ma trận phân quyền áp đúng ở MỌI route', () =
       const others = keys.filter((k) => k !== key);
       for (const offset of [1, Math.floor(others.length / 2)]) {
         const otherKey = others[(index + offset) % others.length]!;
-        const otherRoute = byPermission.get(otherKey)![0]!;
+        // Bỏ qua route cũng chấp nhận quyền đang cấp (quyền thay thế) — nó mở là ĐÚNG, không phải cấp lan.
+        const otherRoute = byPermission.get(otherKey)!.find((r) => !acceptedKeys(r.permission!).includes(key));
+        if (!otherRoute) continue;
         const res = await send(otherRoute, probeToken);
         if (res.status !== 403 || res.body?.error?.code !== 'PERMISSION_DENIED') {
           failures.push(`CHỈ cấp ${key} nhưng ${otherRoute.label} [${otherKey}] → ${res.status} ${res.body?.error?.code ?? ''} (cấp lan)`);

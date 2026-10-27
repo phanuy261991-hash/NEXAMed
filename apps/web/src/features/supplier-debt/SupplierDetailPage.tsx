@@ -6,6 +6,7 @@ import { formatVnd } from '../../shared/format/currency';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { RecordLoadError } from '../../shared/ui/RecordLoadError';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
@@ -102,7 +103,15 @@ export function SupplierDetailPage() {
   const isError = suppliersQuery.isError || summaryQuery.isError;
 
   if (isError) {
-    return <ErrorBanner message="Không tải được thông tin nhà cung cấp." onRetry={() => { void suppliersQuery.refetch(); void summaryQuery.refetch(); }} />;
+    return (
+      <RecordLoadError
+        error={summaryQuery.error ?? suppliersQuery.error}
+        fallbackMessage="Không tải được thông tin nhà cung cấp."
+        onRetry={() => { void suppliersQuery.refetch(); void summaryQuery.refetch(); }}
+        fallbackTo="/suppliers"
+        fallbackLabel="Về danh sách nhà cung cấp"
+      />
+    );
   }
   if (isLoading || !supplier || !summaryQuery.data) {
     return (

@@ -186,7 +186,7 @@ export function InsuranceCardSection({ patient, canEdit }: { patient: PatientDet
           tone="danger"
           title="Xoá thẻ BHYT"
           rows={[
-            { label: 'Số thẻ', value: removing.cardNo },
+            { label: 'Số thẻ', value: removing.cardNoUnreadable ? UNREADABLE_LABEL : removing.cardNo },
             { label: 'Kiểu thẻ', value: KIND_LABEL[removing.kind] },
           ]}
           note="Lượt khám đã tiếp nhận vẫn giữ thẻ đã chụp."

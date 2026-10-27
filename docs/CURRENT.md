@@ -1,6 +1,6 @@
 # Current — NEXAMed
 
-Trạng thái HIỆN TẠI của dự án (cập nhật 22/10/2026). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
+Trạng thái HIỆN TẠI của dự án (cập nhật 27/10/2026). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
 
 Nhật ký trạng thái đầy đủ cũ (từng đợt, đến 16/10/2026) ở `docs/archive/CURRENT-den-2026-10-16.md` — **chỉ mở khi cần tra một mục cụ thể**. Khi file này vượt ~40 KB thì chuyển phần cũ sang `docs/archive/CURRENT-*.md` mới và viết lại bản ngắn (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
@@ -53,9 +53,13 @@ Giá trị trong MỌI ô nhập dùng `font-normal` 400 (trước là semibold 
 
 A: hộp "Cất khoá hệ thống" bắt buộc ở trang Hoàn tất của bộ cài (cả 3 kiểu); B: máy chủ so khoá với dữ liệu — lệch thì cảnh báo đỏ cho quản trị, CCCD/thẻ BHYT hiện "Không đọc được", chặn ghi CCCD/thẻ BHYT/mật khẩu liên thông mới (409); C: lệnh `db:rotate-encryption-key` (một giao dịch, kiểm trước, chạy thử, bắt buộc xác nhận sao lưu); D: bộ cài khoá quyền `.env` trên Windows. **Không migration** (mã kiểm khoá ở `tenant_setting`); cần `db:seed` cho quyền mới `role_permission.read`. Hướng dẫn vận hành: `docs/Deploy.md` mục 2.3f. Cũng 24/10 (#261): sửa 5 lỗi của trình cài đặt (đổi cổng sau lỗi, kiểm cổng, tự mở trình duyệt, nhận ra lần cài dở, trang đơ).
 
+## Việc treo của bàn giao 27/10 — ĐÃ LÀM (27/10/2026, #263)
+
+Script quét quyền chạy hết (kể cả vai trò tuỳ biến); số thẻ BHYT "không đọc được" nay không bao giờ bị in nhầm thành "Tự chi trả" (bản in web + PDF bệnh án) và hiện "Không đọc được" ở Tiếp nhận/nhãn màn khám/hộp xoá thẻ; CI GitHub của `2604a18` và `616ba66` đều XANH. `GET /geo/*` nay nhận thêm `reference_catalog.read` (chủ dự án chốt, #263 mục 5). `docs/DECISIONS.md` đã cắt lưu trữ #242–#252 (file gốc từ #253). Stack thử `nexamed-lancheck` đã gỡ (container, volume, ảnh); **luật tường lửa "NEXAMed LAN test 8181" còn đó** (cần cửa sổ Administrator: `Remove-NetFirewallRule -DisplayName "NEXAMed LAN test 8181"`). **Chưa làm (cần máy thật)**: cài thật bản có A/B/C rồi xem trang Hoàn tất; kiểm `nexamed-setup.sh` trên Linux/NAS.
+
 ## Quyền theo phạm vi (24/10/2026, #260) — ĐÃ XONG
 
-Lỗi "trang cho vào nhưng API từ chối theo phạm vi" đã sửa toàn bộ: route/menu kiểm theo phạm vi, máy chủ trả `PERMISSION_SCOPE_DENIED`, trang cấu hình chỉ hiện thẻ dùng được, script quét `scripts/ui-audit/role-access-sweep.cjs` (nay bấm cả từng thẻ) báo 0 điểm lỗi trên 7 vai trò mặc định. `system_admin` nay có `role_permission.read` + `reference_catalog.read` (chủ dự án chọn cấp thêm quyền đọc, 24/10) nên chọn được vai trò khi thêm tài khoản. Phần quét `params`/`custom` của script chưa chạy xong.
+Lỗi "trang cho vào nhưng API từ chối theo phạm vi" đã sửa toàn bộ: route/menu kiểm theo phạm vi, máy chủ trả `PERMISSION_SCOPE_DENIED`, trang cấu hình chỉ hiện thẻ dùng được, script quét `scripts/ui-audit/role-access-sweep.cjs` (nay bấm cả từng thẻ) báo 0 điểm lỗi trên 7 vai trò mặc định. `system_admin` nay có `role_permission.read` + `reference_catalog.read` (chủ dự án chọn cấp thêm quyền đọc, 24/10) nên chọn được vai trò khi thêm tài khoản. **Đã quét xong cả `params` và `custom` (27/10/2026, #263)**: 7 vai trò mặc định × 58 route + route có tham số + 41 vai trò tuỳ biến = 0 điểm lỗi; trong quá trình quét đã sửa lỗi 500 khi id sai định dạng UUID (nay 404), 2 trang chi tiết (NCC, bảng giá) ra màn "không có quyền xem" thay vì banner lỗi, và bổ sung 4 mục quyền đi kèm.
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 
