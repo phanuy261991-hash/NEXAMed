@@ -12,6 +12,7 @@ import {
   NATIONALITY_ITEMS,
   OCCUPATION_ITEMS,
   REFERENCE_CATALOG_SHORT_CODE_PREFIXES,
+  stripVietnameseDiacritics,
   STORAGE_CONDITION_ITEMS,
   UNIT_SEED_ITEMS,
 } from '@nexamed/core';
@@ -115,6 +116,7 @@ export async function seedReferenceCatalogForTenant(client: SeedClient, tenantId
 
   await seedUnits(client, tenantId, actorId);
   await seedLabResultUnits(client, tenantId, actorId);
+  await seedTechServiceCategories(client, tenantId, actorId);
 }
 
 /**
@@ -125,18 +127,20 @@ async function seedByName(
   client: SeedClient,
   tenantId: string,
   actorId: string,
-  category: 'UNIT' | 'LAB_RESULT_UNIT',
-  items: readonly { name: string; description?: string | null }[],
+  category: 'UNIT' | 'LAB_RESULT_UNIT' | 'TECH_SERVICE_CATEGORY',
+  items: readonly { name: string; description?: string | null; abbreviation?: string | null }[],
+  /** Khoá so khớp tên với mục đã có (mặc định: tên đúng từng chữ). Nhóm dịch vụ dùng khoá bỏ dấu + không phân biệt hoa/thường để "Sinh hoá" khớp "Sinh hóa" đã do phòng khám tự đặt. */
+  matchKey: (name: string) => string = (name) => name,
 ): Promise<void> {
   const prefix = REFERENCE_CATALOG_SHORT_CODE_PREFIXES[category];
   if (!prefix) {
     throw new Error(`REFERENCE_CATALOG_SHORT_CODE_PREFIXES.${category} không được cấu hình.`);
   }
   const tx = client as Prisma.TransactionClient;
-  const existingNames = new Set((await tx.referenceCatalog.findMany({ where: { tenantId, category }, select: { name: true } })).map((r) => r.name));
+  const existingNames = new Set((await tx.referenceCatalog.findMany({ where: { tenantId, category }, select: { name: true } })).map((r) => matchKey(r.name)));
   let sortOrder = 1;
   for (const item of items) {
-    if (!existingNames.has(item.name)) {
+    if (!existingNames.has(matchKey(item.name))) {
       const seq = await codeSequenceRepository.next(tx, tenantId, CATALOG_SEQUENCE_PREFIX + prefix, actorId);
       await tx.referenceCatalog.create({
         data: {
@@ -145,6 +149,7 @@ async function seedByName(
           code: formatShortSequentialCode(prefix, seq),
           name: item.name,
           description: item.description ?? null,
+          abbreviation: item.abbreviation ?? null,
           sortOrder,
           createdBy: actorId,
           updatedBy: actorId,
@@ -168,4 +173,24 @@ const LAB_RESULT_UNIT_SEED_NAMES = [
 
 function seedLabResultUnits(client: SeedClient, tenantId: string, actorId: string): Promise<void> {
   return seedByName(client, tenantId, actorId, 'LAB_RESULT_UNIT', LAB_RESULT_UNIT_SEED_NAMES.map((name) => ({ name })));
+}
+
+/**
+ * "Nhóm dịch vụ" kỹ thuật (Cận lâm sàng, docs/DECISIONS.md #265) — nạp sẵn vài nhóm phổ biến để ô "Nhóm dịch vụ" ở form Thêm dịch vụ không trống ngay từ đầu
+ * (chủ dự án duyệt danh sách 27/10/2026). `abbreviation` (tối đa 4 ký tự) là chữ in trên tem mã vạch ống mẫu (#220). Nạp THEO TÊN, không phân biệt dấu/hoa-thường:
+ * phòng khám đã tự tạo nhóm cùng tên (kể cả viết "Sinh hóa" thay vì "Sinh hoá") thì BỎ QUA — không tạo bản trùng, không đè viết tắt đã chỉnh.
+ */
+const TECH_SERVICE_CATEGORY_SEED_ITEMS: readonly { name: string; abbreviation: string }[] = [
+  { name: 'Huyết học', abbreviation: 'HH' },
+  { name: 'Sinh hoá', abbreviation: 'SH' },
+  { name: 'Miễn dịch', abbreviation: 'MD' },
+  { name: 'Nước tiểu', abbreviation: 'NT' },
+  { name: 'Siêu âm', abbreviation: 'SA' },
+  { name: 'X-quang', abbreviation: 'XQ' },
+];
+
+const normalizeCatalogName = (name: string): string => stripVietnameseDiacritics(name).toLowerCase().replace(/\s+/g, ' ').trim();
+
+function seedTechServiceCategories(client: SeedClient, tenantId: string, actorId: string): Promise<void> {
+  return seedByName(client, tenantId, actorId, 'TECH_SERVICE_CATEGORY', TECH_SERVICE_CATEGORY_SEED_ITEMS, normalizeCatalogName);
 }

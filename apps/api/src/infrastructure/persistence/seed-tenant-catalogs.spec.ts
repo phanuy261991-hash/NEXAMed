@@ -33,6 +33,16 @@ describe('seedTenantDefaultCatalogs — danh mục mặc định theo tenant', (
     expect(await count(fixture.tenantA.id, 'ICD10_ABBREVIATION')).toBe(11);
     expect(await count(fixture.tenantA.id, 'UNIT')).toBeGreaterThan(0);
     expect(await count(fixture.tenantA.id, 'LAB_RESULT_UNIT')).toBe(20);
+    // Nhóm dịch vụ kỹ thuật (#265): 6 nhóm nạp sẵn, mã tuần tự NK00001..., viết tắt ≤ 4 ký tự (in trên tem ống mẫu).
+    const groups = await privileged.referenceCatalog.findMany({ where: { tenantId: fixture.tenantA.id, category: 'TECH_SERVICE_CATEGORY' }, orderBy: { sortOrder: 'asc' } });
+    expect(groups.map((g) => [g.code, g.name, g.abbreviation])).toEqual([
+      ['NK00001', 'Huyết học', 'HH'],
+      ['NK00002', 'Sinh hoá', 'SH'],
+      ['NK00003', 'Miễn dịch', 'MD'],
+      ['NK00004', 'Nước tiểu', 'NT'],
+      ['NK00005', 'Siêu âm', 'SA'],
+      ['NK00006', 'X-quang', 'XQ'],
+    ]);
     const methods = await privileged.referenceCatalog.findMany({ where: { tenantId: fixture.tenantA.id, category: 'PAYMENT_METHOD' }, orderBy: { sortOrder: 'asc' } });
     expect(methods.map((m) => [m.code, m.countsAsCash])).toEqual([['CASH', true], ['BANK_TRANSFER', false], ['WALLET', false]]);
     expect(await privileged.allergenGroup.count({ where: { tenantId: fixture.tenantA.id } })).toBeGreaterThan(0);
@@ -69,5 +79,35 @@ describe('seedTenantDefaultCatalogs — danh mục mặc định theo tenant', (
     const seq = await privileged.codeSequence.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, prefix: 'CATALOG:DV' } });
     expect(Number(seq.currentValue)).toBe(units.length);
     expect(await privileged.codeSequence.count({ where: { tenantId: fixture.tenantB.id, prefix: 'CATALOG:DV' } })).toBe(0);
+  });
+
+  it('nhóm dịch vụ kỹ thuật: phòng khám đã tự đặt nhóm cùng tên (khác dấu/hoa-thường/khoảng trắng) → KHÔNG tạo bản trùng, KHÔNG đè viết tắt; nhóm còn thiếu vẫn được nạp', async () => {
+    const base = { tenantId: fixture.tenantB.id, category: 'TECH_SERVICE_CATEGORY' as const, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR };
+    await privileged.referenceCatalog.createMany({
+      data: [
+        { ...base, code: 'NK9001', name: 'Sinh hóa', abbreviation: 'SHX', sortOrder: 1 }, // hóa ≠ hoá
+        { ...base, code: 'NK9002', name: '  huyết   HỌC ', abbreviation: null, sortOrder: 2 }, // hoa/thường + khoảng trắng
+      ],
+    });
+
+    await seedTenantDefaultCatalogs(privileged, fixture.tenantB.id, SYSTEM_TEST_ACTOR);
+
+    const groups = await privileged.referenceCatalog.findMany({ where: { tenantId: fixture.tenantB.id, category: 'TECH_SERVICE_CATEGORY' }, orderBy: { code: 'asc' } });
+    // 2 nhóm tự đặt + 4 nhóm mặc định còn thiếu (Miễn dịch, Nước tiểu, Siêu âm, X-quang) = 6, không có "Sinh hoá"/"Huyết học" thứ hai.
+    expect(groups.map((g) => g.name).sort()).toEqual(['  huyết   HỌC ', 'Miễn dịch', 'Nước tiểu', 'Siêu âm', 'Sinh hóa', 'X-quang'].sort());
+    const own = groups.find((g) => g.code === 'NK9001')!;
+    expect(own.abbreviation).toBe('SHX'); // viết tắt do phòng khám đặt KHÔNG bị đè
+
+    // Chạy lại lần nữa: không thêm gì.
+    await seedTenantDefaultCatalogs(privileged, fixture.tenantB.id, SYSTEM_TEST_ACTOR);
+    expect(await count(fixture.tenantB.id, 'TECH_SERVICE_CATEGORY')).toBe(6);
+  });
+
+  it('nhóm dịch vụ kỹ thuật đã bị ẨN thì KHÔNG hồi sinh lại khi chạy seed', async () => {
+    await privileged.referenceCatalog.updateMany({ where: { tenantId: fixture.tenantA.id, category: 'TECH_SERVICE_CATEGORY', name: 'X-quang' }, data: { isActive: false } });
+    await seedTenantDefaultCatalogs(privileged, fixture.tenantA.id, SYSTEM_TEST_ACTOR);
+    expect(await count(fixture.tenantA.id, 'TECH_SERVICE_CATEGORY')).toBe(6);
+    const xq = await privileged.referenceCatalog.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, category: 'TECH_SERVICE_CATEGORY', name: 'X-quang' } });
+    expect(xq.isActive).toBe(false);
   });
 });

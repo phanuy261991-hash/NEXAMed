@@ -20,6 +20,8 @@ import { getApiClient, unwrap } from '../../shared/api/client';
 export interface TechnicalServiceListParams {
   kind?: TechnicalServiceKind;
   search?: string;
+  /** Mã Nhóm dịch vụ (danh mục `TECH_SERVICE_CATEGORY`) — khác `kind` (Loại: Xét nghiệm/CĐHA/Thăm dò chức năng). */
+  categoryCode?: string;
   inHouse?: boolean;
   includeInactive?: boolean;
 }
@@ -31,6 +33,7 @@ export async function listTechnicalServices(params: TechnicalServiceListParams):
         query: {
           kind: params.kind,
           search: params.search,
+          categoryCode: params.categoryCode,
           inHouse: params.inHouse === undefined ? undefined : params.inHouse ? 'true' : 'false',
           includeInactive: params.includeInactive ? 'true' : 'false',
         },

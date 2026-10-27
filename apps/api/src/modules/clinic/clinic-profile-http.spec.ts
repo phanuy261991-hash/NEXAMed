@@ -14,6 +14,16 @@ import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-per
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
 
 /**
+ * Khoá file bên trong URL ký `/api/v1/files/<token>`. KHÔNG so sánh cả URL: `signFileUrl()` đặt `exp = giây hiện tại + TTL` mỗi lần gọi nên hai URL của CÙNG
+ * một file chỉ bằng nhau nếu hai lời gọi rơi vào cùng một giây đồng hồ — test so cả URL hỏng ngẫu nhiên (đã hỏng thật 27/10/2026 khi máy tải nặng, upload lâu hơn 1 giây).
+ */
+function fileKeyOf(signedUrl: string): string {
+  const token = signedUrl.split('/').pop()!;
+  const payload = JSON.parse(Buffer.from(token.split('.')[0]!, 'base64url').toString('utf8')) as { key: string };
+  return payload.key;
+}
+
+/**
  * HTTP e2e cho trang "Thông tin phòng khám" (2026-08-13, `/api/v1/clinic-profile`) — dùng lại
  * quyền `clinic_config.read`/`.update` (cùng `ClinicSettingsController`, không thêm permission
  * mới). Cùng khuôn `clinic-http.spec.ts` (setup) và phần upload ảnh của `patient-http.spec.ts`
@@ -301,7 +311,7 @@ describe('HTTP e2e — /api/v1/clinic-profile', () => {
 
     it('upload logo in (print-logo) độc lập với logo chính → 200, printLogoUrl khác null, logoUrl vẫn giữ nguyên', async () => {
       const before = await request(app.getHttpServer()).get('/api/v1/clinic-profile').set(authed(clinicAdminToken));
-      const logoUrlBefore = before.body.data.logoUrl;
+      const logoKeyBefore = fileKeyOf(before.body.data.logoUrl);
 
       const res = await request(app.getHttpServer())
         .post('/api/v1/clinic-profile/print-logo')
@@ -311,7 +321,7 @@ describe('HTTP e2e — /api/v1/clinic-profile', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.printLogoUrl).toBeTruthy();
-      expect(res.body.data.logoUrl).toBe(logoUrlBefore);
+      expect(fileKeyOf(res.body.data.logoUrl)).toBe(logoKeyBefore); // cùng FILE (không so cả URL: `exp` đổi theo giây)
       currentVersion = res.body.data.version;
     });
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Eye, Flask, MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
 import type { TechnicalServiceItem, TechnicalServiceKind } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
+import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
@@ -31,22 +32,37 @@ type DialogState = { mode: 'create' } | { mode: 'view' | 'edit'; id: string } | 
 
 /**
  * Pill "Dịch vụ kỹ thuật" của "Danh mục Cận lâm sàng" (Cận lâm sàng GĐ1, docs/DECISIONS.md #212, mockup màn 1) — khung
- * "Nhóm dịch vụ" bên trái (Tất cả/Xét nghiệm/CĐHA/Thăm dò chức năng kèm số lượng) + thanh tìm kiếm + bảng. Dịch vụ phòng khám
- * không tự làm hiện nhãn "Gửi ra ngoài" thay cho Nơi thực hiện.
+ * khung "Loại dịch vụ" bên trái (Tất cả/Xét nghiệm/CĐHA/Thăm dò chức năng kèm số lượng — đây là LOẠI cố định, `serviceKind`) + thanh tìm kiếm
+ * + ô lọc "Nhóm dịch vụ" (nhóm do phòng khám tự đặt, `categoryCode`, docs/DECISIONS.md #265) + bảng. Dịch vụ phòng khám không tự làm
+ * hiện nhãn "Gửi ra ngoài" thay cho Nơi thực hiện.
  */
 export function TechnicalServicePane() {
   const canCreate = useHasPermission('technical_service', 'create');
   const canUpdate = useHasPermission('technical_service', 'update');
   const [kind, setKind] = useState<TechnicalServiceKind | 'ALL'>('ALL');
+  const [categoryCode, setCategoryCode] = useState('');
   const [searchText, setSearchText] = useState('');
   const search = useDebouncedValue(searchText.trim(), 300);
   const [dialog, setDialog] = useState<DialogState>(null);
 
-  const query = useTechnicalServicesQuery({ kind: kind === 'ALL' ? undefined : kind, search: search === '' ? undefined : search, includeInactive: true });
+  const query = useTechnicalServicesQuery({
+    kind: kind === 'ALL' ? undefined : kind,
+    search: search === '' ? undefined : search,
+    categoryCode: categoryCode === '' ? undefined : categoryCode,
+    includeInactive: true,
+  });
   const categoryQuery = useReferenceCatalogQuery('TECH_SERVICE_CATEGORY');
   const specimenQuery = useReferenceCatalogQuery('SPECIMEN_TYPE');
   const categoryName = useMemo(() => new Map((categoryQuery.data?.items ?? []).map((i) => [i.code, i.name])), [categoryQuery.data]);
   const specimenName = useMemo(() => new Map((specimenQuery.data?.items ?? []).map((i) => [i.code, i.name])), [specimenQuery.data]);
+
+  // Ô lọc Nhóm: chỉ hiện khi phòng khám đã có nhóm nào (chưa có thì ô chỉ có "Tất cả nhóm" — vô nghĩa, ẩn đi).
+  const categoryFilterOptions: ComboboxOption[] = useMemo(
+    () => [{ value: '', label: 'Tất cả nhóm' }, ...(categoryQuery.data?.items ?? []).map((i) => ({ value: i.code, label: i.name }))],
+    [categoryQuery.data],
+  );
+  const hasCategories = (categoryQuery.data?.items.length ?? 0) > 0;
+  const isFiltering = search !== '' || kind !== 'ALL' || categoryCode !== '';
 
   const items = query.data?.items ?? [];
   const counts = query.data?.counts;
@@ -54,8 +70,8 @@ export function TechnicalServicePane() {
 
   return (
     <div className="flex h-full min-h-0 gap-3.5">
-      <aside aria-label="Nhóm dịch vụ" className="flex w-52 flex-shrink-0 flex-col gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-2">
-        <h2 className="px-2 pb-2 pt-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-700">Nhóm dịch vụ</h2>
+      <aside aria-label="Loại dịch vụ" className="flex w-52 flex-shrink-0 flex-col gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-2">
+        <h2 className="px-2 pb-2 pt-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-700">Loại dịch vụ</h2>
         {KIND_FILTERS.map((f) => {
           const active = kind === f.key;
           return (
@@ -88,6 +104,14 @@ export function TechnicalServicePane() {
               className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
+          {hasCategories && (
+            <div className="w-52 flex-shrink-0">
+              <label htmlFor="ts-filter-category" className="sr-only">
+                Lọc theo nhóm dịch vụ
+              </label>
+              <Combobox id="ts-filter-category" value={categoryCode} onChange={setCategoryCode} options={categoryFilterOptions} placeholder="Tất cả nhóm" />
+            </div>
+          )}
           {canCreate && (
             <Button type="button" onClick={() => setDialog({ mode: 'create' })}>
               <Plus size={15} weight="bold" aria-hidden="true" />
@@ -97,6 +121,7 @@ export function TechnicalServicePane() {
         </div>
 
         {query.isError && <ErrorBanner message="Không tải được danh mục dịch vụ kỹ thuật." onRetry={() => query.refetch()} />}
+        {categoryQuery.isError && <ErrorBanner message="Không tải được danh sách nhóm dịch vụ." onRetry={() => categoryQuery.refetch()} />}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
           <div className="scroll-hover min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
@@ -125,10 +150,10 @@ export function TechnicalServicePane() {
                   <div className="p-6">
                     <EmptyState
                       icon={Flask}
-                      title={search !== '' ? 'Không tìm thấy dịch vụ nào' : 'Chưa có dịch vụ kỹ thuật nào'}
-                      description={search !== '' ? 'Thử từ khoá khác hoặc bỏ lọc nhóm dịch vụ.' : 'Thêm xét nghiệm, chẩn đoán hình ảnh hoặc thăm dò chức năng để bác sĩ chỉ định.'}
+                      title={isFiltering ? 'Không tìm thấy dịch vụ nào' : 'Chưa có dịch vụ kỹ thuật nào'}
+                      description={isFiltering ? 'Thử từ khoá khác hoặc bỏ lọc loại/nhóm dịch vụ.' : 'Thêm xét nghiệm, chẩn đoán hình ảnh hoặc thăm dò chức năng để bác sĩ chỉ định.'}
                       action={
-                        canCreate && search === '' ? (
+                        canCreate && !isFiltering ? (
                           <Button type="button" onClick={() => setDialog({ mode: 'create' })}>
                             <Plus size={15} weight="bold" aria-hidden="true" />
                             Thêm dịch vụ
