@@ -86,6 +86,20 @@ Yêu cầu thường trực của chủ dự án: **luôn đảm bảo hiệu su
 - Ngưỡng đã cam kết trong `docs/product/prd.md` mục 5, **đo bằng script thật, không ước lượng**: tìm bệnh nhân trên 50.000 hồ sơ **dưới 1 giây** (đo thật: < 35 ms — `apps/api/scripts/perf-patient-search.ts`); tải màn hình khám có đủ tiền sử **dưới 2 giây** (đo thật: 33 ms — `perf-consultation.ts`). Thêm màn hình nặng tương tự thì viết script đo cùng khuôn, chạy tay, không đưa vào CI.
 - Danh sách có thể phình lớn ở web: virtualization bắt buộc (`.claude/docs/ui-guidelines.md` mục 9).
 
+### Một request = MỘT transaction (bắt buộc — chốt 27/10/2026, `docs/DECISIONS.md` #264)
+
+**`runInTenantScope()` chiếm MỘT kết nối Postgres suốt thân hàm.** Mở transaction thứ hai khi transaction thứ nhất còn mở (dù gián tiếp) làm request chiếm 2 kết nối cùng lúc; khi số request đồng thời chạm cỡ bể kết nối thì mọi request đều giữ kết nối 1 và chờ kết nối 2 không bao giờ tới — bể kết nối tự khoá nhau, Prisma ném `Unable to start a transaction in the given time` và người dùng thấy HTTP 500. Bể mặc định của Prisma chỉ `số CPU × 2 + 1` (máy chủ phòng khám 2–4 CPU → 5–9 kết nối), nên chỉ vài người thao tác cùng lúc đã đủ hỏng.
+
+**Đã xảy ra THẬT ba lần**: #242 GĐ1 (tra mã cơ sở KCB lúc ký đơn), #244 (`argon2.verify` trong transaction đăng nhập), #264 (`StockIssueService.create()` giữ `pg_advisory_xact_lock` rồi gọi `PRICING_PORT` → phát thuốc đồng thời ra 500).
+
+Quy tắc khi viết service mới:
+
+- **KHÔNG gọi port từ bên trong `runInTenantScope()`** nếu adapter của port tự mở transaction (hầu hết port đọc: `PRICING_PORT`, `DOCTOR_DIRECTORY_PORT`, `REFERENCE_CATALOG_READER_PORT`, `PATIENT_READER_PORT`, `ENCOUNTER_READER_PORT`...). Gọi **TRƯỚC** khi mở transaction (dữ liệu đầu vào) hoặc **SAU** khi transaction đóng (bù tên người dùng, map DTO), rồi truyền kết quả vào qua tham số.
+- Tính cả lời gọi **gián tiếp**: hàm phụ nhận `tx: Prisma.TransactionClient` cũng đang chạy trong transaction — gọi port trong đó là cùng một lỗi (đây chính là cách #264 lọt qua rà soát).
+- Việc nặng/không phải SQL (băm mật khẩu, gọi HTTP ra ngoài, render PDF) cũng để ngoài transaction.
+- Chốt chặn tự động: `apps/api/src/common/nested-transaction-coverage.spec.ts` quét toàn bộ `apps/api/src` và làm CI đỏ nếu tái phạm. **Không thêm ngoại lệ vào test này** — sửa code.
+- Mẫu tham khảo: `StockIssueService.create()` (lấy giá trước), `CashierShiftService.openShift()` (lấy tên chủ két trước), `SupplierDebtService.listLedger()` / `toAdjustmentDtos()` (map DTO sau khi transaction đóng).
+
 ## Git
 
 - Nhánh: `feat/<domain>-<mô tả ngắn>`, `fix/<domain>-<mô tả ngắn>`.

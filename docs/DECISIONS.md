@@ -161,3 +161,26 @@ File này chứa các quyết định MỚI NHẤT (từ #253, 23/10/2026). Quy�
 **Bẫy ghi nhận**: Git Bash đổi biến môi trường bắt đầu bằng `/` (ví dụ `UI_AUDIT_ONLY=/admin/catalog`) thành đường dẫn Windows → bộ lọc khớp 0 route; dùng `MSYS_NO_PATHCONV=1` và `PLAYWRIGHT_CORE=C:/...` (dạng Windows).
 
 **Kiểm**: shared/core/web/API typecheck + lint sạch; quét Chrome thật qua IP LAN trên ảnh Docker dựng từ mã mới: 7 vai trò mặc định × 58 route + 11 route có tham số + 41 vai trò tuỳ biến = 0 điểm lỗi. API 3 lượt liên tiếp: 2 lượt 1787/1787; lượt đầu có 1 test lỗi `stock-issue-http.spec` ("2 request đồng thời cùng lô", Prisma `Unable to start a transaction in the given time` khi máy đang bận) — chưa tìm nguyên nhân gốc, ghi nhận chập chờn dưới tải. **Cắt lưu trữ cùng ngày**: file này vượt ngưỡng ~150 KB nên #242–#252 (106 KB, nguyên văn) chuyển sang `docs/archive/DECISIONS-242-252.md`; file gốc nay từ #253.
+
+## 264 — Test chập chờn "2 request đồng thời cùng lô" hoá ra là LỖI THẬT: một request mở 2 transaction → bể kết nối tự khoá nhau (27/10/2026, chủ dự án yêu cầu "tìm cho ra" nguyên nhân gốc)
+
+**Triệu chứng**: `stock-issue-http.spec.ts` ca "2 request đồng thời cùng lô, tổng vượt tồn" thỉnh thoảng đỏ — nhận `[200, 500]` thay vì `[200, 422]`; 6 lượt chạy khác đều xanh nên trước đó chỉ ghi nhận là "chập chờn dưới tải".
+
+**Nguyên nhân gốc (đã tái hiện 100%, không còn phỏng đoán)**: `StockIssueService.create()` mở transaction qua `runInTenantScope()` (kết nối #1), lấy `pg_advisory_xact_lock` theo từng mặt hàng, rồi gọi `buildAndValidateLines()` — hàm này gọi `PRICING_PORT.getDrugBaseUnitPrices()`, mà `PricingAdapter` **tự mở transaction riêng** (kết nối #2) vì port chỉ nhận `tenantId`. Mỗi lượt phát thuốc vì thế chiếm 2 kết nối CÙNG LÚC. Khi số request đồng thời chạm cỡ bể kết nối, mọi request đều đang giữ kết nối 1 và chờ kết nối 2 không bao giờ được trả → Prisma ném `Transaction API error: Unable to start a transaction in the given time` → `DomainExceptionFilter` trả 500. Bể mặc định của Prisma là `số CPU × 2 + 1`; trong bộ test nhiều spec chạy song song nên cạn ngẫu nhiên — đó là lý do "chập chờn".
+
+**Bằng chứng tái hiện** (ép `connection_limit`, cùng mã nguồn, cùng ca test):
+- Mô phỏng cơ chế (6 request, pool 3): lồng transaction → **4/6 lỗi**; KHÔNG lồng (cùng mức đồng thời, cùng advisory lock) → **0/6 lỗi**.
+- Chính ca test thật với pool 2: mã CŨ → đỏ đúng `expected [200, 500] to deeply equal [200, 422]` (y hệt lỗi ngẫu nhiên); mã ĐÃ SỬA → 47/47 xanh.
+
+**Đây là lỗi production, không chỉ lỗi test**: máy chủ phòng khám thường 2–4 CPU (bể 5–9 kết nối), nhiều quầy phát thuốc/thu tiền cùng lúc là chạm ngay. Cùng lớp lỗi đã gặp 2 lần trước: #242 GĐ1 (tra mã cơ sở KCB lúc ký đơn) và #244 (`argon2.verify` trong transaction đăng nhập).
+
+**Đã sửa — nguyên tắc "một request = MỘT transaction"**: gọi port TRƯỚC khi mở transaction (dữ liệu đầu vào) hoặc SAU khi transaction đóng (bù tên người dùng, map DTO), rồi truyền kết quả vào qua tham số. Rà soát toàn bộ `apps/api` tìm thêm **13 chỗ cùng lỗi** (bộ quét ban đầu chỉ thấy 9; nâng để bắt cả lời gọi GIÁN TIẾP qua hàm phụ nhận `tx` mới lộ thêm 5 chỗ — chính dạng đã làm #264 lọt lưới): `stock-issue` (create/createManual/updateManual/getDispenseStatus), `cash-account.update`, `cash-book-report.getCashFlowReport` (lời gọi port nằm trong `Promise.all` cùng truy vấn `tx` — nặng nhất), `patient-wallet` (listTransactions/credit/topUp/settle), `supplier-debt` (listLedger/listPayments/toAdjustmentDtos/toReconciliationDtos), `invoice.resolveCashAccountId` (4 nơi gọi) + `invoice-refund`, `cashier-shift.openShift` (cũng giữ advisory lock). Nay **0 chỗ** trong toàn bộ API.
+
+**Ba lớp phòng ngừa (chủ dự án yêu cầu "tránh code lỗi này sau này")**:
+1. **Test chặn CI**: `apps/api/src/common/nested-transaction-coverage.spec.ts` — tự tìm adapter nào mở transaction → suy ra port "đắt" → quét mọi service, báo đỏ nếu port đó bị gọi trong thân `runInTenantScope` HOẶC trong hàm phụ nhận `tx`. Tự phủ port/service mới, không cần liệt kê tay; có chốt "quét được số lượng đủ lớn" chống xanh giả. Kiểm đột biến: cả lời gọi trực tiếp lẫn gián tiếp đều bị bắt.
+2. **Quy tắc trong `CLAUDE.md`** (mục Kiến trúc — luôn được đọc trước khi viết code).
+3. **Hướng dẫn + mẫu sửa** ở `.claude/docs/coding-standards.md` mục "Một request = MỘT transaction".
+
+**Không làm (ghi nhận)**: cho `UnitOfWorkService` tự tái dùng transaction đang mở qua `AsyncLocalStorage` — sửa được tận gốc ở một chỗ và miễn nhiễm với mọi ca tương lai, nhưng đổi hành vi hạ tầng dùng chung của mọi module (và làm transaction của adapter rollback theo transaction ngoài). Nếu lớp lỗi này còn tái diễn thì đây là bước tiếp theo, cần chủ dự án duyệt.
+
+**Kiểm**: `pnpm typecheck` + `pnpm lint` sạch; spec mới 2 ca + kiểm đột biến; test các module đã đụng (billing, patient-wallet, supplier-debt, cashier-shift, cash-book, inventory) xanh; FULL API 3 lượt liên tiếp đều 1792/1792 (1 bỏ qua có sẵn).

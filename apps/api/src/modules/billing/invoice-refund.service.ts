@@ -52,9 +52,10 @@ export class InvoiceRefundService {
   async refundItems(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: RefundInvoiceItemsRequest, meta: RequestMeta): Promise<InvoiceDto> {
     // Cùng khuôn `InvoiceService.refund()` — resolve ca/két TRƯỚC transaction chính (port tự mở
     // transaction đọc riêng, không lồng vào `tx` đang mở).
-    const [cashierShiftId, drawerAccountId] = await Promise.all([
+    const [cashierShiftId, drawerAccountId, paymentMethods] = await Promise.all([
       this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
+      this.invoiceService.listPaymentMethods(tenantId),
     ]);
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -190,7 +191,7 @@ export class InvoiceRefundService {
 
       // ── Dòng payment REFUND (gom theo `refundId`) + trả ngược ví ──────────────────────────────
       for (const allocation of allocations) {
-        const cashAccountId = await this.invoiceService.resolveCashAccountId(tx, tenantId, branchId, allocation.method, drawerAccountId);
+        const cashAccountId = await this.invoiceService.resolveCashAccountId(tx, tenantId, branchId, allocation.method, drawerAccountId, paymentMethods);
         await this.paymentRepository.createRefund(
           tx,
           tenantId,

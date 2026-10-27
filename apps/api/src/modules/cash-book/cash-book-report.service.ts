@@ -245,11 +245,13 @@ export class CashBookReportService {
     const fromAt = startOfDayVn(from);
     const toAt = endOfDayVn(to);
     const afterToAt = new Date(toAt.getTime() + 1);
+    // Danh mục Loại thu chi lấy TRƯỚC transaction: `REFERENCE_CATALOG_READER_PORT` tự mở transaction riêng, để trong `Promise.all` dưới thì
+    // request vừa giữ transaction vừa xin thêm một kết nối → cạn bể khi nhiều người mở báo cáo cùng lúc (docs/DECISIONS.md #264).
+    const incomeExpenseTypes = await this.referenceCatalogReader.listByCategory(tenantId, 'INCOME_EXPENSE_TYPE');
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const [accounts, incomeExpenseTypes, paymentRows, voucherRows] = await Promise.all([
+      const [accounts, paymentRows, voucherRows] = await Promise.all([
         this.cashAccountRepository.list(tx, tenantId, branchIds),
-        this.referenceCatalogReader.listByCategory(tenantId, 'INCOME_EXPENSE_TYPE'),
         this.paymentRepository.listForReport(tx, tenantId, branchIds, fromAt, toAt),
         this.cashVoucherRepository.listPostedForReport(tx, tenantId, branchIds, fromAt, toAt),
       ]);

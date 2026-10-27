@@ -114,6 +114,10 @@ export class StockIssueService {
   async create(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, dto: CreateStockIssueRequest, meta: RequestMeta): Promise<StockIssueDetail> {
     const pharmacySeparateInvoiceEnabled = await this.clinicConfigReader.getPharmacySeparateInvoiceEnabled(tenantId);
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+    // Giá bán theo bảng giá có thời hạn — lấy TRƯỚC transaction: `PRICING_PORT` tự mở transaction riêng, gọi nó từ bên TRONG transaction dưới (đang giữ
+    // `pg_advisory_xact_lock`) khiến mỗi lượt phát thuốc chiếm 2 kết nối cùng lúc → cạn bể kết nối khi nhiều quầy phát thuốc đồng thời (docs/DECISIONS.md #264,
+    // cùng lớp lỗi với argon2-trong-transaction #244 và tra mã cơ sở KCB #242 GĐ1).
+    const effectivePrices = await this.pricing.getDrugBaseUnitPrices(tenantId, getVietnamDateString(), [...new Set(dto.lines.map((l) => l.drugId))]);
 
     const createdId = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
@@ -133,7 +137,7 @@ export class StockIssueService {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${tenantId}:${dto.warehouseId}:${drugId}`}, 0))`;
       }
 
-      const lineData = await this.buildAndValidateLines(tx, tenantId, dto.warehouseId, prescription, dto.lines);
+      const lineData = await this.buildAndValidateLines(tx, tenantId, dto.warehouseId, prescription, dto.lines, effectivePrices);
       const totalAmount = lineData.reduce((sum, l) => sum + l.lineAmount, 0n);
       const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
       const issueNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'STOCK_ISSUE', occurredAt);
@@ -208,6 +212,8 @@ export class StockIssueService {
     warehouseId: string,
     prescription: PrescriptionWithItems,
     lines: { prescriptionItemId?: string | null; drugId: string; batchId?: string | null; quantity: number }[],
+    /** Giá bán theo đơn vị cơ sở sau bảng giá có thời hạn, do caller lấy TRƯỚC khi mở transaction (xem `create()`). */
+    effectivePrices: Record<string, number | null>,
   ): Promise<StockIssueLineData[]> {
     const itemIds = [...new Set(lines.map((l) => l.prescriptionItemId).filter((v): v is string => !!v))];
     const dispensedMap = await this.stockIssueRepository.sumDispensedForItems(tx, tenantId, itemIds);
@@ -218,10 +224,6 @@ export class StockIssueService {
     // kê/vượt tồn thật" (chỉ kiểm độc lập là đủ khi trước đây LUÔN đúng 1 dòng/thuốc mỗi request).
     const claimedByItem = new Map<string, number>();
     const claimedByStockKey = new Map<string, number>();
-
-    // Giá bán theo đơn vị cơ sở sau bảng giá có thời hạn (ngày lập phiếu = hôm nay, giờ Việt Nam) — 1 lượt cho mọi thuốc.
-    // Không có bảng giá nào → đúng bằng `drug.default_sell_price` (hành vi cũ).
-    const effectivePrices = await this.pricing.getDrugBaseUnitPrices(tenantId, getVietnamDateString(), [...new Set(lines.map((l) => l.drugId))]);
 
     const result: StockIssueLineData[] = [];
     for (const line of lines) {
@@ -423,15 +425,14 @@ export class StockIssueService {
       throw new UnprocessableEntityException(`Loại phiếu "${dto.issueType}" chưa được hỗ trợ ở giai đoạn này.`);
     }
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+    // Danh mục Khoa/Phòng lấy TRƯỚC transaction — `DOCTOR_DIRECTORY_PORT` tự mở transaction riêng (xem docs/DECISIONS.md #264).
+    const departmentNames = dto.departmentId ? await this.doctorDirectory.getDepartmentNames(tenantId) : null;
 
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
       assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
-      if (dto.departmentId) {
-        const departments = await this.doctorDirectory.getDepartmentNames(tenantId);
-        if (!departments.has(dto.departmentId)) throw new NotFoundException();
-      }
+      if (dto.departmentId && !departmentNames!.has(dto.departmentId)) throw new NotFoundException();
       await this.validateReturnSupplierRefs(tx, tenantId, branchId, dto.supplierId, dto.sourceReceiptId);
 
       const lines = await this.buildManualLineData(tx, tenantId, branchId, dto.warehouseId, dto.issueType, dto.sourceReceiptId ?? null, dto.lines);
@@ -479,6 +480,8 @@ export class StockIssueService {
       throw new UnprocessableEntityException(`Loại phiếu "${dto.issueType}" chưa được hỗ trợ ở giai đoạn này.`);
     }
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+    // Danh mục Khoa/Phòng lấy TRƯỚC transaction — `DOCTOR_DIRECTORY_PORT` tự mở transaction riêng (xem docs/DECISIONS.md #264).
+    const departmentNames = dto.departmentId ? await this.doctorDirectory.getDepartmentNames(tenantId) : null;
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockIssueRepository.findById(tx, tenantId, branchId, id);
@@ -491,10 +494,7 @@ export class StockIssueService {
       const warehouse = await this.warehouseRepository.findById(tx, tenantId, branchId, dto.warehouseId);
       if (!warehouse) throw new NotFoundException();
       assertWarehouseInScope(warehouse.departmentId, dataScope, actorDepartmentId);
-      if (dto.departmentId) {
-        const departments = await this.doctorDirectory.getDepartmentNames(tenantId);
-        if (!departments.has(dto.departmentId)) throw new NotFoundException();
-      }
+      if (dto.departmentId && !departmentNames!.has(dto.departmentId)) throw new NotFoundException();
       await this.validateReturnSupplierRefs(tx, tenantId, branchId, dto.supplierId, dto.sourceReceiptId);
 
       const lines = await this.buildManualLineData(tx, tenantId, branchId, dto.warehouseId, dto.issueType, dto.sourceReceiptId ?? null, dto.lines);
@@ -925,11 +925,24 @@ export class StockIssueService {
 
   /** `GET /inventory/prescriptions/:id/dispense-status` — kê/đã phát/còn lại từng dòng + gợi ý FEFO. */
   async getDispenseStatus(tenantId: string, branchId: string, prescriptionId: string, warehouseId: string | undefined): Promise<GetPrescriptionDispenseStatusResponse> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const prescription = await this.prescriptionRepository.findById(tx, tenantId, prescriptionId);
-      if (!prescription || prescription.signedAt === null) throw new NotFoundException();
-      const encounter = await this.encounterRepository.findById(tx, tenantId, branchId, prescription.encounterId);
+    // Đọc đơn thuốc + kiểm chi nhánh ở một transaction ĐÃ ĐÓNG trước, để gọi các port (tự mở transaction riêng) mà không lồng
+    // transaction — lồng thì mỗi request chiếm 2 kết nối cùng lúc và cạn bể khi nhiều người mở cùng lúc (docs/DECISIONS.md #264).
+    const prescription = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const found = await this.prescriptionRepository.findById(tx, tenantId, prescriptionId);
+      if (!found || found.signedAt === null) throw new NotFoundException();
+      const encounter = await this.encounterRepository.findById(tx, tenantId, branchId, found.encounterId);
       if (!encounter) throw new NotFoundException();
+      return found;
+    });
+    const effectivePrices = await this.pricing.getDrugBaseUnitPrices(
+      tenantId,
+      getVietnamDateString(),
+      prescription.items.map((i) => i.drugId).filter((id): id is string => id !== null),
+    );
+    // "Mã đơn thuốc thật" (docs/DECISIONS.md #169) — khối thông tin đầu dialog "Phát thuốc".
+    const signedByNames = prescription.signedBy ? await this.doctorDirectory.getUserFullNames(tenantId, [prescription.signedBy]) : new Map<string, string>();
+
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       if (warehouseId && !(await this.warehouseRepository.findById(tx, tenantId, branchId, warehouseId))) throw new NotFoundException();
 
       const resolvedWarehouseId = warehouseId ?? (await this.warehouseRepository.findDefault(tx, tenantId, branchId))?.id ?? null;
@@ -937,11 +950,6 @@ export class StockIssueService {
       const dispensedMap = await this.stockIssueRepository.sumDispensedForItems(tx, tenantId, itemIds);
 
       const drugCache = new Map<string, DrugWithDetails>();
-      const effectivePrices = await this.pricing.getDrugBaseUnitPrices(
-        tenantId,
-        getVietnamDateString(),
-        prescription.items.map((i) => i.drugId).filter((id): id is string => id !== null),
-      );
       const lines: PrescriptionDispenseLine[] = [];
       // "Kê thuốc tự do" (mở rộng Kho Thuốc GĐ5) — dòng không có `drugId` KHÔNG dispensable (không
       // tồn kho/lô/giá), tách hẳn khỏi `lines` — hiện đọc-only kèm ghi chú ở `DispensePrescriptionDialog.tsx`.
@@ -1004,8 +1012,6 @@ export class StockIssueService {
         });
       }
 
-      // "Mã đơn thuốc thật" (docs/DECISIONS.md #169) — khối thông tin đầu dialog "Phát thuốc".
-      const signedByNames = prescription.signedBy ? await this.doctorDirectory.getUserFullNames(tenantId, [prescription.signedBy]) : new Map<string, string>();
       const diagnoses = await this.diagnosisRepository.listForEncounter(tx, tenantId, prescription.encounterId);
       const diagnosisLabel = diagnoses.length > 0 ? diagnoses.map((d) => `${d.icd10.nameVi} (${d.icd10Code})`).join(' / ') : null;
       // Rà soát 22/09/2026 (chủ dự án phát hiện): dialog "Phát thuốc" trước đây không hiện đang phát

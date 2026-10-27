@@ -86,7 +86,7 @@ export class CashAccountService {
   async update(tenantId: string, actorId: string, currentBranchId: string, id: string, dto: UpdateCashAccountRequest, meta: RequestMeta): Promise<CashAccountDto> {
     // Màn QUẢN TRỊ quỹ: sửa được quỹ của mọi chi nhánh tài khoản được gán (không chỉ chi nhánh đang làm); chi nhánh không được gán → 404.
     const assigned = new Set([currentBranchId, ...(await this.branchDirectory.listAssignedBranchIds(tenantId, actorId))]);
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const updated = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.cashAccountRepository.findByIdAnyBranch(tx, tenantId, id);
       if (!existing || !assigned.has(existing.branchId)) {
         throw new NotFoundException();
@@ -121,10 +121,11 @@ export class CashAccountService {
         userAgent: meta.userAgent,
       });
 
-      const updated = await this.cashAccountRepository.findByIdAnyBranch(tx, tenantId, id);
-      const names = updated?.ownerUserId ? await this.doctorDirectory.getUserFullNames(tenantId, [updated.ownerUserId]) : new Map<string, string>();
-      return this.toDto(updated!, names);
+      return (await this.cashAccountRepository.findByIdAnyBranch(tx, tenantId, id))!;
     });
+    // Tên chủ quỹ lấy SAU khi transaction đóng — `DOCTOR_DIRECTORY_PORT` tự mở transaction riêng, gọi từ bên trong sẽ chiếm 2 kết nối cùng lúc (docs/DECISIONS.md #264).
+    const names = updated.ownerUserId ? await this.doctorDirectory.getUserFullNames(tenantId, [updated.ownerUserId]) : new Map<string, string>();
+    return this.toDto(updated, names);
   }
 
   private async assertBranchAssigned(tenantId: string, actorId: string, currentBranchId: string, branchId: string): Promise<void> {

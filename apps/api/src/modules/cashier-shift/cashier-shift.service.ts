@@ -138,6 +138,9 @@ export class CashierShiftService implements CashierShiftReaderPort {
     // nhưng đọc lại multiCashierEnabled tại đây để phòng dữ liệu cấu hình lệch — tắt Đa thu ngân
     // thì coi như tắt luôn Thủ quỹ riêng, không cấp két riêng).
     const drawerSeparateEnabled = multiCashierEnabled && (await this.clinicConfigReader.getCashierDrawerSeparateEnabled(tenantId));
+    // Tên chủ két lấy TRƯỚC transaction — `DOCTOR_DIRECTORY_PORT` tự mở transaction riêng; gọi từ trong transaction dưới (đang giữ advisory lock)
+    // khiến mỗi lượt mở ca chiếm 2 kết nối cùng lúc → cạn bể khi nhiều thu ngân mở ca đầu giờ (docs/DECISIONS.md #264).
+    const drawerOwnerNames = drawerSeparateEnabled ? await this.doctorDirectory.getUserFullNames(tenantId, [actorId]) : null;
     const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       // Khoá tay (advisory lock) TRƯỚC bước kiểm tra "đã có ca mở chưa" — bắt buộc phải có, vì
       // partial unique index DB giờ chỉ còn chặn theo TỪNG thu ngân (cashier_shift_one_open_per_
@@ -161,7 +164,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
         throw new CashierShiftDiscrepancyReasonRequiredError();
       }
 
-      const drawerAccountId = drawerSeparateEnabled ? await this.findOrCreateDrawerAccount(tx, tenantId, branchId, actorId) : null;
+      const drawerAccountId = drawerSeparateEnabled ? await this.findOrCreateDrawerAccount(tx, tenantId, branchId, actorId, drawerOwnerNames!) : null;
 
       const openedAt = new Date();
       const row = await this.cashierShiftRepository.create(tx, tenantId, actorId, {
@@ -545,12 +548,18 @@ export class CashierShiftService implements CashierShiftReaderPort {
   /** "Thủ quỹ riêng" (GĐ2) — két `DRAWER` CỦA CHÍNH `actorId`, tự cấp lần đầu actor mở ca với công
    * tắc đang bật (find-or-create, TRONG transaction `openShift()`). Mã qua `CodeSequenceRepository`
    * (tiền tố `QU`, tenant-scoped) — CÙNG dãy số với quỹ lập tay ở `CashAccountService.create()`. */
-  private async findOrCreateDrawerAccount(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string): Promise<string> {
+  private async findOrCreateDrawerAccount(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    branchId: string,
+    actorId: string,
+    /** Tên chủ két do caller lấy TRƯỚC transaction (docs/DECISIONS.md #264). */
+    names: Map<string, string>,
+  ): Promise<string> {
     const existing = await this.cashAccountRepository.findDrawerForUser(tx, tenantId, branchId, actorId);
     if (existing) {
       return existing.id;
     }
-    const names = await this.doctorDirectory.getUserFullNames(tenantId, [actorId]);
     const seq = await this.codeSequenceRepository.next(tx, tenantId, CASH_ACCOUNT_CODE_PREFIX, actorId);
     const code = formatShortSequentialCode(CASH_ACCOUNT_CODE_PREFIX, seq);
     const created = await this.cashAccountRepository.create(tx, tenantId, actorId, {

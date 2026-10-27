@@ -182,6 +182,9 @@ export function toInvoiceResponse(row: InvoiceWithLines, otherInvoices: OtherInv
  * sẻ Repository giữa module trong 1 transaction"). Service này chỉ phục vụ các thao tác SAU khi
  * phiếu thu đã tồn tại: xem/đánh dấu đã thu/huỷ đánh dấu/lưu tạm/in — không có `create()`.
  */
+/** Một mục danh mục `PAYMENT_METHOD` (khớp `ReferenceCatalogReaderPort.listByCategory`). */
+export type PaymentMethodMeta = { code: string; name: string; countsAsCash: boolean };
+
 @Injectable()
 export class InvoiceService {
   constructor(
@@ -221,9 +224,22 @@ export class InvoiceService {
    * hoặc actor không có ca mở dùng két riêng). `null` cuối cùng nếu tenant chưa có quỹ tiền mặt mặc
    * định nào — KHÔNG chặn thu tiền.
    */
-  async resolveCashAccountId(tx: Prisma.TransactionClient, tenantId: string, branchId: string, method: string, drawerAccountId: string | null): Promise<string | null> {
-    const meta = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
-    const isCash = meta.find((m) => m.code === method)?.countsAsCash ?? false;
+  /** Danh mục `PAYMENT_METHOD` cho `resolveCashAccountId()` — gọi TRƯỚC khi mở transaction (docs/DECISIONS.md #264). */
+  async listPaymentMethods(tenantId: string): Promise<PaymentMethodMeta[]> {
+    return this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
+  }
+
+  async resolveCashAccountId(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    branchId: string,
+    method: string,
+    drawerAccountId: string | null,
+    /** Danh mục `PAYMENT_METHOD` do caller lấy TRƯỚC khi mở transaction — `REFERENCE_CATALOG_READER_PORT` tự mở transaction riêng, gọi
+     * từ trong transaction sẽ chiếm 2 kết nối cùng lúc và cạn bể khi nhiều người thu tiền đồng thời (docs/DECISIONS.md #264). */
+    paymentMethods: PaymentMethodMeta[],
+  ): Promise<string | null> {
+    const isCash = paymentMethods.find((m) => m.code === method)?.countsAsCash ?? false;
     if (!isCash) {
       return null;
     }
@@ -336,9 +352,10 @@ export class InvoiceService {
     // "Đa thu ngân" (2026-09-04) — resolve TRƯỚC transaction chính (port tự mở transaction đọc
     // riêng, không lồng `runInTenantScope`, đúng khuôn mọi port đọc khác trong dự án). `null` khi
     // không có ca nào đang mở — KHÔNG chặn thu tiền, độc lập với "Yêu cầu mở ca trước khi thu tiền".
-    const [cashierShiftId, drawerAccountId] = await Promise.all([
+    const [cashierShiftId, drawerAccountId, paymentMethods] = await Promise.all([
       this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
+      this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD'),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
@@ -362,7 +379,7 @@ export class InvoiceService {
       }
       // Chiết khấu — thu ĐÚNG `dueAmount` (sau chiết khấu), KHÔNG phải `invoice.totalAmount`.
       const dueAmount = BigInt(computeDue(invoice).dueAmount);
-      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, branchId, dto.method, drawerAccountId);
+      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, branchId, dto.method, drawerAccountId, paymentMethods);
       await this.paymentRepository.create(tx, tenantId, actorId, invoice.id, dto.method, dueAmount, paidAt, cashierShiftId, cashAccountId);
 
       await writeAuditLog(tx, tenantId, {
@@ -399,6 +416,8 @@ export class InvoiceService {
     remainderPaymentMethodCode: string | undefined,
     cashierShiftId: string | null,
     drawerAccountId: string | null,
+    /** Danh mục `PAYMENT_METHOD` lấy TRƯỚC transaction (docs/DECISIONS.md #264). */
+    paymentMethods: PaymentMethodMeta[],
     meta: RequestMeta,
   ): Promise<InvoiceDto> {
     const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, invoiceId);
@@ -449,7 +468,7 @@ export class InvoiceService {
       rows.push({ method: 'WALLET', amount: covered, cashAccountId: null });
     }
     if (remainder > 0n) {
-      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, branchId, remainderPaymentMethodCode!, drawerAccountId);
+      const cashAccountId = await this.resolveCashAccountId(tx, tenantId, branchId, remainderPaymentMethodCode!, drawerAccountId, paymentMethods);
       rows.push({ method: remainderPaymentMethodCode!, amount: remainder, cashAccountId });
     }
     await this.paymentRepository.createMany(tx, tenantId, actorId, invoice.id, rows, paidAt, cashierShiftId);
@@ -470,12 +489,13 @@ export class InvoiceService {
 
   /** `POST /billing/invoices/:encounterId/pay-with-wallet` — dùng số dư ví HIỆN CÓ, không nạp thêm. */
   async payWithWallet(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: PayInvoiceWithWalletRequest, meta: RequestMeta): Promise<InvoiceDto> {
-    const [cashierShiftId, drawerAccountId] = await Promise.all([
+    const [cashierShiftId, drawerAccountId, paymentMethods] = await Promise.all([
       this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
+      this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD'),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.payWithWalletCore(tx, tenantId, branchId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta),
+      this.payWithWalletCore(tx, tenantId, branchId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, paymentMethods, meta),
     );
   }
 
@@ -485,9 +505,10 @@ export class InvoiceService {
    * CÙNG transaction. Quyền riêng `patient_wallet.topup` (có hành động nạp tiền thật).
    */
   async topUpAndPayWithWallet(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: TopUpAndPayInvoiceWithWalletRequest, meta: RequestMeta): Promise<InvoiceDto> {
-    const [cashierShiftId, drawerAccountId] = await Promise.all([
+    const [cashierShiftId, drawerAccountId, paymentMethods] = await Promise.all([
       this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
+      this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD'),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
@@ -495,8 +516,8 @@ export class InvoiceService {
         throw new NotFoundException();
       }
       const patientId = invoice.encounter.patient.id;
-      await this.walletService.credit(tx, tenantId, branchId, actorId, patientId, BigInt(dto.topUpAmount), dto.topUpPaymentMethodCode, dto.cashAccountId, undefined, meta);
-      return this.payWithWalletCore(tx, tenantId, branchId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, meta);
+      await this.walletService.credit(tx, tenantId, branchId, actorId, patientId, BigInt(dto.topUpAmount), dto.topUpPaymentMethodCode, dto.cashAccountId, undefined, meta, paymentMethods);
+      return this.payWithWalletCore(tx, tenantId, branchId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, paymentMethods, meta);
     });
   }
 
@@ -562,9 +583,10 @@ export class InvoiceService {
    */
   async refund(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: RefundInvoiceRequest, meta: RequestMeta): Promise<InvoiceDto> {
     // "Đa thu ngân"/"Thủ quỹ riêng" — xem comment ở markPaid() phía trên.
-    const [cashierShiftId, drawerAccountId] = await Promise.all([
+    const [cashierShiftId, drawerAccountId, paymentMethods] = await Promise.all([
       this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
+      this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD'),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
@@ -607,7 +629,7 @@ export class InvoiceService {
         if (amount <= 0n) {
           continue;
         }
-        const cashAccountId = await this.resolveCashAccountId(tx, tenantId, branchId, p.method, drawerAccountId);
+        const cashAccountId = await this.resolveCashAccountId(tx, tenantId, branchId, p.method, drawerAccountId, paymentMethods);
         await this.paymentRepository.createRefund(tx, tenantId, actorId, invoice.id, p.method, amount, refundedAt, dto.reason, cashierShiftId, cashAccountId);
         refundedTotal += amount;
         if (p.method === 'WALLET') {

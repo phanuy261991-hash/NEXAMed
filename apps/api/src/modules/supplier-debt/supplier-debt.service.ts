@@ -709,24 +709,28 @@ export class SupplierDebtService {
   /** Tab "Sổ công nợ" — CŨ→MỚI, `from`/`to` (nếu có) lọc theo `occurredAt` chỉ ở TẦNG HIỂN THỊ
    * (không ảnh hưởng số liệu — `balanceAfter` đã tính sẵn theo TOÀN BỘ lịch sử lúc ghi sổ). */
   async listLedger(tenantId: string, supplierId: string, query: ListSupplierDebtLedgerQuery): Promise<ListSupplierDebtLedgerResponse> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const loaded = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
       if (!supplier) throw new NotFoundException();
       const account = await this.accountRepository.findBySupplierId(tx, tenantId, supplierId);
-      if (!account) return { items: [] };
+      if (!account) return null;
 
       const all = await this.entryRepository.listByAccountId(tx, tenantId, account.id);
       const reversedIds = new Set(all.filter((e) => e.reversalOfId).map((e) => e.reversalOfId!));
       const fromDate = query.from ? new Date(`${query.from}T00:00:00+07:00`) : null;
       const toDate = query.to ? new Date(`${query.to}T23:59:59.999+07:00`) : null;
       const filtered = all.filter((e) => (!fromDate || e.occurredAt >= fromDate) && (!toDate || e.occurredAt <= toDate));
+      return { reversedIds, filtered, refs: await this.resolveDocumentRefs(tx, tenantId, filtered) };
+    });
+    if (!loaded) return { items: [] };
+    const { reversedIds, filtered, refs } = loaded;
 
-      const ids = new Set<string>();
-      for (const e of filtered) ids.add(e.createdBy);
-      const names = ids.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...ids]) : new Map<string, string>();
+    const ids = new Set<string>();
+    for (const e of filtered) ids.add(e.createdBy);
+    // Tên người thực hiện lấy SAU khi transaction đóng — `DOCTOR_DIRECTORY_PORT` tự mở transaction riêng (docs/DECISIONS.md #264).
+    const names = ids.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...ids]) : new Map<string, string>();
 
-      const refs = await this.resolveDocumentRefs(tx, tenantId, filtered);
-      const items = filtered.map((e) => {
+    const items = filtered.map((e) => {
         const receiptRef = e.stockReceiptId ? refs.receipts.get(e.stockReceiptId) : undefined;
         const issueRef = e.stockIssueId ? refs.issues.get(e.stockIssueId) : undefined;
         const voucherRef = e.cashVoucherId ? refs.vouchers.get(e.cashVoucherId) : undefined;
@@ -750,10 +754,9 @@ export class SupplierDebtService {
         createdByName: names.get(e.createdBy) ?? 'Không rõ',
         sourceBranchId: sourceRef?.branchId ?? null,
         sourceBranchName: sourceRef?.branchName ?? null,
-        };
-      });
-      return { items };
+      };
     });
+    return { items };
   }
 
   /** Tab "Phiếu nhập" — trạng thái đã trả/còn nợ của mỗi khoản PURCHASE/OPENING_BALANCE, tính bằng
@@ -799,20 +802,22 @@ export class SupplierDebtService {
    * C "NCC hoàn tiền" chưa code). Mặc định 90 ngày gần nhất khi bỏ trống `from`/`to` (S6-03 #142). */
   async listPayments(tenantId: string, query: ListSupplierDebtPaymentsQuery): Promise<ListSupplierDebtPaymentsResponse> {
     const { from, to } = resolveRecentDateRange(query.from, query.to);
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.cashVoucherRepository.listSupplierLinked(tx, tenantId, { supplierId: query.supplierId, from, to, status: query.status });
+    const { rows, supplierNameById } = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const loaded = await this.cashVoucherRepository.listSupplierLinked(tx, tenantId, { supplierId: query.supplierId, from, to, status: query.status });
       const suppliers = await this.supplierRepository.list(tx, tenantId, true);
-      const supplierNameById = new Map(suppliers.map((s) => [s.id, s.name]));
+      return { rows: loaded, supplierNameById: new Map(suppliers.map((s) => [s.id, s.name])) };
+    });
 
-      const userIds = new Set<string>();
-      for (const r of rows) {
-        userIds.add(r.createdBy);
-        if (r.approvedBy) userIds.add(r.approvedBy);
-      }
-      const names = userIds.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...userIds]) : new Map<string, string>();
+    const userIds = new Set<string>();
+    for (const r of rows) {
+      userIds.add(r.createdBy);
+      if (r.approvedBy) userIds.add(r.approvedBy);
+    }
+    // Tên người lập/duyệt lấy SAU khi transaction đóng — `DOCTOR_DIRECTORY_PORT` tự mở transaction riêng (docs/DECISIONS.md #264).
+    const names = userIds.size > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, [...userIds]) : new Map<string, string>();
 
-      let pendingApprovalCount = 0;
-      const items = rows.map((r) => {
+    let pendingApprovalCount = 0;
+    const items = rows.map((r) => {
         if (r.status === 'PENDING_APPROVAL' && !r.deletedAt) pendingApprovalCount += 1;
         return {
           id: r.id,
@@ -833,17 +838,17 @@ export class SupplierDebtService {
           branchId: r.cashAccount.branchId,
           branchName: r.cashAccount.branch.name,
         };
-      });
-      return { items, pendingApprovalCount };
     });
+    return { items, pendingApprovalCount };
   }
 
+  /** Map DTO — gọi SAU khi transaction chính đóng: hàm này đọc danh sách NCC và gọi `DOCTOR_DIRECTORY_PORT` (đều tự mở transaction riêng),
+   * gọi từ bên trong một transaction khác sẽ chiếm 2 kết nối cùng lúc → cạn bể khi đồng thời (docs/DECISIONS.md #264). */
   private async toAdjustmentDtos(
-    tx: Prisma.TransactionClient,
     tenantId: string,
     rows: SupplierDebtAdjustmentRow[],
   ): Promise<SupplierDebtAdjustmentDto[]> {
-    const suppliers = await this.supplierRepository.list(tx, tenantId, true);
+    const suppliers = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.supplierRepository.list(tx, tenantId, true));
     const supplierNameById = new Map(suppliers.map((s) => [s.id, s.name]));
     const userIds = new Set<string>();
     for (const r of rows) {
@@ -886,7 +891,7 @@ export class SupplierDebtService {
    * người duyệt Từ chối thay vì âm thầm sai). KHÔNG đụng sổ công nợ ở bước tạo — chỉ lúc Duyệt.
    */
   async createAdjustment(tenantId: string, actorId: string, dto: CreateSupplierDebtAdjustmentRequest, meta: RequestMeta): Promise<SupplierDebtAdjustmentDto> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const created = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const supplier = await this.supplierRepository.findById(tx, tenantId, dto.supplierId);
       if (!supplier) throw new NotFoundException();
 
@@ -925,9 +930,10 @@ export class SupplierDebtService {
         userAgent: meta.userAgent,
       });
 
-      const [item] = await this.toAdjustmentDtos(tx, tenantId, [row]);
-      return item!;
+      return row;
     });
+    const [item] = await this.toAdjustmentDtos(tenantId, [created]);
+    return item!;
   }
 
   /**
@@ -940,7 +946,7 @@ export class SupplierDebtService {
    * 1 transaction — nguyên tử giữa "Huỷ chứng từ"/"ghi bút toán" và "chuyển trạng thái Đã duyệt".
    */
   async approveAdjustment(tenantId: string, branchId: string, actorId: string, id: string, dto: ApproveSupplierDebtAdjustmentRequest, meta: RequestMeta): Promise<SupplierDebtAdjustmentDto> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const approved = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const adjustment = await this.adjustmentRepository.findById(tx, tenantId, id);
       if (!adjustment) throw new NotFoundException();
       if (adjustment.status !== 'PENDING_APPROVAL') throw new SupplierDebtAdjustmentNotPendingError();
@@ -992,14 +998,14 @@ export class SupplierDebtService {
         userAgent: meta.userAgent,
       });
 
-      const approved = await this.adjustmentRepository.findById(tx, tenantId, id);
-      const [item] = await this.toAdjustmentDtos(tx, tenantId, [approved!]);
-      return item!;
+      return (await this.adjustmentRepository.findById(tx, tenantId, id))!;
     });
+    const [item] = await this.toAdjustmentDtos(tenantId, [approved]);
+    return item!;
   }
 
   async rejectAdjustment(tenantId: string, actorId: string, id: string, dto: RejectSupplierDebtAdjustmentRequest, meta: RequestMeta): Promise<SupplierDebtAdjustmentDto> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const rejected = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const adjustment = await this.adjustmentRepository.findById(tx, tenantId, id);
       if (!adjustment) throw new NotFoundException();
       if (adjustment.status !== 'PENDING_APPROVAL') throw new SupplierDebtAdjustmentNotPendingError();
@@ -1034,20 +1040,19 @@ export class SupplierDebtService {
         });
       }
 
-      const rejected = await this.adjustmentRepository.findById(tx, tenantId, id);
-      const [item] = await this.toAdjustmentDtos(tx, tenantId, [rejected!]);
-      return item!;
+      return (await this.adjustmentRepository.findById(tx, tenantId, id))!;
     });
+    const [item] = await this.toAdjustmentDtos(tenantId, [rejected]);
+    return item!;
   }
 
   /** Tab "Nhật ký điều chỉnh" (trang chi tiết NCC) + badge "Có điều chỉnh" trên
    * `StockReceiptFormPage`/`StockIssueFormPage` (`targetReceiptId`/`targetIssueId`). */
   async listAdjustments(tenantId: string, query: ListSupplierDebtAdjustmentsQuery): Promise<ListSupplierDebtAdjustmentsResponse> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.adjustmentRepository.list(tx, tenantId, query);
-      const items = await this.toAdjustmentDtos(tx, tenantId, rows);
-      return { items };
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      return this.adjustmentRepository.list(tx, tenantId, query);
     });
+    return { items: await this.toAdjustmentDtos(tenantId, rows) };
   }
 
   // ============ Phần E "Đối chiếu & chốt công nợ theo kỳ" (docs/DECISIONS.md #182 câu 3) ============
@@ -1094,7 +1099,7 @@ export class SupplierDebtService {
     meta: RequestMeta,
   ): Promise<SupplierDebtReconciliationDto> {
     const asOfDate = this.parseAsOfDate(dto.asOfDate);
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const finalRow = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
       if (!supplier) throw new NotFoundException();
 
@@ -1158,10 +1163,10 @@ export class SupplierDebtService {
         await this.finalizeReconciliationCore(tx, tenantId, actorId, row, row.version, meta);
       }
 
-      const finalRow = await this.reconciliationRepository.findById(tx, tenantId, row.id);
-      const [item] = await this.toReconciliationDtos(tx, tenantId, [finalRow!]);
-      return item!;
+      return (await this.reconciliationRepository.findById(tx, tenantId, row.id))!;
     });
+    const [item] = await this.toReconciliationDtos(tenantId, [finalRow]);
+    return item!;
   }
 
   /** Lõi "Chốt biên bản" dùng chung cho đường tự-chốt-ngay (`createReconciliation()`, khớp tuyệt
@@ -1211,7 +1216,7 @@ export class SupplierDebtService {
     dto: FinalizeSupplierDebtReconciliationRequest,
     meta: RequestMeta,
   ): Promise<SupplierDebtReconciliationDto> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const finalRow = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const reconciliation = await this.reconciliationRepository.findById(tx, tenantId, id);
       if (!reconciliation || reconciliation.supplierId !== supplierId) throw new NotFoundException();
       if (reconciliation.status !== 'DRAFT') throw new SupplierDebtReconciliationNotReadyError();
@@ -1223,30 +1228,29 @@ export class SupplierDebtService {
 
       await this.finalizeReconciliationCore(tx, tenantId, actorId, reconciliation, dto.version, meta);
 
-      const finalRow = await this.reconciliationRepository.findById(tx, tenantId, id);
-      const [item] = await this.toReconciliationDtos(tx, tenantId, [finalRow!]);
-      return item!;
+      return (await this.reconciliationRepository.findById(tx, tenantId, id))!;
     });
+    const [item] = await this.toReconciliationDtos(tenantId, [finalRow]);
+    return item!;
   }
 
   /** Tab "Đối chiếu & Chốt kỳ" (trang chi tiết NCC). */
   async listReconciliations(tenantId: string, supplierId: string): Promise<ListSupplierDebtReconciliationsResponse> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
       if (!supplier) throw new NotFoundException();
-      const rows = await this.reconciliationRepository.list(tx, tenantId, supplierId);
-      const items = await this.toReconciliationDtos(tx, tenantId, rows);
-      return { items };
+      return this.reconciliationRepository.list(tx, tenantId, supplierId);
     });
+    return { items: await this.toReconciliationDtos(tenantId, rows) };
   }
 
+  /** Map DTO — gọi SAU khi transaction chính đóng, xem `toAdjustmentDtos()` (docs/DECISIONS.md #264). */
   private async toReconciliationDtos(
-    tx: Prisma.TransactionClient,
     tenantId: string,
     rows: SupplierDebtReconciliationRow[],
   ): Promise<SupplierDebtReconciliationDto[]> {
     const adjustmentIds = rows.filter((r) => r.resultingAdjustmentId).map((r) => r.resultingAdjustmentId!);
-    const adjustments = await this.adjustmentRepository.findByIds(tx, tenantId, adjustmentIds);
+    const adjustments = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.adjustmentRepository.findByIds(tx, tenantId, adjustmentIds));
     const adjustmentStatusById = new Map(adjustments.map((a) => [a.id, a.status]));
 
     const userIds = new Set<string>();

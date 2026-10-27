@@ -75,9 +75,16 @@ export class PatientWalletService {
    * CASH mặc định; phương thức khác → quỹ BANK mặc định. `null` nếu tenant chưa cấu hình quỹ tương
    * ứng — phía gọi (`credit()`/`settle()`) tự ném lỗi rõ ràng thay vì để Prisma báo lỗi FK mơ hồ.
    */
-  private async resolveVoucherCashAccountId(tx: Prisma.TransactionClient, tenantId: string, branchId: string, method: string, drawerAccountId: string | null): Promise<string | null> {
-    const meta = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
-    const isCash = meta.find((m) => m.code === method)?.countsAsCash ?? false;
+  private async resolveVoucherCashAccountId(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    branchId: string,
+    method: string,
+    drawerAccountId: string | null,
+    /** Danh mục `PAYMENT_METHOD` do caller lấy TRƯỚC transaction (docs/DECISIONS.md #264). */
+    paymentMethods: Array<{ code: string; countsAsCash: boolean }>,
+  ): Promise<string | null> {
+    const isCash = paymentMethods.find((m) => m.code === method)?.countsAsCash ?? false;
     if (isCash) {
       if (drawerAccountId) {
         return drawerAccountId;
@@ -195,6 +202,8 @@ export class PatientWalletService {
     cashAccountIdInput: string | undefined,
     note: string | undefined,
     meta: RequestMeta,
+    /** Danh mục `PAYMENT_METHOD` do caller lấy TRƯỚC transaction (docs/DECISIONS.md #264). */
+    paymentMethods: Array<{ code: string; countsAsCash: boolean }>,
   ): Promise<{ balance: bigint; voucherNo: string; occurredAt: Date }> {
     const wallet = await this.getOrCreate(tx, tenantId, actorId, patientId);
     if (wallet.status !== 'ACTIVE') {
@@ -212,7 +221,7 @@ export class PatientWalletService {
     if (cashAccountIdInput && !(await this.cashAccountRepository.findById(tx, tenantId, branchId, cashAccountIdInput))) {
       throw new NotFoundException();
     }
-    const cashAccountId = cashAccountIdInput ?? (await this.resolveVoucherCashAccountId(tx, tenantId, branchId, paymentMethodCode, drawerAccountId));
+    const cashAccountId = cashAccountIdInput ?? (await this.resolveVoucherCashAccountId(tx, tenantId, branchId, paymentMethodCode, drawerAccountId, paymentMethods));
     if (!cashAccountId) {
       throw new BadRequestException('Chưa có quỹ nào để nhận tiền — tạo Quỹ tiền mặt/ngân hàng trước khi nạp tạm ứng.');
     }
@@ -258,8 +267,10 @@ export class PatientWalletService {
 
   /** `POST /wallet/topup` — endpoint riêng, tự mở transaction. */
   async topUp(tenantId: string, branchId: string, actorId: string, dto: TopUpWalletRequest, meta: RequestMeta): Promise<TopUpWalletResponse> {
+    // Danh mục `PAYMENT_METHOD` lấy TRƯỚC transaction (docs/DECISIONS.md #264).
+    const paymentMethods = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
     const result = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.credit(tx, tenantId, branchId, actorId, dto.patientId, BigInt(dto.amount), dto.paymentMethodCode, dto.cashAccountId, dto.note, meta),
+      this.credit(tx, tenantId, branchId, actorId, dto.patientId, BigInt(dto.amount), dto.paymentMethodCode, dto.cashAccountId, dto.note, meta, paymentMethods),
     );
     const wallet = await this.getWallet(tenantId, dto.patientId);
     return { wallet: wallet!, voucherNo: result.voucherNo, occurredAt: result.occurredAt.toISOString() };
@@ -267,6 +278,8 @@ export class PatientWalletService {
 
   /** `POST /wallet/settle` — hoàn số dư còn lại (nếu >0, tạo phiếu chi) rồi khoá ví. */
   async settle(tenantId: string, branchId: string, actorId: string, dto: SettleWalletRequest, meta: RequestMeta): Promise<SettleWalletResponse> {
+    // Danh mục `PAYMENT_METHOD` lấy TRƯỚC transaction (docs/DECISIONS.md #264).
+    const paymentMethods = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const wallet = await this.walletRepository.findByPatientId(tx, tenantId, dto.patientId);
       if (!wallet) {
@@ -292,7 +305,7 @@ export class PatientWalletService {
         if (dto.cashAccountId && !(await this.cashAccountRepository.findById(tx, tenantId, branchId, dto.cashAccountId))) {
           throw new NotFoundException();
         }
-        const cashAccountId = dto.cashAccountId ?? (await this.resolveVoucherCashAccountId(tx, tenantId, branchId, dto.paymentMethodCode, drawerAccountId));
+        const cashAccountId = dto.cashAccountId ?? (await this.resolveVoucherCashAccountId(tx, tenantId, branchId, dto.paymentMethodCode, drawerAccountId, paymentMethods));
         if (!cashAccountId) {
           throw new BadRequestException('Chưa có quỹ nào để chi tiền — tạo Quỹ tiền mặt/ngân hàng trước khi tất toán.');
         }
@@ -352,18 +365,21 @@ export class PatientWalletService {
   }
 
   async listTransactions(tenantId: string, patientId: string, query: ListWalletTransactionsQuery): Promise<ListWalletTransactionsResponse> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+    const loaded = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const wallet = await this.walletRepository.findByPatientId(tx, tenantId, patientId);
-      if (!wallet) {
-        return { items: [], nextCursor: null };
-      }
-      const rows = await this.walletRepository.listTransactions(tx, tenantId, wallet.id, { cursor: query.cursor, take: query.limit + 1 });
-      const hasMore = rows.length > query.limit;
-      const page = hasMore ? rows.slice(0, query.limit) : rows;
-      const lastRow = page[page.length - 1];
-      const actorIds = [...new Set(page.map((r) => r.createdBy))];
-      const names = actorIds.length > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, actorIds) : new Map<string, string>();
-      return {
+      if (!wallet) return null;
+      return this.walletRepository.listTransactions(tx, tenantId, wallet.id, { cursor: query.cursor, take: query.limit + 1 });
+    });
+    if (!loaded) {
+      return { items: [], nextCursor: null };
+    }
+    const hasMore = loaded.length > query.limit;
+    const page = hasMore ? loaded.slice(0, query.limit) : loaded;
+    const lastRow = page[page.length - 1];
+    const actorIds = [...new Set(page.map((r) => r.createdBy))];
+    // Tên người thực hiện lấy SAU khi transaction đóng — `DOCTOR_DIRECTORY_PORT` tự mở transaction riêng (docs/DECISIONS.md #264).
+    const names = actorIds.length > 0 ? await this.doctorDirectory.getUserFullNames(tenantId, actorIds) : new Map<string, string>();
+    return {
         items: page.map((r) => {
           // Chi nhánh nơi giao dịch xảy ra (phiếu quỹ → chi nhánh của quỹ; phiếu thu → chi nhánh của lượt khám) — web khoá nút mở phiếu khi khác chi nhánh người xem (Đợt 2, #233 Q5).
           const where = r.cashVoucher?.cashAccount ?? r.invoice?.encounter ?? null;
@@ -386,7 +402,6 @@ export class PatientWalletService {
         }),
         nextCursor: hasMore && lastRow ? lastRow.id : null,
       };
-    });
   }
 
   /** Trang "Ví tạm ứng" tổng hợp (Sổ quỹ & Thu chi) — quyền `patient_wallet.settle`. */
