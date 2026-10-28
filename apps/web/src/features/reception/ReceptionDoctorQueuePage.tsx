@@ -24,6 +24,9 @@ import { InsuranceBadge } from '../insurance-card/InsuranceBadge';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ReleaseEncounterDialog } from '../../shared/ui/ReleaseEncounterDialog';
+import { ClosePreviousDaysDialog } from '../../shared/ui/ClosePreviousDaysDialog';
+import { NoticeRow } from '../../shared/ui/NoticeRow';
+import { formatDayMonth } from '../../shared/ui/DoctorEndShiftDialog';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { ApiError } from '../../shared/api/client';
 import { useAuthStore } from '../auth/auth.store';
@@ -31,7 +34,7 @@ import { useDoctorsQuery, useScheduleConfigQuery } from '../appointment/appointm
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { RoomSessionDialog } from '../clinic/RoomSessionDialog';
-import { useMyRoomSessionQuery, useRoomOptionsQuery } from '../clinic/clinic.queries';
+import { useMyClosingStateQuery, useMyRoomSessionQuery, useRoomOptionsQuery } from '../clinic/clinic.queries';
 import { ColumnEmpty, GroupLabel, ParaclinicalProgressChips, WaitingCard, formatTime, matchesQueueSearch, waitMinutes } from './queue-card';
 import { useReceptionListQuery, useStartConsultationMutation } from './reception.queries';
 
@@ -63,6 +66,10 @@ export function ReceptionDoctorQueuePage() {
   // #085 — "Khách bỏ về"/"Trả về hàng chờ" ngay trên thẻ, không cần chạy sang trang khác.
   const [cancellingItem, setCancellingItem] = useState<ReceptionListItem | null>(null);
   const [releasingItem, setReleasingItem] = useState<ReceptionListItem | null>(null);
+  // "Phiên trước chưa đóng thì chưa được khám" (mockup duyệt 28/10/2026): dải cảnh báo + hộp "Đóng ca ngày trước".
+  const closingStateQuery = useMyClosingStateQuery();
+  const pendingClosureDays = closingStateQuery.data?.pendingDays ?? [];
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   // Tìm trong từng cột riêng (yêu cầu chủ dự án 2026-08-21) — 3 ô độc lập, không ảnh hưởng lẫn nhau.
   const [waitingSearch, setWaitingSearch] = useState({ open: false, query: '' });
   const [examSearch, setExamSearch] = useState({ open: false, query: '' });
@@ -130,10 +137,22 @@ export function ReceptionDoctorQueuePage() {
 
   async function handleStart(item: ReceptionListItem) {
     setRowError(null);
+    // Còn ngày trước chưa đóng: mở hộp đóng ca thay vì gọi máy chủ (máy chủ cũng từ chối, xem catch bên dưới).
+    if (pendingClosureDays.length > 0) {
+      setCloseDialogOpen(true);
+      return;
+    }
     try {
       await startConsultationMutation.mutateAsync({ id: item.encounterId, body: { version: item.version } });
       navigate(`/encounters/${item.encounterId}`);
     } catch (err) {
+      if (err instanceof ApiError && err.code === 'DOCTOR_SHIFT_NOT_CLOSED') {
+        // Giao diện chưa biết (vừa qua nửa đêm, hoặc lễ tân vừa xếp lại ca): tải lại trạng thái rồi mở hộp đóng ca.
+        const refreshed = await closingStateQuery.refetch();
+        if ((refreshed.data?.pendingDays.length ?? 0) > 0) setCloseDialogOpen(true);
+        else setRowError(err.message);
+        return;
+      }
       if (err instanceof ApiError && err.code === 'ENCOUNTER_ALREADY_CLAIMED') {
         setClaimToast(err.message);
         void listQuery.refetch();
@@ -186,6 +205,27 @@ export function ReceptionDoctorQueuePage() {
           dismissible={changingRoom}
           onClose={() => setChangingRoom(false)}
         />
+      )}
+
+      {pendingClosureDays.length > 0 && (
+        <NoticeRow
+          title={
+            pendingClosureDays.length === 1
+              ? `Ca ngày ${pendingClosureDays[0]!.date.split('-').reverse().join('/')} chưa được đóng.`
+              : `${pendingClosureDays.length} ngày chưa được đóng ca (${pendingClosureDays.map((d) => formatDayMonth(d.date)).join(', ')}).`
+          }
+          action={
+            <Button type="button" variant="amber" className="flex-shrink-0 whitespace-nowrap" onClick={() => setCloseDialogOpen(true)}>
+              {pendingClosureDays.length === 1 ? `Đóng ca ngày ${formatDayMonth(pendingClosureDays[0]!.date)}` : `Đóng ca ${pendingClosureDays.length} ngày`}
+            </Button>
+          }
+        >
+          Bạn cần đóng ca trước khi nhận bệnh nhân mới. Các lượt đang khám dở vẫn hoàn tất bình thường.
+        </NoticeRow>
+      )}
+
+      {closingStateQuery.isError && (
+        <ErrorBanner message="Không kiểm tra được ca ngày trước của bạn. Bạn vẫn có thể thử bắt đầu khám." onRetry={() => void closingStateQuery.refetch()} />
       )}
 
       {rowError && <ErrorBanner message={rowError} />}
@@ -382,6 +422,10 @@ export function ReceptionDoctorQueuePage() {
           <Warning size={17} weight="fill" className="mt-0.5 flex-shrink-0 text-amber-600" aria-hidden="true" />
           <p className="text-xs leading-relaxed text-slate-800">{claimToast}</p>
         </div>
+      )}
+
+      {closeDialogOpen && pendingClosureDays.length > 0 && currentUser && (
+        <ClosePreviousDaysDialog doctorId={currentUser.id} days={pendingClosureDays} onDone={() => setCloseDialogOpen(false)} onClose={() => setCloseDialogOpen(false)} />
       )}
 
       {cancellingItem && (

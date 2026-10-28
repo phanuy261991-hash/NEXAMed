@@ -8,6 +8,12 @@ import { ApiError } from '../api/client';
 import { Button } from './Button';
 import { Skeleton } from './Skeleton';
 
+/** `YYYY-MM-DD` → `dd/mm` (ngày cũ trong câu chữ ngắn của hộp đóng ca bù). */
+export function formatDayMonth(dateStr: string): string {
+  const [, month, day] = dateStr.split('-');
+  return `${day}/${month}`;
+}
+
 const WEEKDAY_LABELS_VI = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
 /** `dateStr` dạng `YYYY-MM-DD` (ngày lịch VN, đã đúng từ `getVietnamTodayDateString()`) — chỉ cần
@@ -147,8 +153,8 @@ export function DoctorEndShiftDialog({
  * Trích xuất dùng chung (lần dùng thứ hai ở `EndOfDayDialog.tsx`, "Chế độ phòng khám 1 người") —
  * tự gọi `useDoctorShiftSummaryQuery(doctorId)`, không cần nơi gọi truyền số liệu vào.
  */
-export function DoctorShiftSummaryPanel({ doctorId }: { doctorId: string }) {
-  const summaryQuery = useDoctorShiftSummaryQuery(doctorId);
+export function DoctorShiftSummaryPanel({ doctorId, date }: { doctorId: string; date?: string }) {
+  const summaryQuery = useDoctorShiftSummaryQuery(doctorId, date);
   const summary = summaryQuery.data;
   const doctorName = summary?.doctorName || '...';
 
@@ -160,7 +166,9 @@ export function DoctorShiftSummaryPanel({ doctorId }: { doctorId: string }) {
         </div>
         <div className="flex min-w-0 flex-col gap-px">
           <span className="text-[15px] font-semibold text-slate-900">{doctorName}</span>
-          <span className="text-[12.5px] font-medium text-brand-teal-active">đã hoàn thành ngày làm việc hôm nay với:</span>
+          <span className="text-[12.5px] font-medium text-brand-teal-active">
+            {date ? `tổng hợp ngày làm việc ${formatDayMonth(date)} với:` : 'đã hoàn thành ngày làm việc hôm nay với:'}
+          </span>
         </div>
       </div>
 

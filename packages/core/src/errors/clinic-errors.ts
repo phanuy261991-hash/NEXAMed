@@ -41,6 +41,18 @@ export class DoctorAvailabilityEmergencyDisabledError extends DomainError {
 }
 
 /**
+ * Bác sĩ còn ngày trước chưa đóng ca (mockup duyệt 28/10/2026) nên chưa được "Bắt đầu khám"/"Nhận ca". Giao diện
+ * bắt mã này để mở hộp "Đóng ca ngày trước"; `message` luôn là câu tiếng Việt cụ thể (CLAUDE.md, #255).
+ */
+export class DoctorShiftNotClosedError extends DomainError {
+  readonly code = 'DOCTOR_SHIFT_NOT_CLOSED';
+
+  constructor(displayDates: string[]) {
+    super(`Bạn cần đóng ca ngày ${displayDates.join(', ')} trước khi nhận bệnh nhân mới.`);
+  }
+}
+
+/**
  * "Ca làm việc" (`work_shift`, danh mục quản lý theo từng phòng khám) — `endTime` không sau
  * `startTime`, hoặc `restStartTime`/`restEndTime` (khi cả hai có mặt) không hợp lệ (không theo
  * đúng thứ tự, hoặc nằm ngoài khoảng `[startTime, endTime]` của chính ca đó).

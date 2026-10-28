@@ -153,6 +153,11 @@ import {
   doctorAvailabilityPolicySchema,
   doctorAvailabilitySchema,
   doctorShiftSummarySchema,
+  doctorClosingStateSchema,
+  doctorPendingClosuresBoardSchema,
+  closePendingRequestSchema,
+  closePendingResponseSchema,
+  shiftSummaryQuerySchema,
   editAppointmentRequestSchema,
   encounterSummarySchema,
   examStationSummarySchema,
@@ -3874,12 +3879,53 @@ registry.registerPath({
   tags: ['clinic'],
   summary: 'Popup xác nhận "Đóng ca hôm nay" — tổng hợp ca khám trong ngày (cả ngày hôm nay, không riêng phiên ACTIVE hiện tại)',
   security: [{ bearerAuth: [] }],
-  request: { params: doctorAvailabilityParams },
+  request: { params: doctorAvailabilityParams, query: shiftSummaryQuerySchema },
   responses: {
     200: jsonResponse('Thành công', envelope(doctorShiftSummarySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền doctor_availability.update'),
     404: errorResponse('Không tìm thấy (bác sĩ khác scope personal, hoặc thuộc tenant khác)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/doctor-availability/me/closing-state',
+  tags: ['clinic'],
+  summary: 'Thanh đỉnh của bác sĩ: các ngày trước chưa đóng ca (chặn khám) + giờ nhắc đóng ca hôm nay theo ca đã xếp (mockup 28/10/2026)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(doctorClosingStateSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền doctor_availability.update'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/doctor-availability/pending-closures',
+  tags: ['clinic'],
+  summary: 'Dải nhắc của lễ tân/quản trị: bác sĩ ở chi nhánh đang làm việc còn ngày chưa đóng ca',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(doctorPendingClosuresBoardSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền doctor_availability.update'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/doctor-availability/{doctorId}/close-pending',
+  tags: ['clinic'],
+  summary: '"Đóng ca ngày trước" — đóng TẤT CẢ ngày bác sĩ còn chưa đóng (máy chủ tự tính lại), trả lượt dở của ngày cũ về hàng chờ chung Khoa; luôn được phép, lễ tân/quản trị đóng hộ được',
+  security: [{ bearerAuth: [] }],
+  request: { params: doctorAvailabilityParams, body: { content: { 'application/json': { schema: closePendingRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(closePendingResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền doctor_availability.update'),
+    404: errorResponse('Không tìm thấy (bác sĩ khác scope personal)'),
   },
 });
 

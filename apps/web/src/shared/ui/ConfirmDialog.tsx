@@ -12,6 +12,7 @@ import { ModalHeader } from './ModalHeader';
 export function ConfirmDialog({
   icon,
   tone = 'primary',
+  size = 'sm',
   title,
   rows,
   note,
@@ -23,6 +24,8 @@ export function ConfirmDialog({
   icon: Icon;
   /** `danger` = huỷ/xoá/ngưng (biểu tượng đỏ); mặc định xanh thương hiệu. */
   tone?: 'primary' | 'danger';
+  /** `sm` (384px, mặc định) cho hộp ít chữ; `md` (560px) khi dòng thông tin dài (ví dụ liệt kê nhiều ngày). */
+  size?: 'sm' | 'md';
   title: string;
   /** Thông tin ngắn dạng `nhãn | giá trị` có đường kẻ (đối tượng bị tác động, tình trạng...). Giá trị đậm, `sub` là dòng xám nhỏ bên dưới. */
   rows?: Array<{ label: string; value: ReactNode; sub?: string }>;
@@ -46,7 +49,7 @@ export function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
+      <div className={`w-full rounded-xl bg-white p-5 shadow-xl ${size === 'md' ? 'max-w-[560px]' : 'max-w-sm'}`}>
         <ModalHeader icon={icon} tone={tone} title={title} onClose={onClose} />
 
         {rows && rows.length > 0 && (

@@ -11,9 +11,13 @@ import {
   type DoctorDirectoryPort,
 } from '@nexamed/core';
 import type {
+  ClosePendingRequest,
+  ClosePendingResponse,
   DataScope,
   DoctorAvailability,
   DoctorAvailabilityBoardResponse,
+  DoctorClosingState,
+  DoctorPendingClosuresBoard,
   DoctorShiftSummary,
   SetDoctorAvailabilityRequest,
 } from '@nexamed/shared';
@@ -23,6 +27,7 @@ import type { RequestMeta } from '../../common/request-meta';
 import { EncounterRepository } from '../encounter/encounter.repository';
 import { PrescriptionRepository } from '../encounter/prescription.repository';
 import { DoctorAvailabilityRepository, type DoctorAvailabilityRow } from './doctor-availability.repository';
+import { DoctorShiftClosureService } from './doctor-shift-closure.service';
 
 /**
  * "Tạm nghỉ / Đóng ca" của bác sĩ (đặc tả UX gốc, đã cắt bỏ phần vượt hạ tầng v1 — SMS/Zalo,
@@ -40,6 +45,7 @@ export class DoctorAvailabilityService {
     private readonly prescriptionRepository: PrescriptionRepository,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
+    private readonly shiftClosure: DoctorShiftClosureService,
   ) {}
 
   /** `GET /doctor-availability/policy` — chiếu tối thiểu tự-phục vụ, xem docstring schema ở `@nexamed/shared`. */
@@ -61,12 +67,21 @@ export class DoctorAvailabilityService {
    * bác sĩ khác vì họ cũng là người có thể "Đóng ca hộ". Tính theo CẢ NGÀY hôm nay (workDate theo
    * giờ VN), không phải riêng phiên ACTIVE hiện tại — đã hỏi và chốt qua `AskUserQuestion`.
    */
-  async getShiftSummary(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, doctorId: string): Promise<DoctorShiftSummary> {
+  async getShiftSummary(
+    tenantId: string,
+    branchId: string,
+    actorId: string,
+    dataScope: DataScope,
+    doctorId: string,
+    /** Ngày cũ khi đóng ca bù (mockup 28/10/2026); bỏ trống hoặc không trước hôm nay = hôm nay như trước. */
+    date?: string,
+  ): Promise<DoctorShiftSummary> {
     if (dataScope === 'personal' && doctorId !== actorId) {
       throw new NotFoundException();
     }
 
-    const range = vietnamDayRange(getVietnamDateString());
+    const today = getVietnamDateString();
+    const range = vietnamDayRange(date !== undefined && date < today ? date : today);
     const raw = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const [encounterCounts, prescriptionCount] = await Promise.all([
         this.encounterRepository.getShiftCounts(tx, tenantId, branchId, doctorId, range),
@@ -164,6 +179,81 @@ export class DoctorAvailabilityService {
         throw new NotFoundException();
       }
       return this.toDto(row, releasedEncounterCount);
+    });
+  }
+
+  /** `GET /doctor-availability/me/closing-state` — tự-phục vụ, tính cho CHÍNH người gọi. */
+  getMyClosingState(tenantId: string, branchId: string, actorId: string): Promise<DoctorClosingState> {
+    return this.shiftClosure.getClosingState(tenantId, branchId, actorId, actorId);
+  }
+
+  /** Dải nhắc của lễ tân: bác sĩ đang hoạt động ở chi nhánh còn ngày chưa đóng ca. */
+  async getPendingClosuresBoard(tenantId: string, branchId: string, actorId: string): Promise<DoctorPendingClosuresBoard> {
+    const doctors = await this.doctorDirectory.listActiveDoctors(tenantId, branchId);
+    const byDoctor = await this.shiftClosure.listForDoctors(
+      tenantId,
+      branchId,
+      actorId,
+      doctors.map((d) => d.id),
+    );
+    return {
+      items: doctors
+        .filter((d) => byDoctor.has(d.id))
+        .map((d) => ({ doctorId: d.id, doctorName: d.displayName ?? d.fullName, days: byDoctor.get(d.id)! })),
+    };
+  }
+
+  /**
+   * "Đóng ca ngày trước" (mockup duyệt 28/10/2026) — đóng TẤT CẢ ngày bác sĩ còn chưa đóng trong một lần xác nhận.
+   * Luôn được phép (kể cả `allowEmergencyEndShift`/`allowReceptionistEndShift` tắt): đây là việc bắt buộc để được
+   * khám tiếp, không phải đóng ca đột xuất; lễ tân/quản trị đóng hộ được (chủ dự án chốt). Danh sách ngày do MÁY CHỦ
+   * tính lại, không tin client. Chỉ trả về hàng chờ chung các lượt dở CỦA NGÀY CŨ, không đụng lượt của hôm nay.
+   */
+  async closePending(
+    tenantId: string,
+    branchId: string,
+    actorId: string,
+    dataScope: DataScope,
+    targetDoctorId: string,
+    dto: ClosePendingRequest,
+    meta: RequestMeta,
+  ): Promise<ClosePendingResponse> {
+    if (dataScope === 'personal' && targetDoctorId !== actorId) {
+      throw new NotFoundException();
+    }
+    const pending = await this.shiftClosure.listPendingClosures(tenantId, branchId, actorId, targetDoctorId);
+    if (pending.length === 0) {
+      return { closedDates: [], releasedEncounterCount: 0 };
+    }
+
+    const reason = dto.reason?.trim() || null;
+    const beforeUtc = vietnamDayRange(getVietnamDateString()).startUtc;
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      for (const day of pending) {
+        await this.doctorAvailabilityRepository.upsertToday(tx, tenantId, targetDoctorId, 'ENDED', reason, actorId, day.date);
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'doctor_availability.ended',
+          entityType: 'doctor_availability',
+          entityId: targetDoctorId,
+          afterJson: { status: 'ENDED', workDate: day.date, reason, trigger: 'PENDING_CLOSURE', onBehalfOf: targetDoctorId !== actorId },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+      }
+      const released = await this.encounterRepository.releaseOpenBeforeForDoctor(tx, tenantId, branchId, targetDoctorId, beforeUtc, actorId);
+      for (const item of released) {
+        await writeAuditLog(tx, tenantId, {
+          actorId,
+          action: 'encounter.released',
+          entityType: 'encounter',
+          entityId: item.id,
+          afterJson: { reason: 'doctor_availability_ended', previousStatus: item.previousStatus },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+      }
+      return { closedDates: pending.map((d) => d.date), releasedEncounterCount: released.length };
     });
   }
 

@@ -132,6 +132,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getParaclinicalBeforePaymentEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getSpecimenScanRequired: () => Promise.reject(new Error('không dùng trong test này')),
       getPrescriptionSplitBlockEnabled: () => Promise.reject(new Error('không dùng trong test này')),
+      getRequirePreviousShiftClosed: () => Promise.reject(new Error('không dùng trong test này')),
     };
   }
 

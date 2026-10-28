@@ -3707,6 +3707,7 @@ export interface paths {
                                 noShowThresholdMinutes: number;
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
+                                requirePreviousShiftClosed: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
                                 blockBookingWhenNoShiftEnabled: boolean;
                                 minWeeklyDaysOff: number;
@@ -18270,6 +18271,7 @@ export interface paths {
                                 noShowThresholdMinutes: number;
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
+                                requirePreviousShiftClosed: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
                                 blockBookingWhenNoShiftEnabled: boolean;
                                 minWeeklyDaysOff: number;
@@ -18384,6 +18386,7 @@ export interface paths {
                         noShowThresholdMinutes?: number;
                         allowEmergencyEndShift?: boolean;
                         allowReceptionistEndShift?: boolean;
+                        requirePreviousShiftClosed?: boolean;
                         blockBookingOutsideWorkShiftEnabled?: boolean;
                         blockBookingWhenNoShiftEnabled?: boolean;
                         minWeeklyDaysOff?: number;
@@ -18457,6 +18460,7 @@ export interface paths {
                                 noShowThresholdMinutes: number;
                                 allowEmergencyEndShift: boolean;
                                 allowReceptionistEndShift: boolean;
+                                requirePreviousShiftClosed: boolean;
                                 blockBookingOutsideWorkShiftEnabled: boolean;
                                 blockBookingWhenNoShiftEnabled: boolean;
                                 minWeeklyDaysOff: number;
@@ -23883,7 +23887,9 @@ export interface paths {
         /** Popup xác nhận "Đóng ca hôm nay" — tổng hợp ca khám trong ngày (cả ngày hôm nay, không riêng phiên ACTIVE hiện tại) */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    date?: string;
+                };
                 header?: never;
                 path: {
                     doctorId: string;
@@ -23962,6 +23968,269 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctor-availability/me/closing-state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thanh đỉnh của bác sĩ: các ngày trước chưa đóng ca (chặn khám) + giờ nhắc đóng ca hôm nay theo ca đã xếp (mockup 28/10/2026) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                pendingDays: {
+                                    date: string;
+                                    calledCount: number;
+                                    completedCount: number;
+                                    unprocessedCount: number;
+                                    shifts: {
+                                        startTime: string;
+                                        endTime: string;
+                                    }[];
+                                }[];
+                                todayClosingTime: string | null;
+                                /** @enum {string|null} */
+                                todayClosingSource: "SHIFT" | "LEAVE" | "DISABLED" | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền doctor_availability.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctor-availability/pending-closures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dải nhắc của lễ tân/quản trị: bác sĩ ở chi nhánh đang làm việc còn ngày chưa đóng ca */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    doctorId: string;
+                                    doctorName: string;
+                                    days: {
+                                        date: string;
+                                        calledCount: number;
+                                        completedCount: number;
+                                        unprocessedCount: number;
+                                        shifts: {
+                                            startTime: string;
+                                            endTime: string;
+                                        }[];
+                                    }[];
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền doctor_availability.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctor-availability/{doctorId}/close-pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Đóng ca ngày trước" — đóng TẤT CẢ ngày bác sĩ còn chưa đóng (máy chủ tự tính lại), trả lượt dở của ngày cũ về hàng chờ chung Khoa; luôn được phép, lễ tân/quản trị đóng hộ được */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    doctorId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                closedDates: string[];
+                                releasedEncounterCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền doctor_availability.update */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (bác sĩ khác scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

@@ -164,6 +164,11 @@ export const clinicSettingsSchema = z.object({
   allowEmergencyEndShift: z.boolean(),
   allowReceptionistEndShift: z.boolean(),
   /**
+   * "Đóng ca ngày trước" (mockup duyệt 28/10/2026) — mặc định BẬT: bác sĩ còn ngày trước chưa đóng ca thì phải đóng mới được "Bắt đầu khám"/"Nhận ca". Phòng khám không có thói quen
+   * đóng ca (ví dụ chỉ 1 bác sĩ) tắt ở "Cấu hình khám" thì không còn chặn, không còn dải nhắc và hộp thoại ngày trước.
+   */
+  requirePreviousShiftClosed: z.boolean(),
+  /**
    * "Đăng ký ca làm việc" Giai đoạn 2 — pill "Cấu hình phòng khám" → mục con "Lịch hẹn" (cùng khối
    * với "Tự động đánh dấu Không đến", KHÔNG phải pill "Cấu hình khám" — cả hai đều là quy tắc đặt/
    * xử lý lịch hẹn). Tắt (mặc định — an toàn, giữ nguyên hành vi hiện tại): đặt/dời/sửa lịch không
@@ -365,6 +370,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   noShowThresholdMinutes: z.number().int().min(1).max(1440).optional(),
   allowEmergencyEndShift: z.boolean().optional(),
   allowReceptionistEndShift: z.boolean().optional(),
+  requirePreviousShiftClosed: z.boolean().optional(),
   blockBookingOutsideWorkShiftEnabled: z.boolean().optional(),
   blockBookingWhenNoShiftEnabled: z.boolean().optional(),
   minWeeklyDaysOff: z.number().int().min(0).max(6).optional(),
@@ -403,6 +409,8 @@ export const DEFAULT_NO_SHOW_THRESHOLD_MINUTES = 60;
 export const DEFAULT_ALLOW_EMERGENCY_END_SHIFT = true;
 /** Tắt theo mặc định (an toàn — lễ tân KHÔNG thao tác hộ trạng thái bác sĩ khác tới khi chủ động bật). */
 export const DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT = false;
+/** Bật theo mặc định (đúng mockup đã duyệt): ngày trước chưa đóng ca thì chưa được nhận bệnh nhân mới. */
+export const DEFAULT_REQUIRE_PREVIOUS_SHIFT_CLOSED = true;
 /** Tắt theo mặc định (an toàn — giữ nguyên hành vi hiện tại tới khi chủ động bật). */
 export const DEFAULT_BLOCK_BOOKING_OUTSIDE_WORK_SHIFT_ENABLED = false;
 /** Tắt theo mặc định — chỉ chặn ngày bác sĩ không có ca khi chủ động bật (kèm công tắc cha). */

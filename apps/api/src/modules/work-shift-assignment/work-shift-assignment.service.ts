@@ -471,6 +471,29 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
     return dayUsesShifts && (byDoctor[doctorId]?.length ?? 0) === 0;
   }
 
+  /** `WorkShiftAssignmentReaderPort` — "phiên trước chưa đóng" của bác sĩ (module `doctor-availability`, qua port). */
+  listAssignedShiftsInRange(
+    tenantId: string,
+    branchId: string,
+    userIds: string[],
+    fromDate: string,
+    toDate: string,
+  ): ReturnType<WorkShiftAssignmentReaderPort['listAssignedShiftsInRange']> {
+    if (userIds.length === 0) return Promise.resolve({});
+    const wanted = new Set(userIds);
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const rows = await this.repository.list(tx, tenantId, branchId, { from: fromDate, to: toDate });
+      const result: Record<string, Array<{ date: string; startTime: string; endTime: string }>> = {};
+      for (const row of rows) {
+        if (!wanted.has(row.userId)) continue;
+        const list = result[row.userId] ?? (result[row.userId] = []);
+        list.push({ date: row.workDate.toISOString().slice(0, 10), startTime: row.workShift.startTime, endTime: row.workShift.endTime });
+      }
+      for (const list of Object.values(result)) list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+      return result;
+    });
+  }
+
   /** `WorkShiftAssignmentReaderPort` — "Đơn xin nghỉ" (#224), module `leave-request` đọc qua port. */
   listShiftsForUserOnDate(
     tenantId: string,

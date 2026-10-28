@@ -2,6 +2,10 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
 import {
   CLINIC_CONFIG_READER_PORT,
+  DOCTOR_SHIFT_CLOSURE_PORT,
+  DoctorShiftNotClosedError,
+  formatVietnamDateDisplay,
+  type DoctorShiftClosurePort,
   ClinicalRecordAlreadySignedError,
   DEFAULT_PRESCRIPTION_KIND_MAPPING,
   groupByPrescriptionKind,
@@ -204,6 +208,7 @@ export class EncounterService {
     @Inject(PARACLINICAL_RESULTS_READER_PORT) private readonly paraclinicalResultsReader: ParaclinicalResultsReaderPort,
     @Inject(PARACLINICAL_PROGRESS_READER_PORT) private readonly paraclinicalProgress: ParaclinicalProgressReaderPort,
     @Inject(WORK_SHIFT_ASSIGNMENT_READER_PORT) private readonly workShiftAssignmentReader: WorkShiftAssignmentReaderPort,
+    @Inject(DOCTOR_SHIFT_CLOSURE_PORT) private readonly doctorShiftClosure: DoctorShiftClosurePort,
     @Inject(ENCOUNTER_BILLING_READER_PORT) private readonly encounterBillingReader: EncounterBillingReaderPort,
     @Inject(CLINICAL_ORDER_CANCELLATION_PORT) private readonly clinicalOrderCancellation: ClinicalOrderCancellationPort,
     private readonly diagnosisSuggestionService: DiagnosisSuggestionService,
@@ -239,6 +244,15 @@ export class EncounterService {
     // Thu ngân cơ bản (Sprint 5/6) — cấu hình cấp phòng khám, đọc TRƯỚC transaction chính cùng lý
     // do actorDepartmentId ở trên (port tự mở transaction riêng).
     const deferredPaymentEnabled = await this.clinicConfigReader.getDeferredPaymentEnabled(tenantId);
+    // Phiên trước chưa đóng thì chưa được nhận bệnh nhân mới (mockup duyệt 28/10/2026). Chỉ bác sĩ (`personal`) bắt đầu
+    // khám; cổng tự mở transaction riêng nên hỏi TRƯỚC transaction chính. Lượt đang khám dở vẫn hoàn tất bình thường —
+    // cổng chỉ chặn việc BẮT ĐẦU/NHẬN lượt mới.
+    if (dataScope === 'personal') {
+      const pendingClosures = await this.doctorShiftClosure.listPendingClosures(tenantId, branchId, actorId, actorId);
+      if (pendingClosures.length > 0) {
+        throw new DoctorShiftNotClosedError(pendingClosures.map((day) => formatVietnamDateDisplay(day.date)));
+      }
+    }
 
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.encounterRepository.findByIdWithInvoiceStatus(tx, tenantId, branchId, id);

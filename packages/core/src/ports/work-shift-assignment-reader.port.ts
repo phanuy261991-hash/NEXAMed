@@ -37,6 +37,19 @@ export interface WorkShiftAssignmentReaderPort {
   ): Promise<Array<{ workShiftId: string; name: string; startTime: string; endTime: string }>>;
 
   /**
+   * Các ca đã xếp (kèm NGÀY lịch VN `YYYY-MM-DD`) trong `[fromDate, toDate]` của từng người trong `userIds` ở chi nhánh — "phiên trước chưa đóng"
+   * của bác sĩ (mockup 28/10/2026). Key = `userId`, chỉ có key khi người đó có ca; mỗi ngày các ca sắp theo giờ bắt đầu.
+   * Tự mở transaction riêng (gọi NGOÀI transaction đang mở).
+   */
+  listAssignedShiftsInRange(
+    tenantId: string,
+    branchId: string,
+    userIds: string[],
+    fromDate: string,
+    toDate: string,
+  ): Promise<Record<string, Array<{ date: string; startTime: string; endTime: string }>>>;
+
+  /**
    * Có phải chặn đặt lịch/tiếp nhận cho bác sĩ này vào ngày `date` vì bác sĩ KHÔNG có ca nào không? `true` chỉ
    * khi: công tắc "Chặn đặt lịch ngoài ca" VÀ công tắc con "Chặn cả khi bác sĩ không có ca nào trong ngày" đều
    * bật, ngày đó đã có ít nhất 1 bác sĩ đăng ký ca, và bác sĩ này không có ca nào. Tự mở transaction riêng

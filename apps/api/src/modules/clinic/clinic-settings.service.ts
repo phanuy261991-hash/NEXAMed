@@ -40,6 +40,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         noShowThresholdMinutes,
         allowEmergencyEndShift,
         allowReceptionistEndShift,
+        requirePreviousShiftClosed,
         blockBookingOutsideWorkShiftEnabled,
         blockBookingWhenNoShiftEnabled,
         minWeeklyDaysOff,
@@ -73,6 +74,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getNoShowThresholdMinutes(tx, tenantId),
         this.clinicSettingsRepository.getAllowEmergencyEndShift(tx, tenantId),
         this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
+        this.clinicSettingsRepository.getRequirePreviousShiftClosed(tx, tenantId),
         this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId),
         this.clinicSettingsRepository.getBlockBookingWhenNoShiftEnabled(tx, tenantId),
         this.clinicSettingsRepository.getMinWeeklyDaysOff(tx, tenantId),
@@ -107,6 +109,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         noShowThresholdMinutes,
         allowEmergencyEndShift,
         allowReceptionistEndShift,
+        requirePreviousShiftClosed,
         blockBookingOutsideWorkShiftEnabled,
         blockBookingWhenNoShiftEnabled,
         minWeeklyDaysOff,
@@ -227,6 +230,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
     });
   }
 
+  /** `ClinicConfigReaderPort` — công tắc "Bắt buộc đóng ca ngày trước mới được khám" (mockup 28/10/2026). */
+  getRequirePreviousShiftClosed(tenantId: string): Promise<boolean> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getRequirePreviousShiftClosed(tx, tenantId));
+  }
+
   /** `ClinicConfigReaderPort` ("Đăng ký ca làm việc" Giai đoạn 2) — xem comment ở khai báo class. */
   getBlockBookingOutsideWorkShiftEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getBlockBookingOutsideWorkShiftEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId));
@@ -297,6 +305,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       }
       if (dto.allowReceptionistEndShift !== undefined) {
         await this.clinicSettingsRepository.upsertAllowReceptionistEndShift(tx, tenantId, actorId, dto.allowReceptionistEndShift);
+      }
+      if (dto.requirePreviousShiftClosed !== undefined) {
+        await this.clinicSettingsRepository.upsertRequirePreviousShiftClosed(tx, tenantId, actorId, dto.requirePreviousShiftClosed);
       }
       if (dto.blockBookingOutsideWorkShiftEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertBlockBookingOutsideWorkShiftEnabled(tx, tenantId, actorId, dto.blockBookingOutsideWorkShiftEnabled);
@@ -380,6 +391,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.noShowThresholdMinutes !== undefined ||
         dto.allowEmergencyEndShift !== undefined ||
         dto.allowReceptionistEndShift !== undefined ||
+        dto.requirePreviousShiftClosed !== undefined ||
         dto.blockBookingOutsideWorkShiftEnabled !== undefined ||
         dto.blockBookingWhenNoShiftEnabled !== undefined ||
         dto.minWeeklyDaysOff !== undefined ||
@@ -425,6 +437,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         noShowThresholdMinutes,
         allowEmergencyEndShift,
         allowReceptionistEndShift,
+        requirePreviousShiftClosed,
         blockBookingOutsideWorkShiftEnabled,
         blockBookingWhenNoShiftEnabled,
         minWeeklyDaysOff,
@@ -458,6 +471,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getNoShowThresholdMinutes(tx, tenantId),
         this.clinicSettingsRepository.getAllowEmergencyEndShift(tx, tenantId),
         this.clinicSettingsRepository.getAllowReceptionistEndShift(tx, tenantId),
+        this.clinicSettingsRepository.getRequirePreviousShiftClosed(tx, tenantId),
         this.clinicSettingsRepository.getBlockBookingOutsideWorkShiftEnabled(tx, tenantId),
         this.clinicSettingsRepository.getBlockBookingWhenNoShiftEnabled(tx, tenantId),
         this.clinicSettingsRepository.getMinWeeklyDaysOff(tx, tenantId),
@@ -492,6 +506,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         noShowThresholdMinutes,
         allowEmergencyEndShift,
         allowReceptionistEndShift,
+        requirePreviousShiftClosed,
         blockBookingOutsideWorkShiftEnabled,
         blockBookingWhenNoShiftEnabled,
         minWeeklyDaysOff,

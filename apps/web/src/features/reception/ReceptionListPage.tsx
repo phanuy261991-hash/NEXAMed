@@ -19,6 +19,7 @@ import { ApiError } from '../../shared/api/client';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { useInfiniteScrollSentinel } from '../../shared/hooks/useInfiniteScrollSentinel';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
+import { PendingClosuresStrip } from './PendingClosuresStrip';
 import { Button } from '../../shared/ui/Button';
 import { CancelEncounterDialog } from '../../shared/ui/CancelEncounterDialog';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -198,6 +199,8 @@ export function ReceptionListPage() {
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
       <h1 className="sr-only">Bệnh nhân trong ngày</h1>
+
+      <PendingClosuresStrip />
 
       <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2.5 px-1">
         <div className="flex items-center gap-1.5">

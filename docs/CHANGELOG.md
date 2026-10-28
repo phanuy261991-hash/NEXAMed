@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-10-28
+
+### Đóng ca bác sĩ gắn lịch làm việc; ngày trước chưa đóng ca thì chưa được khám; công tắc tắt yêu cầu (`docs/DECISIONS.md` #266)
+
+Nhắc đóng ca nay theo **ca đã xếp** của bác sĩ (ca cuối trong ngày), phòng khám không phân ca thì theo giờ đóng cửa như cũ. Quá giờ chỉ hiện **chip đỏ trên thanh đỉnh**, không còn hộp thoại tự bật (kể cả đăng nhập hoặc tải lại sau giờ). Bác sĩ còn **ngày trước chưa đóng ca** (có nhận lượt khám hoặc có ca đã xếp) thì phải đóng mới được "Bắt đầu khám"/"Nhận ca": giao diện hiện dải cảnh báo ở Hàng đợi khám và hộp "Đóng ca ngày trước" (một ngày hoặc nhiều ngày, một lần xác nhận); máy chủ cũng từ chối. Lễ tân/quản trị có dải "Đóng ca hộ" ở "Bệnh nhân trong ngày". Lượt khám dở của ngày cũ trả về hàng chờ chung, lượt của hôm nay không bị đụng. **Cấu hình khám → Tạm nghỉ / Đóng ca** có công tắc mới "Nhắc và bắt buộc đóng ca" (mặc định bật); tắt thì không chip nhắc, không chặn khám, không dải nhắc — cho phòng khám không có thói quen đóng ca (ví dụ chỉ 1 bác sĩ). Chỉ tính từ ngày hệ thống lần đầu được hỏi sau khi nâng cấp, không dồn ngày cũ. Không migration; chưa ghi nhận thay đổi nào ở `db:seed`.
+
 ## 2026-10-27
 
 ### Danh mục Cận lâm sàng: tách rõ "Loại dịch vụ" và "Nhóm dịch vụ", thêm ô lọc theo Nhóm, nạp sẵn 6 nhóm (`docs/DECISIONS.md` #265)

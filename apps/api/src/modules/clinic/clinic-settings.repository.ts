@@ -8,6 +8,7 @@ import {
   businessHoursSchema,
   type BusinessCodeType,
   DEFAULT_ALLOW_EMERGENCY_END_SHIFT,
+  DEFAULT_REQUIRE_PREVIOUS_SHIFT_CLOSED,
   DEFAULT_ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED,
   DEFAULT_PARACLINICAL_BEFORE_PAYMENT_ENABLED,
   DEFAULT_ALLOW_RECEPTIONIST_END_SHIFT,
@@ -59,6 +60,7 @@ const NO_SHOW_THRESHOLD_KEY = 'no_show_threshold_minutes';
 const noShowThresholdSchema = z.number().int().min(1).max(1440);
 // "Tạm nghỉ / Đóng ca" của bác sĩ — bật theo mặc định (tính năng chính, không phải ngoại lệ).
 const ALLOW_EMERGENCY_END_SHIFT_KEY = 'allow_emergency_end_shift';
+const REQUIRE_PREVIOUS_SHIFT_CLOSED_KEY = 'require_previous_shift_closed';
 const allowEmergencyEndShiftSchema = z.boolean();
 // Tắt theo mặc định (an toàn) — lễ tân KHÔNG thao tác hộ trạng thái bác sĩ khác tới khi chủ động bật.
 const ALLOW_RECEPTIONIST_END_SHIFT_KEY = 'allow_receptionist_end_shift';
@@ -243,6 +245,15 @@ export class ClinicSettingsRepository {
     }
     const parsed = allowEmergencyEndShiftSchema.safeParse(setting.valueJson);
     return parsed.success ? parsed.data : DEFAULT_ALLOW_EMERGENCY_END_SHIFT;
+  }
+
+  async getRequirePreviousShiftClosed(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: REQUIRE_PREVIOUS_SHIFT_CLOSED_KEY } });
+    if (!setting) {
+      return DEFAULT_REQUIRE_PREVIOUS_SHIFT_CLOSED;
+    }
+    const parsed = allowEmergencyEndShiftSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_REQUIRE_PREVIOUS_SHIFT_CLOSED;
   }
 
   async getAllowReceptionistEndShift(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
@@ -604,6 +615,10 @@ export class ClinicSettingsRepository {
 
   upsertPrescriptionKindMapping(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: PrescriptionKindMapping) {
     return this.upsert(tx, tenantId, actorId, PRESCRIPTION_KIND_MAPPING_KEY, value);
+  }
+
+  upsertRequirePreviousShiftClosed(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, REQUIRE_PREVIOUS_SHIFT_CLOSED_KEY, value);
   }
 
   upsertAllowEmergencyEndShift(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {

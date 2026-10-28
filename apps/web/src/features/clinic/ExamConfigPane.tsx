@@ -173,6 +173,28 @@ export function ExamConfigPane() {
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
           </label>
         </div>
+
+        <div className="mt-4 flex items-start justify-between gap-5 border-t border-slate-100 pt-4">
+          <div>
+            <p className="text-[14.5px] font-semibold text-slate-900">Nhắc và bắt buộc đóng ca</p>
+            <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+              Bật: hết giờ làm việc hiện nhắc đóng ca, và bác sĩ còn ngày trước chưa đóng ca phải đóng (một lần xác nhận) mới nhận được bệnh nhân mới; lễ tân
+              đóng hộ được. Tắt: không nhắc, không chặn, không hiện dải nhắc — phù hợp phòng khám không có thói quen đóng ca (ví dụ chỉ 1 bác sĩ).
+            </p>
+          </div>
+          <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={query.data.requirePreviousShiftClosed}
+              disabled={mutation.isPending}
+              onChange={(e) => mutation.mutate({ requirePreviousShiftClosed: e.target.checked })}
+              aria-label="Nhắc và bắt buộc đóng ca"
+            />
+            <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
+            <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </label>
+        </div>
       </div>
 
       <div className={`mt-4 ${sectionBoxClassName}`}>

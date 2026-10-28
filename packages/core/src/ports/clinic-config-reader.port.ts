@@ -61,6 +61,12 @@ export interface ClinicConfigReaderPort {
   getDoctorAvailabilityPolicy(tenantId: string): Promise<{ allowEmergencyEndShift: boolean; allowReceptionistEndShift: boolean }>;
 
   /**
+   * Công tắc "Bắt buộc đóng ca ngày trước mới được khám" (mặc định BẬT, mockup 28/10/2026). Tắt thì module `doctor-availability` không tính ngày chưa đóng
+   * (không chặn khám, không dải nhắc, không ghi mốc áp dụng). Tách riêng khỏi `getDoctorAvailabilityPolicy` để không đổi hình dạng chiếu tự-phục vụ đã có.
+   */
+  getRequirePreviousShiftClosed(tenantId: string): Promise<boolean>;
+
+  /**
    * "Đăng ký ca làm việc" Giai đoạn 2 — bật/tắt chặn đặt lịch hẹn ngoài ca bác sĩ đã đăng ký
    * (`tenant_setting` key `block_booking_outside_work_shift_enabled`, mặc định `false`).
    * `AppointmentService` đọc qua port này (module `clinic` sở hữu `tenant_setting`), cùng lý do

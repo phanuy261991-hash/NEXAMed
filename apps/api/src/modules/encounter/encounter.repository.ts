@@ -651,4 +651,60 @@ export class EncounterRepository {
       .map((row) => row.completedAt.getTime() - row.startedAt.getTime());
     return { calledCount, cancelledCount, completedDurationsMs };
   }
+
+  /**
+   * "Phiên trước chưa đóng" (mockup 28/10/2026) — lượt khám của các bác sĩ trong `[startUtc, endUtc)` để suy ra ngày
+   * nào bác sĩ có làm việc và đếm số liệu từng ngày: lượt đã gọi khám (`startedAt` trong khoảng) HOẶC lượt còn dở đã
+   * gán cho bác sĩ (`CHECKED_IN`/`IN_CONSULTATION`, mốc `checkedInAt`). Chỉ chi nhánh đang làm việc.
+   */
+  async listDoctorEncountersInRange(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    branchId: string,
+    doctorIds: string[],
+    range: { startUtc: Date; endUtc: Date },
+  ): Promise<{ doctorId: string; status: string; checkedInAt: Date; startedAt: Date | null }[]> {
+    if (doctorIds.length === 0) return [];
+    const rows = await tx.encounter.findMany({
+      where: {
+        tenantId,
+        branchId,
+        doctorId: { in: doctorIds },
+        deletedAt: null,
+        OR: [
+          { startedAt: { gte: range.startUtc, lt: range.endUtc } },
+          { status: { in: ['CHECKED_IN', 'IN_CONSULTATION'] }, checkedInAt: { gte: range.startUtc, lt: range.endUtc } },
+        ],
+      },
+      select: { doctorId: true, status: true, checkedInAt: true, startedAt: true },
+    });
+    return rows.flatMap((row) => (row.doctorId === null ? [] : [{ doctorId: row.doctorId, status: row.status, checkedInAt: row.checkedInAt, startedAt: row.startedAt }]));
+  }
+
+  /**
+   * Đóng ca NGÀY CŨ — như `releaseAllForDoctor()` nhưng CHỈ trả về hàng chờ chung các lượt còn dở có `checkedInAt`
+   * trước `beforeUtc` (đầu ngày hôm nay). Lượt của hôm nay gán cho bác sĩ KHÔNG bị đụng, nếu không đóng ca bù sáng
+   * sớm sẽ làm mất "Bệnh nhân của tôi" của chính ngày hôm nay.
+   */
+  async releaseOpenBeforeForDoctor(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    branchId: string,
+    doctorId: string,
+    beforeUtc: Date,
+    actorId: string,
+  ): Promise<{ id: string; previousStatus: 'CHECKED_IN' | 'IN_CONSULTATION' }[]> {
+    const targets = await tx.encounter.findMany({
+      where: { tenantId, branchId, doctorId, deletedAt: null, status: { in: ['CHECKED_IN', 'IN_CONSULTATION'] }, checkedInAt: { lt: beforeUtc } },
+      select: { id: true, status: true },
+    });
+    if (targets.length === 0) {
+      return [];
+    }
+    await tx.encounter.updateMany({
+      where: { tenantId, id: { in: targets.map((t) => t.id) } },
+      data: { doctorId: null, startedAt: null, status: 'CHECKED_IN', updatedBy: actorId, version: { increment: 1 } },
+    });
+    return targets.map((t) => ({ id: t.id, previousStatus: t.status as 'CHECKED_IN' | 'IN_CONSULTATION' }));
+  }
 }

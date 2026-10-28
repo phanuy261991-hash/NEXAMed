@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   BusinessCodeType,
   ClinicProfile,
+  ClosePendingRequest,
   CreateExamStationRequest,
   CreateFloorRequest,
   CreateRoomRequest,
@@ -48,6 +49,8 @@ import {
   getDoctorAvailabilityPolicy,
   getDoctorAvailabilityToday,
   getDoctorShiftSummary,
+  getMyClosingState,
+  getPendingClosuresBoard,
   getMyRoomSession,
   getPharmacyStockTrackingStatus,
   getRoomOptions,
@@ -63,6 +66,7 @@ import {
   updateWorkShift,
   updateBusinessCodeTemplate,
   setDoctorAvailability,
+  closePendingShifts,
   setMyRoomSession,
   updateClinicProfile,
   updateClinicSettings,
@@ -562,11 +566,51 @@ export function useDoctorAvailabilityTodayQuery(enabled = true) {
 
 /** Popup xác nhận "Đóng ca hôm nay" — tổng hợp ca khám trong ngày. Không `refetchInterval`, chỉ tải
  * đúng 1 lần khi mở dialog (`enabled` theo `doctorId`), khác `useDoctorAvailabilityTodayQuery`. */
-export function useDoctorShiftSummaryQuery(doctorId: string) {
+export function useDoctorShiftSummaryQuery(doctorId: string, date?: string) {
   const { tenantId } = useAppConfig();
   return useQuery({
-    queryKey: queryKey(tenantId, 'clinic', 'doctor-shift-summary', doctorId),
-    queryFn: () => getDoctorShiftSummary(doctorId),
+    queryKey: queryKey(tenantId, 'clinic', 'doctor-shift-summary', doctorId, date ?? 'today'),
+    queryFn: () => getDoctorShiftSummary(doctorId, date),
+  });
+}
+
+/**
+ * Trạng thái đóng ca của CHÍNH bác sĩ đang đăng nhập: các ngày trước chưa đóng (chặn khám) + giờ nhắc đóng ca hôm nay
+ * theo ca đã xếp. Làm mới mỗi phút và khi quay lại cửa sổ, để chip "quá giờ" và dải cảnh báo luôn đúng (không WebSocket).
+ */
+export function useMyClosingStateQuery(enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'my-closing-state'),
+    queryFn: getMyClosingState,
+    refetchInterval: 60_000,
+    enabled,
+  });
+}
+
+/** Dải nhắc của lễ tân/quản trị — bác sĩ nào còn ngày chưa đóng ca. */
+export function usePendingClosuresBoardQuery(enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'pending-closures-board'),
+    queryFn: getPendingClosuresBoard,
+    refetchInterval: 60_000,
+    enabled,
+  });
+}
+
+/** "Đóng ca ngày trước" — làm mới ngay dải/chip, bảng trạng thái hôm nay và hàng đợi (lượt dở trả về hàng chờ chung). */
+export function useClosePendingShiftsMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ doctorId, body }: { doctorId: string; body: ClosePendingRequest }) => closePendingShifts(doctorId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'my-closing-state') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'pending-closures-board') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'doctor-availability-today') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'reception') });
+    },
   });
 }
 

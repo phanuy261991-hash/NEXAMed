@@ -137,6 +137,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   // đã kiểm ở PermissionGuard trước đó), cùng ngữ nghĩa 403 với PERMISSION_DENIED.
   DOCTOR_AVAILABILITY_RECEPTION_DISABLED: HttpStatus.FORBIDDEN,
   DOCTOR_AVAILABILITY_EMERGENCY_DISABLED: HttpStatus.FORBIDDEN,
+  // Phiên trước chưa đóng ca → chưa được "Bắt đầu khám"/"Nhận ca": xung đột với trạng thái hiện có, không phải thiếu quyền.
+  DOCTOR_SHIFT_NOT_CLOSED: HttpStatus.CONFLICT,
   // "Đăng ký ca làm việc" Giai đoạn 2 — trùng đăng ký/khoá theo ngày là xung đột với trạng thái
   // hiện có, cùng nhóm CONFLICT ở trên; đặt lịch ngoài ca đã đăng ký cũng là xung đột nghiệp vụ,
   // không phải lỗi input (422 mặc định không phù hợp).

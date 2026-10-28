@@ -22,8 +22,12 @@ import type {
   Icd10SuggestionStatus,
   CreateFloorRequest,
   CreateRoomRequest,
+  ClosePendingRequest,
+  ClosePendingResponse,
   DoctorAvailability,
   DoctorAvailabilityBoardResponse,
+  DoctorClosingState,
+  DoctorPendingClosuresBoard,
   DoctorAvailabilityPolicy,
   DoctorShiftSummary,
   ExamStationSummary,
@@ -237,10 +241,27 @@ export async function setDoctorAvailability(doctorId: string, body: SetDoctorAva
 }
 
 /** Popup xác nhận "Đóng ca hôm nay" — tổng hợp ca khám trong ngày (mockup duyệt trước khi code). */
-export async function getDoctorShiftSummary(doctorId: string): Promise<DoctorShiftSummary> {
+export async function getDoctorShiftSummary(doctorId: string, date?: string): Promise<DoctorShiftSummary> {
   return unwrap(
-    await getApiClient().GET('/api/v1/doctor-availability/{doctorId}/shift-summary', { params: { path: { doctorId } } }),
+    await getApiClient().GET('/api/v1/doctor-availability/{doctorId}/shift-summary', { params: { path: { doctorId }, query: date ? { date } : {} } }),
   ) as DoctorShiftSummary;
+}
+
+/** Thanh đỉnh của bác sĩ: các ngày chưa đóng ca (chặn khám) + giờ nhắc đóng ca hôm nay theo ca đã xếp. Tính cho chính người gọi. */
+export async function getMyClosingState(): Promise<DoctorClosingState> {
+  return unwrap(await getApiClient().GET('/api/v1/doctor-availability/me/closing-state')) as DoctorClosingState;
+}
+
+/** Dải nhắc của lễ tân/quản trị: bác sĩ ở chi nhánh đang làm việc còn ngày chưa đóng ca. */
+export async function getPendingClosuresBoard(): Promise<DoctorPendingClosuresBoard> {
+  return unwrap(await getApiClient().GET('/api/v1/doctor-availability/pending-closures')) as DoctorPendingClosuresBoard;
+}
+
+/** "Đóng ca ngày trước" — đóng TẤT CẢ ngày còn chưa đóng của bác sĩ (máy chủ tự tính lại danh sách ngày). */
+export async function closePendingShifts(doctorId: string, body: ClosePendingRequest): Promise<ClosePendingResponse> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/doctor-availability/{doctorId}/close-pending', { params: { path: { doctorId } }, body }),
+  ) as ClosePendingResponse;
 }
 
 /** "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114) — 7 loại mã nghiệp vụ. */

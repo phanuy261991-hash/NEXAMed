@@ -70,3 +70,53 @@ export const doctorShiftSummarySchema = z.object({
   prescriptionCount: z.number().int().nonnegative(),
 });
 export type DoctorShiftSummary = z.infer<typeof doctorShiftSummarySchema>;
+
+/** Ngày lịch VN `YYYY-MM-DD`. */
+const vietnamDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/** `GET .../shift-summary?date=` — tổng hợp một NGÀY CŨ khi đóng ca bù; bỏ trống = hôm nay như trước. */
+export const shiftSummaryQuerySchema = z.object({ date: vietnamDateSchema.optional() });
+export type ShiftSummaryQuery = z.infer<typeof shiftSummaryQuerySchema>;
+
+/**
+ * Một ngày bác sĩ còn chưa đóng ca ("phiên trước chưa đóng", mockup duyệt 28/10/2026): ngày trước hôm nay mà bác sĩ
+ * có nhận lượt khám, hoặc có ca đã xếp (không nghỉ phép cả ngày được duyệt), và chưa có bản ghi "Đã đóng ca".
+ */
+export const pendingClosureDaySchema = z.object({
+  date: vietnamDateSchema,
+  calledCount: z.number().int().nonnegative(),
+  completedCount: z.number().int().nonnegative(),
+  unprocessedCount: z.number().int().nonnegative(),
+  /** Ca đã xếp của ngày đó (`HH:mm`); rỗng nếu ngày đó không có ca. */
+  shifts: z.array(z.object({ startTime: z.string(), endTime: z.string() })),
+});
+export type PendingClosureDayDto = z.infer<typeof pendingClosureDaySchema>;
+
+/**
+ * `GET /doctor-availability/me/closing-state` — tự-phục vụ cho thanh đỉnh của bác sĩ: các ngày chưa đóng (chặn khám)
+ * và GIỜ nhắc đóng ca hôm nay. `todayClosingTime` = giờ kết thúc của ca CUỐI đã xếp hôm nay (`HH:mm`); `null` kèm
+ * `todayClosingSource=null` = không có ca nào → giao diện dùng giờ đóng cửa phòng khám; `todayClosingSource='LEAVE'` =
+ * nghỉ phép cả ngày đã được duyệt → không nhắc; `todayClosingSource='DISABLED'` = phòng khám tắt "Nhắc và bắt buộc đóng ca" ở Cấu hình khám → không nhắc, không có ngày chặn.
+ */
+export const doctorClosingStateSchema = z.object({
+  pendingDays: z.array(pendingClosureDaySchema),
+  todayClosingTime: z.string().nullable(),
+  todayClosingSource: z.enum(['SHIFT', 'LEAVE', 'DISABLED']).nullable(),
+});
+export type DoctorClosingState = z.infer<typeof doctorClosingStateSchema>;
+
+/** `GET /doctor-availability/pending-closures` — dải nhắc của lễ tân: bác sĩ nào còn ngày chưa đóng ca. */
+export const doctorPendingClosuresBoardSchema = z.object({
+  items: z.array(z.object({ doctorId: z.string().uuid(), doctorName: z.string(), days: z.array(pendingClosureDaySchema) })),
+});
+export type DoctorPendingClosuresBoard = z.infer<typeof doctorPendingClosuresBoardSchema>;
+
+/** `POST /doctor-availability/:doctorId/close-pending` — đóng TẤT CẢ ngày chưa đóng trong một lần xác nhận. */
+export const closePendingRequestSchema = z.object({ reason: z.string().max(500).optional() });
+export type ClosePendingRequest = z.infer<typeof closePendingRequestSchema>;
+
+export const closePendingResponseSchema = z.object({
+  closedDates: z.array(vietnamDateSchema),
+  releasedEncounterCount: z.number().int().nonnegative(),
+});
+export type ClosePendingResponse = z.infer<typeof closePendingResponseSchema>;

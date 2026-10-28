@@ -8856,6 +8856,9 @@
                         "allowReceptionistEndShift": {
                           "type": "boolean"
                         },
+                        "requirePreviousShiftClosed": {
+                          "type": "boolean"
+                        },
                         "blockBookingOutsideWorkShiftEnabled": {
                           "type": "boolean"
                         },
@@ -8944,6 +8947,7 @@
                         "noShowThresholdMinutes",
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
+                        "requirePreviousShiftClosed",
                         "blockBookingOutsideWorkShiftEnabled",
                         "blockBookingWhenNoShiftEnabled",
                         "minWeeklyDaysOff",
@@ -47087,6 +47091,9 @@
                         "allowReceptionistEndShift": {
                           "type": "boolean"
                         },
+                        "requirePreviousShiftClosed": {
+                          "type": "boolean"
+                        },
                         "blockBookingOutsideWorkShiftEnabled": {
                           "type": "boolean"
                         },
@@ -47175,6 +47182,7 @@
                         "noShowThresholdMinutes",
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
+                        "requirePreviousShiftClosed",
                         "blockBookingOutsideWorkShiftEnabled",
                         "blockBookingWhenNoShiftEnabled",
                         "minWeeklyDaysOff",
@@ -47475,6 +47483,9 @@
                   "allowReceptionistEndShift": {
                     "type": "boolean"
                   },
+                  "requirePreviousShiftClosed": {
+                    "type": "boolean"
+                  },
                   "blockBookingOutsideWorkShiftEnabled": {
                     "type": "boolean"
                   },
@@ -47753,6 +47764,9 @@
                         "allowReceptionistEndShift": {
                           "type": "boolean"
                         },
+                        "requirePreviousShiftClosed": {
+                          "type": "boolean"
+                        },
                         "blockBookingOutsideWorkShiftEnabled": {
                           "type": "boolean"
                         },
@@ -47841,6 +47855,7 @@
                         "noShowThresholdMinutes",
                         "allowEmergencyEndShift",
                         "allowReceptionistEndShift",
+                        "requirePreviousShiftClosed",
                         "blockBookingOutsideWorkShiftEnabled",
                         "blockBookingWhenNoShiftEnabled",
                         "minWeeklyDaysOff",
@@ -59967,6 +59982,15 @@
             "required": true,
             "name": "doctorId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "date",
+            "in": "query"
           }
         ],
         "responses": {
@@ -60098,6 +60122,527 @@
           },
           "404": {
             "description": "Không tìm thấy (bác sĩ khác scope personal, hoặc thuộc tenant khác)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/doctor-availability/me/closing-state": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "Thanh đỉnh của bác sĩ: các ngày trước chưa đóng ca (chặn khám) + giờ nhắc đóng ca hôm nay theo ca đã xếp (mockup 28/10/2026)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "pendingDays": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "calledCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "completedCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "unprocessedCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "shifts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "startTime": {
+                                      "type": "string"
+                                    },
+                                    "endTime": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "startTime",
+                                    "endTime"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "date",
+                              "calledCount",
+                              "completedCount",
+                              "unprocessedCount",
+                              "shifts"
+                            ]
+                          }
+                        },
+                        "todayClosingTime": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "todayClosingSource": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "SHIFT",
+                            "LEAVE",
+                            "DISABLED"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "pendingDays",
+                        "todayClosingTime",
+                        "todayClosingSource"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền doctor_availability.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/doctor-availability/pending-closures": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "Dải nhắc của lễ tân/quản trị: bác sĩ ở chi nhánh đang làm việc còn ngày chưa đóng ca",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "doctorId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "doctorName": {
+                                "type": "string"
+                              },
+                              "days": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "date": {
+                                      "type": "string",
+                                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                    },
+                                    "calledCount": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    "completedCount": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    "unprocessedCount": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    "shifts": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "startTime": {
+                                            "type": "string"
+                                          },
+                                          "endTime": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "startTime",
+                                          "endTime"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "date",
+                                    "calledCount",
+                                    "completedCount",
+                                    "unprocessedCount",
+                                    "shifts"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "doctorId",
+                              "doctorName",
+                              "days"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền doctor_availability.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/doctor-availability/{doctorId}/close-pending": {
+      "post": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Đóng ca ngày trước\" — đóng TẤT CẢ ngày bác sĩ còn chưa đóng (máy chủ tự tính lại), trả lượt dở của ngày cũ về hàng chờ chung Khoa; luôn được phép, lễ tân/quản trị đóng hộ được",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "doctorId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "closedDates": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          }
+                        },
+                        "releasedEncounterCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "closedDates",
+                        "releasedEncounterCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền doctor_availability.update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (bác sĩ khác scope personal)",
             "content": {
               "application/json": {
                 "schema": {

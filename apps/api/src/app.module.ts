@@ -35,6 +35,7 @@ import { StockAvailabilityModule } from './modules/inventory/stock-availability.
 import { BillingModule } from './modules/billing/billing.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { DoctorAvailabilityModule } from './modules/doctor-availability/doctor-availability.module';
+import { DoctorShiftClosureModule } from './modules/doctor-availability/doctor-shift-closure.module';
 import { WorkShiftAssignmentModule } from './modules/work-shift-assignment/work-shift-assignment.module';
 import { LeaveRequestModule } from './modules/leave-request/leave-request.module';
 import { ShiftSwapModule } from './modules/shift-swap/shift-swap.module';
@@ -102,6 +103,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     ReceptionModule,
     AuditModule,
     DoctorAvailabilityModule,
+    DoctorShiftClosureModule,
     WorkShiftAssignmentModule,
     // "Đơn xin nghỉ" (#224) — 2 module `@Global()` bind port đọc 2 chiều (nghỉ → Lịch hẹn, Lịch hẹn → đơn nghỉ), cùng khuôn `ParaclinicalProgressReaderModule`.
     LeaveRequestModule,

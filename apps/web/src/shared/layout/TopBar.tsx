@@ -6,6 +6,7 @@ import { useAuthStore } from '../../features/auth/auth.store';
 import {
   useDoctorAvailabilityPolicyQuery,
   useDoctorAvailabilityTodayQuery,
+  useMyClosingStateQuery,
   useSetDoctorAvailabilityMutation,
   useSoloClinicWorkflowEnabledQuery,
 } from '../../features/clinic/clinic.queries';
@@ -105,14 +106,10 @@ export function TopBar() {
   // Mặc định true (khớp DEFAULT_ALLOW_EMERGENCY_END_SHIFT) lúc chưa tải xong — tránh nhấp nháy ẩn/hiện.
   const allowEmergencyEndShift = policyQuery.data?.allowEmergencyEndShift ?? true;
 
-  // Trường hợp 2 "Hết giờ làm việc" — chỉ theo dõi khi đang ACTIVE/BREAK (đã ENDED thì hết cần nhắc).
-  const pastClosingTime = useClosingTimeReminder(isDoctor && !isEnded);
-
-  useEffect(() => {
-    if (pastClosingTime && !isEnded) {
-      setEndShiftDialog({ trigger: 'SCHEDULED_END' });
-    }
-  }, [pastClosingTime, isEnded]);
+  // Trường hợp 2 "Hết giờ làm việc" — chỉ theo dõi khi đang ACTIVE/BREAK (đã ENDED thì hết cần nhắc). Giờ nhắc theo ca đã xếp của bác sĩ
+  // (không có ca thì giờ đóng cửa phòng khám). CHỈ hiện chip, KHÔNG tự bật hộp thoại (chủ dự án chốt 28/10/2026): bác sĩ khám tiếp, xong tự bấm chip.
+  const closingStateQuery = useMyClosingStateQuery(isDoctor);
+  const pastClosingTime = useClosingTimeReminder(isDoctor && !isEnded, closingStateQuery.data);
 
   useEffect(() => {
     if (!gearMenuOpen && !accountMenuOpen) return;
