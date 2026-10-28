@@ -53,4 +53,4 @@
 `docs/CURRENT.md` → `docs/DECISIONS.md` **#263, #264, #265 (+bổ sung)** → mục 3–4 của file này → `.claude/docs/coding-standards.md` mục "Một request = MỘT transaction" → `docs/Deploy.md` mục 2.3b (nâng cấp) nếu chủ dự án hỏi tiếp về diễn tập → `apps/web/src/features/paraclinical/TechnicalServicePane.tsx` + `apps/api/src/infrastructure/persistence/seed-reference-catalog.ts` nếu làm tiếp phần nhóm dịch vụ.
 
 ## 6. Commit của phiên này
-`12216a9` (#263) · `aecd2a1` (#264) · `04f3f74` + `3c2f782` (tài liệu: CI xanh, diễn tập nâng cấp) · `57b1fc8` (#265 + sửa test logo). **File bàn giao này và dòng trỏ ở `docs/CURRENT.md` CHƯA được commit** (chủ dự án mới yêu cầu "ghi file", chưa yêu cầu commit) — phiên sau chạy `git status`; nếu còn `?? docs/handoffs/HANDOFF-QuetQuyen-…-p2.md` và `M docs/CURRENT.md` thì hỏi chủ dự án rồi commit/push thẳng `master`.
+`12216a9` (#263) · `aecd2a1` (#264) · `04f3f74` + `3c2f782` (tài liệu: CI xanh, diễn tập nâng cấp) · `57b1fc8` (#265 + sửa test logo). `e9bcd40` (file bàn giao này + dòng trỏ ở `docs/CURRENT.md`, đã push thẳng `master` theo yêu cầu của chủ dự án sau khi viết file).
