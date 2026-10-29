@@ -25,6 +25,8 @@ export interface CreateReferenceCatalogData {
   abbreviation?: string | null;
   /** Chỉ có ý nghĩa với category INCOME_EXPENSE_TYPE ("Loại thu chi", 2026-09-05) — xem schema.prisma. */
   direction?: ReferenceCatalogDirection | null;
+  /** Chỉ có ý nghĩa với category PRICE_TYPE (#268) — service đã kiểm điều kiện và bỏ cờ mục khác trước khi ghi. */
+  isDefault?: boolean;
   /** Chỉ ItemFormModal category UNIT gửi — category khác luôn tạo mới ở trạng thái hoạt động
    * (mặc định Prisma `true`), quản lý qua action Xoá/Khôi phục riêng như trước. */
   isActive?: boolean;
@@ -46,6 +48,7 @@ export interface UpdateReferenceCatalogData {
   capColor?: string | null;
   abbreviation?: string | null;
   direction?: ReferenceCatalogDirection | null;
+  isDefault?: boolean;
   isActive?: boolean;
 }
 
@@ -108,11 +111,23 @@ export class ReferenceCatalogRepository {
     return result.count;
   }
 
+  /** Ẩn mục đang là mặc định thì bỏ luôn cờ mặc định (CHECK ở DB không cho mục đã ẩn là mặc định). */
   async setActive(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, isActive: boolean, actorId: string): Promise<number> {
     const result = await tx.referenceCatalog.updateMany({
       where: { tenantId, id, version: expectedVersion },
-      data: { isActive, version: { increment: 1 }, updatedBy: actorId },
+      data: { isActive, ...(isActive ? {} : { isDefault: false }), version: { increment: 1 }, updatedBy: actorId },
     });
     return result.count;
+  }
+
+  /**
+   * Bỏ cờ "mặc định" của mọi mục KHÁC trong cùng (công ty, category) — gọi TRƯỚC khi đặt mục mới làm mặc định, trong cùng giao dịch,
+   * để partial unique `reference_catalog_one_default_per_category_uq` không bị vi phạm. Mỗi dòng bị đổi vẫn tăng `version`.
+   */
+  async clearDefaultExcept(tx: Prisma.TransactionClient, tenantId: string, category: ReferenceCatalogCategory, exceptId: string | null, actorId: string): Promise<void> {
+    await tx.referenceCatalog.updateMany({
+      where: { tenantId, category, isDefault: true, ...(exceptId === null ? {} : { id: { not: exceptId } }) },
+      data: { isDefault: false, version: { increment: 1 }, updatedBy: actorId },
+    });
   }
 }

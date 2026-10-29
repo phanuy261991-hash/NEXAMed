@@ -213,6 +213,12 @@ export function ReferenceCatalogPane({
           cổng sẽ từ chối đơn nếu mã không có trong danh mục của họ.
         </p>
       )}
+      {category === 'PRICE_TYPE' && (
+        <p className="mb-3 text-sm text-slate-600">
+          Chỉ áp dụng cho <span className="font-semibold text-slate-800">Dịch vụ khám</span> (lễ tân chọn lúc Tiếp nhận). Dịch vụ kỹ thuật, thuốc và vật tư dùng một giá gốc; khuyến mại có thời hạn đặt ở Bảng giá. Loại giá
+          đánh dấu &quot;Mặc định&quot; được Tiếp nhận chọn sẵn.
+        </p>
+      )}
       {isAbbreviation && (
         <p className="mb-3 text-sm text-slate-600">
           Từ điển dùng khi bác sĩ gõ ô &quot;Chẩn đoán&quot; ở màn khám để gợi ý mã ICD-10: mỗi từ viết tắt được đổi thành cách viết đầy đủ trước khi
@@ -287,6 +293,7 @@ export function ReferenceCatalogPane({
                   {category === 'SPECIMEN_TYPE' && <th className="w-40 px-4 py-2.5 text-center">Màu nắp ống</th>}
                   {category === 'TECH_SERVICE_CATEGORY' && <th className="w-28 px-4 py-2.5 text-center">Viết tắt</th>}
                   {category === 'INCOME_EXPENSE_TYPE' && <th className="w-28 px-4 py-2.5 text-center">Loại</th>}
+                  {category === 'PRICE_TYPE' && <th className="w-32 px-4 py-2.5 text-center">Mặc định</th>}
                   {showDescriptionColumn && <th className="px-4 py-2.5 text-left">Mô tả</th>}
                   {DESCRIPTION_STATUS_CATEGORIES.includes(category) && <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>}
                   <th className="w-24 px-4 py-2.5 text-center">Thứ tự</th>
@@ -343,6 +350,9 @@ export function ReferenceCatalogPane({
                           {item.direction === 'INCOME' ? 'Thu tiền' : 'Chi tiền'}
                         </StatusBadge>
                       </td>
+                    )}
+                    {category === 'PRICE_TYPE' && (
+                      <td className="px-4 py-2 text-center">{item.isDefault ? <StatusBadge tone="info">Mặc định</StatusBadge> : <span className="text-slate-400">—</span>}</td>
                     )}
                     {showDescriptionColumn && (
                       <td className="max-w-xs truncate px-4 py-2 text-left font-medium text-slate-600" title={item.description ?? undefined}>
@@ -413,6 +423,7 @@ export function ReferenceCatalogPane({
           category={category}
           categoryLabel={categoryLabel}
           hideCode={hideCode}
+          otherDefaultName={(query.data?.items ?? []).find((i) => i.isDefault && i.id !== modal.item?.id)?.name}
           mode={modal.mode}
           item={modal.item}
           submitting={createMutation.isPending || updateMutation.isPending}
@@ -472,6 +483,7 @@ function ItemFormModal({
   category,
   categoryLabel,
   hideCode,
+  otherDefaultName,
   mode,
   item,
   submitting,
@@ -484,6 +496,8 @@ function ItemFormModal({
   categoryLabel: string;
   /** Ẩn hẳn ô "Mã" — server tự sinh (mở rộng ADM-01, 2026-08-20), xem `AUTO_CODE_CATEGORIES`. */
   hideCode: boolean;
+  /** Tên Loại giá đang là mặc định của phòng khám (nếu có, không tính mục đang sửa) — để câu giải thích ô "Đặt làm mặc định" nêu đúng mục sẽ thôi làm mặc định. */
+  otherDefaultName?: string;
   mode: 'create' | 'edit';
   item?: ReferenceCatalogItem;
   submitting: boolean;
@@ -506,6 +520,8 @@ function ItemFormModal({
     capColor?: SpecimenCapColor | null;
     abbreviation?: string | null;
     direction?: ReferenceCatalogDirection;
+    /** Chỉ Loại giá dịch vụ (PRICE_TYPE) — docs/DECISIONS.md #268. */
+    isDefault?: boolean;
     isActive?: boolean;
   }) => Promise<void>;
 }) {
@@ -522,6 +538,7 @@ function ItemFormModal({
   const [abbreviation, setAbbreviation] = useState(item?.abbreviation ?? '');
   const [direction, setDirection] = useState<ReferenceCatalogDirection>(item?.direction ?? 'EXPENSE');
   const [isActive, setIsActive] = useState(item?.isActive ?? true);
+  const [isDefault, setIsDefault] = useState(item?.isDefault ?? false);
   const { flashVisible, triggerFlash } = useSaveFlash();
   // Lỗi lưu hiện inline trong form (trùng mã, sai định dạng, xung đột phiên bản...) qua `RecordFormNotice`.
   const { saveError: rawSaveError, run } = useSaveAttempt();
@@ -529,6 +546,8 @@ function ItemFormModal({
   const isEmploymentStatus = category === 'EMPLOYMENT_STATUS';
   // "Chốt ca" (2026-09-03) — chỉ PAYMENT_METHOD có ý nghĩa với countsAsCash.
   const isPaymentMethod = category === 'PAYMENT_METHOD';
+  // Loại giá dịch vụ mặc định (docs/DECISIONS.md #268) — chỉ PRICE_TYPE có ô "Đặt làm mặc định".
+  const isPriceType = category === 'PRICE_TYPE';
   // "Đơn vị tính" (2026-08-26) — chỉ category này đổi nhãn trường Tên.
   const isUnit = category === 'UNIT';
   // "Loại thu chi" (2026-09-05) — chỉ category này có "Loại" (Chi tiền/Thu tiền).
@@ -571,6 +590,7 @@ function ItemFormModal({
       capColor: isSpecimenType ? (capColor !== '' ? capColor : mode === 'edit' ? null : undefined) : undefined,
       abbreviation: isTechCategory ? (abbreviation.trim() !== '' ? abbreviation.trim() : mode === 'edit' ? null : undefined) : undefined,
       direction: isIncomeExpenseType ? direction : undefined,
+      isDefault: isPriceType ? isDefault : undefined,
       isActive: hasDescriptionAndStatus ? isActive : undefined,
     };
   }
@@ -589,6 +609,7 @@ function ItemFormModal({
     setCapColor('');
     setAbbreviation('');
     setDirection('EXPENSE');
+    setIsDefault(false);
     setIsActive(true);
     nameInputRef.current?.focus();
   }
@@ -813,6 +834,26 @@ function ItemFormModal({
                 Tính là tiền mặt
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">
                   Gộp vào đối soát đếm két khi Chốt ca. Ví dụ &quot;Tiền mặt&quot; — bật; &quot;Chuyển khoản&quot;/&quot;Quẹt thẻ&quot; — tắt.
+                </span>
+              </span>
+            </label>
+          )}
+
+          {isPriceType && (
+            <label className="flex items-start gap-2 text-sm font-semibold text-slate-800 sm:col-span-2">
+              <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} className="mt-0.5" />
+              <span>
+                Đặt làm mặc định
+                <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                  Tiếp nhận tự chọn sẵn mức này. Chỉ một Loại giá được đặt mặc định
+                  {isDefault && otherDefaultName ? (
+                    <>
+                      {' '}
+                      — đặt mục này thì <span className="font-semibold text-slate-700">{otherDefaultName}</span> thôi làm mặc định.
+                    </>
+                  ) : (
+                    '.'
+                  )}
                 </span>
               </span>
             </label>

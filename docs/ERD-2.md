@@ -277,3 +277,12 @@ Enum `drug_dose_mode` = `SCHEDULED` (theo buổi Sáng/Trưa/Chiều/Tối × s�
 | `prescription_item.duration_days` | Số ngày | Cho phép NULL. CHECK `prescription_item_dose_mode_check`: `SCHEDULED` bắt buộc có số ngày và không có `single_dose`; `AS_NEEDED` không số ngày, bốn liều theo buổi đều 0. |
 | `prescription_item.quantity` | Số lượng kê = số xuất kho | `SCHEDULED`: máy chủ tính = LÀM TRÒN LÊN(tổng liều × số ngày ÷ dung tích). `AS_NEEDED`: bác sĩ nhập (0–9999), KHÔNG tính từ liều mỗi lần. |
 | `prescription_template_item.dose_mode`, `single_dose`, `duration_days` | Đơn mẫu mang theo kiểu kê | Cùng khuôn `prescription_item`; không chụp đơn vị liều (luôn đọc từ thuốc khi áp mẫu). CHECK `prescription_template_item_dose_mode_check` thay CHECK `duration_days > 0` cũ. |
+
+### 3.18 Loại giá dịch vụ mặc định (v1.88, `docs/DECISIONS.md` #268)
+
+| Bảng / cột | Ý nghĩa | Ghi chú |
+|---|---|---|
+| `reference_catalog.is_default` | Loại giá dịch vụ MẶC ĐỊNH của phòng khám — Tiếp nhận tự chọn sẵn mức này | BOOLEAN NOT NULL DEFAULT false. CHỈ category `PRICE_TYPE`. Cột theo category, cùng khuôn `deactivates_account`/`counts_as_cash`. Không hồi tố: công ty đang có Loại giá không bị tự đánh dấu; công ty chưa có Loại giá nào được nạp sẵn "Thường" (`THUONG`) làm mặc định. |
+| CHECK `reference_catalog_default_price_type_chk` | Chặn dữ liệu sai dù đi đường nào | `NOT is_default OR (category = 'PRICE_TYPE' AND is_active)` — mặc định chỉ có ở Loại giá và phải đang dùng (Tiếp nhận chỉ liệt kê mục đang dùng). Ẩn mục đang mặc định thì cờ mất theo (service/repository xử lý). |
+| Partial unique `reference_catalog_one_default_per_category_uq` | Tối đa MỘT mặc định/công ty | `(tenant_id, category) WHERE is_default AND deleted_at IS NULL`. Đặt mục mới làm mặc định: bỏ cờ mục cũ TRƯỚC trong cùng giao dịch (mỗi dòng đổi vẫn tăng `version`). Hai người đặt đồng thời → người sau 409 `CONCURRENT_MODIFICATION`. |
+| `technical_service_price` | KHÔNG đổi | Dịch vụ kỹ thuật chỉ còn MỘT giá gốc ở giao diện (+ "Hẹn đổi giá"), nhưng cột `price_type_code` và khoảng ngày giữ nguyên để không mất dữ liệu cũ và mở lại được. Mức hiển thị/tính tiền = Loại giá mặc định (nếu có dòng hiệu lực) rồi theo thứ tự danh mục (`PriceableCatalogService.priceTypeOrder`). Lưu giá là "thay sạch" nên giao diện gửi kèm MỌI dòng ẩn nguyên vẹn. |

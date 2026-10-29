@@ -19545,22 +19545,26 @@
                         "doseMorning": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseNoon": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseAfternoon": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseEvening": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseMode": {
                           "type": "string",
@@ -19586,13 +19590,7 @@
                         "instruction": {
                           "type": "string"
                         }
-                      },
-                      "required": [
-                        "doseMorning",
-                        "doseNoon",
-                        "doseAfternoon",
-                        "doseEvening"
-                      ]
+                      }
                     }
                   },
                   "doctorAdvice": {
@@ -21422,22 +21420,26 @@
                         "doseMorning": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseNoon": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseAfternoon": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseEvening": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseMode": {
                           "type": "string",
@@ -21463,13 +21465,7 @@
                         "instruction": {
                           "type": "string"
                         }
-                      },
-                      "required": [
-                        "doseMorning",
-                        "doseNoon",
-                        "doseAfternoon",
-                        "doseEvening"
-                      ]
+                      }
                     }
                   },
                   "doctorAdvice": {
@@ -39322,22 +39318,26 @@
                         "doseMorning": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseNoon": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseAfternoon": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseEvening": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseMode": {
                           "type": "string",
@@ -39365,11 +39365,7 @@
                         }
                       },
                       "required": [
-                        "drugId",
-                        "doseMorning",
-                        "doseNoon",
-                        "doseAfternoon",
-                        "doseEvening"
+                        "drugId"
                       ]
                     },
                     "minItems": 1
@@ -39653,22 +39649,26 @@
                         "doseMorning": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseNoon": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseAfternoon": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseEvening": {
                           "type": "number",
                           "minimum": 0,
-                          "maximum": 99.75
+                          "maximum": 99.75,
+                          "default": 0
                         },
                         "doseMode": {
                           "type": "string",
@@ -39696,11 +39696,7 @@
                         }
                       },
                       "required": [
-                        "drugId",
-                        "doseMorning",
-                        "doseNoon",
-                        "doseAfternoon",
-                        "doseEvening"
+                        "drugId"
                       ]
                     },
                     "minItems": 1
@@ -55372,6 +55368,9 @@
                                   "null"
                                 ]
                               },
+                              "isDefault": {
+                                "type": "boolean"
+                              },
                               "version": {
                                 "type": "integer",
                                 "exclusiveMinimum": 0
@@ -55394,6 +55393,7 @@
                               "fullName",
                               "capColor",
                               "abbreviation",
+                              "isDefault",
                               "version"
                             ]
                           }
@@ -55627,6 +55627,9 @@
                       "INCOME"
                     ]
                   },
+                  "isDefault": {
+                    "type": "boolean"
+                  },
                   "isActive": {
                     "type": "boolean"
                   },
@@ -55854,6 +55857,9 @@
                             "null"
                           ]
                         },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -55876,6 +55882,7 @@
                         "fullName",
                         "capColor",
                         "abbreviation",
+                        "isDefault",
                         "version"
                       ]
                     },
@@ -56087,6 +56094,9 @@
                       "EXPENSE",
                       "INCOME"
                     ]
+                  },
+                  "isDefault": {
+                    "type": "boolean"
                   },
                   "isActive": {
                     "type": "boolean"
@@ -56314,6 +56324,9 @@
                             "null"
                           ]
                         },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -56336,6 +56349,7 @@
                         "fullName",
                         "capColor",
                         "abbreviation",
+                        "isDefault",
                         "version"
                       ]
                     },
@@ -56689,6 +56703,9 @@
                             "null"
                           ]
                         },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -56711,6 +56728,7 @@
                         "fullName",
                         "capColor",
                         "abbreviation",
+                        "isDefault",
                         "version"
                       ]
                     },
@@ -57066,6 +57084,9 @@
                             "null"
                           ]
                         },
+                        "isDefault": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -57088,6 +57109,7 @@
                         "fullName",
                         "capColor",
                         "abbreviation",
+                        "isDefault",
                         "version"
                       ]
                     },

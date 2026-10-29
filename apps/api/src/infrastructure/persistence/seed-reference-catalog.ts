@@ -114,9 +114,20 @@ export async function seedReferenceCatalogForTenant(client: SeedClient, tenantId
     ...fromSource(tenantId, actorId, 'DRUG_USAGE_TIMING', DRUG_USAGE_TIMING_ITEMS),
   ]);
 
+  await seedDefaultPriceType(client, tenantId, actorId);
   await seedUnits(client, tenantId, actorId);
   await seedLabResultUnits(client, tenantId, actorId);
   await seedTechServiceCategories(client, tenantId, actorId);
+}
+
+/**
+ * Loại giá "Thường" làm mặc định (docs/DECISIONS.md #268) — CHỈ cho công ty CHƯA CÓ Loại giá nào (kể cả mục đã ẩn). KHÔNG hồi tố: công ty đang có sẵn
+ * Loại giá thì không đánh dấu gì, vì tự chọn một mức (ví dụ VIP) làm mặc định sẽ khiến Tiếp nhận điền sẵn sai mức và thu sai tiền âm thầm.
+ */
+async function seedDefaultPriceType(client: SeedClient, tenantId: string, actorId: string): Promise<void> {
+  const tx = client as Prisma.TransactionClient;
+  if ((await tx.referenceCatalog.count({ where: { tenantId, category: 'PRICE_TYPE' } })) > 0) return;
+  await insertMissing(client, [{ tenantId, category: 'PRICE_TYPE', code: 'THUONG', name: 'Thường', sortOrder: 0, isDefault: true, createdBy: actorId, updatedBy: actorId }]);
 }
 
 /**

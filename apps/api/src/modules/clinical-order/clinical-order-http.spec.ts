@@ -461,6 +461,50 @@ describe('HTTP e2e — /api/v1/encounters/:id/clinical-orders (Chỉ định c�
     });
   });
 
+  describe('dịch vụ nhiều mức giá (#268)', () => {
+    async function createPriceType(name: string, sortOrder: number, extra: Record<string, unknown> = {}) {
+      const res = await http()
+        .post('/api/v1/reference-catalog')
+        .set(authed(adminToken))
+        .send({ category: 'PRICE_TYPE', code: `MD${randomUUID().slice(0, 6).toUpperCase()}`, name, sortOrder, ...extra });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      return res.body.data as { id: string; code: string; version: number };
+    }
+
+    it('không ai chọn mức: chỉ định tính theo Loại giá MẶC ĐỊNH của phòng khám, chưa có mặc định thì theo mức đầu danh mục; đổi mặc định thì giá chốt đổi theo', async () => {
+      const first = await createPriceType('Mức đầu danh mục', 1);
+      const second = await createPriceType('Mức thứ hai', 2);
+      const res = await http()
+        .post('/api/v1/technical-services')
+        .set(authed(adminToken))
+        .send({
+          name: 'Siêu âm nhiều mức (chỉ định)',
+          serviceKind: 'IMAGING',
+          isPerformedInHouse: true,
+          prices: [
+            { priceTypeCode: first.code, unitCode: 'LUOT', amount: 100_000, effectiveFrom: '2020-01-01' },
+            { priceTypeCode: second.code, unitCode: 'LUOT', amount: 250_000, effectiveFrom: '2020-01-01' },
+          ],
+        });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      const serviceId = res.body.data.id as string;
+
+      // Chưa có mức mặc định → mức đầu danh mục.
+      const a = await prepareEncounterInConsultation();
+      expect((await savedOrder(a.encounterId, { items: [inHouse(serviceId)] })).items[0]).toMatchObject({ unitPrice: 100_000 });
+
+      // Đặt mức thứ hai làm mặc định → chỉ định MỚI tính theo mức đó.
+      const setDefault = await http().patch(`/api/v1/reference-catalog/${second.id}`).set(authed(adminToken)).send({ version: second.version, isDefault: true });
+      expect(setDefault.status, JSON.stringify(setDefault.body)).toBe(200);
+      const b = await prepareEncounterInConsultation();
+      expect((await savedOrder(b.encounterId, { items: [inHouse(serviceId)] })).items[0]).toMatchObject({ unitPrice: 250_000 });
+
+      // Dòng đã chốt ở phiếu cũ KHÔNG đổi theo (giá chụp lúc lập).
+      const old = await http().get(orderUrl(a.encounterId)).set(authed(doctorToken));
+      expect(old.body.data.order.items[0].unitPrice).toBe(100_000);
+    });
+  });
+
   describe('in phiếu', () => {
     it('ghi audit in phiếu; chưa có phiếu → 404', async () => {
       const { encounterId } = await prepareEncounterInConsultation();

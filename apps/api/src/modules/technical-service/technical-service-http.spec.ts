@@ -176,6 +176,48 @@ describe('HTTP e2e — Cận lâm sàng: dịch vụ kỹ thuật / chỉ số x
       expect(fromList.currentPrices).toHaveLength(1);
     });
 
+    it('"Hẹn đổi giá" (#268): dòng hiện hành đóng vào HÔM TRƯỚC ngày hẹn + dòng giá mới + mức khác giữ nguyên → lưu được, đọc lại đủ dòng, giá hiện hành vẫn là giá cũ tới ngày hẹn', async () => {
+      const svc = await createService(adminToken, {
+        name: 'Siêu âm hẹn đổi giá',
+        serviceKind: 'IMAGING',
+        prices: [
+          { priceTypeCode: 'GIA_THUONG', unitCode: 'LUOT', amount: 150000, effectiveFrom: '2020-01-01' },
+          { priceTypeCode: 'GIA_VIP', unitCode: 'LUOT', amount: 250000, effectiveFrom: '2020-01-01' },
+        ],
+      });
+      // Đúng mảng mà form thu gọn gửi: [giá hiện hành đã đóng, giá hẹn, ...dòng ẩn nguyên vẹn].
+      const res = await http()
+        .patch(`${SERVICES}/${svc.id}`)
+        .set(authed(adminToken))
+        .send({
+          version: svc.version,
+          prices: [
+            { priceTypeCode: 'GIA_THUONG', unitCode: 'LUOT', amount: 150000, effectiveFrom: '2020-01-01', effectiveTo: '2098-12-31' },
+            { priceTypeCode: 'GIA_THUONG', unitCode: 'LUOT', amount: 180000, effectiveFrom: '2099-01-01' },
+            { priceTypeCode: 'GIA_VIP', unitCode: 'LUOT', amount: 250000, effectiveFrom: '2020-01-01' },
+          ],
+        });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      expect(res.body.data.prices).toHaveLength(3);
+      expect(res.body.data.prices.filter((p: { priceTypeCode: string }) => p.priceTypeCode === 'GIA_VIP')).toHaveLength(1);
+      expect(res.body.data.currentPrices).toEqual(expect.arrayContaining([{ priceTypeCode: 'GIA_THUONG', unitCode: 'LUOT', amount: 150000 }, { priceTypeCode: 'GIA_VIP', unitCode: 'LUOT', amount: 250000 }]));
+      expect(res.body.data.currentPrices).toHaveLength(2);
+
+      // Bỏ tích "Hẹn đổi giá": dòng hẹn biến mất, dòng hiện hành mở lại — mức VIP vẫn nguyên.
+      const undo = await http()
+        .patch(`${SERVICES}/${svc.id}`)
+        .set(authed(adminToken))
+        .send({
+          version: res.body.data.version,
+          prices: [
+            { priceTypeCode: 'GIA_THUONG', unitCode: 'LUOT', amount: 150000, effectiveFrom: '2020-01-01' },
+            { priceTypeCode: 'GIA_VIP', unitCode: 'LUOT', amount: 250000, effectiveFrom: '2020-01-01' },
+          ],
+        });
+      expect(undo.status, JSON.stringify(undo.body)).toBe(200);
+      expect(undo.body.data.prices).toHaveLength(2);
+    });
+
     it('đơn giá chồng lấn ngày hiệu lực cùng Loại giá → 409 TECHNICAL_SERVICE_PRICE_OVERLAP (chặn ở DB), khác Loại giá thì được', async () => {
       const overlap = await http()
         .post(SERVICES)

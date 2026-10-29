@@ -1000,6 +1000,10 @@ model ReferenceCatalog {
   capColor           String?                    @map("cap_color")
   // Viết tắt in trên tem ống mẫu (≤ 4 ký tự, ví dụ "HH"/"SH") — CHỈ có ý nghĩa với category TECH_SERVICE_CATEGORY, NULL với category khác (docs/DECISIONS.md #220).
   abbreviation       String?
+  // Loại giá dịch vụ MẶC ĐỊNH (docs/DECISIONS.md #268) — CHỈ có ý nghĩa với category PRICE_TYPE: Tiếp nhận tự chọn sẵn mức này.
+  // Tối đa MỘT mục/công ty (partial unique `reference_catalog_one_default_per_category_uq`); CHECK chặn đặt cho category khác hoặc mục đã ẩn.
+  // Tách cột riêng thay vì so khớp `code` cố định vì `code` sửa được qua UI (cùng lý do deactivatesAccount/countsAsCash).
+  isDefault          Boolean                    @default(false) @map("is_default")
   // Khoá lạc quan (docs/DECISIONS.md #207) — sửa/ẩn/khôi phục kèm `WHERE version = ?`, tăng 1 mỗi lần.
   // Chỉ thêm `version` (bảng toàn hệ thống vẫn không có tenant_id/updated_at... như ghi ở trên).
   version            Int                        @default(1)

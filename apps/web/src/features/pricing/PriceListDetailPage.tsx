@@ -301,7 +301,8 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
     for (const l of lines) {
       if (l.value === undefined) return `"${l.name}": chưa nhập giá trị.`;
       if (l.mode === 'PERCENT_OFF' && (l.value < 1 || l.value > 100)) return `"${l.name}": phần trăm giảm phải từ 1 đến 100.`;
-      if (l.mode === 'NEW_PRICE' && isService(l.itemKind) && l.priceTypeCode === null) return `"${l.name}": "Giá mới" phải chọn Loại giá dịch vụ.`;
+      if (l.mode === 'NEW_PRICE' && l.itemKind === 'TECHNICAL_SERVICE' && l.priceTypeCode === null) return `"${l.name}": dịch vụ chưa có đơn giá gốc nên chưa đặt được "Giá mới" — khai đơn giá ở Danh mục Cận lâm sàng trước.`;
+      if (l.mode === 'NEW_PRICE' && l.itemKind === 'EXAM_TYPE' && l.priceTypeCode === null) return `"${l.name}": "Giá mới" phải chọn Loại giá dịch vụ.`;
       if (l.mode === 'NEW_PRICE' && isStock(l.itemKind) && l.unitCode === null) return `"${l.name}": "Giá mới" phải chọn đơn vị.`;
     }
     return null;
@@ -506,6 +507,9 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
                       <div className="px-1.5 text-[13px] font-medium text-slate-600">
                         {line.itemKind === 'PACKAGE' ? (
                           'Trọn gói'
+                        ) : line.itemKind === 'TECHNICAL_SERVICE' ? (
+                          // Dịch vụ kỹ thuật chỉ có MỘT giá gốc (docs/DECISIONS.md #268) — không còn ô chọn Loại giá; "Giá mới" tự gán đúng mức dịch vụ đang dùng (`changeMode`).
+                          'Giá gốc'
                         ) : isService(line.itemKind) ? (
                           <Combobox
                             id={`pl-scope-${line.key}`}

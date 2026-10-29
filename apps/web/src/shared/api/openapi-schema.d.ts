@@ -7668,10 +7668,14 @@ export interface paths {
                             /** Format: uuid */
                             drugId?: string;
                             freeTextDrugName?: string;
-                            doseMorning: number;
-                            doseNoon: number;
-                            doseAfternoon: number;
-                            doseEvening: number;
+                            /** @default 0 */
+                            doseMorning?: number;
+                            /** @default 0 */
+                            doseNoon?: number;
+                            /** @default 0 */
+                            doseAfternoon?: number;
+                            /** @default 0 */
+                            doseEvening?: number;
                             /** @enum {string} */
                             doseMode?: "SCHEDULED" | "AS_NEEDED";
                             singleDose?: number;
@@ -8317,10 +8321,14 @@ export interface paths {
                             /** Format: uuid */
                             drugId?: string;
                             freeTextDrugName?: string;
-                            doseMorning: number;
-                            doseNoon: number;
-                            doseAfternoon: number;
-                            doseEvening: number;
+                            /** @default 0 */
+                            doseMorning?: number;
+                            /** @default 0 */
+                            doseNoon?: number;
+                            /** @default 0 */
+                            doseAfternoon?: number;
+                            /** @default 0 */
+                            doseEvening?: number;
                             /** @enum {string} */
                             doseMode?: "SCHEDULED" | "AS_NEEDED";
                             singleDose?: number;
@@ -14604,10 +14612,14 @@ export interface paths {
                         items: {
                             /** Format: uuid */
                             drugId: string;
-                            doseMorning: number;
-                            doseNoon: number;
-                            doseAfternoon: number;
-                            doseEvening: number;
+                            /** @default 0 */
+                            doseMorning?: number;
+                            /** @default 0 */
+                            doseNoon?: number;
+                            /** @default 0 */
+                            doseAfternoon?: number;
+                            /** @default 0 */
+                            doseEvening?: number;
                             /** @enum {string} */
                             doseMode?: "SCHEDULED" | "AS_NEEDED";
                             singleDose?: number;
@@ -14738,10 +14750,14 @@ export interface paths {
                         items?: {
                             /** Format: uuid */
                             drugId: string;
-                            doseMorning: number;
-                            doseNoon: number;
-                            doseAfternoon: number;
-                            doseEvening: number;
+                            /** @default 0 */
+                            doseMorning?: number;
+                            /** @default 0 */
+                            doseNoon?: number;
+                            /** @default 0 */
+                            doseAfternoon?: number;
+                            /** @default 0 */
+                            doseEvening?: number;
                             /** @enum {string} */
                             doseMode?: "SCHEDULED" | "AS_NEEDED";
                             singleDose?: number;
@@ -21630,6 +21646,7 @@ export interface paths {
                                     /** @enum {string|null} */
                                     capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
                                     abbreviation: string | null;
+                                    isDefault: boolean;
                                     version: number;
                                 }[];
                             };
@@ -21730,6 +21747,7 @@ export interface paths {
                         abbreviation?: string;
                         /** @enum {string} */
                         direction?: "EXPENSE" | "INCOME";
+                        isDefault?: boolean;
                         isActive?: boolean;
                         examTypePrices?: {
                             priceTypeCode: string;
@@ -21780,6 +21798,7 @@ export interface paths {
                                 /** @enum {string|null} */
                                 capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
                                 abbreviation: string | null;
+                                isDefault: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -21901,6 +21920,7 @@ export interface paths {
                                 /** @enum {string|null} */
                                 capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
                                 abbreviation: string | null;
+                                isDefault: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -22000,6 +22020,7 @@ export interface paths {
                         abbreviation?: string | null;
                         /** @enum {string} */
                         direction?: "EXPENSE" | "INCOME";
+                        isDefault?: boolean;
                         isActive?: boolean;
                         examTypePrices?: {
                             priceTypeCode: string;
@@ -22050,6 +22071,7 @@ export interface paths {
                                 /** @enum {string|null} */
                                 capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
                                 abbreviation: string | null;
+                                isDefault: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -22181,6 +22203,7 @@ export interface paths {
                                 /** @enum {string|null} */
                                 capColor: "RED" | "YELLOW" | "PURPLE" | "BLUE" | "GREEN" | "GRAY" | "BLACK" | "URINE" | null;
                                 abbreviation: string | null;
+                                isDefault: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;

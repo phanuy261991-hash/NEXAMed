@@ -5,6 +5,7 @@ import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
 import { computeBmi } from '../../shared/format/bmi';
 import { isDateRangeActiveToday } from '../../shared/format/date';
+import { pickInitialPriceTypeCode } from './default-price-type';
 import { formatClockTime } from '../../shared/format/time';
 import { makeDraftId } from '../../shared/make-draft-id';
 import { Button } from '../../shared/ui/Button';
@@ -167,6 +168,8 @@ export function ReceptionIntakeForm({
   const [addingService, setAddingService] = useState(false);
   const [draftExamTypeCode, setDraftExamTypeCode] = useState('');
   const [draftPriceTypeCode, setDraftPriceTypeCode] = useState('');
+  // Loại giá đang chọn là do HỆ THỐNG chọn sẵn (mức mặc định của phòng khám, #268) chứ chưa phải lễ tân bấm — để hiện dòng "mặc định, đổi được".
+  const [priceTypeAutoSelected, setPriceTypeAutoSelected] = useState(false);
   const [draftQuantity, setDraftQuantity] = useState(1);
   const [serviceError, setServiceError] = useState<string | null>(null);
   // Thu ngân cơ bản (Sprint 5/6) — ý nghĩa thật đã ghi nhận từ #080: true = lượt khám được PHÉP
@@ -416,6 +419,8 @@ export function ReceptionIntakeForm({
   // đúng các mức đã cấu hình, Đơn vị/Đơn giá tự điền theo dòng giá đã chọn. Đảo ngược #052 điểm 6
   // (khi đó cố ý làm phẳng, bảng exam_type_price chưa tồn tại).
   const priceTypeLabelByCode = new Map((priceTypeQuery.data?.items ?? []).map((i) => [i.code, i.name] as const));
+  // Loại giá mặc định của phòng khám (#268) — chọn sẵn khi dịch vụ vừa chọn có đơn giá hiệu lực cho đúng mức đó, không thì để lễ tân tự chọn.
+  const defaultPriceTypeCode = (priceTypeQuery.data?.items ?? []).find((i) => i.isDefault)?.code ?? '';
   const unitLabelByCode = new Map((unitQuery.data?.items ?? []).map((i) => [i.code, i.name] as const));
   const examTypeItems = examTypeQuery.data?.items ?? [];
   const examTypeOptions = examTypeItems.map((i) => ({ value: i.code, label: i.name }));
@@ -481,6 +486,7 @@ export function ReceptionIntakeForm({
     ]);
     setDraftExamTypeCode('');
     setDraftPriceTypeCode('');
+    setPriceTypeAutoSelected(false);
     setDraftQuantity(1);
   }
 
@@ -1097,7 +1103,9 @@ export function ReceptionIntakeForm({
               value={draftExamTypeCode}
               onChange={(v) => {
                 setDraftExamTypeCode(v);
-                setDraftPriceTypeCode('');
+                const initial = pickInitialPriceTypeCode(defaultPriceTypeCode, examTypeItems.find((i) => i.code === v)?.prices ?? [], todayDate);
+                setDraftPriceTypeCode(initial);
+                setPriceTypeAutoSelected(initial !== '');
                 setServiceError(null);
               }}
               options={examTypeOptions}
@@ -1110,7 +1118,10 @@ export function ReceptionIntakeForm({
             <Combobox
               id="intake-price-type"
               value={draftPriceTypeCode}
-              onChange={setDraftPriceTypeCode}
+              onChange={(v) => {
+                setDraftPriceTypeCode(v);
+                setPriceTypeAutoSelected(false);
+              }}
               options={draftPriceTypeOptions}
               disabled={!draftExamType || !draftHasConfiguredPrice}
               placeholder={draftExamType && !draftHasConfiguredPrice ? 'Chưa cấu hình đơn giá' : 'Gõ để tìm...'}
@@ -1159,6 +1170,11 @@ export function ReceptionIntakeForm({
           </Button>
         </div>
 
+        {priceTypeAutoSelected && draftSelectedPrice && (
+          <p className="mt-1.5 text-xs text-slate-500">
+            Loại giá <span className="font-semibold text-slate-700">{priceTypeLabelByCode.get(draftSelectedPrice.priceTypeCode) ?? draftSelectedPrice.priceTypeCode}</span> là mặc định của phòng khám — đổi được ở ô Loại giá dịch vụ.
+          </p>
+        )}
         {draftExamType && !draftHasConfiguredPrice && (
           <p className="mt-1.5 text-xs text-amber-600">Chưa cấu hình đơn giá hiệu lực cho dịch vụ này — vẫn thêm được, chỉ thiếu Đơn giá/Đơn vị.</p>
         )}

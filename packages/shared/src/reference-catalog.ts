@@ -170,6 +170,8 @@ export const referenceCatalogItemSchema = z.object({
   capColor: specimenCapColorSchema.nullable(),
   /** Viết tắt in trên tem ống mẫu (≤ 4 ký tự) — CHỈ có ý nghĩa với category TECH_SERVICE_CATEGORY (Nhóm dịch vụ), `null` với category khác. */
   abbreviation: z.string().nullable(),
+  /** Loại giá dịch vụ MẶC ĐỊNH (docs/DECISIONS.md #268) — CHỈ có ý nghĩa với category PRICE_TYPE, tối đa một mục/công ty; Tiếp nhận tự chọn sẵn mức này. Luôn `false` với category khác. */
+  isDefault: z.boolean(),
   /** Khoá lạc quan (docs/DECISIONS.md #207) — gửi lại khi sửa/ẩn/khôi phục để server phát hiện người khác vừa lưu bản mới. */
   version: z.number().int().positive(),
 });
@@ -213,6 +215,8 @@ export const createReferenceCatalogRequestSchema = z.object({
   abbreviation: z.string().trim().min(1).max(SPECIMEN_GROUP_ABBREVIATION_MAX).optional(),
   /** Chỉ category INCOME_EXPENSE_TYPE gửi field này (Loại thu chi, 2026-09-05). */
   direction: referenceCatalogDirectionSchema.optional(),
+  /** Chỉ category PRICE_TYPE gửi field này (#268): `true` = đặt làm Loại giá mặc định, mục đang là mặc định khác của công ty tự bỏ cờ trong cùng giao dịch. */
+  isDefault: z.boolean().optional(),
   /** Chỉ ItemFormModal của category UNIT/ACADEMIC_TITLE/STAFF_POSITION gửi field này (select "Đang
    * sử dụng"/"Ngưng sử dụng" ngay trong form, cùng mẫu RoomPane/DepartmentPane) — category khác
    * vẫn quản lý trạng thái qua action Xoá/Khôi phục riêng (deactivate/reactivate), không đổi hành
@@ -251,6 +255,8 @@ export const updateReferenceCatalogRequestSchema = z.object({
   capColor: specimenCapColorSchema.nullable().optional(),
   abbreviation: z.string().trim().min(1).max(SPECIMEN_GROUP_ABBREVIATION_MAX).nullable().optional(),
   direction: referenceCatalogDirectionSchema.optional(),
+  /** Chỉ category PRICE_TYPE (#268): `true` = đặt mặc định (mục mặc định cũ tự bỏ cờ), `false` = bỏ cờ (công ty không còn Loại giá mặc định). */
+  isDefault: z.boolean().optional(),
   isActive: z.boolean().optional(),
   /** Bulk-replace đơn giá, đúng ngữ nghĩa như `createReferenceCatalogRequestSchema` — `undefined`
    * (không gửi field) = không đụng tới đơn giá hiện có, mảng rỗng = xoá hết. */

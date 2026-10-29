@@ -63,10 +63,16 @@ export class PriceableCatalogService {
     private readonly drugRepository: DrugRepository,
   ) {}
 
-  /** Thứ tự hiển thị của các Loại giá dịch vụ (`reference_catalog` PRICE_TYPE) — quyết định "mức giá đầu tiên" của dịch vụ. */
+  /**
+   * Thứ tự các Loại giá dịch vụ (`reference_catalog` PRICE_TYPE) — quyết định "mức giá ĐẦU TIÊN" của một dịch vụ, tức mức dùng khi không ai chỉ rõ mức nào
+   * (chỉ định cận lâm sàng, tra giá, tổng giá lẻ của gói...). Loại giá MẶC ĐỊNH của phòng khám (docs/DECISIONS.md #268) luôn đứng ĐẦU, còn lại theo thứ tự danh mục.
+   * Form dịch vụ kỹ thuật ở web (`rankPriceTypeCodes`) PHẢI xếp mức giống hệt — sửa một bên là sửa cả hai, nếu không form hiện một mức còn máy thu mức khác.
+   */
   async priceTypeOrder(tx: Prisma.TransactionClient, tenantId: string): Promise<Map<string, number>> {
     const rows = await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'PRICE_TYPE', true);
-    return new Map(rows.map((r, index) => [r.code, index]));
+    const defaultCode = rows.find((r) => r.isDefault)?.code;
+    const codes = defaultCode === undefined ? rows.map((r) => r.code) : [defaultCode, ...rows.filter((r) => r.code !== defaultCode).map((r) => r.code)];
+    return new Map(codes.map((code, index) => [code, index]));
   }
 
   /** Giá lẻ của 1 dịch vụ = mức giá ĐẦU TIÊN (theo thứ tự Loại giá) đang có giá — dùng để cộng "tổng giá lẻ" của gói. */

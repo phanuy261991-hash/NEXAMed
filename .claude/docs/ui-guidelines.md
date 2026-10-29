@@ -79,6 +79,7 @@ Chủ dự án phản hồi giá trị trong ô nhập quá mảnh/nhạt, khó 
 - Áp dụng đồng nhất cho MỌI nơi hiển thị dữ liệu dạng ô nhập — cả form Thêm mới lẫn form Chi tiết/Sửa (cùng component `disabled` prop), không phân biệt.
 - **Ngoại lệ có chủ đích — KHÔNG áp dụng** cho ô tìm kiếm (search box, ví dụ `PatientPicker`/danh sách bệnh nhân/`GeoPane`) — giữ nguyên `text-sm text-slate-900` thường, vì đây là ô gõ-để-lọc chứ không phải giá trị dữ liệu đã lưu.
 - `shared/ui/Combobox.tsx` áp dụng cùng token vì đây là component dùng chung cho MỌI dropdown (mục 4.1b) — sửa 1 chỗ, tự động đồng bộ toàn app.
+- **Ngoại lệ có chủ đích (chốt 29/10/2026, `docs/DECISIONS.md` #268)**: ô "Loại giá dịch vụ" ở Tiếp nhận ĐƯỢC chọn sẵn mức mặc định — vì mức mặc định do PHÒNG KHÁM tự đánh dấu (không phải hệ thống tự gán), chỉ chọn sẵn khi dịch vụ có đơn giá cho đúng mức đó (không thì để trống), và bắt buộc kèm dòng nhắc "Loại giá … là mặc định của phòng khám — đổi được" để lễ tân không tưởng là lỗi. Không mở rộng ngoại lệ này cho ô chọn khác.
 - **Chip/thẻ chọn 1-trong-nhiều KHÔNG được có giá trị mặc định tô sẵn màu "đã chọn"** khi người dùng chưa bấm gì (bug thật gặp ở "Nguồn đặt lịch" — state mặc định `'phone'` khiến ô đầu tiên tô màu ngay lúc mở form, chủ dự án phản hồi tưởng lỗi). State ban đầu phải là `null`/rỗng, chỉ tô màu sau khi người dùng bấm chọn thật; nếu trường bắt buộc thì chặn submit + dấu `*` đỏ, không tự gán giá trị mặc định.
 
 ### 4.1b. Combobox — chuẩn bắt buộc cho MỌI dropdown chọn 1 giá trị (chốt 2026-08-12, `docs/DECISIONS.md`)

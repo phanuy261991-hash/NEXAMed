@@ -29,6 +29,15 @@ export class ReferenceCatalogInvalidTreatmentFormCodeError extends DomainError {
   }
 }
 
+/** Đặt "Mặc định" cho mục không phải Loại giá dịch vụ, hoặc cho mục đã ẩn (docs/DECISIONS.md #268) — Tiếp nhận chỉ liệt kê Loại giá đang dùng nên mục ẩn không thể làm mặc định. 422 mặc định. */
+export class ReferenceCatalogDefaultNotAllowedError extends DomainError {
+  readonly code = 'REFERENCE_CATALOG_DEFAULT_NOT_ALLOWED';
+
+  constructor() {
+    super('Chỉ đặt được mặc định cho Loại giá dịch vụ đang sử dụng.');
+  }
+}
+
 /** DB trả exclusion-constraint violation trên `exam_type_price_no_overlap_excl` (C20,
  * docs/DECISIONS.md #079) — 2 dòng đơn giá cùng dịch vụ khám + cùng Loại giá dịch vụ có khoảng
  * ngày hiệu lực chồng lấn nhau, kể cả khi ghi đồng thời. Cùng tinh thần `AppointmentSlotConflictError`. */

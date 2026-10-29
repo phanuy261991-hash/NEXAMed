@@ -7,6 +7,7 @@ import {
   formatShortSequentialCode,
   generateReferenceCatalogCode,
   REFERENCE_CATALOG_SHORT_CODE_PREFIXES,
+  ReferenceCatalogDefaultNotAllowedError,
   ReferenceCatalogDuplicateCodeError,
   ReferenceCatalogInvalidAbbreviationError,
   ReferenceCatalogInvalidTreatmentFormCodeError,
@@ -33,6 +34,17 @@ import { ExamTypePriceRepository, type CreateExamTypePriceData } from './exam-ty
 
 function isDuplicateCodeViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+}
+
+/**
+ * Partial unique `reference_catalog_one_default_per_category_uq` (#268): hai người cùng đặt Loại giá mặc định đồng thời — người sau
+ * phải thấy "dữ liệu vừa bị người khác đổi", KHÔNG phải "mã đã tồn tại" (khác với P2002 trên `(tenant_id, category, code)`).
+ */
+export function isDefaultFlagViolation(err: unknown): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') return false;
+  const target = err.meta?.target;
+  const text = Array.isArray(target) ? target.join(',') : String(target ?? '');
+  return text.includes('one_default') || !text.includes('code');
 }
 
 /** C20 — exclusion constraint chặn chồng lấn ngày hiệu lực (docs/DECISIONS.md #079). Vi phạm
@@ -176,6 +188,11 @@ export class ReferenceCatalogService {
         throw new ReferenceCatalogInvalidTreatmentFormCodeError();
       }
       const code = providedCode ?? (await this.generateCode(tx, tenantId, actorId, dto.category));
+      // Loại giá mặc định (#268): chỉ PRICE_TYPE đang dùng; mục mặc định cũ của công ty tự bỏ cờ TRƯỚC khi ghi mục mới (cùng giao dịch).
+      if (dto.isDefault === true) {
+        if (dto.category !== 'PRICE_TYPE' || dto.isActive === false) throw new ReferenceCatalogDefaultNotAllowedError();
+        await this.referenceCatalogRepository.clearDefaultExcept(tx, tenantId, dto.category, null, actorId);
+      }
       let created: ReferenceCatalog;
       try {
         created = await this.referenceCatalogRepository.create(tx, tenantId, actorId, {
@@ -193,9 +210,13 @@ export class ReferenceCatalogService {
           capColor: dto.capColor ?? null,
           abbreviation: dto.abbreviation ?? null,
           direction: dto.direction ?? null,
+          isDefault: dto.isDefault ?? false,
           isActive: dto.isActive ?? true,
         });
       } catch (err) {
+        if (dto.isDefault === true && isDefaultFlagViolation(err)) {
+          throw new ConcurrentModificationError();
+        }
         if (isDuplicateCodeViolation(err)) {
           throw new ReferenceCatalogDuplicateCodeError();
         }
@@ -282,6 +303,14 @@ export class ReferenceCatalogService {
       }
       const nextCode = this.normalizeCodeForCategory(existing.category, dto.code);
 
+      // Loại giá mặc định (#268): đặt mặc định chỉ cho PRICE_TYPE đang dùng, và bỏ cờ mục mặc định cũ TRƯỚC khi ghi (cùng giao dịch —
+      // lệch `version` ở bước ghi sau sẽ rollback cả bước bỏ cờ này). Ẩn mục đang là mặc định qua PATCH cũng bỏ luôn cờ của chính nó.
+      if (dto.isDefault === true) {
+        if (existing.category !== 'PRICE_TYPE' || (dto.isActive ?? existing.isActive) === false) throw new ReferenceCatalogDefaultNotAllowedError();
+        await this.referenceCatalogRepository.clearDefaultExcept(tx, tenantId, existing.category, id, actorId);
+      }
+      const nextIsDefault = dto.isDefault === true ? true : dto.isDefault === false || dto.isActive === false ? false : undefined;
+
       // Luôn gọi `update` kể cả khi PATCH chỉ gửi `examTypePrices` (bảng con): `data` rỗng vẫn tăng
       // `version` của bản ghi cha, nên khoá lạc quan (docs/DECISIONS.md #207) áp cho MỌI lần sửa. Lệch
       // version (`count=0` trong khi bản ghi còn tồn tại — đã kiểm `findById` ở trên) → 409.
@@ -301,9 +330,13 @@ export class ReferenceCatalogService {
           capColor: dto.capColor,
           abbreviation: dto.abbreviation,
           direction: dto.direction,
+          isDefault: nextIsDefault,
           isActive: dto.isActive,
         });
       } catch (err) {
+        if (dto.isDefault === true && isDefaultFlagViolation(err)) {
+          throw new ConcurrentModificationError();
+        }
         if (isDuplicateCodeViolation(err)) {
           throw new ReferenceCatalogDuplicateCodeError();
         }
@@ -396,6 +429,7 @@ export class ReferenceCatalogService {
       fullName: row.fullName,
       capColor: specimenCapColorSchema.safeParse(row.capColor).success ? (row.capColor as SpecimenCapColor) : null,
       abbreviation: row.abbreviation,
+      isDefault: row.isDefault,
       version: row.version,
       // Category khác luôn `undefined` (field không áp dụng). EXAM_TYPE luôn là MẢNG thật (kể cả
       // rỗng — ví dụ tenant khác chưa tạo đơn giá cho mục dùng chung này) chứ không phải

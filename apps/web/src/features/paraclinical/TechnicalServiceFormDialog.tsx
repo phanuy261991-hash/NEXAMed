@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Flask, MagnifyingGlass, Plus, Trash, Warning, X } from '@phosphor-icons/react';
+import { Flask, Info, MagnifyingGlass, Trash, Warning, X } from '@phosphor-icons/react';
 import type {
   CreateTechnicalServiceRequest,
   TechnicalServiceDetail,
@@ -12,14 +12,26 @@ import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
+import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
-import { makeDraftId } from '../../shared/make-draft-id';
+import { formatVnd } from '../../shared/format/currency';
+import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
 import { useHasPermission } from '../auth/usePermission';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { DEFAULT_RESULT_TYPE_BY_KIND, TECHNICAL_SERVICE_KIND_LABELS } from './paraclinical-labels';
+import {
+  buildPriceLines,
+  dayBefore,
+  hiddenOtherPriceTypeCodes,
+  initialPriceFormInput,
+  rankPriceTypeCodes,
+  splitPriceLines,
+  validatePriceForm,
+  type PriceFormInput,
+} from './technical-service-price-model';
 import {
   useCreateTechnicalServiceMutation,
   useLabIndicatorsQuery,
@@ -43,25 +55,12 @@ const RESULT_TYPE_OPTIONS: ComboboxOption[] = [
   { value: 'BOTH', label: 'Cả chỉ số và mô tả' },
 ];
 
-interface PriceRow {
-  draftId: string;
-  priceTypeCode: string;
-  unitCode: string;
-  amount: number | undefined;
-  effectiveFrom: string;
-  effectiveTo: string;
-}
-
 interface IndicatorRow {
   indicatorId: string;
   code: string;
   name: string;
   unit: string | null;
   interpretationText: string | undefined;
-}
-
-function rangesOverlap(aFrom: string, aTo: string, bFrom: string, bTo: string): boolean {
-  return aFrom <= (bTo || '9999-12-31') && bFrom <= (aTo || '9999-12-31');
 }
 
 /**
@@ -163,16 +162,8 @@ function ServiceForm({
   const [specimenTypeCode, setSpecimenTypeCode] = useState(detail?.specimenTypeCode ?? '');
   const [turnaround, setTurnaround] = useState(detail?.turnaroundMinutes ? String(detail.turnaroundMinutes) : '');
   const [resultType, setResultType] = useState<TechnicalServiceResultType>(detail?.resultType ?? DEFAULT_RESULT_TYPE_BY_KIND.LAB);
-  const [prices, setPrices] = useState<PriceRow[]>(
-    (detail?.prices ?? []).map((p) => ({
-      draftId: makeDraftId(),
-      priceTypeCode: p.priceTypeCode,
-      unitCode: p.unitCode,
-      amount: p.amount,
-      effectiveFrom: p.effectiveFrom,
-      effectiveTo: p.effectiveTo ?? '',
-    })),
-  );
+  // Các ô giá NGƯỜI DÙNG đã sửa (docs/DECISIONS.md #268) — ô chưa đụng tới lấy theo dữ liệu đang có, nên danh mục Loại giá tải xong muộn vẫn ra đúng mức.
+  const [priceEdits, setPriceEdits] = useState<Partial<PriceFormInput>>({});
   const [indicators, setIndicators] = useState<IndicatorRow[]>(
     (detail?.indicators ?? []).map((i) => ({ indicatorId: i.indicatorId, code: i.code, name: i.name, unit: i.unit, interpretationText: i.interpretationText ?? undefined })),
   );
@@ -181,7 +172,8 @@ function ServiceForm({
 
   const categoryQuery = useReferenceCatalogQuery('TECH_SERVICE_CATEGORY');
   const specimenQuery = useReferenceCatalogQuery('SPECIMEN_TYPE');
-  const priceTypeQuery = useReferenceCatalogQuery('PRICE_TYPE');
+  // Lấy cả Loại giá đã ẩn: thứ tự xếp mức phải KHỚP máy chủ (`PriceableCatalogService.priceTypeOrder` đọc cả mục ẩn) để form và lúc tính tiền cùng một mức.
+  const priceTypeQuery = useReferenceCatalogQuery('PRICE_TYPE', true);
   const unitQuery = useReferenceCatalogQuery('UNIT');
   const departmentQuery = useDepartmentOptionsQuery();
   const indicatorSearchQuery = useLabIndicatorsQuery({ search: indicatorSearch.trim() === '' ? undefined : indicatorSearch.trim() });
@@ -190,16 +182,39 @@ function ServiceForm({
   const toOptions = (items: { code: string; name: string }[] | undefined): ComboboxOption[] => (items ?? []).map((i) => ({ value: i.code, label: i.name }));
   const categoryOptions = useMemo(() => toOptions(categoryQuery.data?.items), [categoryQuery.data]);
   const specimenOptions = useMemo(() => toOptions(specimenQuery.data?.items), [specimenQuery.data]);
-  const priceTypeOptions = useMemo(() => toOptions(priceTypeQuery.data?.items), [priceTypeQuery.data]);
   const unitOptions = useMemo(() => toOptions(unitQuery.data?.items), [unitQuery.data]);
   const departmentOptions: ComboboxOption[] = useMemo(() => (departmentQuery.data?.items ?? []).map((d) => ({ value: d.id, label: d.name })), [departmentQuery.data]);
   const referenceCountById = useMemo(() => new Map((allIndicatorsQuery.data?.items ?? []).map((i) => [i.id, i.referenceCount])), [allIndicatorsQuery.data]);
+
+  // --- Đơn giá: MỘT giá gốc + "Hẹn đổi giá" (#268). Dòng giá cũ nhiều mức vẫn nằm trong dữ liệu và được gửi lại nguyên vẹn khi lưu.
+  const today = getVietnamTodayDateString();
+  const priceTypeItems = useMemo(() => priceTypeQuery.data?.items ?? [], [priceTypeQuery.data]);
+  const defaultPriceTypeCode = priceTypeItems.find((i) => i.isDefault)?.code ?? '';
+  const rankedPriceTypes = useMemo(() => rankPriceTypeCodes(priceTypeItems.map((i) => i.code), defaultPriceTypeCode), [priceTypeItems, defaultPriceTypeCode]);
+  const newServicePriceType = rankedPriceTypes.find((c) => priceTypeItems.some((i) => i.code === c && i.isActive)) ?? '';
+  const priceModel = useMemo(
+    () =>
+      splitPriceLines(
+        (detail?.prices ?? []).map((p) => ({ priceTypeCode: p.priceTypeCode, unitCode: p.unitCode, amount: p.amount, effectiveFrom: p.effectiveFrom, ...(p.effectiveTo ? { effectiveTo: p.effectiveTo } : {}) })),
+        rankedPriceTypes,
+        today,
+        newServicePriceType,
+      ),
+    [detail, rankedPriceTypes, today, newServicePriceType],
+  );
+  const priceInput: PriceFormInput = { ...initialPriceFormInput(priceModel), ...priceEdits };
+  const priceTypeLabel = (code: string) => priceTypeItems.find((i) => i.code === code)?.name ?? code;
+  const hiddenOtherPriceTypes = hiddenOtherPriceTypeCodes(priceModel);
+  function editPrice(patch: Partial<PriceFormInput>) {
+    setPriceEdits((prev) => ({ ...prev, ...patch }));
+  }
 
   const showIndicators = resultType !== 'NARRATIVE';
   const addedIds = new Set(indicators.map((i) => i.indicatorId));
   const searchResults = indicatorSearch.trim() === '' ? [] : (indicatorSearchQuery.data?.items ?? []).filter((i) => !addedIds.has(i.id)).slice(0, 8);
 
-  const invalid = name.trim() === '';
+  // Chờ danh mục Loại giá tải xong mới cho lưu dịch vụ thực hiện tại phòng khám — thiếu thì không biết gán giá vào mức nào.
+  const invalid = name.trim() === '' || (inHouse && priceTypeQuery.isLoading);
 
   function pickKind(next: TechnicalServiceKind) {
     setKind(next);
@@ -207,38 +222,15 @@ function ServiceForm({
     if (next !== 'LAB') setSpecimenTypeCode('');
   }
 
-  function updatePrice(draftId: string, patch: Partial<PriceRow>) {
-    setPrices((prev) => prev.map((p) => (p.draftId === draftId ? { ...p, ...patch } : p)));
-  }
-
-  function validatePrices(): string | null {
-    for (const p of prices) {
-      if (p.priceTypeCode === '' || p.unitCode === '' || p.amount === undefined || p.effectiveFrom === '') {
-        return 'Mỗi dòng đơn giá cần đủ Loại giá dịch vụ, Đơn giá, Đơn vị tính và Hiệu lực từ.';
-      }
-      if (p.effectiveTo !== '' && p.effectiveTo < p.effectiveFrom) return 'Ngày kết thúc phải sau hoặc bằng ngày hiệu lực.';
-    }
-    for (let i = 0; i < prices.length; i += 1) {
-      for (let j = i + 1; j < prices.length; j += 1) {
-        const a = prices[i]!;
-        const b = prices[j]!;
-        if (a.priceTypeCode === b.priceTypeCode && rangesOverlap(a.effectiveFrom, a.effectiveTo, b.effectiveFrom, b.effectiveTo)) {
-          return 'Hai dòng cùng Loại giá dịch vụ không được trùng khoảng ngày hiệu lực.';
-        }
-      }
-    }
-    return null;
-  }
-
-  const pricesPayload = () =>
-    prices.map((p) => ({ priceTypeCode: p.priceTypeCode, unitCode: p.unitCode, amount: p.amount as number, effectiveFrom: p.effectiveFrom, ...(p.effectiveTo ? { effectiveTo: p.effectiveTo } : {}) }));
+  // Mảng gửi API = giá hiện hành + giá hẹn + MỌI dòng ẩn nguyên vẹn (lưu giá là "thay sạch" — thiếu dòng ẩn là mất mức giá cũ).
+  const pricesPayload = () => buildPriceLines(priceModel, priceInput, today);
   const indicatorsPayload = () => indicators.map((i) => ({ indicatorId: i.indicatorId, ...(i.interpretationText ? { interpretationText: i.interpretationText } : {}) }));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (readOnly || invalid) return;
     setRowError(null);
-    const priceError = inHouse ? validatePrices() : null;
+    const priceError = validatePriceForm(priceModel, priceInput, today, inHouse);
     if (priceError) {
       setRowError(priceError);
       return;
@@ -422,78 +414,94 @@ function ServiceForm({
         <BoxedSection badge="Đơn giá dịch vụ">
           {!inHouse ? (
             <p className="text-sm text-slate-600">Dịch vụ chỉ định ra ngoài không tính tiền tại phòng khám — không cần khai đơn giá.</p>
+          ) : priceTypeQuery.isError ? (
+            <ErrorBanner message="Không tải được danh mục Loại giá dịch vụ nên chưa khai được đơn giá." onRetry={() => void priceTypeQuery.refetch()} />
+          ) : priceTypeQuery.isLoading ? (
+            // Chưa hiện ô giá khi danh mục Loại giá chưa tải xong: mức đang quản lý phụ thuộc mức mặc định, nếu người dùng gõ giá trước lúc đó thì giá sẽ bám sang mức khác khi danh mục về.
+            <Skeleton className="h-20 w-full" />
           ) : (
             <>
-              <div className="overflow-hidden rounded-lg border border-slate-200">
-                <div className="scroll-hover overflow-x-auto">
-                  <table className="w-full min-w-[760px] border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
-                        <th className="px-2 py-2.5 text-center">Loại giá dịch vụ</th>
-                        <th className="w-40 px-2 py-2.5 text-center">Đơn giá</th>
-                        <th className="w-36 px-2 py-2.5 text-center">Đơn vị tính</th>
-                        <th className="w-36 px-2 py-2.5 text-center">Hiệu lực từ</th>
-                        <th className="w-36 px-2 py-2.5 text-center">Đến ngày</th>
-                        <th className="w-12 px-2 py-2.5" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {prices.length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="px-4 py-6 text-center font-medium italic text-slate-400">
-                            Chưa có đơn giá dịch vụ
-                          </td>
-                        </tr>
-                      )}
-                      {prices.map((row) => (
-                        <tr key={row.draftId} className="border-b border-slate-100 last:border-0">
-                          <td className="px-2 py-2">
-                            <Combobox id={`ts-pt-${row.draftId}`} value={row.priceTypeCode} onChange={(v) => updatePrice(row.draftId, { priceTypeCode: v })} options={priceTypeOptions} placeholder="Chọn loại giá…" disabled={readOnly} />
-                          </td>
-                          <td className="px-2 py-2">
-                            <MoneyInput id={`ts-amount-${row.draftId}`} value={row.amount} onChange={(v) => updatePrice(row.draftId, { amount: v })} disabled={readOnly} className={`${inputClassName} text-right`} />
-                          </td>
-                          <td className="px-2 py-2">
-                            <Combobox id={`ts-unit-${row.draftId}`} value={row.unitCode} onChange={(v) => updatePrice(row.draftId, { unitCode: v })} options={unitOptions} placeholder="Đơn vị…" disabled={readOnly} />
-                          </td>
-                          <td className="px-2 py-2">
-                            <DateInput id={`ts-from-${row.draftId}`} value={row.effectiveFrom} onChange={(v) => updatePrice(row.draftId, { effectiveFrom: v })} disabled={readOnly} />
-                          </td>
-                          <td className="px-2 py-2">
-                            <DateInput id={`ts-to-${row.draftId}`} value={row.effectiveTo} onChange={(v) => updatePrice(row.draftId, { effectiveTo: v })} disabled={readOnly} />
-                          </td>
-                          <td className="px-2 py-2 text-center">
-                            {!readOnly && (
-                              <button
-                                type="button"
-                                onClick={() => setPrices((prev) => prev.filter((p) => p.draftId !== row.draftId))}
-                                aria-label="Xoá dòng đơn giá"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-rose-50 text-rose-600 hover:bg-rose-100"
-                              >
-                                <Trash size={15} aria-hidden="true" />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div className="grid grid-cols-1 items-start gap-x-3 gap-y-3.5 sm:grid-cols-3">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="ts-unit" className={labelClassName}>
+                    Đơn vị tính <span className="text-rose-500">*</span>
+                  </label>
+                  <Combobox id="ts-unit" value={priceInput.unitCode} onChange={(v) => editPrice({ unitCode: v })} options={unitOptions} placeholder="Chọn đơn vị…" disabled={readOnly} />
                 </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="ts-amount" className={labelClassName}>
+                    Đơn giá <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <MoneyInput id="ts-amount" value={priceInput.amount} onChange={(v) => editPrice({ amount: v })} disabled={readOnly} className={`${inputClassName} pr-8 text-right tabular-nums`} />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">
+                      đ
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[13px] text-slate-600 sm:pt-7">
+                  Giá niêm yết của dịch vụ. Khuyến mại có hạn đặt ở <span className="font-semibold text-slate-700">Bảng giá</span>.
+                </p>
               </div>
-              {!readOnly && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="mt-2.5"
-                  onClick={() => setPrices((prev) => [...prev, { draftId: makeDraftId(), priceTypeCode: '', unitCode: '', amount: undefined, effectiveFrom: '', effectiveTo: '' }])}
-                >
-                  <Plus size={14} weight="bold" aria-hidden="true" />
-                  Thêm dòng đơn giá
-                </Button>
+
+              {hiddenOtherPriceTypes.length > 0 && (
+                <p className="mt-3.5 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-600">
+                  <Info size={16} weight="fill" className="mt-0.5 flex-none text-slate-500" aria-hidden="true" />
+                  <span>
+                    Dịch vụ này còn <span className="font-semibold text-slate-700">{hiddenOtherPriceTypes.length} mức giá cũ đã ẩn</span> ({hiddenOtherPriceTypes.map(priceTypeLabel).join(', ')}). Hệ thống đang dùng mức{' '}
+                    <span className="font-semibold text-slate-700">{priceTypeLabel(priceModel.priceTypeCode)}</span>; sửa ô trên là ghi lại mức đang dùng, các mức cũ không bị xoá.
+                  </span>
+                </p>
               )}
-              <p className="mt-2 text-xs text-slate-500">
-                Hai dòng cùng Loại giá dịch vụ không được trùng khoảng ngày hiệu lực — hệ thống chặn ngay khi lưu (cùng ràng buộc đang áp cho Dịch vụ khám).
-              </p>
+
+              <div className="mt-3.5 border-t border-slate-100 pt-3.5">
+                <div className="flex items-start gap-2.5">
+                  <input
+                    id="ts-schedule"
+                    type="checkbox"
+                    checked={priceInput.scheduleEnabled}
+                    onChange={(e) => editPrice({ scheduleEnabled: e.target.checked })}
+                    disabled={readOnly}
+                    className="mt-0.5 h-4 w-4 accent-blue-600"
+                  />
+                  <div>
+                    <label htmlFor="ts-schedule" className={`${labelClassName} cursor-pointer`}>
+                      Hẹn đổi giá từ ngày…
+                    </label>
+                    <p className="mt-0.5 text-[13px] text-slate-500">Không tích thì giá trên áp dụng ngay khi lưu.</p>
+                  </div>
+                </div>
+
+                {priceInput.scheduleEnabled && (
+                  <div className="ml-6 mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5">
+                    <div className="grid grid-cols-1 items-start gap-x-3 gap-y-3.5 sm:grid-cols-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label htmlFor="ts-new-amount" className={labelClassName}>
+                          Giá mới <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <MoneyInput id="ts-new-amount" value={priceInput.scheduleAmount} onChange={(v) => editPrice({ scheduleAmount: v })} disabled={readOnly} className={`${inputClassName} pr-8 text-right tabular-nums`} />
+                          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">
+                            đ
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label htmlFor="ts-new-from" className={labelClassName}>
+                          Áp dụng từ ngày <span className="text-rose-500">*</span>
+                        </label>
+                        <DateInput id="ts-new-from" value={priceInput.scheduleFrom} onChange={(v) => editPrice({ scheduleFrom: v })} disabled={readOnly} />
+                      </div>
+                      {priceInput.amount !== undefined && priceInput.scheduleFrom !== '' && (
+                        <p className="text-[13px] text-slate-600 sm:pt-7">
+                          Giá <span className="font-semibold tabular-nums text-slate-700">{formatVnd(priceInput.amount)}</span> giữ đến{' '}
+                          <span className="font-semibold tabular-nums text-slate-700">{dayBefore(priceInput.scheduleFrom).split('-').reverse().join('/')}</span>.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </BoxedSection>
