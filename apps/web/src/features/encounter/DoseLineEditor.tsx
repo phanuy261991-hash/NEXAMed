@@ -9,6 +9,7 @@ import {
   computePrescriptionExactQuartersPreview,
   formatDoseAmountPreview,
   formatDoseDecimalPreview,
+  singleDoseText,
   formatPrescriptionDosePreview,
   formatQuarterTotalVi,
   parseDoseInput,
@@ -31,7 +32,11 @@ export const DOSE_SLOTS: readonly { field: DoseField; label: string }[] = [
   { field: 'doseEvening', label: 'Tối' },
 ];
 
+// `singleDoseText` sống ở prescription-dose-preview.ts (module thuần, test được không cần kéo cả giao diện); xuất lại để chỗ dùng cũ không đổi.
+export { singleDoseText };
+
 /** Phần của một dòng đơn mà bộ soạn liều đọc/ghi. Giá trị liều giữ dạng CHUỖI số thập phân ('' | '0.5' | '5'). */
+
 export interface DoseLineState {
   key: string;
   drugId: string | null;
@@ -78,9 +83,6 @@ export function parseSingleDose(text: string): number {
 }
 
 /** Số liều từ máy chủ → chuỗi hiển thị trong ô nhập: 1.5 → "1,5". */
-export function singleDoseText(value: number | null): string {
-  return value === null ? '' : formatDoseDecimalPreview(value);
-}
 
 export function lineDoseNumbers(line: Pick<DoseLineState, DoseField>): [number, number, number, number] {
   return [Number(line.doseMorning) || 0, Number(line.doseNoon) || 0, Number(line.doseAfternoon) || 0, Number(line.doseEvening) || 0];

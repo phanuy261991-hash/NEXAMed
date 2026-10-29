@@ -54,6 +54,11 @@ export function formatDoseDecimalPreview(dose: number): string {
   return String(Math.round(dose * 100) / 100).replace('.', ',');
 }
 
+/** Liều mỗi lần của kiểu "Khi cần" → chữ trong ô nhập (`null` = dòng "Theo buổi" → ô trống). */
+export function singleDoseText(value: number | null): string {
+  return value === null ? '' : formatDoseDecimalPreview(value);
+}
+
 export function formatDoseSummaryPreview(periods: PrescriptionDosePeriodsPreview, doseUnit?: string | null): string {
   const amount = doseUnit ? formatDoseDecimalPreview : formatDoseAmountPreview;
   const suffix = doseUnit ? ` ${doseUnit}` : '';

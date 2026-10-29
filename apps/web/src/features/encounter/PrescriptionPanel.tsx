@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { ArrowRight, CheckCircle, ClockCounterClockwise, Info, PencilSimple, Pill, Plus, Stack, Warning, X } from '@phosphor-icons/react';
 import type { DoseMode, PrescriptionItem, PrescriptionResponse, PrescriptionTemplate } from '@nexamed/shared';
 import { formatPrescriptionDosePreview } from './prescription-dose-preview';
-import { DoseLineEditor, DoseLinePreview, lineDoseRequest, lineHasDose, singleDoseText, type DoseLineState } from './DoseLineEditor';
+import { DoseLineEditor, DoseLinePreview, lineDoseRequest, lineHasDose, singleDoseText } from './DoseLineEditor';
 import { AdviceTemplateDialog } from '../advice-template/AdviceTemplateDialog';
 import { Textarea } from '../../shared/ui/Textarea';
 import { ApiError } from '../../shared/api/client';
@@ -27,6 +27,7 @@ import { PrescriptionKindChip, PRESCRIPTION_KIND_TEXT, type PrescriptionKindLett
 import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCode';
 import { InteropInfoBlock } from '../prescription-interop/InteropInfoBlock';
 import { makeDraftId } from '../../shared/make-draft-id';
+import { DEFAULT_DURATION_DAYS, appendPreviousPrescriptionItems, itemToDraft, markDaysOwn, masterDaysOf, masterLineOf, type DraftLine } from './prescription-draft-lines';
 import {
   useAmendPrescriptionMutation,
   useGetPreviousPrescriptionMutation,
@@ -36,34 +37,6 @@ import {
   useAcknowledgePrescriptionWarningMutation,
   useSignPrescriptionMutation,
 } from './encounter.queries';
-
-/**
- * Một dòng thuốc đang soạn. Liều theo buổi Sáng/Trưa/Chiều/Tối (docs/DECISIONS.md #196) hoặc kiểu "Khi cần" (#267: liều mỗi lần + số lượng nhập thẳng); số lượng của "Theo buổi" luôn TÍNH RA
- * (không nhập tay), theo đơn vị NHỎ NHẤT của thuốc (`unitCode` — CHỈ hiển thị, không có ô chọn đơn vị nào).
- */
-type DraftLine = DoseLineState & {
-  /** Số ngày đã sửa RIÊNG (#241) — không đổi theo "số ngày chung" (số ngày của thuốc "Theo buổi" đầu tiên) nữa. Luôn `false` ở dòng đầu. */
-  daysOwn: boolean;
-};
-
-const DEFAULT_DURATION_DAYS = '5';
-
-/** Dòng giữ "số ngày chung" của đơn = thuốc "Theo buổi" ĐẦU TIÊN (dòng "Khi cần" không có số ngày nên không làm chuẩn). */
-function masterLineOf(lines: DraftLine[]): DraftLine | undefined {
-  return lines.find((l) => l.doseMode === 'SCHEDULED');
-}
-
-/** Số ngày chung của đơn = số ngày của thuốc "Theo buổi" đầu tiên (chốt qua mockup #241); chưa có thì mặc định 5. */
-function masterDaysOf(lines: DraftLine[]): string {
-  return masterLineOf(lines)?.durationDays ?? DEFAULT_DURATION_DAYS;
-}
-
-/** Đánh dấu "chỉnh riêng" cho dòng có số ngày khác số ngày chung — dùng khi nạp cả cụm dòng (đơn đã lưu, đơn mẫu, đơn lần trước). */
-function markDaysOwn(lines: DraftLine[]): DraftLine[] {
-  const master = masterLineOf(lines);
-  const masterDays = masterDaysOf(lines);
-  return lines.map((l) => ({ ...l, daysOwn: l.doseMode === 'SCHEDULED' && l !== master && l.durationDays !== masterDays }));
-}
 
 function emptyDoseLine(drug: { drugId: string | null; drugName: string; unitCode: string | null; isSplittable: boolean; doseMode?: DoseMode }, durationDays: string): DraftLine {
   return {
@@ -82,26 +55,6 @@ function emptyDoseLine(drug: { drugId: string | null; drugName: string; unitCode
     quantity: '',
     instruction: '',
     isSplittable: drug.isSplittable,
-    daysOwn: false,
-  };
-}
-
-function itemToDraft(item: PrescriptionItem): DraftLine {
-  return {
-    key: item.id,
-    drugId: item.drugId,
-    drugName: item.drugName,
-    unitCode: item.unitCode,
-    doseMode: item.doseMode,
-    doseMorning: String(item.doseMorning),
-    doseNoon: String(item.doseNoon),
-    doseAfternoon: String(item.doseAfternoon),
-    doseEvening: String(item.doseEvening),
-    durationDays: item.durationDays === null ? DEFAULT_DURATION_DAYS : String(item.durationDays),
-    singleDose: singleDoseText(item.singleDose),
-    quantity: item.doseMode === 'AS_NEEDED' ? String(item.quantity) : '',
-    instruction: item.instruction ?? '',
-    isSplittable: item.isSplittable,
     daysOwn: false,
   };
 }
@@ -322,9 +275,7 @@ export function PrescriptionPanel({
           setCopyPreviousError('Bệnh nhân này chưa từng có đơn thuốc nào trước đó.');
           return;
         }
-        const existingIds = new Set(draftLines.map((l) => l.drugId));
-        const additions: DraftLine[] = previous.items.filter((item) => !existingIds.has(item.drugId)).map((item) => ({ ...itemToDraft(item), key: makeDraftId() }));
-        persistDraft(markDaysOwn([...draftLines, ...additions]));
+        persistDraft(appendPreviousPrescriptionItems(draftLines, previous.items, makeDraftId));
       },
       onError: (err) => setCopyPreviousError(err instanceof ApiError ? err.message : 'Không sao chép được đơn lần trước, vui lòng thử lại.'),
     });
