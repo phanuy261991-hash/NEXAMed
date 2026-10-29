@@ -51,13 +51,26 @@ export function itemToDraft(item: PrescriptionItem): DraftLine {
   };
 }
 
+/** Tên thuốc tự do để so trùng: bỏ khoảng trắng thừa, không phân biệt hoa/thường. */
+function normalizeFreeTextName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * Khoá so trùng của một dòng thuốc: thuốc trong danh mục so theo `drugId`; thuốc tự do (`drugId = null`, chỉ có tên) so theo TÊN —
+ * không được gom mọi thuốc tự do về một khoá chung, nếu không một dòng tự do đang có sẽ làm mất mọi dòng tự do khác của đơn cũ.
+ */
+function duplicateKeyOf(drugId: string | null, drugName: string): string {
+  return drugId !== null ? `drug:${drugId}` : `free:${normalizeFreeTextName(drugName)}`;
+}
+
 /**
  * "Sao chép đơn thuốc lần khám trước" (docs/DECISIONS.md #196): thêm CẢ CỤM dòng của đơn đã ký gần nhất vào cuối đơn đang soạn,
- * bỏ qua thuốc đã có sẵn trong đơn (so theo `drugId`, tránh trùng). Dòng sao chép nhận khoá mới (`makeKey`) để không đụng id dòng cũ,
- * giữ nguyên kiểu kê và số ngày của từng dòng (khác số ngày chung thì thành "chỉnh riêng").
+ * bỏ qua thuốc đã có sẵn trong đơn (tránh kê trùng; thuốc danh mục so theo `drugId`, thuốc tự do so theo tên). Dòng sao chép nhận khoá mới
+ * (`makeKey`) để không đụng id dòng cũ, giữ nguyên kiểu kê và số ngày của từng dòng (khác số ngày chung thì thành "chỉnh riêng").
  */
 export function appendPreviousPrescriptionItems(draftLines: DraftLine[], previousItems: PrescriptionItem[], makeKey: () => string): DraftLine[] {
-  const existingIds = new Set(draftLines.map((l) => l.drugId));
-  const additions = previousItems.filter((item) => !existingIds.has(item.drugId)).map((item) => ({ ...itemToDraft(item), key: makeKey() }));
+  const existing = new Set(draftLines.map((l) => duplicateKeyOf(l.drugId, l.drugName)));
+  const additions = previousItems.filter((item) => !existing.has(duplicateKeyOf(item.drugId, item.drugName))).map((item) => ({ ...itemToDraft(item), key: makeKey() }));
   return markDaysOwn([...draftLines, ...additions]);
 }

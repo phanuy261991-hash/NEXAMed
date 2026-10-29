@@ -118,6 +118,27 @@ describe('appendPreviousPrescriptionItems — Sao chép đơn lần khám trư�
     expect(appendPreviousPrescriptionItems(existing, [scheduled, asNeeded], nextKey)).toHaveLength(2);
   });
 
+  describe('thuốc kê tự do (không có drugId) so trùng theo TÊN', () => {
+    const freeItem = (id: string, name: string) => item({ id, drugId: null, drugName: name, freeTextDrugName: name, unitCode: null });
+    const freeDraft = (name: string) => itemToDraft(freeItem(`draft-${name}`, name));
+
+    it('đơn đang kê đã có MỘT dòng tự do khác tên: các dòng tự do của đơn cũ vẫn được sao chép đủ (không mất thuốc)', () => {
+      const result = appendPreviousPrescriptionItems([freeDraft('Vitamin Z')], [scheduled, freeItem('f1', 'Thuốc nam X'), freeItem('f2', 'Siro Y')], nextKey);
+      expect(result.map((l) => l.drugName)).toEqual(['Vitamin Z', 'Amoxicillin 500mg', 'Thuốc nam X', 'Siro Y']);
+    });
+
+    it('đơn đang kê đã có đúng tên đó (khác hoa/thường, thừa khoảng trắng) thì bỏ qua, không kê trùng', () => {
+      const result = appendPreviousPrescriptionItems([freeDraft('  thuốc   NAM x ')], [freeItem('f1', 'Thuốc nam X'), freeItem('f2', 'Siro Y')], nextKey);
+      expect(result.map((l) => l.drugName)).toEqual(['  thuốc   NAM x ', 'Siro Y']);
+    });
+
+    it('thuốc tự do trùng tên với thuốc DANH MỤC thì không bị coi là trùng (hai loại khác nhau)', () => {
+      const catalog = draftOf(DRUG_A, { drugName: 'Amoxicillin 500mg' });
+      const result = appendPreviousPrescriptionItems([catalog], [freeItem('f1', 'Amoxicillin 500mg')], nextKey);
+      expect(result).toHaveLength(2);
+    });
+  });
+
   it('số ngày khác số ngày chung (của thuốc "Theo buổi" đầu tiên) → thành "chỉnh riêng"; dòng đầu và dòng cùng số ngày thì không', () => {
     const sevenDays = item({ id: 'item-7', drugId: DRUG_C, drugName: 'Thuốc 7 ngày', durationDays: 7 });
     const result = appendPreviousPrescriptionItems([], [scheduled, sevenDays], nextKey);
