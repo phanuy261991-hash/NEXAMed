@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { allBranchesQuerySchema } from './branch';
+import { doseModeSchema, doseQuarterSchema, hasAnyDose } from './prescription';
 
 /**
  * Danh mục Thuốc & Vật tư y tế (Sprint 4 S4-03, mở rộng Giai đoạn 1 của Kho Thuốc & Vật tư y tế —
@@ -42,6 +43,49 @@ export const drugUnitInputSchema = z.object({
   sellPrice: z.number().int().nonnegative().nullable().optional(),
 });
 export type DrugUnitInput = z.infer<typeof drugUnitInputSchema>;
+
+/**
+ * "Cách kê liều" (docs/DECISIONS.md #267, mockup đã chốt 28/10/2026): kiểu kê mặc định, đơn vị liều khác đơn vị nhỏ nhất (vd ml cho siro bán nguyên Hộp), và bảng "Liều mẫu" để bác sĩ bấm chọn.
+ * Liều mẫu cùng bước ¼ với liều của dòng đơn (#241) và tính theo ĐƠN VỊ LIỀU của thuốc (không có đơn vị liều thì theo đơn vị nhỏ nhất).
+ */
+export const MAX_DRUG_DOSE_PRESETS = 8;
+
+/** Dung tích theo đơn vị liều ("mỗi Hộp chứa 60 ml"): dương, bội của ¼. */
+export const dosePerBaseUnitSchema = z
+  .number()
+  .min(0.25)
+  .max(100000)
+  .refine((v) => Math.abs(v * 4 - Math.round(v * 4)) < 1e-9, { message: 'Dung tích phải là bội của ¼ (ví dụ 2,5 hoặc 60).' });
+
+export const drugDosePresetInputSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Nhập tên nhóm (ví dụ Người lớn).').max(60),
+    doseMorning: doseQuarterSchema,
+    doseNoon: doseQuarterSchema,
+    doseAfternoon: doseQuarterSchema,
+    doseEvening: doseQuarterSchema,
+  })
+  .refine((p) => hasAnyDose(p), { message: 'Liều mẫu phải có ít nhất một buổi lớn hơn 0.', path: ['doseMorning'] });
+export type DrugDosePresetInput = z.infer<typeof drugDosePresetInputSchema>;
+
+/** Đơn vị liều và dung tích CÙNG có hoặc CÙNG không; tên liều mẫu không trùng nhau. Chỉ kiểm khi payload có mặt các trường (update một phần: `undefined` = không đổi). */
+function checkDoseConfig(
+  data: { doseUnitCode?: string | null; dosePerBaseUnit?: number | null; dosePresets?: { name: string }[] },
+  ctx: z.RefinementCtx,
+): void {
+  if (data.doseUnitCode !== undefined || data.dosePerBaseUnit !== undefined) {
+    const hasUnit = data.doseUnitCode !== undefined && data.doseUnitCode !== null;
+    const hasPer = data.dosePerBaseUnit !== undefined && data.dosePerBaseUnit !== null;
+    if (hasUnit && !hasPer) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Nhập "Mỗi đơn vị bán chứa bao nhiêu" khi đã chọn đơn vị liều.', path: ['dosePerBaseUnit'] });
+    if (hasPer && !hasUnit) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Chọn đơn vị liều khi đã nhập dung tích.', path: ['doseUnitCode'] });
+  }
+  const seen = new Set<string>();
+  (data.dosePresets ?? []).forEach((p, i) => {
+    const key = p.name.trim().toLocaleLowerCase('vi-VN');
+    if (seen.has(key)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Tên nhóm liều mẫu bị trùng.', path: ['dosePresets', i, 'name'] });
+    seen.add(key);
+  });
+}
 
 /** Bắt buộc nhập đủ giá bán (đơn vị nhỏ nhất + MỌI bậc quy đổi) khi bật "Giá theo từng đơn vị cụ
  * thể" (mở rộng GĐ1, chủ dự án yêu cầu trực tiếp) — mặc định TẮT thì không bắt buộc gì thêm, giá
@@ -141,6 +185,11 @@ export const createDrugRequestSchema = z
     isSplittable: z.boolean().default(true),
     // "Thuốc y học cổ truyền (Đông y)" (#242) — đơn có thuốc này được cấp mã loại Y. Chỉ có ý nghĩa với thuốc (MEDICINE).
     isTraditional: z.boolean().default(false),
+    // "Cách kê liều" (#267) — chỉ có ý nghĩa với thuốc (MEDICINE); service ép giá trị trung tính cho vật tư.
+    doseMode: doseModeSchema.default('SCHEDULED'),
+    doseUnitCode: z.string().min(1).nullable().optional(),
+    dosePerBaseUnit: dosePerBaseUnitSchema.nullable().optional(),
+    dosePresets: z.array(drugDosePresetInputSchema).max(MAX_DRUG_DOSE_PRESETS).default([]),
     // Mở rộng #151 (rà soát chi tiết theo tài liệu quy chuẩn) — CHỈ có ý nghĩa với MEDICINE, bắt
     // buộc qua `checkMedicineRequiredFields` (3 dòng dưới), còn lại tùy chọn. `dosageForm`/
     // `countryOfOrigin`/`storageConditions` là MÃ tham chiếu reference_catalog (Combobox
@@ -172,7 +221,8 @@ export const createDrugRequestSchema = z
     concentration: z.string().min(1).optional(),
   })
   .superRefine(checkUnitPricingRequired)
-  .superRefine(checkMedicineRequiredFields);
+  .superRefine(checkMedicineRequiredFields)
+  .superRefine(checkDoseConfig);
 export type CreateDrugRequest = z.infer<typeof createDrugRequestSchema>;
 
 export const updateDrugRequestSchema = z
@@ -195,6 +245,10 @@ export const updateDrugRequestSchema = z
     isPrescriptionOnly: z.boolean().optional(),
     isSplittable: z.boolean().optional(),
     isTraditional: z.boolean().optional(),
+    doseMode: doseModeSchema.optional(),
+    doseUnitCode: z.string().min(1).nullable().optional(),
+    dosePerBaseUnit: dosePerBaseUnitSchema.nullable().optional(),
+    dosePresets: z.array(drugDosePresetInputSchema).max(MAX_DRUG_DOSE_PRESETS).optional(),
     registrationNumber: z.string().min(1).nullable().optional(),
     dosageForm: z.string().min(1).nullable().optional(),
     countryOfOrigin: z.string().min(1).nullable().optional(),
@@ -215,7 +269,8 @@ export const updateDrugRequestSchema = z
     version: z.number().int().positive(),
   })
   .superRefine(checkUnitPricingRequired)
-  .superRefine(checkMedicineRequiredFields);
+  .superRefine(checkMedicineRequiredFields)
+  .superRefine(checkDoseConfig);
 export type UpdateDrugRequest = z.infer<typeof updateDrugRequestSchema>;
 
 export const drugIngredientItemSchema = drugIngredientInputSchema.and(z.object({ id: z.string().uuid() }));
@@ -223,6 +278,17 @@ export type DrugIngredientItem = z.infer<typeof drugIngredientItemSchema>;
 
 export const drugUnitItemSchema = drugUnitInputSchema.and(z.object({ id: z.string().uuid() }));
 export type DrugUnitItem = z.infer<typeof drugUnitItemSchema>;
+
+export const drugDosePresetItemSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  sortOrder: z.number().int(),
+  doseMorning: z.number(),
+  doseNoon: z.number(),
+  doseAfternoon: z.number(),
+  doseEvening: z.number(),
+});
+export type DrugDosePresetItem = z.infer<typeof drugDosePresetItemSchema>;
 
 export const drugSummarySchema = z.object({
   id: z.string().uuid(),
@@ -244,6 +310,11 @@ export const drugSummarySchema = z.object({
   isPrescriptionOnly: z.boolean(),
   isSplittable: z.boolean(),
   isTraditional: z.boolean(),
+  /** "Cách kê liều" (#267): kiểu kê mặc định, đơn vị liều (null = dùng đơn vị nhỏ nhất), dung tích mỗi đơn vị nhỏ nhất theo đơn vị liều, và các liều mẫu theo `sortOrder`. */
+  doseMode: doseModeSchema,
+  doseUnitCode: z.string().nullable(),
+  dosePerBaseUnit: z.number().nullable(),
+  dosePresets: z.array(drugDosePresetItemSchema),
   registrationNumber: z.string().nullable(),
   dosageForm: z.string().nullable(),
   countryOfOrigin: z.string().nullable(),

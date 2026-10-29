@@ -26,10 +26,12 @@ export const printDocumentTypeSchema = z.enum([
   'STOCK_COUNT',
   'STOCK_TRANSFER',
   'SPECIMEN_LABEL',
+  // Nhãn dán bì thuốc in từ màn Phát thuốc (docs/DECISIONS.md #267) — khổ tem LABEL_70X40 / LABEL_60X40 / LABEL_50X30.
+  'MEDICINE_LABEL',
 ]);
 export type PrintDocumentType = z.infer<typeof printDocumentTypeSchema>;
 
-export const printPaperSizeSchema = z.enum(['A4', 'A5', 'A5_LANDSCAPE', 'K80', 'LABEL_35X22', 'LABEL_50X30']);
+export const printPaperSizeSchema = z.enum(['A4', 'A5', 'A5_LANDSCAPE', 'K80', 'LABEL_35X22', 'LABEL_50X30', 'LABEL_70X40', 'LABEL_60X40']);
 export type PrintPaperSize = z.infer<typeof printPaperSizeSchema>;
 
 /** `heightMm = null` — giấy cuộn (K80), chiều dài theo nội dung. */
@@ -41,6 +43,9 @@ export const PRINT_PAPER_SPECS: Record<PrintPaperSize, { label: string; widthMm:
   // Tem ống nghiệm (docs/DECISIONS.md #220) — chỉ chứng từ SPECIMEN_LABEL.
   LABEL_35X22: { label: '35 × 22 mm', widthMm: 35, heightMm: 22, description: 'Tem ống nghiệm nhỏ' },
   LABEL_50X30: { label: '50 × 30 mm', widthMm: 50, heightMm: 30, description: 'Tem lớn, đủ chỗ thêm thông tin' },
+  // Nhãn dán bì thuốc (docs/DECISIONS.md #267) — chỉ chứng từ MEDICINE_LABEL (50 × 30 dùng chung với tem ống nghiệm).
+  LABEL_70X40: { label: '70 × 40 mm', widthMm: 70, heightMm: 40, description: 'Tem nhãn thuốc, mặc định' },
+  LABEL_60X40: { label: '60 × 40 mm', widthMm: 60, heightMm: 40, description: 'Tem nhãn thuốc, nhỏ hơn' },
 };
 
 export const PRINT_DOCUMENT_GROUPS = ['Khám bệnh', 'Thu ngân', 'Sổ quỹ', 'Kho'] as const;
@@ -49,10 +54,11 @@ export type PrintDocumentGroup = (typeof PRINT_DOCUMENT_GROUPS)[number];
 const PAPERS_A: PrintPaperSize[] = ['A4', 'A5', 'A5_LANDSCAPE'];
 const PAPERS_MONEY: PrintPaperSize[] = ['A4', 'A5', 'A5_LANDSCAPE', 'K80'];
 const PAPERS_LABEL: PrintPaperSize[] = ['LABEL_35X22', 'LABEL_50X30'];
+const PAPERS_MEDICINE_LABEL: PrintPaperSize[] = ['LABEL_70X40', 'LABEL_60X40', 'LABEL_50X30'];
 
-/** Khổ tem ống nghiệm (không phải khổ giấy văn bản): không có đầu trang/tiêu đề/chữ ký, có bộ tuỳ chọn riêng `config.label`. */
+/** Khổ tem (không phải khổ giấy văn bản): không có đầu trang/tiêu đề/chữ ký. Tem ống nghiệm có bộ tuỳ chọn riêng `config.label`, nhãn thuốc có `config.medicineLabel`. */
 export function isLabelPaper(paperSize: PrintPaperSize): boolean {
-  return paperSize === 'LABEL_35X22' || paperSize === 'LABEL_50X30';
+  return paperSize === 'LABEL_35X22' || paperSize === 'LABEL_50X30' || paperSize === 'LABEL_70X40' || paperSize === 'LABEL_60X40';
 }
 
 /**
@@ -97,6 +103,7 @@ export const PRINT_DOCUMENT_TYPE_REGISTRY: Record<
   STOCK_COUNT: { label: 'Phiếu kiểm kê', group: 'Kho', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu kiểm kê' },
   STOCK_TRANSFER: { label: 'Phiếu điều chuyển kho', group: 'Kho', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu điều chuyển kho' },
   SPECIMEN_LABEL: { label: 'Tem mẫu xét nghiệm', group: 'Khám bệnh', allowedPapers: PAPERS_LABEL, defaultPaper: 'LABEL_35X22', defaultTitle: '' },
+  MEDICINE_LABEL: { label: 'Nhãn thuốc', group: 'Kho', allowedPapers: PAPERS_MEDICINE_LABEL, defaultPaper: 'LABEL_70X40', defaultTitle: '' },
 };
 
 /** Chứng từ TIỀN — "Thiết lập nhanh" preset "A5 cho phiếu thu" áp A5 cho nhóm này, phần còn lại giữ A4. */
@@ -121,6 +128,8 @@ export const prescriptionInfoConfigSchema = z.object({
   showQuantityInWords: z.boolean(),
   /** Ô người nhận thuốc (ký, họ tên, số CCCD) — đơn "N" và "H". */
   showReceiverBox: z.boolean(),
+  /** Số lượng dưới 10 in hai chữ số ("05 Gói", "01 Hộp") như toa mẫu — mặc định BẬT (docs/DECISIONS.md #267); bản mẫu lưu trước đó chưa có trường này = bật. */
+  padSmallQuantity: z.boolean().default(true),
 });
 export type PrescriptionInfoConfig = z.infer<typeof prescriptionInfoConfigSchema>;
 
@@ -135,6 +144,7 @@ export const DEFAULT_PRESCRIPTION_INFO_CONFIG: PrescriptionInfoConfig = {
   showCourse: true,
   showQuantityInWords: true,
   showReceiverBox: true,
+  padSmallQuantity: true,
 };
 
 /**
@@ -147,6 +157,14 @@ export type InsurancePrintConfig = z.infer<typeof insurancePrintConfigSchema>;
 export const DEFAULT_INSURANCE_PRINT_CONFIG: InsurancePrintConfig = { show: false, whenSelfPay: 'hide' };
 /** Chứng từ có dòng "Số thẻ BHYT" (S2-04). */
 export const INSURANCE_PRINT_DOCUMENT_TYPES: PrintDocumentType[] = ['PRESCRIPTION', 'INVOICE', 'MEDICAL_RECORD'];
+
+/**
+ * Trường TUỲ CHỌN trên nhãn dán bì thuốc (docs/DECISIONS.md #267, mockup đã chốt 28/10/2026). Họ tên – năm sinh, tên thuốc (hàm lượng) + số lượng, câu dặn LUÔN in nên không có công tắc.
+ * Mặc định cả ba TẮT: nhãn giữ đúng 3 khối như nhãn phòng khám đang dùng.
+ */
+export const medicineLabelConfigSchema = z.object({ showClinic: z.boolean(), showDate: z.boolean(), showLot: z.boolean() });
+export type MedicineLabelConfig = z.infer<typeof medicineLabelConfigSchema>;
+export const DEFAULT_MEDICINE_LABEL_CONFIG: MedicineLabelConfig = { showClinic: false, showDate: false, showLot: false };
 
 export const printTemplateConfigSchema = z.object({
   margins: z.object({ topMm: marginMm, rightMm: marginMm, bottomMm: marginMm, leftMm: marginMm }),
@@ -172,6 +190,8 @@ export const printTemplateConfigSchema = z.object({
   notice: z.object({ show: z.boolean(), title: z.string().max(60), text: z.string().max(1000) }).optional(),
   /** Thông tin in THÊM trên tem ống nghiệm (chỉ chứng từ SPECIMEN_LABEL, #220). Mã vạch, SID, họ tên, năm sinh, giới tính luôn in nên không có công tắc. */
   label: z.object({ showPatientCode: z.boolean(), showGroup: z.boolean(), showCapColor: z.boolean(), showDate: z.boolean() }).optional(),
+  /** Trường tuỳ chọn trên nhãn dán bì thuốc (chỉ chứng từ MEDICINE_LABEL, #267). Vắng = tắt hết (xem `withDefaultMedicineLabelOptions`). */
+  medicineLabel: medicineLabelConfigSchema.optional(),
   /** Thông tin in THÊM trên đơn thuốc (chỉ chứng từ PRESCRIPTION, #242): thông tin bệnh nhân dùng chung mọi loại đơn + các mục riêng của đơn "N"/"H" (Thông tư 52/2017). Vắng = bật hết (xem `withDefaultPrescriptionInfo`). Họ tên, ngày sinh, giới tính, bác sĩ, chẩn đoán luôn in nên không có công tắc. */
   prescriptionInfo: prescriptionInfoConfigSchema.optional(),
   /** Dòng "Số thẻ BHYT" (S2-04, #243) — chỉ chứng từ ở `INSURANCE_PRINT_DOCUMENT_TYPES`. Vắng = tắt (xem `withDefaultInsuranceOptions`). */
@@ -226,9 +246,25 @@ export function withDefaultInsuranceOptions(documentType: PrintDocumentType, con
   return { ...config, insurance: config.insurance ?? { ...DEFAULT_INSURANCE_PRINT_CONFIG } };
 }
 
-/** Mọi phần mặc định phụ thuộc loại chứng từ (khuyến cáo, thông tin đơn thuốc, dòng BHYT) — một chỗ gọi cho API lẫn dựng bản mẫu sẵn. */
+/**
+ * Điền khối `medicineLabel` mặc định (tắt hết) cho nhãn thuốc nếu CHƯA có, và bỏ khối này ở chứng từ khác. Khổ 50×30 dùng chung với tem ống nghiệm nên nhãn thuốc cũng bỏ khối `label`
+ * (tuỳ chọn của tem ống nghiệm) mà dựng-sẵn theo khổ giấy mang theo — để web chỉ đọc đúng khối của chứng từ mình.
+ */
+export function withDefaultMedicineLabelOptions(documentType: PrintDocumentType, config: PrintTemplateConfig): PrintTemplateConfig {
+  if (documentType !== 'MEDICINE_LABEL') {
+    if (config.medicineLabel === undefined) return config;
+    const { medicineLabel: _dropped, ...rest } = config;
+    void _dropped;
+    return rest;
+  }
+  const { label: _specimenOptions, ...rest } = config;
+  void _specimenOptions;
+  return { ...rest, medicineLabel: config.medicineLabel ?? { ...DEFAULT_MEDICINE_LABEL_CONFIG } };
+}
+
+/** Mọi phần mặc định phụ thuộc loại chứng từ (khuyến cáo, thông tin đơn thuốc, dòng BHYT, nhãn thuốc) — một chỗ gọi cho API lẫn dựng bản mẫu sẵn. */
 export function withDefaultPrintOptions(documentType: PrintDocumentType, config: PrintTemplateConfig): PrintTemplateConfig {
-  return withDefaultInsuranceOptions(documentType, withDefaultPrescriptionInfo(documentType, withDefaultPrintNotice(documentType, config)));
+  return withDefaultMedicineLabelOptions(documentType, withDefaultInsuranceOptions(documentType, withDefaultPrescriptionInfo(documentType, withDefaultPrintNotice(documentType, config))));
 }
 
 export const DEFAULT_PRINT_COPY_LABELS = ['Liên 1 — Lưu', 'Liên 2 — Khách hàng', 'Liên 3'];
@@ -257,7 +293,7 @@ export function buildDefaultPrintTemplateConfig(paperSize: PrintPaperSize): Prin
   };
 }
 
-const PAPER_ORDER: PrintPaperSize[] = ['A4', 'A5', 'A5_LANDSCAPE', 'K80', 'LABEL_35X22', 'LABEL_50X30'];
+const PAPER_ORDER: PrintPaperSize[] = ['A4', 'A5', 'A5_LANDSCAPE', 'K80', 'LABEL_35X22', 'LABEL_50X30', 'LABEL_70X40', 'LABEL_60X40'];
 
 /** Sắp khổ giấy theo thứ tự cố định để mọi nơi (chip, danh sách) hiện giống nhau. */
 export function sortPrintPapers(papers: PrintPaperSize[]): PrintPaperSize[] {
@@ -433,6 +469,8 @@ export function deriveConfigForPaper(paperSize: PrintPaperSize, base: PrintTempl
     ...(base.prescriptionInfo ? { prescriptionInfo: base.prescriptionInfo } : {}),
     // Dòng "Số thẻ BHYT" (S2-04, #243) cũng kế thừa — cùng lý do `prescriptionInfo`.
     ...(base.insurance ? { insurance: base.insurance } : {}),
+    // Trường tuỳ chọn nhãn thuốc (#267) cũng kế thừa giữa các khổ tem — cùng lý do `prescriptionInfo`.
+    ...(base.medicineLabel ? { medicineLabel: base.medicineLabel } : {}),
     copies: base.copies,
   };
 }

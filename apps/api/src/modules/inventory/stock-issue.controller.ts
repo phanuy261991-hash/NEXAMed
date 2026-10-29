@@ -49,6 +49,16 @@ export class StockIssueController {
     return this.stockIssueService.getById(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
   }
 
+  /** Dữ liệu in "Nhãn dán bì thuốc" của một phiếu xuất (docs/DECISIONS.md #267) — đọc dữ liệu có tên bệnh nhân nên ghi vết xem như `GET issues/:id`. */
+  @Get('issues/:id/medicine-labels')
+  @RequirePermission('stock_issue', 'read')
+  @AuditView('stock_issue')
+  @UseInterceptors(AuditViewInterceptor)
+  async medicineLabels(@Param('id') id: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.stockIssueService.getMedicineLabels(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
+  }
+
   @Post('issues')
   @RequirePermission('stock_issue', 'create')
   @HttpCode(200)

@@ -1342,4 +1342,96 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu xuất kho GĐ3)', () => {
       expect(balance.quantityOnHand).toBe(90);
     });
   });
+
+  describe('Nhãn dán bì thuốc — GET /inventory/issues/:id/medicine-labels (docs/DECISIONS.md #267)', () => {
+    async function dispense(prescriptionId: string, lines: { prescriptionItemId: string | null; drugId: string; batchId?: string | null; quantity: number }[]) {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/inventory/issues')
+        .set(authed(doctorToken))
+        .send({ prescriptionId, warehouseId, lines: lines.map((l) => ({ prescriptionItemId: l.prescriptionItemId, drugId: l.drugId, batchId: l.batchId ?? undefined, quantity: l.quantity })) });
+      expect(res.status).toBe(200);
+      return res.body.data as { id: string; version: number };
+    }
+    const labelsOf = (issueId: string, token = doctorToken) => request(app.getHttpServer()).get(`/api/v1/inventory/issues/${issueId}/medicine-labels`).set(authed(token));
+
+    it('gộp các lô của cùng một dòng đơn thành MỘT nhãn, số lượng là số THỰC PHÁT (không phải số đã kê), kèm bệnh nhân + năm sinh + liều/hướng dẫn của dòng đơn', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Hapacol nhãn thử' });
+      const batchA = await receiveStock(clinicAdminToken, drugId, 5, 1000, { batchNo: `LBL-A-${randomUUID().slice(0, 6)}`, expiryDate: '2027-01-01' });
+      const batchB = await receiveStock(clinicAdminToken, drugId, 50, 1000, { batchNo: `LBL-B-${randomUUID().slice(0, 6)}`, expiryDate: '2027-06-01' });
+      const { encounterId } = await prepareEncounterInConsultation(9, 40);
+      const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 20 }]);
+      // Kê 20, khách chỉ lấy 12: 5 (lô A) + 7 (lô B).
+      const issue = await dispense(prescriptionId, [
+        { prescriptionItemId: items[0]!.id, drugId, batchId: batchA, quantity: 5 },
+        { prescriptionItemId: items[0]!.id, drugId, batchId: batchB, quantity: 7 },
+      ]);
+
+      const res = await labelsOf(issue.id);
+      expect(res.status).toBe(200);
+      expect(res.body.data.issueId).toBe(issue.id);
+      expect(res.body.data.patient).toMatchObject({ fullName: 'Bệnh nhân e2e phát thuốc', birthYear: 1985 });
+      expect(res.body.data.items).toHaveLength(1);
+      const item = res.body.data.items[0];
+      expect(item).toMatchObject({ prescriptionItemId: items[0]!.id, drugId, drugName: 'Hapacol nhãn thử', quantity: 12, unitCode: 'VIEN', doseMorning: 20, durationDays: 1, activeIngredient: 'Paracetamol', concentration: '500mg' });
+      expect(item.batches).toHaveLength(2);
+      expect(item.batches.map((b: { expiryDate: string }) => b.expiryDate).sort()).toEqual(['2027-01-01', '2027-06-01']);
+    });
+
+    it('hàng khách mua thêm KHÔNG theo đơn có nhãn riêng (không liều, không hướng dẫn); thuốc kê tự do không qua kho nên không xuất hiện', async () => {
+      const rxDrugId = await createDrug(clinicAdminToken, { name: 'Thuốc kê đơn cho nhãn' });
+      const rxBatch = await receiveStock(clinicAdminToken, rxDrugId, 20, 1000);
+      const otcDrugId = await createDrug(clinicAdminToken, { name: 'Cốm kẽm nhãn thử', isPrescriptionOnly: false, isBatchManaged: false });
+      await receiveStock(clinicAdminToken, otcDrugId, 20, 5000, { openingBalance: true });
+      const { encounterId } = await prepareEncounterInConsultation(9, 50);
+      const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId: rxDrugId, quantity: 4 }]);
+      const issue = await dispense(prescriptionId, [
+        { prescriptionItemId: items[0]!.id, drugId: rxDrugId, batchId: rxBatch, quantity: 4 },
+        { prescriptionItemId: null, drugId: otcDrugId, quantity: 2 },
+      ]);
+
+      const res = await labelsOf(issue.id);
+      expect(res.status).toBe(200);
+      expect(res.body.data.items).toHaveLength(2);
+      const otc = res.body.data.items.find((i: { drugId: string }) => i.drugId === otcDrugId);
+      expect(otc).toMatchObject({ prescriptionItemId: null, quantity: 2, instruction: null, durationDays: null, doseMorning: 0 });
+      expect(otc.batches).toEqual([]);
+    });
+
+    it('phiếu đã huỷ → danh sách nhãn RỖNG (không in nhãn cho thuốc đã trả lại kho)', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc huỷ nhãn' });
+      const batchId = await receiveStock(clinicAdminToken, drugId, 30, 300);
+      const { encounterId } = await prepareEncounterInConsultation(10, 10);
+      const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 6 }]);
+      const issue = await dispense(prescriptionId, [{ prescriptionItemId: items[0]!.id, drugId, batchId, quantity: 6 }]);
+      expect((await labelsOf(issue.id)).body.data.items).toHaveLength(1);
+
+      const voidRes = await request(app.getHttpServer()).post(`/api/v1/inventory/issues/${issue.id}/void`).set(authed(doctorToken)).send({ reason: 'Phát nhầm', version: issue.version });
+      expect(voidRes.status).toBe(200);
+      const after = await labelsOf(issue.id);
+      expect(after.status).toBe(200);
+      expect(after.body.data.items).toEqual([]);
+    });
+
+    it('phân quyền: không token → 401; lễ tân (stock_issue.read) → 200', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc quyền nhãn' });
+      const batchId = await receiveStock(clinicAdminToken, drugId, 10, 300);
+      const { encounterId } = await prepareEncounterInConsultation(10, 20);
+      const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 2 }]);
+      const issue = await dispense(prescriptionId, [{ prescriptionItemId: items[0]!.id, drugId, batchId, quantity: 2 }]);
+
+      expect((await request(app.getHttpServer()).get(`/api/v1/inventory/issues/${issue.id}/medicine-labels`)).status).toBe(401);
+      expect((await labelsOf(issue.id, receptionistToken)).status).toBe(200);
+    });
+
+    it('cách ly tenant — tenant B lấy nhãn của phiếu tenant A → 404; id sai định dạng → 404, không lộ 500', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc cách ly nhãn' });
+      const batchId = await receiveStock(clinicAdminToken, drugId, 10, 300);
+      const { encounterId } = await prepareEncounterInConsultation(10, 30);
+      const { prescriptionId, items } = await signPrescription(encounterId, [{ drugId, quantity: 2 }]);
+      const issue = await dispense(prescriptionId, [{ prescriptionItemId: items[0]!.id, drugId, batchId, quantity: 2 }]);
+
+      expect((await labelsOf(issue.id, tenantBAdminToken)).status).toBe(404);
+      expect((await labelsOf('khong-phai-uuid')).status).toBe(404);
+    });
+  });
 });

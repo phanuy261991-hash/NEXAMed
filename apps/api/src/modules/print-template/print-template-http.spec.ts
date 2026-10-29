@@ -93,8 +93,8 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
   it('danh sách kèm DANH MỤC TĨNH (loại chứng từ, khổ giấy, cấu hình mặc định từng khổ) — web không import giá trị từ shared nên lấy qua API', async () => {
     const res = await request(app.getHttpServer()).get(API).set(authed(adminToken));
     const { catalog } = res.body.data;
-    expect(catalog.documentTypes).toHaveLength(15);
-    expect(catalog.papers.map((p: { paperSize: string }) => p.paperSize)).toEqual(['A4', 'A5', 'A5_LANDSCAPE', 'K80', 'LABEL_35X22', 'LABEL_50X30']);
+    expect(catalog.documentTypes).toHaveLength(16);
+    expect(catalog.papers.map((p: { paperSize: string }) => p.paperSize)).toEqual(['A4', 'A5', 'A5_LANDSCAPE', 'K80', 'LABEL_35X22', 'LABEL_50X30', 'LABEL_70X40', 'LABEL_60X40']);
     expect(catalog.papers.find((p: { paperSize: string }) => p.paperSize === 'K80')).toMatchObject({ widthMm: 80, heightMm: null });
     expect(catalog.defaultConfigs.A4).toEqual(buildDefaultPrintTemplateConfig('A4'));
     const k80Types = catalog.documentTypes.filter((d: { allowedPapers: string[] }) => d.allowedPapers.includes('K80')).map((d: { documentType: string }) => d.documentType).sort();
@@ -121,9 +121,9 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
     expect(bad2.status).toBeGreaterThanOrEqual(400);
   });
 
-  it('chưa lưu gì → danh sách có đủ 15 chứng từ dùng bản DỰNG SẴN (id null, isBuiltin, mặc định), in được ngay', async () => {
+  it('chưa lưu gì → danh sách có đủ 16 chứng từ dùng bản DỰNG SẴN (id null, isBuiltin, mặc định), in được ngay', async () => {
     const items = await list(adminToken);
-    expect(items).toHaveLength(15);
+    expect(items).toHaveLength(16);
     expect(items.every((i) => i.id === null && i.isBuiltin && i.isDefault && i.version === null)).toBe(true);
     expect(ofType(items, 'PRESCRIPTION')[0]).toMatchObject({ paperSize: 'A4', name: 'Đơn thuốc A4' });
     expect(ofType(items, 'INVOICE')[0]!.paperSize).toBe('A5');
@@ -131,10 +131,10 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
     expect(ofType(items, 'INVOICE')[0]!.config).toEqual(withDefaultPrintOptions('INVOICE', buildDefaultPrintTemplateConfig('A5')));
   });
 
-  it('GET resolved: MỌI nhân viên đăng nhập đọc được (bác sĩ, lễ tân) → 15 mục; không token → 401', async () => {
+  it('GET resolved: MỌI nhân viên đăng nhập đọc được (bác sĩ, lễ tân) → 16 mục; không token → 401', async () => {
     for (const token of [doctorToken, receptionistToken, adminToken]) {
       const items = await resolved(token);
-      expect(items).toHaveLength(15);
+      expect(items).toHaveLength(16);
       expect(items.find((i) => i.documentType === 'INVOICE')).toMatchObject({ paperSize: 'A5', widthMm: 148, heightMm: 210 });
     }
     expect((await request(app.getHttpServer()).get(`${API}/resolved`)).status).toBe(401);
@@ -394,6 +394,67 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
     expect((await request(app.getHttpServer()).delete(`${API}/${a.id}`).set(authed(tenantBAdminToken)).send({ version: a.version })).status).toBe(404);
     const rB = await resolved(tenantBAdminToken);
     expect(rB.find((r) => r.documentType === 'INVOICE')!.paperSize).toBe('A5');
+  });
+
+  it('"Nhãn thuốc" (#267): 3 khổ tem, mặc định 70×40, bản dựng sẵn có khối medicineLabel (tắt hết) và KHÔNG mang khối tuỳ chọn tem ống nghiệm; khổ không hợp lệ bị từ chối', async () => {
+    const res = await request(app.getHttpServer()).get(API).set(authed(adminToken));
+    const info = res.body.data.catalog.documentTypes.find((d: { documentType: string }) => d.documentType === 'MEDICINE_LABEL');
+    expect(info).toMatchObject({ group: 'Kho', allowedPapers: ['LABEL_50X30', 'LABEL_70X40', 'LABEL_60X40'], defaultPaper: 'LABEL_70X40' });
+
+    const builtin = (res.body.data.items as PrintTemplate[]).find((i) => i.documentType === 'MEDICINE_LABEL')!;
+    expect(builtin).toMatchObject({ paperSize: 'LABEL_70X40', isBuiltin: true, isDefault: true });
+    expect(builtin.config.medicineLabel).toEqual({ showClinic: false, showDate: false, showLot: false });
+    expect(builtin.config.label).toBeUndefined();
+
+    // Tem ống nghiệm KHÔNG nhận medicineLabel (hai chứng từ dùng chung khổ 50×30 nhưng tuỳ chọn riêng).
+    const specimen = (res.body.data.items as PrintTemplate[]).find((i) => i.documentType === 'SPECIMEN_LABEL')!;
+    expect(specimen.config.medicineLabel).toBeUndefined();
+    expect(specimen.config.label).toBeDefined();
+
+    const asDoctor = (await resolved(doctorToken)).find((i) => i.documentType === 'MEDICINE_LABEL')!;
+    expect(asDoctor).toMatchObject({ paperSize: 'LABEL_70X40', widthMm: 70, heightMm: 40 });
+    expect(asDoctor.options.map((o) => o.paperSize)).toEqual(['LABEL_50X30', 'LABEL_70X40', 'LABEL_60X40']);
+
+    const badPaper = await request(app.getHttpServer()).post(API).set(authed(adminToken)).send({ documentType: 'MEDICINE_LABEL', name: 'Nhãn A4', paperSize: 'A4' });
+    expect(badPaper.status).toBeGreaterThanOrEqual(400);
+    const badType = await request(app.getHttpServer()).post(API).set(authed(adminToken)).send({ documentType: 'INVOICE', name: 'Phiếu thu tem thuốc', paperSize: 'LABEL_70X40' });
+    expect(badType.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it('"Nhãn thuốc" (#267): bật Lô/HSD ở khổ 60×40 → lưu và đọc lại đúng, các khổ tem khác kế thừa tuỳ chọn', async () => {
+    const config = { ...withDefaultPrintOptions('MEDICINE_LABEL', buildDefaultPrintTemplateConfig('LABEL_60X40')), medicineLabel: { showClinic: true, showDate: false, showLot: true } };
+    const created = await request(app.getHttpServer()).post(API).set(authed(adminToken)).send({ documentType: 'MEDICINE_LABEL', name: 'Nhãn thuốc 60x40', paperSize: 'LABEL_60X40', config });
+    expect(created.status).toBe(200);
+    expect(created.body.data.config.medicineLabel).toEqual({ showClinic: true, showDate: false, showLot: true });
+
+    const stored = (await list(adminToken)).filter((i) => i.documentType === 'MEDICINE_LABEL');
+    expect(stored.map((i) => i.paperSize).sort()).toEqual(['LABEL_60X40', 'LABEL_70X40']);
+    // Khổ 50×30 chưa có bản mẫu → kế thừa từ bản MẶC ĐỊNH (70×40, tắt hết), khổ 60×40 dùng đúng cấu hình đã lưu.
+    const options = (await resolved(doctorToken)).find((i) => i.documentType === 'MEDICINE_LABEL')!.options;
+    expect(options.find((o) => o.paperSize === 'LABEL_60X40')!.config.medicineLabel).toEqual({ showClinic: true, showDate: false, showLot: true });
+    expect(options.find((o) => o.paperSize === 'LABEL_50X30')!.config.medicineLabel).toEqual({ showClinic: false, showDate: false, showLot: false });
+  });
+
+  it('Đơn thuốc (#267): ô "số lượng dưới 10 in hai chữ số" mặc định BẬT, tắt được và lưu lại', async () => {
+    const builtin = (await list(adminToken)).find((i) => i.documentType === 'PRESCRIPTION')!;
+    expect(builtin.config.prescriptionInfo?.padSmallQuantity).toBe(true);
+
+    // Cấu hình lưu từ bản cũ (chưa có trường) vẫn đọc được và coi như BẬT.
+    const legacyInfo: Record<string, unknown> = { ...builtin.config.prescriptionInfo };
+    delete legacyInfo.padSmallQuantity;
+    const legacy = await request(app.getHttpServer())
+      .post(API)
+      .set(authed(adminToken))
+      .send({ documentType: 'PRESCRIPTION', name: 'Đơn thuốc A5 (bản cũ)', paperSize: 'A5', config: { ...builtin.config, prescriptionInfo: legacyInfo } });
+    expect(legacy.status).toBe(200);
+    expect(legacy.body.data.config.prescriptionInfo.padSmallQuantity).toBe(true);
+
+    const off = await request(app.getHttpServer())
+      .patch(`${API}/${legacy.body.data.id}`)
+      .set(authed(adminToken))
+      .send({ version: legacy.body.data.version, config: { ...legacy.body.data.config, prescriptionInfo: { ...legacy.body.data.config.prescriptionInfo, padSmallQuantity: false } } });
+    expect(off.status).toBe(200);
+    expect(off.body.data.config.prescriptionInfo.padSmallQuantity).toBe(false);
   });
 
   it('ghi audit log cho tạo/sửa/xoá/thiết lập nhanh', async () => {

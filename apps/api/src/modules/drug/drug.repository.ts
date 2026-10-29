@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Drug, DrugControlType, DrugItemType, Prisma } from '@prisma/client';
+import type { Drug, DrugControlType, DrugDoseMode, DrugItemType, Prisma } from '@prisma/client';
 import { stripVietnameseDiacritics } from '@nexamed/core';
 
 export interface CreateDrugData {
@@ -20,6 +20,10 @@ export interface CreateDrugData {
   isPrescriptionOnly: boolean;
   isSplittable: boolean;
   isTraditional: boolean;
+  /** "Cách kê liều" (#267) — mặc định SCHEDULED, không đơn vị liều. */
+  doseMode?: DrugDoseMode;
+  doseUnitCode?: string | null;
+  dosePerBaseUnit?: number | null;
   manufacturerCode: string;
   registrationNumber: string | null;
   dosageForm: string | null;
@@ -55,6 +59,9 @@ export interface UpdateDrugData {
   isPrescriptionOnly?: boolean;
   isSplittable?: boolean;
   isTraditional?: boolean;
+  doseMode?: DrugDoseMode;
+  doseUnitCode?: string | null;
+  dosePerBaseUnit?: number | null;
   manufacturerCode?: string | null;
   registrationNumber?: string | null;
   dosageForm?: string | null;
@@ -77,6 +84,8 @@ export interface UpdateDrugData {
 export type DrugWithDetails = Drug & {
   ingredients: { id: string; activeIngredientCode: string; strengthValue: number; strengthUnitCode: string }[];
   units: { id: string; unitCode: string; sortOrder: number; factorToUnitBelow: number; sellPrice: bigint | null }[];
+  /** "Liều mẫu" (#267) — theo `sortOrder`. Cột liều là Decimal ở Prisma, `DrugService` đổi sang number. */
+  dosePresets: { id: string; name: string; sortOrder: number; doseMorning: Prisma.Decimal; doseNoon: Prisma.Decimal; doseAfternoon: Prisma.Decimal; doseEvening: Prisma.Decimal }[];
 };
 
 const DETAIL_INCLUDE = {
@@ -89,6 +98,11 @@ const DETAIL_INCLUDE = {
     where: { deletedAt: null },
     orderBy: { sortOrder: 'asc' as const },
     select: { id: true, unitCode: true, sortOrder: true, factorToUnitBelow: true, sellPrice: true },
+  },
+  dosePresets: {
+    where: { deletedAt: null },
+    orderBy: { sortOrder: 'asc' as const },
+    select: { id: true, name: true, sortOrder: true, doseMorning: true, doseNoon: true, doseAfternoon: true, doseEvening: true },
   },
 } satisfies Prisma.DrugInclude;
 

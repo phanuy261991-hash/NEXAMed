@@ -9,6 +9,7 @@ import { StockBalanceRepository } from '../inventory/stock-balance.repository';
 import { DrugRepository, type DrugWithDetails } from './drug.repository';
 import { DrugIngredientRepository } from './drug-ingredient.repository';
 import { DrugUnitRepository } from './drug-unit.repository';
+import { DrugDosePresetRepository } from './drug-dose-preset.repository';
 
 /** `drug_tenant_id_code_key`/`drug_tenant_id_shortcut_code_key` đều tạo bằng `CREATE UNIQUE INDEX`
  * viết tay trong migration (không phải `@@unique` do `prisma migrate dev` tự sinh) — Prisma KHÔNG
@@ -43,6 +44,7 @@ export class DrugService {
     private readonly drugRepository: DrugRepository,
     private readonly drugIngredientRepository: DrugIngredientRepository,
     private readonly drugUnitRepository: DrugUnitRepository,
+    private readonly drugDosePresetRepository: DrugDosePresetRepository,
     private readonly stockBalanceRepository: StockBalanceRepository,
   ) {}
 
@@ -97,6 +99,10 @@ export class DrugService {
         isSplittable: dto.itemType === 'MEDICINE' ? dto.isSplittable : true,
         // "Thuốc y học cổ truyền (Đông y)" (#242) — chỉ có ý nghĩa với thuốc, vật tư luôn false.
         isTraditional: dto.itemType === 'MEDICINE' ? dto.isTraditional : false,
+        // "Cách kê liều" (#267) — chỉ có ý nghĩa với thuốc; vật tư luôn trung tính (theo buổi, không đơn vị liều).
+        doseMode: dto.itemType === 'MEDICINE' ? dto.doseMode : 'SCHEDULED',
+        doseUnitCode: dto.itemType === 'MEDICINE' ? (dto.doseUnitCode ?? null) : null,
+        dosePerBaseUnit: dto.itemType === 'MEDICINE' ? (dto.dosePerBaseUnit ?? null) : null,
         registrationNumber: dto.itemType === 'MEDICINE' ? (dto.registrationNumber ?? null) : null,
         dosageForm: dto.itemType === 'MEDICINE' ? (dto.dosageForm ?? null) : null,
         countryOfOrigin: dto.itemType === 'MEDICINE' ? (dto.countryOfOrigin ?? null) : null,
@@ -122,6 +128,9 @@ export class DrugService {
 
     await this.drugIngredientRepository.replaceForDrug(tx, tenantId, created.id, actorId, dto.ingredients);
     await this.drugUnitRepository.replaceForDrug(tx, tenantId, created.id, actorId, dto.units);
+    if (dto.itemType === 'MEDICINE') {
+      await this.drugDosePresetRepository.replaceForDrug(tx, tenantId, created.id, actorId, dto.dosePresets);
+    }
 
     await writeAuditLog(tx, tenantId, {
       actorId,
@@ -208,6 +217,9 @@ export class DrugService {
           isPrescriptionOnly: dto.isPrescriptionOnly,
           isSplittable: dto.isSplittable,
           isTraditional: dto.isTraditional,
+          doseMode: dto.doseMode,
+          doseUnitCode: dto.doseUnitCode,
+          dosePerBaseUnit: dto.dosePerBaseUnit,
           registrationNumber: dto.registrationNumber,
           dosageForm: dto.dosageForm,
           countryOfOrigin: dto.countryOfOrigin,
@@ -237,6 +249,9 @@ export class DrugService {
       }
       if (dto.units !== undefined) {
         await this.drugUnitRepository.replaceForDrug(tx, tenantId, id, actorId, dto.units);
+      }
+      if (dto.dosePresets !== undefined) {
+        await this.drugDosePresetRepository.replaceForDrug(tx, tenantId, id, actorId, dto.dosePresets);
       }
 
       await writeAuditLog(tx, tenantId, {
@@ -288,6 +303,18 @@ export class DrugService {
       isPrescriptionOnly: drug.isPrescriptionOnly,
       isSplittable: drug.isSplittable,
       isTraditional: drug.isTraditional,
+      doseMode: drug.doseMode,
+      doseUnitCode: drug.doseUnitCode,
+      dosePerBaseUnit: drug.dosePerBaseUnit === null ? null : Number(drug.dosePerBaseUnit),
+      dosePresets: drug.dosePresets.map((p) => ({
+        id: p.id,
+        name: p.name,
+        sortOrder: p.sortOrder,
+        doseMorning: Number(p.doseMorning),
+        doseNoon: Number(p.doseNoon),
+        doseAfternoon: Number(p.doseAfternoon),
+        doseEvening: Number(p.doseEvening),
+      })),
       registrationNumber: drug.registrationNumber,
       dosageForm: drug.dosageForm,
       countryOfOrigin: drug.countryOfOrigin,

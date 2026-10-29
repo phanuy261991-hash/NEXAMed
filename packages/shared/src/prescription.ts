@@ -26,6 +26,13 @@ import { patientAddressSchema } from './patient';
  * Liều MỘT buổi (#241, mockup đã duyệt): bước nhỏ nhất ¼ viên (0, ¼, ½, ¾, 1, 1¼...). Số thực nhưng bội
  * của 0,25 nên biểu diễn chính xác; mọi phép tính tổng đi qua `doseToQuarters` (số nguyên).
  */
+/**
+ * Cách kê liều của một thuốc / một dòng đơn (docs/DECISIONS.md #267): `SCHEDULED` = theo buổi (Sáng/Trưa/Chiều/Tối × số ngày, số lượng tự tính);
+ * `AS_NEEDED` = "Khi cần" (liều mỗi lần + số lượng bác sĩ nhập thẳng + câu dặn). Đặt ở đây (không ở `drug.ts`) để `drug.ts` và dòng đơn cùng dùng mà không import vòng.
+ */
+export const doseModeSchema = z.enum(['SCHEDULED', 'AS_NEEDED']);
+export type DoseMode = z.infer<typeof doseModeSchema>;
+
 export const DOSE_STEP = 0.25;
 export const MAX_DOSE_PER_PERIOD = 99.75;
 export const doseQuarterSchema = z

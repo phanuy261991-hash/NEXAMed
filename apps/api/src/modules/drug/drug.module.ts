@@ -8,6 +8,7 @@ import { DrugService } from './drug.service';
 import { DrugRepository } from './drug.repository';
 import { DrugIngredientRepository } from './drug-ingredient.repository';
 import { DrugUnitRepository } from './drug-unit.repository';
+import { DrugDosePresetRepository } from './drug-dose-preset.repository';
 import { SupplierController } from './supplier.controller';
 import { SupplierService } from './supplier.service';
 import { SupplierRepository } from './supplier.repository';
@@ -49,6 +50,7 @@ import { PrescriptionTemplateRepository } from './prescription-template.reposito
     DrugRepository,
     DrugIngredientRepository,
     DrugUnitRepository,
+    DrugDosePresetRepository,
     SupplierService,
     SupplierRepository,
     WarehouseService,

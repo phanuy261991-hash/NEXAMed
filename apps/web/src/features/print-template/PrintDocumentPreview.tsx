@@ -11,6 +11,7 @@ import { CashierShiftReceiptDocument } from '../cashier-shift/CashierShiftReceip
 import { ClinicalOrderPrintView } from '../clinical-order/ClinicalOrderPrintView';
 import { ParaclinicalResultPrintView } from '../paraclinical-result/ParaclinicalResultPrintView';
 import { SpecimenLabelSheet } from '../paraclinical-result/SpecimenLabelSheet';
+import { MedicineLabelSheet } from '../inventory/MedicineLabelSheet';
 import { PrescriptionPrintView } from '../encounter/PrescriptionPrintView';
 import { StockCountPrintView } from '../inventory/StockCountPrintView';
 import { StockIssuePrintView } from '../inventory/StockIssuePrintView';
@@ -123,6 +124,23 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
       return <StockTransferPrintView transfer={SAMPLE_STOCK_TRANSFER} />;
     case 'MEDICAL_RECORD':
       return <MedicalRecordPreview />;
+    case 'MEDICINE_LABEL':
+      return (
+        <MedicineLabelSheet
+          printedAt="2026-10-28T03:15:00.000Z"
+          labels={[
+            {
+              key: 'sample-1',
+              patientName: 'Nguyễn Văn An',
+              birthYear: 2019,
+              title: 'Zyrtec Sol 60ml (Cetirizin dihydroclorid 1mg/ml)',
+              quantityText: '01 Hộp',
+              instruction: 'Sáng 5 ml - Tối 5 ml, 5 ngày. Uống sau ăn.',
+              lotText: 'Lô ZY2407 · HSD 07/2028',
+            },
+          ]}
+        />
+      );
     case 'SPECIMEN_LABEL':
       return (
         <SpecimenLabelSheet

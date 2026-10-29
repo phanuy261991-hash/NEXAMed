@@ -63,6 +63,10 @@ describe('HTTP e2e — /api/v1/drugs', () => {
       countryOfOrigin: string;
       barcode: string;
       shortcutCode: string;
+      doseMode: 'SCHEDULED' | 'AS_NEEDED';
+      doseUnitCode: string;
+      dosePerBaseUnit: number;
+      dosePresets: unknown[];
     }> = {},
   ) {
     const itemType = overrides.itemType ?? 'MEDICINE';
@@ -99,6 +103,10 @@ describe('HTTP e2e — /api/v1/drugs', () => {
         ...(overrides.isPrescriptionOnly !== undefined ? { isPrescriptionOnly: overrides.isPrescriptionOnly } : {}),
         ...(overrides.barcode !== undefined ? { barcode: overrides.barcode } : {}),
         ...(overrides.shortcutCode !== undefined ? { shortcutCode: overrides.shortcutCode } : {}),
+        ...(overrides.doseMode !== undefined ? { doseMode: overrides.doseMode } : {}),
+        ...(overrides.doseUnitCode !== undefined ? { doseUnitCode: overrides.doseUnitCode } : {}),
+        ...(overrides.dosePerBaseUnit !== undefined ? { dosePerBaseUnit: overrides.dosePerBaseUnit } : {}),
+        ...(overrides.dosePresets !== undefined ? { dosePresets: overrides.dosePresets } : {}),
       });
     return res;
   }
@@ -615,5 +623,85 @@ describe('HTTP e2e — /api/v1/drugs', () => {
     expect(res.body.data.contraindications).toBeNull();
     expect(res.body.data.storageConditions).toBeNull();
     expect(res.body.data.barcode).toBeNull();
+  });
+
+  describe('"Cách kê liều" của thuốc (docs/DECISIONS.md #267)', () => {
+    const syrupPresets = [
+      { name: 'Người lớn', doseMorning: 10, doseNoon: 0, doseAfternoon: 0, doseEvening: 10 },
+      { name: 'Trẻ 2 - 6 tuổi', doseMorning: 5, doseNoon: 0, doseAfternoon: 0, doseEvening: 5 },
+      { name: 'Trẻ dưới 2 tuổi', doseMorning: 2.5, doseNoon: 0, doseAfternoon: 0, doseEvening: 2.5 },
+    ];
+
+    it('thuốc mới không cấu hình gì → mặc định theo buổi, không đơn vị liều, không liều mẫu', async () => {
+      const res = await createDrug(clinicAdminToken, { name: 'Cách kê mặc định' });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ doseMode: 'SCHEDULED', doseUnitCode: null, dosePerBaseUnit: null, dosePresets: [] });
+    });
+
+    it('tạo dung dịch: đơn vị liều ml + mỗi Hộp 60 ml + 3 liều mẫu → đọc lại đúng, giữ thứ tự và liều lẻ 2,5', async () => {
+      const res = await createDrug(clinicAdminToken, { name: 'Zyrtec cách kê', doseUnitCode: 'ml', dosePerBaseUnit: 60, dosePresets: syrupPresets });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ doseMode: 'SCHEDULED', doseUnitCode: 'ml', dosePerBaseUnit: 60 });
+      expect(res.body.data.dosePresets.map((p: { name: string; sortOrder: number }) => [p.sortOrder, p.name])).toEqual([[0, 'Người lớn'], [1, 'Trẻ 2 - 6 tuổi'], [2, 'Trẻ dưới 2 tuổi']]);
+      expect(res.body.data.dosePresets[2]).toMatchObject({ doseMorning: 2.5, doseNoon: 0, doseAfternoon: 0, doseEvening: 2.5 });
+
+      const again = await request(app.getHttpServer()).get(`/api/v1/drugs/${res.body.data.id}`).set(authed(doctorToken));
+      expect(again.status).toBe(200);
+      expect(again.body.data.dosePresets).toHaveLength(3);
+      expect(again.body.data.dosePerBaseUnit).toBe(60);
+    });
+
+    it('kiểu "Khi cần" làm mặc định lưu được', async () => {
+      const res = await createDrug(clinicAdminToken, { name: 'Hapacol khi cần', doseMode: 'AS_NEEDED' });
+      expect(res.status).toBe(200);
+      expect(res.body.data.doseMode).toBe('AS_NEEDED');
+    });
+
+    it('sửa thuốc thay TOÀN BỘ liều mẫu (không cộng dồn), bỏ trống thì xoá hết; không gửi dosePresets thì giữ nguyên', async () => {
+      const created = await createDrug(clinicAdminToken, { name: 'Sửa liều mẫu', doseUnitCode: 'ml', dosePerBaseUnit: 60, dosePresets: syrupPresets });
+      const id = created.body.data.id as string;
+      let version = created.body.data.version as number;
+
+      const keep = await request(app.getHttpServer()).patch(`/api/v1/drugs/${id}`).set(authed(clinicAdminToken)).send({ version, name: 'Sửa liều mẫu (đổi tên)' });
+      expect(keep.status).toBe(200);
+      expect(keep.body.data.dosePresets).toHaveLength(3);
+      version = keep.body.data.version;
+
+      const replaced = await request(app.getHttpServer())
+        .patch(`/api/v1/drugs/${id}`)
+        .set(authed(clinicAdminToken))
+        .send({ version, dosePresets: [{ name: 'Người lớn', doseMorning: 15, doseNoon: 0, doseAfternoon: 0, doseEvening: 15 }] });
+      expect(replaced.status).toBe(200);
+      expect(replaced.body.data.dosePresets).toHaveLength(1);
+      expect(replaced.body.data.dosePresets[0]).toMatchObject({ name: 'Người lớn', doseMorning: 15, sortOrder: 0 });
+      version = replaced.body.data.version;
+
+      const cleared = await request(app.getHttpServer()).patch(`/api/v1/drugs/${id}`).set(authed(clinicAdminToken)).send({ version, dosePresets: [], doseUnitCode: null, dosePerBaseUnit: null });
+      expect(cleared.status).toBe(200);
+      expect(cleared.body.data).toMatchObject({ dosePresets: [], doseUnitCode: null, dosePerBaseUnit: null });
+    });
+
+    it('nhập sai → 400: đơn vị liều thiếu dung tích; dung tích thiếu đơn vị liều; dung tích không phải bội ¼; tên liều mẫu trùng; liều mẫu toàn 0; liều lẻ không phải bội ¼; quá 8 liều mẫu', async () => {
+      const bad = async (overrides: Parameters<typeof createDrug>[1]) => (await createDrug(clinicAdminToken, overrides)).status;
+      expect(await bad({ doseUnitCode: 'ml' })).toBe(400);
+      expect(await bad({ dosePerBaseUnit: 60 })).toBe(400);
+      expect(await bad({ doseUnitCode: 'ml', dosePerBaseUnit: 60.1 })).toBe(400);
+      expect(await bad({ dosePresets: [syrupPresets[0], { ...syrupPresets[1], name: ' người lớn ' }] })).toBe(400);
+      expect(await bad({ dosePresets: [{ name: 'Rỗng', doseMorning: 0, doseNoon: 0, doseAfternoon: 0, doseEvening: 0 }] })).toBe(400);
+      expect(await bad({ dosePresets: [{ name: 'Lẻ', doseMorning: 1.1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0 }] })).toBe(400);
+      expect(await bad({ dosePresets: Array.from({ length: 9 }, (_, i) => ({ name: `Nhóm ${i}`, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 0 })) })).toBe(400);
+    });
+
+    it('vật tư y tế bị bỏ qua cấu hình liều (luôn theo buổi, không đơn vị liều, không liều mẫu)', async () => {
+      const res = await createDrug(clinicAdminToken, { name: 'Bông gạc', itemType: 'SUPPLY', doseMode: 'AS_NEEDED', doseUnitCode: 'ml', dosePerBaseUnit: 60, dosePresets: syrupPresets });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ doseMode: 'SCHEDULED', doseUnitCode: null, dosePerBaseUnit: null, dosePresets: [] });
+    });
+
+    it('cách ly tenant — tenant B không thấy liều mẫu của thuốc tenant A (404 theo thuốc)', async () => {
+      const res = await createDrug(clinicAdminToken, { name: 'Liều mẫu cách ly', dosePresets: syrupPresets });
+      const peek = await request(app.getHttpServer()).get(`/api/v1/drugs/${res.body.data.id}`).set(authed(tenantBAdminToken));
+      expect(peek.status).toBe(404);
+    });
   });
 });

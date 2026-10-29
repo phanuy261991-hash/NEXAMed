@@ -15,6 +15,7 @@ export const ALL_ON_PRESCRIPTION_INFO: PrescriptionInfoConfig = {
   showCourse: true,
   showQuantityInWords: true,
   showReceiverBox: true,
+  padSmallQuantity: true,
 };
 
 /** Trẻ DƯỚI 72 tháng tuổi phải ghi người giám hộ (Thông tư 52/2017/TT-BYT). */

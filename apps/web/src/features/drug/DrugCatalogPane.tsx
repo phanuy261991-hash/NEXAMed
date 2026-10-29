@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { EMPTY_LIST } from '../../shared/empty-list';
 import { useSearchParams } from 'react-router-dom';
 import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, DownloadSimple, Eye, EyeSlash, FirstAidKit, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, UploadSimple, X } from '@phosphor-icons/react';
-import type { DrugControlType, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory, StockLedgerEntry } from '@nexamed/shared';
+import type { DoseMode, DrugControlType, DrugDosePresetInput, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory, StockLedgerEntry } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
 import { useDrugBatchBalancesQuery, useDrugLedgerQuery } from '../inventory/inventory.queries';
@@ -31,6 +31,8 @@ import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { appendSentence } from '../../shared/format/append-sentence';
+import { DrugDoseConfigSection } from './DrugDoseConfigSection';
+import { buildDosePresets, presetRowsFromItem, summarizePreset, validateDoseConfig, type DosePresetRow } from './drug-dose-config';
 import { DrugImportDialog } from './DrugImportDialog';
 import { exportDrugs } from './drug.api';
 import { formatDobDisplay } from '../../shared/format/date';
@@ -187,6 +189,8 @@ export function DrugCatalogPane() {
   const dosageFormCatalog = useCatalogCombobox('DOSAGE_FORM');
   const storageConditionCatalog = useCatalogCombobox('STORAGE_CONDITION');
   const manufacturerCatalog = useCatalogCombobox('MANUFACTURER');
+  // Đơn vị liều (#267) lấy cùng danh mục "Đơn vị tính" với đơn vị nhỏ nhất, có "thêm nhanh" (vd ml).
+  const doseUnitCatalog = useCatalogCombobox('UNIT');
   const countryOfOriginCatalog = useCatalogCombobox('COUNTRY_OF_ORIGIN');
   const storageLocationCatalog = useCatalogCombobox('STORAGE_LOCATION');
   // "Thời điểm dùng thuốc" (docs/DECISIONS.md #155) — CHỈ dùng làm gợi ý ghép câu cho ô "Cách
@@ -574,6 +578,28 @@ export function DrugCatalogPane() {
               )}
               {selectedItem.itemType === 'MEDICINE' && <DetailField label="Liều dùng mặc định" value={selectedItem.defaultDosage} />}
               {selectedItem.itemType === 'MEDICINE' && <DetailField label="Cách dùng" value={selectedItem.usageInstruction} />}
+              {/* "Cách kê liều" (#267) — kiểu kê mặc định, đơn vị liều và các liều mẫu đã cấu hình. */}
+              {selectedItem.itemType === 'MEDICINE' && (
+                <DetailField
+                  label="Cách kê liều"
+                  value={[
+                    selectedItem.doseMode === 'AS_NEEDED' ? 'Khi cần' : 'Theo buổi',
+                    selectedItem.doseUnitCode && selectedItem.dosePerBaseUnit !== null
+                      ? `liều tính theo ${unitNameByCode.get(selectedItem.doseUnitCode) ?? selectedItem.doseUnitCode}, mỗi ${selectedItem.baseUnitCode ? (unitNameByCode.get(selectedItem.baseUnitCode) ?? selectedItem.baseUnitCode) : 'đơn vị bán'} chứa ${String(selectedItem.dosePerBaseUnit).replace('.', ',')}`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                />
+              )}
+              {selectedItem.itemType === 'MEDICINE' && selectedItem.dosePresets.length > 0 && (
+                <DetailField
+                  label="Liều mẫu"
+                  value={selectedItem.dosePresets
+                    .map((p) => `${p.name}: ${summarizePreset(p, selectedItem.doseUnitCode ? (unitNameByCode.get(selectedItem.doseUnitCode) ?? '') : '')}`)
+                    .join(' · ')}
+                />
+              )}
               {selectedItem.itemType === 'MEDICINE' && <DetailField label="Chống chỉ định / Cảnh báo" value={selectedItem.contraindications} />}
               {selectedItem.itemType === 'MEDICINE' && (
                 <DetailField
@@ -610,6 +636,7 @@ export function DrugCatalogPane() {
           drugRouteOptions={drugRouteOptions}
           activeIngredientOptions={activeIngredientOptions}
           unitOptions={unitOptions}
+          doseUnitCatalog={doseUnitCatalog}
           dosageFormCatalog={dosageFormCatalog}
           storageConditionCatalog={storageConditionCatalog}
           manufacturerCatalog={manufacturerCatalog}
@@ -938,6 +965,7 @@ function DrugFormModal({
   drugRouteOptions,
   activeIngredientOptions,
   unitOptions,
+  doseUnitCatalog,
   dosageFormCatalog,
   storageConditionCatalog,
   manufacturerCatalog,
@@ -959,6 +987,7 @@ function DrugFormModal({
   drugRouteOptions: ComboboxOption[];
   activeIngredientOptions: ComboboxOption[];
   unitOptions: ComboboxOption[];
+  doseUnitCatalog: CatalogCombobox;
   dosageFormCatalog: CatalogCombobox;
   storageConditionCatalog: CatalogCombobox;
   manufacturerCatalog: CatalogCombobox;
@@ -990,6 +1019,11 @@ function DrugFormModal({
     isPrescriptionOnly: boolean;
     isSplittable: boolean;
     isTraditional: boolean;
+    // "Cách kê liều" (#267) — null khi xoá đơn vị liều ở form Sửa (undefined nghĩa là không đổi).
+    doseMode: DoseMode;
+    doseUnitCode: string | null;
+    dosePerBaseUnit: number | null;
+    dosePresets: DrugDosePresetInput[];
     registrationNumber?: string;
     dosageForm?: string;
     countryOfOrigin?: string;
@@ -1026,6 +1060,11 @@ function DrugFormModal({
   const [isSplittable, setIsSplittable] = useState(item?.isSplittable ?? true);
   // "Thuốc y học cổ truyền (Đông y)" (#242) — đơn có thuốc này được cấp mã loại Y.
   const [isTraditional, setIsTraditional] = useState(item?.isTraditional ?? false);
+  // "Cách kê liều" (#267): kiểu kê mặc định, đơn vị liều + dung tích (chuỗi để gõ dở không mất), liều mẫu.
+  const [doseMode, setDoseMode] = useState<DoseMode>(item?.doseMode ?? 'SCHEDULED');
+  const [doseUnitCode, setDoseUnitCode] = useState(item?.doseUnitCode ?? '');
+  const [dosePerBaseUnit, setDosePerBaseUnit] = useState(item?.dosePerBaseUnit != null ? String(item.dosePerBaseUnit).replace('.', ',') : '');
+  const [dosePresetRows, setDosePresetRows] = useState<DosePresetRow[]>(presetRowsFromItem(item));
   // Mở rộng #151 — 3 bắt buộc (Số ĐK/Dạng bào chế/Nước SX) + 5 tùy chọn, CHỈ có ý nghĩa với Thuốc.
   const [registrationNumber, setRegistrationNumber] = useState(item?.registrationNumber ?? '');
   const [dosageForm, setDosageForm] = useState(item?.dosageForm ?? '');
@@ -1067,9 +1106,11 @@ function DrugFormModal({
       registrationNumber.trim() === '' ||
       dosageForm.trim() === '' ||
       countryOfOrigin.trim() === '');
+  const doseIssues = isMedicine ? validateDoseConfig({ doseUnitCode, dosePerBaseUnit, rows: dosePresetRows }) : [];
   const { saveError, run } = useSaveAttempt();
   const isInvalid =
     stale ||
+    doseIssues.length > 0 ||
     code.trim() === '' ||
     name.trim() === '' ||
     baseUnitCode.trim() === '' ||
@@ -1099,6 +1140,11 @@ function DrugFormModal({
       isPrescriptionOnly: isMedicine ? isPrescriptionOnly : true,
       isSplittable: isMedicine ? isSplittable : true,
       isTraditional: isMedicine ? isTraditional : false,
+      // "Cách kê liều" (#267) — CHỈ Thuốc; `isInvalid` đã chặn submit khi cấu hình liều còn lỗi.
+      doseMode: isMedicine ? doseMode : ('SCHEDULED' as const),
+      doseUnitCode: isMedicine && doseUnitCode !== '' ? doseUnitCode : null,
+      dosePerBaseUnit: isMedicine && doseUnitCode !== '' ? (Number(dosePerBaseUnit.trim().replace(',', '.')) || null) : null,
+      dosePresets: isMedicine ? buildDosePresets(dosePresetRows) : [],
       // Mở rộng #151 — CHỈ có ý nghĩa với Thuốc, `isInvalid` đã chặn submit khi 3 trường bắt buộc
       // (registrationNumber/dosageForm/countryOfOrigin) còn trống.
       registrationNumber: isMedicine ? registrationNumber.trim() || undefined : undefined,
@@ -1145,6 +1191,9 @@ function DrugFormModal({
     setName('');
     setIngredients([]);
     setUnits([]);
+    setDoseUnitCode('');
+    setDosePerBaseUnit('');
+    setDosePresetRows([]);
     setPackagingSpec('');
     userEditedPackagingSpecRef.current = false;
     codeInputRef.current?.focus();
@@ -1628,6 +1677,28 @@ function DrugFormModal({
                 </div>
               </div>
             </section>
+          )}
+
+          {/* KHỐI 5 — Cách kê liều (#267, CHỈ Thuốc): kiểu kê mặc định, đơn vị liều (vd ml), liều mẫu để bác sĩ bấm chọn. */}
+          {isMedicine && (
+            <DrugDoseConfigSection
+              doseMode={doseMode}
+              onDoseModeChange={setDoseMode}
+              doseUnitCode={doseUnitCode}
+              onDoseUnitCodeChange={(code) => {
+                setDoseUnitCode(code);
+                if (code === '') setDosePerBaseUnit('');
+              }}
+              dosePerBaseUnit={dosePerBaseUnit}
+              onDosePerBaseUnitChange={setDosePerBaseUnit}
+              rows={dosePresetRows}
+              onRowsChange={setDosePresetRows}
+              doseUnitOptions={doseUnitCatalog.options}
+              onCreateDoseUnit={doseUnitCatalog.onCreateOption}
+              baseUnitLabel={baseUnitCode ? unitLabel(baseUnitCode) : ''}
+              doseUnitLabel={doseUnitCode ? (doseUnitCatalog.nameByCode.get(doseUnitCode) ?? unitLabel(doseUnitCode)) : ''}
+              issues={doseIssues}
+            />
           )}
         </div>
 

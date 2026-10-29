@@ -18,7 +18,7 @@ import {
   type DoctorDirectoryPort,
   type PricingPort,
 } from '@nexamed/core';
-import { formatDoseSummary } from '@nexamed/shared';
+import { formatDoseSummary, type MedicineLabelBatch, type MedicineLabelItem, type MedicineLabelsResponse } from '@nexamed/shared';
 import type {
   ApproveStockIssueRequest,
   CreateManualStockIssueRequest,
@@ -874,6 +874,53 @@ export class StockIssueService {
       this.invoiceRepository.findByStockIssueLineIds(tx, tenantId, row.lines.map((l) => l.id)),
     );
     return this.toDetailDto(row, names, attachedInvoice ? { invoiceId: attachedInvoice.id, invoiceNo: attachedInvoice.invoiceNo, invoiceType: attachedInvoice.invoiceType } : null);
+  }
+
+  /**
+   * `GET /inventory/issues/:id/medicine-labels` — dữ liệu in "Nhãn dán bì thuốc" (docs/DECISIONS.md #267). Số lượng là số THỰC PHÁT: các dòng phiếu cùng một dòng đơn (phát từ nhiều lô) gộp thành một nhãn,
+   * hàng khách mua thêm không theo đơn gộp theo thuốc. Chỉ phiếu đã xuất (POSTED) có nhãn; phiếu đã huỷ/chưa duyệt trả danh sách rỗng. Lọc chi nhánh qua kho và Khoa/Phòng như `getById`.
+   */
+  async getMedicineLabels(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<MedicineLabelsResponse> {
+    const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+    const row = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockIssueRepository.findForMedicineLabels(tx, tenantId, branchId, id));
+    if (!row) throw new NotFoundException();
+    assertWarehouseInScope(row.warehouse.departmentId, dataScope, actorDepartmentId);
+
+    const patientRow = row.prescription?.encounter.patient ?? null;
+    const patient = patientRow ? { fullName: patientRow.fullName, patientCode: patientRow.patientCode, birthYear: patientRow.dob ? patientRow.dob.getUTCFullYear() : null } : null;
+
+    const items = new Map<string, MedicineLabelItem>();
+    if (row.status === 'POSTED') {
+      for (const line of row.lines) {
+        const key = line.prescriptionItemId ?? `otc:${line.drugId}`;
+        const batch: MedicineLabelBatch | null = line.batch ? { batchNo: line.batch.batchNo, expiryDate: line.batch.expiryDate ? line.batch.expiryDate.toISOString().slice(0, 10) : null } : null;
+        const existing = items.get(key);
+        if (existing) {
+          existing.quantity += line.quantity;
+          if (batch && !existing.batches.some((b) => b.batchNo === batch.batchNo)) existing.batches.push(batch);
+          continue;
+        }
+        const item = line.prescriptionItem;
+        items.set(key, {
+          key: line.prescriptionItemId ?? line.id,
+          prescriptionItemId: line.prescriptionItemId,
+          drugId: line.drugId,
+          drugName: line.drug.name,
+          activeIngredient: line.drug.activeIngredient,
+          concentration: line.drug.concentration,
+          quantity: line.quantity,
+          unitCode: line.drug.baseUnitCode,
+          doseMorning: item ? Number(item.doseMorning) : 0,
+          doseNoon: item ? Number(item.doseNoon) : 0,
+          doseAfternoon: item ? Number(item.doseAfternoon) : 0,
+          doseEvening: item ? Number(item.doseEvening) : 0,
+          durationDays: item ? item.durationDays : null,
+          instruction: item?.instruction ?? null,
+          batches: batch ? [batch] : [],
+        });
+      }
+    }
+    return { issueId: row.id, issueNo: row.issueNo, issuedAt: row.occurredAt.toISOString(), patient, items: [...items.values()] };
   }
 
   /** Cho sổ công nợ NCC liên chi nhánh (#233 Q4): số phiếu + chi nhánh của phiếu xuất, KHÔNG lọc chi nhánh/Khoa — chỉ trả hai thông tin đó, không mở nội dung phiếu. */

@@ -53,3 +53,4 @@ export * from './shift-swap';
 export * from './system-version';
 export * from './software-update';
 export * from './platform';
+export * from './medicine-label';

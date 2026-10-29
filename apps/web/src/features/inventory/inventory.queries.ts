@@ -59,6 +59,7 @@ import {
   getStockCount,
   getStockCounts,
   getStockExpiryWarnings,
+  getMedicineLabels,
   getStockIssue,
   getStockIssues,
   getStockLedgerReport,
@@ -220,6 +221,17 @@ export function useStockIssueQuery(id: string, enabled = true) {
     queryKey: queryKey(tenantId, 'stock-issue', 'detail', id),
     queryFn: () => getStockIssue(id),
     enabled: enabled && id !== '',
+  });
+}
+
+/** Dữ liệu in nhãn dán bì thuốc của một phiếu xuất (#267) — luôn lấy mới khi mở (số lượng thực phát đổi nếu phiếu bị huỷ sau đó). */
+export function useMedicineLabelsQuery(issueId: string, enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'stock-issue', 'medicine-labels', issueId),
+    queryFn: () => getMedicineLabels(issueId),
+    enabled: enabled && issueId !== '',
+    staleTime: 0,
   });
 }
 

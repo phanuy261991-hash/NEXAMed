@@ -18,6 +18,7 @@ import { useActorDepartmentId, useDataScope, useHasPermission } from '../auth/us
 import { useDrugsQuery } from '../drug/drug.queries';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
 import { useCreateStockIssueMutation, usePrescriptionDispenseStatusQuery } from './inventory.queries';
+import { MedicineLabelPrintPanel } from './MedicineLabelPrintPanel';
 import { makeDraftId } from '../../shared/make-draft-id';
 
 interface BatchOption {
@@ -58,6 +59,7 @@ interface DraftLine {
 }
 
 interface SuccessInfo {
+  issueId: string;
   issueNo: string;
   totalAmount: number;
   encounterId: string;
@@ -105,6 +107,7 @@ function batchLabel(b: BatchOption): string {
 export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispensed }: { prescriptionId: string; onClose: () => void; onDispensed?: () => void }) {
   const navigate = useNavigate();
   const canViewInvoice = useHasPermission('invoice', 'read');
+  const canPrintLabels = useHasPermission('stock_issue', 'read');
   const warehousesQuery = useWarehousesQuery();
   // Phân quyền theo Khoa/Phòng (retrofit #173/#177) — đúng khuôn `StockCountFormPage.tsx`. Backend
   // LUÔN enforce lại (404 nếu chọn sai kho) — lọc ở đây thuần UX, tránh hiện lựa chọn chắc chắn bị chặn.
@@ -271,6 +274,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
         lines: submittedLines.flatMap(toIssueLines),
       });
       setSuccess({
+        issueId: result.id,
         issueNo: result.issueNo,
         totalAmount: result.totalAmount,
         encounterId: statusQuery.data?.encounterId ?? '',
@@ -306,37 +310,47 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" aria-label="Phát thuốc">
-      <div className={`flex max-h-[88vh] w-full flex-col rounded-xl bg-white shadow-xl ${success ? 'max-w-sm' : 'max-w-5xl'}`}>
+      <div className={`flex max-h-[88vh] w-full flex-col rounded-xl bg-white shadow-xl ${success ? (canPrintLabels ? 'max-w-3xl' : 'max-w-sm') : 'max-w-5xl'}`}>
         {success ? (
-          <div className="flex flex-col items-center gap-3 p-8 text-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-white">
-              <CheckCircle size={24} weight="fill" aria-hidden="true" />
-            </div>
-            <p className="text-base font-semibold text-slate-900">Đã phát thuốc thành công</p>
-            <p className="text-sm text-slate-500">
-              Phiếu <span className="font-semibold text-slate-700">{success.issueNo}</span>
-            </p>
-            {success.attachedInvoice && (
-              <div className="w-full rounded-md bg-blue-50 px-3.5 py-2.5 text-sm text-blue-900">
-                Đã cộng <span className="font-semibold">{formatVnd(success.totalAmount)}</span> vào{' '}
-                <span className="font-semibold">
-                  {success.attachedInvoice.invoiceType === 'DRUG' ? 'hoá đơn thuốc riêng' : 'hoá đơn khám'} {success.attachedInvoice.invoiceNo}
-                </span>
-                .
+          <>
+            <div className="scroll-hover min-h-0 flex-1 overflow-y-auto">
+              <div className="flex flex-col items-center gap-3 p-8 text-center">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-white">
+                  <CheckCircle size={24} weight="fill" aria-hidden="true" />
+                </div>
+                <p className="text-base font-semibold text-slate-900">Đã phát thuốc thành công</p>
+                <p className="text-sm text-slate-500">
+                  Phiếu <span className="font-semibold text-slate-700">{success.issueNo}</span>
+                </p>
+                {success.attachedInvoice && (
+                  <div className="w-full rounded-md bg-blue-50 px-3.5 py-2.5 text-sm text-blue-900">
+                    Đã cộng <span className="font-semibold">{formatVnd(success.totalAmount)}</span> vào{' '}
+                    <span className="font-semibold">
+                      {success.attachedInvoice.invoiceType === 'DRUG' ? 'hoá đơn thuốc riêng' : 'hoá đơn khám'} {success.attachedInvoice.invoiceNo}
+                    </span>
+                    .
+                  </div>
+                )}
+                <p className="text-xs text-slate-400">Thu ngân sẽ thu khi khách thanh toán.</p>
               </div>
-            )}
-            <p className="text-xs text-slate-400">Thu ngân sẽ thu khi khách thanh toán.</p>
-            <div className="mt-1 flex w-full flex-col gap-2">
-              <Button type="button" onClick={onClose} className="w-full">
-                Xong, quay lại hàng đợi
-              </Button>
+              {/* "In nhãn thuốc" (#267) — nhãn dán bì thuốc theo số lượng THỰC PHÁT của phiếu vừa tạo; ẩn khi thiếu quyền đọc phiếu xuất (máy chủ cũng chặn). */}
+              {canPrintLabels && (
+                <div className="border-t border-slate-100 px-5 pb-4 pt-4">
+                  <MedicineLabelPrintPanel issueId={success.issueId} />
+                </div>
+              )}
+            </div>
+            <div className="flex shrink-0 flex-col gap-2 border-t border-slate-100 px-5 py-4 sm:flex-row sm:justify-end">
               {canViewInvoice && success.attachedInvoice && (
-                <Button type="button" variant="secondary" onClick={handleViewInvoice} className="w-full">
+                <Button type="button" variant="secondary" onClick={handleViewInvoice}>
                   Xem hoá đơn →
                 </Button>
               )}
+              <Button type="button" onClick={onClose}>
+                Xong, quay lại hàng đợi
+              </Button>
             </div>
-          </div>
+          </>
         ) : (
           <>
             <div className="px-5 pt-5">

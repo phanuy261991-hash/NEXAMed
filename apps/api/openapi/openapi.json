@@ -36086,6 +36086,71 @@
                     "type": "boolean",
                     "default": false
                   },
+                  "doseMode": {
+                    "type": "string",
+                    "enum": [
+                      "SCHEDULED",
+                      "AS_NEEDED"
+                    ],
+                    "default": "SCHEDULED"
+                  },
+                  "doseUnitCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "dosePerBaseUnit": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0.25,
+                    "maximum": 100000
+                  },
+                  "dosePresets": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "doseMorning": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        },
+                        "doseNoon": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        },
+                        "doseAfternoon": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        },
+                        "doseEvening": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "doseMorning",
+                        "doseNoon",
+                        "doseAfternoon",
+                        "doseEvening"
+                      ]
+                    },
+                    "maxItems": 8,
+                    "default": []
+                  },
                   "registrationNumber": {
                     "type": "string",
                     "minLength": 1
@@ -36322,6 +36387,64 @@
                         "isTraditional": {
                           "type": "boolean"
                         },
+                        "doseMode": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "AS_NEEDED"
+                          ]
+                        },
+                        "doseUnitCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dosePerBaseUnit": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "dosePresets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "sortOrder": {
+                                "type": "integer"
+                              },
+                              "doseMorning": {
+                                "type": "number"
+                              },
+                              "doseNoon": {
+                                "type": "number"
+                              },
+                              "doseAfternoon": {
+                                "type": "number"
+                              },
+                              "doseEvening": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "sortOrder",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening"
+                            ]
+                          }
+                        },
                         "registrationNumber": {
                           "type": [
                             "string",
@@ -36534,6 +36657,10 @@
                         "isPrescriptionOnly",
                         "isSplittable",
                         "isTraditional",
+                        "doseMode",
+                        "doseUnitCode",
+                        "dosePerBaseUnit",
+                        "dosePresets",
                         "registrationNumber",
                         "dosageForm",
                         "countryOfOrigin",
@@ -36849,6 +36976,64 @@
                               "isTraditional": {
                                 "type": "boolean"
                               },
+                              "doseMode": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "AS_NEEDED"
+                                ]
+                              },
+                              "doseUnitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dosePerBaseUnit": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "dosePresets": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "sortOrder": {
+                                      "type": "integer"
+                                    },
+                                    "doseMorning": {
+                                      "type": "number"
+                                    },
+                                    "doseNoon": {
+                                      "type": "number"
+                                    },
+                                    "doseAfternoon": {
+                                      "type": "number"
+                                    },
+                                    "doseEvening": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "name",
+                                    "sortOrder",
+                                    "doseMorning",
+                                    "doseNoon",
+                                    "doseAfternoon",
+                                    "doseEvening"
+                                  ]
+                                }
+                              },
                               "registrationNumber": {
                                 "type": [
                                   "string",
@@ -37061,6 +37246,10 @@
                               "isPrescriptionOnly",
                               "isSplittable",
                               "isTraditional",
+                              "doseMode",
+                              "doseUnitCode",
+                              "dosePerBaseUnit",
+                              "dosePresets",
                               "registrationNumber",
                               "dosageForm",
                               "countryOfOrigin",
@@ -37296,6 +37485,64 @@
                         "isTraditional": {
                           "type": "boolean"
                         },
+                        "doseMode": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "AS_NEEDED"
+                          ]
+                        },
+                        "doseUnitCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dosePerBaseUnit": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "dosePresets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "sortOrder": {
+                                "type": "integer"
+                              },
+                              "doseMorning": {
+                                "type": "number"
+                              },
+                              "doseNoon": {
+                                "type": "number"
+                              },
+                              "doseAfternoon": {
+                                "type": "number"
+                              },
+                              "doseEvening": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "sortOrder",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening"
+                            ]
+                          }
+                        },
                         "registrationNumber": {
                           "type": [
                             "string",
@@ -37508,6 +37755,10 @@
                         "isPrescriptionOnly",
                         "isSplittable",
                         "isTraditional",
+                        "doseMode",
+                        "doseUnitCode",
+                        "dosePerBaseUnit",
+                        "dosePresets",
                         "registrationNumber",
                         "dosageForm",
                         "countryOfOrigin",
@@ -37767,6 +38018,69 @@
                   },
                   "isTraditional": {
                     "type": "boolean"
+                  },
+                  "doseMode": {
+                    "type": "string",
+                    "enum": [
+                      "SCHEDULED",
+                      "AS_NEEDED"
+                    ]
+                  },
+                  "doseUnitCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  },
+                  "dosePerBaseUnit": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0.25,
+                    "maximum": 100000
+                  },
+                  "dosePresets": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "doseMorning": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        },
+                        "doseNoon": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        },
+                        "doseAfternoon": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        },
+                        "doseEvening": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "doseMorning",
+                        "doseNoon",
+                        "doseAfternoon",
+                        "doseEvening"
+                      ]
+                    },
+                    "maxItems": 8
                   },
                   "registrationNumber": {
                     "type": [
@@ -38046,6 +38360,64 @@
                         "isTraditional": {
                           "type": "boolean"
                         },
+                        "doseMode": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "AS_NEEDED"
+                          ]
+                        },
+                        "doseUnitCode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dosePerBaseUnit": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "dosePresets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "sortOrder": {
+                                "type": "integer"
+                              },
+                              "doseMorning": {
+                                "type": "number"
+                              },
+                              "doseNoon": {
+                                "type": "number"
+                              },
+                              "doseAfternoon": {
+                                "type": "number"
+                              },
+                              "doseEvening": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "sortOrder",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening"
+                            ]
+                          }
+                        },
                         "registrationNumber": {
                           "type": [
                             "string",
@@ -38258,6 +38630,10 @@
                         "isPrescriptionOnly",
                         "isSplittable",
                         "isTraditional",
+                        "doseMode",
+                        "doseUnitCode",
+                        "dosePerBaseUnit",
+                        "dosePresets",
                         "registrationNumber",
                         "dosageForm",
                         "countryOfOrigin",
@@ -62086,7 +62462,8 @@
                                   "STOCK_ISSUE",
                                   "STOCK_COUNT",
                                   "STOCK_TRANSFER",
-                                  "SPECIMEN_LABEL"
+                                  "SPECIMEN_LABEL",
+                                  "MEDICINE_LABEL"
                                 ]
                               },
                               "name": {
@@ -62100,7 +62477,9 @@
                                   "A5_LANDSCAPE",
                                   "K80",
                                   "LABEL_35X22",
-                                  "LABEL_50X30"
+                                  "LABEL_50X30",
+                                  "LABEL_70X40",
+                                  "LABEL_60X40"
                                 ]
                               },
                               "isDefault": {
@@ -62254,6 +62633,25 @@
                                       "showDate"
                                     ]
                                   },
+                                  "medicineLabel": {
+                                    "type": "object",
+                                    "properties": {
+                                      "showClinic": {
+                                        "type": "boolean"
+                                      },
+                                      "showDate": {
+                                        "type": "boolean"
+                                      },
+                                      "showLot": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "showClinic",
+                                      "showDate",
+                                      "showLot"
+                                    ]
+                                  },
                                   "prescriptionInfo": {
                                     "type": "object",
                                     "properties": {
@@ -62290,6 +62688,10 @@
                                       },
                                       "showReceiverBox": {
                                         "type": "boolean"
+                                      },
+                                      "padSmallQuantity": {
+                                        "type": "boolean",
+                                        "default": true
                                       }
                                     },
                                     "required": [
@@ -62399,7 +62801,8 @@
                                       "STOCK_ISSUE",
                                       "STOCK_COUNT",
                                       "STOCK_TRANSFER",
-                                      "SPECIMEN_LABEL"
+                                      "SPECIMEN_LABEL",
+                                      "MEDICINE_LABEL"
                                     ]
                                   },
                                   "label": {
@@ -62418,7 +62821,9 @@
                                         "A5_LANDSCAPE",
                                         "K80",
                                         "LABEL_35X22",
-                                        "LABEL_50X30"
+                                        "LABEL_50X30",
+                                        "LABEL_70X40",
+                                        "LABEL_60X40"
                                       ]
                                     }
                                   },
@@ -62430,7 +62835,9 @@
                                       "A5_LANDSCAPE",
                                       "K80",
                                       "LABEL_35X22",
-                                      "LABEL_50X30"
+                                      "LABEL_50X30",
+                                      "LABEL_70X40",
+                                      "LABEL_60X40"
                                     ]
                                   },
                                   "defaultTitle": {
@@ -62479,7 +62886,9 @@
                                       "A5_LANDSCAPE",
                                       "K80",
                                       "LABEL_35X22",
-                                      "LABEL_50X30"
+                                      "LABEL_50X30",
+                                      "LABEL_70X40",
+                                      "LABEL_60X40"
                                     ]
                                   },
                                   "label": {
@@ -62655,6 +63064,25 @@
                                         "showDate"
                                       ]
                                     },
+                                    "medicineLabel": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showClinic": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        },
+                                        "showLot": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showClinic",
+                                        "showDate",
+                                        "showLot"
+                                      ]
+                                    },
                                     "prescriptionInfo": {
                                       "type": "object",
                                       "properties": {
@@ -62691,6 +63119,10 @@
                                         },
                                         "showReceiverBox": {
                                           "type": "boolean"
+                                        },
+                                        "padSmallQuantity": {
+                                          "type": "boolean",
+                                          "default": true
                                         }
                                       },
                                       "required": [
@@ -62901,6 +63333,25 @@
                                         "showDate"
                                       ]
                                     },
+                                    "medicineLabel": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showClinic": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        },
+                                        "showLot": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showClinic",
+                                        "showDate",
+                                        "showLot"
+                                      ]
+                                    },
                                     "prescriptionInfo": {
                                       "type": "object",
                                       "properties": {
@@ -62937,6 +63388,10 @@
                                         },
                                         "showReceiverBox": {
                                           "type": "boolean"
+                                        },
+                                        "padSmallQuantity": {
+                                          "type": "boolean",
+                                          "default": true
                                         }
                                       },
                                       "required": [
@@ -63147,6 +63602,25 @@
                                         "showDate"
                                       ]
                                     },
+                                    "medicineLabel": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showClinic": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        },
+                                        "showLot": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showClinic",
+                                        "showDate",
+                                        "showLot"
+                                      ]
+                                    },
                                     "prescriptionInfo": {
                                       "type": "object",
                                       "properties": {
@@ -63183,6 +63657,10 @@
                                         },
                                         "showReceiverBox": {
                                           "type": "boolean"
+                                        },
+                                        "padSmallQuantity": {
+                                          "type": "boolean",
+                                          "default": true
                                         }
                                       },
                                       "required": [
@@ -63393,6 +63871,25 @@
                                         "showDate"
                                       ]
                                     },
+                                    "medicineLabel": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showClinic": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        },
+                                        "showLot": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showClinic",
+                                        "showDate",
+                                        "showLot"
+                                      ]
+                                    },
                                     "prescriptionInfo": {
                                       "type": "object",
                                       "properties": {
@@ -63429,6 +63926,10 @@
                                         },
                                         "showReceiverBox": {
                                           "type": "boolean"
+                                        },
+                                        "padSmallQuantity": {
+                                          "type": "boolean",
+                                          "default": true
                                         }
                                       },
                                       "required": [
@@ -63639,6 +64140,25 @@
                                         "showDate"
                                       ]
                                     },
+                                    "medicineLabel": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showClinic": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        },
+                                        "showLot": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showClinic",
+                                        "showDate",
+                                        "showLot"
+                                      ]
+                                    },
                                     "prescriptionInfo": {
                                       "type": "object",
                                       "properties": {
@@ -63675,6 +64195,10 @@
                                         },
                                         "showReceiverBox": {
                                           "type": "boolean"
+                                        },
+                                        "padSmallQuantity": {
+                                          "type": "boolean",
+                                          "default": true
                                         }
                                       },
                                       "required": [
@@ -63885,6 +64409,25 @@
                                         "showDate"
                                       ]
                                     },
+                                    "medicineLabel": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showClinic": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        },
+                                        "showLot": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showClinic",
+                                        "showDate",
+                                        "showLot"
+                                      ]
+                                    },
                                     "prescriptionInfo": {
                                       "type": "object",
                                       "properties": {
@@ -63921,6 +64464,548 @@
                                         },
                                         "showReceiverBox": {
                                           "type": "boolean"
+                                        },
+                                        "padSmallQuantity": {
+                                          "type": "boolean",
+                                          "default": true
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showNationalId",
+                                        "nationalIdWhenMissing",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showWeight",
+                                        "showGuardian",
+                                        "showCourse",
+                                        "showQuantityInWords",
+                                        "showReceiverBox"
+                                      ]
+                                    },
+                                    "insurance": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "whenSelfPay": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "selfPay"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "whenSelfPay"
+                                      ]
+                                    },
+                                    "copies": {
+                                      "type": "object",
+                                      "properties": {
+                                        "count": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 3
+                                        },
+                                        "labels": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "maxLength": 40
+                                          },
+                                          "maxItems": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "count",
+                                        "labels"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "margins",
+                                    "header",
+                                    "title",
+                                    "footer",
+                                    "copies"
+                                  ]
+                                },
+                                "LABEL_70X40": {
+                                  "type": "object",
+                                  "properties": {
+                                    "margins": {
+                                      "type": "object",
+                                      "properties": {
+                                        "topMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "rightMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "bottomMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "leftMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        }
+                                      },
+                                      "required": [
+                                        "topMm",
+                                        "rightMm",
+                                        "bottomMm",
+                                        "leftMm"
+                                      ]
+                                    },
+                                    "header": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showLogo": {
+                                          "type": "boolean"
+                                        },
+                                        "showClinicName": {
+                                          "type": "boolean"
+                                        },
+                                        "showBranchName": {
+                                          "type": "boolean",
+                                          "default": true
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showTaxCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showDivider": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showLogo",
+                                        "showClinicName",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showTaxCode",
+                                        "showDivider"
+                                      ]
+                                    },
+                                    "title": {
+                                      "type": "object",
+                                      "properties": {
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        }
+                                      },
+                                      "required": [
+                                        "text"
+                                      ]
+                                    },
+                                    "footer": {
+                                      "type": "object",
+                                      "properties": {
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "showSignature": {
+                                          "type": "boolean"
+                                        },
+                                        "showSignatureHint": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "note",
+                                        "showSignature",
+                                        "showSignatureHint"
+                                      ]
+                                    },
+                                    "notice": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "title": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        },
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 1000
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "title",
+                                        "text"
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showGroup": {
+                                          "type": "boolean"
+                                        },
+                                        "showCapColor": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showGroup",
+                                        "showCapColor",
+                                        "showDate"
+                                      ]
+                                    },
+                                    "medicineLabel": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showClinic": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        },
+                                        "showLot": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showClinic",
+                                        "showDate",
+                                        "showLot"
+                                      ]
+                                    },
+                                    "prescriptionInfo": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showNationalId": {
+                                          "type": "boolean"
+                                        },
+                                        "nationalIdWhenMissing": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "dots"
+                                          ]
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showWeight": {
+                                          "type": "boolean"
+                                        },
+                                        "showGuardian": {
+                                          "type": "boolean"
+                                        },
+                                        "showCourse": {
+                                          "type": "boolean"
+                                        },
+                                        "showQuantityInWords": {
+                                          "type": "boolean"
+                                        },
+                                        "showReceiverBox": {
+                                          "type": "boolean"
+                                        },
+                                        "padSmallQuantity": {
+                                          "type": "boolean",
+                                          "default": true
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showNationalId",
+                                        "nationalIdWhenMissing",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showWeight",
+                                        "showGuardian",
+                                        "showCourse",
+                                        "showQuantityInWords",
+                                        "showReceiverBox"
+                                      ]
+                                    },
+                                    "insurance": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "whenSelfPay": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "selfPay"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "whenSelfPay"
+                                      ]
+                                    },
+                                    "copies": {
+                                      "type": "object",
+                                      "properties": {
+                                        "count": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 3
+                                        },
+                                        "labels": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "maxLength": 40
+                                          },
+                                          "maxItems": 3
+                                        }
+                                      },
+                                      "required": [
+                                        "count",
+                                        "labels"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "margins",
+                                    "header",
+                                    "title",
+                                    "footer",
+                                    "copies"
+                                  ]
+                                },
+                                "LABEL_60X40": {
+                                  "type": "object",
+                                  "properties": {
+                                    "margins": {
+                                      "type": "object",
+                                      "properties": {
+                                        "topMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "rightMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "bottomMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        },
+                                        "leftMm": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 40
+                                        }
+                                      },
+                                      "required": [
+                                        "topMm",
+                                        "rightMm",
+                                        "bottomMm",
+                                        "leftMm"
+                                      ]
+                                    },
+                                    "header": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showLogo": {
+                                          "type": "boolean"
+                                        },
+                                        "showClinicName": {
+                                          "type": "boolean"
+                                        },
+                                        "showBranchName": {
+                                          "type": "boolean",
+                                          "default": true
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showTaxCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showDivider": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showLogo",
+                                        "showClinicName",
+                                        "showAddress",
+                                        "showPhone",
+                                        "showTaxCode",
+                                        "showDivider"
+                                      ]
+                                    },
+                                    "title": {
+                                      "type": "object",
+                                      "properties": {
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        }
+                                      },
+                                      "required": [
+                                        "text"
+                                      ]
+                                    },
+                                    "footer": {
+                                      "type": "object",
+                                      "properties": {
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "showSignature": {
+                                          "type": "boolean"
+                                        },
+                                        "showSignatureHint": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "note",
+                                        "showSignature",
+                                        "showSignatureHint"
+                                      ]
+                                    },
+                                    "notice": {
+                                      "type": "object",
+                                      "properties": {
+                                        "show": {
+                                          "type": "boolean"
+                                        },
+                                        "title": {
+                                          "type": "string",
+                                          "maxLength": 60
+                                        },
+                                        "text": {
+                                          "type": "string",
+                                          "maxLength": 1000
+                                        }
+                                      },
+                                      "required": [
+                                        "show",
+                                        "title",
+                                        "text"
+                                      ]
+                                    },
+                                    "label": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showGroup": {
+                                          "type": "boolean"
+                                        },
+                                        "showCapColor": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showPatientCode",
+                                        "showGroup",
+                                        "showCapColor",
+                                        "showDate"
+                                      ]
+                                    },
+                                    "medicineLabel": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showClinic": {
+                                          "type": "boolean"
+                                        },
+                                        "showDate": {
+                                          "type": "boolean"
+                                        },
+                                        "showLot": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "showClinic",
+                                        "showDate",
+                                        "showLot"
+                                      ]
+                                    },
+                                    "prescriptionInfo": {
+                                      "type": "object",
+                                      "properties": {
+                                        "showPatientCode": {
+                                          "type": "boolean"
+                                        },
+                                        "showNationalId": {
+                                          "type": "boolean"
+                                        },
+                                        "nationalIdWhenMissing": {
+                                          "type": "string",
+                                          "enum": [
+                                            "hide",
+                                            "dots"
+                                          ]
+                                        },
+                                        "showAddress": {
+                                          "type": "boolean"
+                                        },
+                                        "showPhone": {
+                                          "type": "boolean"
+                                        },
+                                        "showWeight": {
+                                          "type": "boolean"
+                                        },
+                                        "showGuardian": {
+                                          "type": "boolean"
+                                        },
+                                        "showCourse": {
+                                          "type": "boolean"
+                                        },
+                                        "showQuantityInWords": {
+                                          "type": "boolean"
+                                        },
+                                        "showReceiverBox": {
+                                          "type": "boolean"
+                                        },
+                                        "padSmallQuantity": {
+                                          "type": "boolean",
+                                          "default": true
                                         }
                                       },
                                       "required": [
@@ -64111,7 +65196,8 @@
                       "STOCK_ISSUE",
                       "STOCK_COUNT",
                       "STOCK_TRANSFER",
-                      "SPECIMEN_LABEL"
+                      "SPECIMEN_LABEL",
+                      "MEDICINE_LABEL"
                     ]
                   },
                   "name": {
@@ -64127,7 +65213,9 @@
                       "A5_LANDSCAPE",
                       "K80",
                       "LABEL_35X22",
-                      "LABEL_50X30"
+                      "LABEL_50X30",
+                      "LABEL_70X40",
+                      "LABEL_60X40"
                     ]
                   },
                   "config": {
@@ -64275,6 +65363,25 @@
                           "showDate"
                         ]
                       },
+                      "medicineLabel": {
+                        "type": "object",
+                        "properties": {
+                          "showClinic": {
+                            "type": "boolean"
+                          },
+                          "showDate": {
+                            "type": "boolean"
+                          },
+                          "showLot": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "showClinic",
+                          "showDate",
+                          "showLot"
+                        ]
+                      },
                       "prescriptionInfo": {
                         "type": "object",
                         "properties": {
@@ -64311,6 +65418,10 @@
                           },
                           "showReceiverBox": {
                             "type": "boolean"
+                          },
+                          "padSmallQuantity": {
+                            "type": "boolean",
+                            "default": true
                           }
                         },
                         "required": [
@@ -64424,7 +65535,8 @@
                             "STOCK_ISSUE",
                             "STOCK_COUNT",
                             "STOCK_TRANSFER",
-                            "SPECIMEN_LABEL"
+                            "SPECIMEN_LABEL",
+                            "MEDICINE_LABEL"
                           ]
                         },
                         "name": {
@@ -64438,7 +65550,9 @@
                             "A5_LANDSCAPE",
                             "K80",
                             "LABEL_35X22",
-                            "LABEL_50X30"
+                            "LABEL_50X30",
+                            "LABEL_70X40",
+                            "LABEL_60X40"
                           ]
                         },
                         "isDefault": {
@@ -64592,6 +65706,25 @@
                                 "showDate"
                               ]
                             },
+                            "medicineLabel": {
+                              "type": "object",
+                              "properties": {
+                                "showClinic": {
+                                  "type": "boolean"
+                                },
+                                "showDate": {
+                                  "type": "boolean"
+                                },
+                                "showLot": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "showClinic",
+                                "showDate",
+                                "showLot"
+                              ]
+                            },
                             "prescriptionInfo": {
                               "type": "object",
                               "properties": {
@@ -64628,6 +65761,10 @@
                                 },
                                 "showReceiverBox": {
                                   "type": "boolean"
+                                },
+                                "padSmallQuantity": {
+                                  "type": "boolean",
+                                  "default": true
                                 }
                               },
                               "required": [
@@ -64926,7 +66063,8 @@
                                   "STOCK_ISSUE",
                                   "STOCK_COUNT",
                                   "STOCK_TRANSFER",
-                                  "SPECIMEN_LABEL"
+                                  "SPECIMEN_LABEL",
+                                  "MEDICINE_LABEL"
                                 ]
                               },
                               "paperSize": {
@@ -64937,7 +66075,9 @@
                                   "A5_LANDSCAPE",
                                   "K80",
                                   "LABEL_35X22",
-                                  "LABEL_50X30"
+                                  "LABEL_50X30",
+                                  "LABEL_70X40",
+                                  "LABEL_60X40"
                                 ]
                               },
                               "widthMm": {
@@ -65094,6 +66234,25 @@
                                       "showDate"
                                     ]
                                   },
+                                  "medicineLabel": {
+                                    "type": "object",
+                                    "properties": {
+                                      "showClinic": {
+                                        "type": "boolean"
+                                      },
+                                      "showDate": {
+                                        "type": "boolean"
+                                      },
+                                      "showLot": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "showClinic",
+                                      "showDate",
+                                      "showLot"
+                                    ]
+                                  },
                                   "prescriptionInfo": {
                                     "type": "object",
                                     "properties": {
@@ -65130,6 +66289,10 @@
                                       },
                                       "showReceiverBox": {
                                         "type": "boolean"
+                                      },
+                                      "padSmallQuantity": {
+                                        "type": "boolean",
+                                        "default": true
                                       }
                                     },
                                     "required": [
@@ -65208,7 +66371,9 @@
                                         "A5_LANDSCAPE",
                                         "K80",
                                         "LABEL_35X22",
-                                        "LABEL_50X30"
+                                        "LABEL_50X30",
+                                        "LABEL_70X40",
+                                        "LABEL_60X40"
                                       ]
                                     },
                                     "label": {
@@ -65371,6 +66536,25 @@
                                             "showDate"
                                           ]
                                         },
+                                        "medicineLabel": {
+                                          "type": "object",
+                                          "properties": {
+                                            "showClinic": {
+                                              "type": "boolean"
+                                            },
+                                            "showDate": {
+                                              "type": "boolean"
+                                            },
+                                            "showLot": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "showClinic",
+                                            "showDate",
+                                            "showLot"
+                                          ]
+                                        },
                                         "prescriptionInfo": {
                                           "type": "object",
                                           "properties": {
@@ -65407,6 +66591,10 @@
                                             },
                                             "showReceiverBox": {
                                               "type": "boolean"
+                                            },
+                                            "padSmallQuantity": {
+                                              "type": "boolean",
+                                              "default": true
                                             }
                                           },
                                           "required": [
@@ -65625,7 +66813,8 @@
                         "STOCK_ISSUE",
                         "STOCK_COUNT",
                         "STOCK_TRANSFER",
-                        "SPECIMEN_LABEL"
+                        "SPECIMEN_LABEL",
+                        "MEDICINE_LABEL"
                       ]
                     },
                     "minItems": 1
@@ -65946,6 +67135,25 @@
                           "showDate"
                         ]
                       },
+                      "medicineLabel": {
+                        "type": "object",
+                        "properties": {
+                          "showClinic": {
+                            "type": "boolean"
+                          },
+                          "showDate": {
+                            "type": "boolean"
+                          },
+                          "showLot": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "showClinic",
+                          "showDate",
+                          "showLot"
+                        ]
+                      },
                       "prescriptionInfo": {
                         "type": "object",
                         "properties": {
@@ -65982,6 +67190,10 @@
                           },
                           "showReceiverBox": {
                             "type": "boolean"
+                          },
+                          "padSmallQuantity": {
+                            "type": "boolean",
+                            "default": true
                           }
                         },
                         "required": [
@@ -66100,7 +67312,8 @@
                             "STOCK_ISSUE",
                             "STOCK_COUNT",
                             "STOCK_TRANSFER",
-                            "SPECIMEN_LABEL"
+                            "SPECIMEN_LABEL",
+                            "MEDICINE_LABEL"
                           ]
                         },
                         "name": {
@@ -66114,7 +67327,9 @@
                             "A5_LANDSCAPE",
                             "K80",
                             "LABEL_35X22",
-                            "LABEL_50X30"
+                            "LABEL_50X30",
+                            "LABEL_70X40",
+                            "LABEL_60X40"
                           ]
                         },
                         "isDefault": {
@@ -66268,6 +67483,25 @@
                                 "showDate"
                               ]
                             },
+                            "medicineLabel": {
+                              "type": "object",
+                              "properties": {
+                                "showClinic": {
+                                  "type": "boolean"
+                                },
+                                "showDate": {
+                                  "type": "boolean"
+                                },
+                                "showLot": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "showClinic",
+                                "showDate",
+                                "showLot"
+                              ]
+                            },
                             "prescriptionInfo": {
                               "type": "object",
                               "properties": {
@@ -66304,6 +67538,10 @@
                                 },
                                 "showReceiverBox": {
                                   "type": "boolean"
+                                },
+                                "padSmallQuantity": {
+                                  "type": "boolean",
+                                  "default": true
                                 }
                               },
                               "required": [
@@ -81969,6 +83207,300 @@
           },
           "422": {
             "description": "Phát vượt số lượng kê đơn, thiếu tồn kho, hoặc hàng OTC sai loại thuốc",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/issues/{id}/medicine-labels": {
+      "get": {
+        "tags": [
+          "inventory"
+        ],
+        "summary": "Dữ liệu in \"Nhãn dán bì thuốc\" của 1 phiếu xuất kho (số lượng THỰC PHÁT, gộp các lô cùng dòng đơn) — phiếu đã huỷ/chưa duyệt trả danh sách rỗng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "issueId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "issueNo": {
+                          "type": "string"
+                        },
+                        "issuedAt": {
+                          "type": "string"
+                        },
+                        "patient": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "fullName": {
+                              "type": "string"
+                            },
+                            "patientCode": {
+                              "type": "string"
+                            },
+                            "birthYear": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "fullName",
+                            "patientCode",
+                            "birthYear"
+                          ]
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "prescriptionItemId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "activeIngredient": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "concentration": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "doseMorning": {
+                                "type": "number"
+                              },
+                              "doseNoon": {
+                                "type": "number"
+                              },
+                              "doseAfternoon": {
+                                "type": "number"
+                              },
+                              "doseEvening": {
+                                "type": "number"
+                              },
+                              "durationDays": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "instruction": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "batches": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "batchNo": {
+                                      "type": "string"
+                                    },
+                                    "expiryDate": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "batchNo",
+                                    "expiryDate"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "prescriptionItemId",
+                              "drugId",
+                              "drugName",
+                              "activeIngredient",
+                              "concentration",
+                              "quantity",
+                              "unitCode",
+                              "doseMorning",
+                              "doseNoon",
+                              "doseAfternoon",
+                              "doseEvening",
+                              "durationDays",
+                              "instruction",
+                              "batches"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "issueId",
+                        "issueNo",
+                        "issuedAt",
+                        "patient",
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_issue.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc chi nhánh/tenant khác hoặc ngoài Khoa/Phòng của người xem)",
             "content": {
               "application/json": {
                 "schema": {

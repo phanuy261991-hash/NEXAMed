@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-28
 
+### Nhãn dán bì thuốc in từ màn Phát thuốc, số lượng hai chữ số trên đơn, cấu hình "Cách kê liều" của thuốc (`docs/DECISIONS.md` #267, phần 1)
+
+Sau khi phát thuốc, hộp thành công hiện khối **"In nhãn thuốc"**: tích chọn từng thuốc, đặt số bản, in tem dán bì (họ tên – năm sinh, tên thuốc + số lượng thực phát, câu dặn); in lại được từ chi tiết phiếu xuất kho. Quản lý mẫu in có mẫu mới **"Nhãn thuốc"** (khổ tem 70×40 / 60×40 / 50×30 mm; tuỳ chọn thêm tên phòng khám + SĐT, ngày phát, lô và hạn dùng). Mẫu **Đơn thuốc** có ô tích "In số lượng dưới 10 bằng hai chữ số" (05 Gói, 01 Hộp — mặc định bật). Form **Thuốc** có khối "Cách kê liều": kiểu kê mặc định (theo buổi / khi cần), đơn vị liều (vd ml) kèm dung tích mỗi Hộp, bảng liều mẫu (Người lớn, Trẻ nhỏ…). **Môi trường khác cần `db:deploy`** (hai migration mới). Phần dòng kê đơn dùng cấu hình này (liều ml, "Khi cần") làm ở đợt sau.
+
 ### Đóng ca bác sĩ gắn lịch làm việc; ngày trước chưa đóng ca thì chưa được khám; công tắc tắt yêu cầu (`docs/DECISIONS.md` #266)
 
 Nhắc đóng ca nay theo **ca đã xếp** của bác sĩ (ca cuối trong ngày), phòng khám không phân ca thì theo giờ đóng cửa như cũ. Quá giờ chỉ hiện **chip đỏ trên thanh đỉnh**, không còn hộp thoại tự bật (kể cả đăng nhập hoặc tải lại sau giờ). Bác sĩ còn **ngày trước chưa đóng ca** (có nhận lượt khám hoặc có ca đã xếp) thì phải đóng mới được "Bắt đầu khám"/"Nhận ca": giao diện hiện dải cảnh báo ở Hàng đợi khám và hộp "Đóng ca ngày trước" (một ngày hoặc nhiều ngày, một lần xác nhận); máy chủ cũng từ chối. Lễ tân/quản trị có dải "Đóng ca hộ" ở "Bệnh nhân trong ngày". Lượt khám dở của ngày cũ trả về hàng chờ chung, lượt của hôm nay không bị đụng. **Cấu hình khám → Tạm nghỉ / Đóng ca** có công tắc mới "Nhắc và bắt buộc đóng ca" (mặc định bật); tắt thì không chip nhắc, không chặn khám, không dải nhắc — cho phòng khám không có thói quen đóng ca (ví dụ chỉ 1 bác sĩ). Chỉ tính từ ngày hệ thống lần đầu được hỏi sau khi nâng cấp, không dồn ngày cũ. Không migration; chưa ghi nhận thay đổi nào ở `db:seed`.

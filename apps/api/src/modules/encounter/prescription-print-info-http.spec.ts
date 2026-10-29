@@ -239,6 +239,8 @@ describe('HTTP e2e — thông tin bệnh nhân in trên đơn thuốc (#242)', (
         showCourse: true,
         showQuantityInWords: true,
         showReceiverBox: true,
+        // Số lượng dưới 10 in hai chữ số (#267) — mặc định bật.
+        padSmallQuantity: true,
       });
       for (const other of items.filter((i) => i.documentType !== 'PRESCRIPTION')) {
         expect(other.config.prescriptionInfo).toBeUndefined();

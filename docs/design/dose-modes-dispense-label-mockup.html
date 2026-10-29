@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup - Kê liều theo thuốc và nhãn dán (28/10/2026)</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#e2e8f0;font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;color:#1e293b;line-height:1.4}
+.page{max-width:1000px;margin:0 auto;padding:32px 24px 64px}
+h1{margin:0 0 4px;font-size:22px;font-weight:600;color:#0f172a}
+.intro{margin:0 0 28px;font-size:14px;color:#475569}
+.shot{margin-bottom:56px}
+.shot-title{margin:0 0 4px;font-size:16px;font-weight:600;color:#0f172a}
+.shot-note{margin:0 0 12px;font-size:13px;color:#475569;max-width:860px}
+.frame{background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:24px}
+
+/* nguyên liệu giao diện theo ui-guidelines */
+.dialog{background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 20px 40px rgba(15,23,42,.18);overflow:hidden}
+.dlg-head{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid #f1f5f9}
+.dlg-icon{width:40px;height:40px;border-radius:10px;background:#2563eb;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dlg-title{margin:0;font-size:17px;font-weight:600;color:#0f172a}
+.pill{font-size:12px;color:#475569;background:#f1f5f9;border-radius:999px;padding:3px 10px}
+.tag{font-size:12px;color:#334155;background:#f1f5f9;border-radius:6px;padding:4px 10px}
+.dlg-body{padding:30px 24px 24px;display:flex;flex-direction:column;gap:32px}
+.dlg-foot{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:16px 24px;border-top:1px solid #f1f5f9;background:#f8fafc}
+.lbl{display:block;font-size:14px;font-weight:600;color:#1e293b;margin-bottom:4px}
+.req{color:#f43f5e}
+.inp{width:100%;height:40px;border:1px solid #cbd5e1;border-radius:6px;padding:0 12px;font:400 15px 'Segoe UI',system-ui,sans-serif;color:#0f172a;background:#fff}
+.inp:focus{outline:2px solid rgba(37,99,235,.25);border-color:#2563eb}
+.inp-sm{height:36px}
+.inp-ul{width:100%;height:36px;border:0;border-bottom:1px solid #cbd5e1;background:transparent;padding:0 4px;font:400 15px 'Segoe UI',system-ui,sans-serif;color:#0f172a}
+.inp-ul:focus{outline:none;border-bottom:2px solid #2563eb}
+.suffix-wrap{position:relative}
+.suffix-wrap .inp{padding-right:44px}
+.suffix{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;color:#475569;pointer-events:none}
+.btn{height:36px;padding:0 16px;border-radius:6px;font:500 14px 'Segoe UI',system-ui,sans-serif;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.btn-primary{background:#2563eb;color:#fff;border:1px solid #2563eb}
+.btn-secondary{background:#fff;color:#334155;border:1px solid #cbd5e1}
+.btn-blue{background:#fff;color:#1d4ed8;border:1px solid #93c5fd}
+.sec{position:relative;border:1px solid #e2e8f0;border-radius:8px;padding:28px 20px 20px}
+.sec-badge{position:absolute;top:-12px;left:16px;background:#2563eb;color:#fff;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:4px 12px;border-radius:6px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.help{margin:10px 0 0;font-size:13px;color:#475569;line-height:1.5}
+.choice{text-align:left;border:1px solid #cbd5e1;background:#fff;color:#0f172a;border-radius:8px;padding:12px 16px;cursor:pointer;font-family:inherit}
+.choice b{display:block;font-size:15px;font-weight:600}
+.choice span{display:block;margin-top:2px;font-size:13px;color:#475569}
+.choice.on{border-color:#099078;background:#099078;color:#fff}
+.choice.on span{color:#fff}
+.th{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#334155}
+.thead{display:grid;column-gap:12px;align-items:center;background:#f1f5f9;border-bottom:2px solid #2563eb;padding:8px}
+.trow{display:grid;column-gap:12px;align-items:center;border-bottom:1px solid #e2e8f0;padding:4px 8px}
+.iconbtn{border:0;background:transparent;color:#94a3b8;cursor:pointer;display:flex;justify-content:center;padding:4px}
+.badge{display:inline-block;font-size:11px;font-weight:600;color:#fff;border-radius:999px;padding:2px 8px}
+.badge-green{background:#10b981}
+.badge-slate{background:#64748b}
+.chip-n{display:inline-block;font-size:11px;font-weight:600;color:#475569;border:1px solid #cbd5e1;background:#f1f5f9;border-radius:999px;padding:2px 8px}
+.card-line{border:1px solid #e2e8f0;border-radius:6px;padding:12px;background:#fff}
+.dose-lbl{display:block;font-size:12px;font-weight:600;color:#1e293b;margin-bottom:2px}
+.dose-in{width:100%;height:36px;border:0;border-bottom:1px solid #cbd5e1;background:transparent;text-align:center;font:400 15px 'Segoe UI',system-ui,sans-serif;color:#0f172a;font-variant-numeric:tabular-nums}
+.op{font-size:18px;font-weight:600;color:#cbd5e1;padding-bottom:6px}
+.totbox{border:1px solid #e2e8f0;background:#f8fafc;border-radius:6px;padding:4px 12px;min-width:116px}
+.totbox small{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#475569}
+.totbox strong{display:block;font-size:17px;font-weight:600;color:#0f172a;font-variant-numeric:tabular-nums}
+.pat{display:inline-flex;align-items:center;gap:8px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:5px 10px;font-size:13px;color:#0f172a;cursor:pointer;font-family:inherit}
+.pat i{font-style:normal;font-variant-numeric:tabular-nums;color:#475569;letter-spacing:.04em}
+.pat.on{border-color:#099078;background:#099078;color:#fff}
+.pat.on i{color:#fff}
+.seg{display:inline-flex;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden}
+.seg button{border:0;background:#fff;color:#334155;padding:7px 16px;font:500 14px 'Segoe UI',system-ui,sans-serif;cursor:pointer}
+.seg button+button{border-left:1px solid #cbd5e1}
+.seg button.on{background:#099078;color:#fff}
+.preview-line{margin:10px 0 0;font-size:13px;color:#475569}
+.preview-line b{font-weight:600;color:#0f172a}
+.divider{border:0;border-top:1px solid #e2e8f0;margin:14px 0}
+.tile{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #e2e8f0}
+.box{width:18px;height:18px;border:1px solid #94a3b8;border-radius:4px;background:#fff;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center}
+.box.on{background:#099078;border-color:#099078}
+.tile b{display:block;font-size:14px;font-weight:600;color:#1e293b}
+.tile span.d{display:block;font-size:13px;color:#475569}
+.tile.lock{opacity:.75}
+.stepper{display:inline-flex;align-items:center;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;background:#fff}
+.stepper button{border:0;background:#f1f5f9;width:28px;height:30px;font-size:16px;color:#334155;cursor:pointer}
+.stepper span{min-width:30px;text-align:center;font-size:14px;font-variant-numeric:tabular-nums}
+
+/* nhãn dán */
+.sticker-bg{background:#d1d5db;border-radius:8px;padding:28px;display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.sticker{background:#fff;border-radius:10px;padding:12px 14px;color:#000;font-family:Arial,'Segoe UI',sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sticker .nm{background:#111;color:#fff;font-size:15px;padding:4px 8px;margin:0 -2px 8px;display:block}
+.sticker .dr{font-size:17px;font-weight:700;border-bottom:1px solid #333;padding-bottom:5px;margin-bottom:7px;line-height:1.25}
+.sticker .in{font-size:15px;font-style:italic;line-height:1.35;margin:0}
+.sticker .top{font-size:12px;margin-bottom:6px;color:#222}
+.sticker .ft{font-size:12px;margin-top:8px;border-top:1px dashed #666;padding-top:5px;color:#222}
+.cap{font-size:12px;color:#334155;margin-top:6px}
+.two-col{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px}
+table.cmp{border-collapse:collapse;width:100%;font-size:14px}
+table.cmp th{background:#f1f5f9;border-bottom:2px solid #2563eb;text-align:left;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#334155;padding:8px;font-weight:600}
+table.cmp td{border-bottom:1px solid #e2e8f0;padding:8px}
+.ref-tabs{display:flex;gap:4px;border-bottom:1px solid #e2e8f0;margin-bottom:20px}
+.ref-tabs span{padding:8px 14px;font-size:14px;color:#475569}
+.ref-tabs span.on{color:#1d4ed8;border-bottom:2px solid #2563eb;font-weight:600;margin-bottom:-1px}
+.sect-h{margin:0 0 8px;font-size:15px;font-weight:600;color:#0f172a}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Kê liều theo thuốc và nhãn dán bì thuốc</h1>
+  <p class="intro">Mockup nháp ngày 28/10/2026, chờ chủ dự án duyệt trước khi viết mã. Dữ liệu trong ảnh là dữ liệu giả, không phải bệnh nhân thật. Gồm 6 màn: (1) cấu hình thuốc, (2) dòng kê dung dịch tính theo ml, (3) dòng kê thuốc gói kiểu Khi cần, (4) màn Phát thuốc có in nhãn, (5) nhãn dán, (6) Quản lý mẫu in.</p>
+
+  <!-- ===================== 1 ===================== -->
+  <section class="shot">
+    <h2 class="shot-title">1. Thông tin thuốc — mục "Cách kê liều" (ví dụ Zyrtec, dung dịch)</h2>
+    <p class="shot-note">Mục mới nằm trong form Sửa/Thêm thuốc (Quản trị → Danh mục Thuốc và Vật tư). Thuốc gói/viên không hiện hai ô "Đơn vị liều" và "Mỗi Hộp chứa"; họ chỉ chọn kiểu kê mặc định và có thể thêm liều mẫu.</p>
+    <div class="frame">
+      <form class="dialog" onsubmit="return false">
+        <div class="dlg-head">
+          <div class="dlg-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-grow:1"><h3 class="dlg-title">Sửa thuốc</h3><span class="pill">Danh mục: Thuốc và vật tư</span></div>
+          <span class="tag">Mã: ZYR60</span>
+          <button type="button" class="iconbtn" aria-label="Đóng" style="color:#64748b"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div class="dlg-body">
+          <div class="sec">
+            <span class="sec-badge">Thông tin thuốc</span>
+            <div class="grid4">
+              <div><label class="lbl" for="a1">Tên thuốc <span class="req">*</span></label><input class="inp" id="a1" value="Zyrtec Sol 60ml" readonly></div>
+              <div><label class="lbl" for="a2">Hoạt chất</label><input class="inp" id="a2" value="Cetirizin dihydroclorid" readonly></div>
+              <div><label class="lbl" for="a3">Hàm lượng</label><input class="inp" id="a3" value="1 mg/ml (0,1%)" readonly></div>
+              <div><label class="lbl" for="a4">Dạng bào chế</label><input class="inp" id="a4" value="Dung dịch uống" readonly></div>
+            </div>
+          </div>
+          <div class="sec">
+            <span class="sec-badge">Đơn vị và giá bán</span>
+            <div class="grid4">
+              <div><label class="lbl" for="b1">Đơn vị nhỏ nhất (kho và bán)</label><input class="inp" id="b1" value="Hộp" readonly></div>
+              <div><label class="lbl" for="b2">Quy cách đóng gói</label><input class="inp" id="b2" value="Hộp 1 chai 60 ml" readonly></div>
+              <div><label class="lbl" for="b3">Giá bán mỗi Hộp (đồng)</label><input class="inp" id="b3" value="95.000" readonly></div>
+            </div>
+          </div>
+          <div class="sec">
+            <span class="sec-badge">Cách kê liều</span>
+            <span class="lbl">Kiểu kê liều mặc định</span>
+            <div class="grid2">
+              <button type="button" class="choice on"><b>Theo buổi</b><span>Sáng / Trưa / Chiều / Tối nhân số ngày. Số lượng tự tính.</span></button>
+              <button type="button" class="choice"><b>Khi cần</b><span>Liều mỗi lần, bác sĩ nhập thẳng số lượng và câu dặn.</span></button>
+            </div>
+            <div class="grid4" style="margin-top:16px">
+              <div><label class="lbl" for="c1">Đơn vị liều</label>
+                <div class="suffix-wrap"><input class="inp" id="c1" value="ml" readonly><svg style="position:absolute;right:10px;top:12px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></div>
+              <div><label class="lbl" for="c2">Mỗi Hộp chứa</label>
+                <div class="suffix-wrap"><input class="inp" id="c2" value="60" readonly><span class="suffix">ml</span></div></div>
+            </div>
+            <p class="help">Bác sĩ nhập liều bằng ml, kho vẫn đếm Hộp: xuất kho làm tròn lên theo Hộp (cần 50 ml thì xuất 1 Hộp). Thuốc tính liều theo ml thì kiểu kê cố định, không đổi được trên dòng đơn.</p>
+            <div style="margin-top:22px">
+              <span class="lbl" style="margin-bottom:2px">Liều mẫu</span>
+              <p style="margin:0 0 10px;font-size:13px;color:#475569">Bác sĩ bấm chọn ở màn kê đơn, 4 ô liều tự điền và vẫn sửa tay được.</p>
+              <div role="table" aria-label="Liều mẫu">
+                <div role="row" class="thead" style="grid-template-columns:minmax(0,1fr) 92px 92px 92px 92px 36px"><span class="th" role="columnheader">Tên nhóm</span><span class="th" role="columnheader">Sáng (ml)</span><span class="th" role="columnheader">Trưa (ml)</span><span class="th" role="columnheader">Chiều (ml)</span><span class="th" role="columnheader">Tối (ml)</span><span></span></div>
+                <div role="row" class="trow" style="grid-template-columns:minmax(0,1fr) 92px 92px 92px 92px 36px"><input class="inp-ul" value="Người lớn" aria-label="Tên nhóm 1" readonly><input class="inp-ul" value="10" aria-label="Sáng 1" readonly><input class="inp-ul" value="0" aria-label="Trưa 1" readonly style="color:#64748b"><input class="inp-ul" value="0" aria-label="Chiều 1" readonly style="color:#64748b"><input class="inp-ul" value="10" aria-label="Tối 1" readonly><button type="button" class="iconbtn" aria-label="Xoá dòng Người lớn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg></button></div>
+                <div role="row" class="trow" style="grid-template-columns:minmax(0,1fr) 92px 92px 92px 92px 36px"><input class="inp-ul" value="Trẻ 2 - 6 tuổi" aria-label="Tên nhóm 2" readonly><input class="inp-ul" value="5" aria-label="Sáng 2" readonly><input class="inp-ul" value="0" aria-label="Trưa 2" readonly style="color:#64748b"><input class="inp-ul" value="0" aria-label="Chiều 2" readonly style="color:#64748b"><input class="inp-ul" value="5" aria-label="Tối 2" readonly><button type="button" class="iconbtn" aria-label="Xoá dòng Trẻ 2 đến 6 tuổi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg></button></div>
+                <div role="row" class="trow" style="grid-template-columns:minmax(0,1fr) 92px 92px 92px 92px 36px"><input class="inp-ul" value="Trẻ dưới 2 tuổi" aria-label="Tên nhóm 3" readonly><input class="inp-ul" value="2,5" aria-label="Sáng 3" readonly><input class="inp-ul" value="0" aria-label="Trưa 3" readonly style="color:#64748b"><input class="inp-ul" value="0" aria-label="Chiều 3" readonly style="color:#64748b"><input class="inp-ul" value="2,5" aria-label="Tối 3" readonly><button type="button" class="iconbtn" aria-label="Xoá dòng Trẻ dưới 2 tuổi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg></button></div>
+              </div>
+              <button type="button" class="btn btn-blue" style="margin-top:12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Thêm liều mẫu</button>
+            </div>
+          </div>
+        </div>
+        <div class="dlg-foot"><button type="button" class="btn btn-secondary">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===================== 2 ===================== -->
+  <section class="shot">
+    <h2 class="shot-title">2. Kê đơn — dòng thuốc dung dịch tính theo ml (Zyrtec)</h2>
+    <p class="shot-note">Bác sĩ bấm một liều mẫu (ví dụ "Trẻ 2 - 6 tuổi") thì 4 ô liều tự điền bằng ml, vẫn sửa tay được. Hộp "Tổng dùng" và "Kê và xuất kho" cho thấy số ml dùng và số Hộp làm tròn lên. Không có chọn kiểu kê trên dòng này.</p>
+    <div class="frame">
+      <div class="card-line">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <p style="margin:0;font-size:14px;font-weight:600;color:#0f172a">Zyrtec Sol 60ml</p>
+          <span class="chip-n">Dung dịch · tính theo ml</span>
+          <span class="badge badge-green">Tồn 8</span>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="dose-lbl" style="margin:0 4px 0 0">Liều mẫu</span>
+          <button type="button" class="pat">Người lớn <i>10·0·0·10</i></button>
+          <button type="button" class="pat on">Trẻ 2 - 6 tuổi <i>5·0·0·5</i></button>
+          <button type="button" class="pat">Trẻ dưới 2 tuổi <i>2,5·0·0·2,5</i></button>
+        </div>
+        <div style="margin-top:12px;display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
+          <div style="width:72px"><label class="dose-lbl" for="z1">Sáng (ml)</label><input class="dose-in" id="z1" value="5" readonly></div>
+          <div style="width:72px"><label class="dose-lbl" for="z2">Trưa (ml)</label><input class="dose-in" id="z2" value="" readonly></div>
+          <div style="width:72px"><label class="dose-lbl" for="z3">Chiều (ml)</label><input class="dose-in" id="z3" value="" readonly></div>
+          <div style="width:72px"><label class="dose-lbl" for="z4">Tối (ml)</label><input class="dose-in" id="z4" value="5" readonly></div>
+          <span class="op">×</span>
+          <div style="width:72px"><label class="dose-lbl" for="z5">Số ngày</label><input class="dose-in" id="z5" value="5" readonly></div>
+          <span class="op">=</span>
+          <div class="totbox"><small>Tổng dùng</small><strong>50 ml</strong></div>
+          <span class="op">→</span>
+          <div class="totbox"><small>Kê và xuất kho</small><strong>01 Hộp</strong></div>
+        </div>
+        <p style="margin:6px 0 0;font-size:12px;font-weight:600;color:#475569">1 Hộp = 60 ml, dư 10 ml. Kho đếm nguyên Hộp.</p>
+        <div style="margin-top:12px;display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:12px;align-items:end">
+          <div><label class="dose-lbl" for="z6" style="font-size:14px">Hướng dẫn dùng</label><input class="inp-ul" id="z6" value="Uống sau ăn" readonly></div>
+          <div><span class="dose-lbl" style="font-size:12px">Gợi ý thời điểm</span><div class="suffix-wrap"><input class="inp inp-sm" value="Chọn để chèn..." readonly style="color:#64748b"><svg style="position:absolute;right:10px;top:10px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></div>
+        </div>
+        <p class="preview-line">Xem trước trên đơn và nhãn: <b>Sáng 5 ml - Tối 5 ml · 5 ngày · SL 01 Hộp</b></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 3 ===================== -->
+  <section class="shot">
+    <h2 class="shot-title">3. Kê đơn — thuốc gói kiểu "Khi cần" (Hapacol)</h2>
+    <p class="shot-note">Gói/viên đổi được giữa "Theo buổi" (như hiện nay) và "Khi cần". Khi cần: không có 4 ô buổi và số ngày; bác sĩ nhập liều mỗi lần, số lượng kê, và soạn nhanh câu dặn. Câu dặn được ghép sẵn nhưng vẫn sửa tay được.</p>
+    <div class="frame">
+      <div class="card-line">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <p style="margin:0;font-size:14px;font-weight:600;color:#0f172a">Hapacol 250mg (Paracetamol 250mg)</p>
+          <span class="chip-n">Gói</span>
+          <span class="badge badge-green">Tồn 120</span>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:12px">
+          <span class="dose-lbl" style="margin:0">Cách kê</span>
+          <div class="seg" role="group" aria-label="Cách kê"><button type="button">Theo buổi</button><button type="button" class="on">Khi cần</button></div>
+        </div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+          <div><label class="lbl" for="h1" style="font-size:13px">Liều mỗi lần</label><div class="suffix-wrap"><input class="inp inp-sm" id="h1" value="1,5" readonly><span class="suffix">gói</span></div></div>
+          <div><label class="lbl" for="h2" style="font-size:13px">Số lượng kê</label><div class="suffix-wrap"><input class="inp inp-sm" id="h2" value="5" readonly><span class="suffix">Gói</span></div></div>
+        </div>
+        <hr class="divider">
+        <span class="dose-lbl" style="font-size:14px">Soạn nhanh câu dặn</span>
+        <div style="margin-top:6px;display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:12px;align-items:end">
+          <div><label class="lbl" for="h3" style="font-size:13px">Khi</label><div class="suffix-wrap"><input class="inp inp-sm" id="h3" value="sốt cao > 38,5 độ C kèm đừ, khó chịu" readonly style="padding-right:30px"><svg style="position:absolute;right:10px;top:10px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></div>
+          <div><label class="lbl" for="h4" style="font-size:13px">Tối đa</label><div class="suffix-wrap"><input class="inp inp-sm" id="h4" value="5" readonly style="padding-right:96px"><span class="suffix">lần / 24 tiếng</span></div></div>
+          <div><label class="lbl" for="h5" style="font-size:13px">Cách nhau tối thiểu</label><div class="suffix-wrap"><input class="inp inp-sm" id="h5" value="4" readonly><span class="suffix">tiếng</span></div></div>
+          <button type="button" class="btn btn-blue" style="height:36px">Chèn vào hướng dẫn</button>
+        </div>
+        <div style="margin-top:12px"><label class="dose-lbl" for="h6" style="font-size:14px">Hướng dẫn dùng</label><input class="inp-ul" id="h6" value="Uống 1,5 gói khi sốt cao > 38,5 độ C kèm đừ, khó chịu, uống tối đa 5 lần / 24 tiếng, mỗi lần cách nhau tối thiểu 4 tiếng." readonly></div>
+        <p class="preview-line">Xem trước trên đơn và nhãn: <b>SL 05 Gói · Uống 1,5 gói khi sốt cao > 38,5 độ C kèm đừ, khó chịu, uống tối đa 5 lần / 24 tiếng, mỗi lần cách nhau tối thiểu 4 tiếng.</b></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 4 ===================== -->
+  <section class="shot">
+    <h2 class="shot-title">4. Phát thuốc — sau khi xác nhận phát, in nhãn</h2>
+    <p class="shot-note">Hộp "Phát thuốc theo đơn" hiện thêm khối "In nhãn thuốc" ngay sau khi phiếu xuất được tạo. Mỗi thuốc vừa phát một nhãn theo số lượng thực phát; tích chọn và đặt số bản. Thuốc kê tự do không có nhãn. Có thể in lại từ chi tiết phiếu xuất kho (dải bên dưới).</p>
+    <div class="frame">
+      <div class="dialog">
+        <div class="dlg-head">
+          <div class="dlg-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-grow:1"><h3 class="dlg-title">Phát thuốc theo đơn</h3><span class="pill">Nguyễn Văn An · 2019</span></div>
+          <span class="tag">Đơn: DT00045</span>
+        </div>
+        <div style="padding:16px 24px 8px">
+          <p style="margin:0;display:flex;align-items:center;gap:8px;font-size:14px;color:#0f172a"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg><span><b style="font-weight:600">Đã phát thuốc.</b> Phiếu xuất kho PXK00123, cộng vào hoá đơn thuốc.</span></p>
+        </div>
+        <div style="padding:8px 24px 16px">
+          <h4 class="sect-h">In nhãn thuốc</h4>
+          <div role="table" aria-label="Nhãn thuốc sẽ in">
+            <div role="row" class="thead" style="grid-template-columns:28px minmax(0,1.2fr) 96px minmax(0,1.6fr) 110px"><span></span><span class="th" role="columnheader">Thuốc</span><span class="th" role="columnheader">Số lượng phát</span><span class="th" role="columnheader">Câu dặn trên nhãn</span><span class="th" role="columnheader">Số bản</span></div>
+            <div role="row" class="trow" style="grid-template-columns:28px minmax(0,1.2fr) 96px minmax(0,1.6fr) 110px;padding:10px 8px">
+              <input type="checkbox" checked aria-label="In nhãn Hapacol" style="accent-color:#2563eb;width:16px;height:16px">
+              <span style="font-size:14px;color:#0f172a">Hapacol (250mg) (Paracetamol 250mg)</span>
+              <span style="font-size:14px;color:#0f172a;font-variant-numeric:tabular-nums">05 Gói</span>
+              <span style="font-size:13px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Uống 1,5 gói khi sốt cao > 38,5 độ C kèm đừ…</span>
+              <div class="stepper"><button type="button" aria-label="Giảm">−</button><span>1</span><button type="button" aria-label="Tăng">+</button></div>
+            </div>
+            <div role="row" class="trow" style="grid-template-columns:28px minmax(0,1.2fr) 96px minmax(0,1.6fr) 110px;padding:10px 8px">
+              <input type="checkbox" checked aria-label="In nhãn Zyrtec" style="accent-color:#2563eb;width:16px;height:16px">
+              <span style="font-size:14px;color:#0f172a">Zyrtec Sol 60ml (1mg/ml) (Cetirizin dihydroclorid 0,1%)</span>
+              <span style="font-size:14px;color:#0f172a;font-variant-numeric:tabular-nums">01 Hộp</span>
+              <span style="font-size:13px;color:#475569">Sáng 5 ml - Tối 5 ml · 5 ngày</span>
+              <div class="stepper"><button type="button" aria-label="Giảm">−</button><span>1</span><button type="button" aria-label="Tăng">+</button></div>
+            </div>
+            <div role="row" class="trow" style="grid-template-columns:28px minmax(0,1.2fr) 96px minmax(0,1.6fr) 110px;padding:10px 8px;background:#f8fafc">
+              <input type="checkbox" disabled aria-label="Thuốc kê tự do không có nhãn" style="width:16px;height:16px">
+              <span style="font-size:14px;color:#64748b">Siro ho thảo dược</span>
+              <span style="font-size:14px;color:#64748b">—</span>
+              <span style="font-size:13px;color:#64748b">Kê tự do, không qua kho nên không có nhãn</span>
+              <span class="badge badge-slate" style="justify-self:start">Ngoài danh mục</span>
+            </div>
+          </div>
+          <p style="margin:10px 0 0;font-size:13px;color:#475569">2 nhãn sẽ in, khổ tem 70×40 mm (đổi ở Quản lý mẫu in).</p>
+        </div>
+        <div class="dlg-foot" style="justify-content:space-between">
+          <span style="font-size:13px;color:#475569">Nhãn in từ số lượng thực phát, không phải số lượng đã kê.</span>
+          <span style="display:flex;gap:8px"><button type="button" class="btn btn-secondary">Đóng</button><button type="button" class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>In nhãn (2)</button></span>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.05em">Chi tiết phiếu xuất kho</span>
+        <span style="font-size:14px;color:#0f172a;font-weight:600">PXK00123</span>
+        <span class="badge" style="background:#10b981">Đã duyệt</span>
+        <span style="flex-grow:1"></span>
+        <button type="button" class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>In nhãn thuốc</button>
+        <button type="button" class="btn btn-secondary">In phiếu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 5 ===================== -->
+  <section class="shot">
+    <h2 class="shot-title">5. Nhãn dán bì thuốc (tem nhiệt)</h2>
+    <p class="shot-note">Mặc định đúng 3 khối như nhãn phòng khám đang dùng: thanh đen họ tên – năm sinh, tên thuốc + số lượng, câu dặn nghiêng. Ảnh thứ ba bật thêm ba trường tuỳ chọn (tên phòng khám + SĐT, ngày phát, lô và hạn dùng). Dữ liệu giả.</p>
+    <div class="sticker-bg">
+      <div>
+        <div class="sticker" style="width:455px;height:260px">
+          <span class="nm">Nguyễn Văn An - 2019</span>
+          <div class="dr">Hapacol (250mg) (Paracetamol 250mg) &nbsp; 05 Gói</div>
+          <p class="in">Uống 1,5 gói khi sốt cao &gt; 38,5 độ C kèm đừ, khó chịu, uống tối đa 5 lần / 24 tiếng, mỗi lần cách nhau tối thiểu 4 tiếng.</p>
+        </div>
+        <div class="cap">Tem 70×40 mm · mặc định · thuốc gói "Khi cần"</div>
+      </div>
+      <div>
+        <div class="sticker" style="width:455px;height:260px">
+          <span class="nm">Nguyễn Văn An - 2019</span>
+          <div class="dr">Zyrtec Sol 60ml (1mg/ml) (Cetirizin dihydroclorid 0,1%) &nbsp; 01 Hộp</div>
+          <p class="in">Uống: Sáng 5 ml - Tối 5 ml. Uống 5 ngày.</p>
+        </div>
+        <div class="cap">Tem 70×40 mm · mặc định · dung dịch tính theo ml</div>
+      </div>
+      <div>
+        <div class="sticker" style="width:455px;height:325px">
+          <div class="top"><b>Phòng khám Mẫu</b> · 0900 000 000</div>
+          <span class="nm">Nguyễn Văn An - 2019</span>
+          <div class="dr">Zyrtec Sol 60ml (1mg/ml) (Cetirizin dihydroclorid 0,1%) &nbsp; 01 Hộp</div>
+          <p class="in">Uống: Sáng 5 ml - Tối 5 ml. Uống 5 ngày.</p>
+          <div class="ft">Ngày phát 28/10/2026 · Lô ZY2407 · HSD 07/2028</div>
+        </div>
+        <div class="cap">Tem 70×50 mm · bật thêm tên phòng khám, ngày phát, lô và hạn dùng</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 6 ===================== -->
+  <section class="shot">
+    <h2 class="shot-title">6. Quản lý mẫu in — mẫu "Nhãn thuốc" và ô tích số hai chữ số trên bản in đơn</h2>
+    <p class="shot-note">Thêm loại mẫu "Nhãn thuốc" cạnh các mẫu in hiện có: chọn khổ tem, bật/tắt trường tuỳ chọn, xem trước. Ô "Số lượng hai chữ số" nằm ở mẫu "Đơn thuốc", mặc định bật.</p>
+    <div class="frame">
+      <div class="ref-tabs"><span>Phiếu thu</span><span>Đơn thuốc</span><span class="on">Nhãn thuốc</span></div>
+      <div class="two-col">
+        <div>
+          <h4 class="sect-h">Khổ tem</h4>
+          <div class="grid2" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+            <button type="button" class="choice on"><b>70×40 mm</b><span>Mặc định</span></button>
+            <button type="button" class="choice"><b>60×40 mm</b><span>&nbsp;</span></button>
+            <button type="button" class="choice"><b>50×30 mm</b><span>&nbsp;</span></button>
+            <button type="button" class="choice"><b>Tuỳ chỉnh</b><span>Nhập mm</span></button>
+          </div>
+          <h4 class="sect-h" style="margin-top:24px">Nội dung nhãn</h4>
+          <div class="tile lock"><span class="box on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><div><b>Họ tên – năm sinh</b><span class="d">Luôn in</span></div></div>
+          <div class="tile lock"><span class="box on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><div><b>Tên thuốc (hàm lượng) và số lượng</b><span class="d">Luôn in</span></div></div>
+          <div class="tile lock"><span class="box on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><div><b>Câu dặn</b><span class="d">Luôn in</span></div></div>
+          <div class="tile"><span class="box"></span><div><b>Tên phòng khám và số điện thoại</b><span class="d">Theo chi nhánh phát thuốc</span></div></div>
+          <div class="tile"><span class="box"></span><div><b>Ngày phát</b><span class="d">Ngày phát thuốc thực tế</span></div></div>
+          <div class="tile"><span class="box"></span><div><b>Lô và hạn dùng</b><span class="d">Lấy từ lô đã xuất, chỉ với thuốc quản lý theo lô</span></div></div>
+        </div>
+        <div>
+          <h4 class="sect-h">Xem trước</h4>
+          <div class="sticker-bg" style="padding:20px">
+            <div class="sticker" style="width:100%;max-width:400px;height:228px">
+              <span class="nm" style="font-size:14px">Nguyễn Văn An - 2019</span>
+              <div class="dr" style="font-size:15px">Zyrtec Sol 60ml (1mg/ml) (Cetirizin dihydroclorid 0,1%) &nbsp; 01 Hộp</div>
+              <p class="in" style="font-size:14px">Uống: Sáng 5 ml - Tối 5 ml. Uống 5 ngày.</p>
+            </div>
+          </div>
+          <p class="cap">Dữ liệu mẫu. Đổi khổ hoặc tích trường thì xem trước đổi theo.</p>
+        </div>
+      </div>
+
+      <hr class="divider" style="margin:28px 0 20px">
+      <h4 class="sect-h">Mẫu "Đơn thuốc" — cột Số lượng (SL)</h4>
+      <div class="tile" style="border-bottom:0;padding-top:4px"><span class="box on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><div><b>In số lượng dưới 10 bằng hai chữ số</b><span class="d">05 Gói, 01 Hộp. Từ 10 trở lên giữ nguyên (12 Viên). Mặc định bật.</span></div></div>
+      <table class="cmp" style="margin-top:10px">
+        <thead><tr><th>Thuốc</th><th>Hiện tại</th><th>Khi bật ô tích</th></tr></thead>
+        <tbody>
+          <tr><td>Hapacol (Paracetamol 250mg)</td><td>5 Gói</td><td><b style="font-weight:600">05 Gói</b></td></tr>
+          <tr><td>Zyrtec Sol 60ml</td><td>1 Hộp</td><td><b style="font-weight:600">01 Hộp</b></td></tr>
+          <tr><td>Thuốc ví dụ khác</td><td>12 Viên</td><td>12 Viên</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px"><button type="button" class="btn btn-secondary">Huỷ</button><button type="button" class="btn btn-primary">Lưu mẫu</button></div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

@@ -5,6 +5,7 @@ import { Code128Barcode } from '../../shared/print/Code128Barcode';
 import { PrintDocument } from '../../shared/print/PrintDocument';
 import { PRESCRIPTION_KIND_TEXT } from '../../shared/ui/PrescriptionKindChip';
 import { quantityInWords } from '../../shared/format/vietnamese-number-words';
+import { padSmallQuantity } from '../../shared/format/pad-small-quantity';
 import { useAllWardsQuery, useProvincesQuery } from '../geo/geo.queries';
 import { formatAddressLine } from '../patient/patient-form.utils';
 import { formatDoseSummaryPreview as formatDoseSummary } from './prescription-dose-preview';
@@ -124,6 +125,8 @@ function PrescriptionSheet({
     >
       {({ config }) => {
         const fields = resolvePrescriptionPrintFields({ config: config.prescriptionInfo ?? ALL_ON_PRESCRIPTION_INFO, kind: document?.kind ?? null, printInfo, addressLine });
+        // Số lượng dưới 10 in hai chữ số ("05 Gói") theo ô tích ở Quản lý mẫu in (#267); bản mẫu lưu trước đó chưa có trường này = bật.
+        const padQuantity = (config.prescriptionInfo ?? ALL_ON_PRESCRIPTION_INFO).padSmallQuantity !== false;
         // Dòng "Số thẻ BHYT" (S2-04, #243) — chỉ khi ô tích của bản mẫu BẬT; `printInfo.insurance` đã là null khi công tắc "Áp dụng BHYT" tắt.
         const insuranceValue = config.insurance?.show ? formatInsurancePrintValue(printInfo?.insurance, config.insurance.whenSelfPay) : null;
         return (
@@ -221,7 +224,7 @@ function PrescriptionSheet({
               <td className="py-1.5">{formatDoseSummary(item)}</td>
               <td className="py-1.5 text-center">{item.durationDays}</td>
               <td className="py-1.5 text-center">
-                {item.quantity} {item.unitCode ? unitLabel(unitNameByCode, item.unitCode) : ''}
+                {padQuantity ? padSmallQuantity(item.quantity) : item.quantity} {item.unitCode ? unitLabel(unitNameByCode, item.unitCode) : ''}
                 {/* Thuốc gây nghiện phải viết số lượng bằng chữ, chữ đầu viết hoa (Thông tư 52/2017/TT-BYT, điều 6). */}
                 {fields.quantityInWords && <div className="text-xs italic">{quantityInWords(item.quantity, item.unitCode ? unitLabel(unitNameByCode, item.unitCode) : '')}</div>}
               </td>

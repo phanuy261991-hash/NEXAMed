@@ -322,6 +322,7 @@ import {
   listStockIssuesQuerySchema,
   listStockIssuesResponseSchema,
   stockIssueDetailSchema,
+  medicineLabelsResponseSchema,
   createManualStockIssueRequestSchema,
   updateManualStockIssueRequestSchema,
   approveStockIssueRequestSchema,
@@ -4886,6 +4887,21 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(listStockIssuesResponseSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền stock_issue.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/issues/{id}/medicine-labels',
+  tags: ['inventory'],
+  summary: 'Dữ liệu in "Nhãn dán bì thuốc" của 1 phiếu xuất kho (số lượng THỰC PHÁT, gộp các lô cùng dòng đơn) — phiếu đã huỷ/chưa duyệt trả danh sách rỗng',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockIssueIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(medicineLabelsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_issue.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc chi nhánh/tenant khác hoặc ngoài Khoa/Phòng của người xem)'),
   },
 });
 

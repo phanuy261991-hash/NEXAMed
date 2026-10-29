@@ -13768,6 +13768,20 @@ export interface paths {
                                     isPrescriptionOnly: boolean;
                                     isSplittable: boolean;
                                     isTraditional: boolean;
+                                    /** @enum {string} */
+                                    doseMode: "SCHEDULED" | "AS_NEEDED";
+                                    doseUnitCode: string | null;
+                                    dosePerBaseUnit: number | null;
+                                    dosePresets: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        sortOrder: number;
+                                        doseMorning: number;
+                                        doseNoon: number;
+                                        doseAfternoon: number;
+                                        doseEvening: number;
+                                    }[];
                                     registrationNumber: string | null;
                                     dosageForm: string | null;
                                     countryOfOrigin: string | null;
@@ -13881,6 +13895,21 @@ export interface paths {
                         isSplittable?: boolean;
                         /** @default false */
                         isTraditional?: boolean;
+                        /**
+                         * @default SCHEDULED
+                         * @enum {string}
+                         */
+                        doseMode?: "SCHEDULED" | "AS_NEEDED";
+                        doseUnitCode?: string | null;
+                        dosePerBaseUnit?: number | null;
+                        /** @default [] */
+                        dosePresets?: {
+                            name: string;
+                            doseMorning: number;
+                            doseNoon: number;
+                            doseAfternoon: number;
+                            doseEvening: number;
+                        }[];
                         registrationNumber?: string;
                         dosageForm?: string;
                         countryOfOrigin?: string;
@@ -13942,6 +13971,20 @@ export interface paths {
                                 isPrescriptionOnly: boolean;
                                 isSplittable: boolean;
                                 isTraditional: boolean;
+                                /** @enum {string} */
+                                doseMode: "SCHEDULED" | "AS_NEEDED";
+                                doseUnitCode: string | null;
+                                dosePerBaseUnit: number | null;
+                                dosePresets: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    sortOrder: number;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
+                                }[];
                                 registrationNumber: string | null;
                                 dosageForm: string | null;
                                 countryOfOrigin: string | null;
@@ -14084,6 +14127,20 @@ export interface paths {
                                 isPrescriptionOnly: boolean;
                                 isSplittable: boolean;
                                 isTraditional: boolean;
+                                /** @enum {string} */
+                                doseMode: "SCHEDULED" | "AS_NEEDED";
+                                doseUnitCode: string | null;
+                                dosePerBaseUnit: number | null;
+                                dosePresets: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    sortOrder: number;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
+                                }[];
                                 registrationNumber: string | null;
                                 dosageForm: string | null;
                                 countryOfOrigin: string | null;
@@ -14209,6 +14266,17 @@ export interface paths {
                         isPrescriptionOnly?: boolean;
                         isSplittable?: boolean;
                         isTraditional?: boolean;
+                        /** @enum {string} */
+                        doseMode?: "SCHEDULED" | "AS_NEEDED";
+                        doseUnitCode?: string | null;
+                        dosePerBaseUnit?: number | null;
+                        dosePresets?: {
+                            name: string;
+                            doseMorning: number;
+                            doseNoon: number;
+                            doseAfternoon: number;
+                            doseEvening: number;
+                        }[];
                         registrationNumber?: string | null;
                         dosageForm?: string | null;
                         countryOfOrigin?: string | null;
@@ -14270,6 +14338,20 @@ export interface paths {
                                 isPrescriptionOnly: boolean;
                                 isSplittable: boolean;
                                 isTraditional: boolean;
+                                /** @enum {string} */
+                                doseMode: "SCHEDULED" | "AS_NEEDED";
+                                doseUnitCode: string | null;
+                                dosePerBaseUnit: number | null;
+                                dosePresets: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    sortOrder: number;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
+                                }[];
                                 registrationNumber: string | null;
                                 dosageForm: string | null;
                                 countryOfOrigin: string | null;
@@ -24907,10 +24989,10 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string | null;
                                     /** @enum {string} */
-                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
                                     name: string;
                                     /** @enum {string} */
-                                    paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
+                                    paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
                                     isDefault: boolean;
                                     isBuiltin: boolean;
                                     config: {
@@ -24949,6 +25031,11 @@ export interface paths {
                                             showCapColor: boolean;
                                             showDate: boolean;
                                         };
+                                        medicineLabel?: {
+                                            showClinic: boolean;
+                                            showDate: boolean;
+                                            showLot: boolean;
+                                        };
                                         prescriptionInfo?: {
                                             showPatientCode: boolean;
                                             showNationalId: boolean;
@@ -24961,6 +25048,8 @@ export interface paths {
                                             showCourse: boolean;
                                             showQuantityInWords: boolean;
                                             showReceiverBox: boolean;
+                                            /** @default true */
+                                            padSmallQuantity: boolean;
                                         };
                                         insurance?: {
                                             show: boolean;
@@ -24977,12 +25066,12 @@ export interface paths {
                                 catalog: {
                                     documentTypes: {
                                         /** @enum {string} */
-                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
+                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
                                         label: string;
                                         group: string;
-                                        allowedPapers: ("A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30")[];
+                                        allowedPapers: ("A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40")[];
                                         /** @enum {string} */
-                                        defaultPaper: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
+                                        defaultPaper: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
                                         defaultTitle: string;
                                         notice: {
                                             title: string;
@@ -24991,7 +25080,7 @@ export interface paths {
                                     }[];
                                     papers: {
                                         /** @enum {string} */
-                                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
+                                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
                                         label: string;
                                         description: string;
                                         widthMm: number;
@@ -25034,6 +25123,11 @@ export interface paths {
                                                 showCapColor: boolean;
                                                 showDate: boolean;
                                             };
+                                            medicineLabel?: {
+                                                showClinic: boolean;
+                                                showDate: boolean;
+                                                showLot: boolean;
+                                            };
                                             prescriptionInfo?: {
                                                 showPatientCode: boolean;
                                                 showNationalId: boolean;
@@ -25046,6 +25140,8 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                                /** @default true */
+                                                padSmallQuantity: boolean;
                                             };
                                             insurance?: {
                                                 show: boolean;
@@ -25093,6 +25189,11 @@ export interface paths {
                                                 showCapColor: boolean;
                                                 showDate: boolean;
                                             };
+                                            medicineLabel?: {
+                                                showClinic: boolean;
+                                                showDate: boolean;
+                                                showLot: boolean;
+                                            };
                                             prescriptionInfo?: {
                                                 showPatientCode: boolean;
                                                 showNationalId: boolean;
@@ -25105,6 +25206,8 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                                /** @default true */
+                                                padSmallQuantity: boolean;
                                             };
                                             insurance?: {
                                                 show: boolean;
@@ -25152,6 +25255,11 @@ export interface paths {
                                                 showCapColor: boolean;
                                                 showDate: boolean;
                                             };
+                                            medicineLabel?: {
+                                                showClinic: boolean;
+                                                showDate: boolean;
+                                                showLot: boolean;
+                                            };
                                             prescriptionInfo?: {
                                                 showPatientCode: boolean;
                                                 showNationalId: boolean;
@@ -25164,6 +25272,8 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                                /** @default true */
+                                                padSmallQuantity: boolean;
                                             };
                                             insurance?: {
                                                 show: boolean;
@@ -25211,6 +25321,11 @@ export interface paths {
                                                 showCapColor: boolean;
                                                 showDate: boolean;
                                             };
+                                            medicineLabel?: {
+                                                showClinic: boolean;
+                                                showDate: boolean;
+                                                showLot: boolean;
+                                            };
                                             prescriptionInfo?: {
                                                 showPatientCode: boolean;
                                                 showNationalId: boolean;
@@ -25223,6 +25338,8 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                                /** @default true */
+                                                padSmallQuantity: boolean;
                                             };
                                             insurance?: {
                                                 show: boolean;
@@ -25270,6 +25387,11 @@ export interface paths {
                                                 showCapColor: boolean;
                                                 showDate: boolean;
                                             };
+                                            medicineLabel?: {
+                                                showClinic: boolean;
+                                                showDate: boolean;
+                                                showLot: boolean;
+                                            };
                                             prescriptionInfo?: {
                                                 showPatientCode: boolean;
                                                 showNationalId: boolean;
@@ -25282,6 +25404,8 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                                /** @default true */
+                                                padSmallQuantity: boolean;
                                             };
                                             insurance?: {
                                                 show: boolean;
@@ -25329,6 +25453,11 @@ export interface paths {
                                                 showCapColor: boolean;
                                                 showDate: boolean;
                                             };
+                                            medicineLabel?: {
+                                                showClinic: boolean;
+                                                showDate: boolean;
+                                                showLot: boolean;
+                                            };
                                             prescriptionInfo?: {
                                                 showPatientCode: boolean;
                                                 showNationalId: boolean;
@@ -25341,6 +25470,140 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                                /** @default true */
+                                                padSmallQuantity: boolean;
+                                            };
+                                            insurance?: {
+                                                show: boolean;
+                                                /** @enum {string} */
+                                                whenSelfPay: "hide" | "selfPay";
+                                            };
+                                            copies: {
+                                                count: number;
+                                                labels: string[];
+                                            };
+                                        };
+                                        LABEL_70X40?: {
+                                            margins: {
+                                                topMm: number;
+                                                rightMm: number;
+                                                bottomMm: number;
+                                                leftMm: number;
+                                            };
+                                            header: {
+                                                showLogo: boolean;
+                                                showClinicName: boolean;
+                                                /** @default true */
+                                                showBranchName: boolean;
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showTaxCode: boolean;
+                                                showDivider: boolean;
+                                            };
+                                            title: {
+                                                text: string;
+                                            };
+                                            footer: {
+                                                note: string;
+                                                showSignature: boolean;
+                                                showSignatureHint: boolean;
+                                            };
+                                            notice?: {
+                                                show: boolean;
+                                                title: string;
+                                                text: string;
+                                            };
+                                            label?: {
+                                                showPatientCode: boolean;
+                                                showGroup: boolean;
+                                                showCapColor: boolean;
+                                                showDate: boolean;
+                                            };
+                                            medicineLabel?: {
+                                                showClinic: boolean;
+                                                showDate: boolean;
+                                                showLot: boolean;
+                                            };
+                                            prescriptionInfo?: {
+                                                showPatientCode: boolean;
+                                                showNationalId: boolean;
+                                                /** @enum {string} */
+                                                nationalIdWhenMissing: "hide" | "dots";
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showWeight: boolean;
+                                                showGuardian: boolean;
+                                                showCourse: boolean;
+                                                showQuantityInWords: boolean;
+                                                showReceiverBox: boolean;
+                                                /** @default true */
+                                                padSmallQuantity: boolean;
+                                            };
+                                            insurance?: {
+                                                show: boolean;
+                                                /** @enum {string} */
+                                                whenSelfPay: "hide" | "selfPay";
+                                            };
+                                            copies: {
+                                                count: number;
+                                                labels: string[];
+                                            };
+                                        };
+                                        LABEL_60X40?: {
+                                            margins: {
+                                                topMm: number;
+                                                rightMm: number;
+                                                bottomMm: number;
+                                                leftMm: number;
+                                            };
+                                            header: {
+                                                showLogo: boolean;
+                                                showClinicName: boolean;
+                                                /** @default true */
+                                                showBranchName: boolean;
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showTaxCode: boolean;
+                                                showDivider: boolean;
+                                            };
+                                            title: {
+                                                text: string;
+                                            };
+                                            footer: {
+                                                note: string;
+                                                showSignature: boolean;
+                                                showSignatureHint: boolean;
+                                            };
+                                            notice?: {
+                                                show: boolean;
+                                                title: string;
+                                                text: string;
+                                            };
+                                            label?: {
+                                                showPatientCode: boolean;
+                                                showGroup: boolean;
+                                                showCapColor: boolean;
+                                                showDate: boolean;
+                                            };
+                                            medicineLabel?: {
+                                                showClinic: boolean;
+                                                showDate: boolean;
+                                                showLot: boolean;
+                                            };
+                                            prescriptionInfo?: {
+                                                showPatientCode: boolean;
+                                                showNationalId: boolean;
+                                                /** @enum {string} */
+                                                nationalIdWhenMissing: "hide" | "dots";
+                                                showAddress: boolean;
+                                                showPhone: boolean;
+                                                showWeight: boolean;
+                                                showGuardian: boolean;
+                                                showCourse: boolean;
+                                                showQuantityInWords: boolean;
+                                                showReceiverBox: boolean;
+                                                /** @default true */
+                                                padSmallQuantity: boolean;
                                             };
                                             insurance?: {
                                                 show: boolean;
@@ -25404,10 +25667,10 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
+                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
                         name: string;
                         /** @enum {string} */
-                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
+                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
                         config?: {
                             margins: {
                                 topMm: number;
@@ -25444,6 +25707,11 @@ export interface paths {
                                 showCapColor: boolean;
                                 showDate: boolean;
                             };
+                            medicineLabel?: {
+                                showClinic: boolean;
+                                showDate: boolean;
+                                showLot: boolean;
+                            };
                             prescriptionInfo?: {
                                 showPatientCode: boolean;
                                 showNationalId: boolean;
@@ -25456,6 +25724,8 @@ export interface paths {
                                 showCourse: boolean;
                                 showQuantityInWords: boolean;
                                 showReceiverBox: boolean;
+                                /** @default true */
+                                padSmallQuantity?: boolean;
                             };
                             insurance?: {
                                 show: boolean;
@@ -25483,10 +25753,10 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string | null;
                                 /** @enum {string} */
-                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
                                 name: string;
                                 /** @enum {string} */
-                                paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
+                                paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
                                 isDefault: boolean;
                                 isBuiltin: boolean;
                                 config: {
@@ -25525,6 +25795,11 @@ export interface paths {
                                         showCapColor: boolean;
                                         showDate: boolean;
                                     };
+                                    medicineLabel?: {
+                                        showClinic: boolean;
+                                        showDate: boolean;
+                                        showLot: boolean;
+                                    };
                                     prescriptionInfo?: {
                                         showPatientCode: boolean;
                                         showNationalId: boolean;
@@ -25537,6 +25812,8 @@ export interface paths {
                                         showCourse: boolean;
                                         showQuantityInWords: boolean;
                                         showReceiverBox: boolean;
+                                        /** @default true */
+                                        padSmallQuantity: boolean;
                                     };
                                     insurance?: {
                                         show: boolean;
@@ -25664,9 +25941,9 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
                                     /** @enum {string} */
-                                    paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
+                                    paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
                                     widthMm: number;
                                     heightMm: number | null;
                                     config: {
@@ -25705,6 +25982,11 @@ export interface paths {
                                             showCapColor: boolean;
                                             showDate: boolean;
                                         };
+                                        medicineLabel?: {
+                                            showClinic: boolean;
+                                            showDate: boolean;
+                                            showLot: boolean;
+                                        };
                                         prescriptionInfo?: {
                                             showPatientCode: boolean;
                                             showNationalId: boolean;
@@ -25717,6 +25999,8 @@ export interface paths {
                                             showCourse: boolean;
                                             showQuantityInWords: boolean;
                                             showReceiverBox: boolean;
+                                            /** @default true */
+                                            padSmallQuantity: boolean;
                                         };
                                         insurance?: {
                                             show: boolean;
@@ -25730,7 +26014,7 @@ export interface paths {
                                     };
                                     options: {
                                         /** @enum {string} */
-                                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
+                                        paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
                                         label: string;
                                         widthMm: number;
                                         heightMm: number | null;
@@ -25771,6 +26055,11 @@ export interface paths {
                                                 showCapColor: boolean;
                                                 showDate: boolean;
                                             };
+                                            medicineLabel?: {
+                                                showClinic: boolean;
+                                                showDate: boolean;
+                                                showLot: boolean;
+                                            };
                                             prescriptionInfo?: {
                                                 showPatientCode: boolean;
                                                 showNationalId: boolean;
@@ -25783,6 +26072,8 @@ export interface paths {
                                                 showCourse: boolean;
                                                 showQuantityInWords: boolean;
                                                 showReceiverBox: boolean;
+                                                /** @default true */
+                                                padSmallQuantity: boolean;
                                             };
                                             insurance?: {
                                                 show: boolean;
@@ -25858,7 +26149,7 @@ export interface paths {
                             showTaxCode: boolean;
                             showDivider: boolean;
                         };
-                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL")[];
+                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL")[];
                     };
                 };
             };
@@ -26087,6 +26378,11 @@ export interface paths {
                                 showCapColor: boolean;
                                 showDate: boolean;
                             };
+                            medicineLabel?: {
+                                showClinic: boolean;
+                                showDate: boolean;
+                                showLot: boolean;
+                            };
                             prescriptionInfo?: {
                                 showPatientCode: boolean;
                                 showNationalId: boolean;
@@ -26099,6 +26395,8 @@ export interface paths {
                                 showCourse: boolean;
                                 showQuantityInWords: boolean;
                                 showReceiverBox: boolean;
+                                /** @default true */
+                                padSmallQuantity?: boolean;
                             };
                             insurance?: {
                                 show: boolean;
@@ -26128,10 +26426,10 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string | null;
                                 /** @enum {string} */
-                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL";
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
                                 name: string;
                                 /** @enum {string} */
-                                paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30";
+                                paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
                                 isDefault: boolean;
                                 isBuiltin: boolean;
                                 config: {
@@ -26170,6 +26468,11 @@ export interface paths {
                                         showCapColor: boolean;
                                         showDate: boolean;
                                     };
+                                    medicineLabel?: {
+                                        showClinic: boolean;
+                                        showDate: boolean;
+                                        showLot: boolean;
+                                    };
                                     prescriptionInfo?: {
                                         showPatientCode: boolean;
                                         showNationalId: boolean;
@@ -26182,6 +26485,8 @@ export interface paths {
                                         showCourse: boolean;
                                         showQuantityInWords: boolean;
                                         showReceiverBox: boolean;
+                                        /** @default true */
+                                        padSmallQuantity: boolean;
                                     };
                                     insurance?: {
                                         show: boolean;
@@ -32176,6 +32481,124 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/issues/{id}/medicine-labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dữ liệu in "Nhãn dán bì thuốc" của 1 phiếu xuất kho (số lượng THỰC PHÁT, gộp các lô cùng dòng đơn) — phiếu đã huỷ/chưa duyệt trả danh sách rỗng */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                issueId: string;
+                                issueNo: string;
+                                issuedAt: string;
+                                patient: {
+                                    fullName: string;
+                                    patientCode: string;
+                                    birthYear: number | null;
+                                } | null;
+                                items: {
+                                    key: string;
+                                    /** Format: uuid */
+                                    prescriptionItemId: string | null;
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugName: string;
+                                    activeIngredient: string | null;
+                                    concentration: string | null;
+                                    quantity: number;
+                                    unitCode: string | null;
+                                    doseMorning: number;
+                                    doseNoon: number;
+                                    doseAfternoon: number;
+                                    doseEvening: number;
+                                    durationDays: number | null;
+                                    instruction: string | null;
+                                    batches: {
+                                        batchNo: string;
+                                        expiryDate: string | null;
+                                    }[];
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_issue.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc chi nhánh/tenant khác hoặc ngoài Khoa/Phòng của người xem) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

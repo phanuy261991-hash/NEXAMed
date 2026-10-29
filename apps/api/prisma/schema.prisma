@@ -114,6 +114,7 @@ model Tenant {
   adviceTemplates             AdviceTemplate[]
   drugs                       Drug[]
   drugUnits                   DrugUnit[]
+  drugDosePresets             DrugDosePreset[]
   drugIngredients             DrugIngredient[]
   suppliers                   Supplier[]
   warehouses                  Warehouse[]
@@ -1892,6 +1893,14 @@ enum DrugControlType {
   @@map("drug_control_type")
 }
 
+/// Cách kê liều mặc định của thuốc / của dòng đơn (docs/DECISIONS.md #267): theo buổi (Sáng/Trưa/Chiều/Tối × số ngày) hoặc "Khi cần" (liều mỗi lần + số lượng nhập thẳng).
+enum DrugDoseMode {
+  SCHEDULED
+  AS_NEEDED
+
+  @@map("drug_dose_mode")
+}
+
 model Drug {
   id                   String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
   tenantId             String          @map("tenant_id") @db.Uuid
@@ -1943,6 +1952,12 @@ model Drug {
   isSplittable         Boolean         @default(true) @map("is_splittable")
   // "Thuốc y học cổ truyền (Đông y)" (#242) — đơn có thuốc này được cấp mã loại Y (qua bảng ánh xạ loại thuốc → loại đơn).
   isTraditional        Boolean         @default(false) @map("is_traditional")
+  // "Cách kê liều" (#267) — kiểu kê MẶC ĐỊNH ở màn kê đơn (gói/viên đổi được trên dòng đơn, thuốc tính liều theo ml cố định).
+  doseMode             DrugDoseMode    @default(SCHEDULED) @map("dose_mode")
+  // Đơn vị LIỀU khi khác đơn vị nhỏ nhất (vd "ml" cho siro bán nguyên Hộp/chai) + "mỗi đơn vị nhỏ nhất chứa bao nhiêu đơn vị liều" (vd 60). CÙNG có hoặc CÙNG không (CHECK ở migration).
+  // NUMERIC(8,2) bội của 0,25 — cùng ngoại lệ có chủ đích với liều của dòng đơn (#241): quy tắc "cấm numeric" chỉ áp cho cột TIỀN.
+  doseUnitCode         String?         @map("dose_unit_code")
+  dosePerBaseUnit      Decimal?        @map("dose_per_base_unit") @db.Decimal(8, 2)
   // Mở rộng #151 (chủ dự án rà soát trực tiếp từng trường theo tài liệu quy chuẩn) — CHỈ có ý nghĩa
   // với itemType=MEDICINE, ẩn hoàn toàn cho SUPPLY ở UI (VTYT giữ nguyên hoãn, chưa mở rộng field).
   // Bắt buộc ở tầng Zod cho MEDICINE tạo mới (đúng khuôn baseUnitCode/manufacturerCode):
@@ -1992,6 +2007,7 @@ model Drug {
   prescriptionItems         PrescriptionItem[]
   prescriptionTemplateItems PrescriptionTemplateItem[]
   units                     DrugUnit[]
+  dosePresets               DrugDosePreset[]
   ingredients               DrugIngredient[]
   // Kho Thuốc GĐ2 — xem model StockReceiptLine/InventoryBatch/StockLedger/StockBalance.
   stockReceiptLines         StockReceiptLine[]
@@ -2041,6 +2057,36 @@ model DrugUnit {
   // Unique thật (tenant_id, drug_id, sort_order) WHERE deleted_at IS NULL là PARTIAL — khai raw SQL
   // trong migration (cùng lý do patient.nationalIdHash), không khai @@unique ở đây.
   @@map("drug_unit")
+}
+
+// "Liều mẫu" của thuốc (docs/DECISIONS.md #267) — các dòng gợi ý có tên nhóm (Người lớn, Trẻ 2–6 tuổi...) + liều Sáng/Trưa/Chiều/Tối theo ĐƠN VỊ LIỀU của thuốc.
+// Bác sĩ bấm chọn ở màn kê đơn thì 4 ô liều tự điền, sửa tay được; KHÔNG tự gợi ý theo tuổi/cân nặng. Bulk-replace như drug_unit.
+model DrugDosePreset {
+  id            String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  drugId        String  @map("drug_id") @db.Uuid
+  name          String
+  sortOrder     Int     @map("sort_order")
+  doseMorning   Decimal @default(0) @map("dose_morning") @db.Decimal(5, 2)
+  doseNoon      Decimal @default(0) @map("dose_noon") @db.Decimal(5, 2)
+  doseAfternoon Decimal @default(0) @map("dose_afternoon") @db.Decimal(5, 2)
+  doseEvening   Decimal @default(0) @map("dose_evening") @db.Decimal(5, 2)
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  drug   Drug   @relation(fields: [tenantId, drugId], references: [tenantId, id])
+
+  // Unique thật (tenant_id, drug_id, sort_order) WHERE deleted_at IS NULL là PARTIAL — khai raw SQL trong migration, không khai @@unique ở đây.
+  @@unique([tenantId, id])
+  @@map("drug_dose_preset")
 }
 
 // Hoạt chất & hàm lượng (docs/DECISIONS.md #146) — sửa lỗ hổng an toàn có thật: `drug.
@@ -4078,6 +4124,8 @@ enum PrintDocumentType {
   STOCK_TRANSFER
   /// Tem dán ống nghiệm xét nghiệm (docs/DECISIONS.md #220) — khổ LABEL_35X22 / LABEL_50X30.
   SPECIMEN_LABEL
+  /// Nhãn dán bì thuốc in từ màn Phát thuốc (docs/DECISIONS.md #267) — khổ LABEL_70X40 / LABEL_60X40 / LABEL_50X30.
+  MEDICINE_LABEL
 }
 
 /// Khổ giấy của một bản mẫu in. K80 = máy in nhiệt 80mm (chỉ 4 chứng từ tiền).
@@ -4088,8 +4136,12 @@ enum PrintPaperSize {
   K80
   /// Tem ống nghiệm 35 × 22 mm (docs/DECISIONS.md #220).
   LABEL_35X22
-  /// Tem ống nghiệm 50 × 30 mm.
+  /// Tem ống nghiệm 50 × 30 mm (dùng chung với nhãn thuốc).
   LABEL_50X30
+  /// Nhãn dán bì thuốc 70 × 40 mm (docs/DECISIONS.md #267).
+  LABEL_70X40
+  /// Nhãn dán bì thuốc 60 × 40 mm.
+  LABEL_60X40
 }
 
 /// "Quản lý mẫu in" (docs/DECISIONS.md #211) — mỗi LOẠI chứng từ có nhiều bản mẫu theo khổ giấy: duy nhất

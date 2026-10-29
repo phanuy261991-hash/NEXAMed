@@ -189,6 +189,37 @@ export class StockIssueRepository {
     return tx.stockIssue.findFirst({ where: { tenantId, id, warehouse: { branchId } }, include: CONTEXT_INCLUDE }) as Promise<StockIssueWithContext | null>;
   }
 
+  /**
+   * Dữ liệu in "Nhãn dán bì thuốc" (docs/DECISIONS.md #267) — một truy vấn gọn: bệnh nhân (qua đơn → lượt khám), các dòng phiếu kèm thuốc, lô và dòng đơn thuốc gốc (liều, số ngày, hướng dẫn).
+   * Lọc chi nhánh qua kho như `findByIdAnyWithContext` (id phiếu chi nhánh khác = không thấy).
+   */
+  findForMedicineLabels(tx: Prisma.TransactionClient, tenantId: string, branchId: string, id: string) {
+    return tx.stockIssue.findFirst({
+      where: { tenantId, id, warehouse: { branchId } },
+      select: {
+        id: true,
+        issueNo: true,
+        status: true,
+        occurredAt: true,
+        warehouse: { select: { departmentId: true } },
+        prescription: { select: { encounter: { select: { patient: { select: { patientCode: true, fullName: true, dob: true } } } } } },
+        lines: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            quantity: true,
+            prescriptionItemId: true,
+            drugId: true,
+            drug: { select: { name: true, activeIngredient: true, concentration: true, baseUnitCode: true } },
+            batch: { select: { batchNo: true, expiryDate: true } },
+            prescriptionItem: { select: { doseMorning: true, doseNoon: true, doseAfternoon: true, doseEvening: true, durationDays: true, instruction: true } },
+          },
+        },
+      },
+    });
+  }
+
   async list(tx: Prisma.TransactionClient, tenantId: string, filter: ListStockIssuesFilter): Promise<StockIssueListRow[]> {
     const where: Prisma.StockIssueWhereInput = {
       tenantId,

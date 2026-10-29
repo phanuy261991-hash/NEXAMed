@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check as CheckIcon } from '@phosphor-icons/react';
-import type { PrescriptionInfoConfig, PrintDocumentType, PrintPaperInfo, PrintTemplateConfig } from '@nexamed/shared';
+import type { MedicineLabelConfig, PrescriptionInfoConfig, PrintDocumentType, PrintPaperInfo, PrintTemplateConfig } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
 import { useAuthStore } from '../auth/auth.store';
 import { showBranchInfo } from '../branch/branch-visibility';
@@ -23,6 +23,25 @@ const LABEL_TOGGLES: { key: LabelKey; label: string }[] = [
   { key: 'showDate', label: 'Ngày lấy mẫu (DD/MM)' },
 ];
 const DEFAULT_LABEL_OPTIONS: NonNullable<PrintTemplateConfig['label']> = { showPatientCode: false, showGroup: true, showCapColor: false, showDate: true };
+
+/**
+ * Nội dung "Nhãn thuốc" (docs/DECISIONS.md #267, mockup 6 đã chốt): ba khối luôn in (không tắt được) + ba trường tuỳ chọn mặc định TẮT.
+ * Bản cũ chưa có khối `medicineLabel` (vd. sau "Khôi phục mặc định") coi như tắt hết, ghi đủ khối khi người dùng đổi một ô.
+ */
+const MEDICINE_LABEL_ALWAYS: { label: string }[] = [{ label: 'Họ tên – năm sinh' }, { label: 'Tên thuốc (hàm lượng) và số lượng' }, { label: 'Câu dặn' }];
+const MEDICINE_LABEL_TOGGLES: { key: keyof MedicineLabelConfig; label: string; hint: string }[] = [
+  { key: 'showClinic', label: 'Tên phòng khám và số điện thoại', hint: 'In ở đầu nhãn, lấy từ thông tin phòng khám (theo chi nhánh phát thuốc).' },
+  { key: 'showDate', label: 'Ngày phát', hint: 'Ngày phát thuốc thực tế.' },
+  { key: 'showLot', label: 'Lô và hạn dùng', hint: 'Lấy từ lô đã xuất, chỉ có với thuốc quản lý theo lô.' },
+];
+const DEFAULT_MEDICINE_LABEL_OPTIONS: MedicineLabelConfig = { showClinic: false, showDate: false, showLot: false };
+
+/** Số lượng dưới 10 in hai chữ số trên đơn thuốc (#267) — mặc định BẬT. */
+const RX_QUANTITY_TOGGLE: RxToggle = {
+  key: 'padSmallQuantity',
+  label: 'In số lượng dưới 10 bằng hai chữ số',
+  hint: '05 Gói, 01 Hộp. Từ 10 trở lên giữ nguyên (12 Viên). Mặc định bật, giống toa mẫu.',
+};
 type MarginKey = keyof PrintTemplateConfig['margins'];
 
 type RxToggleKey = Exclude<keyof PrescriptionInfoConfig, 'nationalIdWhenMissing'>;
@@ -206,9 +225,11 @@ export function PrintTemplateConfigPanel({
   const setNotice = (patch: Partial<NonNullable<PrintTemplateConfig['notice']>>) => {
     if (currentNotice) onConfigChange({ ...config, notice: { ...currentNotice, ...patch } });
   };
-  const isLabel = paper.paperSize === 'LABEL_35X22' || paper.paperSize === 'LABEL_50X30';
+  const isLabel = paper.paperSize === 'LABEL_35X22' || paper.paperSize === 'LABEL_50X30' || paper.paperSize === 'LABEL_70X40' || paper.paperSize === 'LABEL_60X40';
   const labelOptions = config.label ?? DEFAULT_LABEL_OPTIONS;
   const setLabelOption = (key: LabelKey, value: boolean) => onConfigChange({ ...config, label: { ...labelOptions, [key]: value } });
+  const medicineLabelOptions = config.medicineLabel ?? DEFAULT_MEDICINE_LABEL_OPTIONS;
+  const setMedicineLabelOption = (key: keyof MedicineLabelConfig, value: boolean) => onConfigChange({ ...config, medicineLabel: { ...medicineLabelOptions, [key]: value } });
   // Khối "Thông tin trên đơn" chỉ của chứng từ Đơn thuốc; cấu hình chưa có khối (vd. sau "Khôi phục mặc định") coi như bật hết, ghi đủ khối khi người dùng đổi một công tắc.
   const rxInfo = documentType === 'PRESCRIPTION' ? (config.prescriptionInfo ?? ALL_ON_PRESCRIPTION_INFO) : undefined;
   const setRxInfo = (patch: Partial<PrescriptionInfoConfig>) => {
@@ -267,7 +288,25 @@ export function PrintTemplateConfigPanel({
         <p className="mt-1 text-[11px] text-slate-400">Đơn vị: milimét</p>
       </Block>
 
-      {isLabel && (
+      {isLabel && documentType === 'MEDICINE_LABEL' && (
+        <Block title="Nội dung nhãn">
+          {MEDICINE_LABEL_ALWAYS.map((row) => (
+            <div key={row.label} className="flex items-center justify-between gap-2 border-b border-slate-100 py-2">
+              <Check id={`pt-medlabel-always-${row.label}`} label={row.label} checked onChange={() => undefined} disabled />
+              <span className="flex-shrink-0 text-[11px] text-slate-500">Luôn in</span>
+            </div>
+          ))}
+          {MEDICINE_LABEL_TOGGLES.map((t) => (
+            <div key={t.key} className="border-b border-slate-100 py-2 last:border-b-0">
+              <Check id={`pt-medlabel-${t.key}`} label={t.label} checked={medicineLabelOptions[t.key]} onChange={(v) => setMedicineLabelOption(t.key, v)} />
+              <p className="ml-6 mt-0.5 text-[11px] leading-snug text-slate-500">{t.hint}</p>
+            </div>
+          ))}
+          <p className="mt-2 text-[11px] text-slate-400">Số lượng trên nhãn là số thực phát. Các trường tuỳ chọn dùng chung cho mọi khổ tem của nhãn thuốc.</p>
+        </Block>
+      )}
+
+      {isLabel && documentType === 'SPECIMEN_LABEL' && (
         <Block title={`Thông tin in thêm trên khổ ${paper.label}`}>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
             {LABEL_TOGGLES.map((t) => (
@@ -335,6 +374,9 @@ export function PrintTemplateConfigPanel({
             <p className="mt-2 text-[11px] leading-snug text-slate-500">
               <span className="font-semibold text-slate-700">Số bản:</span> đơn “N” và “H” theo quy định in 03 bản. Mục “Số liên” ở phần Cuối trang vẫn do phòng khám chọn; không tự đổi.
             </p>
+          </Block>
+          <Block title="Số lượng thuốc">
+            <RxToggleRow toggle={RX_QUANTITY_TOGGLE} checked={rxInfo.padSmallQuantity} onChange={(v) => setRxInfo({ padSmallQuantity: v })} />
           </Block>
           <p className="px-1 text-[11px] leading-snug text-slate-400">Tiêu đề đơn “N” và “H” được cố định theo mẫu, bản mẫu in không đổi được.</p>
         </>

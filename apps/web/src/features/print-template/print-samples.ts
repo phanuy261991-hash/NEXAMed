@@ -68,7 +68,7 @@ export function buildSamplePrescriptionVariant(variant: SamplePrescriptionVarian
   const item = sampleVariantItem(base, {
     id: ID(901),
     drugName: variant === 'N' ? 'Morphin sulfat 10mg' : variant === 'H' ? 'Diazepam 5mg' : variant === 'CHILD' ? 'Paracetamol siro 120mg/5ml' : base.drugName,
-    quantity: variant === 'N' ? 6 : base.quantity,
+    quantity: variant === 'N' ? 6 : variant === 'CHILD' ? 2 : base.quantity,
     kind,
     documentId: ID(902),
     unitCode: variant === 'CHILD' ? 'CHAI' : 'VIEN',

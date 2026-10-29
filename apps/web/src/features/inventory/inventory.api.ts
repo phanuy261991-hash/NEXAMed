@@ -28,6 +28,7 @@ import type {
   ListStockExpiryWarningsResponse,
   ListStockIssuesQuery,
   ListStockIssuesResponse,
+  MedicineLabelsResponse,
   ListStockReceiptsQuery,
   ListStockReceiptsResponse,
   ListStockTransfersQuery,
@@ -112,6 +113,11 @@ export async function getStockIssues(query: ListStockIssuesQuery): Promise<ListS
 
 export async function getStockIssue(id: string): Promise<StockIssueDetail> {
   return unwrap(await getApiClient().GET('/api/v1/inventory/issues/{id}', { params: { path: { id } } })) as StockIssueDetail;
+}
+
+/** Dữ liệu in "Nhãn dán bì thuốc" của một phiếu xuất (docs/DECISIONS.md #267). */
+export async function getMedicineLabels(issueId: string): Promise<MedicineLabelsResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/inventory/issues/{id}/medicine-labels', { params: { path: { id: issueId } } })) as MedicineLabelsResponse;
 }
 
 export async function createStockIssue(body: CreateStockIssueRequest): Promise<StockIssueDetail> {

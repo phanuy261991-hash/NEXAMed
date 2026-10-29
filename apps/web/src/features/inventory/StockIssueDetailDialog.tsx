@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Archive } from '@phosphor-icons/react';
+import { Archive, Tag } from '@phosphor-icons/react';
 import type { StockIssueStatus } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
@@ -14,6 +14,7 @@ import { PrescriptionNationalCode } from '../../shared/ui/PrescriptionNationalCo
 import { useHasPermission } from '../auth/usePermission';
 import { useStockIssueQuery } from './inventory.queries';
 import { StockIssuePrintView } from './StockIssuePrintView';
+import { MedicineLabelDialog } from './MedicineLabelDialog';
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -41,6 +42,7 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
   const issue = query.data;
 
   const [printing, setPrinting] = useState(false);
+  const [labelsOpen, setLabelsOpen] = useState(false);
   function handlePrint() {
     setPrinting(true);
     setTimeout(() => {
@@ -150,6 +152,13 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
         <div className="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-5 py-4">
           {/* In phiếu — CHỈ phiếu ĐÃ XUẤT chưa huỷ, bổ sung 22/09/2026 theo yêu cầu chủ dự án
               (`docs/DECISIONS.md` #171). */}
+          {/* In lại nhãn dán bì thuốc (#267) — chỉ phiếu phát theo đơn thuốc đã xuất. */}
+          {issue && issue.status === 'POSTED' && issue.prescriptionId && (
+            <Button type="button" variant="secondary" onClick={() => setLabelsOpen(true)}>
+              <Tag size={16} weight="bold" aria-hidden="true" />
+              In nhãn thuốc
+            </Button>
+          )}
           {issue && issue.status === 'POSTED' && (
             <PrintButton documentType="STOCK_ISSUE" onPrint={handlePrint}>In phiếu</PrintButton>
           )}
@@ -165,6 +174,7 @@ export function StockIssueDetailDialog({ issueId, onClose }: { issueId: string; 
       </div>
 
       {printing && issue && <StockIssuePrintView issue={issue} />}
+      {labelsOpen && issue && <MedicineLabelDialog issueId={issue.id} issueNo={issue.issueNo} onClose={() => setLabelsOpen(false)} />}
     </div>
   );
 }
