@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildMedicineLabelInstruction, buildMedicineLabelTitle, formatLabelLots, formatLabelQuantity, padSmallQuantity } from './medicine-label';
 
-const noDose = { doseMorning: 0, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: null, instruction: null };
+const noDose = { doseMorning: 0, doseNoon: 0, doseAfternoon: 0, doseEvening: 0, durationDays: null, doseMode: 'SCHEDULED' as const, singleDose: null, doseUnitName: null, instruction: null };
 
 describe('padSmallQuantity / formatLabelQuantity', () => {
   it('dưới 10 viết hai chữ số, từ 10 trở lên giữ nguyên', () => {
@@ -50,6 +50,17 @@ describe('buildMedicineLabelInstruction', () => {
   });
   it('có liều nhưng không có số ngày → không in "null ngày"', () => {
     expect(buildMedicineLabelInstruction({ ...noDose, doseMorning: 1, durationDays: null })).toBe('Sáng 1.');
+  });
+  it('dung dịch tính theo ml: hiện đơn vị liều và số thập phân (#267)', () => {
+    expect(buildMedicineLabelInstruction({ ...noDose, doseMorning: 5, doseEvening: 5, durationDays: 5, doseUnitName: 'ml', instruction: null })).toBe('Sáng 5 ml - Tối 5 ml, 5 ngày.');
+    expect(buildMedicineLabelInstruction({ ...noDose, doseMorning: 2.5, doseEvening: 2.5, durationDays: 3, doseUnitName: 'ml', instruction: 'Uống sau ăn' })).toBe('Sáng 2,5 ml - Tối 2,5 ml, 3 ngày. Uống sau ăn');
+  });
+  it('"Khi cần": in đúng câu dặn bác sĩ soạn, không ghép thêm liều/số ngày', () => {
+    expect(buildMedicineLabelInstruction({ ...noDose, doseMode: 'AS_NEEDED', singleDose: 1.5, instruction: 'Uống 1,5 gói khi sốt cao.' })).toBe('Uống 1,5 gói khi sốt cao.');
+  });
+  it('"Khi cần" chưa soạn câu dặn → rơi về liều mỗi lần', () => {
+    expect(buildMedicineLabelInstruction({ ...noDose, doseMode: 'AS_NEEDED', singleDose: 1.5, instruction: null })).toBe('Mỗi lần 1,5, khi cần.');
+    expect(buildMedicineLabelInstruction({ ...noDose, doseMode: 'AS_NEEDED', singleDose: null, instruction: null })).toBe('Khi cần.');
   });
 });
 

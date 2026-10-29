@@ -347,7 +347,8 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
       // Mã danh mục là mã THẬT do hệ thống sinh (không phải mã tạm), đúng danh mục.
       expect(m.baseUnitCode).toMatch(/^DV/);
       expect(m.manufacturerCode).toMatch(/^HS/);
-      const unitRow = await privileged.referenceCatalog.findFirst({ where: { category: 'UNIT', code: m.baseUnitCode } });
+      // Mã danh mục ngắn (DV00007...) lặp lại giữa các công ty — PHẢI lọc theo công ty, nếu không bắt nhầm đơn vị của công ty khác khi các spec chạy song song.
+      const unitRow = await privileged.referenceCatalog.findFirst({ where: { tenantId: fixture.tenantA.id, category: 'UNIT', code: m.baseUnitCode } });
       expect(unitRow?.name).toBe(`Viên-${tag}`);
       // audit
       const audit = await privileged.auditLog.findMany({ where: { tenantId: fixture.tenantA.id, action: { in: ['drug.imported', 'drug.created'] } } });

@@ -30,9 +30,14 @@ export function computePrescriptionExactQuartersPreview(periods: PrescriptionDos
   return perDay * durationDays;
 }
 
+/** Bao nhiêu "¼ đơn vị liều" thì tròn 1 đơn vị nhỏ nhất — khớp `quartersPerBaseUnit` ở shared (viên/gói = 4; dung dịch 60 ml/Hộp = 240). */
+export function quartersPerBaseUnitPreview(dosePerBaseUnit?: number | null): number {
+  return dosePerBaseUnit && dosePerBaseUnit > 0 ? Math.max(1, Math.round(dosePerBaseUnit * 4)) : 4;
+}
+
 /** Tổng số nguyên đã LÀM TRÒN LÊN — khớp `computePrescriptionQuantity` ở backend. */
-export function computePrescriptionQuantityPreview(periods: PrescriptionDosePeriodsPreview, durationDays: number): number {
-  return Math.ceil(computePrescriptionExactQuartersPreview(periods, durationDays) / 4);
+export function computePrescriptionQuantityPreview(periods: PrescriptionDosePeriodsPreview, durationDays: number, dosePerBaseUnit?: number | null): number {
+  return Math.ceil(computePrescriptionExactQuartersPreview(periods, durationDays) / quartersPerBaseUnitPreview(dosePerBaseUnit));
 }
 
 /** Liều một buổi dạng đọc được: 0,5 → "½", 1,5 → "1½", 2 → "2", 0,25 → "¼". */
@@ -44,13 +49,33 @@ export function formatDoseAmountPreview(dose: number): string {
   return `${whole > 0 ? whole : ''}${frac}`;
 }
 
-export function formatDoseSummaryPreview(periods: PrescriptionDosePeriodsPreview): string {
+/** Liều dạng số thập phân kiểu Việt cho đơn vị liều không phải viên (ml...): 2.5 → "2,5". Khớp `formatDoseDecimal` ở shared. */
+export function formatDoseDecimalPreview(dose: number): string {
+  return String(Math.round(dose * 100) / 100).replace('.', ',');
+}
+
+export function formatDoseSummaryPreview(periods: PrescriptionDosePeriodsPreview, doseUnit?: string | null): string {
+  const amount = doseUnit ? formatDoseDecimalPreview : formatDoseAmountPreview;
+  const suffix = doseUnit ? ` ${doseUnit}` : '';
   const parts: string[] = [];
-  if (periods.doseMorning > 0) parts.push(`Sáng ${formatDoseAmountPreview(periods.doseMorning)}`);
-  if (periods.doseNoon > 0) parts.push(`Trưa ${formatDoseAmountPreview(periods.doseNoon)}`);
-  if (periods.doseAfternoon > 0) parts.push(`Chiều ${formatDoseAmountPreview(periods.doseAfternoon)}`);
-  if (periods.doseEvening > 0) parts.push(`Tối ${formatDoseAmountPreview(periods.doseEvening)}`);
+  if (periods.doseMorning > 0) parts.push(`Sáng ${amount(periods.doseMorning)}${suffix}`);
+  if (periods.doseNoon > 0) parts.push(`Trưa ${amount(periods.doseNoon)}${suffix}`);
+  if (periods.doseAfternoon > 0) parts.push(`Chiều ${amount(periods.doseAfternoon)}${suffix}`);
+  if (periods.doseEvening > 0) parts.push(`Tối ${amount(periods.doseEvening)}${suffix}`);
   return parts.length > 0 ? parts.join(' - ') : '—';
+}
+
+/** Cột "Liều dùng" cho nơi chỉ đọc — khớp `formatPrescriptionDose` ở shared ("Sáng 5 ml - Tối 5 ml" / "Mỗi lần 1,5 gói, khi cần"). */
+export function formatPrescriptionDosePreview(
+  item: PrescriptionDosePeriodsPreview & { doseMode?: 'SCHEDULED' | 'AS_NEEDED' | null; singleDose?: number | null; doseUnitName?: string | null; unitName?: string | null },
+): string {
+  if (item.doseMode === 'AS_NEEDED') {
+    const dose = item.singleDose ?? 0;
+    if (dose <= 0) return 'Khi cần';
+    const unit = item.doseUnitName ?? item.unitName?.trim().toLocaleLowerCase('vi-VN') ?? '';
+    return `Mỗi lần ${formatDoseDecimalPreview(dose)}${unit ? ` ${unit}` : ''}, khi cần`;
+  }
+  return formatDoseSummaryPreview(item, item.doseUnitName);
 }
 
 /** Có liều lẻ (không phải số nguyên viên) ở ít nhất một buổi. */

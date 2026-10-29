@@ -18,7 +18,7 @@ import {
   type DoctorDirectoryPort,
   type PricingPort,
 } from '@nexamed/core';
-import { formatDoseSummary, type MedicineLabelBatch, type MedicineLabelItem, type MedicineLabelsResponse } from '@nexamed/shared';
+import { formatPrescriptionDose, type MedicineLabelBatch, type MedicineLabelItem, type MedicineLabelsResponse } from '@nexamed/shared';
 import type {
   ApproveStockIssueRequest,
   CreateManualStockIssueRequest,
@@ -915,6 +915,9 @@ export class StockIssueService {
           doseAfternoon: item ? Number(item.doseAfternoon) : 0,
           doseEvening: item ? Number(item.doseEvening) : 0,
           durationDays: item ? item.durationDays : null,
+          doseMode: item ? item.doseMode : 'SCHEDULED',
+          singleDose: item && item.singleDose !== null ? Number(item.singleDose) : null,
+          doseUnitName: item ? item.doseUnitName : null,
           instruction: item?.instruction ?? null,
           batches: batch ? [batch] : [],
         });
@@ -1007,7 +1010,7 @@ export class StockIssueService {
             prescriptionItemId: item.id,
             drugName: item.drugName,
             prescribedQuantity: item.quantity,
-            doseSummary: formatDoseSummary(item),
+            doseSummary: formatPrescriptionDose(item),
             instruction: item.instruction,
             documentId: item.documentId,
           });

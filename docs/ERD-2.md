@@ -261,3 +261,19 @@ Giao diện gửi header `Idempotency-Key` (UUID) cho mọi POST JSON và giữ 
 ### 3.16 Mã kiểm khoá mã hoá (v1.85, `docs/DECISIONS.md` #262) — KHÔNG đổi schema
 
 Không bảng/cột mới: một khoá mới trong `tenant_setting` — `encryption_key_fingerprint` (`value_json` = `{ "fingerprint": "7F3A-91C2" }`, 8 hex đầu SHA-256 của khoá mã hoá, theo công ty), ghi LẦN ĐẦU khi máy chủ kiểm khoá (`EncryptionKeyService`) và đổi khi chạy `db:rotate-encryption-key`. Dùng để phát hiện khoá `ENCRYPTION_KEY` đang chạy không khớp dữ liệu đã mã hoá (`patient.national_id_enc`, `insurance_card.card_no_enc`, bản chụp thẻ trong `encounter.insurance_snapshot`, 3 bảng liên thông). `idempotency_key` bị xoá khi xoay khoá (phản hồi tạm mã hoá bằng khoá cũ).
+
+### 3.17 Cách kê liều của thuốc + kiểu kê của dòng đơn (v1.86–v1.87, `docs/DECISIONS.md` #267)
+
+Enum `drug_dose_mode` = `SCHEDULED` (theo buổi Sáng/Trưa/Chiều/Tối × số ngày) | `AS_NEEDED` ("Khi cần": liều mỗi lần + số lượng bác sĩ nhập thẳng, không số ngày).
+
+| Bảng / cột | Ý nghĩa | Ghi chú |
+|---|---|---|
+| `drug.dose_mode` | Kiểu kê mặc định của thuốc | NOT NULL DEFAULT `SCHEDULED`. Thuốc hạ sốt đặt `AS_NEEDED`. Vật tư luôn mặc định. |
+| `drug.dose_unit_code` + `drug.dose_per_base_unit` | Đơn vị liều khác đơn vị kho ("ml") + dung tích mỗi đơn vị nhỏ nhất (60 = mỗi Hộp 60 ml) | Cùng có hoặc cùng không (CHECK `drug_dose_unit_pair_check`); dung tích > 0 và bội của 0,25. NUMERIC(8,2) là ngoại lệ có chủ đích của quy tắc "cấm numeric" (không phải tiền). |
+| `drug_dose_preset` | "Liều mẫu" bấm chọn ở màn kê đơn (Người lớn, Trẻ 2–6 tuổi...) | Tối đa 8 dòng/thuốc, bulk-replace như `drug_unit`; tên không trùng; liều bội ¼, ít nhất một buổi > 0. RLS theo tenant. Không tự gợi ý theo tuổi/cân nặng (ranh giới với gói Nhi khoa). |
+| `prescription_item.dose_mode` | Kiểu kê CỦA DÒNG | NOT NULL DEFAULT `SCHEDULED` (dòng cũ không đổi). Thuốc có đơn vị liều: kiểu cố định theo thuốc; thuốc viên/gói đổi được trên dòng. |
+| `prescription_item.single_dose` | Liều mỗi lần của `AS_NEEDED` | NUMERIC(5,2), bội ¼; NULL khi `SCHEDULED`. |
+| `prescription_item.dose_unit_name` + `dose_per_base_unit` | TÊN đơn vị liều + dung tích, CHỤP từ thuốc lúc lưu | Đơn đã ký không đổi khi thuốc đổi cấu hình hay đổi tên đơn vị. Lưu TÊN ("ml") chứ không lưu mã danh mục để mọi nơi in ra đọc được. |
+| `prescription_item.duration_days` | Số ngày | Cho phép NULL. CHECK `prescription_item_dose_mode_check`: `SCHEDULED` bắt buộc có số ngày và không có `single_dose`; `AS_NEEDED` không số ngày, bốn liều theo buổi đều 0. |
+| `prescription_item.quantity` | Số lượng kê = số xuất kho | `SCHEDULED`: máy chủ tính = LÀM TRÒN LÊN(tổng liều × số ngày ÷ dung tích). `AS_NEEDED`: bác sĩ nhập (0–9999), KHÔNG tính từ liều mỗi lần. |
+| `prescription_template_item.dose_mode`, `single_dose`, `duration_days` | Đơn mẫu mang theo kiểu kê | Cùng khuôn `prescription_item`; không chụp đơn vị liều (luôn đọc từ thuốc khi áp mẫu). CHECK `prescription_template_item_dose_mode_check` thay CHECK `duration_days > 0` cũ. |

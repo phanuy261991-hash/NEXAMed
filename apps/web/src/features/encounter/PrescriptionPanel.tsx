@@ -1,12 +1,8 @@
 import { useRef, useState } from 'react';
 import { ArrowRight, CheckCircle, ClockCounterClockwise, Info, PencilSimple, Pill, Plus, Stack, Warning, X } from '@phosphor-icons/react';
-import type { PrescriptionItem, PrescriptionResponse, PrescriptionTemplate } from '@nexamed/shared';
-import {
-  computePrescriptionExactQuartersPreview,
-  formatDoseSummaryPreview as formatDoseSummary,
-  formatQuarterTotalVi,
-} from './prescription-dose-preview';
-import { DoseInput, DosePatternPills, DoseQuickChips } from './dose-controls';
+import type { DoseMode, PrescriptionItem, PrescriptionResponse, PrescriptionTemplate } from '@nexamed/shared';
+import { formatPrescriptionDosePreview } from './prescription-dose-preview';
+import { DoseLineEditor, DoseLinePreview, lineDoseRequest, lineHasDose, singleDoseText, type DoseLineState } from './DoseLineEditor';
 import { AdviceTemplateDialog } from '../advice-template/AdviceTemplateDialog';
 import { Textarea } from '../../shared/ui/Textarea';
 import { ApiError } from '../../shared/api/client';
@@ -41,72 +37,53 @@ import {
   useSignPrescriptionMutation,
 } from './encounter.queries';
 
-/** Liều dùng theo buổi Sáng/Trưa/Chiều/Tối (docs/DECISIONS.md #196, mockup đã duyệt) — thay hẳn 2 ô
- * tự do "Liều dùng"/"Tần suất" cũ. Tổng số lượng luôn TÍNH RA (không nhập tay), theo đơn vị NHỎ
- * NHẤT của thuốc (`unitCode` — CHỈ hiển thị, không có ô chọn đơn vị nào). */
-interface DraftLine {
-  /** Định danh RIÊNG cho thao tác sửa/xoá cục bộ ở component này — KHÔNG dùng `drugId` làm khoá vì
-   * nhiều dòng "kê thuốc tự do" (mở rộng Kho Thuốc GĐ5) đều có `drugId=null`, không phân biệt được
-   * nhau. Đúng khuôn `DraftLine.key` ở `DispensePrescriptionDialog.tsx`. */
-  key: string;
-  /** `null` = dòng "kê thuốc tự do, không qua danh mục" — xem `drugName` (luôn là tên tự do đã gõ). */
-  drugId: string | null;
-  drugName: string;
-  /** Đơn vị nhỏ nhất của thuốc — `null` cho dòng tự do (không có danh mục để tra). */
-  unitCode: string | null;
-  doseMorning: string;
-  doseNoon: string;
-  doseAfternoon: string;
-  doseEvening: string;
-  durationDays: string;
-  instruction: string;
-  /** "Cho phép chia nhỏ" của thuốc (#241) — `true` cho dòng tự do. Nguồn thật là `prescription.items` (xem `splittableOf`). */
-  isSplittable: boolean;
-  /** Số ngày đã sửa RIÊNG (#241) — không đổi theo "số ngày chung" (số ngày của thuốc đầu tiên) nữa. Luôn `false` ở dòng đầu. */
+/**
+ * Một dòng thuốc đang soạn. Liều theo buổi Sáng/Trưa/Chiều/Tối (docs/DECISIONS.md #196) hoặc kiểu "Khi cần" (#267: liều mỗi lần + số lượng nhập thẳng); số lượng của "Theo buổi" luôn TÍNH RA
+ * (không nhập tay), theo đơn vị NHỎ NHẤT của thuốc (`unitCode` — CHỈ hiển thị, không có ô chọn đơn vị nào).
+ */
+type DraftLine = DoseLineState & {
+  /** Số ngày đã sửa RIÊNG (#241) — không đổi theo "số ngày chung" (số ngày của thuốc "Theo buổi" đầu tiên) nữa. Luôn `false` ở dòng đầu. */
   daysOwn: boolean;
-}
-
-/** Bốn ô liều theo buổi — dùng chung cho vòng lặp ô nhập, nút chọn nhanh và pill gợi ý. */
-const DOSE_SLOTS = [
-  { field: 'doseMorning', label: 'Sáng' },
-  { field: 'doseNoon', label: 'Trưa' },
-  { field: 'doseAfternoon', label: 'Chiều' },
-  { field: 'doseEvening', label: 'Tối' },
-] as const;
-type DoseField = (typeof DOSE_SLOTS)[number]['field'];
+};
 
 const DEFAULT_DURATION_DAYS = '5';
 
-/** Số ngày chung của đơn = số ngày của thuốc ĐẦU TIÊN (chốt qua mockup #241); danh sách trống thì mặc định 5. */
+/** Dòng giữ "số ngày chung" của đơn = thuốc "Theo buổi" ĐẦU TIÊN (dòng "Khi cần" không có số ngày nên không làm chuẩn). */
+function masterLineOf(lines: DraftLine[]): DraftLine | undefined {
+  return lines.find((l) => l.doseMode === 'SCHEDULED');
+}
+
+/** Số ngày chung của đơn = số ngày của thuốc "Theo buổi" đầu tiên (chốt qua mockup #241); chưa có thì mặc định 5. */
 function masterDaysOf(lines: DraftLine[]): string {
-  return lines[0]?.durationDays ?? DEFAULT_DURATION_DAYS;
+  return masterLineOf(lines)?.durationDays ?? DEFAULT_DURATION_DAYS;
 }
 
 /** Đánh dấu "chỉnh riêng" cho dòng có số ngày khác số ngày chung — dùng khi nạp cả cụm dòng (đơn đã lưu, đơn mẫu, đơn lần trước). */
 function markDaysOwn(lines: DraftLine[]): DraftLine[] {
-  const master = masterDaysOf(lines);
-  return lines.map((l, i) => ({ ...l, daysOwn: i > 0 && l.durationDays !== master }));
+  const master = masterLineOf(lines);
+  const masterDays = masterDaysOf(lines);
+  return lines.map((l) => ({ ...l, daysOwn: l.doseMode === 'SCHEDULED' && l !== master && l.durationDays !== masterDays }));
 }
 
-function emptyDoseLine(drug: { drugId: string | null; drugName: string; unitCode: string | null; isSplittable: boolean }, durationDays: string): DraftLine {
+function emptyDoseLine(drug: { drugId: string | null; drugName: string; unitCode: string | null; isSplittable: boolean; doseMode?: DoseMode }, durationDays: string): DraftLine {
   return {
     key: makeDraftId(),
     drugId: drug.drugId,
     drugName: drug.drugName,
     unitCode: drug.unitCode,
+    // Kiểu kê mặc định lấy từ cấu hình thuốc (thuốc hạ sốt đặt sẵn "Khi cần"); dòng kê tự do mặc định "Theo buổi".
+    doseMode: drug.doseMode ?? 'SCHEDULED',
     doseMorning: '',
     doseNoon: '',
     doseAfternoon: '',
     doseEvening: '',
     durationDays,
+    singleDose: '',
+    quantity: '',
     instruction: '',
     isSplittable: drug.isSplittable,
     daysOwn: false,
   };
-}
-
-function lineDoseNumbers(line: DraftLine): [number, number, number, number] {
-  return [Number(line.doseMorning) || 0, Number(line.doseNoon) || 0, Number(line.doseAfternoon) || 0, Number(line.doseEvening) || 0];
 }
 
 function itemToDraft(item: PrescriptionItem): DraftLine {
@@ -115,35 +92,27 @@ function itemToDraft(item: PrescriptionItem): DraftLine {
     drugId: item.drugId,
     drugName: item.drugName,
     unitCode: item.unitCode,
+    doseMode: item.doseMode,
     doseMorning: String(item.doseMorning),
     doseNoon: String(item.doseNoon),
     doseAfternoon: String(item.doseAfternoon),
     doseEvening: String(item.doseEvening),
-    durationDays: String(item.durationDays),
+    durationDays: item.durationDays === null ? DEFAULT_DURATION_DAYS : String(item.durationDays),
+    singleDose: singleDoseText(item.singleDose),
+    quantity: item.doseMode === 'AS_NEEDED' ? String(item.quantity) : '',
     instruction: item.instruction ?? '',
     isSplittable: item.isSplittable,
     daysOwn: false,
   };
 }
 
-/** Tổng số TRƯỚC làm tròn, theo đơn vị ¼ viên (client-side, số thật do backend tính lại lúc lưu). `% 4 !== 0` = tổng lẻ, sẽ làm tròn lên. */
-function draftLineExactQuarters(line: DraftLine): number {
-  const [m, n, a, e] = lineDoseNumbers(line);
-  return computePrescriptionExactQuartersPreview({ doseMorning: m, doseNoon: n, doseAfternoon: a, doseEvening: e }, Number(line.durationDays) || 0);
-}
-
-/** Ô "Tổng số" dùng chung cho đơn đang kê và hộp "Sửa đơn" — ghi rõ số lẻ gốc khi bị làm tròn lên. */
-function DraftLineTotalBox({ line, unitLabelText }: { line: DraftLine; unitLabelText: string }) {
-  const quarters = draftLineExactQuarters(line);
-  return (
-    <div className="rounded-md bg-brand-teal-tint px-3 py-1.5">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tổng số</div>
-      <div className="text-[15px] font-semibold text-blue-700">
-        {Math.ceil(quarters / 4)} {unitLabelText}
-      </div>
-      {quarters % 4 !== 0 && <div className="text-[11px] font-semibold text-amber-700">{formatQuarterTotalVi(quarters)} làm tròn lên</div>}
-    </div>
-  );
+/** Một dòng đang soạn → dòng gửi máy chủ (lưu nháp, đính chính, lưu đơn mẫu). "Kê thuốc tự do" — đúng 1 trong 2 (superRefine ở `packages/shared/src/prescription.ts`). */
+function lineToItemInput(l: DraftLine) {
+  return {
+    ...(l.drugId !== null ? { drugId: l.drugId } : { freeTextDrugName: l.drugName }),
+    ...lineDoseRequest(l),
+    instruction: l.instruction.trim() || undefined,
+  };
 }
 
 const WARNING_KIND_LABEL: Record<string, string> = {
@@ -249,14 +218,11 @@ export function PrescriptionPanel({
   // đây VÀ badge tồn kho trong `DrugPicker.tsx` (hook riêng, tự đọc lại đúng công tắc này).
   const stockTrackingQuery = usePharmacyStockTrackingEnabledQuery();
   const showStock = stockTrackingQuery.data?.enabled ?? true;
-  const unitNameByCode = useUnitNameByCode();
 
   const [draftLines, setDraftLines] = useState<DraftLine[]>(() => markDaysOwn((prescription?.items ?? []).map(itemToDraft)));
   // "Lời dặn của bác sĩ" riêng của đơn (#241) — lưu cùng đơn nháp (`persistDraft`), in cuối đơn.
   const [advice, setAdvice] = useState(prescription?.doctorAdvice ?? '');
   const [adviceDialogOpen, setAdviceDialogOpen] = useState(false);
-  // Ô liều đang đứng của từng dòng — nút chọn nhanh ¼ · ½ · 1 · 2 điền vào đúng ô này.
-  const [focusedSlot, setFocusedSlot] = useState<{ key: string; field: DoseField } | null>(null);
   const [draftKey, setDraftKey] = useState(prescription?.id ?? 'new');
   // Đơn đổi sang bản khác hẳn (vd sau "Sửa đơn" tạo id mới) — nạp lại draft từ server thay vì giữ
   // state cũ đã lỗi thời. Không dùng useEffect (tránh 1 nhịp render lệch) — so sánh ngay trong
@@ -294,26 +260,18 @@ export function PrescriptionPanel({
   const [amendError, setAmendError] = useState<string | null>(null);
   const previousPrescriptionMutation = useGetPreviousPrescriptionMutation(encounterId);
   const [copyPreviousError, setCopyPreviousError] = useState<string | null>(null);
+  const patchAmendLine = (key: string, patch: Partial<DraftLine>) => setAmendLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
   function persistDraft(lines: DraftLine[], nextAdvice: string = advice) {
     setDraftLines(lines);
     saveMutation.mutate({
       doctorAdvice: nextAdvice,
-      items: lines.map((l) => ({
-        // "Kê thuốc tự do" — đúng 1 trong 2 (superRefine ở `packages/shared/src/prescription.ts`).
-        ...(l.drugId !== null ? { drugId: l.drugId } : { freeTextDrugName: l.drugName }),
-        doseMorning: Number(l.doseMorning) || 0,
-        doseNoon: Number(l.doseNoon) || 0,
-        doseAfternoon: Number(l.doseAfternoon) || 0,
-        doseEvening: Number(l.doseEvening) || 0,
-        durationDays: Math.max(1, Number(l.durationDays) || 1),
-        instruction: l.instruction.trim() || undefined,
-      })),
+      items: lines.map(lineToItemInput),
     });
   }
 
   /** Thêm thuốc là LƯU NHÁP NGAY (#241) để cảnh báo trùng hoạt chất/không chia được hiện liền — dòng mới nhận số ngày chung của đơn, liều để trống. */
-  function handleAddDrug(drug: { drugId: string; drugName: string; unitCode: string | null; isSplittable: boolean }) {
+  function handleAddDrug(drug: { drugId: string; drugName: string; unitCode: string | null; isSplittable: boolean; doseMode: DoseMode }) {
     persistDraft([...draftLines, emptyDoseLine(drug, masterDaysOf(draftLines))]);
   }
 
@@ -336,11 +294,14 @@ export function PrescriptionPanel({
         drugId: item.drugId,
         drugName: item.drugName,
         unitCode: item.unitCode,
+        doseMode: item.doseMode,
         doseMorning: String(item.doseMorning),
         doseNoon: String(item.doseNoon),
         doseAfternoon: String(item.doseAfternoon),
         doseEvening: String(item.doseEvening),
-        durationDays: String(item.durationDays),
+        durationDays: item.durationDays === null ? DEFAULT_DURATION_DAYS : String(item.durationDays),
+        singleDose: singleDoseText(item.singleDose),
+        quantity: item.doseMode === 'AS_NEEDED' ? String(item.quantity) : '',
         instruction: item.instruction ?? '',
         isSplittable: true,
         daysOwn: false,
@@ -378,34 +339,42 @@ export function PrescriptionPanel({
     setDraftLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
 
-  /** Chốt liều của một ô (gõ xong/chọn nhanh) và lưu nháp. */
-  function commitDose(key: string, patch: Partial<Pick<DraftLine, DoseField>>) {
-    persistDraft(draftLines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
-  }
-
-  /** Bấm pill dãy liều — điền cả 4 ô; `null` (bấm lại pill đang chọn) xoá về trống. */
-  function pickDosePattern(key: string, pattern: readonly [number, number, number, number] | null) {
-    const v = (n: number | undefined) => (pattern === null ? '' : String(n ?? 0));
-    commitDose(key, { doseMorning: v(pattern?.[0]), doseNoon: v(pattern?.[1]), doseAfternoon: v(pattern?.[2]), doseEvening: v(pattern?.[3]) });
+  /**
+   * Chốt thay đổi của một dòng (rời ô liều, chọn liều mẫu/điền nhanh, đổi kiểu kê) và lưu nháp. Đổi sang "Theo buổi" thì dòng nhận lại số ngày chung của đơn.
+   */
+  function commitLine(key: string, patch: Partial<DraftLine>) {
+    const others = draftLines.filter((l) => l.key !== key);
+    const next = draftLines.map((l) => {
+      if (l.key !== key) return l;
+      const merged = { ...l, ...patch };
+      return patch.doseMode === 'SCHEDULED' && l.doseMode !== 'SCHEDULED' ? { ...merged, durationDays: masterDaysOf(others), daysOwn: false } : merged;
+    });
+    persistDraft(markDaysOwn(next));
   }
 
   /**
-   * Sửa số ngày (#241): sửa ở THUỐC ĐẦU = số ngày chung → mọi dòng đang "theo chung" đổi theo; sửa ở dòng khác thì dòng đó
+   * Sửa số ngày (#241): sửa ở THUỐC "THEO BUỔI" ĐẦU = số ngày chung → mọi dòng đang "theo chung" đổi theo; sửa ở dòng khác thì dòng đó
    * tách riêng ("Chỉnh riêng") và không đổi theo nữa. Chưa lưu — lưu khi rời ô (`onBlurCommit`).
    */
   function handleDaysChange(key: string, value: string) {
-    setDraftLines((prev) =>
-      prev.map((l, i) => {
-        if (l.key === key) return { ...l, durationDays: value, daysOwn: i > 0 };
-        if (prev[0]?.key === key && !l.daysOwn) return { ...l, durationDays: value };
+    setDraftLines((prev) => {
+      const masterKey = masterLineOf(prev)?.key;
+      return prev.map((l) => {
+        if (l.key === key) return { ...l, durationDays: value, daysOwn: key !== masterKey };
+        if (masterKey === key && l.doseMode === 'SCHEDULED' && !l.daysOwn) return { ...l, durationDays: value };
         return l;
-      }),
-    );
+      });
+    });
   }
 
   /** "Theo chung (N ngày)" — nối lại dòng đã chỉnh riêng với số ngày chung. */
   function followMasterDays(key: string) {
     persistDraft(draftLines.map((l) => (l.key === key ? { ...l, durationDays: masterDaysOf(draftLines), daysOwn: false } : l)));
+  }
+
+  /** Chèn một câu (soạn nhanh câu dặn "Khi cần") vào ô "Hướng dẫn dùng" của dòng rồi lưu nháp. */
+  function appendInstruction(key: string, sentence: string) {
+    persistDraft(draftLines.map((l) => (l.key === key ? { ...l, instruction: appendSentence(l.instruction, sentence) } : l)));
   }
 
   /** Điều hướng bàn phím toàn bộ dòng kê đơn (Kho Thuốc GĐ5) — Enter ở ô CUỐI của 1 dòng (Hướng dẫn
@@ -449,15 +418,7 @@ export function PrescriptionPanel({
         amendmentReason: amendReason.trim(),
         doctorAdvice: amendAdvice,
         version: prescription.version,
-        items: amendLines.map((l) => ({
-          ...(l.drugId !== null ? { drugId: l.drugId } : { freeTextDrugName: l.drugName }),
-          doseMorning: Number(l.doseMorning) || 0,
-          doseNoon: Number(l.doseNoon) || 0,
-          doseAfternoon: Number(l.doseAfternoon) || 0,
-          doseEvening: Number(l.doseEvening) || 0,
-          durationDays: Math.max(1, Number(l.durationDays) || 1),
-          instruction: l.instruction.trim() || undefined,
-        })),
+        items: amendLines.map(lineToItemInput),
       },
       {
         onSuccess: () => setAmendOpen(false),
@@ -479,7 +440,7 @@ export function PrescriptionPanel({
   const splitWarnings = allWarnings.filter((w) => w.kind === 'not_splittable');
   const warnings = allWarnings.filter((w) => w.kind !== 'not_splittable');
   const splitBlocked = splitBlockEnabled && splitWarnings.length > 0;
-  const hasLineWithoutDose = draftLines.some((l) => lineDoseNumbers(l).every((d) => d === 0));
+  const hasLineWithoutDose = draftLines.some((l) => !lineHasDose(l));
   const signBlockedMessage = splitBlocked ? 'Còn thuốc không chia được đang kê liều lẻ.' : hasLineWithoutDose ? 'Còn thuốc chưa nhập liều dùng.' : '';
 
   function submitAck(key: string, acknowledged: boolean) {
@@ -679,7 +640,7 @@ export function PrescriptionPanel({
                 </div>
               </div>
               {copyPreviousError && <p className="mb-2 text-xs font-semibold text-amber-700">{copyPreviousError}</p>}
-              <p className="mb-2 text-xs text-slate-500">Tổng số lượng = (Sáng + Trưa + Chiều + Tối) × Số ngày — luôn theo đơn vị nhỏ nhất của thuốc, không đổi được.</p>
+              <p className="mb-2 text-xs text-slate-500">Kiểu "Theo buổi": số lượng = (Sáng + Trưa + Chiều + Tối) × Số ngày, luôn theo đơn vị nhỏ nhất của thuốc. Kiểu "Khi cần": bác sĩ nhập thẳng số lượng.</p>
               <DrugPicker ref={drugPickerRef} highlight excludeDrugIds={draftLines.map((l) => l.drugId)} onSelect={(drug) => handleAddDrug(drug)} onAddFreeText={handleAddFreeTextDrug} />
             </div>
             </div>
@@ -688,12 +649,14 @@ export function PrescriptionPanel({
             <p className="mb-3 text-sm text-slate-500">Chưa có dòng thuốc nào — tìm và thêm thuốc bên dưới.</p>
           ) : (
             <div className="mb-4 flex flex-col gap-2">
-              {draftLines.map((line, idx) => {
+              {draftLines.map((line) => {
                 const splitWarning = splitWarnings.find((w) => w.key === `not_splittable:${line.drugId}`);
                 // Chế độ Chặn: bỏ qua không có tác dụng (server vẫn chặn ký) nên luôn hiện khung chặn.
                 const splitState = !splitWarning ? null : splitBlockEnabled ? 'block' : splitWarning.acknowledged ? 'ack' : 'warn';
-                const daysHintText = idx === 0 ? (draftLines.length > 1 ? 'Số ngày chung của đơn' : 'Các thuốc thêm sau sẽ lấy số ngày này') : line.daysOwn ? 'Chỉnh riêng' : 'Theo số ngày chung';
-                const daysHintClass = idx === 0 ? 'text-brand-teal-active' : line.daysOwn ? 'text-amber-700' : 'text-slate-500';
+                const isMasterDays = line.key === masterLineOf(draftLines)?.key;
+                const scheduledCount = draftLines.filter((l) => l.doseMode === 'SCHEDULED').length;
+                const daysHintText = isMasterDays ? (scheduledCount > 1 ? 'Số ngày chung của đơn' : 'Các thuốc thêm sau sẽ lấy số ngày này') : line.daysOwn ? 'Chỉnh riêng' : 'Theo số ngày chung';
+                const daysHintClass = isMasterDays ? 'text-brand-teal-active' : line.daysOwn ? 'text-amber-700' : 'text-slate-500';
                 return (
                 <div
                   key={line.key}
@@ -721,34 +684,30 @@ export function PrescriptionPanel({
                         </span>
                       )}
                     </div>
-                    <div className="mt-2 flex flex-wrap items-end gap-4">
-                      {DOSE_SLOTS.map(({ field, label }) => (
-                        <div key={field} className="w-14">
-                          <DoseInput
-                            id={`dose-${line.key}-${field}`}
-                            label={label}
-                            value={line[field]}
-                            disabled={!canEdit}
-                            onFocus={() => setFocusedSlot({ key: line.key, field })}
-                            onCommit={(v) => commitDose(line.key, { [field]: v } as Partial<Pick<DraftLine, DoseField>>)}
-                          />
+                    <DoseLineEditor
+                      idPrefix={`dose-${line.key}`}
+                      line={line}
+                      canEdit={canEdit}
+                      showAids
+                      daysField={
+                        <div className="w-16">
+                          <LineInput dense label="Số ngày" type="number" value={line.durationDays} onBlurCommit={() => persistDraft(draftLines)} onChange={(v) => handleDaysChange(line.key, v)} disabled={!canEdit} />
                         </div>
-                      ))}
-                      <span className="pb-1.5 text-lg font-semibold text-slate-300">×</span>
-                      <div className="w-16">
-                        <LineInput dense label="Số ngày" type="number" value={line.durationDays} onBlurCommit={() => persistDraft(draftLines)} onChange={(v) => handleDaysChange(line.key, v)} disabled={!canEdit} />
-                      </div>
-                      <span className="pb-1.5 text-lg font-semibold text-slate-300">=</span>
-                      <DraftLineTotalBox line={line} unitLabelText={line.unitCode ? unitLabel(unitNameByCode, line.unitCode) : ''} />
-                    </div>
-                    <p className={`mt-1 flex min-h-4 items-center gap-1.5 text-[11.5px] font-semibold ${daysHintClass}`}>
-                      {daysHintText}
-                      {canEdit && idx > 0 && line.daysOwn && (
-                        <Button type="button" variant="info" className="px-2 py-0 text-[11px]" onClick={() => followMasterDays(line.key)}>
-                          Theo chung ({masterDaysOf(draftLines)} ngày)
-                        </Button>
-                      )}
-                    </p>
+                      }
+                      daysHint={
+                        <p className={`mt-1 flex min-h-4 items-center gap-1.5 text-[11.5px] font-semibold ${daysHintClass}`}>
+                          {daysHintText}
+                          {canEdit && !isMasterDays && line.daysOwn && (
+                            <Button type="button" variant="info" className="px-2 py-0 text-[11px]" onClick={() => followMasterDays(line.key)}>
+                              Theo chung ({masterDaysOf(draftLines)} ngày)
+                            </Button>
+                          )}
+                        </p>
+                      }
+                      onPatch={(patch) => updateLine(line.key, patch)}
+                      onCommit={(patch) => commitLine(line.key, patch)}
+                      onAppendInstruction={(sentence) => appendInstruction(line.key, sentence)}
+                    />
                     {splitState && splitWarning && (
                       <SplitDoseAlert
                         state={splitState}
@@ -757,20 +716,6 @@ export function PrescriptionPanel({
                         onAcknowledge={() => submitAck(splitWarning.key, true)}
                         onRestore={() => submitAck(splitWarning.key, false)}
                       />
-                    )}
-                    {canEdit && (
-                      // Nút "Điền nhanh" nằm CÙNG hàng với pill liều và chỉ đổi `visibility` khi có ô trong dòng được focus — KHÔNG đổi chiều cao hàng. (Bản đầu hiện hàng riêng bằng
-                      // `display` nên bấm vào pill đầu tiên làm hàng chen vào, pill bị đẩy xuống giữa lúc nhấn chuột → phải bấm lần 2 mới ăn.)
-                      <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-2">
-                        <DosePatternPills doses={lineDoseNumbers(line)} splittable={splittableOf(line)} onPick={(p) => pickDosePattern(line.key, p)} />
-                        <div className="invisible group-focus-within:visible">
-                          <DoseQuickChips
-                            onPick={(value) =>
-                              commitDose(line.key, { [focusedSlot?.key === line.key ? focusedSlot.field : 'doseMorning']: value === null ? '' : String(value) } as Partial<Pick<DraftLine, DoseField>>)
-                            }
-                          />
-                        </div>
-                      </div>
                     )}
                     <div className="mt-2 flex items-end gap-2">
                       <div className="flex-1">
@@ -807,6 +752,7 @@ export function PrescriptionPanel({
                         </div>
                       )}
                     </div>
+                    <DoseLinePreview line={line} />
                   </div>
                   {canEdit && (
                     <button type="button" onClick={() => handleRemoveLine(line.key)} className="h-fit text-slate-400 hover:text-rose-600" aria-label={`Xoá ${line.drugName}`}>
@@ -959,24 +905,24 @@ export function PrescriptionPanel({
                       <X size={15} weight="bold" aria-hidden="true" />
                     </button>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-end gap-4">
-                    {DOSE_SLOTS.map(({ field, label }) => (
-                      <div key={field} className="w-14">
-                        <DoseInput
-                          id={`amend-dose-${line.key}-${field}`}
-                          label={label}
-                          value={line[field]}
-                          onCommit={(v) => setAmendLines((prev) => prev.map((l) => (l.key === line.key ? { ...l, [field]: v } : l)))}
-                        />
+                  <DoseLineEditor
+                    idPrefix={`amend-dose-${line.key}`}
+                    line={line}
+                    canEdit
+                    showAids={false}
+                    daysField={
+                      <div className="w-16">
+                        <LineInput dense label="Số ngày" type="number" value={line.durationDays} onChange={(v) => patchAmendLine(line.key, { durationDays: v })} />
                       </div>
-                    ))}
-                    <span className="pb-1.5 text-lg font-semibold text-slate-300">×</span>
-                    <div className="w-16">
-                      <LineInput dense label="Số ngày" type="number" value={line.durationDays} onChange={(v) => setAmendLines((prev) => prev.map((l) => (l.key === line.key ? { ...l, durationDays: v } : l)))} />
-                    </div>
-                    <span className="pb-1.5 text-lg font-semibold text-slate-300">=</span>
-                    <DraftLineTotalBox line={line} unitLabelText={line.unitCode ? unitLabel(unitNameByCode, line.unitCode) : ''} />
+                    }
+                    onPatch={(patch) => patchAmendLine(line.key, patch)}
+                    onCommit={(patch) => patchAmendLine(line.key, patch)}
+                    onAppendInstruction={(sentence) => patchAmendLine(line.key, { instruction: appendSentence(line.instruction, sentence) })}
+                  />
+                  <div className="mt-2">
+                    <LineInput label="Hướng dẫn dùng" underline value={line.instruction} onChange={(v) => patchAmendLine(line.key, { instruction: v })} />
                   </div>
+                  <DoseLinePreview line={line} />
                 </div>
               ))}
               <DrugPicker
@@ -1150,11 +1096,7 @@ function PrescriptionTemplateModal({
         name: newName.trim(),
         items: templatableLines.map((l) => ({
           drugId: l.drugId,
-          doseMorning: Number(l.doseMorning) || 0,
-          doseNoon: Number(l.doseNoon) || 0,
-          doseAfternoon: Number(l.doseAfternoon) || 0,
-          doseEvening: Number(l.doseEvening) || 0,
-          durationDays: Math.max(1, Number(l.durationDays) || 1),
+          ...lineDoseRequest(l),
           instruction: l.instruction.trim() || undefined,
         })),
       },
@@ -1324,7 +1266,7 @@ export function PrescriptionItemsTable({ items }: { items: PrescriptionItem[] })
       <thead>
         <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <th className="py-2">Tên thuốc</th>
-          <th className="py-2">Liều dùng theo buổi</th>
+          <th className="py-2">Liều dùng</th>
           <th className="py-2 text-center">Số ngày</th>
           <th className="py-2 text-center">SL</th>
           <th className="py-2">Hướng dẫn</th>
@@ -1342,8 +1284,8 @@ export function PrescriptionItemsTable({ items }: { items: PrescriptionItem[] })
                 </span>
               )}
             </td>
-            <td className="py-2 text-slate-700">{formatDoseSummary(item)}</td>
-            <td className="py-2 text-center text-slate-700">{item.durationDays}</td>
+            <td className="py-2 text-slate-700">{formatPrescriptionDosePreview({ ...item, unitName: item.unitCode ? unitLabel(unitNameByCode, item.unitCode) : null })}</td>
+            <td className="py-2 text-center text-slate-700">{item.durationDays ?? '—'}</td>
             <td className="py-2 text-center text-slate-700">
               {item.quantity} {item.unitCode ? unitLabel(unitNameByCode, item.unitCode) : ''}
             </td>

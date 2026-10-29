@@ -59,15 +59,47 @@ export function hasFractionalDose(periods: PrescriptionDosePeriods): boolean {
   return [periods.doseMorning, periods.doseNoon, periods.doseAfternoon, periods.doseEvening].some((d) => doseToQuarters(d) % 4 !== 0);
 }
 
+/** Số lượng tối đa nhập thẳng ở dòng kiểu "Khi cần" (#267). */
+export const MAX_AS_NEEDED_QUANTITY = 9999;
+
+/**
+ * Các trường của kiểu "Khi cần" (#267) dùng chung cho dòng đơn và dòng đơn mẫu: `doseMode` bỏ trống = theo cấu hình của thuốc (máy chủ quyết, xem `EncounterService.toCreateItemData`);
+ * `singleDose` = liều mỗi lần; `quantity` = số lượng bác sĩ nhập thẳng (chỉ dùng khi "Khi cần", kiểu "Theo buổi" luôn do máy chủ tính).
+ */
+/** Bốn liều theo buổi của dòng đơn/đơn mẫu GỬI LÊN: bỏ trống = 0 (dòng "Khi cần" không có buổi nào). Phản hồi vẫn luôn có đủ bốn số. */
+export const prescriptionDosePeriodsInputShape = {
+  doseMorning: doseQuarterSchema.default(0),
+  doseNoon: doseQuarterSchema.default(0),
+  doseAfternoon: doseQuarterSchema.default(0),
+  doseEvening: doseQuarterSchema.default(0),
+};
+
+export const prescriptionDoseModeFieldsShape = {
+  doseMode: doseModeSchema.optional(),
+  singleDose: doseQuarterSchema.optional(),
+  quantity: z.number().int().min(0).max(MAX_AS_NEEDED_QUANTITY).optional(),
+};
+
+/**
+ * "Theo buổi" (gửi tường minh) bắt buộc có số ngày; "Khi cần" không có số ngày. Bỏ trống `doseMode` thì máy chủ quyết theo cấu hình thuốc và tự từ chối nếu hoá ra "Theo buổi" mà thiếu số ngày.
+ */
+export function refineDoseModeFields(data: { doseMode?: DoseMode; durationDays?: number }, ctx: z.RefinementCtx): void {
+  if (data.doseMode === 'SCHEDULED' && data.durationDays === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Nhập số ngày dùng thuốc.', path: ['durationDays'] });
+  }
+}
+
 const prescriptionItemInputSchema = z
   .object({
     drugId: z.string().uuid().optional(),
     freeTextDrugName: z.string().min(1).max(200).optional(),
-    ...prescriptionDosePeriodsSchema.shape,
-    durationDays: z.number().int().positive(),
+    ...prescriptionDosePeriodsInputShape,
+    ...prescriptionDoseModeFieldsShape,
+    durationDays: z.number().int().positive().optional(),
     instruction: z.string().optional(),
   })
   .superRefine((data, ctx) => {
+    refineDoseModeFields(data, ctx);
     const hasDrug = data.drugId !== undefined;
     const hasFreeText = data.freeTextDrugName !== undefined;
     if (hasDrug === hasFreeText) {
@@ -86,17 +118,105 @@ export function hasAnyDose(periods: PrescriptionDosePeriods): boolean {
   return doseToQuarters(periods.doseMorning) + doseToQuarters(periods.doseNoon) + doseToQuarters(periods.doseAfternoon) + doseToQuarters(periods.doseEvening) > 0;
 }
 
+/** Dòng đơn đã đủ liều để ký (#267): "Theo buổi" cần ít nhất 1 buổi > 0; "Khi cần" cần liều mỗi lần > 0 VÀ số lượng > 0. */
+export function isPrescriptionDoseComplete(item: PrescriptionDosePeriods & { doseMode?: DoseMode; singleDose?: number | null; quantity?: number }): boolean {
+  if (item.doseMode === 'AS_NEEDED') return (item.singleDose ?? 0) > 0 && (item.quantity ?? 0) > 0;
+  return hasAnyDose(item);
+}
+
+/**
+ * Dòng có liều LẺ theo nghĩa "bẻ viên" (#241): kiểu "Khi cần" xét liều mỗi lần; thuốc tính liều bằng đơn vị khác viên/gói (ml...) KHÔNG có khái niệm bẻ nên không bao giờ coi là liều lẻ.
+ */
+export function hasFractionalPrescriptionDose(item: PrescriptionDosePeriods & { doseMode?: DoseMode; singleDose?: number | null; doseUnitName?: string | null }): boolean {
+  if (item.doseUnitName) return false;
+  if (item.doseMode === 'AS_NEEDED') return doseToQuarters(item.singleDose ?? 0) % 4 !== 0;
+  return hasFractionalDose(item);
+}
+
 /** Tổng số lượng (đơn vị nhỏ nhất của thuốc) — dùng ở CẢ backend (tính `quantity` lúc lưu) lẫn
  * frontend (xem trước lúc còn đang gõ, trước khi lưu — `apps/web` không được import `@nexamed/core`,
  * #073, nên hàm thuần này đặt ở đây thay vì `packages/core`). */
-export function computePrescriptionQuantity(periods: PrescriptionDosePeriods, durationDays: number): number {
-  return Math.ceil(computePrescriptionExactQuarters(periods, durationDays) / 4);
+export function computePrescriptionQuantity(periods: PrescriptionDosePeriods, durationDays: number, dosePerBaseUnit?: number | null): number {
+  return Math.ceil(computePrescriptionExactQuarters(periods, durationDays) / quartersPerBaseUnit(dosePerBaseUnit));
+}
+
+/**
+ * Bao nhiêu "¼ đơn vị liều" thì tròn 1 đơn vị nhỏ nhất (đơn vị kho): thuốc viên/gói = 4 (1 viên = 4 phần tư); dung dịch tính theo ml = 4 × dung tích mỗi Hộp (60 ml → 240).
+ * Dung tích là bội của ¼ nên nhân 4 luôn ra số nguyên (#267).
+ */
+export function quartersPerBaseUnit(dosePerBaseUnit?: number | null): number {
+  return dosePerBaseUnit && dosePerBaseUnit > 0 ? Math.max(1, Math.round(dosePerBaseUnit * 4)) : 4;
 }
 
 /** Tổng số theo đơn vị ¼ viên (số nguyên) trước khi làm tròn — `% 4 !== 0` nghĩa là tổng lẻ, đã bị LÀM TRÒN LÊN. */
 export function computePrescriptionExactQuarters(periods: PrescriptionDosePeriods, durationDays: number): number {
   const perDay = doseToQuarters(periods.doseMorning) + doseToQuarters(periods.doseNoon) + doseToQuarters(periods.doseAfternoon) + doseToQuarters(periods.doseEvening);
   return perDay * durationDays;
+}
+
+/** Cấu hình "Cách kê liều" của thuốc (`drug.dose_mode`/`dose_unit_code` đã đổi sang tên, `dose_per_base_unit`, #267) — đầu vào của `resolvePrescriptionItemDose`. */
+export interface DrugDoseConfigLike {
+  doseMode: DoseMode;
+  doseUnitName: string | null;
+  dosePerBaseUnit: number | null;
+}
+
+/** Một dòng đơn/đơn mẫu khách gửi lên, ở mức `resolvePrescriptionItemDose` cần. */
+export interface PrescriptionItemDoseInput extends PrescriptionDosePeriods {
+  doseMode?: DoseMode;
+  singleDose?: number;
+  quantity?: number;
+  durationDays?: number;
+}
+
+/** Phần "liều" của dòng đơn đã chốt để GHI DB — dùng chung cho đơn và đơn mẫu để hai nơi không lệch nhau. */
+export interface ResolvedPrescriptionItemDose extends PrescriptionDosePeriods {
+  doseMode: DoseMode;
+  singleDose: number | null;
+  /** `null` khi "Khi cần". Dòng "Theo buổi" thiếu số ngày thì `null` — nơi gọi phải từ chối (không tự bịa số ngày). */
+  durationDays: number | null;
+  doseUnitName: string | null;
+  dosePerBaseUnit: number | null;
+  quantity: number;
+}
+
+/**
+ * Chốt kiểu kê + số lượng của một dòng đơn (#267). Quy tắc:
+ * - Thuốc có ĐƠN VỊ LIỀU (ml...): kiểu kê cố định theo cấu hình thuốc, bỏ qua `doseMode` khách gửi. Thuốc viên/gói: theo khách gửi, bỏ trống thì theo cấu hình thuốc; dòng tự do (không có cấu hình) bỏ trống = "Theo buổi".
+ * - "Theo buổi": số lượng LUÔN do máy chủ tính = LÀM TRÒN LÊN(tổng liều × số ngày ÷ dung tích mỗi đơn vị nhỏ nhất). "Khi cần": 4 liều theo buổi = 0, không số ngày, số lượng lấy thẳng từ bác sĩ.
+ * - Đơn vị liều + dung tích CHỤP vào dòng để đơn đã ký không đổi khi thuốc đổi cấu hình sau này.
+ */
+export function resolvePrescriptionItemDose(item: PrescriptionItemDoseInput, config: DrugDoseConfigLike | null): ResolvedPrescriptionItemDose {
+  const doseUnitName = config?.doseUnitName ?? null;
+  const dosePerBaseUnit = doseUnitName !== null ? (config?.dosePerBaseUnit ?? null) : null;
+  const doseMode: DoseMode = doseUnitName !== null ? config!.doseMode : (item.doseMode ?? config?.doseMode ?? 'SCHEDULED');
+  if (doseMode === 'AS_NEEDED') {
+    return {
+      doseMode,
+      doseMorning: 0,
+      doseNoon: 0,
+      doseAfternoon: 0,
+      doseEvening: 0,
+      singleDose: item.singleDose ?? null,
+      durationDays: null,
+      doseUnitName,
+      dosePerBaseUnit,
+      quantity: item.quantity ?? 0,
+    };
+  }
+  const durationDays = item.durationDays ?? null;
+  return {
+    doseMode,
+    doseMorning: item.doseMorning,
+    doseNoon: item.doseNoon,
+    doseAfternoon: item.doseAfternoon,
+    doseEvening: item.doseEvening,
+    singleDose: null,
+    durationDays,
+    doseUnitName,
+    dosePerBaseUnit,
+    quantity: durationDays === null ? 0 : computePrescriptionQuantity(item, durationDays, dosePerBaseUnit),
+  };
 }
 
 /** Liều một buổi dạng đọc được: 0,5 → "½", 1,5 → "1½", 2 → "2", 0,25 → "¼". */
@@ -108,17 +228,40 @@ export function formatDoseAmount(dose: number): string {
   return `${whole > 0 ? whole : ''}${frac}`;
 }
 
+/** Liều dạng số thập phân kiểu Việt cho đơn vị liều không phải viên (ml...): 2.5 → "2,5", 10 → "10". Không dùng ký hiệu ½ ¼ (#267). */
+export function formatDoseDecimal(dose: number): string {
+  return String(Math.round(dose * 100) / 100).replace('.', ',');
+}
+
 /** Chuỗi hiển thị "Sáng 1 - Chiều 1 - Tối ½" (bỏ buổi = 0) — dùng cho các nơi CHỈ ĐỌC không có 4 ô
  * riêng để hiện (in đơn, "Phát thuốc", bệnh án PDF). `"—"` khi cả 4 buổi đều 0 (dữ liệu cũ trước
  * #196, đã gộp nội dung gốc vào `instruction` lúc migrate — xem migration
  * `20260929110000_prescription_dose_periods`). */
-export function formatDoseSummary(periods: PrescriptionDosePeriods): string {
+export function formatDoseSummary(periods: PrescriptionDosePeriods, doseUnit?: string | null): string {
+  const amount = doseUnit ? formatDoseDecimal : formatDoseAmount;
+  const suffix = doseUnit ? ` ${doseUnit}` : '';
   const parts: string[] = [];
-  if (periods.doseMorning > 0) parts.push(`Sáng ${formatDoseAmount(periods.doseMorning)}`);
-  if (periods.doseNoon > 0) parts.push(`Trưa ${formatDoseAmount(periods.doseNoon)}`);
-  if (periods.doseAfternoon > 0) parts.push(`Chiều ${formatDoseAmount(periods.doseAfternoon)}`);
-  if (periods.doseEvening > 0) parts.push(`Tối ${formatDoseAmount(periods.doseEvening)}`);
+  if (periods.doseMorning > 0) parts.push(`Sáng ${amount(periods.doseMorning)}${suffix}`);
+  if (periods.doseNoon > 0) parts.push(`Trưa ${amount(periods.doseNoon)}${suffix}`);
+  if (periods.doseAfternoon > 0) parts.push(`Chiều ${amount(periods.doseAfternoon)}${suffix}`);
+  if (periods.doseEvening > 0) parts.push(`Tối ${amount(periods.doseEvening)}${suffix}`);
   return parts.length > 0 ? parts.join(' - ') : '—';
+}
+
+/**
+ * Cột "Liều dùng" của MỌI nơi chỉ đọc (bản in đơn, phiếu xuất, bệnh án PDF, gói liên thông, nhãn): "Theo buổi" → "Sáng 5 ml - Tối 5 ml"; "Khi cần" → "Mỗi lần 1,5 gói, khi cần" (#267).
+ * `unitName` = tên đơn vị nhỏ nhất của thuốc ("gói"), chỉ dùng cho "Khi cần" không có đơn vị liều riêng; nơi gọi không biết tên đơn vị thì bỏ trống (câu vẫn đọc được: "Mỗi lần 1,5, khi cần").
+ */
+export function formatPrescriptionDose(
+  item: PrescriptionDosePeriods & { doseMode?: DoseMode | null; singleDose?: number | null; doseUnitName?: string | null; unitName?: string | null },
+): string {
+  if (item.doseMode === 'AS_NEEDED') {
+    const dose = item.singleDose ?? 0;
+    if (dose <= 0) return 'Khi cần';
+    const unit = item.doseUnitName ?? item.unitName?.trim().toLocaleLowerCase('vi-VN') ?? '';
+    return `Mỗi lần ${formatDoseDecimal(dose)}${unit ? ` ${unit}` : ''}, khi cần`;
+  }
+  return formatDoseSummary(item, item.doseUnitName);
 }
 
 /** `PUT /encounters/:id/prescription-items` — thay thế TOÀN BỘ danh sách dòng thuốc của đơn nháp hiện tại (tạo đơn nháp nếu chưa có). Chỉ dùng được khi đơn CHƯA ký (`PrescriptionAlreadySignedError` nếu đã ký). */
@@ -142,7 +285,16 @@ export const prescriptionItemSchema = z.object({
   doseNoon: z.number(),
   doseAfternoon: z.number(),
   doseEvening: z.number(),
-  durationDays: z.number().int(),
+  /** `null` khi dòng kiểu "Khi cần" (#267) — không có số ngày. */
+  durationDays: z.number().int().nullable(),
+  /** Kiểu kê của dòng này (#267): theo buổi hay "Khi cần". */
+  doseMode: doseModeSchema,
+  /** Liều mỗi lần của kiểu "Khi cần" (cùng đơn vị với `doseUnitName` nếu có, không thì theo đơn vị nhỏ nhất); `null` khi "Theo buổi". */
+  singleDose: z.number().nullable(),
+  /** Đơn vị liều (TÊN hiển thị như "ml", không phải mã danh mục) CHỤP lúc lưu để đơn đã ký không đổi khi thuốc đổi cấu hình; `null` = liều tính theo chính đơn vị nhỏ nhất. */
+  doseUnitName: z.string().nullable(),
+  /** Dung tích mỗi đơn vị nhỏ nhất theo đơn vị liều (60 = mỗi Hộp 60 ml), chụp cùng `doseUnitName`. */
+  dosePerBaseUnit: z.number().nullable(),
   /** Tổng số nguyên theo đơn vị nhỏ nhất, đã LÀM TRÒN LÊN (#241). */
   quantity: z.number().int(),
   /** "Cho phép chia nhỏ" của thuốc (#241) — `true` cho dòng tự do. Web dùng để hiện nhãn "không chia được" + lọc pill liều lẻ. */
@@ -272,11 +424,11 @@ export const amendPrescriptionRequestSchema = savePrescriptionItemsRequestSchema
   .superRefine((data, ctx) => {
     // Đính chính là bản ĐÃ KÝ ngay nên mọi dòng phải có liều (khác lưu nháp).
     data.items.forEach((item, index) => {
-      if (!hasAnyDose(item)) {
+      if (!isPrescriptionDoseComplete(item)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Phải nhập liều dùng ít nhất 1 buổi trong ngày (Sáng/Trưa/Chiều/Tối).',
-          path: ['items', index, 'doseMorning'],
+          message: item.doseMode === 'AS_NEEDED' ? 'Phải nhập liều mỗi lần và số lượng kê cho thuốc "Khi cần".' : 'Phải nhập liều dùng ít nhất 1 buổi trong ngày (Sáng/Trưa/Chiều/Tối).',
+          path: ['items', index, item.doseMode === 'AS_NEEDED' ? 'singleDose' : 'doseMorning'],
         });
       }
     });

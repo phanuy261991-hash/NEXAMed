@@ -213,7 +213,7 @@ export class StockIssueRepository {
             drugId: true,
             drug: { select: { name: true, activeIngredient: true, concentration: true, baseUnitCode: true } },
             batch: { select: { batchNo: true, expiryDate: true } },
-            prescriptionItem: { select: { doseMorning: true, doseNoon: true, doseAfternoon: true, doseEvening: true, durationDays: true, instruction: true } },
+            prescriptionItem: { select: { doseMorning: true, doseNoon: true, doseAfternoon: true, doseEvening: true, durationDays: true, doseMode: true, singleDose: true, doseUnitName: true, instruction: true } },
           },
         },
       },

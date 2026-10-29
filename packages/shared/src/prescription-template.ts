@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { prescriptionDosePeriodsSchema } from './prescription';
+import { doseModeSchema, prescriptionDoseModeFieldsShape, prescriptionDosePeriodsInputShape, prescriptionDosePeriodsSchema, refineDoseModeFields } from './prescription';
 
 /**
  * "Đơn thuốc mẫu" (Kho Thuốc GĐ5, trải nghiệm kê đơn) — cụm nhiều dòng thuốc lưu sẵn (kèm liều theo
@@ -9,12 +9,16 @@ import { prescriptionDosePeriodsSchema } from './prescription';
  * sĩ, thêm `createdBy`-scoping sau nếu phát sinh nhu cầu thật. Thuộc module `drug` (đúng
  * `.claude/docs/architecture.md`: Kho Thuốc GĐ5 mở rộng module `drug`).
  */
-const prescriptionTemplateItemInputSchema = z.object({
-  drugId: z.string().uuid(),
-  ...prescriptionDosePeriodsSchema.shape,
-  durationDays: z.number().int().positive(),
-  instruction: z.string().optional(),
-});
+const prescriptionTemplateItemInputSchema = z
+  .object({
+    drugId: z.string().uuid(),
+    ...prescriptionDosePeriodsInputShape,
+    // Kiểu "Khi cần" (#267): đơn mẫu mang theo kiểu kê, liều mỗi lần và số lượng; không có số ngày.
+    ...prescriptionDoseModeFieldsShape,
+    durationDays: z.number().int().positive().optional(),
+    instruction: z.string().optional(),
+  })
+  .superRefine((data, ctx) => refineDoseModeFields(data, ctx));
 export type PrescriptionTemplateItemInput = z.infer<typeof prescriptionTemplateItemInputSchema>;
 
 export const createPrescriptionTemplateRequestSchema = z.object({
@@ -31,10 +35,17 @@ export const updatePrescriptionTemplateRequestSchema = z.object({
 });
 export type UpdatePrescriptionTemplateRequest = z.infer<typeof updatePrescriptionTemplateRequestSchema>;
 
-export const prescriptionTemplateItemSchema = prescriptionTemplateItemInputSchema.extend({
+export const prescriptionTemplateItemSchema = z.object({
   id: z.string().uuid(),
+  drugId: z.string().uuid(),
+  ...prescriptionDosePeriodsSchema.shape,
+  /** `null` khi dòng kiểu "Khi cần" (#267). */
+  durationDays: z.number().int().nullable(),
+  doseMode: doseModeSchema,
+  singleDose: z.number().nullable(),
+  instruction: z.string().optional(),
   drugName: z.string(),
-  /** Tính từ 4 buổi × `durationDays` lúc lưu, LÀM TRÒN LÊN (docs/DECISIONS.md #196/#241), giống `prescriptionItemSchema`. */
+  /** "Theo buổi": tính từ 4 buổi × `durationDays` lúc lưu, LÀM TRÒN LÊN (docs/DECISIONS.md #196/#241), giống `prescriptionItemSchema`; "Khi cần": số lượng bác sĩ đã nhập. */
   quantity: z.number().int(),
   /** Đơn vị nhỏ nhất của thuốc — CHỈ hiển thị, đúng khuôn `prescriptionItemSchema.unitCode`. */
   unitCode: z.string().nullable(),

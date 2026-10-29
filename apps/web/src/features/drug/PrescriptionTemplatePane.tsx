@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { ArrowCounterClockwise, EyeSlash, MagnifyingGlass, PencilSimple, Plus, Prohibit, Stack, X } from '@phosphor-icons/react';
 import type { PrescriptionTemplate, PrescriptionTemplateItem } from '@nexamed/shared';
-import { computePrescriptionQuantityPreview as computePrescriptionQuantity } from '../encounter/prescription-dose-preview';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { fetchOneFromList } from '../../shared/api/fetch-one-from-list';
 import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
@@ -16,25 +15,21 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
-import { useUnitNameByCode, unitLabel } from './useUnitNameByCode';
 import { DrugPicker } from '../encounter/DrugPicker';
 import { LineInput } from '../encounter/PrescriptionPanel';
-import { DoseInput } from '../encounter/dose-controls';
+import { DoseLineEditor, DoseLinePreview, lineDoseRequest, lineHasDose, singleDoseText, type DoseLineState } from '../encounter/DoseLineEditor';
+import { appendSentence } from '../../shared/format/append-sentence';
 import { useCreatePrescriptionTemplateMutation, usePrescriptionTemplatesQuery, useUpdatePrescriptionTemplateMutation } from './prescription-template.queries';
 import { listPrescriptionTemplates } from './prescription-template.api';
 import { makeDraftId } from '../../shared/make-draft-id';
 
-interface TemplateDraftLine {
-  key: string;
-  drugId: string;
-  drugName: string;
-  unitCode: string | null;
-  doseMorning: string;
-  doseNoon: string;
-  doseAfternoon: string;
-  doseEvening: string;
-  durationDays: string;
-  instruction: string;
+type TemplateDraftLine = DoseLineState & { drugId: string };
+
+/** Đơn mẫu luôn tham chiếu thuốc trong danh mục: `drugId` không bao giờ đổi qua bộ soạn liều. */
+function withoutDrugId(patch: Partial<DoseLineState>): Partial<TemplateDraftLine> {
+  const { drugId, ...rest } = patch;
+  void drugId;
+  return rest;
 }
 
 function itemToDraft(item: PrescriptionTemplateItem): TemplateDraftLine {
@@ -43,20 +38,17 @@ function itemToDraft(item: PrescriptionTemplateItem): TemplateDraftLine {
     drugId: item.drugId,
     drugName: item.drugName,
     unitCode: item.unitCode,
+    doseMode: item.doseMode,
     doseMorning: String(item.doseMorning),
     doseNoon: String(item.doseNoon),
     doseAfternoon: String(item.doseAfternoon),
     doseEvening: String(item.doseEvening),
-    durationDays: String(item.durationDays),
+    durationDays: item.durationDays === null ? '5' : String(item.durationDays),
+    singleDose: singleDoseText(item.singleDose),
+    quantity: item.doseMode === 'AS_NEEDED' ? String(item.quantity) : '',
     instruction: item.instruction ?? '',
+    isSplittable: true,
   };
-}
-
-function draftLineTotal(line: TemplateDraftLine): number {
-  return computePrescriptionQuantity(
-    { doseMorning: Number(line.doseMorning) || 0, doseNoon: Number(line.doseNoon) || 0, doseAfternoon: Number(line.doseAfternoon) || 0, doseEvening: Number(line.doseEvening) || 0 },
-    Number(line.durationDays) || 0,
-  );
 }
 
 interface ModalState {
@@ -268,10 +260,9 @@ function PrescriptionTemplateFormDialog({
   onCancel: () => void;
   onSubmit: (dto: {
     name: string;
-    items: { drugId: string; doseMorning: number; doseNoon: number; doseAfternoon: number; doseEvening: number; durationDays: number; instruction?: string }[];
+    items: ({ drugId: string; instruction?: string } & ReturnType<typeof lineDoseRequest>)[];
   }) => Promise<void>;
 }) {
-  const unitNameByCode = useUnitNameByCode();
   const [name, setName] = useState(template?.name ?? '');
   const [lines, setLines] = useState<TemplateDraftLine[]>((template?.items ?? []).map(itemToDraft));
   const [formError, setFormError] = useState<string | null>(null);
@@ -296,9 +287,8 @@ function PrescriptionTemplateFormDialog({
       return;
     }
     for (const l of lines) {
-      const total = (Number(l.doseMorning) || 0) + (Number(l.doseNoon) || 0) + (Number(l.doseAfternoon) || 0) + (Number(l.doseEvening) || 0);
-      if (total <= 0) {
-        setFormError(`Dòng "${l.drugName}" phải nhập liều dùng ít nhất 1 buổi trong ngày.`);
+      if (!lineHasDose(l)) {
+        setFormError(l.doseMode === 'AS_NEEDED' ? `Dòng "${l.drugName}" phải nhập liều mỗi lần và số lượng kê.` : `Dòng "${l.drugName}" phải nhập liều dùng ít nhất 1 buổi trong ngày.`);
         return;
       }
     }
@@ -306,15 +296,7 @@ function PrescriptionTemplateFormDialog({
     const saved = await run(() =>
       onSubmit({
         name: name.trim(),
-        items: lines.map((l) => ({
-          drugId: l.drugId,
-          doseMorning: Number(l.doseMorning) || 0,
-          doseNoon: Number(l.doseNoon) || 0,
-          doseAfternoon: Number(l.doseAfternoon) || 0,
-          doseEvening: Number(l.doseEvening) || 0,
-          durationDays: Math.max(1, Number(l.durationDays) || 1),
-          instruction: l.instruction.trim() || undefined,
-        })),
+        items: lines.map((l) => ({ drugId: l.drugId, ...lineDoseRequest(l), instruction: l.instruction.trim() || undefined })),
       }),
     );
     if (saved) onCancel();
@@ -348,34 +330,24 @@ function PrescriptionTemplateFormDialog({
                   <X size={15} weight="bold" aria-hidden="true" />
                 </button>
               </div>
-              <div className="mt-2 flex flex-wrap items-end gap-4">
-                <div className="w-14">
-                  <DoseInput label="Sáng" value={line.doseMorning} onCommit={(v) => updateLine(line.key, { doseMorning: v })} />
-                </div>
-                <div className="w-14">
-                  <DoseInput label="Trưa" value={line.doseNoon} onCommit={(v) => updateLine(line.key, { doseNoon: v })} />
-                </div>
-                <div className="w-14">
-                  <DoseInput label="Chiều" value={line.doseAfternoon} onCommit={(v) => updateLine(line.key, { doseAfternoon: v })} />
-                </div>
-                <div className="w-14">
-                  <DoseInput label="Tối" value={line.doseEvening} onCommit={(v) => updateLine(line.key, { doseEvening: v })} />
-                </div>
-                <span className="pb-1.5 text-lg font-semibold text-slate-300">×</span>
-                <div className="w-16">
-                  <LineInput dense label="Số ngày" type="number" value={line.durationDays} onChange={(v) => updateLine(line.key, { durationDays: v })} />
-                </div>
-                <span className="pb-1.5 text-lg font-semibold text-slate-300">=</span>
-                <div className="rounded-md bg-brand-teal-tint px-3 py-1.5">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tổng số</div>
-                  <div className="text-[15px] font-semibold text-blue-700">
-                    {draftLineTotal(line)} {line.unitCode ? unitLabel(unitNameByCode, line.unitCode) : ''}
+              <DoseLineEditor
+                idPrefix={`tpl-dose-${line.key}`}
+                line={line}
+                canEdit
+                showAids
+                daysField={
+                  <div className="w-16">
+                    <LineInput dense label="Số ngày" type="number" value={line.durationDays} onChange={(v) => updateLine(line.key, { durationDays: v })} />
                   </div>
-                </div>
-              </div>
+                }
+                onPatch={(patch) => updateLine(line.key, withoutDrugId(patch))}
+                onCommit={(patch) => updateLine(line.key, withoutDrugId(patch))}
+                onAppendInstruction={(sentence) => setLines((prev) => prev.map((l) => (l.key === line.key ? { ...l, instruction: appendSentence(l.instruction, sentence) } : l)))}
+              />
               <div className="mt-2">
                 <LineInput label="Hướng dẫn dùng" underline value={line.instruction} onChange={(v) => updateLine(line.key, { instruction: v })} />
               </div>
+              <DoseLinePreview line={line} />
             </div>
           ))}
           <DrugPicker
@@ -384,7 +356,22 @@ function PrescriptionTemplateFormDialog({
             onSelect={(drug) =>
               setLines((prev) => [
                 ...prev,
-                { key: makeDraftId(), drugId: drug.drugId, drugName: drug.drugName, unitCode: drug.unitCode, doseMorning: '', doseNoon: '', doseAfternoon: '', doseEvening: '', durationDays: '5', instruction: '' },
+                {
+                  key: makeDraftId(),
+                  drugId: drug.drugId,
+                  drugName: drug.drugName,
+                  unitCode: drug.unitCode,
+                  doseMode: drug.doseMode,
+                  doseMorning: '',
+                  doseNoon: '',
+                  doseAfternoon: '',
+                  doseEvening: '',
+                  durationDays: '5',
+                  singleDose: '',
+                  quantity: '',
+                  instruction: '',
+                  isSplittable: drug.isSplittable,
+                },
               ])
             }
             onAddFreeText={() => {}}

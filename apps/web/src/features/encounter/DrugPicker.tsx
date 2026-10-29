@@ -5,6 +5,7 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useAllowFreeTextPrescriptionEnabledQuery, usePharmacyStockTrackingEnabledQuery } from '../clinic/clinic.queries';
 import { useStockOnHandSummaryQuery } from '../inventory/inventory.queries';
+import type { DoseMode } from '@nexamed/shared';
 import { useDrugsQuery } from '../drug/drug.queries';
 
 /**
@@ -26,7 +27,7 @@ export interface DrugPickerHandle {
 export const DrugPicker = forwardRef<DrugPickerHandle, {
   /** Thuốc đã thêm vào đơn rồi — ẩn khỏi kết quả để không chọn trùng. */
   excludeDrugIds: (string | null)[];
-  onSelect: (item: { drugId: string; drugName: string; unitCode: string | null; isSplittable: boolean }) => void;
+  onSelect: (item: { drugId: string; drugName: string; unitCode: string | null; isSplittable: boolean; doseMode: DoseMode }) => void;
   /** "Kê thuốc tự do, không qua danh mục" (mở rộng Kho Thuốc GĐ5) — thêm 1 dòng có tên tự do (không
    * `drugId`) vào đơn. Chỉ gọi được khi tenant bật `allowFreeTextPrescriptionEnabled` (component tự
    * đọc công tắc, ẩn hẳn tuỳ chọn khi tắt). */
@@ -68,8 +69,8 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
   );
   const onHandByDrugId = onHandQuery.data?.onHandByDrugId ?? {};
 
-  function handleSelect(id: string, name: string, unitCode: string | null, isSplittable: boolean) {
-    onSelect({ drugId: id, drugName: name, unitCode, isSplittable });
+  function handleSelect(id: string, name: string, unitCode: string | null, isSplittable: boolean, doseMode: DoseMode) {
+    onSelect({ drugId: id, drugName: name, unitCode, isSplittable, doseMode });
     setQuery('');
     setActiveIndex(0);
     inputRef.current?.focus();
@@ -98,7 +99,7 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
       e.preventDefault();
       if (activeIndex < results.length) {
         const item = results[activeIndex];
-        if (item) handleSelect(item.id, item.name, item.baseUnitCode, item.isSplittable);
+        if (item) handleSelect(item.id, item.name, item.baseUnitCode, item.isSplittable, item.doseMode);
       } else if (canAddFreeText) {
         handleSelectFreeText();
       }
@@ -163,7 +164,7 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
                 role="option"
                 aria-selected={active}
                 type="button"
-                onClick={() => handleSelect(item.id, item.name, item.baseUnitCode, item.isSplittable)}
+                onClick={() => handleSelect(item.id, item.name, item.baseUnitCode, item.isSplittable, item.doseMode)}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-left ${
                   active ? 'border-brand-teal bg-brand-teal-tint' : 'border-slate-200 hover:border-blue-400 hover:bg-brand-teal-tint'

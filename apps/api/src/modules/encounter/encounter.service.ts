@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
 import {
   CLINIC_CONFIG_READER_PORT,
@@ -69,7 +69,7 @@ import {
   type BranchDirectoryPort,
   maxDataScope,
 } from '@nexamed/core';
-import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, type PrescriptionKind, calculateAgeMonths, calculateAgeYears, computePrescriptionQuantity, formatDoseSummary, hasAnyDose, hasFractionalDose } from '@nexamed/shared';
+import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, type PrescriptionKind, calculateAgeMonths, calculateAgeYears, formatPrescriptionDose, hasFractionalPrescriptionDose, isPrescriptionDoseComplete, resolvePrescriptionItemDose } from '@nexamed/shared';
 import type {
   AmendClinicalNoteRequest,
   AmendDiagnosesRequest,
@@ -116,7 +116,7 @@ import { EncounterRepository } from './encounter.repository';
 import { DiagnosisRepository, type DiagnosisWithIcd10Name } from './diagnosis.repository';
 import { ClinicalNoteRepository } from './clinical-note.repository';
 import { TreatmentPlanRepository, dbDateToDateString } from './treatment-plan.repository';
-import { PrescriptionRepository, type PrescriptionWithItems } from './prescription.repository';
+import { PrescriptionRepository, type DrugDoseConfig, type PrescriptionWithItems } from './prescription.repository';
 import { toEncounterSummary } from './encounter.mapper';
 import { PatientAllergenRepository } from '../patient/patient-allergen.repository';
 import { PatientConditionRepository } from '../patient/patient-condition.repository';
@@ -881,7 +881,7 @@ export class EncounterService {
         paraclinicalResults: paraclinicalByEncounter[e.id] ?? [],
         prescriptionItems: (prescriptionRow?.items ?? []).map((i) => ({
           drugName: i.drugName,
-          doseSummary: formatDoseSummary(i),
+          doseSummary: formatPrescriptionDose(i),
           durationDays: i.durationDays,
           quantity: i.quantity,
           unitCode: i.unitCode,
@@ -1398,7 +1398,8 @@ export class EncounterService {
         active = { ...created, items: [], documents: [] };
       }
 
-      await this.prescriptionRepository.replaceItems(tx, tenantId, active.id, actorId, dto.items.map((item) => this.toCreateItemData(item)));
+      const doseConfigs = await this.prescriptionRepository.findDrugDoseConfigs(tx, tenantId, realDrugIds);
+      await this.prescriptionRepository.replaceItems(tx, tenantId, active.id, actorId, dto.items.map((item) => this.toCreateItemData(item, doseConfigs)));
       // "Lời dặn của bác sĩ" riêng của đơn (#241) — không gửi = giữ nguyên, '' = xoá.
       // Chỉ ghi khi nội dung ĐỔI THẬT — lưu nháp lặp lại không làm nhảy `version` của đơn (ký/bỏ qua cảnh báo đang dùng version đã đọc).
       if (dto.doctorAdvice !== undefined) {
@@ -1569,7 +1570,7 @@ export class EncounterService {
         throw new PrescriptionEmptyError();
       }
       // Đơn nháp được lưu ngay khi thêm thuốc (chưa có liều) — ký thì mọi dòng phải có liều (#241).
-      const missingDose = active.items.filter((i) => !hasAnyDose(i));
+      const missingDose = active.items.filter((i) => !isPrescriptionDoseComplete(i));
       if (missingDose.length > 0) {
         throw new PrescriptionItemMissingDoseError(missingDose.map((i) => ({ drugId: i.drugId, drugName: i.drugName })));
       }
@@ -1740,7 +1741,8 @@ export class EncounterService {
         // Lời dặn riêng của đơn (#241): không gửi = chép từ bản bị đính chính, '' = xoá.
         doctorAdvice: dto.doctorAdvice === undefined ? active.doctorAdvice : dto.doctorAdvice.trim() || null,
       });
-      await this.prescriptionRepository.createItems(tx, tenantId, created.id, actorId, dto.items.map((item) => this.toCreateItemData(item)));
+      const amendDoseConfigs = await this.prescriptionRepository.findDrugDoseConfigs(tx, tenantId, [...new Set(dto.items.map((i) => i.drugId).filter((v): v is string => v !== undefined))]);
+      await this.prescriptionRepository.createItems(tx, tenantId, created.id, actorId, dto.items.map((item) => this.toCreateItemData(item, amendDoseConfigs)));
       // Đơn gốc đã có mã chuẩn (ký lúc chế độ chuẩn bật): đơn pháp lý cùng loại GIỮ mã cũ, loại mới nhận mã mới, loại bị bỏ hết thì mã đó không dùng lại (#242).
       // Đơn gốc ký TRƯỚC ngày bật chế độ chuẩn (không có mã chuẩn) thì đính chính cũng không cấp mã chuẩn (không hồi tố).
       if (active.documents.length > 0) {
@@ -1768,7 +1770,7 @@ export class EncounterService {
         action: 'prescription.amended',
         entityType: 'encounter',
         entityId: id,
-        beforeJson: active.items.map((i) => ({ drugId: i.drugId, doseSummary: formatDoseSummary(i), quantity: i.quantity })) as unknown as Prisma.InputJsonValue,
+        beforeJson: active.items.map((i) => ({ drugId: i.drugId, doseSummary: formatPrescriptionDose(i), quantity: i.quantity })) as unknown as Prisma.InputJsonValue,
         afterJson: { amendmentReason: dto.amendmentReason, items: dto.items } as unknown as Prisma.InputJsonValue,
         ip: meta.ip,
         userAgent: meta.userAgent,
@@ -1803,18 +1805,29 @@ export class EncounterService {
     });
   }
 
-  /** `quantity` LUÔN do backend tính (docs/DECISIONS.md #196) — không nhận trực tiếp từ client nữa,
-   * đúng khuôn Sáng/Trưa/Chiều/Tối × Số ngày, theo đơn vị nhỏ nhất của thuốc. */
-  private toCreateItemData(item: SavePrescriptionItemsRequest['items'][number]) {
+  /**
+   * `quantity` của kiểu "Theo buổi" LUÔN do backend tính (docs/DECISIONS.md #196) = Sáng/Trưa/Chiều/Tối × Số ngày, theo đơn vị nhỏ nhất của thuốc (thuốc tính liều bằng ml thì chia cho dung tích mỗi Hộp
+   * rồi làm tròn lên). Kiểu "Khi cần" lấy số lượng bác sĩ nhập. Kiểu kê + đơn vị liều chốt theo cấu hình thuốc hiện tại và CHỤP vào dòng (#267) — `resolvePrescriptionItemDose`.
+   */
+  private toCreateItemData(item: SavePrescriptionItemsRequest['items'][number], doseConfigs: Map<string, DrugDoseConfig>) {
+    const dose = resolvePrescriptionItemDose(item, item.drugId !== undefined ? (doseConfigs.get(item.drugId) ?? null) : null);
+    if (dose.doseMode === 'SCHEDULED' && dose.durationDays === null) {
+      // Chỉ xảy ra khi thuốc tính liều bằng ml cấu hình "Theo buổi" mà khách gửi dòng "Khi cần" (bỏ số ngày) — không tự bịa số ngày.
+      throw new BadRequestException('Thuốc này kê theo buổi nên cần nhập số ngày dùng.');
+    }
     return {
       drugId: item.drugId ?? null,
       freeTextDrugName: item.freeTextDrugName ?? null,
-      doseMorning: item.doseMorning,
-      doseNoon: item.doseNoon,
-      doseAfternoon: item.doseAfternoon,
-      doseEvening: item.doseEvening,
-      durationDays: item.durationDays,
-      quantity: computePrescriptionQuantity(item, item.durationDays),
+      doseMorning: dose.doseMorning,
+      doseNoon: dose.doseNoon,
+      doseAfternoon: dose.doseAfternoon,
+      doseEvening: dose.doseEvening,
+      durationDays: dose.durationDays,
+      doseMode: dose.doseMode,
+      singleDose: dose.singleDose,
+      doseUnitName: dose.doseUnitName,
+      dosePerBaseUnit: dose.dosePerBaseUnit,
+      quantity: dose.quantity,
       instruction: item.instruction ?? null,
     };
   }
@@ -1834,7 +1847,7 @@ export class EncounterService {
   /** Thuốc không chia được (`is_splittable=false`) đang kê liều lẻ trên đơn (#241) — dùng cho cảnh báo lẫn chặn. */
   private findNonSplittableDoses(items: PrescriptionWithItems['items']) {
     return findNonSplittableFractionalDoses(
-      items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, isSplittable: i.isSplittable, hasFractionalDose: hasFractionalDose(i) })),
+      items.map((i) => ({ drugId: i.drugId, drugName: i.drugName, isSplittable: i.isSplittable, hasFractionalDose: hasFractionalPrescriptionDose(i) })),
     );
   }
 
@@ -1995,6 +2008,10 @@ export class EncounterService {
       doseAfternoon: item.doseAfternoon,
       doseEvening: item.doseEvening,
       durationDays: item.durationDays,
+      doseMode: item.doseMode,
+      singleDose: item.singleDose,
+      doseUnitName: item.doseUnitName,
+      dosePerBaseUnit: item.dosePerBaseUnit,
       quantity: item.quantity,
       unitCode: item.unitCode,
       instruction: item.instruction,

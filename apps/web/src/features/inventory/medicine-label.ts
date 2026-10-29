@@ -1,6 +1,6 @@
 import type { MedicineLabelItem } from '@nexamed/shared';
 import { padSmallQuantity } from '../../shared/format/pad-small-quantity';
-import { formatDoseSummaryPreview } from '../encounter/prescription-dose-preview';
+import { formatPrescriptionDosePreview } from '../encounter/prescription-dose-preview';
 
 /**
  * Ghép chữ lên "Nhãn dán bì thuốc" (docs/DECISIONS.md #267, mockup đã chốt 28/10/2026) từ dữ liệu thô của `GET /inventory/issues/:id/medicine-labels`.
@@ -31,14 +31,21 @@ export function buildMedicineLabelTitle(item: Pick<MedicineLabelItem, 'drugName'
 }
 
 /**
- * Câu dặn trên nhãn: liều theo buổi + số ngày (nếu có liều), rồi hướng dẫn bác sĩ gõ. Hàng không theo đơn không có câu dặn (`null`).
- * Ví dụ: "Sáng 1 - Tối 1, 5 ngày. Uống sau ăn." / chỉ hướng dẫn: "Uống 1,5 gói khi sốt cao…".
+ * Câu dặn trên nhãn. "Theo buổi": liều theo buổi (kèm đơn vị liều, vd "Sáng 5 ml - Tối 5 ml") + số ngày, rồi hướng dẫn bác sĩ gõ. "Khi cần" (#267): bác sĩ đã soạn câu dặn đầy đủ nên in đúng câu đó;
+ * chưa soạn thì rơi về "Mỗi lần 1,5, khi cần". Hàng không theo đơn không có câu dặn (`null`).
+ * Ví dụ: "Sáng 1 - Tối 1, 5 ngày. Uống sau ăn." / "Uống 1,5 gói khi sốt cao…".
  */
-export function buildMedicineLabelInstruction(item: Pick<MedicineLabelItem, 'doseMorning' | 'doseNoon' | 'doseAfternoon' | 'doseEvening' | 'durationDays' | 'instruction'>): string | null {
-  const doses = formatDoseSummaryPreview(item);
+export function buildMedicineLabelInstruction(
+  item: Pick<MedicineLabelItem, 'doseMorning' | 'doseNoon' | 'doseAfternoon' | 'doseEvening' | 'durationDays' | 'doseMode' | 'singleDose' | 'doseUnitName' | 'instruction'>,
+): string | null {
+  const instruction = item.instruction?.trim() ?? '';
+  if (item.doseMode === 'AS_NEEDED') {
+    if (instruction !== '') return instruction;
+    return (item.singleDose ?? 0) > 0 ? `${formatPrescriptionDosePreview(item)}.` : 'Khi cần.';
+  }
+  const doses = formatPrescriptionDosePreview(item);
   const hasDose = doses !== '—';
   const dosePart = hasDose ? `${doses}${item.durationDays ? `, ${item.durationDays} ngày` : ''}` : '';
-  const instruction = item.instruction?.trim() ?? '';
   if (dosePart && instruction) return `${dosePart}. ${instruction}`;
   if (dosePart) return `${dosePart}.`;
   return instruction !== '' ? instruction : null;

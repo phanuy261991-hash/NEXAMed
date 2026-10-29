@@ -32,6 +32,14 @@ const base = (over: Partial<InteropSubmissionInput> = {}): InteropSubmissionInpu
   ...over,
 });
 
+describe('buildGuiDonThuocPayload — thuốc kiểu "Khi cần" (#267)', () => {
+  it('không có số ngày: cach_dung chỉ gồm liều mỗi lần + hướng dẫn, không in "null ngày"', () => {
+    const b = base();
+    const p = buildGuiDonThuocPayload({ ...b, items: [{ ...b.items[0]!, doseSummary: 'Mỗi lần 1,5 gói, khi cần', durationDays: null, instruction: 'Uống khi sốt' }] });
+    expect(p.thong_tin_don_thuoc[0]!.cach_dung).toBe('Mỗi lần 1,5 gói, khi cần, Uống khi sốt');
+  });
+});
+
 describe('buildGuiDonThuocPayload — đúng tên trường tài liệu QĐ 808 (mục VII)', () => {
   it('đơn C đủ dữ liệu: đúng tập khoá, kiểu và định dạng (giờ VN, d/m/Y, giới tính số, loại đơn chữ thường)', () => {
     const p = buildGuiDonThuocPayload(base());

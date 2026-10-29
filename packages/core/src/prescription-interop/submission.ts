@@ -19,7 +19,8 @@ export interface InteropItemInput {
   quantity: number;
   /** Liều theo buổi đã định dạng ("Sáng 1 - Tối 1"). */
   doseSummary: string;
-  durationDays: number;
+  /** `null` khi dòng kiểu "Khi cần" (#267) — không có số ngày, cách dùng chỉ gồm liều mỗi lần + hướng dẫn. */
+  durationDays: number | null;
   instruction: string | null;
 }
 
@@ -225,7 +226,7 @@ export function buildGuiDonThuocPayload(input: InteropSubmissionInput): GuiDonTh
       ten_thuoc: clip(i.drugName, LIMITS.drugText),
       don_vi_tinh: clip(i.unitName ?? '', LIMITS.drugText),
       so_luong: i.quantity,
-      cach_dung: clip([i.doseSummary, `${i.durationDays} ngày`, present(i.instruction) ? i.instruction.trim() : ''].filter((s) => s !== '').join(', '), LIMITS.usage),
+      cach_dung: clip([i.doseSummary, i.durationDays === null ? '' : `${i.durationDays} ngày`, present(i.instruction) ? i.instruction.trim() : ''].filter((s) => s !== '').join(', '), LIMITS.usage),
     })),
     ngay_gio_ke_don: toGatewayDateTime(input.prescribedAt),
   };

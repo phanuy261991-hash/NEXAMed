@@ -15444,7 +15444,35 @@
                                     "type": "number"
                                   },
                                   "durationDays": {
-                                    "type": "integer"
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  },
+                                  "doseMode": {
+                                    "type": "string",
+                                    "enum": [
+                                      "SCHEDULED",
+                                      "AS_NEEDED"
+                                    ]
+                                  },
+                                  "singleDose": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "doseUnitName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "dosePerBaseUnit": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
                                   },
                                   "quantity": {
                                     "type": "integer"
@@ -15495,6 +15523,10 @@
                                   "doseAfternoon",
                                   "doseEvening",
                                   "durationDays",
+                                  "doseMode",
+                                  "singleDose",
+                                  "doseUnitName",
+                                  "dosePerBaseUnit",
                                   "quantity",
                                   "isSplittable",
                                   "unitCode",
@@ -19039,7 +19071,35 @@
                                 "type": "number"
                               },
                               "durationDays": {
-                                "type": "integer"
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "doseMode": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "AS_NEEDED"
+                                ]
+                              },
+                              "singleDose": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "doseUnitName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dosePerBaseUnit": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
                               },
                               "quantity": {
                                 "type": "integer"
@@ -19090,6 +19150,10 @@
                               "doseAfternoon",
                               "doseEvening",
                               "durationDays",
+                              "doseMode",
+                              "singleDose",
+                              "doseUnitName",
+                              "dosePerBaseUnit",
                               "quantity",
                               "isSplittable",
                               "unitCode",
@@ -19498,6 +19562,23 @@
                           "minimum": 0,
                           "maximum": 99.75
                         },
+                        "doseMode": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "AS_NEEDED"
+                          ]
+                        },
+                        "singleDose": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9999
+                        },
                         "durationDays": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -19510,8 +19591,7 @@
                         "doseMorning",
                         "doseNoon",
                         "doseAfternoon",
-                        "doseEvening",
-                        "durationDays"
+                        "doseEvening"
                       ]
                     }
                   },
@@ -19593,7 +19673,35 @@
                                 "type": "number"
                               },
                               "durationDays": {
-                                "type": "integer"
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "doseMode": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "AS_NEEDED"
+                                ]
+                              },
+                              "singleDose": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "doseUnitName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dosePerBaseUnit": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
                               },
                               "quantity": {
                                 "type": "integer"
@@ -19644,6 +19752,10 @@
                               "doseAfternoon",
                               "doseEvening",
                               "durationDays",
+                              "doseMode",
+                              "singleDose",
+                              "doseUnitName",
+                              "dosePerBaseUnit",
                               "quantity",
                               "isSplittable",
                               "unitCode",
@@ -20070,7 +20182,35 @@
                                 "type": "number"
                               },
                               "durationDays": {
-                                "type": "integer"
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "doseMode": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "AS_NEEDED"
+                                ]
+                              },
+                              "singleDose": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "doseUnitName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dosePerBaseUnit": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
                               },
                               "quantity": {
                                 "type": "integer"
@@ -20121,6 +20261,10 @@
                               "doseAfternoon",
                               "doseEvening",
                               "durationDays",
+                              "doseMode",
+                              "singleDose",
+                              "doseUnitName",
+                              "dosePerBaseUnit",
                               "quantity",
                               "isSplittable",
                               "unitCode",
@@ -20349,7 +20493,35 @@
                                 "type": "number"
                               },
                               "durationDays": {
-                                "type": "integer"
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "doseMode": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "AS_NEEDED"
+                                ]
+                              },
+                              "singleDose": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "doseUnitName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dosePerBaseUnit": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
                               },
                               "quantity": {
                                 "type": "integer"
@@ -20400,6 +20572,10 @@
                               "doseAfternoon",
                               "doseEvening",
                               "durationDays",
+                              "doseMode",
+                              "singleDose",
+                              "doseUnitName",
+                              "dosePerBaseUnit",
                               "quantity",
                               "isSplittable",
                               "unitCode",
@@ -20834,7 +21010,35 @@
                                 "type": "number"
                               },
                               "durationDays": {
-                                "type": "integer"
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "doseMode": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "AS_NEEDED"
+                                ]
+                              },
+                              "singleDose": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "doseUnitName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dosePerBaseUnit": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
                               },
                               "quantity": {
                                 "type": "integer"
@@ -20885,6 +21089,10 @@
                               "doseAfternoon",
                               "doseEvening",
                               "durationDays",
+                              "doseMode",
+                              "singleDose",
+                              "doseUnitName",
+                              "dosePerBaseUnit",
                               "quantity",
                               "isSplittable",
                               "unitCode",
@@ -21231,6 +21439,23 @@
                           "minimum": 0,
                           "maximum": 99.75
                         },
+                        "doseMode": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "AS_NEEDED"
+                          ]
+                        },
+                        "singleDose": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9999
+                        },
                         "durationDays": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -21243,8 +21468,7 @@
                         "doseMorning",
                         "doseNoon",
                         "doseAfternoon",
-                        "doseEvening",
-                        "durationDays"
+                        "doseEvening"
                       ]
                     }
                   },
@@ -21335,7 +21559,35 @@
                                 "type": "number"
                               },
                               "durationDays": {
-                                "type": "integer"
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "doseMode": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "AS_NEEDED"
+                                ]
+                              },
+                              "singleDose": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "doseUnitName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dosePerBaseUnit": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
                               },
                               "quantity": {
                                 "type": "integer"
@@ -21386,6 +21638,10 @@
                               "doseAfternoon",
                               "doseEvening",
                               "durationDays",
+                              "doseMode",
+                              "singleDose",
+                              "doseUnitName",
+                              "dosePerBaseUnit",
                               "quantity",
                               "isSplittable",
                               "unitCode",
@@ -38857,6 +39113,10 @@
                                 "items": {
                                   "type": "object",
                                   "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
                                     "drugId": {
                                       "type": "string",
                                       "format": "uuid"
@@ -38882,15 +39142,26 @@
                                       "maximum": 99.75
                                     },
                                     "durationDays": {
-                                      "type": "integer",
-                                      "exclusiveMinimum": 0
+                                      "type": [
+                                        "integer",
+                                        "null"
+                                      ]
+                                    },
+                                    "doseMode": {
+                                      "type": "string",
+                                      "enum": [
+                                        "SCHEDULED",
+                                        "AS_NEEDED"
+                                      ]
+                                    },
+                                    "singleDose": {
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
                                     },
                                     "instruction": {
                                       "type": "string"
-                                    },
-                                    "id": {
-                                      "type": "string",
-                                      "format": "uuid"
                                     },
                                     "drugName": {
                                       "type": "string"
@@ -38906,13 +39177,15 @@
                                     }
                                   },
                                   "required": [
+                                    "id",
                                     "drugId",
                                     "doseMorning",
                                     "doseNoon",
                                     "doseAfternoon",
                                     "doseEvening",
                                     "durationDays",
-                                    "id",
+                                    "doseMode",
+                                    "singleDose",
                                     "drugName",
                                     "quantity",
                                     "unitCode"
@@ -39066,6 +39339,23 @@
                           "minimum": 0,
                           "maximum": 99.75
                         },
+                        "doseMode": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "AS_NEEDED"
+                          ]
+                        },
+                        "singleDose": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9999
+                        },
                         "durationDays": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -39079,8 +39369,7 @@
                         "doseMorning",
                         "doseNoon",
                         "doseAfternoon",
-                        "doseEvening",
-                        "durationDays"
+                        "doseEvening"
                       ]
                     },
                     "minItems": 1
@@ -39117,6 +39406,10 @@
                           "items": {
                             "type": "object",
                             "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
                               "drugId": {
                                 "type": "string",
                                 "format": "uuid"
@@ -39142,15 +39435,26 @@
                                 "maximum": 99.75
                               },
                               "durationDays": {
-                                "type": "integer",
-                                "exclusiveMinimum": 0
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "doseMode": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "AS_NEEDED"
+                                ]
+                              },
+                              "singleDose": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
                               },
                               "instruction": {
                                 "type": "string"
-                              },
-                              "id": {
-                                "type": "string",
-                                "format": "uuid"
                               },
                               "drugName": {
                                 "type": "string"
@@ -39166,13 +39470,15 @@
                               }
                             },
                             "required": [
+                              "id",
                               "drugId",
                               "doseMorning",
                               "doseNoon",
                               "doseAfternoon",
                               "doseEvening",
                               "durationDays",
-                              "id",
+                              "doseMode",
+                              "singleDose",
                               "drugName",
                               "quantity",
                               "unitCode"
@@ -39364,6 +39670,23 @@
                           "minimum": 0,
                           "maximum": 99.75
                         },
+                        "doseMode": {
+                          "type": "string",
+                          "enum": [
+                            "SCHEDULED",
+                            "AS_NEEDED"
+                          ]
+                        },
+                        "singleDose": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 99.75
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9999
+                        },
                         "durationDays": {
                           "type": "integer",
                           "exclusiveMinimum": 0
@@ -39377,8 +39700,7 @@
                         "doseMorning",
                         "doseNoon",
                         "doseAfternoon",
-                        "doseEvening",
-                        "durationDays"
+                        "doseEvening"
                       ]
                     },
                     "minItems": 1
@@ -39421,6 +39743,10 @@
                           "items": {
                             "type": "object",
                             "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
                               "drugId": {
                                 "type": "string",
                                 "format": "uuid"
@@ -39446,15 +39772,26 @@
                                 "maximum": 99.75
                               },
                               "durationDays": {
-                                "type": "integer",
-                                "exclusiveMinimum": 0
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "doseMode": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "AS_NEEDED"
+                                ]
+                              },
+                              "singleDose": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
                               },
                               "instruction": {
                                 "type": "string"
-                              },
-                              "id": {
-                                "type": "string",
-                                "format": "uuid"
                               },
                               "drugName": {
                                 "type": "string"
@@ -39470,13 +39807,15 @@
                               }
                             },
                             "required": [
+                              "id",
                               "drugId",
                               "doseMorning",
                               "doseNoon",
                               "doseAfternoon",
                               "doseEvening",
                               "durationDays",
-                              "id",
+                              "doseMode",
+                              "singleDose",
                               "drugName",
                               "quantity",
                               "unitCode"
@@ -83368,6 +83707,25 @@
                                   "null"
                                 ]
                               },
+                              "doseMode": {
+                                "type": "string",
+                                "enum": [
+                                  "SCHEDULED",
+                                  "AS_NEEDED"
+                                ]
+                              },
+                              "singleDose": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "doseUnitName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "instruction": {
                                 "type": [
                                   "string",
@@ -83410,6 +83768,9 @@
                               "doseAfternoon",
                               "doseEvening",
                               "durationDays",
+                              "doseMode",
+                              "singleDose",
+                              "doseUnitName",
                               "instruction",
                               "batches"
                             ]

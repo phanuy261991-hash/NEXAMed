@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-10-29
+
+### Kê đơn theo kiểu kê của thuốc: "Khi cần" và liều theo ml (`docs/DECISIONS.md` #267, phần 2)
+
+Dòng kê đơn dùng cấu hình "Cách kê liều" của thuốc. **"Khi cần"** (thuốc hạ sốt, thuốc dùng khi có triệu chứng): bác sĩ nhập liều mỗi lần, số lượng kê và câu dặn; không có Sáng/Trưa/Chiều/Tối và không có số ngày; số xuất kho là số lượng bác sĩ nhập (không tính từ liều). Có ô **"Soạn nhanh câu dặn"** ghép sẵn "Uống 1,5 gói khi sốt cao…, tối đa 5 lần / 24 tiếng, cách nhau tối thiểu 4 tiếng". **Dung dịch tính theo ml**: bấm liều mẫu (Người lớn, Trẻ 2–6 tuổi…) thì 4 ô tự điền, tổng ml tự quy ra số Hộp làm tròn lên ("50 ml → 01 Hộp, dư 10 ml"). Thuốc viên/gói đổi được giữa "Theo buổi" và "Khi cần" trên từng dòng; thuốc hạ sốt đặt "Khi cần" làm mặc định ở form Thuốc. Đơn thuốc mẫu, sao chép đơn lần trước và đính chính mang theo kiểu kê. Cột "Liều dùng" ở bản in đơn, bệnh án PDF, phiếu xuất kho và gói liên thông hiện "Sáng 5 ml - Tối 5 ml" hoặc "Mỗi lần 1,5 gói, khi cần". **Môi trường khác cần `db:deploy`** (migration `20261029100000_prescription_item_dose_mode`); đơn cũ không đổi nội dung nào.
+
 ## 2026-10-28
 
 ### Nhãn dán bì thuốc in từ màn Phát thuốc, số lượng hai chữ số trên đơn, cấu hình "Cách kê liều" của thuốc (`docs/DECISIONS.md` #267, phần 1)

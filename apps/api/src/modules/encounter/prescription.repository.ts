@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prescription, PrescriptionDocument, Prisma } from '@prisma/client';
-import type { DrugControlType } from '@nexamed/shared';
+import type { DoseMode, DrugControlType } from '@nexamed/shared';
 
 export interface PrescriptionItemWithDrug {
   id: string;
@@ -17,7 +17,13 @@ export interface PrescriptionItemWithDrug {
   doseNoon: number;
   doseAfternoon: number;
   doseEvening: number;
-  durationDays: number;
+  /** `null` khi dòng kiểu "Khi cần" (#267). */
+  durationDays: number | null;
+  doseMode: DoseMode;
+  singleDose: number | null;
+  /** Đơn vị liều + dung tích CHỤP lúc lưu (#267) — `null` = liều tính theo chính đơn vị nhỏ nhất. */
+  doseUnitName: string | null;
+  dosePerBaseUnit: number | null;
   quantity: number;
   /** Đơn vị nhỏ nhất của thuốc (`drug.baseUnitCode`) — CHỈ hiển thị, docs/DECISIONS.md #196. `null`
    * cho dòng tự do hoặc thuốc chưa khai đơn vị cơ sở. */
@@ -55,7 +61,11 @@ interface RawItemWithDrug {
   doseNoon: Prisma.Decimal;
   doseAfternoon: Prisma.Decimal;
   doseEvening: Prisma.Decimal;
-  durationDays: number;
+  durationDays: number | null;
+  doseMode: DoseMode;
+  singleDose: Prisma.Decimal | null;
+  doseUnitName: string | null;
+  dosePerBaseUnit: Prisma.Decimal | null;
   quantity: number;
   instruction: string | null;
   documentId: string | null;
@@ -98,6 +108,10 @@ function mapItems(rows: RawItemWithDrug[], nameByCode: Map<string, string>): Pre
     doseAfternoon: Number(row.doseAfternoon),
     doseEvening: Number(row.doseEvening),
     durationDays: row.durationDays,
+    doseMode: row.doseMode,
+    singleDose: row.singleDose === null ? null : Number(row.singleDose),
+    doseUnitName: row.doseUnitName,
+    dosePerBaseUnit: row.dosePerBaseUnit === null ? null : Number(row.dosePerBaseUnit),
     quantity: row.quantity,
     unitCode: row.drug?.baseUnitCode ?? null,
     instruction: row.instruction,
@@ -149,14 +163,44 @@ export interface CreatePrescriptionItemData {
   doseNoon: number;
   doseAfternoon: number;
   doseEvening: number;
-  durationDays: number;
+  durationDays: number | null;
+  doseMode: DoseMode;
+  singleDose: number | null;
+  doseUnitName: string | null;
+  dosePerBaseUnit: number | null;
   quantity: number;
   instruction: string | null;
+}
+
+/** Cấu hình "Cách kê liều" của một thuốc (#267) — nguồn để máy chủ quyết kiểu kê, chụp đơn vị liều và tính số lượng lúc lưu dòng đơn. */
+export interface DrugDoseConfig {
+  doseMode: DoseMode;
+  doseUnitName: string | null;
+  dosePerBaseUnit: number | null;
 }
 
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `prescription`/`prescription_item` (Sprint 4, S4-01/02/04) — theo .claude/docs/coding-standards.md. */
 @Injectable()
 export class PrescriptionRepository {
+  /** Cấu hình "Cách kê liều" của các thuốc trong danh mục (#267) — 1 truy vấn cho cả đơn. Thuốc không có trong kết quả = không tồn tại/đã xoá. */
+  async findDrugDoseConfigs(tx: Prisma.TransactionClient, tenantId: string, drugIds: string[]): Promise<Map<string, DrugDoseConfig>> {
+    if (drugIds.length === 0) return new Map();
+    const rows = await tx.drug.findMany({
+      where: { tenantId, id: { in: drugIds }, deletedAt: null },
+      select: { id: true, doseMode: true, doseUnitCode: true, dosePerBaseUnit: true },
+    });
+    // Đơn vị liều của thuốc lưu bằng MÃ danh mục "Đơn vị tính" — chụp vào dòng đơn bằng TÊN hiển thị (mã không còn nghĩa khi in). Không tìm thấy tên thì giữ mã.
+    const unitCodes = [...new Set(rows.map((r) => r.doseUnitCode).filter((c): c is string => c !== null))];
+    const unitNames = unitCodes.length > 0 ? await tx.referenceCatalog.findMany({ where: { tenantId, category: 'UNIT', code: { in: unitCodes } }, select: { code: true, name: true } }) : [];
+    const nameByCode = new Map(unitNames.map((u) => [u.code, u.name]));
+    return new Map(
+      rows.map((r) => [
+        r.id,
+        { doseMode: r.doseMode, doseUnitName: r.doseUnitCode === null ? null : (nameByCode.get(r.doseUnitCode) ?? r.doseUnitCode), dosePerBaseUnit: r.dosePerBaseUnit === null ? null : Number(r.dosePerBaseUnit) },
+      ]),
+    );
+  }
+
   /** Đơn ĐANG HIỆU LỰC (nháp hoặc đã ký, chưa bị đính chính/xoá) của một lượt khám — tối đa 1 dòng (partial unique). */
   async findActiveForEncounter(tx: Prisma.TransactionClient, tenantId: string, encounterId: string): Promise<PrescriptionWithItems | null> {
     const row = (await tx.prescription.findFirst({

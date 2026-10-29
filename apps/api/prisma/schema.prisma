@@ -2957,8 +2957,15 @@ model PrescriptionItem {
   doseNoon         Decimal @default(0) @map("dose_noon") @db.Decimal(5, 2)
   doseAfternoon    Decimal @default(0) @map("dose_afternoon") @db.Decimal(5, 2)
   doseEvening      Decimal @default(0) @map("dose_evening") @db.Decimal(5, 2)
-  durationDays     Int     @map("duration_days") @db.SmallInt
-  // Tổng số = LÀM TRÒN LÊN((tổng 4 buổi) × durationDays) — số nguyên theo đơn vị nhỏ nhất của thuốc.
+  // NULL khi dòng kiểu "Khi cần" (#267) — CHECK `prescription_item_dose_mode_check` ràng buộc theo `dose_mode`.
+  durationDays     Int?    @map("duration_days") @db.SmallInt
+  // Kiểu kê của dòng (#267): SCHEDULED = Sáng/Trưa/Chiều/Tối × số ngày (quantity do server tính); AS_NEEDED = "Khi cần" (liều mỗi lần `single_dose` + quantity bác sĩ nhập thẳng).
+  doseMode         DrugDoseMode @default(SCHEDULED) @map("dose_mode")
+  singleDose       Decimal?     @map("single_dose") @db.Decimal(5, 2)
+  // TÊN đơn vị liều ("ml", không phải mã danh mục) + dung tích mỗi đơn vị nhỏ nhất, CHỤP từ cấu hình thuốc lúc lưu để đơn đã ký không đổi khi thuốc đổi cấu hình (#267). NUMERIC có chủ đích (không phải tiền), bội ¼.
+  doseUnitName     String?      @map("dose_unit_name")
+  dosePerBaseUnit  Decimal?     @map("dose_per_base_unit") @db.Decimal(8, 2)
+  // Tổng số = LÀM TRÒN LÊN((tổng 4 buổi) × durationDays ÷ dung tích) — số nguyên theo đơn vị nhỏ nhất của thuốc (kiểu "Khi cần": nhập thẳng).
   quantity         Int
   instruction      String?
   // Đơn pháp lý (mã chuẩn Bộ Y tế, #242) chứa dòng này — NULL khi còn nháp hoặc đơn ký trước ngày bật chế độ chuẩn.
@@ -3050,7 +3057,10 @@ model PrescriptionTemplateItem {
   doseNoon      Decimal @default(0) @map("dose_noon") @db.Decimal(5, 2)
   doseAfternoon Decimal @default(0) @map("dose_afternoon") @db.Decimal(5, 2)
   doseEvening   Decimal @default(0) @map("dose_evening") @db.Decimal(5, 2)
-  durationDays  Int     @map("duration_days") @db.SmallInt
+  // Cùng khuôn `PrescriptionItem` (#267): NULL khi "Khi cần".
+  durationDays  Int?    @map("duration_days") @db.SmallInt
+  doseMode      DrugDoseMode @default(SCHEDULED) @map("dose_mode")
+  singleDose    Decimal?     @map("single_dose") @db.Decimal(5, 2)
   quantity      Int
   instruction   String?
 

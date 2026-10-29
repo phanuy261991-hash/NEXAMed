@@ -156,6 +156,28 @@ describe('renderPatientMedicalRecordHtml', () => {
     expect(html).toContain('120/80 mmHg');
   });
 
+  it('thuốc kiểu "Khi cần" (#267): không có số ngày thì in gạch ngang, không in "null"', () => {
+    const html = renderPatientMedicalRecordHtml(
+      buildDoc({
+        encounters: [
+          {
+            encounterNo: 'KB-2610-000009',
+            checkedInAt: '2026-10-20T01:30:00.000Z',
+            doctorName: 'Trần Thị B',
+            chiefComplaint: null,
+            vitalSigns: null,
+            diagnoses: [],
+            clinicalNoteSections: [],
+            signedAt: null,
+            prescriptionItems: [{ drugName: 'Hapacol 250mg', doseSummary: 'Mỗi lần 1,5 gói, khi cần', durationDays: null, quantity: 5, unitCode: 'GOI', instruction: null }],
+          },
+        ],
+      }),
+    );
+    expect(html).toContain('Mỗi lần 1,5 gói, khi cần');
+    expect(html).not.toContain('null');
+  });
+
   describe('mã đơn thuốc chuẩn Bộ Y tế (#242)', () => {
     const encounter = {
       encounterNo: 'KB-2610-000002',

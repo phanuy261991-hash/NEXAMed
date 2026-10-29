@@ -6206,7 +6206,12 @@ export interface paths {
                                         doseNoon: number;
                                         doseAfternoon: number;
                                         doseEvening: number;
-                                        durationDays: number;
+                                        durationDays: number | null;
+                                        /** @enum {string} */
+                                        doseMode: "SCHEDULED" | "AS_NEEDED";
+                                        singleDose: number | null;
+                                        doseUnitName: string | null;
+                                        dosePerBaseUnit: number | null;
                                         quantity: number;
                                         isSplittable: boolean;
                                         unitCode: string | null;
@@ -7504,7 +7509,12 @@ export interface paths {
                                     doseNoon: number;
                                     doseAfternoon: number;
                                     doseEvening: number;
-                                    durationDays: number;
+                                    durationDays: number | null;
+                                    /** @enum {string} */
+                                    doseMode: "SCHEDULED" | "AS_NEEDED";
+                                    singleDose: number | null;
+                                    doseUnitName: string | null;
+                                    dosePerBaseUnit: number | null;
                                     quantity: number;
                                     isSplittable: boolean;
                                     unitCode: string | null;
@@ -7662,7 +7672,11 @@ export interface paths {
                             doseNoon: number;
                             doseAfternoon: number;
                             doseEvening: number;
-                            durationDays: number;
+                            /** @enum {string} */
+                            doseMode?: "SCHEDULED" | "AS_NEEDED";
+                            singleDose?: number;
+                            quantity?: number;
+                            durationDays?: number;
                             instruction?: string;
                         }[];
                         doctorAdvice?: string;
@@ -7694,7 +7708,12 @@ export interface paths {
                                     doseNoon: number;
                                     doseAfternoon: number;
                                     doseEvening: number;
-                                    durationDays: number;
+                                    durationDays: number | null;
+                                    /** @enum {string} */
+                                    doseMode: "SCHEDULED" | "AS_NEEDED";
+                                    singleDose: number | null;
+                                    doseUnitName: string | null;
+                                    dosePerBaseUnit: number | null;
                                     quantity: number;
                                     isSplittable: boolean;
                                     unitCode: string | null;
@@ -7863,7 +7882,12 @@ export interface paths {
                                     doseNoon: number;
                                     doseAfternoon: number;
                                     doseEvening: number;
-                                    durationDays: number;
+                                    durationDays: number | null;
+                                    /** @enum {string} */
+                                    doseMode: "SCHEDULED" | "AS_NEEDED";
+                                    singleDose: number | null;
+                                    doseUnitName: string | null;
+                                    dosePerBaseUnit: number | null;
                                     quantity: number;
                                     isSplittable: boolean;
                                     unitCode: string | null;
@@ -7984,7 +8008,12 @@ export interface paths {
                                     doseNoon: number;
                                     doseAfternoon: number;
                                     doseEvening: number;
-                                    durationDays: number;
+                                    durationDays: number | null;
+                                    /** @enum {string} */
+                                    doseMode: "SCHEDULED" | "AS_NEEDED";
+                                    singleDose: number | null;
+                                    doseUnitName: string | null;
+                                    dosePerBaseUnit: number | null;
                                     quantity: number;
                                     isSplittable: boolean;
                                     unitCode: string | null;
@@ -8158,7 +8187,12 @@ export interface paths {
                                     doseNoon: number;
                                     doseAfternoon: number;
                                     doseEvening: number;
-                                    durationDays: number;
+                                    durationDays: number | null;
+                                    /** @enum {string} */
+                                    doseMode: "SCHEDULED" | "AS_NEEDED";
+                                    singleDose: number | null;
+                                    doseUnitName: string | null;
+                                    dosePerBaseUnit: number | null;
                                     quantity: number;
                                     isSplittable: boolean;
                                     unitCode: string | null;
@@ -8287,7 +8321,11 @@ export interface paths {
                             doseNoon: number;
                             doseAfternoon: number;
                             doseEvening: number;
-                            durationDays: number;
+                            /** @enum {string} */
+                            doseMode?: "SCHEDULED" | "AS_NEEDED";
+                            singleDose?: number;
+                            quantity?: number;
+                            durationDays?: number;
                             instruction?: string;
                         }[];
                         doctorAdvice?: string;
@@ -8321,7 +8359,12 @@ export interface paths {
                                     doseNoon: number;
                                     doseAfternoon: number;
                                     doseEvening: number;
-                                    durationDays: number;
+                                    durationDays: number | null;
+                                    /** @enum {string} */
+                                    doseMode: "SCHEDULED" | "AS_NEEDED";
+                                    singleDose: number | null;
+                                    doseUnitName: string | null;
+                                    dosePerBaseUnit: number | null;
                                     quantity: number;
                                     isSplittable: boolean;
                                     unitCode: string | null;
@@ -14489,15 +14532,18 @@ export interface paths {
                                     name: string;
                                     items: {
                                         /** Format: uuid */
+                                        id: string;
+                                        /** Format: uuid */
                                         drugId: string;
                                         doseMorning: number;
                                         doseNoon: number;
                                         doseAfternoon: number;
                                         doseEvening: number;
-                                        durationDays: number;
+                                        durationDays: number | null;
+                                        /** @enum {string} */
+                                        doseMode: "SCHEDULED" | "AS_NEEDED";
+                                        singleDose: number | null;
                                         instruction?: string;
-                                        /** Format: uuid */
-                                        id: string;
                                         drugName: string;
                                         quantity: number;
                                         unitCode: string | null;
@@ -14562,7 +14608,11 @@ export interface paths {
                             doseNoon: number;
                             doseAfternoon: number;
                             doseEvening: number;
-                            durationDays: number;
+                            /** @enum {string} */
+                            doseMode?: "SCHEDULED" | "AS_NEEDED";
+                            singleDose?: number;
+                            quantity?: number;
+                            durationDays?: number;
                             instruction?: string;
                         }[];
                     };
@@ -14582,15 +14632,18 @@ export interface paths {
                                 name: string;
                                 items: {
                                     /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
                                     drugId: string;
                                     doseMorning: number;
                                     doseNoon: number;
                                     doseAfternoon: number;
                                     doseEvening: number;
-                                    durationDays: number;
+                                    durationDays: number | null;
+                                    /** @enum {string} */
+                                    doseMode: "SCHEDULED" | "AS_NEEDED";
+                                    singleDose: number | null;
                                     instruction?: string;
-                                    /** Format: uuid */
-                                    id: string;
                                     drugName: string;
                                     quantity: number;
                                     unitCode: string | null;
@@ -14689,7 +14742,11 @@ export interface paths {
                             doseNoon: number;
                             doseAfternoon: number;
                             doseEvening: number;
-                            durationDays: number;
+                            /** @enum {string} */
+                            doseMode?: "SCHEDULED" | "AS_NEEDED";
+                            singleDose?: number;
+                            quantity?: number;
+                            durationDays?: number;
                             instruction?: string;
                         }[];
                         isActive?: boolean;
@@ -14711,15 +14768,18 @@ export interface paths {
                                 name: string;
                                 items: {
                                     /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
                                     drugId: string;
                                     doseMorning: number;
                                     doseNoon: number;
                                     doseAfternoon: number;
                                     doseEvening: number;
-                                    durationDays: number;
+                                    durationDays: number | null;
+                                    /** @enum {string} */
+                                    doseMode: "SCHEDULED" | "AS_NEEDED";
+                                    singleDose: number | null;
                                     instruction?: string;
-                                    /** Format: uuid */
-                                    id: string;
                                     drugName: string;
                                     quantity: number;
                                     unitCode: string | null;
@@ -32539,6 +32599,10 @@ export interface paths {
                                     doseAfternoon: number;
                                     doseEvening: number;
                                     durationDays: number | null;
+                                    /** @enum {string} */
+                                    doseMode: "SCHEDULED" | "AS_NEEDED";
+                                    singleDose: number | null;
+                                    doseUnitName: string | null;
                                     instruction: string | null;
                                     batches: {
                                         batchNo: string;

@@ -14,7 +14,7 @@ import {
   type InteropSubmissionInput,
   type ReferenceCatalogReaderPort,
 } from '@nexamed/core';
-import { EMPTY_INTEROP_KIND_INFO, calculateAgeMonths, formatDoseSummary, type InteropKindInfoValue, type PrescriptionKind } from '@nexamed/shared';
+import { EMPTY_INTEROP_KIND_INFO, calculateAgeMonths, formatPrescriptionDose, type InteropKindInfoValue, type PrescriptionKind } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { GeoRepository } from '../geo/geo.repository';
 import { PatientService } from '../patient/patient.service';
@@ -136,7 +136,8 @@ export class PrescriptionInteropDataService {
     const kinds: GatheredInteropKind[] = groups.map((group) => {
       const storedInfo = stored.get(group.kind) ?? EMPTY_INTEROP_KIND_INFO;
       const prescribedAt = prescription?.signedAt ?? now;
-      const longestDays = Math.max(1, ...group.items.map((i) => i.durationDays));
+      // Dòng "Khi cần" không có số ngày — không tính vào số ngày dài nhất (cả đơn chỉ có "Khi cần" thì gợi ý theo 1 ngày).
+      const longestDays = Math.max(1, ...group.items.map((i) => i.durationDays ?? 0));
       const suggestedDose = group.kind === 'C' ? null : suggestInteropDosePeriod(vietnamDateOf(prescribedAt), longestDays);
       const items: InteropItemInput[] = group.items.map((i) => ({
         isFreeText: i.drugId === null,
@@ -145,7 +146,7 @@ export class PrescriptionInteropDataService {
         activeIngredient: i.activeIngredient,
         unitName: i.unitCode ? (unitNames.get(i.unitCode) ?? i.unitCode) : null,
         quantity: i.quantity,
-        doseSummary: formatDoseSummary(i),
+        doseSummary: formatPrescriptionDose({ ...i, unitName: i.unitCode ? (unitNames.get(i.unitCode) ?? null) : null }),
         durationDays: i.durationDays,
         instruction: i.instruction,
       }));

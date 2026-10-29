@@ -51,7 +51,8 @@ export interface MedicalRecordPrescriptionItem {
    * `EncounterService` bằng `formatDoseSummary()` (`@nexamed/shared`), `packages/core` không import
    * `@nexamed/shared` để tránh phụ thuộc ngược không cần thiết. */
   doseSummary: string;
-  durationDays: number;
+  /** `null` khi dòng kiểu "Khi cần" (#267) — in dấu gạch ngang. */
+  durationDays: number | null;
   quantity: number;
   unitCode: string | null;
   instruction: string | null;
@@ -267,10 +268,10 @@ function renderPrescription(items: MedicalRecordPrescriptionItem[], documents: M
     documents.length > 0
       ? `<p class="meta">Mã đơn: ${documents.map((d) => `<strong>${escapeHtml(d.nationalCode)}</strong> (${PRESCRIPTION_KIND_TEXT[d.kind]})`).join(' · ')}</p>`
       : '';
-  return `${codes}<table class="data-table"><thead><tr><th>Thuốc</th><th>Liều dùng theo buổi</th><th>Số ngày</th><th>SL</th><th>Cách dùng</th></tr></thead><tbody>${items
+  return `${codes}<table class="data-table"><thead><tr><th>Thuốc</th><th>Liều dùng</th><th>Số ngày</th><th>SL</th><th>Cách dùng</th></tr></thead><tbody>${items
     .map(
       (i) =>
-        `<tr><td>${escapeHtml(i.drugName)}</td><td>${escapeHtml(i.doseSummary)}</td><td>${i.durationDays}</td><td>${i.quantity}${i.unitCode ? ` ${escapeHtml(i.unitCode)}` : ''}</td><td>${i.instruction ? escapeHtml(i.instruction) : '—'}</td></tr>`,
+        `<tr><td>${escapeHtml(i.drugName)}</td><td>${escapeHtml(i.doseSummary)}</td><td>${i.durationDays ?? '—'}</td><td>${i.quantity}${i.unitCode ? ` ${escapeHtml(i.unitCode)}` : ''}</td><td>${i.instruction ? escapeHtml(i.instruction) : '—'}</td></tr>`,
     )
     .join('')}</tbody></table>`;
 }

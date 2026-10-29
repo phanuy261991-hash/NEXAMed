@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { doseToQuartersPreview, formatDoseAmountPreview, parseDoseInput } from './prescription-dose-preview';
+import { doseToQuartersPreview, formatDoseAmountPreview, formatDoseDecimalPreview, parseDoseInput } from './prescription-dose-preview';
 
 /**
  * Các ô nhập liều dùng theo buổi có hỗ trợ liều LẺ (#241, mockup đã duyệt) — dùng chung cho màn kê đơn,
@@ -17,10 +17,12 @@ export const DOSE_PATTERNS: readonly (readonly [number, number, number, number])
   [0.5, 0.5, 0.5, 0.5],
 ];
 
-function formatDoseText(value: string): string {
+function formatDoseText(value: string, decimal = false): string {
   if (value === '') return '';
   const n = Number(value);
-  return Number.isFinite(n) ? formatDoseAmountPreview(n) : value;
+  if (!Number.isFinite(n)) return value;
+  // Đơn vị liều không phải viên (ml...): hiện số thập phân 2,5 thay vì 2½ (#267).
+  return decimal ? formatDoseDecimalPreview(n) : formatDoseAmountPreview(n);
 }
 
 /** Ô liều một buổi: gõ `0,5` / `1/2` / `1 1/2` hoặc dán ½; Enter hoặc rời ô thì chốt, giá trị sai quay về giá trị cũ. */
@@ -31,6 +33,7 @@ export function DoseInput({
   onCommit,
   onFocus,
   disabled,
+  decimal = false,
 }: {
   id?: string;
   label: string;
@@ -39,15 +42,17 @@ export function DoseInput({
   onCommit: (next: string) => void;
   onFocus?: () => void;
   disabled?: boolean;
+  /** Hiện kiểu thập phân (2,5) thay vì ký hiệu ½ ¼ — cho liều tính bằng ml. */
+  decimal?: boolean;
 }) {
   // `null` = đang hiển thị giá trị đã chốt; chuỗi = người dùng đang gõ dở.
   const [editingText, setEditingText] = useState<string | null>(null);
-  const shown = editingText ?? formatDoseText(value);
+  const shown = editingText ?? formatDoseText(value, decimal);
   // Giá trị đổi từ NGOÀI (nút chọn nhanh, pill liều, nạp mẫu) trong lúc ô đang mở sửa thì hiện giá trị mới, không giữ chữ gõ dở cũ.
   const [seenValue, setSeenValue] = useState(value);
   if (value !== seenValue) {
     setSeenValue(value);
-    if (editingText !== null) setEditingText(formatDoseText(value));
+    if (editingText !== null) setEditingText(formatDoseText(value, decimal));
   }
 
   function commit() {

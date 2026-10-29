@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { doseModeSchema } from './prescription';
 
 /**
  * "Nhãn dán bì thuốc" in từ màn Phát thuốc (docs/DECISIONS.md #267, mockup đã chốt 28/10/2026).
@@ -30,6 +31,12 @@ export const medicineLabelItemSchema = z.object({
   doseAfternoon: z.number(),
   doseEvening: z.number(),
   durationDays: z.number().int().nullable(),
+  /** Kiểu kê của dòng đơn (#267); hàng không theo đơn luôn "SCHEDULED" với 4 liều = 0. */
+  doseMode: doseModeSchema,
+  /** Liều mỗi lần của kiểu "Khi cần" (#267). */
+  singleDose: z.number().nullable(),
+  /** Đơn vị liều (ml...) đã chụp trên dòng đơn; `null` = liều tính theo chính đơn vị nhỏ nhất. */
+  doseUnitName: z.string().nullable(),
   instruction: z.string().nullable(),
   /** Các lô đã xuất cho dòng này (rỗng với thuốc không quản lý theo lô). */
   batches: z.array(medicineLabelBatchSchema),

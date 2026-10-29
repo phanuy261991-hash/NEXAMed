@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, PrescriptionTemplate } from '@prisma/client';
+import type { DoseMode } from '@nexamed/shared';
 
 export interface PrescriptionTemplateItemWithDrug {
   id: string;
@@ -9,7 +10,10 @@ export interface PrescriptionTemplateItemWithDrug {
   doseNoon: number;
   doseAfternoon: number;
   doseEvening: number;
-  durationDays: number;
+  /** `null` khi dòng kiểu "Khi cần" (#267). */
+  durationDays: number | null;
+  doseMode: DoseMode;
+  singleDose: number | null;
   quantity: number;
   /** Đơn vị nhỏ nhất của thuốc (`drug.baseUnitCode`) — CHỈ hiển thị, docs/DECISIONS.md #196. */
   unitCode: string | null;
@@ -28,7 +32,9 @@ interface RawItemWithDrug {
   doseNoon: Prisma.Decimal;
   doseAfternoon: Prisma.Decimal;
   doseEvening: Prisma.Decimal;
-  durationDays: number;
+  durationDays: number | null;
+  doseMode: DoseMode;
+  singleDose: Prisma.Decimal | null;
   quantity: number;
   instruction: string | null;
   drug: { name: string; baseUnitCode: string | null };
@@ -48,6 +54,8 @@ function mapItems(rows: RawItemWithDrug[]): PrescriptionTemplateItemWithDrug[] {
     doseAfternoon: Number(row.doseAfternoon),
     doseEvening: Number(row.doseEvening),
     durationDays: row.durationDays,
+    doseMode: row.doseMode,
+    singleDose: row.singleDose === null ? null : Number(row.singleDose),
     quantity: row.quantity,
     unitCode: row.drug.baseUnitCode,
     instruction: row.instruction,
@@ -66,7 +74,9 @@ export interface CreatePrescriptionTemplateItemData {
   doseNoon: number;
   doseAfternoon: number;
   doseEvening: number;
-  durationDays: number;
+  durationDays: number | null;
+  doseMode: DoseMode;
+  singleDose: number | null;
   quantity: number;
   instruction: string | null;
 }

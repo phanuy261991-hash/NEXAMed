@@ -8,7 +8,7 @@ import { quantityInWords } from '../../shared/format/vietnamese-number-words';
 import { padSmallQuantity } from '../../shared/format/pad-small-quantity';
 import { useAllWardsQuery, useProvincesQuery } from '../geo/geo.queries';
 import { formatAddressLine } from '../patient/patient-form.utils';
-import { formatDoseSummaryPreview as formatDoseSummary } from './prescription-dose-preview';
+import { formatPrescriptionDosePreview } from './prescription-dose-preview';
 import { ALL_ON_PRESCRIPTION_INFO, resolvePrescriptionPrintFields, type PrintField } from './prescription-print-fields';
 import { formatInsurancePrintValue } from '../insurance-card/insurance-print';
 import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
@@ -210,7 +210,7 @@ function PrescriptionSheet({
           <tr className="border-b-2 border-slate-800 text-left">
             <th className="w-8 py-1.5">#</th>
             <th className="py-1.5">Tên thuốc</th>
-            <th className="py-1.5">Liều dùng theo buổi</th>
+            <th className="py-1.5">Liều dùng</th>
             <th className="w-16 py-1.5 text-center">Số ngày</th>
             <th className="w-20 py-1.5 text-center">SL</th>
             <th className="py-1.5">Hướng dẫn</th>
@@ -221,8 +221,8 @@ function PrescriptionSheet({
             <tr key={item.id} className="border-b border-slate-300 align-top">
               <td className="py-1.5">{i + 1}</td>
               <td className="py-1.5 font-semibold">{item.drugName}</td>
-              <td className="py-1.5">{formatDoseSummary(item)}</td>
-              <td className="py-1.5 text-center">{item.durationDays}</td>
+              <td className="py-1.5">{formatPrescriptionDosePreview({ ...item, unitName: item.unitCode ? unitLabel(unitNameByCode, item.unitCode) : null })}</td>
+              <td className="py-1.5 text-center">{item.durationDays ?? '—'}</td>
               <td className="py-1.5 text-center">
                 {padQuantity ? padSmallQuantity(item.quantity) : item.quantity} {item.unitCode ? unitLabel(unitNameByCode, item.unitCode) : ''}
                 {/* Thuốc gây nghiện phải viết số lượng bằng chữ, chữ đầu viết hoa (Thông tư 52/2017/TT-BYT, điều 6). */}
