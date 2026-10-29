@@ -45,6 +45,9 @@ export default tseslint.config(
       globals: {
         console: 'readonly',
         process: 'readonly',
+        // Node 26 (CLAUDE.md): API chuẩn có sẵn, scripts/dev-lan.mjs dùng để dò API.
+        fetch: 'readonly',
+        AbortSignal: 'readonly',
       },
     },
   },

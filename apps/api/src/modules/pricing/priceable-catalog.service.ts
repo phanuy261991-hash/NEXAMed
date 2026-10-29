@@ -20,6 +20,15 @@ export function itemKey(itemKind: PriceListItemKind, ref: string): string {
   return `${group}:${ref}`;
 }
 
+/**
+ * Thứ tự Loại giá: Loại giá MẶC ĐỊNH (`defaultCode`, rỗng = chưa có) đứng ĐẦU, còn lại giữ thứ tự danh mục. Hàm thuần để test được không cần DB.
+ * Bản web `rankPriceTypeCodes` (technical-service-price-model.ts) PHẢI cho kết quả giống hệt — cả hai spec cùng đọc `packages/shared/test-vectors/price-type-ranking.json`.
+ */
+export function rankPriceTypeCodes(catalogCodesInOrder: readonly string[], defaultCode: string): string[] {
+  if (defaultCode === '') return [...catalogCodesInOrder];
+  return [defaultCode, ...catalogCodesInOrder.filter((c) => c !== defaultCode)];
+}
+
 export interface DrugPricingInfo {
   baseUnitCode: string;
   defaultSellPrice: number | null;
@@ -70,8 +79,10 @@ export class PriceableCatalogService {
    */
   async priceTypeOrder(tx: Prisma.TransactionClient, tenantId: string): Promise<Map<string, number>> {
     const rows = await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'PRICE_TYPE', true);
-    const defaultCode = rows.find((r) => r.isDefault)?.code;
-    const codes = defaultCode === undefined ? rows.map((r) => r.code) : [defaultCode, ...rows.filter((r) => r.code !== defaultCode).map((r) => r.code)];
+    const codes = rankPriceTypeCodes(
+      rows.map((r) => r.code),
+      rows.find((r) => r.isDefault)?.code ?? '',
+    );
     return new Map(codes.map((code, index) => [code, index]));
   }
 

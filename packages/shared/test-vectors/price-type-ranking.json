@@ -1,0 +1,11 @@
+{
+  "_doc": "Bộ ca DÙNG CHUNG cho luật xếp thứ tự Loại giá (docs/DECISIONS.md #268). Hai bản cài đặt phải cho kết quả GIỐNG HỆT: máy chủ `rankPriceTypeCodes` (apps/api/src/modules/pricing/priceable-catalog.service.ts, dùng để TÍNH TIỀN) và web `rankPriceTypeCodes` (apps/web/src/features/paraclinical/technical-service-price-model.ts, dùng để HIỂN THỊ mức trong form). Cả hai spec đọc file này — sửa luật ở một bên mà quên bên kia thì một trong hai spec đỏ. defaultCode rỗng = công ty chưa đánh dấu mặc định.",
+  "cases": [
+    { "name": "chưa có mặc định → giữ nguyên thứ tự danh mục", "catalog": ["THUONG", "VIP", "NGOAIGIO"], "defaultCode": "", "expected": ["THUONG", "VIP", "NGOAIGIO"] },
+    { "name": "mặc định ở giữa → lên đầu, phần còn lại giữ thứ tự", "catalog": ["THUONG", "VIP", "NGOAIGIO"], "defaultCode": "VIP", "expected": ["VIP", "THUONG", "NGOAIGIO"] },
+    { "name": "mặc định ở cuối → lên đầu", "catalog": ["THUONG", "VIP", "NGOAIGIO"], "defaultCode": "NGOAIGIO", "expected": ["NGOAIGIO", "THUONG", "VIP"] },
+    { "name": "mặc định đã đứng đầu → không đổi", "catalog": ["THUONG", "VIP"], "defaultCode": "THUONG", "expected": ["THUONG", "VIP"] },
+    { "name": "danh mục chỉ có một mục", "catalog": ["THUONG"], "defaultCode": "THUONG", "expected": ["THUONG"] },
+    { "name": "danh mục rỗng, chưa có mặc định", "catalog": [], "defaultCode": "", "expected": [] }
+  ]
+}

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   buildPriceLines,
@@ -32,6 +33,19 @@ describe('dayBefore', () => {
     ['2026-10-29', '2026-10-28'],
   ])('ngày liền trước %s là %s', (date, expected) => {
     expect(dayBefore(date)).toBe(expected);
+  });
+});
+
+// Bộ ca DÙNG CHUNG với máy chủ (`apps/api/src/modules/pricing/price-type-ranking.spec.ts`): hai bản cài đặt luật xếp mức phải cho kết quả giống hệt.
+const sharedRankingCases = (
+  JSON.parse(readFileSync(new URL('../../../../../packages/shared/test-vectors/price-type-ranking.json', import.meta.url), 'utf8')) as {
+    cases: { name: string; catalog: string[]; defaultCode: string; expected: string[] }[];
+  }
+).cases;
+
+describe('rankPriceTypeCodes — bộ ca dùng chung với máy chủ', () => {
+  it.each(sharedRankingCases)('$name', ({ catalog, defaultCode, expected }) => {
+    expect(rankPriceTypeCodes(catalog, defaultCode)).toEqual(expected);
   });
 });
 

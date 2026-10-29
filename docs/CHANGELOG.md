@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-29
 
+### Công cụ cho nhà phát triển: vá file an toàn, bộ ca kiểm chung web–máy chủ, `pnpm dev:lan`
+
+Không đổi hành vi sản phẩm. `scripts/patch-file.mjs` (vá file theo danh sách JSON, giữ kiểu xuống dòng và dấu `\`, kiểm hết trước khi ghi); luật xếp Loại giá được tách thành hàm thuần ở máy chủ và kiểm bằng cùng bộ ca `packages/shared/test-vectors/price-type-ranking.json` với bản web; `pnpm dev:lan` chạy giao diện dev để mở bằng IP LAN qua HTTP thường và tự trả `config.json` về như cũ khi thoát. Chủ dự án chốt các điểm lệch mockup của #266–#268 và không duyệt lớp chặn máy chủ cho dòng "Giá mới" sai mức (`docs/DECISIONS.md` #268).
+
 ### Quản lý giá: chỉ Dịch vụ khám có Loại giá; Loại giá mặc định; dịch vụ kỹ thuật một giá gốc + "Hẹn đổi giá" (`docs/DECISIONS.md` #268)
 
 Chỉ **Dịch vụ khám** còn nhiều mức giá theo Loại giá (phòng khám tự tạo mục tuỳ ý). **Dịch vụ kỹ thuật** thu gọn về MỘT giá gốc: form chỉ còn Đơn vị tính + Đơn giá, kèm ô tích **"Hẹn đổi giá từ ngày…"** (giá mới có hiệu lực từ ngày hẹn; dòng giá hiện hành tự đóng vào hôm trước; đến ngày hẹn không cần ai làm gì, hệ thống tự lấy giá đúng ngày). Dữ liệu giá cũ nhiều mức KHÔNG mất — vẫn nằm trong CSDL, form hiện dòng "còn N mức giá cũ đã ẩn" và khi lưu giữ nguyên các mức đó. Danh mục **Loại giá dịch vụ** có cột và ô tích **"Mặc định"** (tối đa một mục/công ty): màn **Tiếp nhận** tự chọn sẵn mức mặc định khi dịch vụ khám có giá cho mức đó (không có thì để trống cho lễ tân chọn), và máy chủ dùng mức mặc định để tính tiền chỉ định cận lâm sàng cho dịch vụ nhiều mức — không còn "mức đầu tiên theo thứ tự danh mục" (kéo đổi thứ tự không còn làm đổi giá thu). Trong **Bảng giá**, dòng "Giá mới" của dịch vụ kỹ thuật hiện "Giá gốc" thay cho ô chọn Loại giá (không còn chọn sai làm dòng khuyến mại im lặng không áp). Công ty đang có Loại giá KHÔNG bị tự đánh dấu mặc định (tự tích một lần); công ty chưa có Loại giá nào được nạp sẵn "Thường" làm mặc định. **Môi trường khác cần `db:deploy`** (migration `20261029140000_reference_catalog_default_price_type`) và `db:seed`. Không đổi số tiền nào của chứng từ đã lập.
