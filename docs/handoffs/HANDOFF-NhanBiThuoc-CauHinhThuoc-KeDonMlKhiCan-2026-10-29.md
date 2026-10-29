@@ -4,7 +4,7 @@
 > Quy tắc thường trực: UI mới bám mockup đã duyệt (~95%), ẩn phần chưa làm thay vì làm giả và báo mọi chỗ lệch; mọi chức năng mới trả lời 4 câu chi nhánh (`CLAUDE.md`), kiểm Chrome thật qua `localhost` VÀ IP LAN HTTP, xử lý đủ trạng thái lỗi (#255), không dùng API chỉ có ở HTTPS (#257).
 
 ## 0. Trạng thái một câu
-Chủ dự án gửi ảnh toa thuốc + nhãn dán bì thuốc (Hapacol gói "khi sốt", Zyrtec 60 ml "Sáng 5 ml - Tối 5 ml", bán nguyên Hộp) và **chốt mockup 6 màn** (`docs/design/dose-modes-dispense-label-mockup.html`, "chốt mockup, bám sát", 28/10/2026). **Phần 1 (màn 1, 4, 5, 6 + số hai chữ số) đã code xong, test xanh, kiểm Chrome thật, đã ghi docs — CHƯA COMMIT.** **Phần 2 (màn 2–3: dòng kê đơn dùng cấu hình thuốc, liều ml → số chai, kiểu "Khi cần") CHƯA LÀM.** Quyết định ở `docs/DECISIONS.md` **#267**.
+Chủ dự án gửi ảnh toa thuốc + nhãn dán bì thuốc (Hapacol gói "khi sốt", Zyrtec 60 ml "Sáng 5 ml - Tối 5 ml", bán nguyên Hộp) và **chốt mockup 6 màn** (mockup dose-modes-dispense-label (tệp HTML đã xoá 29/10/2026 sau khi phát hành, xem git log), "chốt mockup, bám sát", 28/10/2026). **Phần 1 (màn 1, 4, 5, 6 + số hai chữ số) đã code xong, test xanh, kiểm Chrome thật, đã ghi docs — CHƯA COMMIT.** **Phần 2 (màn 2–3: dòng kê đơn dùng cấu hình thuốc, liều ml → số chai, kiểu "Khi cần") CHƯA LÀM.** Quyết định ở `docs/DECISIONS.md` **#267**.
 
 ## 1. Phần 1 — đã làm (chưa commit)
 - **Nhãn dán bì thuốc**: khối `MedicineLabelPrintPanel` (tích chọn thuốc, số bản 1–9, nút "In nhãn (n)") hiện ở màn thành công của `DispensePrescriptionDialog`; in lại từ `StockIssueDetailDialog` (nút "In nhãn thuốc" → `MedicineLabelDialog`). Tờ in `MedicineLabelSheet` (thanh đen họ tên – năm sinh, tên thuốc + "05 Gói", câu dặn nghiêng, tuỳ chọn tên phòng khám/ngày phát/lô-HSD). Chữ ghép ở `features/inventory/medicine-label.ts` (+spec). API `GET /inventory/issues/:id/medicine-labels` (`stock_issue.read`, `@AuditView('stock_issue')`, lọc chi nhánh qua kho + Khoa/Phòng; phiếu đã huỷ/chưa duyệt → rỗng; số lượng THỰC PHÁT, gộp các lô cùng dòng đơn; hàng OTC có nhãn riêng; thuốc kê tự do không có nhãn). Schema chung `packages/shared/src/medicine-label.ts`.
@@ -40,7 +40,7 @@ Không có khổ tem "Tuỳ chỉnh" (ẩn); số bản dùng nút −/+; câu d
 
 ## 6. Việc đầu tiên của phiên sau
 1. Hỏi chủ dự án (một lượt): (a) commit + push phần 1 ngay không (51 file, 2 migration; chạy `pnpm typecheck` + `pnpm lint` + full API 1 lượt trước push); (b) họ đã xem 5 điểm lệch ở mục 4 chưa; (c) có làm phần 2 liền không.
-2. Nếu làm phần 2: đọc `docs/design/dose-modes-dispense-label-mockup.html` (màn 2–3), `.claude/docs/ui-guidelines.md`, `docs/ERD-2.md`, `.claude/docs/clinical-workflow.md`, rồi `encounter.service.ts` (`toCreateItemData`, `startConsultation`… quanh dòng 1400–1830) và `PrescriptionPanel.tsx`; làm theo thứ tự mục 3.
+2. Nếu làm phần 2: đọc mockup dose-modes-dispense-label (tệp HTML đã xoá 29/10/2026 sau khi phát hành, xem git log) (màn 2–3), `.claude/docs/ui-guidelines.md`, `docs/ERD-2.md`, `.claude/docs/clinical-workflow.md`, rồi `encounter.service.ts` (`toCreateItemData`, `startConsultation`… quanh dòng 1400–1830) và `PrescriptionPanel.tsx`; làm theo thứ tự mục 3.
 
 ## 7. Đọc gì trước khi tiếp tục
 `docs/CURRENT.md` → `docs/DECISIONS.md` **#267** → file này → mockup HTML → `apps/web/src/features/drug/DrugDoseConfigSection.tsx` + `drug-dose-config.ts` (cấu trúc liều mẫu để dòng kê đơn dùng lại) → `packages/shared/src/prescription.ts` (`doseQuarterSchema`, `computePrescriptionQuantity`, `formatDoseSummary`).
