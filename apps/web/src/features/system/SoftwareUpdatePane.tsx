@@ -9,17 +9,12 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatDateTimeVn } from '../../shared/format/time';
 import { RELEASE_CHANNEL_LABELS } from '../../shared/version/app-version';
 import { formatHistoryResult } from './software-update-view';
-import { useCheckSoftwareUpdateMutation, useSoftwareUpdateStatusQuery } from './software-update.queries';
+import { ReleaseNoteGroups, countReleaseNoteLines } from './ReleaseNoteGroups';
+import { useCheckSoftwareUpdateMutation, useReleaseNotesHistoryQuery, useSoftwareUpdateStatusQuery } from './software-update.queries';
 import { formatReleaseDate } from './support-info';
 import { useSystemVersionQuery } from './system.queries';
 
 const CHANNEL_TONE = { stable: 'info', beta: 'warning', dev: 'neutral' } as const;
-
-const NOTE_GROUPS: { key: keyof ReleaseEntry['notes']; title: string }[] = [
-  { key: 'features', title: 'Tính năng mới' },
-  { key: 'improvements', title: 'Cải tiến' },
-  { key: 'fixes', title: 'Sửa lỗi' },
-];
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -31,21 +26,42 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function ReleaseNotes({ entry }: { entry: ReleaseEntry }) {
-  const groups = NOTE_GROUPS.filter((g) => entry.notes[g.key].length > 0);
-  if (groups.length === 0) return null;
+  return <ReleaseNoteGroups notes={entry.notes} />;
+}
+
+/**
+ * "Có gì mới trong bản đang chạy" + "Các bản trước" (mockup đã chốt https://claude.ai/artifact/R6oTbDuS7fczynmib7V5BT, 30/10/2026): đọc ghi chú ĐÓNG KÈM phần mềm nên hiện ngay cả khi chưa có máy chủ phát hành.
+ * Lỗi tải chỉ ảnh hưởng khối này (có nút thử lại), không chặn phần còn lại của trang.
+ */
+function BundledReleaseNotes({ currentVersion }: { currentVersion: string }) {
+  const query = useReleaseNotesHistoryQuery(true);
+  if (query.isPending) return <Skeleton className="h-32 w-full" />;
+  if (query.isError) return <ErrorBanner message="Không tải được ghi chú phát hành. Thử lại sau ít phút." onRetry={() => void query.refetch()} />;
+  const { current, previous } = query.data;
+  const hasCurrent = current !== null && countReleaseNoteLines(current) > 0;
+  if (!hasCurrent && previous.length === 0) return null;
   return (
-    <div className="space-y-3">
-      {groups.map((g) => (
-        <div key={g.key}>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-700">{g.title}</h3>
-          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm font-medium text-slate-800">
-            {entry.notes[g.key].map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
+    <BoxedSection badge={`Có gì mới trong bản ${currentVersion}`}>
+      <div className="space-y-4">
+        {hasCurrent && current ? <ReleaseNoteGroups notes={current} /> : <p className="text-sm font-medium text-slate-600">Bản này chưa có ghi chú phát hành.</p>}
+        {previous.length > 0 && (
+          <details className="group border-t border-slate-200 pt-3">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-900">Các bản trước ({previous.length})</summary>
+            <div className="mt-3 space-y-5">
+              {previous.map((entry) => (
+                <div key={entry.version}>
+                  <h4 className="mb-2 flex items-baseline gap-3 text-sm font-semibold text-slate-900">
+                    <span className="tabular-nums">{entry.version}</span>
+                    <span className="font-medium tabular-nums text-slate-500">{formatReleaseDate(entry.releasedAt)}</span>
+                  </h4>
+                  <ReleaseNoteGroups notes={entry} />
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
+    </BoxedSection>
   );
 }
 
@@ -211,6 +227,8 @@ export function SoftwareUpdatePane() {
           )}
         </dl>
       </BoxedSection>
+
+      <BundledReleaseNotes currentVersion={status.currentVersion} />
 
       <ResultBlock status={status} checking={checkMutation.isPending} onCheck={check} />
       {checkMutation.isError && <ErrorBanner message="Không gửi được yêu cầu kiểm tra. Thử lại." />}

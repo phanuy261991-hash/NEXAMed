@@ -172,9 +172,14 @@ Copy-Item "$PSScriptRoot\config.example.json" $PackageDir -Force
 Copy-Item "$PSScriptRoot\nexamed-setup.ps1" $PackageDir -Force
 Copy-Item "$PSScriptRoot\nexamed-setup.cmd" $PackageDir -Force
 Copy-Item "$PSScriptRoot\nexamed-setup.sh" $PackageDir -Force
+# Ghi chú phát hành của MỌI bản (apps/api/release-notes/*.json) đi cùng gói: khi nâng cấp, trình cài đặt hiện "Có gì mới từ bản đang chạy lên bản mới". Xoá bản cũ còn sót rồi chép lại cho khớp.
+$notesDir = Join-Path $PackageDir 'release-notes'
+if (Test-Path $notesDir) { Remove-Item $notesDir -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $notesDir | Out-Null
+Copy-Item "$repoRoot\apps\api\release-notes\*.json" $notesDir -Force
 # Số phiên bản của gói: trình cài đặt dùng file này để biết bản mới (file ảnh cũ có thể còn sót khi giải nén đè lên thư mục cũ).
 Set-Content -Path "$PackageDir\VERSION" -Value $Version -NoNewline -Encoding ascii
-Write-Host "Đã copy: docker-compose.yml, .env.example, config.example.json, nexamed-setup.ps1, nexamed-setup.cmd, nexamed-setup.sh, VERSION"
+Write-Host "Đã copy: docker-compose.yml, .env.example, config.example.json, nexamed-setup.ps1, nexamed-setup.cmd, nexamed-setup.sh, release-notes\*.json, VERSION"
 
 Write-Step "HOÀN TẤT"
 Write-Host "Thư mục sẵn sàng chép sang máy khách: $PackageDir" -ForegroundColor Green

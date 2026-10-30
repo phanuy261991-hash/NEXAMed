@@ -73,3 +73,16 @@ export const softwareUpdateStatusSchema = z.object({
 });
 export type SoftwareUpdateStatus = z.infer<typeof softwareUpdateStatusSchema>;
 
+/** Số bản trước tối đa hiện ở "Các bản trước" (mockup đã chốt 30/10/2026). */
+export const RELEASE_NOTES_HISTORY_LIMIT = 10;
+
+/**
+ * `GET /system/update/release-notes` — ghi chú phát hành ĐÓNG KÈM phần mềm (không cần máy chủ phát hành): `current` = bản đang chạy (`null` nếu bản này không có ghi chú, ví dụ máy phát triển),
+ * `previous` = các bản thấp hơn, mới nhất trước, tối đa `RELEASE_NOTES_HISTORY_LIMIT`.
+ */
+export const releaseNotesHistorySchema = z.object({
+  current: releaseNotesSchema.nullable(),
+  previous: z.array(releaseNotesSchema).max(RELEASE_NOTES_HISTORY_LIMIT),
+});
+export type ReleaseNotesHistory = z.infer<typeof releaseNotesHistorySchema>;
+

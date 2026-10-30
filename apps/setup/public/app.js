@@ -141,6 +141,20 @@
       (job.error ? '<div class="err"><span>' + esc(job.error) + '</span></div>' : '') + (job.log.length ? '<div class="logbox" id="logbox">' + esc(job.log.slice(-40).join('\n')) + '</div>' : '');
   }
 
+  /** "Có gì mới từ X lên Y": ghi chú của MỌI bản giữa hai mốc, gộp theo nhóm (mockup đã chốt 30/10/2026). Không có ghi chú (gói cũ) thì không hiện gì. */
+  function releaseNotesBlock(n) {
+    if (!n || !n.items || !n.items.length) return '';
+    var groups = [['features', 'Tính năng mới'], ['improvements', 'Cải tiến'], ['fixes', 'Sửa lỗi']];
+    var html = '<div class="box"><span class="t">Có gì mới từ ' + esc(n.from) + ' lên ' + esc(n.to) + '</span>';
+    groups.forEach(function (g) {
+      var lines = [];
+      n.items.forEach(function (it) { (it[g[0]] || []).forEach(function (l) { lines.push(l); }); });
+      if (!lines.length) return;
+      html += '<b class="gt">' + g[1] + '</b><ul class="notes-list">' + lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>';
+    });
+    return html + '</div>';
+  }
+
   function viewCurrent() {
     var d = S.detect, rows = '';
     rows += '<tr><th>Đang chạy</th><td>NEXAMed ' + esc(d.installedVersion) + '</td></tr>';
@@ -149,7 +163,7 @@
     rows += '<tr><th>Cấu hình</th><td>Giữ nguyên địa chỉ, mật khẩu, thư mục sao lưu đang dùng</td></tr>';
     var body = '<div><h2>Bản đang chạy và bản mới</h2></div><div class="tbl"><table class="sum"><tbody>' + rows + '</tbody></table></div>';
     if (d.upToDate) body += '<div class="done-box"><b style="font-size:16px">Hệ thống đã là bản mới nhất.</b><span>Không cần nâng cấp. Để cập nhật, giải nén gói cài đặt mới đè lên thư mục này rồi chạy lại nexamed-setup.</span></div>';
-    else if (d.packageVersion) body += '<div class="alert">Hệ thống tự sao lưu trước khi nâng cấp. Nâng cấp mất vài phút, nhân viên không dùng được trong lúc này.</div>';
+    else if (d.packageVersion) body += releaseNotesBlock(d.releaseNotes) + '<div class="alert">Hệ thống tự sao lưu trước khi nâng cấp. Nâng cấp mất vài phút, nhân viên không dùng được trong lúc này.</div>';
     if (d.lastUpgrade) body += '<div class="alert">Lần nâng cấp gần nhất (' + esc(d.lastUpgrade.from) + ' → ' + esc(d.lastUpgrade.to) + ') có thể quay lui bằng bản sao lưu đã lưu. <button class="btn" type="button" id="rollbackBtn" style="margin-left:8px">Quay lui về bản cũ</button></div>';
     return body + errBox(S.error);
   }

@@ -790,6 +790,105 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/update/release-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ghi chú phát hành đóng kèm phần mềm: bản đang chạy + các bản trước (tối đa 10, mới nhất trước) — không cần máy chủ phát hành. Chỉ có ở hệ thống một công ty (SaaS trả 404) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                current: {
+                                    version: string;
+                                    releasedAt: string;
+                                    features: string[];
+                                    improvements: string[];
+                                    fixes: string[];
+                                } | null;
+                                previous: {
+                                    version: string;
+                                    releasedAt: string;
+                                    features: string[];
+                                    improvements: string[];
+                                    fixes: string[];
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền software_update.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Hệ thống đang chạy chế độ SaaS */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/update/check": {
         parameters: {
             query?: never;

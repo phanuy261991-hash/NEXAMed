@@ -78,6 +78,8 @@ a.btn { text-decoration: none; color: var(--fg); align-self: flex-start; }
 .badge.alt { background: var(--teal); } .badge.amber { background: var(--warn); color: #1f1300; }
 
 .box { position: relative; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 26px 16px 16px; }
+.box > .gt { display: block; margin: 6px 0 2px; font-size: 13px; font-weight: 700; }
+.box > .notes-list { margin: 0 0 6px; padding-left: 20px; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
 .box > .t { position: absolute; top: -11px; left: 14px; background: var(--brand); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 3px 10px; border-radius: 5px; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .span2 { grid-column: 1 / -1; }

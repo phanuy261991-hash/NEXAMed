@@ -66,10 +66,12 @@ import { DiagnosisAmendDialog } from './DiagnosisAmendDialog';
 import { DiagnosisSuggestionPanel, type DiagnosisSuggestionPanelHandle } from './DiagnosisSuggestionPanel';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { PrescriptionPanel } from './PrescriptionPanel';
+import { OrganSuggestionMenu } from './OrganSuggestionMenu';
 import { StickyDiagnosisBar } from './StickyDiagnosisBar';
 import { TreatmentAmendDialog, type TreatmentAmendValues } from './TreatmentAmendDialog';
 import { TreatmentPlanPanel } from './TreatmentPlanPanel';
 import { formatDateStringVi, toVietnamDateString, vietnameseWeekdayLabel } from './follow-up-date';
+import { insertOrganHeadings, stripEmptyOrganHeadings } from './organ-suggestions';
 import { EMPTY_TREATMENT_PLAN, sameTreatmentPlan, toTreatmentPlanPayload, treatmentPlanError, treatmentPlanFromServer, type TreatmentPlanDraft } from './treatment-plan';
 import { VitalSignsDialog } from './VitalSignsDialog';
 import { saveClinicalNote as saveClinicalNoteRaw } from './encounter.api';
@@ -423,7 +425,8 @@ export function EncounterConsultationPage() {
       illnessProgress: { content: c.illnessProgress, version: v.illnessProgress },
       preliminaryDiagnosis: { content: c.preliminaryDiagnosis, version: v.preliminaryDiagnosis },
       generalExam: { content: c.generalExam, version: v.generalExam },
-      regionalExam: { content: c.regionalExam, version: v.regionalExam },
+      // Dòng chỉ có tiêu đề cơ quan từ "Gợi ý theo cơ quan" mà bác sĩ chưa gõ gì thì không lưu (chỉ ở payload gửi đi; ô trên màn hình giữ nguyên để bác sĩ gõ tiếp).
+      regionalExam: { content: stripEmptyOrganHeadings(c.regionalExam), version: v.regionalExam },
       plan: { content: c.plan, version: v.plan },
       conclusion: { content: c.conclusion, version: v.conclusion },
       doctorAdvice: { content: c.doctorAdvice, version: v.doctorAdvice },
@@ -599,6 +602,19 @@ export function EncounterConsultationPage() {
 
   function setField(key: ClinicalKey, value: string) {
     setClinical((c) => ({ ...c, [key]: value }));
+  }
+
+  /** "Gợi ý theo cơ quan": chèn tiêu đề các cơ quan đã chọn vào CUỐI ô "Kết quả khám bộ phận" rồi đặt con trỏ sau dấu hai chấm của dòng đầu để bác sĩ gõ tiếp. */
+  function handleInsertOrgans(keys: string[]) {
+    const { text, caret } = insertOrganHeadings(clinical.regionalExam, keys);
+    setField('regionalExam', text);
+    window.setTimeout(() => {
+      const el = document.getElementById('clinical-regional-exam');
+      if (el instanceof HTMLTextAreaElement) {
+        el.focus();
+        el.setSelectionRange(caret, caret);
+      }
+    }, 0);
   }
 
   /**
@@ -1172,15 +1188,24 @@ export function EncounterConsultationPage() {
                     onChange={(e) => setField('generalExam', e.target.value)}
                     readOnly={!canEditDraft}
                   />
-                  <Textarea
-                    id="clinical-regional-exam"
-                    label="Kết quả khám bộ phận"
-                    dense
-                    rows={2}
-                    value={clinical.regionalExam}
-                    onChange={(e) => setField('regionalExam', e.target.value)}
-                    readOnly={!canEditDraft}
-                  />
+                  <div>
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <label htmlFor="clinical-regional-exam" className="text-sm font-semibold text-slate-800">
+                        Kết quả khám bộ phận
+                      </label>
+                      {canEditDraft && <OrganSuggestionMenu idPrefix="regional-exam-organ" text={clinical.regionalExam} onInsert={handleInsertOrgans} />}
+                    </div>
+                    <Textarea
+                      id="clinical-regional-exam"
+                      label="Kết quả khám bộ phận"
+                      hideLabel
+                      dense
+                      rows={2}
+                      value={clinical.regionalExam}
+                      onChange={(e) => setField('regionalExam', e.target.value)}
+                      readOnly={!canEditDraft}
+                    />
+                  </div>
                 </div>
 
                 {/* Khối chẩn đoán làm NỔI BẬT bằng MÀU (trường bắt buộc chính của màn khám, phản hồi chủ dự án 30/09/2026):

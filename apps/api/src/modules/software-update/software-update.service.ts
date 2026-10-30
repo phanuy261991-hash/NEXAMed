@@ -84,6 +84,11 @@ export class SoftwareUpdateService implements OnApplicationBootstrap {
     return this.getStatus(tenantId);
   }
 
+  /** Ghi chú phát hành đóng kèm phần mềm: bản đang chạy + các bản trước (xem `SystemVersionService.getReleaseNotesHistory`). */
+  getReleaseNotesHistory() {
+    return this.versionService.getReleaseNotesHistory();
+  }
+
   getStatus(tenantId: string): Promise<SoftwareUpdateStatus> {
     return this.buildStatus(tenantId, true);
   }

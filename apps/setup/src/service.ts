@@ -12,6 +12,7 @@ import { buildHandoffText } from './lib/handoff';
 import { buildInstallSteps, type InstallResult } from './lib/install';
 import { Job, type JobView } from './lib/job';
 import { discoverPackage, hasPlaceholderTenant, readInstalledVersion } from './lib/package-files';
+import { type UpgradeReleaseNotes, loadBundledReleaseNotes, notesForUpgrade } from './lib/release-notes';
 import { getEnvValue } from './lib/env-file';
 import { keyFingerprint } from './lib/key-fingerprint';
 import { buildKeyFileText } from './lib/keyfile';
@@ -54,6 +55,8 @@ export interface DetectView {
   packageVersion: string | null;
   services: Array<{ service: string; state: string; health: string }>;
   upToDate: boolean;
+  /** Ghi chú của mọi bản từ bản đang chạy đến bản sắp cài (đọc từ thư mục `release-notes/` của gói); `null` khi không nâng cấp hoặc gói không kèm ghi chú. */
+  releaseNotes: UpgradeReleaseNotes | null;
   /** Lần cài trước CHƯA xong (đã có `.env` nhưng chưa tạo phòng khám/chưa hoàn tất): chế độ cài mới, nhập lại thông tin để cài tiếp — khoá bí mật cũ được giữ. */
   incompleteInstall: boolean;
   lastUpgrade: UpgradeRecord | null;
@@ -108,6 +111,7 @@ export class SetupService {
     const incompleteInstall = envVersion !== null && (state.installInProgress === true || (await hasPlaceholderTenant(this.env.workDir)));
     const installedVersion = incompleteInstall ? null : envVersion;
     const services = installedVersion ? await this.docker.services() : [];
+    const releaseNotes = installedVersion ? notesForUpgrade(await loadBundledReleaseNotes(this.env.workDir), installedVersion, packageVersion) : null;
     return {
       mode: installedVersion ? 'upgrade' : 'install',
       incompleteInstall,
@@ -116,6 +120,7 @@ export class SetupService {
       packageVersion,
       services,
       upToDate: installedVersion !== null && packageVersion === installedVersion,
+      releaseNotes,
       lastUpgrade: state.lastUpgrade && !state.lastUpgrade.rolledBack ? state.lastUpgrade : null,
       hostInstallDir: this.env.hostInstallDirDisplay,
       hostIps: this.env.hostIps,
