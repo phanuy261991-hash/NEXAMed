@@ -798,7 +798,7 @@ export class EncounterService {
       return {
         encounterId: e.id,
         encounterNo: e.encounterNo,
-        recordNo: e.recordNo,
+        archiveNo: e.archiveNo,
         status: e.status,
         checkedInAt: e.checkedInAt.toISOString(),
         examTypeName: e.examTypeName,
@@ -843,6 +843,8 @@ export class EncounterService {
     const clinicHeader = await this.clinicProfileService.getPrintHeader(tenantId, null);
     // "Áp dụng BHYT" (#243) — đọc TRƯỚC transaction (port tự mở transaction riêng); tắt thì không in dòng BHYT nào.
     const insuranceEnabled = await this.clinicConfigReader.getInsuranceEnabled(tenantId);
+    // Tên đơn vị tính của thuốc ('VIEN' → 'viên') — cũng là port tự mở transaction, nên đọc TRƯỚC transaction.
+    const unitNames = await this.listUnitNames(tenantId);
 
     const provinceCode = patient.address?.province;
     const wardCode = patient.address?.ward;
@@ -890,7 +892,7 @@ export class EncounterService {
         clinicalNoteSections: CLINICAL_NOTE_SECTION_LABELS.map(([key, label]) => ({ label, content: noteResponse[key]?.content ?? '' })),
         treatment: this.toMedicalRecordTreatment(noteResponse),
         paraclinicalResults: paraclinicalByEncounter[e.id] ?? [],
-        prescriptionItems: this.toMedicalRecordRxItems(prescriptionRow),
+        prescriptionItems: this.toMedicalRecordRxItems(prescriptionRow, unitNames),
         prescriptionDocuments: (prescriptionRow?.documents ?? []).map((d) => ({ kind: d.kind, nationalCode: d.nationalCode })),
         insurance: this.toMedicalRecordInsurance(e.insuranceSnapshot, insuranceEnabled),
         signedAt: prescriptionRow?.signedAt ? prescriptionRow.signedAt.toISOString() : (noteRows[0]?.signedAt?.toISOString() ?? null),
@@ -978,13 +980,22 @@ export class EncounterService {
     };
   }
 
-  private toMedicalRecordRxItems(row: { items: Array<Parameters<typeof formatPrescriptionDose>[0] & { drugName: string; durationDays: number | null; quantity: number; unitCode: string | null; instruction: string | null }> } | undefined): MedicalRecordEncounterEntry['prescriptionItems'] {
+  /** Mã → tên đơn vị tính (`reference_catalog` UNIT) để bản in hiện "14 viên" thay vì mã thô "14 VIEN". Gọi NGOÀI transaction. */
+  private async listUnitNames(tenantId: string): Promise<Map<string, string>> {
+    const units = await this.referenceCatalogReader.listByCategory(tenantId, 'UNIT');
+    return new Map(units.map((u) => [u.code, u.name]));
+  }
+
+  private toMedicalRecordRxItems(
+    row: { items: Array<Parameters<typeof formatPrescriptionDose>[0] & { drugName: string; durationDays: number | null; quantity: number; unitCode: string | null; instruction: string | null }> } | undefined,
+    unitNames: Map<string, string>,
+  ): MedicalRecordEncounterEntry['prescriptionItems'] {
     return (row?.items ?? []).map((i) => ({
       drugName: i.drugName,
       doseSummary: formatPrescriptionDose(i),
       durationDays: i.durationDays,
       quantity: i.quantity,
-      unitCode: i.unitCode,
+      unitCode: i.unitCode ? (unitNames.get(i.unitCode) ?? i.unitCode) : null,
       instruction: i.instruction,
     }));
   }
@@ -1023,10 +1034,12 @@ export class EncounterService {
       this.branchDirectory.getBranchNames(tenantId),
       this.branchDirectory.isMultiBranch(tenantId),
     ]);
-    const [ethnicities, nationalities, occupations] = await Promise.all([
+    const [ethnicities, nationalities, occupations, receptionTypes, unitNames] = await Promise.all([
       this.referenceCatalogReader.listByCategory(tenantId, 'ETHNICITY'),
       this.referenceCatalogReader.listByCategory(tenantId, 'NATIONALITY'),
       this.referenceCatalogReader.listByCategory(tenantId, 'OCCUPATION'),
+      this.referenceCatalogReader.listByCategory(tenantId, 'RECEPTION_TYPE'),
+      this.listUnitNames(tenantId),
     ]);
     const nameOf = (items: { code: string; name: string }[], code: string | null): string | null => (code ? (items.find((i) => i.code === code)?.name ?? code) : null);
 
@@ -1072,8 +1085,10 @@ export class EncounterService {
         relative,
       },
       record: {
-        recordNo: head.recordNo,
+        archiveNo: head.archiveNo,
         encounterNo: head.encounterNo,
+        // Nhãn "Khám mới"/"Tái khám" = tên Loại tiếp nhận của lượt khám (danh mục phòng khám tự cấu hình), không có thì không in.
+        visitTypeLabel: receptionTypes.find((t) => t.code === head.receptionTypeCode)?.name ?? null,
         checkedInAt: head.checkedInAt.toISOString(),
         doctorName: head.doctorId ? (doctorNames.get(head.doctorId) ?? null) : null,
         departmentName: departmentNames.get(head.departmentId) ?? null,
@@ -1095,7 +1110,7 @@ export class EncounterService {
       },
       treatment: this.toMedicalRecordTreatment(noteResponse),
       paraclinicalResults: paraclinicalByEncounter[encounterId] ?? [],
-      prescriptionItems: this.toMedicalRecordRxItems(signedPrescription),
+      prescriptionItems: this.toMedicalRecordRxItems(signedPrescription, unitNames),
       prescriptionDocuments: (signedPrescription?.documents ?? []).map((d) => ({ kind: d.kind, nationalCode: d.nationalCode })),
       generatedAt: new Date().toISOString(),
       reason,
@@ -1104,7 +1119,7 @@ export class EncounterService {
     const { printOptions, margins } = this.toMedicalRecordPrintOptions(template, insuranceEnabled);
     const html = renderEncounterMedicalRecordHtml(document, printOptions);
     const pdf = await this.pdfRenderer.renderHtmlToPdf(html, { marginsMm: { top: margins.topMm, right: margins.rightMm, bottom: margins.bottomMm, left: margins.leftMm } });
-    return { pdf, patientId: head.patientId, fileLabel: head.recordNo ?? head.encounterNo };
+    return { pdf, patientId: head.patientId, fileLabel: head.archiveNo ?? head.encounterNo };
   }
 
   /** Ghi audit cho "In bộ hồ sơ" một lượt khám — gọi SAU khi render thành công (cùng khuôn `recordMedicalRecordExportAudit`). Ghi lý do + số bệnh án, KHÔNG ghi nội dung lâm sàng. */
@@ -1475,11 +1490,11 @@ export class EncounterService {
         throw new DiagnosisPrimaryRequiredError();
       }
 
-      // Chữ ký logic cấp TRƯỚC khi chuyển trạng thái để lấy `signedAt` làm mốc năm của "Số bệnh án" (#269). Số được cấp cùng transaction: `complete()` thất bại (khoá lạc quan) thì rollback cả bộ đếm.
+      // Chữ ký logic cấp TRƯỚC khi chuyển trạng thái để lấy `signedAt` làm mốc năm của "Số lưu trữ" (#269). Số được cấp cùng transaction: `complete()` thất bại (khoá lạc quan) thì rollback cả bộ đếm.
       const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'clinical_record', entityId: id });
-      const recordNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'MEDICAL_RECORD', signature.signedAt);
+      const archiveNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'ARCHIVE_NO', signature.signedAt);
 
-      const count = await this.encounterRepository.complete(tx, tenantId, id, dto.version, actorId, recordNo);
+      const count = await this.encounterRepository.complete(tx, tenantId, id, dto.version, actorId, archiveNo);
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
@@ -2279,6 +2294,7 @@ export class EncounterService {
       content: note.plan?.content ?? '',
       advice: note.doctorAdvice?.content ?? '',
       followUpDateLabel: followUp ? `${vietnameseWeekdayLabel(followUp)}, ${formatDateStringVi(followUp)}` : null,
+      followUpDate: followUp,
     };
   }
 

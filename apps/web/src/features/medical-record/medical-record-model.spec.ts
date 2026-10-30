@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ConsultationDetailResponse, EncounterInsurance, PatientEncounterHistoryItem } from '@nexamed/shared';
 import {
   buildAdminFields,
+  buildSheetAdminFields,
   buildFieldGroups,
   buildMedicalRecordView,
   buildVitals,
@@ -14,8 +15,10 @@ import {
 } from './medical-record-model';
 
 const PATIENT: RecordPatientInfo = {
+  patientCode: 'BN2610000001',
   fullName: 'Nguyễn Thị Hương',
-  birthYearAndAge: '1988 · 38 tuổi',
+  dob: '04/03/1988',
+  age: '38 tuổi',
   gender: 'Nữ',
   occupation: 'Giáo viên',
   ethnicity: 'Kinh',
@@ -51,7 +54,7 @@ const note = (content: string, extra: Partial<{ signedAt: string | null; amendme
 
 function detail(overrides: Partial<ConsultationDetailResponse> = {}): ConsultationDetailResponse {
   return {
-    encounter: { id: 'e1', encounterNo: 'LK0042', recordNo: 'BA2026-000042', completedAt: '2026-10-20T07:40:00.000Z', chiefComplaint: 'Ho 3 ngày' },
+    encounter: { id: 'e1', encounterNo: 'LK0042', archiveNo: 'LT2026-000042', completedAt: '2026-10-20T07:40:00.000Z', chiefComplaint: 'Ho 3 ngày' },
     patient: {
       id: 'p1',
       patientCode: 'BN1',
@@ -93,7 +96,7 @@ function detail(overrides: Partial<ConsultationDetailResponse> = {}): Consultati
 const item: PatientEncounterHistoryItem = {
   encounterId: 'e1',
   encounterNo: 'LK0042',
-  recordNo: 'BA2026-000042',
+  archiveNo: 'LT2026-000042',
   status: 'COMPLETED',
   checkedInAt: '2026-10-20T01:15:00.000Z',
   examTypeName: null,
@@ -160,17 +163,17 @@ describe('buildVitals — luôn đủ 8 ô, thiếu thì gạch ngang', () => {
 });
 
 describe('buildAdminFields', () => {
-  const enc = { recordNo: 'BA2026-000042', encounterNo: 'LK0042', checkedInAt: '2026-10-20T01:15:00.000Z', doctorName: 'BS. Bình', departmentName: 'Khoa Nội', branchName: 'CN Q1', insurance: null };
+  const enc = { archiveNo: 'LT2026-000042', encounterNo: 'LK0042', checkedInAt: '2026-10-20T01:15:00.000Z', doctorName: 'BS. Bình', departmentName: 'Khoa Nội', branchName: 'CN Q1', insurance: null };
 
-  it('Số bệnh án đứng đầu; tách khỏi mã lượt khám; giờ vào khám theo giờ Việt Nam', () => {
+  it('Số lưu trữ đứng đầu; tách khỏi mã phiếu khám; giờ vào khám theo giờ Việt Nam', () => {
     const f = buildAdminFields(PATIENT, enc, false);
-    expect(f[0]).toEqual({ label: 'Số bệnh án', value: 'BA2026-000042' });
-    expect(f[1]).toEqual({ label: 'Mã lượt khám', value: 'LK0042' });
+    expect(f[0]).toEqual({ label: 'Số lưu trữ', value: 'LT2026-000042' });
+    expect(f[1]).toEqual({ label: 'Mã phiếu khám', value: 'LK0042' });
     expect(f.find((x) => x.label === 'Vào khám lúc')?.value).toBe('20/10/2026 08:15');
   });
 
-  it('lượt khám cũ chưa có Số bệnh án → gạch ngang (không rỗng, không "null")', () => {
-    expect(buildAdminFields(PATIENT, { ...enc, recordNo: null }, false)[0]?.value).toBe('—');
+  it('lượt khám cũ chưa có Số lưu trữ → gạch ngang (không rỗng, không "null")', () => {
+    expect(buildAdminFields(PATIENT, { ...enc, archiveNo: null }, false)[0]?.value).toBe('—');
   });
 
   it('công ty 1 chi nhánh: KHÔNG có ô Chi nhánh; từ 2 chi nhánh: có', () => {
@@ -198,6 +201,46 @@ describe('buildAdminFields', () => {
     const f = buildAdminFields(PATIENT, enc, false);
     expect(f.find((x) => x.label === 'Địa chỉ')?.wide).toBe(true);
     expect(f.find((x) => x.label === 'Khi cần báo tin cho')?.wide).toBe(true);
+  });
+});
+
+describe('buildSheetAdminFields — mục I đủ 13 ô theo số thứ tự mẫu MS 15/BV-01', () => {
+  const enc = { checkedInAt: '2026-10-20T01:15:00.000Z', insurance: null as EncounterInsurance | null };
+
+  it('đủ 13 ô đánh số 1…13 theo đúng thứ tự mẫu', () => {
+    const f = buildSheetAdminFields(PATIENT, enc);
+    expect(f.map((x) => Number.parseInt(x.label, 10)).filter((n) => !Number.isNaN(n))).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(f[0]).toEqual({ label: '1. Họ và tên (in hoa)', value: 'NGUYỄN THỊ HƯƠNG', wide: true });
+    // Sinh ngày và Tuổi là hai ô riêng, không ghép chung một chuỗi.
+    expect(f[1]).toEqual({ label: '2. Sinh ngày', value: '04/03/1988' });
+    expect(f[2]).toEqual({ label: 'Tuổi', value: '38 tuổi' });
+    expect(f.find((x) => x.label.startsWith('12.'))?.value).toBe('20/10/2026 08:15');
+  });
+
+  it('Nơi làm việc và Chẩn đoán nơi giới thiệu: hệ thống chưa lưu → gạch ngang', () => {
+    const f = buildSheetAdminFields(PATIENT, enc);
+    expect(f.find((x) => x.label.startsWith('8.'))?.value).toBe('—');
+    expect(f.find((x) => x.label.startsWith('13.'))?.value).toBe('—');
+  });
+
+  it('địa chỉ, BHYT và người nhà chiếm 2 ô', () => {
+    const f = buildSheetAdminFields(PATIENT, enc);
+    for (const n of ['7.', '10.', '11.']) expect(f.find((x) => x.label.startsWith(n))?.wide).toBe(true);
+  });
+
+  it('Đối tượng suy từ thẻ BHYT: công tắc tắt → —; có thẻ → BHYT kèm số thẻ + hạn; tự chi trả → Thu phí; không giải mã được → BHYT + "Không đọc được"', () => {
+    const obj = (insurance: EncounterInsurance | null) => buildSheetAdminFields(PATIENT, { ...enc, insurance });
+    expect(obj(null).find((x) => x.label.startsWith('9.'))?.value).toBe('—');
+    expect(obj(null).find((x) => x.label.startsWith('10.'))?.value).toBe('—');
+    const withCard = obj({ ...BHYT, validTo: '2026-12-31T00:00:00.000Z' });
+    expect(withCard.find((x) => x.label.startsWith('9.'))?.value).toBe('BHYT');
+    expect(withCard.find((x) => x.label.startsWith('10.'))?.value).toBe('079188004521 · đến 31/12/2026');
+    const selfPay = obj({ ...BHYT, selfPay: true, cardNo: null });
+    expect(selfPay.find((x) => x.label.startsWith('9.'))?.value).toBe('Thu phí');
+    expect(selfPay.find((x) => x.label.startsWith('10.'))?.value).toBe('—');
+    const unreadable = obj({ ...BHYT, cardNo: null, cardNoUnreadable: true });
+    expect(unreadable.find((x) => x.label.startsWith('9.'))?.value).toBe('BHYT');
+    expect(unreadable.find((x) => x.label.startsWith('10.'))?.value).toBe('Không đọc được');
   });
 });
 
@@ -292,9 +335,21 @@ describe('buildMedicalRecordView', () => {
     expect(v.personalHistoryNote).toBe('Không hút thuốc');
   });
 
-  it('Số bệnh án lấy từ danh sách lịch sử, rơi về chi tiết lượt khám; lượt cũ chưa có thì null', () => {
-    expect(buildMedicalRecordView(base).recordNo).toBe('BA2026-000042');
-    expect(buildMedicalRecordView({ ...base, item: { ...item, recordNo: null }, detail: detail({ encounter: { ...detail().encounter, recordNo: null } as never }) }).recordNo).toBeNull();
+  it('Số lưu trữ lấy từ danh sách lịch sử, rơi về chi tiết lượt khám; lượt cũ chưa có thì null', () => {
+    expect(buildMedicalRecordView(base).archiveNo).toBe('LT2026-000042');
+    expect(buildMedicalRecordView({ ...base, item: { ...item, archiveNo: null }, detail: detail({ encounter: { ...detail().encounter, archiveNo: null } as never }) }).archiveNo).toBeNull();
+  });
+
+  it('mã hồ sơ = mã bệnh nhân; nhãn Khám mới/Tái khám lấy từ Loại tiếp nhận, không có thì null', () => {
+    expect(buildMedicalRecordView(base).patientCode).toBe('BN2610000001');
+    expect(buildMedicalRecordView(base).visitTypeLabel).toBeNull();
+    expect(buildMedicalRecordView({ ...base, visitTypeLabel: 'Tái khám' }).visitTypeLabel).toBe('Tái khám');
+  });
+
+  it('"Điều trị ngoại trú": từ = ngày khám, đến = ngày hẹn tái khám nếu có, không thì bằng ngày khám', () => {
+    expect(buildMedicalRecordView(base).treatmentPeriod).toBe('Từ ngày 20/10/2026 đến ngày 27/10/2026');
+    const d = detail({ clinicalNote: { ...detail().clinicalNote, treatmentPlan: { ...detail().clinicalNote.treatmentPlan!, directions: ['PRESCRIPTION'] } } });
+    expect(buildMedicalRecordView({ ...base, detail: d }).treatmentPeriod).toBe('Từ ngày 20/10/2026 đến ngày 20/10/2026');
   });
 
   it('KHÔNG có bất kỳ trường tiền nào trong hồ sơ bệnh án', () => {
@@ -323,6 +378,17 @@ describe('buildFieldGroups — bảng "Theo trường dữ liệu"', () => {
   const view = buildMedicalRecordView({ item, detail: detail(), paraclinical: [cls()], patient: PATIENT, showBranch: false });
   const groups = buildFieldGroups(view, 'BS. Trần Văn Bình');
   const rowOf = (title: string, field: string) => groups.find((g) => g.title === title)?.rows.find((r) => r.field === field);
+
+  it('nhóm Lượt khám có Số ngoại trú, Số lưu trữ, mã hồ sơ; không còn nhãn "Số bệnh án"', () => {
+    const labels = groups.find((g) => g.title === 'Lượt khám')!.rows.map((r) => r.field);
+    expect(labels.slice(0, 4)).toEqual(['Số ngoại trú (mã phiếu khám)', 'Số lưu trữ', 'Hồ sơ (mã bệnh nhân)', 'Loại khám']);
+    expect(JSON.stringify(groups)).not.toContain('Số bệnh án');
+  });
+
+  it('ô Tiên lượng đổi nhãn thành "Tình trạng người bệnh khi kết thúc khám"', () => {
+    expect(rowOf('Ghi chú khám', 'Tình trạng người bệnh khi kết thúc khám')).toBeDefined();
+    expect(rowOf('Ghi chú khám', 'Tiên lượng')).toBeUndefined();
+  });
 
   it('đủ các nhóm theo thứ tự mockup', () => {
     expect(groups.map((g) => g.title)).toEqual(['Lượt khám', 'Hành chính bệnh nhân', 'Sinh hiệu', 'Ghi chú khám', 'Chẩn đoán', 'Cận lâm sàng', 'Điều trị và đơn thuốc']);
@@ -364,7 +430,7 @@ describe('buildFieldGroups — bảng "Theo trường dữ liệu"', () => {
   });
 
   it('không lộ tên bảng/cột kỹ thuật ở bất kỳ ô nào', () => {
-    expect(JSON.stringify(groups)).not.toMatch(/encounter\.|patient\.|clinical_note|vital_sign|_id\b|record_no/);
+    expect(JSON.stringify(groups)).not.toMatch(/encounter\.|patient\.|clinical_note|vital_sign|_id\b|archive_no/);
   });
 
   it('công ty 1 chi nhánh: không có dòng Chi nhánh trong nhóm Lượt khám', () => {

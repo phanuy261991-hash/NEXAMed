@@ -11,10 +11,11 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatDateTimeVn } from '../../shared/format/time';
 import { useHasPermission } from '../auth/usePermission';
+import { formatDateStringVi } from '../encounter/follow-up-date';
 import { useConsultationDetailQuery, usePatientEncounterHistoryQuery } from '../encounter/encounter.queries';
 import { useAllWardsQuery, useProvincesQuery } from '../geo/geo.queries';
 import { MedicalRecordExportDialog } from '../patient/MedicalRecordExportDialog';
-import { GENDER_LABEL, computeAgeLabel, computeBirthYear } from '../patient/patient-form.utils';
+import { GENDER_LABEL, computeAgeLabel } from '../patient/patient-form.utils';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { MedicalRecordFieldsView } from './MedicalRecordFieldsView';
 import { MedicalRecordSheet } from './MedicalRecordSheet';
@@ -48,8 +49,10 @@ function useRecordPatientInfo(patient: PatientDetail): RecordPatientInfo {
     const address = [a?.street, a?.neighborhood, a?.ward ? (wardName[a.ward] ?? a.ward) : '', a?.province ? (provinceName[a.province] ?? a.province) : ''].filter(Boolean).join(', ');
     const relativeBits = [patient.relativeFullName, patient.relativeRelationship ? `(${patient.relativeRelationship})` : '', patient.relativePhone ? `— ${patient.relativePhone}` : ''].filter(Boolean);
     return {
+      patientCode: patient.patientCode,
       fullName: patient.fullName,
-      birthYearAndAge: `${computeBirthYear(patient.dob)} · ${computeAgeLabel(patient.dob)}`,
+      dob: formatDateStringVi(patient.dob),
+      age: computeAgeLabel(patient.dob),
       gender: GENDER_LABEL[patient.gender] ?? patient.gender,
       occupation: patient.occupation ? (occupationName[patient.occupation] ?? patient.occupation) : '',
       ethnicity: patient.ethnicity ? (ethnicityName[patient.ethnicity] ?? patient.ethnicity) : '',
@@ -71,7 +74,10 @@ function EncounterTimeline({
   hasMore,
   loadingMore,
   onLoadMore,
+  visitTypeName,
 }: {
+  /** Tên Loại tiếp nhận theo mã ("Khám mới"/"Tái khám"…); `null` khi chưa có danh mục hoặc lượt chưa chọn loại. */
+  visitTypeName: (code: string | null) => string | null;
   items: PatientEncounterHistoryItem[];
   total: number;
   selectedId: string;
@@ -99,9 +105,9 @@ function EncounterTimeline({
               >
                 <span className="flex items-center justify-between gap-1.5">
                   <span className="text-[13.5px] font-semibold tabular-nums text-slate-900">{formatDateTimeVn(it.checkedInAt).slice(0, 10)}</span>
-                  <StatusBadge tone="success">Đã ký</StatusBadge>
+                  <StatusBadge tone="info">{visitTypeName(it.receptionTypeCode) ?? 'Đã ký'}</StatusBadge>
                 </span>
-                <span className="text-[11.5px] tabular-nums text-slate-600">Số BA {it.recordNo ?? '—'}</span>
+                <span className="text-[11.5px] tabular-nums text-slate-600">Phiếu {it.encounterNo} · Số LT {it.archiveNo ?? '—'}</span>
                 <span className="flex min-w-0 items-baseline gap-1.5">
                   {it.clinical?.primaryDiagnosisCode && <span className="shrink-0 text-[11px] font-semibold tabular-nums text-blue-700">{it.clinical.primaryDiagnosisCode}</span>}
                   <span className="truncate text-[12.5px] text-slate-900">{it.clinical?.primaryDiagnosisName ?? 'Chưa có chẩn đoán'}</span>
@@ -124,7 +130,7 @@ function EncounterTimeline({
 }
 
 /** Phiếu của MỘT lượt khám: tải chi tiết + kết quả cận lâm sàng, dựng `MedicalRecordView`, rồi chọn cách xem. */
-function MedicalRecordPane({ item, patient, showBranch }: { item: PatientEncounterHistoryItem; patient: PatientDetail; showBranch: boolean }) {
+function MedicalRecordPane({ item, patient, showBranch, visitTypeLabel }: { item: PatientEncounterHistoryItem; patient: PatientDetail; showBranch: boolean; visitTypeLabel: string | null }) {
   const [mode, setMode] = useState<ViewMode>('form');
   // "In bộ hồ sơ" / "Xuất PDF" một lượt khám (#269): cùng quyền với "Xuất toàn bộ bệnh án"; người không có quyền không thấy nút.
   const canExport = useHasPermission('patient', 'export_medical_record');
@@ -134,8 +140,8 @@ function MedicalRecordPane({ item, patient, showBranch }: { item: PatientEncount
   const patientInfo = useRecordPatientInfo(patient);
 
   const view = useMemo(
-    () => (detailQuery.data ? buildMedicalRecordView({ item, detail: detailQuery.data, paraclinical: clsQuery.data?.results ?? [], patient: patientInfo, showBranch }) : null),
-    [item, detailQuery.data, clsQuery.data, patientInfo, showBranch],
+    () => (detailQuery.data ? buildMedicalRecordView({ item, detail: detailQuery.data, paraclinical: clsQuery.data?.results ?? [], patient: patientInfo, showBranch, visitTypeLabel }) : null),
+    [item, detailQuery.data, clsQuery.data, patientInfo, showBranch, visitTypeLabel],
   );
   const fieldGroups = useMemo(() => (view ? buildFieldGroups(view, item.doctorName) : []), [view, item.doctorName]);
 
@@ -164,8 +170,11 @@ function MedicalRecordPane({ item, patient, showBranch }: { item: PatientEncount
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-[18px] py-3">
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold tracking-wide text-slate-900">BỆNH ÁN NGOẠI TRÚ</h2>
-          <p className="mt-0.5 text-[12.5px] tabular-nums text-slate-600">
-            Số bệnh án {view.recordNo ?? '—'} · Lượt khám {view.encounterNo} · Khám ngày {view.visitDate}
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] tabular-nums text-slate-600">
+            <span>
+              Hồ sơ {view.patientCode} · Phiếu {view.encounterNo} · Khám ngày {view.visitDate}
+            </span>
+            {view.visitTypeLabel && <StatusBadge tone="info">{view.visitTypeLabel}</StatusBadge>}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -226,7 +235,10 @@ function MedicalRecordPane({ item, patient, showBranch }: { item: PatientEncount
  */
 export function PatientMedicalRecordTab({ patient }: { patient: PatientDetail }) {
   const historyQuery = usePatientEncounterHistoryQuery(patient.id, 'COMPLETED');
+  const receptionTypes = useReferenceCatalogQuery('RECEPTION_TYPE');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Nhãn Khám mới/Tái khám = tên Loại tiếp nhận (danh mục phòng khám tự cấu hình); danh mục lỗi/chưa tải thì không hiện nhãn, phiếu vẫn xem được.
+  const visitTypeName = (code: string | null): string | null => (code ? (receptionTypes.data?.items.find((t) => t.code === code)?.name ?? null) : null);
 
   const items = useMemo(() => historyQuery.data?.pages.flatMap((p) => p.items) ?? [], [historyQuery.data]);
   const firstPage = historyQuery.data?.pages[0];
@@ -267,9 +279,10 @@ export function PatientMedicalRecordTab({ patient }: { patient: PatientDetail })
         hasMore={historyQuery.hasNextPage}
         loadingMore={historyQuery.isFetchingNextPage}
         onLoadMore={() => void historyQuery.fetchNextPage()}
+        visitTypeName={visitTypeName}
       />
       {/* `key` theo lượt khám: đổi lượt thì chế độ xem quay về "Theo mẫu" và trạng thái tải tách bạch từng lượt. */}
-      <MedicalRecordPane key={selected.encounterId} item={selected} patient={patient} showBranch={firstPage?.multiBranch ?? false} />
+      <MedicalRecordPane key={selected.encounterId} item={selected} patient={patient} showBranch={firstPage?.multiBranch ?? false} visitTypeLabel={visitTypeName(selected.receptionTypeCode)} />
     </div>
   );
 }

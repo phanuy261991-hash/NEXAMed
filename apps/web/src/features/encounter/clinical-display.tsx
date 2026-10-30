@@ -21,7 +21,7 @@ export const CLINICAL_SECTION_LABEL: Record<ClinicalKey, string> = {
   doctorAdvice: 'Lời dặn bác sĩ',
   // Hồ sơ bệnh án điện tử (#269) — hai mục tuỳ chọn của mẫu bệnh án ngoại trú.
   summary: 'Tóm tắt bệnh án',
-  prognosis: 'Tiên lượng',
+  prognosis: 'Tình trạng người bệnh khi kết thúc khám',
 };
 
 export type VitalTier = 'normal' | 'caution' | 'danger';

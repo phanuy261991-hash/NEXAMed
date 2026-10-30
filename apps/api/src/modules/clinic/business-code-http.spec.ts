@@ -108,10 +108,10 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
     expect(tube).toMatchObject({ prefix: 'ONG', template: '[Năm 2 số][Tháng][Ngày][Số đếm]', counterDigits: 4, startingValue: 1, locked: false });
     expect(tube.exampleNextCode).toMatch(/^\d{6}0001$/);
 
-    // "Số bệnh án" (#269): khuôn mặc định RIÊNG theo NĂM (đặt lại mỗi đầu năm), 6 chữ số đếm.
-    const record = res.body.data.items.find((i: { codeType: string }) => i.codeType === 'MEDICAL_RECORD');
-    expect(record).toMatchObject({ label: 'Số bệnh án', prefix: 'BA', template: 'BA[Năm 4 số]-[Số đếm]', counterDigits: 6, startingValue: 1, locked: false });
-    expect(record.exampleNextCode).toMatch(/^BA\d{4}-000001$/);
+    // "Số lưu trữ" (#269, mẫu MS 15/BV-01): khuôn mặc định RIÊNG theo NĂM (đặt lại mỗi đầu năm), 6 chữ số đếm.
+    const record = res.body.data.items.find((i: { codeType: string }) => i.codeType === 'ARCHIVE_NO');
+    expect(record).toMatchObject({ label: 'Số lưu trữ', prefix: 'LT', template: 'LT[Năm 4 số]-[Số đếm]', counterDigits: 6, startingValue: 1, locked: false });
+    expect(record.exampleNextCode).toMatch(/^LT\d{4}-000001$/);
 
     // "Sổ quỹ & Thu chi" GĐ2 — CASH_TRANSFER (Chuyển quỹ, prefix PCK); Ví tạm ứng —
     // WALLET_TOPUP/WALLET_SETTLEMENT; Kho Thuốc GĐ2 — STOCK_RECEIPT; Kho Thuốc GĐ3 — STOCK_ISSUE;
@@ -151,8 +151,8 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
         'CLINICAL_ORDER',
         // Lấy mẫu xét nghiệm có tem mã vạch (#220) — mã ống mẫu (SID).
         'SPECIMEN_TUBE',
-        // Hồ sơ bệnh án (#269) — "Số bệnh án" của từng lượt khám.
-        'MEDICAL_RECORD',
+        // Hồ sơ bệnh án (#269) — "Số lưu trữ" của hồ sơ bệnh án.
+        'ARCHIVE_NO',
         'WALLET_SETTLEMENT',
         'WALLET_TOPUP',
       ].sort(),

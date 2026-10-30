@@ -215,8 +215,8 @@ export type ReassignEncounterRequest = z.infer<typeof reassignEncounterRequestSc
 export const encounterSummarySchema = z.object({
   id: z.string().uuid(),
   encounterNo: z.string(),
-  /** "Số bệnh án" (#269) — cấp lúc "Hoàn tất khám"; `null` với lượt chưa hoàn tất hoặc hoàn tất trước khi có tính năng. */
-  recordNo: z.string().nullable(),
+  /** "Số lưu trữ" (#269) — cấp lúc "Hoàn tất khám"; `null` với lượt chưa hoàn tất hoặc hoàn tất trước khi có tính năng. */
+  archiveNo: z.string().nullable(),
   patientId: z.string().uuid(),
   /** "Hàng đợi ảo" (#064) — `null` khi lượt khám còn trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận. */
   doctorId: z.string().uuid().nullable(),
@@ -593,7 +593,8 @@ export const CLINICAL_NOTE_SECTIONS = [
   // Điều trị & Hẹn tái khám (docs/DECISIONS.md #222): `PLAN` = "Nội dung điều trị", `CONCLUSION` = "Kết luận", `DOCTOR_ADVICE` = "Lời dặn bác sĩ".
   'CONCLUSION',
   'DOCTOR_ADVICE',
-  // Hồ sơ bệnh án điện tử (docs/DECISIONS.md #269): mục VI "Tóm tắt bệnh án" và mục IX "Tiên lượng" của mẫu bệnh án ngoại trú — TUỲ CHỌN, không chặn "Hoàn tất khám".
+  // Hồ sơ bệnh án điện tử (docs/DECISIONS.md #269): "Tóm tắt bệnh án" (= "Quá trình bệnh lý và diễn biến lâm sàng" của Tổng kết bệnh án, MS 15/BV-01) và "Tình trạng người bệnh khi kết thúc khám" — TUỲ CHỌN,
+  // không chặn "Hoàn tất khám". Giá trị `PROGNOSIS` giữ tên cũ (đã có trong CSDL) nhưng NHÃN hiển thị là "Tình trạng người bệnh khi kết thúc khám" (chủ dự án chốt 30/10/2026).
   'SUMMARY',
   'PROGNOSIS',
 ] as const;
@@ -868,8 +869,8 @@ export const patientEncounterHistoryBillingSchema = z.object({
 export const patientEncounterHistoryItemSchema = z.object({
   encounterId: z.string().uuid(),
   encounterNo: z.string(),
-  /** "Số bệnh án" (#269) — `null` với lượt chưa hoàn tất hoặc hoàn tất trước khi có tính năng. */
-  recordNo: z.string().nullable(),
+  /** "Số lưu trữ" (#269) — `null` với lượt chưa hoàn tất hoặc hoàn tất trước khi có tính năng. */
+  archiveNo: z.string().nullable(),
   status: encounterStatusSchema,
   checkedInAt: z.string(),
   examTypeName: z.string().nullable(),

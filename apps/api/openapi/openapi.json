@@ -11066,7 +11066,7 @@
                         "encounterNo": {
                           "type": "string"
                         },
-                        "recordNo": {
+                        "archiveNo": {
                           "type": [
                             "string",
                             "null"
@@ -11148,7 +11148,7 @@
                       "required": [
                         "id",
                         "encounterNo",
-                        "recordNo",
+                        "archiveNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -11474,7 +11474,7 @@
                         "encounterNo": {
                           "type": "string"
                         },
-                        "recordNo": {
+                        "archiveNo": {
                           "type": [
                             "string",
                             "null"
@@ -11556,7 +11556,7 @@
                       "required": [
                         "id",
                         "encounterNo",
-                        "recordNo",
+                        "archiveNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -12738,7 +12738,7 @@
                               "encounterNo": {
                                 "type": "string"
                               },
-                              "recordNo": {
+                              "archiveNo": {
                                 "type": [
                                   "string",
                                   "null"
@@ -13010,7 +13010,7 @@
                             "required": [
                               "encounterId",
                               "encounterNo",
-                              "recordNo",
+                              "archiveNo",
                               "status",
                               "checkedInAt",
                               "examTypeName",
@@ -13226,7 +13226,7 @@
                         "encounterNo": {
                           "type": "string"
                         },
-                        "recordNo": {
+                        "archiveNo": {
                           "type": [
                             "string",
                             "null"
@@ -13308,7 +13308,7 @@
                       "required": [
                         "id",
                         "encounterNo",
-                        "recordNo",
+                        "archiveNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -13526,7 +13526,7 @@
                         "encounterNo": {
                           "type": "string"
                         },
-                        "recordNo": {
+                        "archiveNo": {
                           "type": [
                             "string",
                             "null"
@@ -13608,7 +13608,7 @@
                       "required": [
                         "id",
                         "encounterNo",
-                        "recordNo",
+                        "archiveNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -13821,7 +13821,7 @@
                         "encounterNo": {
                           "type": "string"
                         },
-                        "recordNo": {
+                        "archiveNo": {
                           "type": [
                             "string",
                             "null"
@@ -13903,7 +13903,7 @@
                       "required": [
                         "id",
                         "encounterNo",
-                        "recordNo",
+                        "archiveNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -14124,7 +14124,7 @@
                         "encounterNo": {
                           "type": "string"
                         },
-                        "recordNo": {
+                        "archiveNo": {
                           "type": [
                             "string",
                             "null"
@@ -14206,7 +14206,7 @@
                       "required": [
                         "id",
                         "encounterNo",
-                        "recordNo",
+                        "archiveNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -14436,7 +14436,7 @@
                             "encounterNo": {
                               "type": "string"
                             },
-                            "recordNo": {
+                            "archiveNo": {
                               "type": [
                                 "string",
                                 "null"
@@ -14518,7 +14518,7 @@
                           "required": [
                             "id",
                             "encounterNo",
-                            "recordNo",
+                            "archiveNo",
                             "patientId",
                             "doctorId",
                             "departmentId",
@@ -19303,7 +19303,7 @@
                         "encounterNo": {
                           "type": "string"
                         },
-                        "recordNo": {
+                        "archiveNo": {
                           "type": [
                             "string",
                             "null"
@@ -19385,7 +19385,7 @@
                       "required": [
                         "id",
                         "encounterNo",
-                        "recordNo",
+                        "archiveNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -52984,7 +52984,7 @@
                                   "PRICE_LIST",
                                   "CLINICAL_ORDER",
                                   "SPECIMEN_TUBE",
-                                  "MEDICAL_RECORD"
+                                  "ARCHIVE_NO"
                                 ]
                               },
                               "label": {
@@ -53912,7 +53912,7 @@
                 "PRICE_LIST",
                 "CLINICAL_ORDER",
                 "SPECIMEN_TUBE",
-                "MEDICAL_RECORD"
+                "ARCHIVE_NO"
               ]
             },
             "required": true,
@@ -53997,7 +53997,7 @@
                             "PRICE_LIST",
                             "CLINICAL_ORDER",
                             "SPECIMEN_TUBE",
-                            "MEDICAL_RECORD"
+                            "ARCHIVE_NO"
                           ]
                         },
                         "label": {

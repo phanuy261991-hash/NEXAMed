@@ -435,7 +435,7 @@ export class ParaclinicalResultService {
   }
 
   /**
-   * "Đính chính" kết quả ĐÃ DUYỆT (docs/DECISIONS.md #215, luồng chủ dự án chốt): người có quyền Nhập của nhóm đề nghị kèm lý do bắt buộc (Thông tư 46/2018/TT-BYT);
+   * "Đính chính" kết quả ĐÃ DUYỆT (docs/DECISIONS.md #215, luồng chủ dự án chốt): người có quyền Nhập của nhóm đề nghị kèm lý do bắt buộc (Thông tư 46/2018/TT-BYT (đã hết hiệu lực 06/06/2025, xem docs/DECISIONS.md #270));
    * bản đã ký được giữ nguyên (soft-delete, không xoá) và thay bằng bản NHÁP sao chép nội dung + chỉ số + ảnh, dịch vụ quay lại "Đang thực hiện" để sửa rồi gửi duyệt;
    * bác sĩ có quyền Duyệt ký lại. Toàn bộ nhóm (xét nghiệm cùng phiếu) đính chính cùng lúc vì cùng một phiếu kết quả.
    */

@@ -6,6 +6,7 @@ import { TREATMENT_DIRECTION_LABEL } from '../encounter/treatment-plan';
 /**
  * Hồ sơ bệnh án điện tử (docs/DECISIONS.md #269) — phần LOGIC THUẦN của tab "Hồ sơ bệnh án": ghép dữ liệu của MỘT lượt khám đã hoàn tất (lịch sử khám + chi tiết lượt khám + kết quả cận lâm sàng + hồ sơ
  * bệnh nhân) thành một `MedicalRecordView` dùng chung cho hai cách xem ("Theo mẫu Bộ Y tế" và "Theo trường dữ liệu"). Không có tiền/chi phí — tab này chỉ có dữ liệu lâm sàng.
+ * Khung theo mẫu bệnh án ngoại trú MS 15/BV-01 (Thông tư 32/2023/TT-BYT, Phụ lục XXVIII): mục I–IV + "Tổng kết bệnh án".
  */
 
 export type ParaclinicalResult = MedicalRecordParaclinicalResponse['results'][number];
@@ -19,8 +20,13 @@ export interface RecordField {
 
 /** Thông tin hành chính của bệnh nhân ĐÃ giải mã tên (dân tộc, quốc tịch, nghề nghiệp, địa chỉ) — do component resolve qua danh mục, model chỉ ghép. */
 export interface RecordPatientInfo {
+  /** Mã bệnh nhân — là "mã hồ sơ" ở đầu phiếu. */
+  patientCode: string;
   fullName: string;
-  birthYearAndAge: string;
+  /** `dd/mm/yyyy` — ô "2. Sinh ngày" của mẫu. */
+  dob: string;
+  /** Tuổi ("41 tuổi"…) — ô "Tuổi" riêng của mẫu, tách khỏi ngày sinh cho khỏi dính chữ. */
+  age: string;
   gender: string;
   occupation: string;
   ethnicity: string;
@@ -52,8 +58,16 @@ export interface RecordDiagnosis {
 }
 
 export interface MedicalRecordView {
-  recordNo: string | null;
+  /** "Số lưu trữ" (mẫu MS 15/BV-01). */
+  archiveNo: string | null;
+  /** Mã phiếu khám — cũng là ô "Số ngoại trú" của mẫu. */
   encounterNo: string;
+  /** Mã bệnh nhân = mã hồ sơ. */
+  patientCode: string;
+  /** Tên Loại tiếp nhận ("Khám mới"/"Tái khám"…) của lượt khám; `null` = chưa chọn hoặc danh mục chưa tải. */
+  visitTypeLabel: string | null;
+  /** "Từ ngày dd/mm/yyyy đến ngày dd/mm/yyyy" — mục IV.7; đến = ngày hẹn tái khám nếu có, không thì ngày khám. */
+  treatmentPeriod: string;
   /** `dd/mm/yyyy` theo giờ Việt Nam — ngày khám. */
   visitDate: string;
   doctorName: string | null;
@@ -62,6 +76,8 @@ export interface MedicalRecordView {
   /** Dòng vết đính chính ("Có đính chính: Chẩn đoán (05/09/2026)"); `null` = chưa đính chính lần nào. */
   amendNote: string | null;
   admin: RecordField[];
+  /** 13 ô của mục I theo số thứ tự mẫu (có số ở nhãn). */
+  sheetAdmin: RecordField[];
   reason: string;
   illness: string;
   preliminaryDiagnosis: string;
@@ -128,14 +144,15 @@ function buildInsuranceFields(insurance: EncounterInsurance | null): RecordField
 /** Các ô hành chính của mục I, đúng thứ tự mockup đã duyệt. Cột "Chi nhánh" chỉ có khi công ty có từ 2 chi nhánh. */
 export function buildAdminFields(
   patient: RecordPatientInfo,
-  encounter: { recordNo: string | null; encounterNo: string; checkedInAt: string; doctorName: string | null; departmentName: string | null; branchName: string | null; insurance: EncounterInsurance | null },
+  encounter: { archiveNo: string | null; encounterNo: string; checkedInAt: string; doctorName: string | null; departmentName: string | null; branchName: string | null; insurance: EncounterInsurance | null },
   showBranch: boolean,
 ): RecordField[] {
   return [
-    { label: 'Số bệnh án', value: dashIfEmpty(encounter.recordNo) },
-    { label: 'Mã lượt khám', value: encounter.encounterNo },
+    { label: 'Số lưu trữ', value: dashIfEmpty(encounter.archiveNo) },
+    { label: 'Mã phiếu khám', value: encounter.encounterNo },
     { label: 'Họ và tên', value: dashIfEmpty(patient.fullName) },
-    { label: 'Năm sinh · Tuổi', value: dashIfEmpty(patient.birthYearAndAge) },
+    { label: 'Sinh ngày', value: dashIfEmpty(patient.dob) },
+    { label: 'Tuổi', value: dashIfEmpty(patient.age) },
     { label: 'Giới tính', value: dashIfEmpty(patient.gender) },
     { label: 'Nghề nghiệp', value: dashIfEmpty(patient.occupation) },
     { label: 'Dân tộc', value: dashIfEmpty(patient.ethnicity) },
@@ -152,6 +169,34 @@ export function buildAdminFields(
   ];
 }
 
+/**
+ * Mục I "Hành chính" đủ 13 ô theo số thứ tự mẫu MS 15/BV-01. Hệ thống chưa lưu "Nơi làm việc" và "Chẩn đoán của nơi giới thiệu" nên hiện gạch ngang; "Đối tượng" suy ra từ thẻ BHYT của lượt khám
+ * (công tắc "Áp dụng BHYT" tắt thì để trống) — chủ dự án chốt 30/10/2026, không thêm trường mới.
+ */
+export function buildSheetAdminFields(patient: RecordPatientInfo, encounter: { checkedInAt: string; insurance: EncounterInsurance | null }): RecordField[] {
+  const ins = encounter.insurance;
+  const hasCard = ins !== null && !ins.selfPay && (ins.cardNo !== null || ins.cardNoUnreadable);
+  const objectLabel = ins === null ? DASH : hasCard ? 'BHYT' : 'Thu phí';
+  const validTo = ins?.validTo ? ` · đến ${formatDateStringVi(ins.validTo.slice(0, 10))}` : '';
+  const card = ins === null || ins.selfPay ? DASH : ins.cardNo ? `${ins.cardNo}${validTo}` : ins.cardNoUnreadable ? 'Không đọc được' : DASH;
+  return [
+    { label: '1. Họ và tên (in hoa)', value: dashIfEmpty(patient.fullName).toLocaleUpperCase('vi-VN'), wide: true },
+    { label: '2. Sinh ngày', value: dashIfEmpty(patient.dob) },
+    { label: 'Tuổi', value: dashIfEmpty(patient.age) },
+    { label: '3. Giới', value: dashIfEmpty(patient.gender) },
+    { label: '4. Nghề nghiệp', value: dashIfEmpty(patient.occupation) },
+    { label: '5. Dân tộc', value: dashIfEmpty(patient.ethnicity) },
+    { label: '6. Ngoại kiều', value: dashIfEmpty(patient.nationality) },
+    { label: '7. Địa chỉ', value: dashIfEmpty(patient.address), wide: true },
+    { label: '8. Nơi làm việc', value: DASH },
+    { label: '9. Đối tượng', value: objectLabel },
+    { label: '10. BHYT giá trị đến · Số thẻ BHYT', value: card, wide: true },
+    { label: '11. Người nhà khi cần báo tin', value: dashIfEmpty(patient.relative), wide: true },
+    { label: '12. Đến khám bệnh lúc', value: formatDateTimeVn(encounter.checkedInAt) },
+    { label: '13. Chẩn đoán của nơi giới thiệu', value: DASH, wide: true },
+  ];
+}
+
 const NOTE_SECTION_LABEL: Record<string, string> = {
   reasonForVisit: 'Lý do khám',
   illnessProgress: 'Quá trình bệnh lý',
@@ -162,7 +207,7 @@ const NOTE_SECTION_LABEL: Record<string, string> = {
   conclusion: 'Kết luận',
   doctorAdvice: 'Lời dặn',
   summary: 'Tóm tắt bệnh án',
-  prognosis: 'Tiên lượng',
+  prognosis: 'Tình trạng người bệnh khi kết thúc khám',
 };
 
 /** Mốc ký bản gốc + dòng vết đính chính, tính từ mọi mục lâm sàng của lượt khám. */
@@ -198,25 +243,31 @@ export function buildMedicalRecordView(input: {
   paraclinical: ParaclinicalResult[];
   patient: RecordPatientInfo;
   showBranch: boolean;
+  /** Tên Loại tiếp nhận của lượt khám (đã tra danh mục) — `null` khi chưa chọn hoặc danh mục chưa tải. */
+  visitTypeLabel?: string | null;
 }): MedicalRecordView {
-  const { item, detail, paraclinical, patient, showBranch } = input;
+  const { item, detail, paraclinical, patient, showBranch, visitTypeLabel = null } = input;
   const note = detail.clinicalNote;
   const text = (section: { content: string } | null | undefined): string => section?.content.trim() ?? '';
   const { signedAt, amendNote } = summarizeSignatures(detail);
   const plan = note.treatmentPlan;
   const followUpDate = plan?.directions.includes('FOLLOW_UP') ? plan.followUpDate : null;
+  const visitDate = formatDateTimeVn(item.checkedInAt).slice(0, 10);
 
   return {
-    recordNo: item.recordNo ?? detail.encounter.recordNo,
+    archiveNo: item.archiveNo ?? detail.encounter.archiveNo,
     encounterNo: item.encounterNo,
-    visitDate: formatDateTimeVn(item.checkedInAt).slice(0, 10),
+    patientCode: patient.patientCode,
+    visitTypeLabel,
+    treatmentPeriod: `Từ ngày ${visitDate} đến ngày ${followUpDate ? formatDateStringVi(followUpDate) : visitDate}`,
+    visitDate,
     doctorName: item.doctorName,
     signedAt,
     amendNote,
     admin: buildAdminFields(
       patient,
       {
-        recordNo: item.recordNo ?? detail.encounter.recordNo,
+        archiveNo: item.archiveNo ?? detail.encounter.archiveNo,
         encounterNo: item.encounterNo,
         checkedInAt: item.checkedInAt,
         doctorName: item.doctorName,
@@ -226,6 +277,7 @@ export function buildMedicalRecordView(input: {
       },
       showBranch,
     ),
+    sheetAdmin: buildSheetAdminFields(patient, { checkedInAt: item.checkedInAt, insurance: detail.insurance }),
     reason: text(note.reasonForVisit) || (detail.encounter.chiefComplaint ?? '').trim(),
     illness: text(note.illnessProgress),
     preliminaryDiagnosis: text(note.preliminaryDiagnosis),
@@ -280,8 +332,10 @@ export function buildFieldGroups(view: MedicalRecordView, signerName: string | n
     {
       title: 'Lượt khám',
       rows: [
-        row('Số bệnh án', view.recordNo, system),
-        row('Mã lượt khám', view.encounterNo, system),
+        row('Số ngoại trú (mã phiếu khám)', view.encounterNo, system),
+        row('Số lưu trữ', view.archiveNo, system),
+        row('Hồ sơ (mã bệnh nhân)', view.patientCode, system),
+        row('Loại khám', view.visitTypeLabel, reception),
         adminRow('Vào khám lúc', reception),
         adminRow('Bác sĩ khám', reception),
         adminRow('Khoa · Phòng', reception),
@@ -292,7 +346,8 @@ export function buildFieldGroups(view: MedicalRecordView, signerName: string | n
       title: 'Hành chính bệnh nhân',
       rows: [
         'Họ và tên',
-        'Năm sinh · Tuổi',
+        'Sinh ngày',
+        'Tuổi',
         'Giới tính',
         'Nghề nghiệp',
         'Dân tộc',
@@ -312,7 +367,7 @@ export function buildFieldGroups(view: MedicalRecordView, signerName: string | n
         row('Khám toàn thân', view.generalExam, doctorPlain),
         row('Khám các bộ phận', view.regionalExam, doctorPlain),
         row('Tóm tắt bệnh án', view.summary, view.summary ? doctor : optional),
-        row('Tiên lượng', view.prognosis, view.prognosis ? doctor : optional),
+        row('Tình trạng người bệnh khi kết thúc khám', view.prognosis, view.prognosis ? doctor : optional),
         row('Lời dặn bác sĩ', view.advice, doctor),
       ],
     },

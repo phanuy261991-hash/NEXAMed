@@ -18,11 +18,11 @@ const KIND_GROUP: Record<ParaclinicalResult['serviceKind'], ParaclinicalGroup> =
  * đã chốt (docs/DECISIONS.md #269). Dưới `md` cột tiêu đề chuyển lên trên nội dung. Tiêu đề căn theo đường chữ ở đỉnh cột (`items-baseline`) — cột kéo dài hết chiều cao của hàng nên căn giữa sẽ làm
  * tên mục trôi xuống giữa.
  */
-export function RecordSection({ numeral, title, children }: { numeral: string; title: string; children: ReactNode }) {
+export function RecordSection({ numeral, title, children, tone = 'blue' }: { numeral: string; title: string; children: ReactNode; /** `teal` cho các mục của nhóm "Tổng kết bệnh án". */ tone?: 'blue' | 'teal' }) {
   return (
     <section className="grid grid-cols-1 border-t border-slate-300 first:border-t-0 md:grid-cols-[224px_minmax(0,1fr)]">
       <h3 className="flex items-baseline gap-2.5 border-b border-slate-300 bg-slate-100 px-4 py-3.5 text-sm font-semibold leading-snug text-slate-900 md:border-b-0 md:border-r">
-        <span className="inline-flex h-[26px] min-w-[26px] shrink-0 items-center justify-center rounded-md bg-blue-600 px-1.5 text-xs font-semibold tabular-nums text-white">{numeral}</span>
+        <span className={`inline-flex h-[26px] min-w-[26px] shrink-0 items-center justify-center rounded-md ${tone === 'teal' ? 'bg-teal-600' : 'bg-blue-600'} px-1.5 text-xs font-semibold tabular-nums text-white`}>{numeral}</span>
         <span className="min-w-0">{title}</span>
       </h3>
       <div className="min-w-0 px-[18px] py-3.5">{children}</div>
@@ -106,9 +106,38 @@ function ParaclinicalCard({ result, canView, onView }: { result: ParaclinicalRes
   );
 }
 
+function DiagnosisList({ diagnoses }: { diagnoses: MedicalRecordView['diagnoses'] }) {
+  if (diagnoses.length === 0) return <p className="text-[13.5px] italic text-slate-500">{NOT_RECORDED}</p>;
+  return (
+    <div className="flex flex-col gap-2">
+      {diagnoses.map((d) => (
+        <div key={d.code} className="flex flex-wrap items-baseline gap-2.5">
+          <span className="shrink-0 rounded-[5px] border border-blue-200 bg-blue-50 px-2 py-0.5 text-[12.5px] font-semibold tabular-nums text-blue-700">{d.code}</span>
+          <span className="min-w-0 text-[13.5px] text-slate-900">{d.name}</span>
+          {d.primary ? (
+            <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10.5px] font-semibold text-white">Chính</span>
+          ) : (
+            <span className="rounded border border-slate-300 px-1.5 py-0.5 text-[10.5px] text-slate-600">Kèm theo</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CodeCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-slate-500">{label}</dt>
+      <dd className="text-sm font-semibold tabular-nums text-slate-900">{value}</dd>
+    </div>
+  );
+}
+
 /**
- * Phiếu bệnh án ngoại trú của MỘT lượt khám đã hoàn tất, theo bố cục mẫu Bộ Y tế (QĐ 4069/2001) — 10 mục I–X (docs/DECISIONS.md #269). CHỈ ĐỌC: sửa vẫn phải qua đính chính ở màn khám.
- * `paraclinical` = `undefined` khi đang tải (hiện khung xương ở mục V), `null` khi tải lỗi (mục V báo lỗi tại chỗ, các mục khác vẫn xem được).
+ * Phiếu bệnh án ngoại trú của MỘT lượt khám đã hoàn tất, theo mẫu MS 15/BV-01 (Thông tư 32/2023/TT-BYT, Phụ lục XXVIII): hàng mã đầu phiếu, mục I–IV, rồi nhóm "Tổng kết bệnh án" (docs/DECISIONS.md #269,
+ * mockup đã chốt https://claude.ai/artifact/LwSZrKeS8SKqubKmynACyW). CHỈ ĐỌC: sửa vẫn phải qua đính chính ở màn khám.
+ * `paraclinical` cho biết kết quả cận lâm sàng đang tải/lỗi/đã có (mục IV.3 hiện khung xương hoặc báo lỗi tại chỗ, các mục khác vẫn xem được).
  */
 export function MedicalRecordSheet({
   view,
@@ -127,12 +156,22 @@ export function MedicalRecordSheet({
   const [viewing, setViewing] = useState<{ group: ParaclinicalGroup; itemId: string } | null>(null);
   const canView = (kind: ParaclinicalResult['serviceKind']): boolean => (KIND_GROUP[kind] === 'lab' ? canViewLab : canViewImaging);
   const printedPrescription = view.prescription && view.prescription.signedAt ? view.prescription : null;
+  const branchName = view.admin.find((f) => f.label === 'Chi nhánh')?.value;
+  // Tổng kết mục 1: ưu tiên "Tóm tắt bệnh án" bác sĩ viết; chưa viết thì dùng quá trình bệnh lý (cùng quy tắc bản in).
+  const summaryText = view.summary !== '' ? view.summary : view.illness;
 
   return (
     <div>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-2 border-b border-slate-300 px-[18px] py-3 xl:grid-cols-4">
+        <CodeCell label="Số ngoại trú" value={view.encounterNo} />
+        <CodeCell label="Số lưu trữ" value={view.archiveNo ?? '—'} />
+        <CodeCell label="Mã bệnh nhân (hồ sơ)" value={view.patientCode} />
+        {branchName && <CodeCell label="Chi nhánh" value={branchName} />}
+      </dl>
+
       <RecordSection numeral="I" title="Hành chính">
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 xl:grid-cols-4">
-          {view.admin.map((f) => (
+          {view.sheetAdmin.map((f) => (
             <div key={f.label} className={f.wide ? 'col-span-2' : undefined}>
               <dt className="mb-0.5 text-xs text-slate-500">{f.label}</dt>
               <dd className="text-[13.5px] tabular-nums text-slate-900">{f.value}</dd>
@@ -141,18 +180,18 @@ export function MedicalRecordSheet({
         </dl>
       </RecordSection>
 
-      <RecordSection numeral="II" title="Lý do đến khám">
+      <RecordSection numeral="II" title="Lý do vào viện">
         <Prose text={view.reason} />
       </RecordSection>
 
       <RecordSection numeral="III" title="Hỏi bệnh">
         <div className="flex flex-col gap-3">
           <div>
-            <SubLabel>Quá trình bệnh lý</SubLabel>
+            <SubLabel>1. Quá trình bệnh lý</SubLabel>
             <Prose text={view.illness} />
           </div>
           <div className="flex flex-col gap-2.5 rounded-lg border border-slate-200 p-3">
-            <span className="text-[13.5px] font-semibold text-slate-900">Tiền sử</span>
+            <span className="text-[13.5px] font-semibold text-slate-900">2. Tiền sử bệnh</span>
             <div>
               <SubLabel>Bản thân</SubLabel>
               {view.conditions.length > 0 && (
@@ -208,73 +247,95 @@ export function MedicalRecordSheet({
             ))}
           </div>
           <div>
-            <SubLabel>Toàn thân</SubLabel>
+            <SubLabel>1. Toàn thân</SubLabel>
             <Prose text={view.generalExam} />
           </div>
           <div>
-            <SubLabel>Các bộ phận</SubLabel>
+            <SubLabel>2. Các bộ phận</SubLabel>
             <Prose text={view.regionalExam} />
           </div>
-        </div>
-      </RecordSection>
-
-      <RecordSection numeral="V" title="Các xét nghiệm cận lâm sàng">
-        {paraclinical.state === 'loading' && <Skeleton className="h-24 w-full rounded-lg" />}
-        {paraclinical.state === 'error' && (
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">
-            <span>Không tải được kết quả cận lâm sàng của lượt khám này.</span>
-            <Button type="button" variant="danger" className="px-3 py-1.5" onClick={onRetryParaclinical}>
-              Thử lại
-            </Button>
-          </div>
-        )}
-        {paraclinical.state === 'ready' &&
-          (view.cls.length === 0 ? (
-            <p className="text-[13.5px] italic text-slate-500">Lượt khám này không có kết quả cận lâm sàng đã duyệt.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {view.cls.map((r) => (
-                <ParaclinicalCard key={r.itemId} result={r} canView={canView(r.serviceKind)} onView={() => setViewing({ group: KIND_GROUP[r.serviceKind], itemId: r.itemId })} />
-              ))}
-            </div>
-          ))}
-      </RecordSection>
-
-      <RecordSection numeral="VI" title="Tóm tắt bệnh án">
-        <Prose text={view.summary} />
-      </RecordSection>
-
-      <RecordSection numeral="VII" title="Chẩn đoán">
-        <div className="flex flex-col gap-3">
           <div>
-            <SubLabel>Chẩn đoán sơ bộ</SubLabel>
+            <SubLabel>3. Tóm tắt kết quả cận lâm sàng</SubLabel>
+            {paraclinical.state === 'loading' && <Skeleton className="h-24 w-full rounded-lg" />}
+            {paraclinical.state === 'error' && (
+              <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">
+                <span>Không tải được kết quả cận lâm sàng của lượt khám này.</span>
+                <Button type="button" variant="danger" className="px-3 py-1.5" onClick={onRetryParaclinical}>
+                  Thử lại
+                </Button>
+              </div>
+            )}
+            {paraclinical.state === 'ready' &&
+              (view.cls.length === 0 ? (
+                <p className="text-[13.5px] italic text-slate-500">Lượt khám này không có kết quả cận lâm sàng đã duyệt.</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {view.cls.map((r) => (
+                    <ParaclinicalCard key={r.itemId} result={r} canView={canView(r.serviceKind)} onView={() => setViewing({ group: KIND_GROUP[r.serviceKind], itemId: r.itemId })} />
+                  ))}
+                </div>
+              ))}
+          </div>
+          <div>
+            <SubLabel>4. Chẩn đoán ban đầu</SubLabel>
             <Prose text={view.preliminaryDiagnosis} />
           </div>
-          <div>
-            <SubLabel>Chẩn đoán (ICD-10)</SubLabel>
-        {view.diagnoses.length === 0 ? (
-          <p className="text-[13.5px] italic text-slate-500">{NOT_RECORDED}</p>
-        ) : (
           <div className="flex flex-col gap-2">
-            {view.diagnoses.map((d) => (
-              <div key={d.code} className="flex flex-wrap items-baseline gap-2.5">
-                <span className="shrink-0 rounded-[5px] border border-blue-200 bg-blue-50 px-2 py-0.5 text-[12.5px] font-semibold tabular-nums text-blue-700">{d.code}</span>
-                <span className="min-w-0 text-[13.5px] text-slate-900">{d.name}</span>
-                {d.primary ? (
-                  <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10.5px] font-semibold text-white">Chính</span>
-                ) : (
-                  <span className="rounded border border-slate-300 px-1.5 py-0.5 text-[10.5px] text-slate-600">Kèm theo</span>
-                )}
-              </div>
-            ))}
+            <SubLabel>5. Đã xử lý (thuốc, chăm sóc)</SubLabel>
+            {view.planContent !== '' && <Prose text={view.planContent} />}
+            {view.nationalCodes.length > 0 && (
+              <span className="text-xs tabular-nums text-slate-600">
+                Mã đơn quốc gia <span className="font-semibold text-slate-900">{view.nationalCodes.join(' · ')}</span>
+              </span>
+            )}
+            {printedPrescription && printedPrescription.items.length > 0 ? (
+              <PrescriptionItemsTable items={printedPrescription.items} />
+            ) : (
+              view.planContent === '' && <p className="text-[13px] italic text-slate-500">{NOT_RECORDED}</p>
+            )}
           </div>
-        )}
+          <div>
+            <SubLabel>6. Chẩn đoán khi ra viện</SubLabel>
+            <DiagnosisList diagnoses={view.diagnoses} />
+          </div>
+          <div>
+            <SubLabel>7. Điều trị ngoại trú</SubLabel>
+            <p className="text-[13.5px] tabular-nums text-slate-900">{view.treatmentPeriod}</p>
           </div>
         </div>
       </RecordSection>
 
-      <RecordSection numeral="VIII" title="Điều trị">
-        <div className="flex flex-col gap-3">
+      <div className="border-y border-slate-300 bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-700">Tổng kết bệnh án</div>
+
+      <RecordSection numeral="1" tone="teal" title="Diễn biến">
+        <SubLabel>Quá trình bệnh lý và diễn biến lâm sàng</SubLabel>
+        <Prose text={summaryText} />
+      </RecordSection>
+
+      <RecordSection numeral="2" tone="teal" title="Cận lâm sàng">
+        <SubLabel>Tóm tắt kết quả xét nghiệm cận lâm sàng có giá trị chẩn đoán</SubLabel>
+        {paraclinical.state !== 'ready' ? (
+          <p className="text-[13.5px] italic text-slate-500">{paraclinical.state === 'loading' ? 'Đang tải kết quả cận lâm sàng…' : 'Chưa tải được kết quả cận lâm sàng.'}</p>
+        ) : view.cls.length === 0 ? (
+          <p className="text-[13.5px] italic text-slate-500">Không có kết quả cận lâm sàng đã duyệt.</p>
+        ) : (
+          <ul className="flex flex-col gap-1 text-[13.5px] text-slate-900">
+            {view.cls.map((r) => (
+              <li key={r.itemId}>
+                <span className="font-semibold">{r.serviceName}</span>
+                {r.conclusionText || r.descriptionText ? ` — ${r.conclusionText ?? r.descriptionText}` : ''}
+              </li>
+            ))}
+          </ul>
+        )}
+      </RecordSection>
+
+      <RecordSection numeral="3" tone="teal" title="Chẩn đoán ra viện">
+        <DiagnosisList diagnoses={view.diagnoses} />
+      </RecordSection>
+
+      <RecordSection numeral="4" tone="teal" title="Phương pháp điều trị">
+        <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[12.5px] font-semibold text-slate-700">Hướng điều trị</span>
             {view.directions.length > 0 ? (
@@ -287,35 +348,16 @@ export function MedicalRecordSheet({
               <span className="text-[13px] italic text-slate-500">{NOT_RECORDED}</span>
             )}
           </div>
-          {view.planContent !== '' && (
-            <div>
-              <SubLabel>Nội dung điều trị</SubLabel>
-              <Prose text={view.planContent} />
-            </div>
-          )}
-          <div>
-            <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-              <span className="text-[12.5px] font-semibold text-slate-700">Đơn thuốc</span>
-              {view.nationalCodes.length > 0 && (
-                <span className="text-xs tabular-nums text-slate-600">
-                  Mã đơn quốc gia <span className="font-semibold text-slate-900">{view.nationalCodes.join(' · ')}</span>
-                </span>
-              )}
-            </div>
-            {printedPrescription && printedPrescription.items.length > 0 ? (
-              <PrescriptionItemsTable items={printedPrescription.items} />
-            ) : (
-              <p className="text-[13px] italic text-slate-500">Lượt khám này không kê đơn thuốc.</p>
-            )}
-          </div>
+          {view.planContent !== '' && <Prose text={view.planContent} />}
         </div>
       </RecordSection>
 
-      <RecordSection numeral="IX" title="Tiên lượng">
+      <RecordSection numeral="5" tone="teal" title="Tình trạng ra viện">
+        <SubLabel>Tình trạng người bệnh khi kết thúc khám</SubLabel>
         <Prose text={view.prognosis} />
       </RecordSection>
 
-      <RecordSection numeral="X" title="Lời dặn · Hẹn tái khám">
+      <RecordSection numeral="6" tone="teal" title="Hướng điều trị tiếp">
         <div className="flex flex-col gap-2">
           <Prose text={view.advice} />
           <p className="text-[13.5px]">

@@ -92,6 +92,8 @@ export interface MedicalRecordTreatment {
   content: string;
   advice: string;
   followUpDateLabel: string | null;
+  /** Ngày hẹn tái khám dạng `YYYY-MM-DD` — làm ngày "đến" của mục "Điều trị ngoại trú từ ngày … đến ngày …" (MS 15/BV-01). */
+  followUpDate?: string | null;
 }
 
 /** Thẻ BHYT của một lượt khám để in (đã giải mã số thẻ). `selfPay=true` thì các trường thẻ đều `null`. */
@@ -402,7 +404,7 @@ export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-// Bộ hồ sơ bệnh án của MỘT LƯỢT KHÁM (docs/DECISIONS.md #269) — "In bộ hồ sơ" ở tab "Hồ sơ bệnh án": tờ khám theo mẫu bệnh án ngoại trú (QĐ 4069/2001, mục I–X), rồi từng phiếu
+// Bộ hồ sơ bệnh án của MỘT LƯỢT KHÁM (docs/DECISIONS.md #269) — "In bộ hồ sơ" ở tab "Hồ sơ bệnh án": tờ khám theo mẫu bệnh án ngoại trú MS 15/BV-01 (Thông tư 32/2023/TT-BYT, Phụ lục XXVIII: mục I–IV + trang "Tổng kết bệnh án"; thay mẫu cũ QĐ 4069/2001 đã hết hiệu lực 01/01/2024), rồi từng phiếu
 // kết quả cận lâm sàng đã duyệt, rồi đơn thuốc, trong MỘT tệp PDF. Khác `renderPatientMedicalRecordHtml` (gộp MỌI lượt khám của bệnh nhân, "Xuất toàn bộ bệnh án").
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -413,9 +415,12 @@ export interface EncounterMedicalRecordDocument {
     relative: string | null;
   };
   record: {
-    /** "Số bệnh án" (#269); `null` với lượt khám hoàn tất trước khi có tính năng. */
-    recordNo: string | null;
+    /** "Số lưu trữ" (#269, mẫu MS 15/BV-01); `null` với lượt khám hoàn tất trước khi có tính năng. */
+    archiveNo: string | null;
+    /** Mã phiếu khám — in ở ô "Số ngoại trú" của mẫu. */
     encounterNo: string;
+    /** Nhãn Loại tiếp nhận của lượt khám ("Khám mới"/"Tái khám"…); `null` = không in. */
+    visitTypeLabel: string | null;
     checkedInAt: string;
     doctorName: string | null;
     departmentName: string | null;
@@ -449,28 +454,35 @@ function recordProse(text: string): string {
   return text.trim() ? `<p class="note-section">${escapeHtml(text.trim())}</p>` : '<p class="muted">Chưa ghi.</p>';
 }
 
-/** Một MỤC của tờ khám: hàng có cột tiêu đề bên trái (số La Mã + tên mục) và nội dung bên phải — cùng khuôn tab "Hồ sơ bệnh án" trên màn hình. */
+/** Một MỤC của tờ khám: hàng có cột tiêu đề bên trái (số + tên mục) và nội dung bên phải — cùng khuôn tab "Hồ sơ bệnh án" trên màn hình. */
 function recordSection(numeral: string, title: string, body: string): string {
   return `<table class="rec-sec"><tbody><tr><th class="rec-rail"><span class="rec-num">${numeral}</span> ${escapeHtml(title)}</th><td class="rec-body">${body}</td></tr></tbody></table>`;
 }
 
+/**
+ * Mục I "Hành chính" của mẫu MS 15/BV-01 (Thông tư 32/2023/TT-BYT, Phụ lục XXVIII) — đủ 13 mục theo số thứ tự của mẫu. Ba mục hệ thống chưa lưu (8 Nơi làm việc, 13 Chẩn đoán của nơi giới thiệu)
+ * in "—" và "9. Đối tượng" suy ra từ thẻ BHYT của lượt khám (chủ dự án chốt 30/10/2026, không thêm trường mới).
+ */
 function recordAdminTable(doc: EncounterMedicalRecordDocument, insuranceOption: MedicalRecordPrintOptions['insurance']): string {
   const { patient, record } = doc;
   const insuranceLine = insuranceOption?.show ? formatInsuranceLine(doc.insurance, insuranceOption.whenSelfPay) : null;
+  // Có công tắc "Áp dụng BHYT" (insurance khác null) thì Đối tượng = BHYT khi lượt khám có thẻ, ngược lại Thu phí; công tắc tắt = để trống, không đoán.
+  const hasCard = doc.insurance ? !doc.insurance.selfPay && (doc.insurance.cardNo !== null || doc.insurance.cardNoUnreadable) : false;
+  const objectLabel = doc.insurance ? (hasCard ? 'BHYT' : 'Thu phí') : null;
   const age = ageAtYears(patient.dob, record.checkedInAt);
-  const cell = (label: string, value: string | null | undefined, colspan = 1): string =>
-    `<td class="label">${label}</td><td${colspan > 1 ? ` colspan="${colspan}"` : ''}>${value && value.trim() ? escapeHtml(value) : '—'}</td>`;
+  const cell = (no: number | null, label: string, value: string | null | undefined, colspan = 1): string =>
+    `<td class="label">${no === null ? '' : `${no}. `}${label}</td><td${colspan > 1 ? ` colspan="${colspan}"` : ''}>${value && value.trim() ? escapeHtml(value) : '—'}</td>`;
   return `<table class="patient-info"><tbody>
-    <tr>${cell('Số bệnh án', record.recordNo)}${cell('Mã lượt khám', record.encounterNo)}</tr>
-    <tr>${cell('Họ và tên', patient.fullName)}${cell('Mã bệnh nhân', patient.patientCode)}</tr>
-    <tr>${cell('Năm sinh · Tuổi', `${new Date(patient.dob).getUTCFullYear()} · ${age} tuổi`)}${cell('Giới tính', patient.genderLabel)}</tr>
-    <tr>${cell('Nghề nghiệp', patient.occupation)}${cell('Dân tộc / Quốc tịch', [patient.ethnicity, patient.nationality].filter((v): v is string => Boolean(v)).join(' / '))}</tr>
-    <tr>${cell('Số CCCD', patient.nationalId)}${cell('Điện thoại', patient.phone)}</tr>
-    <tr>${cell('Địa chỉ', patient.address, 3)}</tr>
-    <tr>${cell('Khi cần báo tin cho', patient.relative, 3)}</tr>
-    ${insuranceLine ? `<tr><td class="label">Thẻ BHYT</td><td colspan="3">${escapeHtml(insuranceLine.replace(/^Số thẻ BHYT:\s*/, ''))}</td></tr>` : ''}
-    <tr>${cell('Khoa · Phòng', record.departmentName)}${cell('Bác sĩ khám', record.doctorName)}</tr>
-    <tr>${cell('Vào khám lúc', formatDateTime(record.checkedInAt))}${record.branchName ? cell('Chi nhánh', record.branchName) : '<td></td><td></td>'}</tr>
+    <tr>${cell(1, 'Họ và tên (in hoa)', patient.fullName.toLocaleUpperCase('vi-VN'), 3)}</tr>
+    <tr>${cell(2, 'Sinh ngày', formatDate(patient.dob))}${cell(null, 'Tuổi', String(age))}</tr>
+    <tr>${cell(3, 'Giới', patient.genderLabel)}${cell(4, 'Nghề nghiệp', patient.occupation)}</tr>
+    <tr>${cell(5, 'Dân tộc', patient.ethnicity)}${cell(6, 'Ngoại kiều', patient.nationality)}</tr>
+    <tr>${cell(7, 'Địa chỉ', patient.address, 3)}</tr>
+    <tr>${cell(8, 'Nơi làm việc', null)}${cell(9, 'Đối tượng', objectLabel)}</tr>
+    <tr>${cell(10, 'BHYT giá trị đến · Số thẻ BHYT', insuranceLine ? insuranceLine.replace(/^Số thẻ BHYT:\s*/, '') : null, 3)}</tr>
+    <tr>${cell(11, 'Người nhà khi cần báo tin', patient.relative, 3)}</tr>
+    <tr>${cell(12, 'Đến khám bệnh lúc', formatDateTime(record.checkedInAt))}${cell(13, 'Chẩn đoán của nơi giới thiệu', null)}</tr>
+    <tr>${cell(null, 'Khoa · Phòng', record.departmentName)}${record.branchName ? cell(null, 'Chi nhánh', record.branchName) : '<td></td><td></td>'}</tr>
   </tbody></table>`;
 }
 
@@ -498,14 +510,36 @@ function recordDiagnoses(items: MedicalRecordDiagnosis[]): string {
     .join('')}</tbody></table>`;
 }
 
-function recordTreatment(doc: EncounterMedicalRecordDocument): string {
-  const t = doc.treatment;
+/** "5. Đã xử lý (thuốc, chăm sóc)" — nội dung điều trị bác sĩ ghi + danh sách thuốc đã kê (chi tiết liều ở đơn thuốc kèm theo). */
+function recordTreated(doc: EncounterMedicalRecordDocument): string {
+  const content = doc.treatment?.content.trim() ?? '';
+  const drugs = doc.prescriptionItems.map((i) => `${i.drugName} × ${i.quantity}${i.unitCode ? ` ${i.unitCode}` : ''}`);
   const parts = [
-    t && t.directionLabels.length > 0 ? `<p class="note-section"><strong>Hướng điều trị:</strong> ${t.directionLabels.map(escapeHtml).join('; ')}</p>` : '',
-    t && t.content.trim() ? `<p class="note-section"><strong>Nội dung điều trị:</strong> ${escapeHtml(t.content.trim())}</p>` : '',
-    doc.prescriptionItems.length > 0 ? `<p class="note-section"><strong>Đơn thuốc:</strong> ${doc.prescriptionItems.length} loại thuốc, xem đơn thuốc kèm theo.</p>` : '',
+    content ? `<p class="note-section">${escapeHtml(content)}</p>` : '',
+    drugs.length > 0 ? `<p class="note-section"><strong>Đơn thuốc:</strong> ${drugs.map(escapeHtml).join('; ')}.</p>` : '',
   ].join('');
   return parts || '<p class="muted">Chưa ghi.</p>';
+}
+
+/** "7. Điều trị ngoại trú từ ngày … đến ngày …": từ = ngày khám, đến = ngày hẹn tái khám nếu bác sĩ có hẹn, không thì bằng ngày khám (chủ dự án chốt 30/10/2026). */
+function recordTreatmentPeriod(doc: EncounterMedicalRecordDocument): string {
+  const from = formatDate(doc.record.checkedInAt);
+  const to = doc.treatment?.followUpDate ? formatDate(doc.treatment.followUpDate) : from;
+  return `<p class="note-section">Từ ngày ${from} đến ngày ${to}</p>`;
+}
+
+function recordSignBlock(doc: EncounterMedicalRecordDocument): string {
+  return `<table class="sign"><tbody><tr><td></td><td class="sign-box"><div class="meta">Bác sĩ khám bệnh</div><div class="sign-space"></div><strong>${doc.record.doctorName ? escapeHtml(doc.record.doctorName) : '—'}</strong>${
+    doc.record.signedAt ? `<div class="meta">${formatDateTime(doc.record.signedAt)}</div>` : ''
+  }</td></tr></tbody></table>`;
+}
+
+/** Hàng mã đầu tờ: Số ngoại trú (= mã phiếu khám), Số lưu trữ, Hồ sơ (= mã bệnh nhân) và nhãn Khám mới/Tái khám (Loại tiếp nhận). */
+function recordCodesBar(doc: EncounterMedicalRecordDocument, withVisitType: boolean): string {
+  const cell = (label: string, value: string | null): string => `<td><span class="k">${label}</span><br><strong>${value && value.trim() ? escapeHtml(value) : '—'}</strong></td>`;
+  return `<table class="codes"><tbody><tr>${cell('Số ngoại trú', doc.record.encounterNo)}${cell('Số lưu trữ', doc.record.archiveNo)}${cell('Hồ sơ (mã bệnh nhân)', doc.patient.patientCode)}${
+    withVisitType ? cell('Loại khám', doc.record.visitTypeLabel) : '<td></td>'
+  }</tr></tbody></table>`;
 }
 
 export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocument, options: MedicalRecordPrintOptions = DEFAULT_PRINT_OPTIONS): string {
@@ -519,33 +553,45 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
     ${header.showClinicName ? `<div class="clinic-name">${escapeHtml(doc.clinic.name)}</div>` : ''}
     <div class="clinic-meta">${clinicMeta.map(escapeHtml).join(' · ')}</div>
   </div>`;
-  const patientLine = `${escapeHtml(doc.patient.fullName)} · Mã BN ${escapeHtml(doc.patient.patientCode)} · Số bệnh án ${escapeHtml(doc.record.recordNo ?? '—')}`;
+  const patientLine = `${escapeHtml(doc.patient.fullName)} · Mã BN ${escapeHtml(doc.patient.patientCode)} · Số lưu trữ ${escapeHtml(doc.record.archiveNo ?? '—')}`;
   const followUp = doc.treatment?.followUpDateLabel ?? null;
+  const treatmentContent = [
+    doc.treatment && doc.treatment.directionLabels.length > 0 ? `<p class="note-section"><strong>Hướng điều trị:</strong> ${doc.treatment.directionLabels.map(escapeHtml).join('; ')}</p>` : '',
+    doc.treatment?.content.trim() ? `<p class="note-section">${escapeHtml(doc.treatment.content.trim())}</p>` : '',
+  ].join('');
 
+  // Trang 1: tờ bệnh án ngoại trú MS 15/BV-01 (mục I–IV). Trang 2: "Tổng kết bệnh án" (6 mục). Rồi phiếu kết quả cận lâm sàng + đơn thuốc.
   const sheet = `
   ${clinicHeader}
+  <div class="ms-line">MS: 15/BV-01</div>
   <div class="doc-title">${escapeHtml(options.title?.trim() || 'Bệnh án ngoại trú')}</div>
+  ${recordCodesBar(doc, true)}
   ${recordSection('I', 'Hành chính', recordAdminTable(doc, options.insurance))}
-  ${recordSection('II', 'Lý do đến khám', recordProse(doc.notes.reason))}
+  ${recordSection('II', 'Lý do vào viện', recordProse(doc.notes.reason))}
   ${recordSection(
     'III',
     'Hỏi bệnh',
-    `<p class="sub">Quá trình bệnh lý</p>${recordProse(doc.notes.illness)}<p class="sub">Tiền sử</p>${recordHistory(doc)}`,
+    `<p class="sub">1. Quá trình bệnh lý</p>${recordProse(doc.notes.illness)}<p class="sub">2. Tiền sử bệnh</p>${recordHistory(doc)}`,
   )}
   ${recordSection(
     'IV',
     'Khám bệnh',
-    `${renderVitalSigns(doc.vitalSigns)}<p class="sub">Toàn thân</p>${recordProse(doc.notes.generalExam)}<p class="sub">Các bộ phận</p>${recordProse(doc.notes.regionalExam)}`,
+    `${renderVitalSigns(doc.vitalSigns)}<p class="sub">1. Toàn thân</p>${recordProse(doc.notes.generalExam)}<p class="sub">2. Các bộ phận</p>${recordProse(doc.notes.regionalExam)}<p class="sub">3. Tóm tắt kết quả cận lâm sàng</p>${recordClsSummary(doc.paraclinicalResults)}<p class="sub">4. Chẩn đoán ban đầu</p>${recordProse(doc.notes.preliminaryDiagnosis)}<p class="sub">5. Đã xử lý (thuốc, chăm sóc)</p>${recordTreated(doc)}<p class="sub">6. Chẩn đoán khi ra viện</p>${recordDiagnoses(doc.diagnoses)}<p class="sub">7. Điều trị ngoại trú</p>${recordTreatmentPeriod(doc)}`,
   )}
-  ${recordSection('V', 'Các xét nghiệm cận lâm sàng', recordClsSummary(doc.paraclinicalResults))}
-  ${recordSection('VI', 'Tóm tắt bệnh án', recordProse(doc.notes.summary))}
-  ${recordSection('VII', 'Chẩn đoán', `<p class="sub">Chẩn đoán sơ bộ</p>${recordProse(doc.notes.preliminaryDiagnosis)}<p class="sub">Chẩn đoán (ICD-10)</p>${recordDiagnoses(doc.diagnoses)}`)}
-  ${recordSection('VIII', 'Điều trị', recordTreatment(doc))}
-  ${recordSection('IX', 'Tiên lượng', recordProse(doc.notes.prognosis))}
-  ${recordSection('X', 'Lời dặn · Hẹn tái khám', `${recordProse(doc.notes.advice)}<p class="note-section"><strong>Hẹn tái khám:</strong> ${followUp ? escapeHtml(followUp) : 'Không hẹn'}</p>`)}
-  <table class="sign"><tbody><tr><td></td><td class="sign-box"><div class="meta">Bác sĩ khám bệnh</div><div class="sign-space"></div><strong>${doc.record.doctorName ? escapeHtml(doc.record.doctorName) : '—'}</strong>${
-    doc.record.signedAt ? `<div class="meta">${formatDateTime(doc.record.signedAt)}</div>` : ''
-  }</td></tr></tbody></table>`;
+  ${recordSignBlock(doc)}
+  <section class="page-break">
+    ${clinicHeader}
+    <div class="ms-line">MS: 15/BV-01</div>
+    <div class="doc-title">Tổng kết bệnh án</div>
+    ${recordCodesBar(doc, false)}
+    ${recordSection('1', 'Diễn biến', `<p class="sub">Quá trình bệnh lý và diễn biến lâm sàng</p>${recordProse(doc.notes.summary.trim() ? doc.notes.summary : doc.notes.illness)}`)}
+    ${recordSection('2', 'Cận lâm sàng', `<p class="sub">Tóm tắt kết quả xét nghiệm cận lâm sàng có giá trị chẩn đoán</p>${recordClsSummary(doc.paraclinicalResults)}`)}
+    ${recordSection('3', 'Chẩn đoán ra viện', recordDiagnoses(doc.diagnoses))}
+    ${recordSection('4', 'Phương pháp điều trị', treatmentContent || '<p class="muted">Chưa ghi.</p>')}
+    ${recordSection('5', 'Tình trạng ra viện', `<p class="sub">Tình trạng người bệnh khi kết thúc khám</p>${recordProse(doc.notes.prognosis)}`)}
+    ${recordSection('6', 'Hướng điều trị tiếp', `${recordProse(doc.notes.advice)}<p class="note-section"><strong>Hẹn tái khám:</strong> ${followUp ? escapeHtml(followUp) : 'Không hẹn'}</p>`)}
+    ${recordSignBlock(doc)}
+  </section>`;
 
   const clsSheets = doc.paraclinicalResults
     .map(
@@ -578,21 +624,25 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
 <title>Hồ sơ bệnh án — ${escapeHtml(doc.patient.fullName)}</title>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #0f172a; margin: 0; padding: 24px; }
-  .clinic-header { text-align: center; margin-bottom: 12px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11.5px; line-height: 1.3; color: #0f172a; margin: 0; padding: 8px 14px; }
+  .clinic-header { text-align: center; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; }
   .clinic-header .clinic-name { font-size: 15px; font-weight: 700; }
   .clinic-header .clinic-meta { font-size: 11px; color: #475569; }
-  .doc-title { text-align: center; font-size: 16px; font-weight: 700; margin: 10px 0 12px; text-transform: uppercase; }
+  .doc-title { text-align: center; font-size: 16px; font-weight: 700; margin: 6px 0 8px; text-transform: uppercase; }
+  .ms-line { text-align: right; font-size: 11px; color: #475569; }
+  table.codes { margin-bottom: 8px; }
+  table.codes td { padding: 2px 6px; font-size: 11px; }
+  table.codes .k { color: #475569; }
   table { width: 100%; border-collapse: collapse; }
   table.rec-sec { border: 1px solid #94a3b8; margin-top: -1px; page-break-inside: avoid; }
-  .rec-rail { width: 150px; background: #f1f5f9; border-right: 1px solid #94a3b8; padding: 7px 9px; text-align: left; vertical-align: top; font-size: 12px; font-weight: 700; }
+  .rec-rail { width: 118px; background: #f1f5f9; border-right: 1px solid #94a3b8; padding: 5px 8px; text-align: left; vertical-align: top; font-size: 12px; font-weight: 700; }
   .rec-num { display: inline-block; min-width: 20px; padding: 0 4px; margin-right: 4px; border-radius: 3px; background: #1d4ed8; color: #fff; text-align: center; font-size: 11px; }
-  .rec-body { padding: 7px 10px; vertical-align: top; }
+  .rec-body { padding: 5px 10px; vertical-align: top; }
   .rec-body .sub { font-weight: 600; color: #334155; margin: 6px 0 2px; }
   .rec-body .sub:first-child { margin-top: 0; }
-  table.patient-info td { padding: 2px 6px; vertical-align: top; }
-  table.patient-info td.label { font-weight: 600; width: 120px; color: #334155; }
-  table.history-list td { padding: 2px 6px; vertical-align: top; }
+  table.patient-info td { padding: 1px 6px; vertical-align: top; }
+  table.patient-info td.label { font-weight: 600; width: 168px; color: #334155; }
+  table.history-list td { padding: 1px 6px; vertical-align: top; }
   table.history-list td.label { font-weight: 600; width: 80px; color: #334155; }
   table.vitals td, table.data-table th, table.data-table td { border: 1px solid #cbd5e1; padding: 4px 6px; font-size: 11px; }
   table.data-table th { background: #eff6ff; text-align: left; }
@@ -602,9 +652,9 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
   td.abnormal { font-weight: 700; text-decoration: underline; }
   .meta { color: #475569; font-size: 11px; margin: 2px 0; }
   .muted { color: #94a3b8; font-style: italic; margin: 2px 0; }
-  table.sign { margin-top: 14px; page-break-inside: avoid; }
+  table.sign { margin-top: 6px; page-break-inside: avoid; }
   table.sign td.sign-box { width: 220px; text-align: center; }
-  .sign-space { height: 36px; }
+  .sign-space { height: 22px; }
   .page-break { page-break-before: always; }
   .footer-note { margin-top: 18px; font-style: italic; border-left: 2px solid #94a3b8; padding-left: 8px; }
   .footer { margin-top: 24px; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 6px; }

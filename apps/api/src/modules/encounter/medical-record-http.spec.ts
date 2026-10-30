@@ -16,10 +16,10 @@ import { seedIcd10Catalog } from '../../infrastructure/persistence/seed-icd10';
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
 
 /**
- * HTTP e2e — Hồ sơ bệnh án điện tử (docs/DECISIONS.md #269): "Số bệnh án" cấp lúc Hoàn tất khám (theo năm, chung công ty, không thủng số, khuôn đổi được) và hai mục ghi chú tuỳ chọn
+ * HTTP e2e — Hồ sơ bệnh án điện tử (docs/DECISIONS.md #269): "Số lưu trữ" (trước đây "Số bệnh án", đổi theo mẫu MS 15/BV-01) cấp lúc Hoàn tất khám (theo năm, chung công ty, không thủng số, khuôn đổi được) và hai mục ghi chú tuỳ chọn
  * "Tóm tắt bệnh án"/"Tiên lượng" (lưu cùng ghi chú khám, ký khi Hoàn tất khám, đính chính cùng khuôn Kết luận/Lời dặn).
  */
-describe('HTTP e2e — Hồ sơ bệnh án: Số bệnh án + Tóm tắt/Tiên lượng (#269)', () => {
+describe('HTTP e2e — Hồ sơ bệnh án: Số lưu trữ + Tóm tắt/Tình trạng ra viện (#269)', () => {
   let app: INestApplication;
   let privileged: PrismaClient;
   let fixture: TwoTenantFixture;
@@ -96,7 +96,7 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số bệnh án + Tóm tắt/Tiên l
     const res = await http().get(`/api/v1/encounters/${encounterId}/consultation`).set(authed(token));
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     return res.body.data as {
-      encounter: { version: number; recordNo: string | null; encounterNo: string };
+      encounter: { version: number; archiveNo: string | null; encounterNo: string };
       clinicalNote: Record<'summary' | 'prognosis', { version: number; signedAt: string | null; content: string } | null>;
     };
   };
@@ -109,7 +109,7 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số bệnh án + Tóm tắt/Tiên l
     const detail = await consultation(encounterId, token);
     const done = await http().post(`/api/v1/encounters/${encounterId}/complete`).set(authed(token)).send({ version: detail.encounter.version });
     expect(done.status, JSON.stringify(done.body)).toBe(200);
-    return done.body.data as { recordNo: string | null };
+    return done.body.data as { archiveNo: string | null };
   }
   const recordSequence = (n: string) => Number(n.split('-')[1]);
 
@@ -227,29 +227,29 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số bệnh án + Tóm tắt/Tiên l
     });
   });
 
-  describe('Số bệnh án', () => {
-    it('chưa có khi chưa hoàn tất; cấp lúc Hoàn tất khám theo khuôn mặc định BA<năm>-<6 số>; hiện ở chi tiết lượt khám và danh sách lịch sử', async () => {
+  describe('Số lưu trữ', () => {
+    it('chưa có khi chưa hoàn tất; cấp lúc Hoàn tất khám theo khuôn mặc định LT<năm>-<6 số>; hiện ở chi tiết lượt khám và danh sách lịch sử', async () => {
       const { id, patientId } = await prepareEncounter();
-      expect((await consultation(id)).encounter.recordNo).toBeNull();
+      expect((await consultation(id)).encounter.archiveNo).toBeNull();
 
       const done = await complete(id);
-      expect(done.recordNo).toMatch(new RegExp(`^BA${year()}-\\d{6}$`));
+      expect(done.archiveNo).toMatch(new RegExp(`^LT${year()}-\\d{6}$`));
       const detail = await consultation(id);
-      expect(detail.encounter.recordNo).toBe(done.recordNo);
+      expect(detail.encounter.archiveNo).toBe(done.archiveNo);
       // Tách biệt với mã lượt khám.
-      expect(detail.encounter.recordNo).not.toBe(detail.encounter.encounterNo);
+      expect(detail.encounter.archiveNo).not.toBe(detail.encounter.encounterNo);
 
       const history = await http().get(`/api/v1/encounters/by-patient/${patientId}/history`).set(authed(doctorToken));
       expect(history.status, JSON.stringify(history.body)).toBe(200);
-      expect(history.body.data.items.find((i: { encounterId: string }) => i.encounterId === id).recordNo).toBe(done.recordNo);
+      expect(history.body.data.items.find((i: { encounterId: string }) => i.encounterId === id).archiveNo).toBe(done.archiveNo);
     });
 
-    it('lượt khám chưa hoàn tất trong danh sách lịch sử có recordNo = null', async () => {
+    it('lượt khám chưa hoàn tất trong danh sách lịch sử có archiveNo = null', async () => {
       const { id, patientId } = await prepareEncounter();
       // Mặc định danh sách chỉ lấy lượt đã hoàn tất — xin `status=ALL` để thấy cả lượt đang khám.
       const history = await http().get(`/api/v1/encounters/by-patient/${patientId}/history?status=ALL`).set(authed(doctorToken));
       expect(history.status, JSON.stringify(history.body)).toBe(200);
-      expect(history.body.data.items.find((i: { encounterId: string }) => i.encounterId === id).recordNo).toBeNull();
+      expect(history.body.data.items.find((i: { encounterId: string }) => i.encounterId === id).archiveNo).toBeNull();
     });
 
     it('tăng liên tục, không trùng; hoàn tất thất bại (khoá lạc quan) KHÔNG làm thủng số', async () => {
@@ -263,12 +263,12 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số bệnh án + Tóm tắt/Tiên l
       const detailB = await consultation(b.id);
       const stale = await http().post(`/api/v1/encounters/${b.id}/complete`).set(authed(doctorToken)).send({ version: detailB.encounter.version + 5 });
       expect(stale.status).toBe(409);
-      expect((await consultation(b.id)).encounter.recordNo).toBeNull();
+      expect((await consultation(b.id)).encounter.archiveNo).toBeNull();
 
       const doneC = await complete(c.id);
-      expect(recordSequence(doneC.recordNo!)).toBe(recordSequence(doneA.recordNo!) + 1);
+      expect(recordSequence(doneC.archiveNo!)).toBe(recordSequence(doneA.archiveNo!) + 1);
       const doneB = await complete(b.id);
-      expect(recordSequence(doneB.recordNo!)).toBe(recordSequence(doneC.recordNo!) + 1);
+      expect(recordSequence(doneB.archiveNo!)).toBe(recordSequence(doneC.archiveNo!) + 1);
     });
 
     it('hai bác sĩ hoàn tất ĐỒNG THỜI không bao giờ trùng số', async () => {
@@ -280,32 +280,32 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số bệnh án + Tóm tắt/Tiên l
         http().post(`/api/v1/encounters/${y.id}/complete`).set(authed(doctorToken)).send({ version: dy.encounter.version }),
       ]);
       expect([rx.status, ry.status]).toEqual([200, 200]);
-      expect(rx.body.data.recordNo).not.toBe(ry.body.data.recordNo);
+      expect(rx.body.data.archiveNo).not.toBe(ry.body.data.archiveNo);
     });
 
     it('khuôn đổi được ở "Cấu hình mẫu mã phát sinh" và áp cho lượt hoàn tất kế tiếp', async () => {
       const list = await http().get('/api/v1/clinic-settings/code-templates').set(authed(adminToken));
       expect(list.status, JSON.stringify(list.body)).toBe(200);
-      const entry = list.body.data.items.find((i: { codeType: string }) => i.codeType === 'MEDICAL_RECORD');
+      const entry = list.body.data.items.find((i: { codeType: string }) => i.codeType === 'ARCHIVE_NO');
       expect(entry).toBeDefined();
-      expect(entry.label).toBe('Số bệnh án');
-      expect(entry.template).toBe('BA[Năm 4 số]-[Số đếm]');
+      expect(entry.label).toBe('Số lưu trữ');
+      expect(entry.template).toBe('LT[Năm 4 số]-[Số đếm]');
 
       const patched = await http()
-        .patch('/api/v1/clinic-settings/code-templates/MEDICAL_RECORD')
+        .patch('/api/v1/clinic-settings/code-templates/ARCHIVE_NO')
         .set(authed(adminToken))
         .send({ template: 'HS[Năm 2 số]/[Số đếm]', counterDigits: 5 });
       expect(patched.status, JSON.stringify(patched.body)).toBe(200);
 
       const { id } = await prepareEncounter();
       const done = await complete(id);
-      expect(done.recordNo).toMatch(/^HS\d{2}\/\d{5}$/);
+      expect(done.archiveNo).toMatch(/^HS\d{2}\/\d{5}$/);
     });
 
-    it('cô lập công ty: bộ đếm công ty B độc lập, và công ty B không đọc được lượt khám/Số bệnh án của công ty A', async () => {
+    it('cô lập công ty: bộ đếm công ty B độc lập, và công ty B không đọc được lượt khám/Số lưu trữ của công ty A', async () => {
       const a = await prepareEncounter();
       const doneA = await complete(a.id);
-      expect(doneA.recordNo).toBeTruthy();
+      expect(doneA.archiveNo).toBeTruthy();
 
       const leak = await http().get(`/api/v1/encounters/${a.id}/consultation`).set(authed(tenantBDoctorToken));
       expect(leak.status).toBe(404);
@@ -313,17 +313,17 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số bệnh án + Tóm tắt/Tiên l
       const b = await prepareEncounter(tenantBReceptionistToken, tenantBDoctorToken, tenantBDoctorUserId);
       const doneB = await complete(b.id, tenantBDoctorToken);
       // Công ty B chưa từng cấp số nào → bắt đầu từ 1, không bị ảnh hưởng bởi bộ đếm công ty A.
-      expect(doneB.recordNo).toMatch(new RegExp(`^BA${year()}-000001$`));
+      expect(doneB.archiveNo).toMatch(new RegExp(`^LT${year()}-000001$`));
 
-      const dbRows = await privileged.encounter.findMany({ where: { id: { in: [a.id, b.id] } }, select: { id: true, tenantId: true, recordNo: true } });
+      const dbRows = await privileged.encounter.findMany({ where: { id: { in: [a.id, b.id] } }, select: { id: true, tenantId: true, archiveNo: true } });
       expect(dbRows.find((r) => r.id === b.id)?.tenantId).toBe(fixture.tenantB.id);
     });
 
-    it('ràng buộc DB: hai lượt khám cùng công ty không thể mang cùng một Số bệnh án', async () => {
+    it('ràng buộc DB: hai lượt khám cùng công ty không thể mang cùng một Số lưu trữ', async () => {
       const a = await prepareEncounter();
       const b = await prepareEncounter();
       const doneA = await complete(a.id);
-      await expect(privileged.$executeRaw`UPDATE encounter SET record_no = ${doneA.recordNo} WHERE id = ${b.id}::uuid`).rejects.toThrow(/23505|already exists/i);
+      await expect(privileged.$executeRaw`UPDATE encounter SET archive_no = ${doneA.archiveNo} WHERE id = ${b.id}::uuid`).rejects.toThrow(/23505|already exists/i);
     });
   });
 
@@ -341,7 +341,9 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số bệnh án + Tóm tắt/Tiên l
       return { html: () => String(spy.mock.calls.at(-1)?.[0] ?? ''), restore: () => spy.mockRestore() };
     }
 
-    it('bác sĩ in được → 200, PDF thật, tên tệp theo Số bệnh án, ghi nhật ký kèm lý do + bệnh nhân; nội dung có đủ 10 mục và hai mục mới', async () => {
+    it('bác sĩ in được → 200, PDF thật, tên tệp theo Số lưu trữ, ghi nhật ký kèm lý do + bệnh nhân; nội dung theo khung MS 15/BV-01 (I–IV + Tổng kết)', async () => {
+      const rt = await privileged.referenceCatalog.findFirst({ where: { tenantId: fixture.tenantA.id, category: 'RECEPTION_TYPE', code: 'RT_NEW' } });
+      if (!rt) await privileged.referenceCatalog.create({ data: { tenantId: fixture.tenantA.id, category: 'RECEPTION_TYPE', code: 'RT_NEW', name: 'Khám mới', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
       const { id, patientId } = await prepareEncounter();
       await saveNote(id, baseNote({ summary: { content: 'Tóm tắt dành cho bộ hồ sơ' }, prognosis: { content: 'Tiên lượng dành cho bộ hồ sơ' }, doctorAdvice: { content: 'Uống nhiều nước ấm' } }));
       const done = await complete(id);
@@ -350,13 +352,17 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số bệnh án + Tóm tắt/Tiên l
         const res = await http().post(exportUrl(id)).set(authed(doctorToken)).send({ reason: 'Giao hồ sơ cho bệnh nhân' });
         expect(res.status, JSON.stringify(res.body)).toBe(200);
         expect(res.headers['content-type']).toBe('application/pdf');
-        // Tên tệp chỉ giữ chữ, số, `.`, `_`, `-` (khuôn Số bệnh án do phòng khám tự cấu hình có thể chứa `/`).
-        expect(res.headers['content-disposition']).toContain(`ho-so-benh-an-${done.recordNo!.replace(/[^A-Za-z0-9._-]/g, '')}.pdf`);
+        // Tên tệp chỉ giữ chữ, số, `.`, `_`, `-` (khuôn Số lưu trữ do phòng khám tự cấu hình có thể chứa `/`).
+        expect(res.headers['content-disposition']).toContain(`ho-so-benh-an-${done.archiveNo!.replace(/[^A-Za-z0-9._-]/g, '')}.pdf`);
         expect(Buffer.from(res.body).subarray(0, 4).toString()).toBe('%PDF');
 
         const html = capture.html();
-        for (const numeral of ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']) expect(html).toContain(`<span class="rec-num">${numeral}</span>`);
-        for (const s of [done.recordNo!, 'Bệnh nhân e2e bệnh án', 'Tóm tắt dành cho bộ hồ sơ', 'Tiên lượng dành cho bộ hồ sơ', 'Uống nhiều nước ấm', 'Viêm phế quản cấp', 'Giao hồ sơ cho bệnh nhân']) expect(html).toContain(s);
+        for (const numeral of ['I', 'II', 'III', 'IV', '1', '2', '3', '4', '5', '6']) expect(html).toContain(`<span class="rec-num">${numeral}</span>`);
+        expect(html).toContain('MS: 15/BV-01');
+        expect(html).toContain('Tổng kết bệnh án');
+        expect(html).toContain('Khám mới'); // nhãn Loại tiếp nhận (RT_NEW) của lượt khám
+        expect(html).not.toContain('Số bệnh án');
+        for (const s of [done.archiveNo!, 'Bệnh nhân e2e bệnh án', 'Tóm tắt dành cho bộ hồ sơ', 'Tiên lượng dành cho bộ hồ sơ', 'Uống nhiều nước ấm', 'Viêm phế quản cấp', 'Giao hồ sơ cho bệnh nhân']) expect(html).toContain(s);
         expect(html).not.toMatch(/đồng|₫|Thành tiền|Đã thu|Chưa thu/);
       } finally {
         capture.restore();
@@ -383,6 +389,47 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số bệnh án + Tóm tắt/Tiên l
         expect(capture.html()).toContain(expected);
       } finally {
         capture.restore();
+      }
+    });
+
+    it('đơn thuốc ĐÃ KÝ trong bộ hồ sơ: in TÊN đơn vị tính ("viên") chứ không in mã thô ("VIEN"); đơn chưa ký không có mặt', async () => {
+      const unit = await privileged.referenceCatalog.findFirst({ where: { tenantId: fixture.tenantA.id, category: 'UNIT', code: 'VIEN' } });
+      if (!unit) await privileged.referenceCatalog.create({ data: { tenantId: fixture.tenantA.id, category: 'UNIT', code: 'VIEN', name: 'viên', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+      const drug = await privileged.drug.create({
+        data: { tenantId: fixture.tenantA.id, code: `DRG-${randomUUID().slice(0, 8)}`, name: 'Thuốc thử bộ hồ sơ', baseUnitCode: 'VIEN', activeIngredient: 'Hoạt chất thử', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+      });
+      const { id } = await prepareEncounter();
+      await saveNote(id, baseNote());
+      await addPrimaryDiagnosis(id);
+      const saved = await http().put(`/api/v1/encounters/${id}/prescription-items`).set(authed(doctorToken)).send({ items: [{ drugId: drug.id, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 1, durationDays: 7 }] });
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      await complete(id);
+      const capture = captureHtml();
+      try {
+        // Đơn chưa ký → bộ hồ sơ không có đơn thuốc.
+        expect((await http().post(exportUrl(id)).set(authed(doctorToken)).send({ reason: 'Đơn chưa ký' })).status).toBe(200);
+        expect(capture.html()).not.toContain('Thuốc thử bộ hồ sơ');
+      } finally {
+        capture.restore();
+      }
+
+      const sameEncounter = await prepareEncounter();
+      await saveNote(sameEncounter.id, baseNote());
+      await addPrimaryDiagnosis(sameEncounter.id);
+      const saved2 = await http().put(`/api/v1/encounters/${sameEncounter.id}/prescription-items`).set(authed(doctorToken)).send({ items: [{ drugId: drug.id, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 1, durationDays: 7 }] });
+      expect(saved2.status, JSON.stringify(saved2.body)).toBe(200);
+      const signed = await http().post(`/api/v1/encounters/${sameEncounter.id}/prescription/sign`).set(authed(doctorToken)).send({ version: saved2.body.data.version });
+      expect(signed.status, JSON.stringify(signed.body)).toBe(200);
+      await complete(sameEncounter.id);
+      const capture2 = captureHtml();
+      try {
+        expect((await http().post(exportUrl(sameEncounter.id)).set(authed(doctorToken)).send({ reason: 'Đơn đã ký' })).status).toBe(200);
+        const html = capture2.html();
+        expect(html).toContain('Thuốc thử bộ hồ sơ');
+        expect(html).toContain('14 viên');
+        expect(html).not.toContain('14 VIEN');
+      } finally {
+        capture2.restore();
       }
     });
 

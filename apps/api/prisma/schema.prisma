@@ -1566,7 +1566,7 @@ model Encounter {
   appointmentId         String?         @map("appointment_id") @db.Uuid
   encounterNo           String          @map("encounter_no")
   // "Số bệnh án" (docs/DECISIONS.md #269) — cấp lúc "Hoàn tất khám"; NULL với lượt chưa hoàn tất và lượt hoàn tất TRƯỚC khi có tính năng. Duy nhất theo công ty (partial unique index raw SQL, Prisma không biểu diễn được).
-  recordNo              String?         @map("record_no")
+  archiveNo              String?         @map("archive_no")
   status                EncounterStatus
   specialty             String          @default("general")
   checkedInAt           DateTime        @map("checked_in_at") @db.Timestamptz(6)

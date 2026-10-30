@@ -65,7 +65,7 @@ Quy tắc:
 - Ký ở v1 là chữ ký logic: ghi `signed_at`, `signed_by`, gọi `SignaturePort` (adapter no-op). Không tích hợp CA, không sinh chữ ký số. Sau khi ký, đơn bất biến. Sửa = tạo đơn mới `supersedes_id` trỏ về đơn cũ, đơn cũ đặt `deleted_at` + `deleted_reason`.
 - v1 không trừ tồn kho, không kiểm tra thuốc còn hàng.
 
-## Amendment hồ sơ (Thông tư 46/2018/TT-BYT)
+## Amendment hồ sơ (nguyên tắc lưu vết của dự án; Thông tư 46/2018/TT-BYT đã hết hiệu lực 06/06/2025 — căn cứ hiện hành: Thông tư 13/2025/TT-BYT + Điều 52 Thông tư 32/2023/TT-BYT "thể hiện rõ thời gian và người ghi chép", xem `docs/DECISIONS.md` #270)
 
 Sửa dữ liệu lâm sàng đã ký luôn theo mô hình: bản ghi mới (`supersedes_id` = bản cũ, `amendment_reason` bắt buộc, `created_by` = người sửa) + bản cũ đặt `deleted_at` + `deleted_reason`. Truy vấn hiển thị mặc định lọc `deleted_at IS NULL`; màn hình lịch sử hiển thị đủ chuỗi kèm người sửa và thời điểm.
 

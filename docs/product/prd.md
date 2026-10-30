@@ -10,7 +10,7 @@
 
 NEXAMed là phần mềm quản lý phòng khám triển khai on-premise, phục vụ luồng vận hành hằng ngày từ đặt lịch, tiếp nhận, đến khám bệnh và kê đơn. Bản v1 nhắm tới phòng khám tư nhân đơn lẻ quy mô 1-3 bác sĩ.
 
-Hệ thống thay thế sổ giấy và file Excel bằng bệnh án điện tử có lưu vết đầy đủ, đáp ứng yêu cầu về lưu trữ và truy vết sửa đổi hồ sơ bệnh án theo Thông tư 46/2018/TT-BYT.
+Hệ thống thay thế sổ giấy và file Excel bằng bệnh án điện tử có lưu vết đầy đủ, đáp ứng yêu cầu về lưu trữ và truy vết sửa đổi hồ sơ bệnh án điện tử theo Thông tư 13/2025/TT-BYT (thay Thông tư 46/2018/TT-BYT) và Chương X Thông tư 32/2023/TT-BYT (`docs/DECISIONS.md` #270). Cơ chế "bản đã ký bất biến, sửa bằng bản mới có lý do" là nguyên tắc thiết kế của dự án; hai thông tư hiện hành không có điều khoản riêng về đính chính.
 
 | Hạng mục | Giá trị |
 |---|---|

@@ -89,7 +89,7 @@ export const PRINT_DOCUMENT_TYPE_REGISTRY: Record<
   { label: string; group: PrintDocumentGroup; allowedPapers: PrintPaperSize[]; defaultPaper: PrintPaperSize; defaultTitle: string; notice?: PrintNoticeDefaults }
 > = {
   PRESCRIPTION: { label: 'Đơn thuốc', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Đơn thuốc' },
-  MEDICAL_RECORD: { label: 'Bệnh án (xuất PDF)', group: 'Khám bệnh', allowedPapers: ['A4'], defaultPaper: 'A4', defaultTitle: 'Bệnh án' },
+  MEDICAL_RECORD: { label: 'Bệnh án', group: 'Khám bệnh', allowedPapers: ['A4'], defaultPaper: 'A4', defaultTitle: 'Bệnh án' },
   CLINICAL_ORDER: { label: 'Phiếu chỉ định cận lâm sàng', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu chỉ định cận lâm sàng' },
   LAB_RESULT: { label: 'Kết quả xét nghiệm', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Kết quả xét nghiệm', notice: LAB_RESULT_NOTICE },
   IMAGING_RESULT: { label: 'Kết quả CĐHA & Thăm dò chức năng', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Kết quả chẩn đoán hình ảnh' },

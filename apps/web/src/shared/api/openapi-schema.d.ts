@@ -4679,7 +4679,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
-                                recordNo: string | null;
+                                archiveNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -4841,7 +4841,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
-                                recordNo: string | null;
+                                archiveNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -5305,7 +5305,7 @@ export interface paths {
                                     /** Format: uuid */
                                     encounterId: string;
                                     encounterNo: string;
-                                    recordNo: string | null;
+                                    archiveNo: string | null;
                                     /** @enum {string} */
                                     status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
                                     checkedInAt: string;
@@ -5460,7 +5460,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
-                                recordNo: string | null;
+                                archiveNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -5591,7 +5591,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
-                                recordNo: string | null;
+                                archiveNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -5721,7 +5721,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
-                                recordNo: string | null;
+                                archiveNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -5859,7 +5859,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
-                                recordNo: string | null;
+                                archiveNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -5993,7 +5993,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     encounterNo: string;
-                                    recordNo: string | null;
+                                    archiveNo: string | null;
                                     /** Format: uuid */
                                     patientId: string;
                                     /** Format: uuid */
@@ -7530,7 +7530,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
-                                recordNo: string | null;
+                                archiveNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -20727,7 +20727,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "MEDICAL_RECORD";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "ARCHIVE_NO";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -21100,7 +21100,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "MEDICAL_RECORD";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "ARCHIVE_NO";
                 };
                 cookie?: never;
             };
@@ -21125,7 +21125,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "MEDICAL_RECORD";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "ARCHIVE_NO";
                                 label: string;
                                 prefix: string;
                                 template: string;

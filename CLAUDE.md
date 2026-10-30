@@ -98,7 +98,7 @@ Chi tiết đầy đủ và edge case xem `.claude/docs/clinical-workflow.md`.
 - Cột tiền dùng `bigint`, đơn vị đồng. **Cấm** `numeric`, `decimal`, `money`, `real`, `double precision` cho cột tiền. Làm tròn round-half-up về 1 đồng, chỉ làm tròn ở bước cuối, không làm tròn từng dòng trung gian.
 - Cột thời gian dùng `timestamptz`, lưu UTC. **Cấm** `timestamp` không timezone. Quy đổi `Asia/Ho_Chi_Minh` chỉ ở tầng hiển thị; không dùng `new Date()` phía server để cắt mốc ngày.
 - **Không xoá cứng dữ liệu nghiệp vụ.** Cấm `DELETE FROM` trong repository nghiệp vụ; dùng `deleted_at` + `deleted_reason`.
-- **Bản ghi đã ký là bất biến**: `signed_at != null` thì không `UPDATE`. Sửa = bản ghi mới với `supersedes_id` + `amendment_reason` bắt buộc (yêu cầu lưu vết theo Thông tư 46/2018/TT-BYT).
+- **Bản ghi đã ký là bất biến**: `signed_at != null` thì không `UPDATE`. Sửa = bản ghi mới với `supersedes_id` + `amendment_reason` bắt buộc (nguyên tắc lưu vết của dự án; Thông tư 46/2018/TT-BYT đã hết hiệu lực từ 06/06/2025 — căn cứ hiện hành là Thông tư 13/2025/TT-BYT và Chương X Thông tư 32/2023/TT-BYT, xem `docs/DECISIONS.md` #270).
 - `version` dùng cho optimistic locking; mọi `UPDATE` phải kèm điều kiện `version = ?` và tăng lên 1.
 - Migration forward-only: không sửa file migration đã merge vào `main`.
 

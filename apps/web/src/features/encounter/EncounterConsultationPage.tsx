@@ -1294,12 +1294,12 @@ export function EncounterConsultationPage() {
                   />
                   <Textarea
                     id="clinical-prognosis"
-                    label="Tiên lượng"
+                    label="Tình trạng người bệnh khi kết thúc khám"
                     rows={3}
                     value={clinical.prognosis}
                     onChange={(e) => setField('prognosis', e.target.value)}
                     readOnly={!canEditDraft}
-                    placeholder={canEditDraft ? 'Dự kiến diễn tiến và thời gian hồi phục…' : undefined}
+                    placeholder={canEditDraft ? 'Ví dụ: ổn định, tiếp tục điều trị ngoại trú…' : undefined}
                   />
                 </div>
               </div>

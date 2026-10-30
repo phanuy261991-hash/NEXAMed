@@ -6,7 +6,7 @@ import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { Textarea } from '../../shared/ui/Textarea';
 
 /**
- * Hộp thoại "Đính chính" kết quả cận lâm sàng đã duyệt (docs/DECISIONS.md #215). Người có quyền Nhập của nhóm đề nghị kèm LÝ DO BẮT BUỘC (Thông tư 46/2018/TT-BYT); kết quả quay lại
+ * Hộp thoại "Đính chính" kết quả cận lâm sàng đã duyệt (docs/DECISIONS.md #215). Người có quyền Nhập của nhóm đề nghị kèm LÝ DO BẮT BUỘC (Thông tư 46/2018/TT-BYT (đã hết hiệu lực 06/06/2025, xem docs/DECISIONS.md #270)); kết quả quay lại
  * "Đang thực hiện" để sửa rồi gửi duyệt, bác sĩ có quyền Duyệt ký lại. Bản đã duyệt cũ được giữ lại, không bị xoá. Là form riêng (không đặt trong `<form>` của trang).
  */
 export function AmendResultDialog({ onSubmit, onClose }: { onSubmit: (reason: string) => Promise<void>; onClose: () => void }) {

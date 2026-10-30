@@ -150,7 +150,7 @@ export class EncounterController {
 
   /**
    * Màn hình khám (S3-05) — gộp tiền sử + dị ứng + sinh hiệu trong một request. `@AuditView` +
-   * `AuditViewInterceptor` (Thông tư 46/2018/TT-BYT — bắt buộc ghi "ngày, giờ xem dữ liệu" hồ sơ
+   * `AuditViewInterceptor` (Thông tư 46/2018/TT-BYT (đã hết hiệu lực 06/06/2025, xem docs/DECISIONS.md #270) — bắt buộc ghi "ngày, giờ xem dữ liệu" hồ sơ
    * bệnh án, phát hiện lúc rà soát S5-05: trước đây CHỈ `GET /patients/:id` được ghi audit xem,
    * endpoint xem hồ sơ khám thật (chẩn đoán/ghi chú khám/đơn thuốc/sinh hiệu) lại bỏ sót) — cùng
    * khuôn `patient.controller.ts`. Bao gồm cả lượt truy cập qua "Xem chi tiết đợt khám cũ"

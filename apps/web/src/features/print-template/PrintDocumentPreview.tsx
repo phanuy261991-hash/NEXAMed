@@ -163,49 +163,87 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
 }
 
 /**
- * Bệnh án xuất PDF được dựng ở MÁY CHỦ (`renderPatientMedicalRecordHtml`, Chromium nội bộ) chứ không phải component React,
- * nên xem trước ở đây là bản MINH HOẠ cùng khung (đầu trang/tiêu đề/ghi chú/chữ ký) — phần thân là nội dung tiêu biểu.
+ * Bệnh án được dựng ở MÁY CHỦ (`renderEncounterMedicalRecordHtml`, Chromium nội bộ) chứ không phải component React, nên xem trước ở đây là bản MINH HOẠ cùng khung
+ * (đầu trang/tiêu đề/ghi chú/chữ ký) và cùng bố cục mẫu MS 15/BV-01 của MỘT lượt khám (#269): mục I–IV rồi trang "Tổng kết bệnh án" — phần thân là nội dung tiêu biểu.
  */
+const SAMPLE_RECORD_SECTIONS: { numeral: string; title: string; body: string }[] = [
+  { numeral: 'II', title: 'Lý do vào viện', body: 'Ho khan, sốt nhẹ 2 ngày.' },
+  { numeral: 'III', title: 'Hỏi bệnh', body: '1. Quá trình bệnh lý: ho khan tăng về đêm, không khó thở. 2. Tiền sử bệnh: không dị ứng thuốc.' },
+  {
+    numeral: 'IV',
+    title: 'Khám bệnh',
+    body: 'Mạch 88 l/p · Nhiệt độ 37,8 °C · HA 120/75 mmHg · Nhịp thở 18 l/p · Cân nặng 54 kg. 1. Toàn thân: tỉnh. 2. Các bộ phận: phổi thô, không rales. 3. Cận lâm sàng: bạch cầu 11,2 G/L (cao nhẹ). 4. Chẩn đoán ban đầu: viêm đường hô hấp. 5. Đã xử lý: điều trị ngoại trú, Amoxicillin + Acid clavulanic 625mg × 14 viên. 6. Chẩn đoán khi ra viện: viêm phế quản cấp (J20.9). 7. Điều trị ngoại trú từ ngày 01/10/2026 đến ngày 08/10/2026.',
+  },
+];
+const SAMPLE_RECORD_SUMMARY: { numeral: string; title: string; body: string }[] = [
+  { numeral: '1', title: 'Diễn biến', body: 'Bệnh nhân nữ 39 tuổi, ho khan kèm sốt nhẹ 2 ngày, phổi thô.' },
+  { numeral: '2', title: 'Cận lâm sàng', body: 'Công thức máu: bạch cầu 11,2 G/L (cao nhẹ).' },
+  { numeral: '3', title: 'Chẩn đoán ra viện', body: 'Bệnh chính: viêm phế quản cấp (J20.9).' },
+  { numeral: '4', title: 'Phương pháp điều trị', body: 'Điều trị ngoại trú bằng thuốc kháng sinh và long đờm.' },
+  { numeral: '5', title: 'Tình trạng ra viện', body: 'Ổn định, tiếp tục điều trị ngoại trú.' },
+  { numeral: '6', title: 'Hướng điều trị tiếp', body: 'Uống nhiều nước. Hẹn tái khám: 08/10/2026.' },
+];
+
+function SampleRecordRows({ rows }: { rows: { numeral: string; title: string; body: string }[] }) {
+  return (
+    <>
+      {rows.map((r) => (
+        <div key={r.numeral} className="grid grid-cols-[110px_1fr] border-b border-slate-300 last:border-b-0">
+          <div className="border-r border-slate-300 bg-slate-50 p-2 font-semibold">
+            {r.numeral}. {r.title}
+          </div>
+          <div className="p-2">{r.body}</div>
+        </div>
+      ))}
+    </>
+  );
+}
+
 function MedicalRecordPreview() {
   return (
     <PrintDocument
       documentType="MEDICAL_RECORD"
-      title="Bệnh án"
+      title="Bệnh án ngoại trú"
       subtitle={
         <p>
-          Mã bệnh nhân: <strong>BN2609000471</strong>
+          Số ngoại trú: <strong>LK2610000471</strong> · Số lưu trữ: <strong>LT2026-000042</strong> · MS: 15/BV-01
         </p>
       }
       signatureDateText={formatPrintDate('2026-10-01T07:30:00.000Z')}
-      signatures={[{ label: 'Bác sĩ điều trị', name: 'BS. Đặng Quốc Hưng' }]}
+      signatures={[{ label: 'Bác sĩ khám bệnh', name: 'BS. Đặng Quốc Hưng' }]}
     >
       {({ config }) => (
-      <>
-      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
-        <p>
-          Họ tên: <strong>Lý Thị Hoài Thương</strong>
-        </p>
-        <p>
-          Ngày sinh: <strong>14/03/1987</strong> — Nữ
-        </p>
-        <p className="col-span-2">
-          Địa chỉ: <strong>45/7 Trần Hưng Đạo, P. Cầu Ông Lãnh, TP. Hồ Chí Minh</strong>
-        </p>
-      </div>
-      <div className="mt-5 border-t border-slate-300 pt-3">
-        <p className="font-semibold">Lượt khám LK2610000471 — 01/10/2026</p>
-        {config.insurance?.show && formatInsurancePrintValue(SAMPLE_INSURANCE, config.insurance.whenSelfPay) && (
-          <p className="mt-1">
-            Số thẻ BHYT: <strong>{formatInsurancePrintValue(SAMPLE_INSURANCE, config.insurance.whenSelfPay)}</strong>
-          </p>
-        )}
-        <p className="mt-1">
-          Chẩn đoán: <strong>Viêm phế quản cấp (J20.9)</strong>
-        </p>
-        <p className="mt-1">Lý do khám: Ho khan, sốt nhẹ 2 ngày. Khám: phổi thô, không rales.</p>
-        <p className="mt-1">Đơn thuốc: Amoxicillin + Acid clavulanic 625mg × 14 viên; Acetylcystein 200mg × 21 gói.</p>
-      </div>
-      </>
+        <>
+          <div className="mt-3 border border-slate-300 text-[12px]">
+            <div className="grid grid-cols-[110px_1fr] border-b border-slate-300">
+              <div className="border-r border-slate-300 bg-slate-50 p-2 font-semibold">I. Hành chính</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 p-2">
+                <p>
+                  1. Họ và tên: <strong>LÝ THỊ HOÀI THƯƠNG</strong>
+                </p>
+                <p>
+                  2. Sinh ngày: <strong>14/03/1987</strong> · 39 tuổi
+                </p>
+                <p>
+                  3. Giới: <strong>Nữ</strong>
+                </p>
+                <p className="col-span-2">
+                  7. Địa chỉ: <strong>45/7 Trần Hưng Đạo, P. Cầu Ông Lãnh, TP. Hồ Chí Minh</strong>
+                </p>
+                {config.insurance?.show && formatInsurancePrintValue(SAMPLE_INSURANCE, config.insurance.whenSelfPay) && (
+                  <p className="col-span-2">
+                    10. BHYT giá trị đến · Số thẻ BHYT: <strong>{formatInsurancePrintValue(SAMPLE_INSURANCE, config.insurance.whenSelfPay)}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+            <SampleRecordRows rows={SAMPLE_RECORD_SECTIONS} />
+          </div>
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide">Tổng kết bệnh án</p>
+          <div className="mt-1 border border-slate-300 text-[12px]">
+            <SampleRecordRows rows={SAMPLE_RECORD_SUMMARY} />
+          </div>
+        </>
       )}
     </PrintDocument>
   );
