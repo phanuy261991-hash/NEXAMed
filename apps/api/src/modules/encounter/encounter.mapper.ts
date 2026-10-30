@@ -12,6 +12,7 @@ export function toEncounterSummary(encounter: Encounter): EncounterSummary {
   return {
     id: encounter.id,
     encounterNo: encounter.encounterNo,
+    recordNo: encounter.recordNo,
     patientId: encounter.patientId,
     doctorId: encounter.doctorId,
     departmentId: encounter.departmentId,

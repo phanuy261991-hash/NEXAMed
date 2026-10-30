@@ -215,6 +215,8 @@ export type ReassignEncounterRequest = z.infer<typeof reassignEncounterRequestSc
 export const encounterSummarySchema = z.object({
   id: z.string().uuid(),
   encounterNo: z.string(),
+  /** "Số bệnh án" (#269) — cấp lúc "Hoàn tất khám"; `null` với lượt chưa hoàn tất hoặc hoàn tất trước khi có tính năng. */
+  recordNo: z.string().nullable(),
   patientId: z.string().uuid(),
   /** "Hàng đợi ảo" (#064) — `null` khi lượt khám còn trong hàng chờ chung Khoa, chưa được bác sĩ nào nhận. */
   doctorId: z.string().uuid().nullable(),
@@ -324,7 +326,8 @@ export const exportPatientMedicalRecordQuerySchema = z.object({
 export type ExportPatientMedicalRecordQuery = z.infer<typeof exportPatientMedicalRecordQuerySchema>;
 
 export const exportPatientMedicalRecordRequestSchema = z.object({
-  reason: z.string().min(1, 'Vui lòng nhập lý do xuất bệnh án'),
+  // Cắt khoảng trắng TRƯỚC khi kiểm: lý do toàn dấu cách không phải là lý do (giao diện đã chặn, máy chủ không được tin giao diện). Dùng chung cho "Xuất toàn bộ bệnh án" và "In bộ hồ sơ" một lượt khám (#269).
+  reason: z.string().trim().min(1, 'Vui lòng nhập lý do xuất bệnh án'),
 });
 export type ExportPatientMedicalRecordRequest = z.infer<typeof exportPatientMedicalRecordRequestSchema>;
 
@@ -590,6 +593,9 @@ export const CLINICAL_NOTE_SECTIONS = [
   // Điều trị & Hẹn tái khám (docs/DECISIONS.md #222): `PLAN` = "Nội dung điều trị", `CONCLUSION` = "Kết luận", `DOCTOR_ADVICE` = "Lời dặn bác sĩ".
   'CONCLUSION',
   'DOCTOR_ADVICE',
+  // Hồ sơ bệnh án điện tử (docs/DECISIONS.md #269): mục VI "Tóm tắt bệnh án" và mục IX "Tiên lượng" của mẫu bệnh án ngoại trú — TUỲ CHỌN, không chặn "Hoàn tất khám".
+  'SUMMARY',
+  'PROGNOSIS',
 ] as const;
 export const clinicalNoteSectionSchema = z.enum(CLINICAL_NOTE_SECTIONS);
 export type ClinicalNoteSection = z.infer<typeof clinicalNoteSectionSchema>;
@@ -646,6 +652,9 @@ export const saveClinicalNoteRequestSchema = z.object({
   // #222 — tuỳ chọn để client cũ vẫn gọi được; web mới luôn gửi (lưu cùng 1 transaction với các mục trên).
   conclusion: clinicalNoteSectionInputSchema.optional(),
   doctorAdvice: clinicalNoteSectionInputSchema.optional(),
+  // #269 — Tóm tắt bệnh án + Tiên lượng: tuỳ chọn, cùng khuôn Kết luận/Lời dặn.
+  summary: clinicalNoteSectionInputSchema.optional(),
+  prognosis: clinicalNoteSectionInputSchema.optional(),
   treatmentPlan: treatmentPlanInputSchema.optional(),
 });
 export type SaveClinicalNoteRequest = z.infer<typeof saveClinicalNoteRequestSchema>;
@@ -710,6 +719,9 @@ export const clinicalNoteResponseSchema = z.object({
   plan: clinicalNoteSectionValueSchema,
   conclusion: clinicalNoteSectionValueSchema,
   doctorAdvice: clinicalNoteSectionValueSchema,
+  /** Tóm tắt bệnh án + Tiên lượng (#269) — `null` nếu bác sĩ chưa ghi. */
+  summary: clinicalNoteSectionValueSchema,
+  prognosis: clinicalNoteSectionValueSchema,
   /** Hướng điều trị + ngày hẹn tái khám (#222) — `null` nếu chưa lưu lần nào. */
   treatmentPlan: treatmentPlanValueSchema,
 });
@@ -856,6 +868,8 @@ export const patientEncounterHistoryBillingSchema = z.object({
 export const patientEncounterHistoryItemSchema = z.object({
   encounterId: z.string().uuid(),
   encounterNo: z.string(),
+  /** "Số bệnh án" (#269) — `null` với lượt chưa hoàn tất hoặc hoàn tất trước khi có tính năng. */
+  recordNo: z.string().nullable(),
   status: encounterStatusSchema,
   checkedInAt: z.string(),
   examTypeName: z.string().nullable(),
@@ -878,6 +892,34 @@ export const patientEncounterHistoryItemSchema = z.object({
   insurance: encounterInsuranceSchema.nullable(),
 });
 export type PatientEncounterHistoryItem = z.infer<typeof patientEncounterHistoryItemSchema>;
+
+/**
+ * `GET /encounters/:id/medical-record/paraclinical` (#269) — kết quả cận lâm sàng ĐÃ DUYỆT của một lượt khám cho mục V "Các xét nghiệm cận lâm sàng" của hồ sơ bệnh án. Không có giá/tiền.
+ * Bản nháp, đang nhập hoặc đang đính chính KHÔNG có mặt (chưa phải hồ sơ chính thức).
+ */
+export const medicalRecordParaclinicalIndicatorSchema = z.object({
+  name: z.string(),
+  valueText: z.string().nullable(),
+  referenceText: z.string(),
+  unit: z.string().nullable(),
+  /** Vượt khoảng tham chiếu — in ĐẬM + GẠCH CHÂN đúng quy ước phiếu kết quả (#214). */
+  abnormal: z.boolean(),
+});
+export const medicalRecordParaclinicalResultSchema = z.object({
+  /** Id dòng chỉ định — mở phiếu kết quả đầy đủ qua `ParaclinicalResultViewDialog`. */
+  itemId: z.string().uuid(),
+  serviceName: z.string(),
+  serviceKind: z.enum(['LAB', 'IMAGING', 'FUNCTIONAL']),
+  signedAt: z.string(),
+  indicators: z.array(medicalRecordParaclinicalIndicatorSchema),
+  descriptionText: z.string().nullable(),
+  conclusionText: z.string().nullable(),
+  imageCount: z.number().int(),
+});
+export const medicalRecordParaclinicalResponseSchema = z.object({
+  results: z.array(medicalRecordParaclinicalResultSchema),
+});
+export type MedicalRecordParaclinicalResponse = z.infer<typeof medicalRecordParaclinicalResponseSchema>;
 
 export const patientEncounterHistoryResponseSchema = z.object({
   items: z.array(patientEncounterHistoryItemSchema),

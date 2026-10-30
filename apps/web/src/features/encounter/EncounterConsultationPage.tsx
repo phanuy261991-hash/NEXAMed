@@ -93,10 +93,12 @@ const CLINICAL_SECTION_CODE: Record<ClinicalKey, ClinicalNoteSection> = {
   plan: 'PLAN',
   conclusion: 'CONCLUSION',
   doctorAdvice: 'DOCTOR_ADVICE',
+  summary: 'SUMMARY',
+  prognosis: 'PROGNOSIS',
 };
 
 /** Các mục thuộc tab "Khám & Chẩn đoán" (hộp thoại "Đính chính ghi chú khám"); `plan`/`doctorAdvice` thuộc tab "Điều trị & Hẹn tái khám" (hộp thoại "Đính chính điều trị"). */
-const CLINICAL_AMEND_KEYS: ClinicalKey[] = ['reasonForVisit', 'illnessProgress', 'preliminaryDiagnosis', 'generalExam', 'regionalExam', 'conclusion'];
+const CLINICAL_AMEND_KEYS: ClinicalKey[] = ['reasonForVisit', 'illnessProgress', 'preliminaryDiagnosis', 'generalExam', 'regionalExam', 'conclusion', 'summary', 'prognosis'];
 
 /** Mục ghi chú dạng chữ + hướng điều trị/ngày hẹn (#222) — cùng 1 state để autosave, nháp offline và lưu 1 lần bằng đúng 1 request. */
 type ClinicalDraft = Record<ClinicalKey, string> & { treatmentPlan: TreatmentPlanDraft };
@@ -110,6 +112,8 @@ const EMPTY_CLINICAL_DRAFT: ClinicalDraft = {
   plan: '',
   conclusion: '',
   doctorAdvice: '',
+  summary: '',
+  prognosis: '',
   treatmentPlan: EMPTY_TREATMENT_PLAN,
 };
 
@@ -350,6 +354,8 @@ export function EncounterConsultationPage() {
       plan: note.plan?.version,
       conclusion: note.conclusion?.version,
       doctorAdvice: note.doctorAdvice?.version,
+      summary: note.summary?.version,
+      prognosis: note.prognosis?.version,
       treatmentPlan: note.treatmentPlan?.version,
     };
   }
@@ -369,6 +375,8 @@ export function EncounterConsultationPage() {
       plan: note.plan?.content ?? '',
       conclusion: note.conclusion?.content ?? '',
       doctorAdvice: note.doctorAdvice?.content ?? '',
+      summary: note.summary?.content ?? '',
+      prognosis: note.prognosis?.content ?? '',
       treatmentPlan: treatmentPlanFromServer(note.treatmentPlan),
     });
     setClinicalVersions(extractClinicalVersions(note));
@@ -419,6 +427,8 @@ export function EncounterConsultationPage() {
       plan: { content: c.plan, version: v.plan },
       conclusion: { content: c.conclusion, version: v.conclusion },
       doctorAdvice: { content: c.doctorAdvice, version: v.doctorAdvice },
+      summary: { content: c.summary, version: v.summary },
+      prognosis: { content: c.prognosis, version: v.prognosis },
       treatmentPlan: toTreatmentPlanPayload(c.treatmentPlan, v.treatmentPlan),
     };
   }
@@ -1268,6 +1278,28 @@ export function EncounterConsultationPage() {
                     onChange={(e) => setField('conclusion', e.target.value)}
                     readOnly={!canEditDraft}
                     placeholder={canEditDraft ? 'Kết luận bệnh cuối cùng của lượt khám…' : undefined}
+                  />
+                </div>
+
+                {/* "Tóm tắt bệnh án" + "Tiên lượng" (#269) — mục VI và IX của mẫu bệnh án ngoại trú; TUỲ CHỌN (không chặn "Hoàn tất khám"), ký cùng lúc, đính chính qua cùng hộp thoại. */}
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <Textarea
+                    id="clinical-summary"
+                    label="Tóm tắt bệnh án"
+                    rows={3}
+                    value={clinical.summary}
+                    onChange={(e) => setField('summary', e.target.value)}
+                    readOnly={!canEditDraft}
+                    placeholder={canEditDraft ? 'Tóm tắt ngắn quá trình bệnh, khám và xét nghiệm…' : undefined}
+                  />
+                  <Textarea
+                    id="clinical-prognosis"
+                    label="Tiên lượng"
+                    rows={3}
+                    value={clinical.prognosis}
+                    onChange={(e) => setField('prognosis', e.target.value)}
+                    readOnly={!canEditDraft}
+                    placeholder={canEditDraft ? 'Dự kiến diễn tiến và thời gian hồi phục…' : undefined}
                   />
                 </div>
               </div>

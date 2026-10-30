@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-10-30
+
+### Tab "Hồ sơ bệnh án" thành bệnh án điện tử theo mẫu Bộ Y tế: Số bệnh án, Tóm tắt/Tiên lượng, In bộ hồ sơ một lượt khám (`docs/DECISIONS.md` #269)
+
+Tab "Hồ sơ bệnh án" ở hồ sơ bệnh nhân (trước đây "Sắp có") nay hiện bệnh án ngoại trú của TỪNG lần khám đã hoàn tất: cột trái chọn lượt khám, phiếu bên phải 10 mục I–X theo mẫu (hành chính, lý do đến khám, hỏi bệnh, khám bệnh, cận lâm sàng, tóm tắt, chẩn đoán, điều trị, tiên lượng, lời dặn), chỉ đọc, không có tiền; hai cách xem "Theo mẫu Bộ Y tế" và "Theo trường dữ liệu"; màn hẹp thu cột lượt khám thành dải ngang. Mỗi lượt hoàn tất được cấp **Số bệnh án** riêng (`BA2026-000042`, theo năm, khuôn đổi được ở "Cấu hình mẫu mã phát sinh"). Màn khám có thêm hai ô tuỳ chọn **Tóm tắt bệnh án** và **Tiên lượng**. Nút **"In bộ hồ sơ"** và **"Xuất PDF"** tạo MỘT PDF cho một lượt khám gồm tờ khám, phiếu kết quả cận lâm sàng và đơn thuốc; nút ở đầu hồ sơ đổi tên "Xuất toàn bộ bệnh án". Sửa kèm theo: bản in bệnh án PDF cũ in giờ lệch 7 tiếng (UTC) nay đúng giờ Việt Nam; lý do xuất toàn dấu cách không còn được chấp nhận. **Môi trường khác cần `db:deploy`** (2 migration: `20261029160000_clinical_note_section_summary_prognosis`, `20261029160100_encounter_record_no`). Lượt khám hoàn tất trước bản này không có Số bệnh án (hiện "—").
+
 ## 2026-10-29
 
 ### Công cụ cho nhà phát triển: vá file an toàn, bộ ca kiểm chung web–máy chủ, `pnpm dev:lan`

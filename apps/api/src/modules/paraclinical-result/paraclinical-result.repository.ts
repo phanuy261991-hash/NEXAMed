@@ -50,7 +50,7 @@ export class ParaclinicalResultRepository {
       include: {
         values: { where: { deletedAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
         orderItem: {
-          select: { name: true, sortOrder: true, createdAt: true, order: { select: { encounterId: true } }, technicalService: { select: { serviceKind: true } } },
+          select: { id: true, name: true, sortOrder: true, createdAt: true, order: { select: { encounterId: true } }, technicalService: { select: { serviceKind: true } } },
         },
         _count: { select: { images: { where: { deletedAt: null } } } },
       },

@@ -93,6 +93,23 @@ export class EncounterController {
     res.send(pdf);
   }
 
+  /**
+   * "In bộ hồ sơ" của MỘT lượt khám (#269) — một PDF gồm tờ khám theo mẫu bệnh án ngoại trú + phiếu kết quả cận lâm sàng đã duyệt + đơn thuốc. Cùng quyền với "Xuất toàn bộ bệnh án"
+   * (`patient.export_medical_record`) và cùng yêu cầu `reason` ở BODY (không phải query string — `.claude/docs/security-audit.md`).
+   */
+  @Post(':id/medical-record/export')
+  @HttpCode(200)
+  @RequirePermission('patient', 'export_medical_record')
+  async exportEncounterMedicalRecord(@Param('id', new ParseUUIDPipe()) id: string, @Body() body: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const { reason } = exportPatientMedicalRecordRequestSchema.parse(body);
+    const { tenantId, userId } = req.user!;
+    const { pdf, patientId, fileLabel } = await this.encounterService.exportEncounterMedicalRecordPdf(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id, reason);
+    await this.encounterService.recordEncounterMedicalRecordExportAudit(tenantId, userId, id, patientId, reason, extractRequestMeta(req));
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="ho-so-benh-an-${fileLabel.replace(/[^A-Za-z0-9._-]/g, '')}.pdf"`);
+    res.send(pdf);
+  }
+
   @Post(':id/start')
   @RequirePermission('encounter', 'update', { entityIdParam: 'id' })
   @HttpCode(200)
@@ -152,6 +169,19 @@ export class EncounterController {
    * Thông tin bệnh nhân in thêm trên đơn thuốc (#242) — gọi khi bấm In. Cùng quyền xem hồ sơ khám (`encounter.read_clinical`) và CŨNG ghi nhật ký xem (`@AuditView`), vì trả về CCCD đã giải mã.
    * Khai TRƯỚC `:id/consultation` không cần vì path khác nhau; đặt ngay sau cho dễ đọc.
    */
+  /**
+   * Mục V "Các xét nghiệm cận lâm sàng" của tab "Hồ sơ bệnh án" (#269): kết quả cận lâm sàng ĐÃ DUYỆT của lượt khám, kèm chỉ số. Cùng quyền xem hồ sơ khám (`encounter.read_clinical`)
+   * và cùng quy tắc nhìn thấy lượt khám với `GET :id/consultation` (chi nhánh khác chỉ xem được khi đã hoàn tất); ghi nhật ký xem.
+   */
+  @Get(':id/medical-record/paraclinical')
+  @RequirePermission('encounter', 'read_clinical', { entityIdParam: 'id' })
+  @AuditView('encounter')
+  @UseInterceptors(AuditViewInterceptor)
+  async getMedicalRecordParaclinical(@Param('id') id: string, @Req() req: Request) {
+    const { userId, tenantId } = req.user!;
+    return this.encounterService.getMedicalRecordParaclinical(tenantId, requireBranchId(req.user!), userId, req.dataScope!, id);
+  }
+
   @Get(':id/prescription-print-info')
   @RequirePermission('encounter', 'read_clinical', { entityIdParam: 'id' })
   @AuditView('encounter')

@@ -28,6 +28,7 @@ export class ParaclinicalResultsReaderAdapter implements ParaclinicalResultsRead
       const serviceKind = r.orderItem.technicalService?.serviceKind;
       if (!serviceKind || !r.signedAt) continue;
       const entry: MedicalRecordParaclinicalResult = {
+        itemId: r.orderItem.id,
         serviceName: r.orderItem.name,
         serviceKind,
         signedAt: r.signedAt.toISOString(),

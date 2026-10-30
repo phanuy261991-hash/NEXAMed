@@ -4679,6 +4679,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
+                                recordNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -4840,6 +4841,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
+                                recordNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -5303,6 +5305,7 @@ export interface paths {
                                     /** Format: uuid */
                                     encounterId: string;
                                     encounterNo: string;
+                                    recordNo: string | null;
                                     /** @enum {string} */
                                     status: "SCHEDULED" | "CHECKED_IN" | "IN_CONSULTATION" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
                                     checkedInAt: string;
@@ -5457,6 +5460,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
+                                recordNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -5587,6 +5591,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
+                                recordNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -5716,6 +5721,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
+                                recordNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -5853,6 +5859,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
+                                recordNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -5986,6 +5993,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     encounterNo: string;
+                                    recordNo: string | null;
                                     /** Format: uuid */
                                     patientId: string;
                                     /** Format: uuid */
@@ -6177,6 +6185,26 @@ export interface paths {
                                         supersedesId: string | null;
                                         amendmentReason: string | null;
                                     } | null;
+                                    summary: {
+                                        content: string;
+                                        version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
+                                    } | null;
+                                    prognosis: {
+                                        content: string;
+                                        version: number;
+                                        signedAt: string | null;
+                                        /** Format: uuid */
+                                        signedBy: string | null;
+                                        /** Format: uuid */
+                                        supersedesId: string | null;
+                                        amendmentReason: string | null;
+                                    } | null;
                                     treatmentPlan: {
                                         directions: ("PRESCRIPTION" | "TRANSFER" | "FOLLOW_UP" | "EMERGENCY")[];
                                         followUpDate: string | null;
@@ -6289,6 +6317,111 @@ export interface paths {
                     };
                 };
                 /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/encounters/{id}/medical-record/paraclinical": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kết quả cận lâm sàng ĐÃ DUYỆT của lượt khám (kèm chỉ số) cho mục V của tab Hồ sơ bệnh án — không có giá/tiền, ghi nhật ký xem */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công (rỗng nếu lượt khám không có kết quả đã duyệt) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                results: {
+                                    /** Format: uuid */
+                                    itemId: string;
+                                    serviceName: string;
+                                    /** @enum {string} */
+                                    serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                                    signedAt: string;
+                                    indicators: {
+                                        name: string;
+                                        valueText: string | null;
+                                        referenceText: string;
+                                        unit: string | null;
+                                        abnormal: boolean;
+                                    }[];
+                                    descriptionText: string | null;
+                                    conclusionText: string | null;
+                                    imageCount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền encounter.read_clinical */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy (không tồn tại, thuộc tenant khác, chi nhánh khác khi chưa hoàn tất, hoặc ngoài scope personal) */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -6763,6 +6896,14 @@ export interface paths {
                             content: string;
                             version?: number;
                         };
+                        summary?: {
+                            content: string;
+                            version?: number;
+                        };
+                        prognosis?: {
+                            content: string;
+                            version?: number;
+                        };
                         treatmentPlan?: {
                             directions: ("PRESCRIPTION" | "TRANSFER" | "FOLLOW_UP" | "EMERGENCY")[];
                             /** Format: date */
@@ -6852,6 +6993,26 @@ export interface paths {
                                     amendmentReason: string | null;
                                 } | null;
                                 doctorAdvice: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                summary: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                prognosis: {
                                     content: string;
                                     version: number;
                                     signedAt: string | null;
@@ -7106,7 +7267,7 @@ export interface paths {
                         /** @default [] */
                         sections?: {
                             /** @enum {string} */
-                            section: "REASON_FOR_VISIT" | "ILLNESS_PROGRESS" | "PRELIMINARY_DIAGNOSIS" | "GENERAL_EXAM" | "REGIONAL_EXAM" | "PLAN" | "CONCLUSION" | "DOCTOR_ADVICE";
+                            section: "REASON_FOR_VISIT" | "ILLNESS_PROGRESS" | "PRELIMINARY_DIAGNOSIS" | "GENERAL_EXAM" | "REGIONAL_EXAM" | "PLAN" | "CONCLUSION" | "DOCTOR_ADVICE" | "SUMMARY" | "PROGNOSIS";
                             content: string;
                             version?: number;
                         }[];
@@ -7199,6 +7360,26 @@ export interface paths {
                                     amendmentReason: string | null;
                                 } | null;
                                 doctorAdvice: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                summary: {
+                                    content: string;
+                                    version: number;
+                                    signedAt: string | null;
+                                    /** Format: uuid */
+                                    signedBy: string | null;
+                                    /** Format: uuid */
+                                    supersedesId: string | null;
+                                    amendmentReason: string | null;
+                                } | null;
+                                prognosis: {
                                     content: string;
                                     version: number;
                                     signedAt: string | null;
@@ -7349,6 +7530,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 encounterNo: string;
+                                recordNo: string | null;
                                 /** Format: uuid */
                                 patientId: string;
                                 /** Format: uuid */
@@ -20545,7 +20727,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE";
+                                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "MEDICAL_RECORD";
                                     label: string;
                                     prefix: string;
                                     template: string;
@@ -20918,7 +21100,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE";
+                    codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "MEDICAL_RECORD";
                 };
                 cookie?: never;
             };
@@ -20943,7 +21125,7 @@ export interface paths {
                         "application/json": {
                             data: {
                                 /** @enum {string} */
-                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE";
+                                codeType: "PATIENT" | "DEPARTMENT" | "EMPLOYEE" | "APPOINTMENT_BOOKING" | "ENCOUNTER" | "INVOICE" | "CASHIER_SHIFT" | "CASH_RECEIPT" | "CASH_PAYMENT" | "CASH_TRANSFER" | "WALLET_TOPUP" | "WALLET_SETTLEMENT" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "PRESCRIPTION" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SUPPLIER_DEBT_ADJUSTMENT" | "SUPPLIER_DEBT_RECONCILIATION" | "INVOICE_REFUND" | "TECH_SERVICE_LAB" | "TECH_SERVICE_IMAGING" | "TECH_SERVICE_FUNCTIONAL" | "LAB_INDICATOR" | "SERVICE_PACKAGE" | "PRICE_LIST" | "CLINICAL_ORDER" | "SPECIMEN_TUBE" | "MEDICAL_RECORD";
                                 label: string;
                                 prefix: string;
                                 template: string;

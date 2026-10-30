@@ -217,6 +217,7 @@ import {
   patientClinicalSummaryQuerySchema,
   listPatientEncounterHistoryQuerySchema,
   patientEncounterHistoryResponseSchema,
+  medicalRecordParaclinicalResponseSchema,
   patientClinicalSummaryResponseSchema,
   doctorUnseenResultsResponseSchema,
   receptionListQuerySchema,
@@ -1398,6 +1399,21 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền encounter.read'),
     404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/encounters/{id}/medical-record/paraclinical',
+  tags: ['encounter'],
+  summary: 'Kết quả cận lâm sàng ĐÃ DUYỆT của lượt khám (kèm chỉ số) cho mục V của tab Hồ sơ bệnh án — không có giá/tiền, ghi nhật ký xem',
+  security: [{ bearerAuth: [] }],
+  request: { params: encounterActionIdParams },
+  responses: {
+    200: jsonResponse('Thành công (rỗng nếu lượt khám không có kết quả đã duyệt)', envelope(medicalRecordParaclinicalResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền encounter.read_clinical'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant khác, chi nhánh khác khi chưa hoàn tất, hoặc ngoài scope personal)'),
   },
 });
 

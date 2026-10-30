@@ -1004,6 +1004,33 @@ describe('HTTP e2e — /api/v1/paraclinical (Hàng đợi & kết quả cận l�
       expect(await reader().listSignedForEncounters(fixture.tenantA.id, [])).toEqual({});
     });
 
+    it('GET /encounters/:id/medical-record/paraclinical (#269): trả kết quả ĐÃ DUYỆT kèm chỉ số + id dòng chỉ định, không có tiền; ẩn khi đang đính chính; lễ tân bị chặn (403); công ty khác 404', async () => {
+      const { encounterId, itemId } = await approvedGlucoseFor('7,2');
+      const url = `/api/v1/encounters/${encounterId}/medical-record/paraclinical`;
+
+      const ok = await http().get(url).set(authed(doctorToken));
+      expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+      const { results } = ok.body.data as { results: { itemId: string; serviceName: string; serviceKind: string; signedAt: string; imageCount: number; indicators: { valueText: string | null; abnormal: boolean; referenceText: string }[] }[] };
+      expect(results).toHaveLength(1);
+      expect(results[0]).toMatchObject({ itemId, serviceName: 'Glucose máu (kết quả)', serviceKind: 'LAB', imageCount: 0 });
+      expect(results[0]!.signedAt).toBeTruthy();
+      expect(results[0]!.indicators[0]).toMatchObject({ valueText: '7,2', abnormal: true });
+      expect(results[0]!.indicators[0]!.referenceText).not.toBe('');
+      // Hồ sơ bệnh án không có tiền: mọi khoá trả về đều thuộc tập cho phép.
+      expect(JSON.stringify(ok.body)).not.toMatch(/price|amount|netAmount/i);
+
+      // Đang đính chính → kết quả cũ tạm không có (cùng quy tắc với bệnh án PDF).
+      expect((await http().post(`${resultUrl(itemId)}/amend`).set(authed(nurseToken)).send({ reason: 'Nhập nhầm chỉ số glucose' })).status).toBe(200);
+      expect((await http().get(url).set(authed(doctorToken))).body.data.results).toEqual([]);
+
+      // Lễ tân không có quyền xem hồ sơ khám lâm sàng.
+      expect((await http().get(url).set(authed(receptionistToken))).status).toBe(403);
+      // Công ty khác hỏi đúng id lượt khám → 404, không lộ sự tồn tại.
+      expect((await http().get(url).set(authed(tenantBAdminToken))).status).toBe(404);
+      // Id không hợp lệ/không tồn tại → 404 (không 500).
+      expect((await http().get(`/api/v1/encounters/${randomUUID()}/medical-record/paraclinical`).set(authed(doctorToken))).status).toBe(404);
+    });
+
     it('port bệnh án PDF: kết quả CĐHA mang mô tả + kết luận + số ảnh; dịch vụ chưa có kết quả/đang nhập dở không có mặt', async () => {
       const { encounterId } = await prepareEncounterInConsultation();
       const placed = await order(encounterId, [ultrasoundId]);

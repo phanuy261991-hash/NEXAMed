@@ -86,6 +86,7 @@ export const businessCodeTypeSchema = z.enum([
   'PRICE_LIST',
   'CLINICAL_ORDER',
   'SPECIMEN_TUBE',
+  'MEDICAL_RECORD',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -163,6 +164,13 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, BusinessCodeT
     label: 'Mã ống mẫu xét nghiệm',
     internalPrefix: 'ONG',
     defaults: { template: '[Năm 2 số][Tháng][Ngày][Số đếm]', counterDigits: 4, resetsByDefault: true },
+  },
+  // "Số bệnh án" của từng lượt khám (docs/DECISIONS.md #269) — điền ô "Số bệnh án" của mẫu bệnh án ngoại trú, cấp lúc "Hoàn tất khám". Mặc định theo NĂM, chung cả công ty, đặt lại về 1 mỗi đầu năm
+  // (BA2026-000042) — chủ dự án chốt; tenant tự đổi khuôn ở "Cấu hình mẫu mã phát sinh".
+  MEDICAL_RECORD: {
+    label: 'Số bệnh án',
+    internalPrefix: 'BA',
+    defaults: { template: 'BA[Năm 4 số]-[Số đếm]', counterDigits: 6, resetsByDefault: true },
   },
 };
 

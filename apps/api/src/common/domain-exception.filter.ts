@@ -76,6 +76,7 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   ENCOUNTER_NOT_CHECKED_IN: HttpStatus.CONFLICT,
   // S3-05→07 — lưu SOAP/chẩn đoán ngoài IN_CONSULTATION, cùng nhóm ENCOUNTER_NOT_CHECKED_IN ở trên.
   ENCOUNTER_NOT_IN_CONSULTATION: HttpStatus.CONFLICT,
+  ENCOUNTER_NOT_COMPLETED: HttpStatus.CONFLICT,
   // "Hàng đợi ảo" (#064) — "Nhận ca" chậm chân, cùng nhóm ENCOUNTER_NOT_CHECKED_IN ở trên.
   ENCOUNTER_ALREADY_CLAIMED: HttpStatus.CONFLICT,
   // "Trung tâm Điều phối Tiếp nhận" — "Đổi bác sĩ" ngoài trạng thái CHECKED_IN, cùng nhóm trên.

@@ -515,11 +515,14 @@ export class EncounterRepository {
     return result.count;
   }
 
-  /** "Hoàn tất khám" — `IN_CONSULTATION → COMPLETED`, set `completed_at` (S3-05→07). */
-  async complete(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string): Promise<number> {
+  /**
+   * "Hoàn tất khám" — `IN_CONSULTATION → COMPLETED`, set `completed_at` (S3-05→07) và "Số bệnh án" (#269) trong CÙNG một câu UPDATE (một lần tăng `version`).
+   * `recordNo` do service cấp trước (cùng transaction) nên nếu khoá lạc quan thất bại, transaction rollback kéo theo cả bộ đếm — không thủng số.
+   */
+  async complete(tx: Prisma.TransactionClient, tenantId: string, id: string, expectedVersion: number, actorId: string, recordNo: string): Promise<number> {
     const result = await tx.encounter.updateMany({
       where: { tenantId, id, version: expectedVersion, deletedAt: null, status: 'IN_CONSULTATION' },
-      data: { status: 'COMPLETED', completedAt: new Date(), updatedBy: actorId, version: { increment: 1 } },
+      data: { status: 'COMPLETED', completedAt: new Date(), recordNo, updatedBy: actorId, version: { increment: 1 } },
     });
     return result.count;
   }

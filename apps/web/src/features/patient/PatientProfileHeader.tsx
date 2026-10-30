@@ -99,7 +99,7 @@ export function PatientProfileHeader({
             )}
             {!merged && canExportMedicalRecord && (
               <Button type="button" variant="secondary" onClick={onExportMedicalRecord}>
-                Xuất bệnh án PDF
+                Xuất toàn bộ bệnh án
               </Button>
             )}
             {!merged && canMerge && (

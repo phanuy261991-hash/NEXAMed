@@ -671,6 +671,8 @@ describe('HTTP e2e — /api/v1/encounters', () => {
         plan: null,
         conclusion: null,
         doctorAdvice: null,
+        summary: null,
+        prognosis: null,
         treatmentPlan: null,
       });
     });

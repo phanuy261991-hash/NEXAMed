@@ -66,6 +66,14 @@ export class EncounterNotInConsultationError extends DomainError {
  * sửa đổi khác) — lỗi này riêng cho đúng tình huống "chậm chân" trong hàng chờ chung, web hiện toast
  * lịch sự thay vì lỗi đỏ chung chung (xem `docs/DECISIONS.md` #064 điểm 6).
  */
+export class EncounterNotCompletedError extends DomainError {
+  readonly code = 'ENCOUNTER_NOT_COMPLETED';
+
+  constructor() {
+    super('Chỉ in được hồ sơ bệnh án của lượt khám đã hoàn tất.');
+  }
+}
+
 export class EncounterAlreadyClaimedError extends DomainError {
   readonly code = 'ENCOUNTER_ALREADY_CLAIMED';
 

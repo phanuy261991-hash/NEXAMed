@@ -11066,6 +11066,12 @@
                         "encounterNo": {
                           "type": "string"
                         },
+                        "recordNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "patientId": {
                           "type": "string",
                           "format": "uuid"
@@ -11142,6 +11148,7 @@
                       "required": [
                         "id",
                         "encounterNo",
+                        "recordNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -11467,6 +11474,12 @@
                         "encounterNo": {
                           "type": "string"
                         },
+                        "recordNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "patientId": {
                           "type": "string",
                           "format": "uuid"
@@ -11543,6 +11556,7 @@
                       "required": [
                         "id",
                         "encounterNo",
+                        "recordNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -12724,6 +12738,12 @@
                               "encounterNo": {
                                 "type": "string"
                               },
+                              "recordNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "status": {
                                 "type": "string",
                                 "enum": [
@@ -12990,6 +13010,7 @@
                             "required": [
                               "encounterId",
                               "encounterNo",
+                              "recordNo",
                               "status",
                               "checkedInAt",
                               "examTypeName",
@@ -13205,6 +13226,12 @@
                         "encounterNo": {
                           "type": "string"
                         },
+                        "recordNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "patientId": {
                           "type": "string",
                           "format": "uuid"
@@ -13281,6 +13308,7 @@
                       "required": [
                         "id",
                         "encounterNo",
+                        "recordNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -13498,6 +13526,12 @@
                         "encounterNo": {
                           "type": "string"
                         },
+                        "recordNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "patientId": {
                           "type": "string",
                           "format": "uuid"
@@ -13574,6 +13608,7 @@
                       "required": [
                         "id",
                         "encounterNo",
+                        "recordNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -13786,6 +13821,12 @@
                         "encounterNo": {
                           "type": "string"
                         },
+                        "recordNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "patientId": {
                           "type": "string",
                           "format": "uuid"
@@ -13862,6 +13903,7 @@
                       "required": [
                         "id",
                         "encounterNo",
+                        "recordNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -14082,6 +14124,12 @@
                         "encounterNo": {
                           "type": "string"
                         },
+                        "recordNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "patientId": {
                           "type": "string",
                           "format": "uuid"
@@ -14158,6 +14206,7 @@
                       "required": [
                         "id",
                         "encounterNo",
+                        "recordNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -14387,6 +14436,12 @@
                             "encounterNo": {
                               "type": "string"
                             },
+                            "recordNo": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
                             "patientId": {
                               "type": "string",
                               "format": "uuid"
@@ -14463,6 +14518,7 @@
                           "required": [
                             "id",
                             "encounterNo",
+                            "recordNo",
                             "patientId",
                             "doctorId",
                             "departmentId",
@@ -15309,6 +15365,102 @@
                                 "amendmentReason"
                               ]
                             },
+                            "summary": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "content": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "integer"
+                                },
+                                "signedAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "signedBy": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "uuid"
+                                },
+                                "supersedesId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "uuid"
+                                },
+                                "amendmentReason": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "content",
+                                "version",
+                                "signedAt",
+                                "signedBy",
+                                "supersedesId",
+                                "amendmentReason"
+                              ]
+                            },
+                            "prognosis": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "content": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "integer"
+                                },
+                                "signedAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "signedBy": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "uuid"
+                                },
+                                "supersedesId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "uuid"
+                                },
+                                "amendmentReason": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "content",
+                                "version",
+                                "signedAt",
+                                "signedBy",
+                                "supersedesId",
+                                "amendmentReason"
+                              ]
+                            },
                             "treatmentPlan": {
                               "type": [
                                 "object",
@@ -15383,6 +15535,8 @@
                             "plan",
                             "conclusion",
                             "doctorAdvice",
+                            "summary",
+                            "prognosis",
                             "treatmentPlan"
                           ]
                         },
@@ -15791,6 +15945,240 @@
           },
           "404": {
             "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, hoặc ngoài scope personal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/encounters/{id}/medical-record/paraclinical": {
+      "get": {
+        "tags": [
+          "encounter"
+        ],
+        "summary": "Kết quả cận lâm sàng ĐÃ DUYỆT của lượt khám (kèm chỉ số) cho mục V của tab Hồ sơ bệnh án — không có giá/tiền, ghi nhật ký xem",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công (rỗng nếu lượt khám không có kết quả đã duyệt)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "results": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "serviceName": {
+                                "type": "string"
+                              },
+                              "serviceKind": {
+                                "type": "string",
+                                "enum": [
+                                  "LAB",
+                                  "IMAGING",
+                                  "FUNCTIONAL"
+                                ]
+                              },
+                              "signedAt": {
+                                "type": "string"
+                              },
+                              "indicators": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "valueText": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "referenceText": {
+                                      "type": "string"
+                                    },
+                                    "unit": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "abnormal": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "valueText",
+                                    "referenceText",
+                                    "unit",
+                                    "abnormal"
+                                  ]
+                                }
+                              },
+                              "descriptionText": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "conclusionText": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "imageCount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "serviceName",
+                              "serviceKind",
+                              "signedAt",
+                              "indicators",
+                              "descriptionText",
+                              "conclusionText",
+                              "imageCount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "results"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền encounter.read_clinical",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy (không tồn tại, thuộc tenant khác, chi nhánh khác khi chưa hoàn tất, hoặc ngoài scope personal)",
             "content": {
               "application/json": {
                 "schema": {
@@ -16888,6 +17276,34 @@
                       "content"
                     ]
                   },
+                  "summary": {
+                    "type": "object",
+                    "properties": {
+                      "content": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "content"
+                    ]
+                  },
+                  "prognosis": {
+                    "type": "object",
+                    "properties": {
+                      "content": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "content"
+                    ]
+                  },
                   "treatmentPlan": {
                     "type": "object",
                     "properties": {
@@ -17328,6 +17744,102 @@
                             "amendmentReason"
                           ]
                         },
+                        "summary": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "content": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer"
+                            },
+                            "signedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "signedBy": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "supersedesId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "amendmentReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "content",
+                            "version",
+                            "signedAt",
+                            "signedBy",
+                            "supersedesId",
+                            "amendmentReason"
+                          ]
+                        },
+                        "prognosis": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "content": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer"
+                            },
+                            "signedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "signedBy": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "supersedesId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "amendmentReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "content",
+                            "version",
+                            "signedAt",
+                            "signedBy",
+                            "supersedesId",
+                            "amendmentReason"
+                          ]
+                        },
                         "treatmentPlan": {
                           "type": [
                             "object",
@@ -17402,6 +17914,8 @@
                         "plan",
                         "conclusion",
                         "doctorAdvice",
+                        "summary",
+                        "prognosis",
                         "treatmentPlan"
                       ]
                     },
@@ -17910,7 +18424,9 @@
                             "REGIONAL_EXAM",
                             "PLAN",
                             "CONCLUSION",
-                            "DOCTOR_ADVICE"
+                            "DOCTOR_ADVICE",
+                            "SUMMARY",
+                            "PROGNOSIS"
                           ]
                         },
                         "content": {
@@ -18362,6 +18878,102 @@
                             "amendmentReason"
                           ]
                         },
+                        "summary": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "content": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer"
+                            },
+                            "signedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "signedBy": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "supersedesId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "amendmentReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "content",
+                            "version",
+                            "signedAt",
+                            "signedBy",
+                            "supersedesId",
+                            "amendmentReason"
+                          ]
+                        },
+                        "prognosis": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "content": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer"
+                            },
+                            "signedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "signedBy": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "supersedesId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "amendmentReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "content",
+                            "version",
+                            "signedAt",
+                            "signedBy",
+                            "supersedesId",
+                            "amendmentReason"
+                          ]
+                        },
                         "treatmentPlan": {
                           "type": [
                             "object",
@@ -18436,6 +19048,8 @@
                         "plan",
                         "conclusion",
                         "doctorAdvice",
+                        "summary",
+                        "prognosis",
                         "treatmentPlan"
                       ]
                     },
@@ -18689,6 +19303,12 @@
                         "encounterNo": {
                           "type": "string"
                         },
+                        "recordNo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "patientId": {
                           "type": "string",
                           "format": "uuid"
@@ -18765,6 +19385,7 @@
                       "required": [
                         "id",
                         "encounterNo",
+                        "recordNo",
                         "patientId",
                         "doctorId",
                         "departmentId",
@@ -52362,7 +52983,8 @@
                                   "SERVICE_PACKAGE",
                                   "PRICE_LIST",
                                   "CLINICAL_ORDER",
-                                  "SPECIMEN_TUBE"
+                                  "SPECIMEN_TUBE",
+                                  "MEDICAL_RECORD"
                                 ]
                               },
                               "label": {
@@ -53289,7 +53911,8 @@
                 "SERVICE_PACKAGE",
                 "PRICE_LIST",
                 "CLINICAL_ORDER",
-                "SPECIMEN_TUBE"
+                "SPECIMEN_TUBE",
+                "MEDICAL_RECORD"
               ]
             },
             "required": true,
@@ -53373,7 +53996,8 @@
                             "SERVICE_PACKAGE",
                             "PRICE_LIST",
                             "CLINICAL_ORDER",
-                            "SPECIMEN_TUBE"
+                            "SPECIMEN_TUBE",
+                            "MEDICAL_RECORD"
                           ]
                         },
                         "label": {

@@ -20,6 +20,7 @@ import {
   WORK_SHIFT_ASSIGNMENT_READER_PORT,
   type WorkShiftAssignmentReaderPort,
   EncounterAlreadyClaimedError,
+  EncounterNotCompletedError,
   EncounterNotInConsultationError,
   EncounterNotReassignableError,
   EncounterPaymentRequiredError,
@@ -38,6 +39,10 @@ import {
   PrescriptionStockInsufficientError,
   PrescriptionWarningNotAcknowledgeableError,
   renderPatientMedicalRecordHtml,
+  renderEncounterMedicalRecordHtml,
+  REFERENCE_CATALOG_READER_PORT,
+  type ReferenceCatalogReaderPort,
+  type EncounterMedicalRecordDocument,
   type MedicalRecordPrintOptions,
   SIGNATURE_PORT,
   STOCK_AVAILABILITY_PORT,
@@ -87,6 +92,7 @@ import type {
   PrescriptionItem as PrescriptionItemDto,
   PatientClinicalSummaryResponse,
   ListPatientEncounterHistoryQuery,
+  MedicalRecordParaclinicalResponse,
   PatientEncounterHistoryResponse,
   PatientVitalSignHistoryItem,
   PreviousPrescriptionResponse,
@@ -206,6 +212,7 @@ export class EncounterService {
     @Inject(PDF_RENDERER_PORT) private readonly pdfRenderer: PdfRendererPort,
     @Inject(STOCK_AVAILABILITY_PORT) private readonly stockAvailability: StockAvailabilityPort,
     @Inject(PARACLINICAL_RESULTS_READER_PORT) private readonly paraclinicalResultsReader: ParaclinicalResultsReaderPort,
+    @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
     @Inject(PARACLINICAL_PROGRESS_READER_PORT) private readonly paraclinicalProgress: ParaclinicalProgressReaderPort,
     @Inject(WORK_SHIFT_ASSIGNMENT_READER_PORT) private readonly workShiftAssignmentReader: WorkShiftAssignmentReaderPort,
     @Inject(DOCTOR_SHIFT_CLOSURE_PORT) private readonly doctorShiftClosure: DoctorShiftClosurePort,
@@ -564,6 +571,21 @@ export class EncounterService {
     };
   }
 
+  /**
+   * Kết quả cận lâm sàng ĐÃ DUYỆT của một lượt khám cho tab "Hồ sơ bệnh án" (#269). Quy tắc nhìn thấy lượt khám GIỐNG HỆT `getConsultationDetail()`: ngoài scope `personal` hoặc lượt chưa hoàn tất ở chi nhánh khác → 404.
+   * Port đọc kết quả tự mở transaction riêng nên gọi NGOÀI transaction kiểm tra quyền xem (nguyên tắc một request = một transaction).
+   */
+  async getMedicalRecordParaclinical(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<MedicalRecordParaclinicalResponse> {
+    await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const encounter = await this.encounterRepository.findByIdWithConsultationContext(tx, tenantId, id);
+      if (!encounter || (dataScope === 'personal' && encounter.doctorId !== actorId)) throw new NotFoundException();
+      if (encounter.branchId !== branchId && encounter.status !== 'COMPLETED') throw new NotFoundException();
+    });
+    const byEncounter = await this.paraclinicalResultsReader.listSignedForEncounters(tenantId, [id]);
+    const results = (byEncounter[id] ?? []).flatMap((r) => (r.itemId ? [{ ...r, itemId: r.itemId }] : []));
+    return { results };
+  }
+
   async getConsultationDetail(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<ConsultationDetailResponse> {
     // Kho Thuốc GĐ5 — đọc cấu hình + tồn kho TRƯỚC transaction chính, cùng nguyên tắc `signPrescription()`
     // (`ClinicConfigReaderPort`/`StockAvailabilityPort` tự mở transaction riêng, không lồng được).
@@ -776,6 +798,7 @@ export class EncounterService {
       return {
         encounterId: e.id,
         encounterNo: e.encounterNo,
+        recordNo: e.recordNo,
         status: e.status,
         checkedInAt: e.checkedInAt.toISOString(),
         examTypeName: e.examTypeName,
@@ -862,31 +885,12 @@ export class EncounterService {
         checkedInAt: e.checkedInAt.toISOString(),
         doctorName: e.doctorId ? (doctorNames.get(e.doctorId) ?? null) : null,
         chiefComplaint: e.chiefComplaint,
-        vitalSigns: vitalSign
-          ? {
-              measuredAt: vitalSign.measuredAt.toISOString(),
-              pulse: vitalSign.pulse,
-              temperatureC: vitalSign.temperatureDeciC !== null ? vitalSign.temperatureDeciC / TEMPERATURE_DECI_PER_CELSIUS : null,
-              bpSystolic: vitalSign.bpSystolic,
-              bpDiastolic: vitalSign.bpDiastolic,
-              respiratoryRate: vitalSign.respiratoryRate,
-              spo2: vitalSign.spo2,
-              weightGram: vitalSign.weightGram,
-              heightMm: vitalSign.heightMm,
-            }
-          : null,
+        vitalSigns: this.toMedicalRecordVitals(vitalSign),
         diagnoses: (diagnosesByEncounter.get(e.id) ?? []).map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10.nameVi, type: d.type, note: d.note })),
         clinicalNoteSections: CLINICAL_NOTE_SECTION_LABELS.map(([key, label]) => ({ label, content: noteResponse[key]?.content ?? '' })),
         treatment: this.toMedicalRecordTreatment(noteResponse),
         paraclinicalResults: paraclinicalByEncounter[e.id] ?? [],
-        prescriptionItems: (prescriptionRow?.items ?? []).map((i) => ({
-          drugName: i.drugName,
-          doseSummary: formatPrescriptionDose(i),
-          durationDays: i.durationDays,
-          quantity: i.quantity,
-          unitCode: i.unitCode,
-          instruction: i.instruction,
-        })),
+        prescriptionItems: this.toMedicalRecordRxItems(prescriptionRow),
         prescriptionDocuments: (prescriptionRow?.documents ?? []).map((d) => ({ kind: d.kind, nationalCode: d.nationalCode })),
         insurance: this.toMedicalRecordInsurance(e.insuranceSnapshot, insuranceEnabled),
         signedAt: prescriptionRow?.signedAt ? prescriptionRow.signedAt.toISOString() : (noteRows[0]?.signedAt?.toISOString() ?? null),
@@ -921,14 +925,7 @@ export class EncounterService {
     // Bản mẫu in `MEDICAL_RECORD` ("Quản lý mẫu in", #211): đầu trang/tiêu đề/ghi chú cuối/lề do phòng khám cấu hình;
     // chưa cấu hình thì dùng bản dựng sẵn (cùng bố cục cũ).
     const template = await this.printTemplateService.resolveOne(tenantId, 'MEDICAL_RECORD');
-    const { header, margins } = template.config;
-    const printOptions: MedicalRecordPrintOptions = {
-      header: { showClinicName: header.showClinicName, showAddress: header.showAddress, showPhone: header.showPhone, showTaxCode: header.showTaxCode, showDivider: header.showDivider },
-      title: template.config.title.text.trim() || null,
-      footerNote: template.config.footer.note.trim() || null,
-      // Ô tích "Số thẻ BHYT" của bản mẫu in Bệnh án (S2-04, #243) — công tắc tổng tắt thì không in.
-      ...(insuranceEnabled && template.config.insurance ? { insurance: template.config.insurance } : {}),
-    };
+    const { printOptions, margins } = this.toMedicalRecordPrintOptions(template, insuranceEnabled);
     const html = renderPatientMedicalRecordHtml(document, printOptions);
     const pdf = await this.pdfRenderer.renderHtmlToPdf(html, { marginsMm: { top: margins.topMm, right: margins.rightMm, bottom: margins.bottomMm, left: margins.leftMm } });
     return { pdf, patientCode: patient.patientCode, encounterCount: encounters.length };
@@ -948,6 +945,181 @@ export class EncounterService {
       benefitRate: insurance.benefitRate,
       facilityName: insurance.facilityName,
     };
+  }
+
+  /** Tuỳ chọn trình bày + lề của bản mẫu in `MEDICAL_RECORD` — dùng chung cho "Xuất toàn bộ bệnh án" và "In bộ hồ sơ" một lượt khám (#269). */
+  private toMedicalRecordPrintOptions(
+    template: Awaited<ReturnType<PrintTemplateService['resolveOne']>>,
+    insuranceEnabled: boolean,
+  ): { printOptions: MedicalRecordPrintOptions; margins: { topMm: number; rightMm: number; bottomMm: number; leftMm: number } } {
+    const { header, margins } = template.config;
+    const printOptions: MedicalRecordPrintOptions = {
+      header: { showClinicName: header.showClinicName, showAddress: header.showAddress, showPhone: header.showPhone, showTaxCode: header.showTaxCode, showDivider: header.showDivider },
+      title: template.config.title.text.trim() || null,
+      footerNote: template.config.footer.note.trim() || null,
+      // Ô tích "Số thẻ BHYT" của bản mẫu in Bệnh án (S2-04, #243) — công tắc tổng tắt thì không in.
+      ...(insuranceEnabled && template.config.insurance ? { insurance: template.config.insurance } : {}),
+    };
+    return { printOptions, margins };
+  }
+
+  private toMedicalRecordVitals(vitalSign: VitalSign | undefined): MedicalRecordEncounterEntry['vitalSigns'] {
+    if (!vitalSign) return null;
+    return {
+      measuredAt: vitalSign.measuredAt.toISOString(),
+      pulse: vitalSign.pulse,
+      temperatureC: vitalSign.temperatureDeciC !== null ? vitalSign.temperatureDeciC / TEMPERATURE_DECI_PER_CELSIUS : null,
+      bpSystolic: vitalSign.bpSystolic,
+      bpDiastolic: vitalSign.bpDiastolic,
+      respiratoryRate: vitalSign.respiratoryRate,
+      spo2: vitalSign.spo2,
+      weightGram: vitalSign.weightGram,
+      heightMm: vitalSign.heightMm,
+    };
+  }
+
+  private toMedicalRecordRxItems(row: { items: Array<Parameters<typeof formatPrescriptionDose>[0] & { drugName: string; durationDays: number | null; quantity: number; unitCode: string | null; instruction: string | null }> } | undefined): MedicalRecordEncounterEntry['prescriptionItems'] {
+    return (row?.items ?? []).map((i) => ({
+      drugName: i.drugName,
+      doseSummary: formatPrescriptionDose(i),
+      durationDays: i.durationDays,
+      quantity: i.quantity,
+      unitCode: i.unitCode,
+      instruction: i.instruction,
+    }));
+  }
+
+  /**
+   * "In bộ hồ sơ" của MỘT lượt khám đã hoàn tất (docs/DECISIONS.md #269): một tệp PDF gồm tờ khám theo mẫu bệnh án ngoại trú, từng phiếu kết quả cận lâm sàng ĐÃ DUYỆT và đơn thuốc ĐÃ KÝ.
+   * Quy tắc nhìn thấy lượt khám giống `getConsultationDetail()` (ngoài scope `personal`, hoặc lượt chưa hoàn tất ở chi nhánh khác → 404); lượt chưa hoàn tất của chính chi nhánh → 409.
+   * Đầu phiếu theo CHI NHÁNH của lượt khám (#233). Mọi cổng (`*Port`/`*Service` tự mở transaction riêng) gọi NGOÀI transaction đọc dữ liệu — một request chỉ có MỘT transaction đang giữ kết nối.
+   */
+  async exportEncounterMedicalRecordPdf(
+    tenantId: string,
+    branchId: string,
+    actorId: string,
+    dataScope: DataScope,
+    encounterId: string,
+    reason: string,
+  ): Promise<{ pdf: Buffer; patientId: string; fileLabel: string }> {
+    const head = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const e = await this.encounterRepository.findByIdWithConsultationContext(tx, tenantId, encounterId);
+      if (!e || (dataScope === 'personal' && e.doctorId !== actorId)) throw new NotFoundException();
+      if (e.branchId !== branchId && e.status !== 'COMPLETED') throw new NotFoundException();
+      if (e.status !== 'COMPLETED') throw new EncounterNotCompletedError();
+      return e;
+    });
+
+    const insuranceEnabled = await this.clinicConfigReader.getInsuranceEnabled(tenantId);
+    const [patient, clinicHeader, template, paraclinicalByEncounter] = await Promise.all([
+      this.patientService.getPatient(tenantId, head.patientId),
+      this.clinicProfileService.getPrintHeader(tenantId, head.branchId),
+      this.printTemplateService.resolveOne(tenantId, 'MEDICAL_RECORD'),
+      this.paraclinicalResultsReader.listSignedForEncounters(tenantId, [encounterId]),
+    ]);
+    const [doctorNames, departmentNames, branchNames, multiBranch] = await Promise.all([
+      head.doctorId ? this.doctorDirectory.getUserFullNames(tenantId, [head.doctorId]) : Promise.resolve(new Map<string, string>()),
+      this.doctorDirectory.getDepartmentNames(tenantId),
+      this.branchDirectory.getBranchNames(tenantId),
+      this.branchDirectory.isMultiBranch(tenantId),
+    ]);
+    const [ethnicities, nationalities, occupations] = await Promise.all([
+      this.referenceCatalogReader.listByCategory(tenantId, 'ETHNICITY'),
+      this.referenceCatalogReader.listByCategory(tenantId, 'NATIONALITY'),
+      this.referenceCatalogReader.listByCategory(tenantId, 'OCCUPATION'),
+    ]);
+    const nameOf = (items: { code: string; name: string }[], code: string | null): string | null => (code ? (items.find((i) => i.code === code)?.name ?? code) : null);
+
+    const provinceCode = patient.address?.province;
+    const wardCode = patient.address?.ward;
+    const data = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const [provinces, wards, diagnoses, notes, plans, prescriptions, vitals] = await Promise.all([
+        this.geoRepository.findProvincesByCodes(tx, provinceCode ? [provinceCode] : []),
+        this.geoRepository.findWardsByCodes(tx, wardCode ? [wardCode] : []),
+        this.diagnosisRepository.listForEncounters(tx, tenantId, [encounterId]),
+        this.clinicalNoteRepository.listForEncounters(tx, tenantId, [encounterId]),
+        this.treatmentPlanRepository.findActiveForEncounters(tx, tenantId, [encounterId]),
+        this.prescriptionRepository.findActiveForEncounters(tx, tenantId, [encounterId]),
+        this.encounterRepository.listLatestVitalSignsForEncounters(tx, tenantId, [encounterId]),
+      ]);
+      return { provinces, wards, diagnoses, notes, plans, prescriptions, vitals };
+    });
+
+    const addressLine = [patient.address?.street, patient.address?.neighborhood, data.wards[0]?.name ?? wardCode, data.provinces[0]?.name ?? provinceCode].filter(Boolean).join(', ') || null;
+    const noteResponse = this.toClinicalNoteResponse(data.notes.get(encounterId) ?? [], data.plans.get(encounterId) ?? null);
+    const prescriptionRow = data.prescriptions.get(encounterId);
+    const signedPrescription = prescriptionRow && prescriptionRow.signedAt ? prescriptionRow : undefined;
+    const relative = [patient.relativeFullName, patient.relativeRelationship ? `(${patient.relativeRelationship})` : '', patient.relativePhone ? `— ${patient.relativePhone}` : ''].filter(Boolean).join(' ') || null;
+    const text = (section: { content: string } | null | undefined): string => section?.content.trim() ?? '';
+
+    const document: EncounterMedicalRecordDocument = {
+      clinic: { name: clinicHeader.name, address: clinicHeader.address, phone: clinicHeader.phone, taxCode: clinicHeader.taxCode },
+      patient: {
+        patientCode: patient.patientCode,
+        fullName: patient.fullName,
+        dob: patient.dob,
+        genderLabel: GENDER_LABEL[patient.gender] ?? patient.gender,
+        phone: patient.phone,
+        address: addressLine,
+        nationalId: patient.nationalId,
+        occupation: nameOf(occupations, patient.occupation),
+        ethnicity: nameOf(ethnicities, patient.ethnicity),
+        nationality: nameOf(nationalities, patient.nationality),
+        personalHistory: patient.personalHistory,
+        allergenNames: patient.allergens.map((a) => a.name),
+        conditionNames: patient.conditions.map((c) => c.icd10Name),
+        familyHistoryLines: patient.familyHistoryRows.map((f) => `${f.relationLabel}: ${f.icd10Name}${f.ageOfOnsetYears != null ? ` (${f.ageOfOnsetYears} tuổi)` : ''}`),
+        relative,
+      },
+      record: {
+        recordNo: head.recordNo,
+        encounterNo: head.encounterNo,
+        checkedInAt: head.checkedInAt.toISOString(),
+        doctorName: head.doctorId ? (doctorNames.get(head.doctorId) ?? null) : null,
+        departmentName: departmentNames.get(head.departmentId) ?? null,
+        branchName: multiBranch ? (branchNames.get(head.branchId) ?? null) : null,
+        signedAt: head.completedAt ? head.completedAt.toISOString() : null,
+      },
+      insurance: this.toMedicalRecordInsurance(head.insuranceSnapshot, insuranceEnabled),
+      vitalSigns: this.toMedicalRecordVitals(data.vitals.get(encounterId)),
+      diagnoses: (data.diagnoses.get(encounterId) ?? []).map((d) => ({ icd10Code: d.icd10Code, icd10Name: d.icd10.nameVi, type: d.type, note: d.note })),
+      notes: {
+        reason: text(noteResponse.reasonForVisit) || (head.chiefComplaint ?? '').trim(),
+        illness: text(noteResponse.illnessProgress),
+        preliminaryDiagnosis: text(noteResponse.preliminaryDiagnosis),
+        generalExam: text(noteResponse.generalExam),
+        regionalExam: text(noteResponse.regionalExam),
+        summary: text(noteResponse.summary),
+        prognosis: text(noteResponse.prognosis),
+        advice: text(noteResponse.doctorAdvice),
+      },
+      treatment: this.toMedicalRecordTreatment(noteResponse),
+      paraclinicalResults: paraclinicalByEncounter[encounterId] ?? [],
+      prescriptionItems: this.toMedicalRecordRxItems(signedPrescription),
+      prescriptionDocuments: (signedPrescription?.documents ?? []).map((d) => ({ kind: d.kind, nationalCode: d.nationalCode })),
+      generatedAt: new Date().toISOString(),
+      reason,
+    };
+
+    const { printOptions, margins } = this.toMedicalRecordPrintOptions(template, insuranceEnabled);
+    const html = renderEncounterMedicalRecordHtml(document, printOptions);
+    const pdf = await this.pdfRenderer.renderHtmlToPdf(html, { marginsMm: { top: margins.topMm, right: margins.rightMm, bottom: margins.bottomMm, left: margins.leftMm } });
+    return { pdf, patientId: head.patientId, fileLabel: head.recordNo ?? head.encounterNo };
+  }
+
+  /** Ghi audit cho "In bộ hồ sơ" một lượt khám — gọi SAU khi render thành công (cùng khuôn `recordMedicalRecordExportAudit`). Ghi lý do + số bệnh án, KHÔNG ghi nội dung lâm sàng. */
+  async recordEncounterMedicalRecordExportAudit(tenantId: string, actorId: string, encounterId: string, patientId: string, reason: string, meta: RequestMeta): Promise<void> {
+    await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
+      writeAuditLog(tx, tenantId, {
+        actorId,
+        action: 'encounter.medical_record_exported',
+        entityType: 'encounter',
+        entityId: encounterId,
+        afterJson: { patientId, reason },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      }),
+    );
   }
 
   /**
@@ -1137,6 +1309,9 @@ export class EncounterService {
       // #222 — Kết luận + Lời dặn: tuỳ chọn trong request (client cũ không gửi thì giữ nguyên).
       if (dto.conclusion) sections.push({ section: 'CONCLUSION', input: dto.conclusion });
       if (dto.doctorAdvice) sections.push({ section: 'DOCTOR_ADVICE', input: dto.doctorAdvice });
+      // #269 — Tóm tắt bệnh án + Tiên lượng (tuỳ chọn, cùng khuôn Kết luận/Lời dặn).
+      if (dto.summary) sections.push({ section: 'SUMMARY', input: dto.summary });
+      if (dto.prognosis) sections.push({ section: 'PROGNOSIS', input: dto.prognosis });
       for (const { section, input } of sections) {
         const result = await this.clinicalNoteRepository.upsertSection(tx, tenantId, id, section, input.content, input.version, actorId);
         if (result === 0) {
@@ -1300,12 +1475,14 @@ export class EncounterService {
         throw new DiagnosisPrimaryRequiredError();
       }
 
-      const count = await this.encounterRepository.complete(tx, tenantId, id, dto.version, actorId);
+      // Chữ ký logic cấp TRƯỚC khi chuyển trạng thái để lấy `signedAt` làm mốc năm của "Số bệnh án" (#269). Số được cấp cùng transaction: `complete()` thất bại (khoá lạc quan) thì rollback cả bộ đếm.
+      const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'clinical_record', entityId: id });
+      const recordNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'MEDICAL_RECORD', signature.signedAt);
+
+      const count = await this.encounterRepository.complete(tx, tenantId, id, dto.version, actorId, recordNo);
       if (count === 0) {
         throw new ConcurrentModificationError();
       }
-
-      const signature = await this.signaturePort.sign(tenantId, actorId, { entityType: 'clinical_record', entityId: id });
       await this.diagnosisRepository.signAllForEncounter(tx, tenantId, id, actorId, signature.signedAt, signature.signedBy);
       await this.clinicalNoteRepository.signAllForEncounter(tx, tenantId, id, actorId, signature.signedAt, signature.signedBy);
       await this.treatmentPlanRepository.signAllForEncounter(tx, tenantId, id, actorId, signature.signedAt, signature.signedBy);
@@ -2128,6 +2305,8 @@ export class EncounterService {
       plan: bySection.get('PLAN') ?? null,
       conclusion: bySection.get('CONCLUSION') ?? null,
       doctorAdvice: bySection.get('DOCTOR_ADVICE') ?? null,
+      summary: bySection.get('SUMMARY') ?? null,
+      prognosis: bySection.get('PROGNOSIS') ?? null,
       treatmentPlan: plan
         ? {
             directions: plan.directions,
