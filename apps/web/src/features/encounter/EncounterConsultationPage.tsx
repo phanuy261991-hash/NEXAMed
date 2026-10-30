@@ -1189,7 +1189,8 @@ export function EncounterConsultationPage() {
                     readOnly={!canEditDraft}
                   />
                   <div>
-                    <div className="mb-1 flex items-center justify-between gap-2">
+                    {/* `h-5` = đúng cao một dòng nhãn (như ô "Kết quả khám toàn thân" bên cạnh): nút icon 28px tràn ra ngoài hàng chứ không đẩy ô nhập xuống làm lệch hai ô. */}
+                    <div className="mb-1 flex h-5 items-center justify-between gap-2">
                       <label htmlFor="clinical-regional-exam" className="text-sm font-semibold text-slate-800">
                         Kết quả khám bộ phận
                       </label>
@@ -1200,7 +1201,7 @@ export function EncounterConsultationPage() {
                       label="Kết quả khám bộ phận"
                       hideLabel
                       dense
-                      rows={2}
+                      rows={5}
                       value={clinical.regionalExam}
                       onChange={(e) => setField('regionalExam', e.target.value)}
                       readOnly={!canEditDraft}

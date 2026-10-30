@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ListPlusIcon } from '@phosphor-icons/react';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { Button } from '../../shared/ui/Button';
+import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { useColumnVisibility } from '../../shared/hooks/useColumnVisibility';
 import { useAuthStore } from '../auth/auth.store';
 import { ORGAN_KEYS, ORGAN_SYSTEMS, organsPresent } from './organ-suggestions';
 
 /**
- * Nút "Gợi ý theo cơ quan" + hộp chọn cơ quan (mockup đã chốt https://claude.ai/artifact/R6oTbDuS7fczynmib7V5BT, 30/10/2026). Chỉ lo giao diện: nhận nội dung ô hiện tại để làm mờ cơ quan đã có,
+ * Nút icon "Gợi ý theo cơ quan" (chú thích hiện khi rê chuột, chủ dự án yêu cầu đổi từ nút chữ sang icon 30/10/2026) + hộp chọn cơ quan (mockup đã chốt https://claude.ai/artifact/R6oTbDuS7fczynmib7V5BT, 30/10/2026). Chỉ lo giao diện: nhận nội dung ô hiện tại để làm mờ cơ quan đã có,
  * và gọi `onInsert(keys)` khi bác sĩ bấm "Chèn vào ô" — việc chèn chữ do nơi gọi làm (xem `insertOrganHeadings`). Bác sĩ ẩn/hiện từng cơ quan theo nhu cầu (10 mục hơi dài), lựa chọn nhớ
  * theo tài khoản trên máy đang dùng (localStorage, chỉ là tiện ích cá nhân). Đóng bằng bấm ra ngoài hoặc phím Esc.
  */
@@ -60,15 +62,7 @@ export function OrganSuggestionMenu({ idPrefix, text, onInsert }: { idPrefix: st
 
   return (
     <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        onClick={() => (open ? close() : setOpen(true))}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        className="text-[13px] font-semibold text-blue-600 hover:text-blue-700 hover:underline"
-      >
-        Gợi ý theo cơ quan
-      </button>
+      <RowActionButton icon={ListPlusIcon} label="Gợi ý theo cơ quan" tone="primary" onClick={() => (open ? close() : setOpen(true))} ariaExpanded={open} ariaHasPopup="dialog" />
       {open && (
         <div role="dialog" aria-label="Chọn cơ quan cần khám" className="absolute right-0 top-full z-40 mt-1.5 w-[460px] max-w-[88vw] rounded-lg border border-slate-300 bg-white p-3.5 shadow-lg">
           <div className="mb-2.5 flex items-center justify-between gap-2">

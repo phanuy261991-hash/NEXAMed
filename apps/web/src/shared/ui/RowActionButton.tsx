@@ -24,6 +24,8 @@ export function RowActionButton({
   onClick,
   disabled,
   type = 'button',
+  ariaExpanded,
+  ariaHasPopup,
 }: {
   icon: Icon;
   /** Tên hành động — hiện dạng tooltip (`title`) lúc rê chuột VÀ đọc bằng screen reader
@@ -33,12 +35,17 @@ export function RowActionButton({
   onClick?: () => void;
   disabled?: boolean;
   type?: 'button' | 'submit';
+  /** Khi nút mở một hộp/menu nổi (ví dụ "Gợi ý theo cơ quan" ở màn khám): báo trạng thái cho screen reader. */
+  ariaExpanded?: boolean;
+  ariaHasPopup?: 'dialog' | 'menu';
 }) {
   return (
     <button
       type={type}
       title={label}
       aria-label={label}
+      aria-expanded={ariaExpanded}
+      aria-haspopup={ariaHasPopup}
       onClick={onClick}
       disabled={disabled}
       className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${TONE_CLASSNAME[tone]}`}

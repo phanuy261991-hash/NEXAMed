@@ -23,7 +23,7 @@ export function ReleaseNoteGroups({ notes }: { notes: Pick<ReleaseNotes, 'featur
       {groups.map((g) => (
         <div key={g.key}>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-700">{g.title}</h3>
-          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm font-medium text-slate-800">
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm font-normal text-slate-800">
             {notes[g.key].map((line) => (
               <li key={line}>{line}</li>
             ))}

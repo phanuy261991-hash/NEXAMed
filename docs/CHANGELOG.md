@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-30
 
+### Gợi ý theo cơ quan ở màn khám; ghi chú "có gì mới" ở trang Cập nhật phần mềm và bộ cài (`docs/DECISIONS.md` #271)
+
+Ô **"Kết quả khám bộ phận"** ở màn khám có nút icon (chú thích "Gợi ý theo cơ quan", cạnh nhãn ô): bấm để chọn các cơ quan cần khám (10 cơ quan theo mẫu Nội khoa, ẩn/hiện từng cơ quan, nhớ theo tài khoản trên máy đang dùng) rồi chèn sẵn dòng tiêu đề "Tuần hoàn: ", "Hô hấp: "… vào cuối ô để bác sĩ gõ tiếp; dòng tiêu đề chưa gõ gì tự bỏ khi lưu. Ô này cao hơn (5 dòng). **Cấu hình hệ thống → Cập nhật phần mềm** có khối "Có gì mới trong bản đang chạy" (đọc ghi chú đóng kèm phần mềm, hiện cả khi chưa có máy chủ phát hành). **Trình cài đặt** khi nâng cấp hiện "Có gì mới từ X lên Y" gộp ghi chú của mọi bản ở giữa; gói cài có thêm thư mục `release-notes/`. Không migration.
+
 ### Hồ sơ bệnh án đổi sang mẫu MS 15/BV-01 hiện hành; "Số bệnh án" thành "Số lưu trữ" (`docs/DECISIONS.md` #270)
 
 Chủ dự án phát hiện mã "Số bệnh án" ở #269 không đúng quy định. Tra cứu cho thấy Quyết định 4069/2001 đã hết hiệu lực từ 01/01/2024 và mẫu bệnh án ngoại trú hiện hành (MS 15/BV-01, Thông tư 32/2023/TT-BYT) có ô "Số ngoại trú" và "Số lưu trữ" chứ không có "Số bệnh án". Đã sửa: **mã hồ sơ là mã bệnh nhân `BN…`**, mỗi lần khám một phiếu khám `LK…` (cũng là "Số ngoại trú") kèm nhãn **Khám mới / Tái khám** lấy từ Loại tiếp nhận, và chỉ phát sinh thêm **Số lưu trữ** `LT2026-000042` (cấp lúc hoàn tất khám, đếm theo năm, đặt lại mỗi đầu năm, đổi được khuôn ở "Cấu hình mẫu mã phát sinh"). Tab "Hồ sơ bệnh án", bản "In bộ hồ sơ" (nay có trang "Tổng kết bệnh án") và mẫu xem trước ở Quản lý mẫu in đều theo khung mới: I Hành chính (13 mục, "Sinh ngày" và "Tuổi" là hai ô riêng), II Lý do vào viện, III Hỏi bệnh, IV Khám bệnh, rồi Tổng kết. Ô "Tiên lượng" ở màn khám đổi tên "Tình trạng người bệnh khi kết thúc khám". Đơn thuốc trong bản in hiện tên đơn vị ("14 viên") thay vì mã ("14 VIEN"). Màn Tiếp nhận không đổi. **Môi trường khác cần `db:deploy`** (migration `20261030120000_encounter_archive_no`, đổi tên cột `record_no` thành `archive_no`).

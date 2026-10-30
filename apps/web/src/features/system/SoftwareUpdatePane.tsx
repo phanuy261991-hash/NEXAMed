@@ -30,37 +30,18 @@ function ReleaseNotes({ entry }: { entry: ReleaseEntry }) {
 }
 
 /**
- * "Có gì mới trong bản đang chạy" + "Các bản trước" (mockup đã chốt https://claude.ai/artifact/R6oTbDuS7fczynmib7V5BT, 30/10/2026): đọc ghi chú ĐÓNG KÈM phần mềm nên hiện ngay cả khi chưa có máy chủ phát hành.
- * Lỗi tải chỉ ảnh hưởng khối này (có nút thử lại), không chặn phần còn lại của trang.
+ * "Có gì mới trong bản đang chạy" (mockup https://claude.ai/artifact/R6oTbDuS7fczynmib7V5BT, 30/10/2026; chủ dự án CHỐT chỉ hiện bản đang chạy, KHÔNG hiện "Các bản trước"): đọc ghi chú ĐÓNG KÈM phần mềm nên hiện
+ * ngay cả khi chưa có máy chủ phát hành. Bản chưa có ghi chú thì ẩn cả khối. Lỗi tải chỉ ảnh hưởng khối này (có nút thử lại), không chặn phần còn lại của trang.
  */
 function BundledReleaseNotes({ currentVersion }: { currentVersion: string }) {
   const query = useReleaseNotesHistoryQuery(true);
   if (query.isPending) return <Skeleton className="h-32 w-full" />;
   if (query.isError) return <ErrorBanner message="Không tải được ghi chú phát hành. Thử lại sau ít phút." onRetry={() => void query.refetch()} />;
-  const { current, previous } = query.data;
-  const hasCurrent = current !== null && countReleaseNoteLines(current) > 0;
-  if (!hasCurrent && previous.length === 0) return null;
+  const { current } = query.data;
+  if (current === null || countReleaseNoteLines(current) === 0) return null;
   return (
     <BoxedSection badge={`Có gì mới trong bản ${currentVersion}`}>
-      <div className="space-y-4">
-        {hasCurrent && current ? <ReleaseNoteGroups notes={current} /> : <p className="text-sm font-medium text-slate-600">Bản này chưa có ghi chú phát hành.</p>}
-        {previous.length > 0 && (
-          <details className="group border-t border-slate-200 pt-3">
-            <summary className="cursor-pointer text-sm font-semibold text-slate-900">Các bản trước ({previous.length})</summary>
-            <div className="mt-3 space-y-5">
-              {previous.map((entry) => (
-                <div key={entry.version}>
-                  <h4 className="mb-2 flex items-baseline gap-3 text-sm font-semibold text-slate-900">
-                    <span className="tabular-nums">{entry.version}</span>
-                    <span className="font-medium tabular-nums text-slate-500">{formatReleaseDate(entry.releasedAt)}</span>
-                  </h4>
-                  <ReleaseNoteGroups notes={entry} />
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
-      </div>
+      <ReleaseNoteGroups notes={current} />
     </BoxedSection>
   );
 }
