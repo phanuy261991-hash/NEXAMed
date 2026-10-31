@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-31
 
+### Liên thông đơn thuốc: gạt "Có liên thông" mà chưa Lưu nay hiện hướng dẫn "Bấm Lưu trước" thay vì để trống (`docs/DECISIONS.md` #278)
+
+Ở **Cấu hình hệ thống → Liên thông đơn thuốc**, nếu mới gạt "Có liên thông" mà chưa bấm Lưu thì các khối "Cơ sở khám chữa bệnh" và "Bác sĩ" trước đây trống trơn nên người dùng không thấy chỗ nhập mã và mật khẩu. Nay hai khối ghi rõ "Bấm Lưu trước" và câu dưới công tắc nói chưa lưu; Lưu xong, bảng nhập mã liên thông hiện ngay. Khoá nhà cung cấp phần mềm (app-name, app-key) vẫn đặt ở máy chủ, không nhập trên giao diện. Không migration.
+
 ### Nhập/Xuất Excel cho Dịch vụ kỹ thuật; báo lỗi rõ khi tải file lên (`docs/DECISIONS.md` #276)
 
 Trang **Danh mục Cận lâm sàng → Dịch vụ kỹ thuật** có thêm nút **Xuất Excel** và **Nhập Excel**. Nhập từ file mẫu (có hướng dẫn và danh mục sẵn có): mỗi dòng một dịch vụ kèm đơn giá gốc; dịch vụ cùng Loại + Tên đã có thì bỏ qua, không ghi đè; mã dịch vụ tự cấp; tên Nhóm dịch vụ/Loại mẫu/Đơn vị tính chưa có sẽ tự tạo. Khi tải file lên, hệ thống xem trước và **báo từng lỗi kèm số dòng, tên cột và cách sửa** (ví dụ `Cột "Giá bán": bắt buộc khi làm tại phòng khám…`), báo riêng các lỗi cả file (sai mẫu, không phải .xlsx, quá 5 MB, file không có dòng dữ liệu). Sửa file xong chọn lại đúng file cũ nay được đọc lại ngay (trước đây trình duyệt bỏ qua). Hộp thoại nhập Thuốc & Vật tư dùng chung thành phần mới nên cũng được các cải tiến này. Không migration.

@@ -12,6 +12,7 @@ import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
 import { useAuthStore } from '../auth/auth.store';
 import { useHasPermission } from '../auth/usePermission';
+import { NoticeRow } from '../../shared/ui/NoticeRow';
 import { findCurrentBranch } from '../branch/branch-visibility';
 import { useShowBranchInfo } from '../branch/BranchChip';
 import { InteropCredentialDialog } from './InteropCredentialDialog';
@@ -195,8 +196,10 @@ export function PrescriptionInteropPane() {
                 disabled={!canManage}
               />
               <p className="mt-2 max-w-3xl text-xs text-slate-500">
-                {draft.enabled
-                  ? 'Bật: màn kê đơn có khối "Thông tin liên thông" và cảnh báo thiếu dữ liệu, có menu "Đơn thuốc liên thông", đơn ký xong được xếp vào hàng chờ gửi. Nhập mã liên thông của cơ sở và bác sĩ ở dưới, kiểm tra kết nối và thêm bác sĩ vào cơ sở trên cổng.'
+                {draft.enabled && !serverEnabled
+                  ? 'Bạn vừa chọn "Có liên thông" nhưng CHƯA LƯU: bấm "Lưu" ở cuối trang trước. Lưu xong, bảng nhập mã liên thông và mật khẩu của cơ sở và bác sĩ mới hiện ở bên dưới.'
+                  : draft.enabled
+                    ? 'Bật: màn kê đơn có khối "Thông tin liên thông" và cảnh báo thiếu dữ liệu, có menu "Đơn thuốc liên thông", đơn ký xong được xếp vào hàng chờ gửi. Nhập mã liên thông của cơ sở và bác sĩ ở dưới, kiểm tra kết nối và thêm bác sĩ vào cơ sở trên cổng.'
                   : 'Tắt: ẩn khối "Thông tin liên thông" ở màn kê đơn, không cảnh báo thiếu dữ liệu, không có menu "Đơn thuốc liên thông", không xếp hàng chờ, không cần mã liên thông. Mã đơn chuẩn Bộ Y tế vẫn dùng được riêng. Bật lại sau này thì đơn ký trong lúc tắt không tự xếp hàng.'}
               </p>
             </BoxedSection>
@@ -287,6 +290,7 @@ export function PrescriptionInteropPane() {
                 </BoxedSection>
 
                 <BoxedSection badge={showBranch ? 'Cơ sở khám chữa bệnh theo chi nhánh' : 'Cơ sở khám chữa bệnh'}>
+                  {!serverEnabled && <SaveFirstNotice />}
                   {facilitiesQuery.isError && <ErrorBanner message="Không tải được danh sách cơ sở." onRetry={() => void facilitiesQuery.refetch()} />}
                   {facilitiesQuery.isLoading && <Skeleton className="h-16 w-full" />}
                   {facilitiesQuery.data && (
@@ -365,6 +369,7 @@ export function PrescriptionInteropPane() {
                 </BoxedSection>
 
                 <BoxedSection badge={showBranch && currentBranch ? `Bác sĩ tại ${currentBranch.name}` : 'Bác sĩ'}>
+                  {!serverEnabled && <SaveFirstNotice />}
                   {doctorsQuery.isError && <ErrorBanner message="Không tải được danh sách bác sĩ." onRetry={() => void doctorsQuery.refetch()} />}
                   {doctorsQuery.isLoading && <Skeleton className="h-24 w-full" />}
                   {doctorsQuery.data && doctors.length === 0 && <EmptyState icon={Stethoscope} title="Chưa có bác sĩ nào" description="Chưa có tài khoản bác sĩ đang hoạt động ở chi nhánh này." />}
@@ -532,6 +537,15 @@ export function PrescriptionInteropPane() {
           }
         />
       )}
+    </div>
+  );
+}
+
+/** Mới gạt "Có liên thông" mà chưa Lưu: bảng cơ sở/bác sĩ chưa tải (chỉ tải khi cấu hình ĐÃ LƯU là bật) nên khối sẽ trống — nói rõ cần làm gì thay vì để trống. */
+function SaveFirstNotice() {
+  return (
+    <div className="mb-3">
+      <NoticeRow title="Bấm Lưu trước.">Chưa lưu nên chưa có bảng nhập. Bấm "Lưu" ở cuối trang, bảng nhập mã liên thông và mật khẩu sẽ hiện ngay ở đây.</NoticeRow>
     </div>
   );
 }
