@@ -1,5 +1,5 @@
 {
-  "version": "0.9.2",
+  "version": "0.9.3",
   "releasedAt": "2026-10-31",
   "features": [
     "Thẻ bảo hiểm y tế: lưu và hiển thị thẻ BHYT của bệnh nhân, chọn thẻ ngay lúc tiếp nhận, in số thẻ trên đơn thuốc, phiếu thu và bệnh án (bật bằng công tắc \"Áp dụng BHYT\").",
