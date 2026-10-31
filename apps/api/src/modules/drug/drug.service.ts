@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { ConcurrentModificationError, DrugBatchManagementChangeBlockedError, DrugDuplicateCodeError, DrugDuplicateShortcutCodeError } from '@nexamed/core';
+import { ConcurrentModificationError, DrugBaseUnitChangeBlockedError, DrugBatchManagementChangeBlockedError, DrugDuplicateCodeError, DrugDuplicateShortcutCodeError } from '@nexamed/core';
 import type { CreateDrugRequest, DrugSummary, ListDrugsQuery, ListDrugsResponse, UpdateDrugRequest } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -187,6 +187,23 @@ export class DrugService {
         if (hasStock) {
           throw new DrugBatchManagementChangeBlockedError();
         }
+      }
+
+      // Guard chặn đổi "Đơn vị nhỏ nhất" khi còn tồn (#275): tồn/thẻ kho/giá vốn đều lưu theo đơn vị
+      // cơ sở nên đổi mã đơn vị mà không đổi số lượng sẽ làm hiểu sai toàn bộ tồn. Hồ sơ cũ chưa có
+      // đơn vị cơ sở (null) được gán lần đầu thoải mái — trước đó dòng nhập vốn coi đơn vị dòng là cơ sở.
+      if (dto.baseUnitCode !== undefined && existing.baseUnitCode !== null && dto.baseUnitCode !== existing.baseUnitCode) {
+        const hasStock = await this.stockBalanceRepository.hasAnyStock(tx, tenantId, id);
+        if (hasStock) {
+          throw new DrugBaseUnitChangeBlockedError();
+        }
+      }
+
+      // Bảng quy đổi gửi lên không được lặp lại đơn vị nhỏ nhất ĐANG LƯU khi payload không kèm `baseUnitCode`
+      // (Zod chỉ so được khi cả hai cùng có mặt).
+      const nextBaseUnitCode = dto.baseUnitCode === undefined ? existing.baseUnitCode : dto.baseUnitCode;
+      if (dto.units && nextBaseUnitCode && dto.units.some((u) => u.unitCode === nextBaseUnitCode)) {
+        throw new BadRequestException('Bảng quy đổi có đơn vị trùng với đơn vị nhỏ nhất — chọn đơn vị khác.');
       }
 
       const nextShortcutCode = dto.shortcutCode === undefined ? undefined : normalizeShortcutCode(dto.shortcutCode);

@@ -458,6 +458,51 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
       expect(codesB).toEqual([`${baseCode}-M`]);
     });
 
+    it('chuỗi quy đổi có tổng vượt 1.000.000 đơn vị cơ sở → lỗi dòng (luật chuỗi đơn vị #275 áp cho cả nhập Excel), mặt hàng không vào nhóm hợp lệ', async () => {
+      const code = `CAP${tag}`;
+      const file = await xlsx(
+        [medicine(code)],
+        [ingredient(code)],
+        [
+          { code, unit: `Vỉ-${tag}`, factor: 2000, price: '' },
+          { code, unit: `Hộp-${tag}`, factor: 2000, price: '' },
+        ],
+      );
+      const res = await upload('preview', clinicAdminToken, file);
+      expect(res.status).toBe(200);
+      expect(res.body.data.validRows).toEqual([]);
+      const reasons = (res.body.data.errorRows as { code: string; reason: string }[]).filter((e) => e.code === code).map((e) => e.reason);
+      expect(reasons).toContain('Tổng quy đổi ra đơn vị nhỏ nhất không được vượt 1.000.000.');
+    });
+
+    it('xuất công ty A rồi nhập sang công ty B: chuỗi quy đổi giữ đúng thứ tự bậc và hệ số (vòng xuất → nhập không đảo bậc)', async () => {
+      const code = `RT${tag}`;
+      const created = await upload(
+        'commit',
+        clinicAdminToken,
+        await xlsx(
+          [medicine(code)],
+          [ingredient(code)],
+          [
+            { code, unit: `Vỉ-${tag}`, factor: 10, price: 12000 },
+            { code, unit: `Hộp-${tag}`, factor: 5, price: 60000 },
+          ],
+        ),
+      );
+      expect(created.body.data.createdCount).toBe(1);
+
+      const exported = await download('/api/v1/drugs/export', clinicAdminToken);
+      expect(exported.status).toBe(200);
+      const commitB = await upload('commit', tenantBAdminToken, exported.body as Buffer);
+      expect(commitB.status).toBe(200);
+
+      const inB = await privileged.drug.findFirstOrThrow({ where: { tenantId: fixture.tenantB.id, code }, include: { units: { where: { deletedAt: null }, orderBy: { sortOrder: 'asc' } } } });
+      expect(inB.units.map((u) => [u.sortOrder, u.factorToUnitBelow, u.sellPrice === null ? null : Number(u.sellPrice)])).toEqual([[0, 10, 12000], [1, 5, 60000]]);
+      // Tên đơn vị (không phải mã) khớp: bậc 0 là Vỉ, bậc 1 là Hộp ở danh mục của công ty B.
+      const names = await Promise.all(inB.units.map((u) => privileged.referenceCatalog.findFirstOrThrow({ where: { tenantId: fixture.tenantB.id, category: 'UNIT', code: u.unitCode } })));
+      expect(names.map((n) => n.name)).toEqual([`Vỉ-${tag}`, `Hộp-${tag}`]);
+    });
+
     it('lễ tân (có drug.read) xuất được; không token → 401', async () => {
       expect((await download('/api/v1/drugs/export', receptionistToken)).status).toBe(200);
       expect((await request(app.getHttpServer()).get('/api/v1/drugs/export')).status).toBe(401);

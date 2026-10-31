@@ -6,6 +6,7 @@ import {
   computeWeightedAverageCost,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
+  StockReceiptLineUnitInvalidError,
   StockReceiptNotDraftError,
   StockReceiptVoidNotAllowedError,
   type DoctorDirectoryPort,
@@ -782,12 +783,13 @@ export class StockReceiptService {
     const prior = await this.stockReceiptRepository.listReturnLinesForSourceIssue(tx, tenantId, sourceIssueId, excludeReceiptId);
 
     const drugCache = new Map<string, DrugWithDetails>();
+    // `lenient`: các dòng nhập lại TRƯỚC ĐÓ là lịch sử đã duyệt — nếu chuỗi đơn vị đã sửa sau đó, không để chặn oan các lần nhập lại mới (đơn vị dòng đang lập được `buildLineData` kiểm riêng).
     const toBase = async (drugId: string, unitCode: string, quantity: number): Promise<number> => {
       const cached = drugCache.get(drugId);
       const drug = cached ?? (await this.drugRepository.findByIdWithDetails(tx, tenantId, drugId));
       if (!drug) throw new NotFoundException();
       drugCache.set(drugId, drug);
-      return this.convertLineToBaseUnit(drug, unitCode, quantity, 0n).baseQuantity;
+      return this.convertLineToBaseUnit(drug, unitCode, quantity, 0n, { lenient: true }).baseQuantity;
     };
 
     const returnedBefore = new Map<string, number>();
@@ -814,9 +816,17 @@ export class StockReceiptService {
 
   private async buildLineData(tx: Prisma.TransactionClient, tenantId: string, lines: CreateStockReceiptRequest['lines']): Promise<StockReceiptLineData[]> {
     const result: StockReceiptLineData[] = [];
+    const drugCache = new Map<string, DrugWithDetails>();
     for (const line of lines) {
-      const drug = await this.drugRepository.findById(tx, tenantId, line.drugId);
-      if (!drug) throw new NotFoundException();
+      let drug = drugCache.get(line.drugId);
+      if (!drug) {
+        const found = await this.drugRepository.findByIdWithDetails(tx, tenantId, line.drugId);
+        if (!found) throw new NotFoundException();
+        drug = found;
+        drugCache.set(line.drugId, drug);
+      }
+      // Đơn vị dòng phải là đơn vị cơ sở hoặc thuộc bảng quy đổi (#275) — chặn từ lúc lập Nháp, không đợi tới lúc Duyệt.
+      this.assertLineUnitInChain(drug, line.unitCode);
       if (drug.isBatchManaged && !line.batchNo) {
         throw new UnprocessableEntityException(`Thuốc/vật tư "${drug.name}" quản lý theo lô — phải nhập Số lô.`);
       }
@@ -835,12 +845,30 @@ export class StockReceiptService {
     return result;
   }
 
+  /** Đơn vị của 1 dòng phiếu nhập phải là đơn vị cơ sở hoặc nằm trong bảng quy đổi của mặt hàng
+   * (#275). `drug.baseUnitCode` rỗng (dữ liệu cũ trước GĐ1) → không có chuỗi để đối chiếu, bỏ qua. */
+  private assertLineUnitInChain(drug: DrugWithDetails, unitCode: string): void {
+    if (!drug.baseUnitCode || unitCode === drug.baseUnitCode) return;
+    if (!drug.units.some((u) => u.unitCode === unitCode)) {
+      throw new StockReceiptLineUnitInvalidError(drug.name, unitCode);
+    }
+  }
+
   /** Quy đổi số lượng/giá của 1 dòng sang đơn vị CƠ SỞ. `drug.baseUnitCode` rỗng (dữ liệu cũ trước
-   * GĐ1) → coi `unitCode` của dòng CHÍNH LÀ đơn vị cơ sở (không quy đổi gì). */
-  private convertLineToBaseUnit(drug: DrugWithDetails, unitCode: string, quantity: number, unitCost: bigint): { baseQuantity: number; baseUnitCost: bigint } {
+   * GĐ1) → coi `unitCode` của dòng CHÍNH LÀ đơn vị cơ sở (không quy đổi gì). Đơn vị ngoài chuỗi →
+   * ném `StockReceiptLineUnitInvalidError` (#275) thay vì âm thầm coi hệ số 1; `lenient` CHỈ dùng
+   * khi đọc lại dòng LỊCH SỬ đã duyệt (chuỗi có thể đã sửa sau đó), không dùng khi ghi tồn. */
+  private convertLineToBaseUnit(
+    drug: DrugWithDetails,
+    unitCode: string,
+    quantity: number,
+    unitCost: bigint,
+    options: { lenient?: boolean } = {},
+  ): { baseQuantity: number; baseUnitCost: bigint } {
     if (!drug.baseUnitCode || unitCode === drug.baseUnitCode) {
       return { baseQuantity: quantity, baseUnitCost: unitCost };
     }
+    if (!options.lenient) this.assertLineUnitInChain(drug, unitCode);
     const levels = computeUnitConversion(drug.baseUnitCode, drug.units);
     const level = levels.find((l) => l.unitCode === unitCode);
     const factor = level?.factorToBaseUnit ?? 1;

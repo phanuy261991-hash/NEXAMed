@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EMPTY_LIST } from '../../shared/empty-list';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, DownloadSimple, Eye, EyeSlash, FirstAidKit, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, UploadSimple, X } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, CaretDown, ClockCounterClockwise, DownloadSimple, Eye, EyeSlash, FirstAidKit, MagnifyingGlass, PencilSimple, Pill, Plus, Prohibit, Trash, UploadSimple, WarningCircle, X } from '@phosphor-icons/react';
 import type { DoseMode, DrugControlType, DrugDosePresetInput, DrugIngredientInput, DrugItemType, DrugSummary, DrugUnitInput, ReferenceCatalogCategory, StockLedgerEntry } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
@@ -33,6 +33,7 @@ import { useCreateReferenceCatalogItemMutation, useReferenceCatalogQuery } from 
 import { appendSentence } from '../../shared/format/append-sentence';
 import { DrugDoseConfigSection } from './DrugDoseConfigSection';
 import { buildDosePresets, presetRowsFromItem, summarizePreset, validateDoseConfig, type DosePresetRow } from './drug-dose-config';
+import { validateUnitChain } from './drug-unit-chain';
 import { DrugImportDialog } from './DrugImportDialog';
 import { exportDrugs } from './drug.api';
 import { formatDobDisplay } from '../../shared/format/date';
@@ -70,10 +71,11 @@ const CONTROL_TYPE_BADGE_CLASS: Record<DrugControlType, string | null> = {
   PSYCHOTROPIC: 'bg-rose-100 text-rose-700',
 };
 
-function ControlTypeBadge({ controlType }: { controlType: DrugControlType }) {
+/** `shrink-0 whitespace-nowrap`: nhãn nằm cạnh tên thuốc trong ô flex — thiếu hai lớp này nhãn bị co và chữ bẻ thành hai dòng, méo thành hình bầu dục cao. */
+function ControlTypeBadge({ controlType, className = 'ml-2' }: { controlType: DrugControlType; className?: string }) {
   const cls = CONTROL_TYPE_BADGE_CLASS[controlType];
   if (!cls) return null;
-  return <span className={`ml-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>{CONTROL_TYPE_LABEL[controlType]}</span>;
+  return <span className={`${className} inline-block shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>{CONTROL_TYPE_LABEL[controlType]}</span>;
 }
 
 /** Gộp query + "thêm nhanh" (mở rộng #151, chủ dự án yêu cầu trực tiếp) cho 1 category
@@ -420,11 +422,11 @@ export function DrugCatalogPane() {
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-center font-semibold tabular-nums text-slate-800">{d.code}</td>
                     <td className="px-3 py-2.5 text-left">
-                      <div className="flex items-center font-medium text-slate-900">
+                      <div className="flex flex-wrap items-center gap-y-1 font-medium text-slate-900">
                         {d.name}
                         {d.itemType === 'MEDICINE' && <ControlTypeBadge controlType={d.controlType} />}
                         {d.itemType === 'MEDICINE' && d.isTraditional && (
-                          <span className="ml-2 inline-block rounded-full bg-brand-teal px-2 py-0.5 text-[11px] font-semibold text-white">Đông y</span>
+                          <span className="ml-2 inline-block shrink-0 whitespace-nowrap rounded-full bg-brand-teal px-2 py-0.5 text-[11px] font-semibold text-white">Đông y</span>
                         )}
                       </div>
                       {d.activeIngredient && <div className="truncate text-xs font-medium text-slate-500">{d.activeIngredient}</div>}
@@ -536,8 +538,7 @@ export function DrugCatalogPane() {
                 <div className="border-b border-slate-100 py-2.5">
                   <dt className="text-sm font-medium text-slate-500">Phân loại kiểm soát</dt>
                   <dd className="mt-1 text-base font-semibold text-slate-900">
-                    {CONTROL_TYPE_LABEL[selectedItem.controlType]}
-                    <ControlTypeBadge controlType={selectedItem.controlType} />
+                    {CONTROL_TYPE_BADGE_CLASS[selectedItem.controlType] ? <ControlTypeBadge controlType={selectedItem.controlType} className="" /> : CONTROL_TYPE_LABEL[selectedItem.controlType]}
                   </dd>
                 </div>
               )}
@@ -1107,10 +1108,13 @@ function DrugFormModal({
       dosageForm.trim() === '' ||
       countryOfOrigin.trim() === '');
   const doseIssues = isMedicine ? validateDoseConfig({ doseUnitCode, dosePerBaseUnit, rows: dosePresetRows }) : [];
+  // Máy chủ cũng chặn chuỗi đơn vị sai (#275) nhưng chỉ trả câu chung — form báo trước đúng lý do.
+  const unitChainIssues = validateUnitChain({ baseUnitCode, rows: units });
   const { saveError, run } = useSaveAttempt();
   const isInvalid =
     stale ||
     doseIssues.length > 0 ||
+    unitChainIssues.length > 0 ||
     code.trim() === '' ||
     name.trim() === '' ||
     baseUnitCode.trim() === '' ||
@@ -1550,6 +1554,12 @@ function DrugFormModal({
               Thêm bậc quy đổi
             </button>
             {unitChainSummary && <p className="mt-3 rounded-md bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">{unitChainSummary}</p>}
+            {[...new Set(unitChainIssues.map((issue) => issue.message))].map((message) => (
+              <p key={message} role="alert" className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-rose-700">
+                <WarningCircle size={15} weight="fill" aria-hidden="true" />
+                {message}
+              </p>
+            ))}
 
             <div className="mt-6 grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-3">
               <div>

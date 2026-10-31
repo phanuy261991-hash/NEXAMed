@@ -19,6 +19,17 @@ export class StockReceiptVoidNotAllowedError extends DomainError {
   }
 }
 
+/** Dòng phiếu nhập kho dùng đơn vị KHÔNG thuộc chuỗi quy đổi của mặt hàng (không phải đơn vị cơ
+ * sở, cũng không có trong bảng quy đổi) — chặn để không âm thầm coi là đơn vị cơ sở và cộng tồn
+ * sai hệ số (docs/DECISIONS.md #275). 422 mặc định: lỗi dữ liệu nhập, không phải xung đột trạng thái. */
+export class StockReceiptLineUnitInvalidError extends DomainError {
+  readonly code = 'STOCK_RECEIPT_LINE_UNIT_INVALID';
+
+  constructor(drugName: string, unitCode: string) {
+    super(`Đơn vị "${unitCode}" của "${drugName}" không thuộc bảng quy đổi đơn vị của mặt hàng — chọn lại đơn vị hoặc bổ sung đơn vị vào danh mục thuốc/vật tư.`);
+  }
+}
+
 // ============ Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" (docs/DECISIONS.md #170) ============
 
 /** Sửa/Duyệt/Từ chối một phiếu xuất kho (loại Nháp→Duyệt: Xuất dùng nội bộ/Xuất trả NCC/Xuất huỷ)

@@ -1,0 +1,13 @@
+{
+  "description": "Luật chuỗi quy đổi đơn vị của thuốc/vật tư (docs/DECISIONS.md #275) có HAI bản cài đặt phải khớp nhau: Zod ở packages/shared/src/drug.ts (máy chủ chặn) và validateUnitChain ở apps/web/src/features/drug/drug-unit-chain.ts (form báo trước). Cả hai spec đọc cùng bộ ca này. Mỗi bậc có sortOrder = vị trí trong mảng. messages = các câu lỗi DUY NHẤT, sắp theo thứ tự chữ cái.",
+  "cases": [
+    { "name": "chuỗi Vỉ→Hộp hợp lệ", "baseUnitCode": "VIEN", "units": [{ "unitCode": "VI", "factorToUnitBelow": 10 }, { "unitCode": "HOP", "factorToUnitBelow": 10 }], "messages": [] },
+    { "name": "không có bậc quy đổi (mặt hàng một đơn vị)", "baseUnitCode": "VIEN", "units": [], "messages": [] },
+    { "name": "trùng mã đơn vị kể cả khác hoa/thường", "baseUnitCode": "VIEN", "units": [{ "unitCode": "HOP", "factorToUnitBelow": 10 }, { "unitCode": "hop", "factorToUnitBelow": 2 }], "messages": ["Đơn vị bị trùng trong bảng quy đổi."] },
+    { "name": "lặp lại đơn vị nhỏ nhất", "baseUnitCode": "VIEN", "units": [{ "unitCode": "VIEN", "factorToUnitBelow": 10 }], "messages": ["Đơn vị này trùng với đơn vị nhỏ nhất — chọn đơn vị khác."] },
+    { "name": "tổng hệ số bằng đúng trần 1.000.000 thì qua", "baseUnitCode": "VIEN", "units": [{ "unitCode": "A", "factorToUnitBelow": 1000 }, { "unitCode": "B", "factorToUnitBelow": 1000 }], "messages": [] },
+    { "name": "tổng hệ số vượt trần 1 đơn vị thì bị chặn", "baseUnitCode": "VIEN", "units": [{ "unitCode": "A", "factorToUnitBelow": 1000 }, { "unitCode": "B", "factorToUnitBelow": 1001 }], "messages": ["Tổng quy đổi ra đơn vị nhỏ nhất không được vượt 1.000.000."] },
+    { "name": "chưa chọn đơn vị nhỏ nhất thì chưa so được với đơn vị nhỏ nhất", "baseUnitCode": "", "units": [{ "unitCode": "VIEN", "factorToUnitBelow": 10 }], "messages": [] },
+    { "name": "vừa trùng mã vừa vượt trần: báo cả hai", "baseUnitCode": "VIEN", "units": [{ "unitCode": "A", "factorToUnitBelow": 2000 }, { "unitCode": "a", "factorToUnitBelow": 2000 }], "messages": ["Tổng quy đổi ra đơn vị nhỏ nhất không được vượt 1.000.000.", "Đơn vị bị trùng trong bảng quy đổi."] }
+  ]
+}

@@ -85,3 +85,14 @@ describe('resolveApiErrorCode', () => {
     expect(resolveApiErrorCode(undefined, undefined)).toBe('UNKNOWN_ERROR');
   });
 });
+
+describe('thông điệp kiểm kho/đơn vị (#275) đi qua bộ lọc nguyên văn', () => {
+  it.each([
+    [422, 'Đơn vị "THUNG" của "Amoxicillin 500mg" không thuộc bảng quy đổi đơn vị của mặt hàng — chọn lại đơn vị hoặc bổ sung đơn vị vào danh mục thuốc/vật tư.'],
+    [409, 'Không thể đổi "Đơn vị nhỏ nhất" khi mặt hàng đang còn tồn kho — cần xuất/kiểm kê hết tồn trước.'],
+    [400, 'Bảng quy đổi có đơn vị trùng với đơn vị nhỏ nhất — chọn đơn vị khác.'],
+  ])('mã %i hiện đúng câu của máy chủ, không rơi về câu mặc định', (status, message) => {
+    expect(isUserFacingMessage(message)).toBe(true);
+    expect(friendlyApiMessage(status, message)).toBe(message);
+  });
+});

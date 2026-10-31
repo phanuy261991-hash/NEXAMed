@@ -40,6 +40,46 @@ describe('computeUnitConversion', () => {
   });
 });
 
+describe('computeUnitConversion — ca biên', () => {
+  it('hệ số 1 ở mọi bậc: các bậc cùng quy về 1 đơn vị nhỏ nhất', () => {
+    const levels = computeUnitConversion('Cái', [
+      { unitCode: 'Gói', sortOrder: 0, factorToUnitBelow: 1 },
+      { unitCode: 'Hộp', sortOrder: 1, factorToUnitBelow: 1 },
+    ]);
+    expect(levels.map((l) => l.factorToBaseUnit)).toEqual([1, 1, 1]);
+  });
+
+  it('không làm thay đổi mảng đầu vào', () => {
+    const links = [
+      { unitCode: 'Hộp', sortOrder: 1, factorToUnitBelow: 3 },
+      { unitCode: 'Vỉ', sortOrder: 0, factorToUnitBelow: 14 },
+    ];
+    computeUnitConversion('Viên', links);
+    expect(links.map((l) => l.unitCode)).toEqual(['Hộp', 'Vỉ']);
+  });
+
+  it('chuỗi 4 bậc với hệ số lệch nhau tích luỹ đúng (Thùng→Hộp→Vỉ→Viên)', () => {
+    const levels = computeUnitConversion('Viên', [
+      { unitCode: 'Vỉ', sortOrder: 0, factorToUnitBelow: 10 },
+      { unitCode: 'Hộp', sortOrder: 1, factorToUnitBelow: 3 },
+      { unitCode: 'Thùng', sortOrder: 2, factorToUnitBelow: 24 },
+    ]);
+    expect(levels.map((l) => l.factorToBaseUnit)).toEqual([1, 10, 30, 720]);
+  });
+
+  it('sortOrder có khoảng trống vẫn tích luỹ theo thứ tự tăng dần', () => {
+    const levels = computeUnitConversion('Viên', [
+      { unitCode: 'Hộp', sortOrder: 5, factorToUnitBelow: 4 },
+      { unitCode: 'Vỉ', sortOrder: 2, factorToUnitBelow: 10 },
+    ]);
+    expect(levels).toEqual([
+      { unitCode: 'Viên', factorToBaseUnit: 1 },
+      { unitCode: 'Vỉ', factorToBaseUnit: 10 },
+      { unitCode: 'Hộp', factorToBaseUnit: 40 },
+    ]);
+  });
+});
+
 describe('convertToBaseUnitQuantity', () => {
   const links = [
     { unitCode: 'Vỉ', sortOrder: 0, factorToUnitBelow: 10 },

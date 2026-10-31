@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-31
 
+### Kiểm quy đổi đơn vị kho: nhập Hộp/Vỉ → tồn Viên → kê → phát đúng; chặn 3 lỗ hổng dữ liệu (`docs/DECISIONS.md` #275)
+
+Đã kiểm đường nhập đơn vị lớn → tồn theo đơn vị nhỏ nhất → kê đơn → phát thuốc (FEFO, nhiều lô, huỷ phiếu) bằng 14 ca tự động mới: số liệu đúng. Đã chặn thêm ba chỗ dễ sai dữ liệu: (1) dòng phiếu nhập dùng đơn vị không thuộc bảng quy đổi của mặt hàng nay bị từ chối (trước đây âm thầm cộng tồn sai hệ số, ví dụ nháp nhập "Hộp" rồi bỏ "Hộp" khỏi bảng quy đổi); (2) không đổi được "Đơn vị nhỏ nhất" của mặt hàng khi còn tồn kho; (3) bảng quy đổi không được trùng đơn vị, trùng thứ tự bậc, lặp lại đơn vị nhỏ nhất, hoặc tổng quy đổi vượt 1.000.000. Không migration. Form danh mục thuốc nay báo ngay lý do khi bảng quy đổi sai và khoá nút Lưu. Nhãn "Hướng thần", "Gây nghiện", "Đông y" ở danh sách thuốc không còn bị bẻ thành hai dòng.
+
 ### Cảnh báo khi rời trang biểu mẫu còn dữ liệu nhập dở; nhãn "N trang" ở xem trước Bệnh án (`docs/DECISIONS.md` #274)
 
 Các trang biểu mẫu dài (thêm bệnh nhân, tiếp nhận, phiếu nhập/xuất/kiểm kê/điều chuyển kho) nay hỏi lại khi bạn đã nhập dở mà bấm sang trang khác, bấm "Quay lại", đóng tab hoặc tải lại trang: hộp "Rời khỏi trang này?" có "Ở lại" và "Rời trang". Lưu thành công thì không hỏi; chưa nhập gì thì không hỏi. Xem trước mẫu in "Bệnh án" có chip "Bộ hồ sơ N trang" và đánh số "Trang 2/3/4" theo các ô tích đang bật. Sửa: người không có quyền xem công nợ nhà cung cấp (lễ tân, bác sĩ, điều dưỡng) mở chi tiết phiếu nhập kho không còn bị gọi ngầm hai API công nợ rồi nhận 403. Sửa tài liệu bị chèn nhầm mã ở `e04b7d0`. Không migration.

@@ -113,6 +113,38 @@ function checkUnitPricingRequired(
   });
 }
 
+/** Trần của tổng hệ số quy đổi ra đơn vị nhỏ nhất (1 bậc cao nhất = tối đa chừng này đơn vị nhỏ nhất). Đủ cho mọi quy cách thực tế (thùng/hộp/vỉ) và giữ số lượng quy đổi trong giới hạn số nguyên an toàn + cột tồn kho. */
+export const MAX_UNIT_CONVERSION_FACTOR = 1_000_000;
+
+/** Chuỗi quy đổi đơn vị phải hợp lệ (docs/DECISIONS.md #275): không trùng mã đơn vị, không trùng thứ tự bậc, không lặp lại đơn vị nhỏ nhất, tổng hệ số không vượt trần. Chỉ kiểm khi payload có mặt `units` (undefined = không đổi); `baseUnitCode` chỉ so khi có mặt (update một phần — service so tiếp với giá trị đang lưu). */
+function checkUnitChain(data: { baseUnitCode?: string | null; units?: DrugUnitInput[] }, ctx: z.RefinementCtx): void {
+  const units = data.units;
+  if (!units || units.length === 0) return;
+  const seenCodes = new Set<string>();
+  const seenOrders = new Set<number>();
+  units.forEach((u, i) => {
+    const code = u.unitCode.trim().toLocaleLowerCase('vi-VN');
+    if (data.baseUnitCode && u.unitCode === data.baseUnitCode) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Đơn vị này trùng với đơn vị nhỏ nhất — chọn đơn vị khác.', path: ['units', i, 'unitCode'] });
+    } else if (seenCodes.has(code)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Đơn vị bị trùng trong bảng quy đổi.', path: ['units', i, 'unitCode'] });
+    }
+    seenCodes.add(code);
+    if (seenOrders.has(u.sortOrder)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Thứ tự bậc bị trùng trong bảng quy đổi.', path: ['units', i, 'sortOrder'] });
+    }
+    seenOrders.add(u.sortOrder);
+  });
+  const total = units.reduce((acc, u) => acc * u.factorToUnitBelow, 1);
+  if (total > MAX_UNIT_CONVERSION_FACTOR) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Tổng quy đổi ra đơn vị nhỏ nhất không được vượt ${MAX_UNIT_CONVERSION_FACTOR.toLocaleString('vi-VN')}.`,
+      path: ['units'],
+    });
+  }
+}
+
 /** Rà soát đối chiếu tài liệu quy chuẩn quản lý kho thuốc/VTYT (docs/DECISIONS.md #151) — các
  * trường tài liệu đánh dấu "Bắt buộc" cho thuốc (Nhóm thuốc/Đường dùng/Hoạt chất) CHỈ bắt buộc khi
  * `itemType==='MEDICINE'` (Vật tư y tế không có các khái niệm này). Chỉ kiểm khi trường tương ứng
@@ -221,6 +253,7 @@ export const createDrugRequestSchema = z
     concentration: z.string().min(1).optional(),
   })
   .superRefine(checkUnitPricingRequired)
+  .superRefine(checkUnitChain)
   .superRefine(checkMedicineRequiredFields)
   .superRefine(checkDoseConfig);
 export type CreateDrugRequest = z.infer<typeof createDrugRequestSchema>;
@@ -269,6 +302,7 @@ export const updateDrugRequestSchema = z
     version: z.number().int().positive(),
   })
   .superRefine(checkUnitPricingRequired)
+  .superRefine(checkUnitChain)
   .superRefine(checkMedicineRequiredFields)
   .superRefine(checkDoseConfig);
 export type UpdateDrugRequest = z.infer<typeof updateDrugRequestSchema>;

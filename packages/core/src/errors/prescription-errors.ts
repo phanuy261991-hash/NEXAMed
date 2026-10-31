@@ -80,6 +80,20 @@ export class DrugBatchManagementChangeBlockedError extends DomainError {
 }
 
 /**
+ * Đổi `drug.baseUnitCode` (đơn vị cơ sở) khi mặt hàng đang còn tồn kho — chặn vì mọi số tồn, thẻ
+ * kho và giá vốn đều lưu theo đơn vị cơ sở: đổi đơn vị mà không đổi số lượng sẽ làm hiểu sai toàn
+ * bộ tồn đã lưu (docs/DECISIONS.md #275). 409 — xung đột với trạng thái tồn kho hiện có, cùng
+ * nhóm `DRUG_BATCH_MANAGEMENT_CHANGE_BLOCKED`.
+ */
+export class DrugBaseUnitChangeBlockedError extends DomainError {
+  readonly code = 'DRUG_BASE_UNIT_CHANGE_BLOCKED';
+
+  constructor() {
+    super('Không thể đổi "Đơn vị nhỏ nhất" khi mặt hàng đang còn tồn kho — cần xuất/kiểm kê hết tồn trước.');
+  }
+}
+
+/**
  * Kho Thuốc GĐ5 — ký đơn khi có dòng thuốc vượt tổng tồn kho toàn phòng khám VÀ tenant đã bật
  * "Chặn kê vượt tồn" (`prescriptionStockBlockEnabled=true`). Mặc định (tắt) chỉ CẢNH BÁO MỀM
  * (`prescription.warnings`, kind `stock_insufficient`) — lỗi này chỉ ném khi công tắc đã bật. Không
