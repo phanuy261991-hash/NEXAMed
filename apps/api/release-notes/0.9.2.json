@@ -1,0 +1,34 @@
+{
+  "version": "0.9.2",
+  "releasedAt": "2026-10-31",
+  "features": [
+    "Thẻ bảo hiểm y tế: lưu và hiển thị thẻ BHYT của bệnh nhân, chọn thẻ ngay lúc tiếp nhận, in số thẻ trên đơn thuốc, phiếu thu và bệnh án (bật bằng công tắc \"Áp dụng BHYT\").",
+    "Mã đơn thuốc theo Bộ Y tế: tách đơn theo loại thuốc, in từng tờ có mã vạch, cấu hình mẫu in đơn thuốc, hàng chờ gửi liên thông đơn thuốc quốc gia.",
+    "Hồ sơ bệnh án điện tử theo mẫu MS 15/BV-01: tab \"Hồ sơ bệnh án\", Số lưu trữ, Tóm tắt và tình trạng khi kết thúc khám, In bộ hồ sơ hoặc Xuất PDF một lượt khám; chọn bộ hồ sơ in ở Quản lý mẫu in.",
+    "Kê đơn linh hoạt hơn: liều chia lẻ ¼ viên, thuốc không chia được, kiểu kê \"Khi cần\", liều theo ml, liều mẫu; in nhãn dán bì thuốc từ màn Phát thuốc.",
+    "Quản lý giá: đặt Loại giá mặc định, dịch vụ kỹ thuật dùng một giá gốc kèm \"Hẹn đổi giá\" từ một ngày cụ thể.",
+    "Nhập/Xuất Excel cho Dịch vụ kỹ thuật, báo rõ từng lỗi theo số dòng và tên cột khi tải file lên để sửa.",
+    "Đóng ca bác sĩ gắn với lịch làm việc: nhắc đóng ca, ngày trước chưa đóng ca thì chưa được bắt đầu khám (có công tắc tắt yêu cầu).",
+    "Gợi ý theo cơ quan ở ô \"Kết quả khám bộ phận\" của màn khám.",
+    "Bảo vệ khoá mã hoá hệ thống: cất khoá lúc cài đặt, cảnh báo khi khoá không khớp dữ liệu, lệnh xoay khoá.",
+    "Khoá đăng nhập luỹ tiến với nút \"Mở khoá\", khoá thông minh theo \"máy quen\" để người lạ gõ sai không khoá được tài khoản của bạn; màn đăng nhập mới.",
+    "Cảnh báo khi rời trang đang nhập dở (thêm bệnh nhân, tiếp nhận, phiếu kho) để không mất dữ liệu."
+  ],
+  "improvements": [
+    "Mọi lỗi trên ứng dụng hiện thông báo tiếng Việt cụ thể, không lộ mã lỗi; mất mạng giữa chừng không làm ghi trùng dữ liệu.",
+    "Danh sách Tiếp nhận và Thu ngân nhanh hơn khi một ngày có nhiều lượt khám, cuộn tới đâu tải tới đó.",
+    "Danh mục Cận lâm sàng tách rõ \"Loại dịch vụ\" và \"Nhóm dịch vụ\", có ô lọc theo Nhóm.",
+    "Kho thuốc chặt chẽ hơn: không nhập kho bằng đơn vị ngoài bảng quy đổi, không đổi đơn vị nhỏ nhất khi còn tồn, báo ngay lỗi khi bảng quy đổi đơn vị sai.",
+    "Giao diện rõ nét hơn: chữ trong bảng và ô nhập, sửa bố cục màn hình nhỏ và màn hình rất rộng.",
+    "Trang Cập nhật phần mềm và trình cài đặt hiện danh sách \"Có gì mới\" của bản.",
+    "Nâng cấp nền tảng và vá thư viện có lỗ hổng bảo mật."
+  ],
+  "fixes": [
+    "Sửa lỗi hệ thống báo lỗi khi nhiều người phát thuốc hoặc thu tiền cùng lúc.",
+    "Sửa lỗi Kê đơn, Đơn thuốc mẫu và Phát thuốc không dùng được khi mở bằng địa chỉ IP trong mạng nội bộ.",
+    "Sửa lỗi đăng nhập khi nhiều người cùng đăng nhập một lúc.",
+    "Trang không đủ quyền nay báo \"Không có quyền truy cập\"; lễ tân, bác sĩ, điều dưỡng mở chi tiết phiếu nhập kho không còn bị từ chối.",
+    "Số thẻ BHYT không đọc được không còn bị in nhầm thành \"Tự chi trả\".",
+    "Nhãn \"Hướng thần\", \"Gây nghiện\", \"Đông y\" ở danh mục thuốc không còn bị bẻ thành hai dòng."
+  ]
+}
