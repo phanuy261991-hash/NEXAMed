@@ -258,3 +258,47 @@ describe('renderEncounterMedicalRecordHtml — bộ hồ sơ: tờ khám + phi�
     expect((html.match(/Nguyễn Thị Hương · Mã BN BN2610000001 · Số lưu trữ LT2026-000042/g) ?? []).length).toBe(2);
   });
 });
+
+describe('renderEncounterMedicalRecordHtml — bộ hồ sơ theo bản mẫu in Bệnh án (#272)', () => {
+  const header = { showClinicName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true };
+  const options = (bundle: { includeParaclinical: boolean; includePrescriptions: boolean }): MedicalRecordPrintOptions => ({ header, title: null, footerNote: null, bundle });
+  const full = () => base({ paraclinicalResults: [cls('Công thức máu'), cls('Sinh hoá máu')], prescriptionItems: rx });
+  const ATTACHED = 'kèm theo ở các trang sau';
+
+  it('không có tuỳ chọn bundle (hoặc bật hết) → kèm hết: Tổng kết + 2 phiếu + đơn = 4 trang phụ, tờ khám nhắc "kèm theo ở các trang sau"', () => {
+    for (const html of [renderEncounterMedicalRecordHtml(full()), renderEncounterMedicalRecordHtml(full(), options({ includeParaclinical: true, includePrescriptions: true }))]) {
+      expect(pageBreaks(html)).toBe(4);
+      expect(html).toContain('Phiếu kết quả xét nghiệm');
+      expect(html).toContain('Đơn thuốc</div>');
+      expect(html).toContain(ATTACHED);
+    }
+  });
+
+  it('tắt "Phiếu kết quả cận lâm sàng": không còn trang phiếu, tờ khám vẫn TÓM TẮT kết quả nhưng bỏ câu "kèm theo ở các trang sau"; đơn thuốc còn', () => {
+    const html = renderEncounterMedicalRecordHtml(full(), options({ includeParaclinical: false, includePrescriptions: true }));
+    expect(pageBreaks(html)).toBe(2);
+    expect(html).not.toContain('Phiếu kết quả xét nghiệm');
+    expect(html).not.toContain(ATTACHED);
+    expect(html).toContain('Công thức máu');
+    expect(html).toContain('Bạch cầu tăng nhẹ');
+    expect(html).toContain('Đơn thuốc</div>');
+  });
+
+  it('tắt "Đơn thuốc": không còn trang đơn, nhưng thuốc vẫn nằm ở mục "Đã xử lý" của tờ khám; phiếu kết quả còn', () => {
+    const html = renderEncounterMedicalRecordHtml(full(), options({ includeParaclinical: true, includePrescriptions: false }));
+    expect(pageBreaks(html)).toBe(3);
+    expect(html).not.toContain('Đơn thuốc</div>');
+    expect(html).toContain('Paracetamol 500 mg × 10 VIEN');
+    expect(html).toContain('Phiếu kết quả xét nghiệm');
+    expect(html).toContain(ATTACHED);
+  });
+
+  it('tắt cả hai: chỉ còn tờ khám + trang Tổng kết (1 trang phụ); tờ khám và Tổng kết KHÔNG tắt được', () => {
+    const html = renderEncounterMedicalRecordHtml(full(), options({ includeParaclinical: false, includePrescriptions: false }));
+    expect(pageBreaks(html)).toBe(1);
+    expect(html).toContain('Tổng kết bệnh án');
+    expect(html).toContain('MS: 15/BV-01');
+    expect(html).not.toContain('Phiếu kết quả xét nghiệm');
+    expect(html).not.toContain('Đơn thuốc</div>');
+  });
+});

@@ -8,6 +8,7 @@ import { Textarea } from '../../shared/ui/Textarea';
 import { ALL_ON_PRESCRIPTION_INFO } from '../encounter/prescription-print-fields';
 import { useInsuranceEnabledQuery } from '../clinic/clinic.queries';
 import { DEFAULT_INSURANCE_PRINT, INSURANCE_PRINT_DOCUMENT_TYPES } from '../insurance-card/insurance-print';
+import { DEFAULT_RECORD_BUNDLE, RECORD_BUNDLE_DOCUMENT_TYPES, recordBundleSummary } from '../../shared/print/record-bundle';
 
 const inputClassName =
   'w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
@@ -156,6 +157,37 @@ function Check({ id, label, checked, onChange, disabled }: { id: string; label: 
   );
 }
 
+/**
+ * Một dòng của khối "Bộ hồ sơ khi in một lượt khám" (#272): có `onChange` = ô tích chọn được; không có = phần LUÔN in (ô tích khoá, kèm nhãn "Luôn in").
+ */
+function BundleRow({ id, label, hint, checked, onChange }: { id?: string; label: string; hint?: string; checked?: boolean; onChange?: (value: boolean) => void }) {
+  const fixed = onChange === undefined;
+  return (
+    <div className="flex items-start gap-2.5 border-b border-slate-100 py-2 last:border-b-0">
+      <input
+        id={id}
+        type="checkbox"
+        checked={fixed ? true : checked === true}
+        disabled={fixed}
+        onChange={(e) => onChange?.(e.target.checked)}
+        aria-label={fixed ? `${label} luôn in` : undefined}
+        className="mt-0.5 h-4 w-4 flex-none accent-blue-600"
+      />
+      <div className="min-w-0 flex-1">
+        {fixed ? (
+          <span className="text-sm font-semibold text-slate-600">{label}</span>
+        ) : (
+          <label htmlFor={id} className="cursor-pointer text-sm font-semibold text-slate-800">
+            {label}
+          </label>
+        )}
+        {hint && <span className="block text-xs text-slate-500">{hint}</span>}
+      </div>
+      {fixed && <span className="flex-none rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">Luôn in</span>}
+    </div>
+  );
+}
+
 /** Ô nhập lề (mm) — giữ chuỗi gõ dở, chỉ ghi vào cấu hình khi là số nguyên 0-40. */
 function MarginInput({ id, label, value, onCommit }: { id: string; label: string; value: number; onCommit: (value: number) => void }) {
   const [text, setText] = useState(String(value));
@@ -240,6 +272,10 @@ export function PrintTemplateConfigPanel({
   const hasInsuranceRow = INSURANCE_PRINT_DOCUMENT_TYPES.includes(documentType as (typeof INSURANCE_PRINT_DOCUMENT_TYPES)[number]);
   const insurancePrint = config.insurance ?? DEFAULT_INSURANCE_PRINT;
   const setInsurancePrint = (value: NonNullable<PrintTemplateConfig['insurance']>) => onConfigChange({ ...config, insurance: value });
+  // Khối "Bộ hồ sơ khi in một lượt khám" (#272): chỉ bản mẫu Bệnh án; cấu hình chưa có khối (vd. sau "Khôi phục mặc định") coi như kèm hết, ghi đủ khối khi người dùng đổi một ô.
+  const hasRecordBundle = RECORD_BUNDLE_DOCUMENT_TYPES.includes(documentType);
+  const recordBundle = config.recordBundle ?? DEFAULT_RECORD_BUNDLE;
+  const setRecordBundle = (patch: Partial<typeof recordBundle>) => onConfigChange({ ...config, recordBundle: { ...recordBundle, ...patch } });
   const setHeader = (key: HeaderKey, value: boolean) => onConfigChange({ ...config, header: { ...config.header, [key]: value } });
   const setMargin = (key: MarginKey, value: number) => onConfigChange({ ...config, margins: { ...config.margins, [key]: value } });
   const setCopyCount = (count: number) => onConfigChange({ ...config, copies: { ...config.copies, count } });
@@ -385,6 +421,21 @@ export function PrintTemplateConfigPanel({
       {hasInsuranceRow && !rxInfo && (
         <Block title="Thông tin bảo hiểm y tế">
           <InsurancePrintRow idPrefix="pt-insurance" value={insurancePrint} onChange={setInsurancePrint} enabled={insuranceEnabled} />
+        </Block>
+      )}
+
+      {hasRecordBundle && (
+        <Block title="Bộ hồ sơ khi in một lượt khám">
+          <div className="flex flex-col">
+            <BundleRow label="Tờ bệnh án ngoại trú" hint="Theo mẫu MS 15/BV-01" />
+            <BundleRow label="Tổng kết bệnh án" />
+            <BundleRow id="pt-bundle-cls" label="Phiếu kết quả cận lâm sàng" hint="Mỗi dịch vụ đã duyệt một phiếu" checked={recordBundle.includeParaclinical} onChange={(v) => setRecordBundle({ includeParaclinical: v })} />
+            <BundleRow id="pt-bundle-rx" label="Đơn thuốc" hint="Các đơn đã ký của lượt khám" checked={recordBundle.includePrescriptions} onChange={(v) => setRecordBundle({ includePrescriptions: v })} />
+          </div>
+          <div className="mt-3 rounded-md border border-slate-200 bg-white px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hộp "In bộ hồ sơ" sẽ ghi</p>
+            <p className="mt-0.5 text-sm text-slate-800">Bộ hồ sơ gồm: {recordBundleSummary({ paraclinical: 1, prescriptions: 1 }, recordBundle)}.</p>
+          </div>
         </Block>
       )}
 

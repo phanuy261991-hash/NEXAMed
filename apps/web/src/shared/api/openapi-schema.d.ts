@@ -25321,6 +25321,10 @@ export interface paths {
                                             /** @enum {string} */
                                             whenSelfPay: "hide" | "selfPay";
                                         };
+                                        recordBundle?: {
+                                            includeParaclinical: boolean;
+                                            includePrescriptions: boolean;
+                                        };
                                         copies: {
                                             count: number;
                                             labels: string[];
@@ -25413,6 +25417,10 @@ export interface paths {
                                                 /** @enum {string} */
                                                 whenSelfPay: "hide" | "selfPay";
                                             };
+                                            recordBundle?: {
+                                                includeParaclinical: boolean;
+                                                includePrescriptions: boolean;
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -25478,6 +25486,10 @@ export interface paths {
                                                 show: boolean;
                                                 /** @enum {string} */
                                                 whenSelfPay: "hide" | "selfPay";
+                                            };
+                                            recordBundle?: {
+                                                includeParaclinical: boolean;
+                                                includePrescriptions: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25545,6 +25557,10 @@ export interface paths {
                                                 /** @enum {string} */
                                                 whenSelfPay: "hide" | "selfPay";
                                             };
+                                            recordBundle?: {
+                                                includeParaclinical: boolean;
+                                                includePrescriptions: boolean;
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -25610,6 +25626,10 @@ export interface paths {
                                                 show: boolean;
                                                 /** @enum {string} */
                                                 whenSelfPay: "hide" | "selfPay";
+                                            };
+                                            recordBundle?: {
+                                                includeParaclinical: boolean;
+                                                includePrescriptions: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25677,6 +25697,10 @@ export interface paths {
                                                 /** @enum {string} */
                                                 whenSelfPay: "hide" | "selfPay";
                                             };
+                                            recordBundle?: {
+                                                includeParaclinical: boolean;
+                                                includePrescriptions: boolean;
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -25742,6 +25766,10 @@ export interface paths {
                                                 show: boolean;
                                                 /** @enum {string} */
                                                 whenSelfPay: "hide" | "selfPay";
+                                            };
+                                            recordBundle?: {
+                                                includeParaclinical: boolean;
+                                                includePrescriptions: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25809,6 +25837,10 @@ export interface paths {
                                                 /** @enum {string} */
                                                 whenSelfPay: "hide" | "selfPay";
                                             };
+                                            recordBundle?: {
+                                                includeParaclinical: boolean;
+                                                includePrescriptions: boolean;
+                                            };
                                             copies: {
                                                 count: number;
                                                 labels: string[];
@@ -25874,6 +25906,10 @@ export interface paths {
                                                 show: boolean;
                                                 /** @enum {string} */
                                                 whenSelfPay: "hide" | "selfPay";
+                                            };
+                                            recordBundle?: {
+                                                includeParaclinical: boolean;
+                                                includePrescriptions: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25997,6 +26033,10 @@ export interface paths {
                                 /** @enum {string} */
                                 whenSelfPay: "hide" | "selfPay";
                             };
+                            recordBundle?: {
+                                includeParaclinical: boolean;
+                                includePrescriptions: boolean;
+                            };
                             copies: {
                                 count: number;
                                 labels: string[];
@@ -26084,6 +26124,10 @@ export interface paths {
                                         show: boolean;
                                         /** @enum {string} */
                                         whenSelfPay: "hide" | "selfPay";
+                                    };
+                                    recordBundle?: {
+                                        includeParaclinical: boolean;
+                                        includePrescriptions: boolean;
                                     };
                                     copies: {
                                         count: number;
@@ -26272,6 +26316,10 @@ export interface paths {
                                             /** @enum {string} */
                                             whenSelfPay: "hide" | "selfPay";
                                         };
+                                        recordBundle?: {
+                                            includeParaclinical: boolean;
+                                            includePrescriptions: boolean;
+                                        };
                                         copies: {
                                             count: number;
                                             labels: string[];
@@ -26344,6 +26392,10 @@ export interface paths {
                                                 show: boolean;
                                                 /** @enum {string} */
                                                 whenSelfPay: "hide" | "selfPay";
+                                            };
+                                            recordBundle?: {
+                                                includeParaclinical: boolean;
+                                                includePrescriptions: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -26668,6 +26720,10 @@ export interface paths {
                                 /** @enum {string} */
                                 whenSelfPay: "hide" | "selfPay";
                             };
+                            recordBundle?: {
+                                includeParaclinical: boolean;
+                                includePrescriptions: boolean;
+                            };
                             copies: {
                                 count: number;
                                 labels: string[];
@@ -26757,6 +26813,10 @@ export interface paths {
                                         show: boolean;
                                         /** @enum {string} */
                                         whenSelfPay: "hide" | "selfPay";
+                                    };
+                                    recordBundle?: {
+                                        includeParaclinical: boolean;
+                                        includePrescriptions: boolean;
                                     };
                                     copies: {
                                         count: number;

@@ -159,6 +159,8 @@ export interface MedicalRecordPrintOptions {
   footerNote: string | null;
   /** Dòng "Thẻ BHYT" từng lượt khám (ô tích của bản mẫu `MEDICAL_RECORD`, S2-04) — vắng = không in. */
   insurance?: { show: boolean; whenSelfPay: 'hide' | 'selfPay' };
+  /** Phần kèm theo của "In bộ hồ sơ" một lượt khám (#272): tờ khám và Tổng kết luôn in. Vắng = kèm hết. Không áp cho bệnh án gộp nhiều lượt. */
+  bundle?: { includeParaclinical: boolean; includePrescriptions: boolean };
 }
 
 const DEFAULT_PRINT_OPTIONS: MedicalRecordPrintOptions = {
@@ -495,11 +497,11 @@ function recordHistory(doc: EncounterMedicalRecordDocument): string {
   return `<table class="history-list"><tbody>${rows.map(([label, value]) => `<tr><td class="label">${label}</td><td>${escapeHtml(value)}</td></tr>`).join('')}</tbody></table>`;
 }
 
-function recordClsSummary(results: MedicalRecordParaclinicalResult[]): string {
+function recordClsSummary(results: MedicalRecordParaclinicalResult[], withAttachedSheets: boolean): string {
   if (results.length === 0) return '<p class="muted">Không có kết quả cận lâm sàng.</p>';
   return `<table class="data-table"><thead><tr><th>Dịch vụ</th><th>Nhận xét / Kết luận</th><th>Duyệt lúc</th></tr></thead><tbody>${results
     .map((r) => `<tr><td>${escapeHtml(r.serviceName)}</td><td>${escapeHtml(r.conclusionText ?? r.descriptionText ?? '—')}</td><td>${formatDateTime(r.signedAt)}</td></tr>`)
-    .join('')}</tbody></table><p class="meta">Phiếu kết quả đầy đủ kèm theo ở các trang sau.</p>`;
+    .join('')}</tbody></table>${withAttachedSheets ? '<p class="meta">Phiếu kết quả đầy đủ kèm theo ở các trang sau.</p>' : ''}`;
 }
 
 function recordDiagnoses(items: MedicalRecordDiagnosis[]): string {
@@ -544,6 +546,7 @@ function recordCodesBar(doc: EncounterMedicalRecordDocument, withVisitType: bool
 
 export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocument, options: MedicalRecordPrintOptions = DEFAULT_PRINT_OPTIONS): string {
   const { header } = options;
+  const bundle = options.bundle ?? { includeParaclinical: true, includePrescriptions: true };
   const clinicMeta = [
     header.showAddress ? doc.clinic.address : null,
     header.showPhone ? doc.clinic.phone : null,
@@ -576,7 +579,7 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
   ${recordSection(
     'IV',
     'Khám bệnh',
-    `${renderVitalSigns(doc.vitalSigns)}<p class="sub">1. Toàn thân</p>${recordProse(doc.notes.generalExam)}<p class="sub">2. Các bộ phận</p>${recordProse(doc.notes.regionalExam)}<p class="sub">3. Tóm tắt kết quả cận lâm sàng</p>${recordClsSummary(doc.paraclinicalResults)}<p class="sub">4. Chẩn đoán ban đầu</p>${recordProse(doc.notes.preliminaryDiagnosis)}<p class="sub">5. Đã xử lý (thuốc, chăm sóc)</p>${recordTreated(doc)}<p class="sub">6. Chẩn đoán khi ra viện</p>${recordDiagnoses(doc.diagnoses)}<p class="sub">7. Điều trị ngoại trú</p>${recordTreatmentPeriod(doc)}`,
+    `${renderVitalSigns(doc.vitalSigns)}<p class="sub">1. Toàn thân</p>${recordProse(doc.notes.generalExam)}<p class="sub">2. Các bộ phận</p>${recordProse(doc.notes.regionalExam)}<p class="sub">3. Tóm tắt kết quả cận lâm sàng</p>${recordClsSummary(doc.paraclinicalResults, bundle.includeParaclinical)}<p class="sub">4. Chẩn đoán ban đầu</p>${recordProse(doc.notes.preliminaryDiagnosis)}<p class="sub">5. Đã xử lý (thuốc, chăm sóc)</p>${recordTreated(doc)}<p class="sub">6. Chẩn đoán khi ra viện</p>${recordDiagnoses(doc.diagnoses)}<p class="sub">7. Điều trị ngoại trú</p>${recordTreatmentPeriod(doc)}`,
   )}
   ${recordSignBlock(doc)}
   <section class="page-break">
@@ -585,7 +588,7 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
     <div class="doc-title">Tổng kết bệnh án</div>
     ${recordCodesBar(doc, false)}
     ${recordSection('1', 'Diễn biến', `<p class="sub">Quá trình bệnh lý và diễn biến lâm sàng</p>${recordProse(doc.notes.summary.trim() ? doc.notes.summary : doc.notes.illness)}`)}
-    ${recordSection('2', 'Cận lâm sàng', `<p class="sub">Tóm tắt kết quả xét nghiệm cận lâm sàng có giá trị chẩn đoán</p>${recordClsSummary(doc.paraclinicalResults)}`)}
+    ${recordSection('2', 'Cận lâm sàng', `<p class="sub">Tóm tắt kết quả xét nghiệm cận lâm sàng có giá trị chẩn đoán</p>${recordClsSummary(doc.paraclinicalResults, bundle.includeParaclinical)}`)}
     ${recordSection('3', 'Chẩn đoán ra viện', recordDiagnoses(doc.diagnoses))}
     ${recordSection('4', 'Phương pháp điều trị', treatmentContent || '<p class="muted">Chưa ghi.</p>')}
     ${recordSection('5', 'Tình trạng ra viện', `<p class="sub">Tình trạng người bệnh khi kết thúc khám</p>${recordProse(doc.notes.prognosis)}`)}
@@ -593,7 +596,7 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
     ${recordSignBlock(doc)}
   </section>`;
 
-  const clsSheets = doc.paraclinicalResults
+  const clsSheets = (bundle.includeParaclinical ? doc.paraclinicalResults : [])
     .map(
       (r) => `<section class="page-break">
     ${clinicHeader}
@@ -605,7 +608,7 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
     .join('');
 
   const prescriptionSheet =
-    doc.prescriptionItems.length > 0
+    bundle.includePrescriptions && doc.prescriptionItems.length > 0
       ? `<section class="page-break">
     ${clinicHeader}
     <div class="doc-title">Đơn thuốc</div>

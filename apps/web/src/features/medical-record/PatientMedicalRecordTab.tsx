@@ -10,6 +10,7 @@ import { SegmentedToggle } from '../../shared/ui/SegmentedToggle';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { formatDateTimeVn } from '../../shared/format/time';
+import { useResolvedPrintTemplate } from '../../shared/print/print-template.queries';
 import { useHasPermission } from '../auth/usePermission';
 import { formatDateStringVi } from '../encounter/follow-up-date';
 import { useConsultationDetailQuery, usePatientEncounterHistoryQuery } from '../encounter/encounter.queries';
@@ -138,6 +139,8 @@ function MedicalRecordPane({ item, patient, showBranch, visitTypeLabel }: { item
   const detailQuery = useConsultationDetailQuery(item.encounterId);
   const clsQuery = useMedicalRecordParaclinicalQuery(item.encounterId);
   const patientInfo = useRecordPatientInfo(patient);
+  // Bản mẫu in Bệnh án quyết định bộ hồ sơ có kèm phiếu kết quả/đơn thuốc không (#272); chưa nạp xong thì kèm hết (như mặc định).
+  const recordBundle = useResolvedPrintTemplate('MEDICAL_RECORD')?.config.recordBundle;
 
   const view = useMemo(
     () => (detailQuery.data ? buildMedicalRecordView({ item, detail: detailQuery.data, paraclinical: clsQuery.data?.results ?? [], patient: patientInfo, showBranch, visitTypeLabel }) : null),
@@ -221,7 +224,7 @@ function MedicalRecordPane({ item, patient, showBranch, visitTypeLabel }: { item
       {exportMode && (
         <MedicalRecordExportDialog
           patientId={patient.id}
-          encounter={{ encounterId: item.encounterId, mode: exportMode, note: `Bộ hồ sơ gồm: ${bundleSummary(view)}.` }}
+          encounter={{ encounterId: item.encounterId, mode: exportMode, note: `Bộ hồ sơ gồm: ${bundleSummary(view, recordBundle)}.` }}
           onClose={() => setExportMode(null)}
         />
       )}

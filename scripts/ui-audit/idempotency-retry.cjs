@@ -71,12 +71,12 @@ async function apiToken(tenantId) {
 
   const submit = () => page.locator('form button[type=submit]').click();
   await submit();
-  await page.waitForSelector('[role=dialog]:has-text("Không kết nối được máy chủ")', { timeout: 15000 });
-  const dialogText = await page.locator('[role=dialog]:has-text("Không kết nối được máy chủ")').innerText();
-  check('mất phản hồi: hộp "Không kết nối được máy chủ" hiện ra', /Không kết nối được máy chủ/.test(dialogText));
-  check('hộp cho phép BẤM THỬ LẠI và nói rõ không ghi trùng (không còn dặn kiểm tra trước)', /bấm thử lại/.test(dialogText) && /không ghi trùng/.test(dialogText) && !/kiểm tra lại dữ liệu/.test(dialogText), dialogText.replace(/\s+/g, ' ').slice(0, 140));
-  await page.locator('[role=dialog]:has-text("Không kết nối được máy chủ")').getByText('Đóng', { exact: true }).click();
-  await page.waitForSelector('[role=dialog]:has-text("Không kết nối được máy chủ")', { state: 'detached', timeout: 5000 });
+  await page.waitForSelector('[role=dialog]:has-text("Chưa kết nối được máy chủ")', { timeout: 15000 });
+  const dialogText = await page.locator('[role=dialog]:has-text("Chưa kết nối được máy chủ")').innerText();
+  check('mất phản hồi: hộp "Chưa kết nối được máy chủ" hiện ra', /Chưa kết nối được máy chủ/.test(dialogText));
+  check('hộp cho phép BẤM THỬ LẠI và nói rõ không ghi trùng (không còn dặn kiểm tra trước)', /Bấm lại là an toàn/.test(dialogText) && /không ghi trùng/.test(dialogText) && !/kiểm tra lại dữ liệu/.test(dialogText), dialogText.replace(/\s+/g, ' ').slice(0, 140));
+  await page.locator('[role=dialog]:has-text("Chưa kết nối được máy chủ")').getByText('Đóng', { exact: true }).click();
+  await page.waitForSelector('[role=dialog]:has-text("Chưa kết nối được máy chủ")', { state: 'detached', timeout: 5000 });
   check('đóng hộp: dữ liệu đã nhập còn nguyên trong form', (await page.inputValue('#supplier-name')) === fullName);
 
   await submit();

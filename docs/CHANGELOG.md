@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-10-31
+
+### Mẫu in "Bệnh án": chọn bộ hồ sơ khi in một lượt khám; hộp báo mất kết nối kiểu mới (`docs/DECISIONS.md` #272, #273)
+
+Ở **Quản trị → Mẫu in → Bệnh án** có khối mới **"Bộ hồ sơ khi in một lượt khám"**: tờ bệnh án và "Tổng kết bệnh án" luôn in; phòng khám tích hoặc bỏ tích **Phiếu kết quả cận lâm sàng** và **Đơn thuốc** (mặc định tích cả hai như trước). Xem trước đổi ngay theo ô tích; hộp "In bộ hồ sơ"/"Xuất PDF" ở tab Hồ sơ bệnh án ghi đúng bộ sẽ in ("Tờ khám theo mẫu + 1 đơn thuốc"). Ô gợi ý tiêu đề của Bệnh án nay ghi đúng tiêu đề thật "Bệnh án ngoại trú". Hộp báo lỗi hệ thống khi mất mạng/máy chủ chưa bật/lỗi 5xx được vẽ lại: biểu tượng nền nhạt (cam cho lỗi tạm thời, đỏ cho lỗi hệ thống), một câu dẫn và ba dòng ngắn thay cho đoạn chữ dài; tiêu đề "Không kết nối được máy chủ" đổi thành "Chưa kết nối được máy chủ". Không migration.
+
 ## 2026-10-30
 
 ### Gợi ý theo cơ quan ở màn khám; ghi chú "có gì mới" ở trang Cập nhật phần mềm và bộ cài (`docs/DECISIONS.md` #271)

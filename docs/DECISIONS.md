@@ -371,3 +371,28 @@ Lượt test API đầy đủ của đợt này có 1 ca lỗi ngoài phạm vi 
 **Kiểm** (30/10/2026): Chrome thật qua IP LAN HTTP `192.168.3.16:5174` — màn khám 30/30 (chèn đúng thứ tự mẫu, con trỏ, ô "đã có" bị khoá, Esc, ẩn/hiện nhớ sau tải lại, lưu thật lên máy chủ rồi đọc lại: dòng trống bị bỏ, lượt đã hoàn tất không hiện nút, 6 cỡ 390→2560); trang Cập nhật 15/15 (dữ liệu thật; giả lập bản không có ghi chú → ẩn cả khối; `/system/version` lỗi 503/mất mạng → thẻ ẩn êm, không lộ mã; 5 cỡ màn hình, nét chữ đo 400); bộ cài chạy thật với thư mục giả 0.8.0 → 0.9.0 9/9 (chỉ ghi chú bản 0.9.0, không lẫn nội dung bản 0.8.5 ở giữa). Test: shared 116, core 595, web 489, setup 112, full API 121 file / 1881 test đạt + 1 bỏ qua (không lỗi nào). Kiểm đột biến bộ cài (`notesForUpgrade`/`detect()`) bị bắt hết. Typecheck + lint toàn cục sạch.
 
 **Còn lại**: chưa kiểm bộ cài trên Docker/máy Windows sạch thật, chỉ chạy `dist/main.js` với thư mục giả. **Chữ ký logic vs Thông tư 13/2025 (mốc 31/12/2026): chủ dự án chốt LÀM SAU (30/10/2026)** — chưa code gì. Dữ liệu thử `[TEST]` ở lượt khám HSBA CLS 586223 đã đổi sang "Khám thử" qua giao diện.
+
+## 272 — Mẫu in "Bệnh án" theo từng lượt: khối "Bộ hồ sơ khi in một lượt khám" (31/10/2026, mockup https://claude.ai/artifact/4Hq9jWCsVmcJbrRNcD8nKm đã duyệt)
+
+**Đã chốt (hỏi-đáp, rồi chủ dự án "duyệt" mockup)**: phần tắt được là **Phiếu kết quả cận lâm sàng** và **Đơn thuốc**; tờ bệnh án MS 15/BV-01 và trang "Tổng kết bệnh án" LUÔN in. Đặt ở **Quản lý mẫu in, áp cho cả phòng khám** (không chọn lúc in, đúng #269). Tiêu đề tờ khám đổi tự do (đã chạy sẵn: `config.title` áp cho tờ khám, để trống in "Bệnh án ngoại trú"). Xem trước hiện đủ bộ. Mặc định cả hai BẬT (giữ hành vi trước đó). Chỉ áp cho "In bộ hồ sơ"/"Xuất PDF" MỘT lượt khám, KHÔNG áp cho "Xuất toàn bộ bệnh án" (gộp mọi lượt).
+
+**Thiết kế**: không migration — `print_template.config_json` thêm `recordBundle { includeParaclinical, includePrescriptions }` (chỉ `MEDICAL_RECORD`, `withDefaultRecordBundleOptions`, kế thừa giữa khổ giấy ở `deriveConfigForPaper`). Bộ dựng HTML (`MedicalRecordPrintOptions.bundle`): tắt phiếu kết quả thì bỏ trang phiếu và bỏ câu "Phiếu kết quả đầy đủ kèm theo ở các trang sau" (tờ khám vẫn TÓM TẮT kết quả); tắt đơn thuốc thì bỏ trang đơn (thuốc vẫn nằm ở mục "Đã xử lý" của tờ khám). Hộp "In bộ hồ sơ"/"Xuất PDF" ghi đúng bộ theo bản mẫu (`recordBundleSummary` dùng chung ở `shared/print/record-bundle.ts`). Ô gợi ý tiêu đề của Bệnh án sửa "Bệnh án" → "Bệnh án ngoại trú" cho khớp bản in thật.
+
+**Chi nhánh (4 câu, #231)**: (1) mẫu in là cấu hình dùng chung cả công ty; (2) không bảng mới, không `branch_id`; (3) không có tiền, không có dữ liệu liên chi nhánh; (4) giao diện không đổi theo số chi nhánh.
+
+**Lệch mockup**: xem trước vẫn là MỘT tờ cuộn có dải ngăn "Trang tiếp theo · …" (không có nhãn "N trang" và từng trang riêng như mockup).
+
+**Kiểm** (31/10/2026): Chrome thật qua IP LAN HTTP 29/29 (vị trí khối, hai hàng "Luôn in", tích/bỏ tích đổi xem trước ngay, lưu rồi tải lại vẫn nhớ, xuất PDF thật 4 → 3 → 2 → 4 trang khi bật/tắt, lưu lỗi 503/409/mất mạng báo tiếng Việt và giữ lựa chọn, 5 cỡ màn hình). Đột biến 4/4 bị bắt (bộ dựng HTML ×2, ánh xạ cấu hình ở API, hàm mô tả phía web). Kiểm Chrome tab Hồ sơ bệnh án với kết quả cận lâm sàng thật (40 ca) đã làm trước đó, xem CURRENT.
+
+## 273 — Hộp báo lỗi hệ thống kiểu mới (31/10/2026, chủ dự án chê hộp cũ "không đẹp"; mockup https://claude.ai/artifact/P88CNrbfRCmf8LbceU4xeG, chọn phương án A)
+
+**Vấn đề**: `SystemFailureDialog` (#255) dùng `ConfirmDialog` + một đoạn chữ xám 5 dòng (bốn ý trộn nhau) và biểu tượng đỏ đặc — đúng kiểu "AI look, nhiều chữ" mà #240 đã bỏ ở các hộp xác nhận, lại đỏ cho lỗi chỉ là tạm thời.
+
+**Đã chốt**: phương án A (căn trái): ô biểu tượng nền nhạt (cam = lỗi tạm thời: mất mạng/máy chủ chưa bật; đỏ = lỗi thật 5xx) + tiêu đề + MỘT câu dẫn, rồi ba dòng có biểu tượng tròn nhỏ ("Thao tác vừa rồi: chưa rõ đã xong hay chưa" / "Bấm lại là an toàn: hệ thống tự nhận ra, không ghi trùng" (#257) / "Dữ liệu đã nhập: còn nguyên trên màn hình"). Chỉ nút "Đóng" (đóng thêm bằng X và phím Esc; nút "Thử lại" trong hộp KHÔNG làm — chủ dự án không yêu cầu). Tiêu đề mới: "Chưa kết nối được máy chủ" (trước: "Không kết nối được máy chủ"), "Hệ thống tạm thời chưa dùng được", "Hệ thống đang gặp sự cố". `ConfirmDialog`/`ModalHeader` dùng chung KHÔNG đổi.
+
+**Cấu trúc**: nội dung thuần ở `shared/errors/system-failure-content.ts` (có test), hiển thị ở `SystemFailureDialog.tsx`. Hai script kiểm (`error-states.cjs`, `idempotency-retry.cjs`) đã cập nhật theo tiêu đề mới. Chữ trong trang tĩnh của bộ cài/Caddy (`apps/setup/src/lib/profiles.ts`) là màn khác, KHÔNG đổi.
+
+**Kiểm**: Chrome thật: `error-states.cjs` 15/15, `idempotency-retry.cjs` 6/6, script riêng 24/25 (1 "lỗi" là script kiểm màu bằng `rgb` trong khi Chrome trả `oklch`; màu đúng) — ba tình huống, Esc/X/nút Đóng, nút Đóng giữ tiêu điểm, dữ liệu đang sửa còn nguyên, 4 cỡ màn hình không tràn. Test: shared 120, core 599, web 501, setup 112; full API 121 file / 1883 test đạt + 1 bỏ qua (không lỗi nào).
+
+**Kèm theo — sửa test chập chờn của bộ cài (31/10/2026)**: `apps/setup/src/service-install-retry.spec.ts` thi thoảng đỏ (~1/6 lượt) với `ENOTEMPTY` khi xoá thư mục tạm: tác vụ cài chạy nền vẫn còn ghi file một khoảnh khắc sau khi báo "xong". Không phải lỗi sản phẩm. Sửa ở hạ tầng test: `rm(..., { maxRetries: 10, retryDelay: 50 })`; chạy lặp 14 lượt: 14 đạt.
+

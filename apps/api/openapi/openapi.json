@@ -63711,6 +63711,21 @@
                                       "whenSelfPay"
                                     ]
                                   },
+                                  "recordBundle": {
+                                    "type": "object",
+                                    "properties": {
+                                      "includeParaclinical": {
+                                        "type": "boolean"
+                                      },
+                                      "includePrescriptions": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "includeParaclinical",
+                                      "includePrescriptions"
+                                    ]
+                                  },
                                   "copies": {
                                     "type": "object",
                                     "properties": {
@@ -64142,6 +64157,21 @@
                                         "whenSelfPay"
                                       ]
                                     },
+                                    "recordBundle": {
+                                      "type": "object",
+                                      "properties": {
+                                        "includeParaclinical": {
+                                          "type": "boolean"
+                                        },
+                                        "includePrescriptions": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "includeParaclinical",
+                                        "includePrescriptions"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -64409,6 +64439,21 @@
                                       "required": [
                                         "show",
                                         "whenSelfPay"
+                                      ]
+                                    },
+                                    "recordBundle": {
+                                      "type": "object",
+                                      "properties": {
+                                        "includeParaclinical": {
+                                          "type": "boolean"
+                                        },
+                                        "includePrescriptions": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "includeParaclinical",
+                                        "includePrescriptions"
                                       ]
                                     },
                                     "copies": {
@@ -64680,6 +64725,21 @@
                                         "whenSelfPay"
                                       ]
                                     },
+                                    "recordBundle": {
+                                      "type": "object",
+                                      "properties": {
+                                        "includeParaclinical": {
+                                          "type": "boolean"
+                                        },
+                                        "includePrescriptions": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "includeParaclinical",
+                                        "includePrescriptions"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -64947,6 +65007,21 @@
                                       "required": [
                                         "show",
                                         "whenSelfPay"
+                                      ]
+                                    },
+                                    "recordBundle": {
+                                      "type": "object",
+                                      "properties": {
+                                        "includeParaclinical": {
+                                          "type": "boolean"
+                                        },
+                                        "includePrescriptions": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "includeParaclinical",
+                                        "includePrescriptions"
                                       ]
                                     },
                                     "copies": {
@@ -65218,6 +65293,21 @@
                                         "whenSelfPay"
                                       ]
                                     },
+                                    "recordBundle": {
+                                      "type": "object",
+                                      "properties": {
+                                        "includeParaclinical": {
+                                          "type": "boolean"
+                                        },
+                                        "includePrescriptions": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "includeParaclinical",
+                                        "includePrescriptions"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -65485,6 +65575,21 @@
                                       "required": [
                                         "show",
                                         "whenSelfPay"
+                                      ]
+                                    },
+                                    "recordBundle": {
+                                      "type": "object",
+                                      "properties": {
+                                        "includeParaclinical": {
+                                          "type": "boolean"
+                                        },
+                                        "includePrescriptions": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "includeParaclinical",
+                                        "includePrescriptions"
                                       ]
                                     },
                                     "copies": {
@@ -65756,6 +65861,21 @@
                                         "whenSelfPay"
                                       ]
                                     },
+                                    "recordBundle": {
+                                      "type": "object",
+                                      "properties": {
+                                        "includeParaclinical": {
+                                          "type": "boolean"
+                                        },
+                                        "includePrescriptions": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "includeParaclinical",
+                                        "includePrescriptions"
+                                      ]
+                                    },
                                     "copies": {
                                       "type": "object",
                                       "properties": {
@@ -66023,6 +66143,21 @@
                                       "required": [
                                         "show",
                                         "whenSelfPay"
+                                      ]
+                                    },
+                                    "recordBundle": {
+                                      "type": "object",
+                                      "properties": {
+                                        "includeParaclinical": {
+                                          "type": "boolean"
+                                        },
+                                        "includePrescriptions": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "includeParaclinical",
+                                        "includePrescriptions"
                                       ]
                                     },
                                     "copies": {
@@ -66441,6 +66576,21 @@
                           "whenSelfPay"
                         ]
                       },
+                      "recordBundle": {
+                        "type": "object",
+                        "properties": {
+                          "includeParaclinical": {
+                            "type": "boolean"
+                          },
+                          "includePrescriptions": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "includeParaclinical",
+                          "includePrescriptions"
+                        ]
+                      },
                       "copies": {
                         "type": "object",
                         "properties": {
@@ -66782,6 +66932,21 @@
                               "required": [
                                 "show",
                                 "whenSelfPay"
+                              ]
+                            },
+                            "recordBundle": {
+                              "type": "object",
+                              "properties": {
+                                "includeParaclinical": {
+                                  "type": "boolean"
+                                },
+                                "includePrescriptions": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "includeParaclinical",
+                                "includePrescriptions"
                               ]
                             },
                             "copies": {
@@ -67312,6 +67477,21 @@
                                       "whenSelfPay"
                                     ]
                                   },
+                                  "recordBundle": {
+                                    "type": "object",
+                                    "properties": {
+                                      "includeParaclinical": {
+                                        "type": "boolean"
+                                      },
+                                      "includePrescriptions": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "includeParaclinical",
+                                      "includePrescriptions"
+                                    ]
+                                  },
                                   "copies": {
                                     "type": "object",
                                     "properties": {
@@ -67612,6 +67792,21 @@
                                           "required": [
                                             "show",
                                             "whenSelfPay"
+                                          ]
+                                        },
+                                        "recordBundle": {
+                                          "type": "object",
+                                          "properties": {
+                                            "includeParaclinical": {
+                                              "type": "boolean"
+                                            },
+                                            "includePrescriptions": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "includeParaclinical",
+                                            "includePrescriptions"
                                           ]
                                         },
                                         "copies": {
@@ -68213,6 +68408,21 @@
                           "whenSelfPay"
                         ]
                       },
+                      "recordBundle": {
+                        "type": "object",
+                        "properties": {
+                          "includeParaclinical": {
+                            "type": "boolean"
+                          },
+                          "includePrescriptions": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "includeParaclinical",
+                          "includePrescriptions"
+                        ]
+                      },
                       "copies": {
                         "type": "object",
                         "properties": {
@@ -68559,6 +68769,21 @@
                               "required": [
                                 "show",
                                 "whenSelfPay"
+                              ]
+                            },
+                            "recordBundle": {
+                              "type": "object",
+                              "properties": {
+                                "includeParaclinical": {
+                                  "type": "boolean"
+                                },
+                                "includePrescriptions": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "includeParaclinical",
+                                "includePrescriptions"
                               ]
                             },
                             "copies": {

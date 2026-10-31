@@ -457,6 +457,41 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
     expect(off.body.data.config.prescriptionInfo.padSmallQuantity).toBe(false);
   });
 
+  it('Bệnh án (#272): khối "Bộ hồ sơ khi in một lượt khám" mặc định kèm hết, tắt được, lưu và đọc lại đúng ở cả danh sách lẫn resolved; chứng từ khác không có khối', async () => {
+    const all = await list(adminToken);
+    const builtin = all.find((i) => i.documentType === 'MEDICAL_RECORD')!;
+    expect(builtin.config.recordBundle).toEqual({ includeParaclinical: true, includePrescriptions: true });
+    expect(all.filter((i) => i.documentType !== 'MEDICAL_RECORD').every((i) => i.config.recordBundle === undefined)).toBe(true);
+
+    // Cấu hình lưu từ bản cũ (chưa có khối) vẫn đọc được và coi như kèm hết.
+    const legacyConfig: Record<string, unknown> = { ...builtin.config };
+    delete legacyConfig.recordBundle;
+    // Các test trước ("Thiết lập nhanh") có thể đã lưu sẵn bản Bệnh án A4: có thì sửa bản đó, chưa thì tạo mới.
+    const created = builtin.id
+      ? await request(app.getHttpServer()).patch(`${API}/${builtin.id}`).set(authed(adminToken)).send({ version: builtin.version, config: legacyConfig })
+      : await request(app.getHttpServer()).post(API).set(authed(adminToken)).send({ documentType: 'MEDICAL_RECORD', name: 'Bệnh án A4 (bản cũ)', paperSize: 'A4', config: legacyConfig });
+    expect(created.status, JSON.stringify(created.body)).toBe(200);
+    expect(created.body.data.config.recordBundle).toEqual({ includeParaclinical: true, includePrescriptions: true });
+
+    const off = await request(app.getHttpServer())
+      .patch(`${API}/${created.body.data.id}`)
+      .set(authed(adminToken))
+      .send({ version: created.body.data.version, config: { ...created.body.data.config, recordBundle: { includeParaclinical: false, includePrescriptions: true } } });
+    expect(off.status, JSON.stringify(off.body)).toBe(200);
+    expect(off.body.data.config.recordBundle).toEqual({ includeParaclinical: false, includePrescriptions: true });
+
+    const resolved = await request(app.getHttpServer()).get(`${API}/resolved`).set(authed(adminToken));
+    expect(resolved.status).toBe(200);
+    const record = (resolved.body.data.items as { documentType: string; config: PrintTemplate['config'] }[]).find((i) => i.documentType === 'MEDICAL_RECORD')!;
+    expect(record.config.recordBundle).toEqual({ includeParaclinical: false, includePrescriptions: true });
+
+    const bad = await request(app.getHttpServer())
+      .patch(`${API}/${created.body.data.id}`)
+      .set(authed(adminToken))
+      .send({ version: off.body.data.version, config: { ...off.body.data.config, recordBundle: { includeParaclinical: 'x' } } });
+    expect(bad.status).toBe(400);
+  });
+
   it('ghi audit log cho tạo/sửa/xoá/thiết lập nhanh', async () => {
     const audit = await privileged.auditLog.findMany({ where: { tenantId: fixture.tenantA.id, entityType: 'print_template' } });
     const actions = new Set(audit.map((a) => a.action));

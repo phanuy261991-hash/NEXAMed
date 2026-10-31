@@ -1,5 +1,6 @@
-import type { ConsultationDetailResponse, EncounterInsurance, MedicalRecordParaclinicalResponse, PatientEncounterHistoryItem } from '@nexamed/shared';
+import type { ConsultationDetailResponse, EncounterInsurance, MedicalRecordParaclinicalResponse, PatientEncounterHistoryItem, RecordBundleConfig } from '@nexamed/shared';
 import { formatDateTimeVn } from '../../shared/format/time';
+import { recordBundleSummary } from '../../shared/print/record-bundle';
 import { formatDateStringVi, toVietnamDateString, vietnameseWeekdayLabel } from '../encounter/follow-up-date';
 import { TREATMENT_DIRECTION_LABEL } from '../encounter/treatment-plan';
 
@@ -303,13 +304,10 @@ export function buildMedicalRecordView(input: {
   };
 }
 
-/** "Bộ hồ sơ in (1 tệp PDF)": tờ khám + N phiếu kết quả + M đơn thuốc — chỉ kể thứ thật sự có. */
-export function bundleSummary(view: Pick<MedicalRecordView, 'cls' | 'prescription'>): string {
-  const parts = ['Tờ khám theo mẫu'];
-  if (view.cls.length > 0) parts.push(`${view.cls.length} phiếu kết quả`);
+/** "Bộ hồ sơ in (1 tệp PDF)": tờ khám + N phiếu kết quả + M đơn thuốc — chỉ kể thứ thật sự có VÀ được bản mẫu in Bệnh án bật (#272). */
+export function bundleSummary(view: Pick<MedicalRecordView, 'cls' | 'prescription'>, bundle?: RecordBundleConfig): string {
   const prescriptions = view.prescription && view.prescription.signedAt ? Math.max(view.prescription.documents.length, 1) : 0;
-  if (prescriptions > 0) parts.push(`${prescriptions} đơn thuốc`);
-  return parts.join(' + ');
+  return recordBundleSummary({ paraclinical: view.cls.length, prescriptions }, bundle);
 }
 
 /** Bảng "Theo trường dữ liệu": mỗi trường hệ thống đang lưu của lượt khám kèm người ghi và thời điểm (không hiện tên bảng/cột kỹ thuật). */

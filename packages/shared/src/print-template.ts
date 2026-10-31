@@ -89,7 +89,7 @@ export const PRINT_DOCUMENT_TYPE_REGISTRY: Record<
   { label: string; group: PrintDocumentGroup; allowedPapers: PrintPaperSize[]; defaultPaper: PrintPaperSize; defaultTitle: string; notice?: PrintNoticeDefaults }
 > = {
   PRESCRIPTION: { label: 'Đơn thuốc', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Đơn thuốc' },
-  MEDICAL_RECORD: { label: 'Bệnh án', group: 'Khám bệnh', allowedPapers: ['A4'], defaultPaper: 'A4', defaultTitle: 'Bệnh án' },
+  MEDICAL_RECORD: { label: 'Bệnh án', group: 'Khám bệnh', allowedPapers: ['A4'], defaultPaper: 'A4', defaultTitle: 'Bệnh án ngoại trú' },
   CLINICAL_ORDER: { label: 'Phiếu chỉ định cận lâm sàng', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu chỉ định cận lâm sàng' },
   LAB_RESULT: { label: 'Kết quả xét nghiệm', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Kết quả xét nghiệm', notice: LAB_RESULT_NOTICE },
   IMAGING_RESULT: { label: 'Kết quả CĐHA & Thăm dò chức năng', group: 'Khám bệnh', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Kết quả chẩn đoán hình ảnh' },
@@ -159,6 +159,16 @@ export const DEFAULT_INSURANCE_PRINT_CONFIG: InsurancePrintConfig = { show: fals
 export const INSURANCE_PRINT_DOCUMENT_TYPES: PrintDocumentType[] = ['PRESCRIPTION', 'INVOICE', 'MEDICAL_RECORD'];
 
 /**
+ * Bộ hồ sơ khi "In bộ hồ sơ" MỘT lượt khám (bản mẫu `MEDICAL_RECORD`, mockup đã duyệt 31/10/2026, docs/DECISIONS.md #272): tờ bệnh án MS 15/BV-01 và "Tổng kết bệnh án" LUÔN in;
+ * phòng khám chọn có kèm các phiếu kết quả cận lâm sàng / đơn thuốc không. Mặc định BẬT hết (giữ hành vi trước đó). Không áp cho "Xuất toàn bộ bệnh án" (gộp mọi lượt).
+ */
+export const recordBundleConfigSchema = z.object({ includeParaclinical: z.boolean(), includePrescriptions: z.boolean() });
+export type RecordBundleConfig = z.infer<typeof recordBundleConfigSchema>;
+export const DEFAULT_RECORD_BUNDLE_CONFIG: RecordBundleConfig = { includeParaclinical: true, includePrescriptions: true };
+/** Chứng từ có khối "Bộ hồ sơ khi in một lượt khám". */
+export const RECORD_BUNDLE_DOCUMENT_TYPES: PrintDocumentType[] = ['MEDICAL_RECORD'];
+
+/**
  * Trường TUỲ CHỌN trên nhãn dán bì thuốc (docs/DECISIONS.md #267, mockup đã chốt 28/10/2026). Họ tên – năm sinh, tên thuốc (hàm lượng) + số lượng, câu dặn LUÔN in nên không có công tắc.
  * Mặc định cả ba TẮT: nhãn giữ đúng 3 khối như nhãn phòng khám đang dùng.
  */
@@ -196,6 +206,8 @@ export const printTemplateConfigSchema = z.object({
   prescriptionInfo: prescriptionInfoConfigSchema.optional(),
   /** Dòng "Số thẻ BHYT" (S2-04, #243) — chỉ chứng từ ở `INSURANCE_PRINT_DOCUMENT_TYPES`. Vắng = tắt (xem `withDefaultInsuranceOptions`). */
   insurance: insurancePrintConfigSchema.optional(),
+  /** Phần kèm theo của "In bộ hồ sơ" một lượt khám (#272) — chỉ chứng từ ở `RECORD_BUNDLE_DOCUMENT_TYPES`. Vắng = kèm hết (xem `withDefaultRecordBundleOptions`). */
+  recordBundle: recordBundleConfigSchema.optional(),
   /** Số liên in mỗi lần bấm In (1-3) + nhãn từng liên ("Liên 1 — Lưu"...). */
   copies: z.object({ count: z.number().int().min(1).max(3), labels: z.array(z.string().max(40)).max(3) }),
 });
@@ -246,6 +258,17 @@ export function withDefaultInsuranceOptions(documentType: PrintDocumentType, con
   return { ...config, insurance: config.insurance ?? { ...DEFAULT_INSURANCE_PRINT_CONFIG } };
 }
 
+/** Điền khối `recordBundle` mặc định (kèm hết) cho bản mẫu Bệnh án nếu CHƯA có, và bỏ khối này ở chứng từ khác — để web chỉ đọc `config.recordBundle`. */
+export function withDefaultRecordBundleOptions(documentType: PrintDocumentType, config: PrintTemplateConfig): PrintTemplateConfig {
+  if (!RECORD_BUNDLE_DOCUMENT_TYPES.includes(documentType)) {
+    if (config.recordBundle === undefined) return config;
+    const { recordBundle: _dropped, ...rest } = config;
+    void _dropped;
+    return rest;
+  }
+  return { ...config, recordBundle: config.recordBundle ?? { ...DEFAULT_RECORD_BUNDLE_CONFIG } };
+}
+
 /**
  * Điền khối `medicineLabel` mặc định (tắt hết) cho nhãn thuốc nếu CHƯA có, và bỏ khối này ở chứng từ khác. Khổ 50×30 dùng chung với tem ống nghiệm nên nhãn thuốc cũng bỏ khối `label`
  * (tuỳ chọn của tem ống nghiệm) mà dựng-sẵn theo khổ giấy mang theo — để web chỉ đọc đúng khối của chứng từ mình.
@@ -262,9 +285,9 @@ export function withDefaultMedicineLabelOptions(documentType: PrintDocumentType,
   return { ...rest, medicineLabel: config.medicineLabel ?? { ...DEFAULT_MEDICINE_LABEL_CONFIG } };
 }
 
-/** Mọi phần mặc định phụ thuộc loại chứng từ (khuyến cáo, thông tin đơn thuốc, dòng BHYT, nhãn thuốc) — một chỗ gọi cho API lẫn dựng bản mẫu sẵn. */
+/** Mọi phần mặc định phụ thuộc loại chứng từ (khuyến cáo, thông tin đơn thuốc, dòng BHYT, nhãn thuốc, bộ hồ sơ bệnh án) — một chỗ gọi cho API lẫn dựng bản mẫu sẵn. */
 export function withDefaultPrintOptions(documentType: PrintDocumentType, config: PrintTemplateConfig): PrintTemplateConfig {
-  return withDefaultMedicineLabelOptions(documentType, withDefaultInsuranceOptions(documentType, withDefaultPrescriptionInfo(documentType, withDefaultPrintNotice(documentType, config))));
+  return withDefaultRecordBundleOptions(documentType, withDefaultMedicineLabelOptions(documentType, withDefaultInsuranceOptions(documentType, withDefaultPrescriptionInfo(documentType, withDefaultPrintNotice(documentType, config)))));
 }
 
 export const DEFAULT_PRINT_COPY_LABELS = ['Liên 1 — Lưu', 'Liên 2 — Khách hàng', 'Liên 3'];
@@ -471,6 +494,8 @@ export function deriveConfigForPaper(paperSize: PrintPaperSize, base: PrintTempl
     ...(base.insurance ? { insurance: base.insurance } : {}),
     // Trường tuỳ chọn nhãn thuốc (#267) cũng kế thừa giữa các khổ tem — cùng lý do `prescriptionInfo`.
     ...(base.medicineLabel ? { medicineLabel: base.medicineLabel } : {}),
+    // Bộ hồ sơ khi in một lượt khám (#272) cũng kế thừa — cùng lý do `prescriptionInfo`.
+    ...(base.recordBundle ? { recordBundle: base.recordBundle } : {}),
     copies: base.copies,
   };
 }

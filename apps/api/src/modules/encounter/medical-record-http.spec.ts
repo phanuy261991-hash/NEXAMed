@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PDF_RENDERER_PORT, type PdfRendererPort } from '@nexamed/core';
+import { buildDefaultPrintTemplateConfig } from '@nexamed/shared';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
@@ -430,6 +431,62 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số lưu trữ + Tóm tắt/Tình t
         expect(html).not.toContain('14 VIEN');
       } finally {
         capture2.restore();
+      }
+    });
+
+    it('bản mẫu in Bệnh án tắt "Đơn thuốc" (#272): PDF không còn trang đơn thuốc dù đã ký, thuốc vẫn ở mục "Đã xử lý" của tờ khám; bật lại thì trang đơn quay lại', async () => {
+      const unit = await privileged.referenceCatalog.findFirst({ where: { tenantId: fixture.tenantA.id, category: 'UNIT', code: 'VIEN' } });
+      if (!unit) await privileged.referenceCatalog.create({ data: { tenantId: fixture.tenantA.id, category: 'UNIT', code: 'VIEN', name: 'viên', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+      const drug = await privileged.drug.create({
+        data: { tenantId: fixture.tenantA.id, code: `DRG-${randomUUID().slice(0, 8)}`, name: 'Thuốc thử bản mẫu bộ hồ sơ', baseUnitCode: 'VIEN', activeIngredient: 'Hoạt chất thử', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+      });
+      const { id } = await prepareEncounter();
+      await saveNote(id, baseNote());
+      await addPrimaryDiagnosis(id);
+      const saved = await http().put(`/api/v1/encounters/${id}/prescription-items`).set(authed(doctorToken)).send({ items: [{ drugId: drug.id, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 1, durationDays: 7 }] });
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      const signed = await http().post(`/api/v1/encounters/${id}/prescription/sign`).set(authed(doctorToken)).send({ version: saved.body.data.version });
+      expect(signed.status, JSON.stringify(signed.body)).toBe(200);
+      await complete(id);
+
+      const setBundle = async (bundle: { includeParaclinical: boolean; includePrescriptions: boolean }) => {
+        await privileged.printTemplate.deleteMany({ where: { tenantId: fixture.tenantA.id, documentType: 'MEDICAL_RECORD' } });
+        await privileged.printTemplate.create({
+          data: {
+            tenantId: fixture.tenantA.id,
+            documentType: 'MEDICAL_RECORD',
+            paperSize: 'A4',
+            name: 'Bệnh án A4',
+            isDefault: true,
+            configJson: { ...buildDefaultPrintTemplateConfig('A4'), recordBundle: bundle },
+            createdBy: SYSTEM_TEST_ACTOR,
+            updatedBy: SYSTEM_TEST_ACTOR,
+          },
+        });
+      };
+      const exportHtml = async (reason: string): Promise<string> => {
+        const capture = captureHtml();
+        try {
+          expect((await http().post(exportUrl(id)).set(authed(doctorToken)).send({ reason })).status).toBe(200);
+          return capture.html();
+        } finally {
+          capture.restore();
+        }
+      };
+
+      try {
+        await setBundle({ includeParaclinical: true, includePrescriptions: false });
+        const off = await exportHtml('Tắt đơn thuốc');
+        expect(off).not.toContain('Đơn thuốc</div>');
+        expect(off).toContain('Thuốc thử bản mẫu bộ hồ sơ'); // vẫn là nội dung mục "Đã xử lý" của tờ khám
+        expect(off).toContain('Tổng kết bệnh án');
+
+        await setBundle({ includeParaclinical: true, includePrescriptions: true });
+        const on = await exportHtml('Bật đơn thuốc');
+        expect(on).toContain('Đơn thuốc</div>');
+        expect(on).toContain('14 viên');
+      } finally {
+        await privileged.printTemplate.deleteMany({ where: { tenantId: fixture.tenantA.id, documentType: 'MEDICAL_RECORD' } });
       }
     });
 

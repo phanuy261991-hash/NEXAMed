@@ -17,7 +17,8 @@ beforeEach(async () => {
   await writeFile(join(workDir, '.env.example'), await readFile(ENV_EXAMPLE, 'utf8'));
 });
 afterEach(async () => {
-  await rm(workDir, { recursive: true, force: true });
+  // Tác vụ cài chạy nền vẫn còn ghi file một khoảnh khắc SAU khi báo "xong" nên xoá thư mục tạm đôi khi gặp ENOTEMPTY (test chập chờn ~1/6 lượt, 31/10/2026) — tự thử lại thay vì để test đỏ ngẫu nhiên.
+  await rm(workDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
 });
 
 const lan = (webPort: number) => ({

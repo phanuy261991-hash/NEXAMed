@@ -71,8 +71,8 @@ async function fillPatientForm(page) {
     await page.click('button[type=submit]');
     await page.waitForSelector('[role=dialog]', { timeout: 10000 });
     const dialogText = await page.locator('[role=dialog]').innerText();
-    check('S2 lỗi 503: hộp thông báo "Hệ thống tạm thời không truy cập được"', /Hệ thống tạm thời không truy cập được/.test(dialogText));
-    check('S2 lỗi 503: nói rõ dữ liệu đang nhập còn nguyên', /vẫn còn nguyên/.test(dialogText));
+    check('S2 lỗi 503: hộp thông báo "Hệ thống tạm thời chưa dùng được"', /Hệ thống tạm thời chưa dùng được/.test(dialogText));
+    check('S2 lỗi 503: nói rõ dữ liệu đang nhập còn nguyên', /Còn nguyên trên màn hình/.test(dialogText));
     check('S2 lỗi 503: không lọt mã/lỗi thô', !FORBIDDEN.test(dialogText), dialogText.replace(/\s+/g, ' ').slice(0, 80));
     await page.screenshot({ path: path.join(OUT, 'S2-loi-503.png') });
     await page.getByRole('button', { name: 'Đóng', exact: true }).first().click();
@@ -81,7 +81,7 @@ async function fillPatientForm(page) {
     await ctx.close();
   }
 
-  // S3. Mất mạng khi lưu -> hộp thông báo "Không kết nối được máy chủ"
+  // S3. Mất mạng khi lưu -> hộp thông báo "Chưa kết nối được máy chủ"
   {
     const { ctx, page } = await newPage();
     await login(page);
@@ -90,7 +90,7 @@ async function fillPatientForm(page) {
     await page.click('button[type=submit]');
     await page.waitForSelector('[role=dialog]', { timeout: 10000 });
     const t = await page.locator('[role=dialog]').innerText();
-    check('S3 mất mạng: hộp thông báo "Không kết nối được máy chủ"', /Không kết nối được máy chủ/.test(t));
+    check('S3 mất mạng: hộp thông báo "Chưa kết nối được máy chủ"', /Chưa kết nối được máy chủ/.test(t));
     check('S3 mất mạng: không lọt chữ thô', !FORBIDDEN.test(t));
     await ctx.close();
   }

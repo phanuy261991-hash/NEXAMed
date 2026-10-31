@@ -961,6 +961,8 @@ export class EncounterService {
       footerNote: template.config.footer.note.trim() || null,
       // Ô tích "Số thẻ BHYT" của bản mẫu in Bệnh án (S2-04, #243) — công tắc tổng tắt thì không in.
       ...(insuranceEnabled && template.config.insurance ? { insurance: template.config.insurance } : {}),
+      // Phần kèm theo của "In bộ hồ sơ" một lượt khám (#272): chỉ "In bộ hồ sơ"/"Xuất PDF" một lượt đọc; bệnh án gộp nhiều lượt bỏ qua.
+      ...(template.config.recordBundle ? { bundle: template.config.recordBundle } : {}),
     };
     return { printOptions, margins };
   }

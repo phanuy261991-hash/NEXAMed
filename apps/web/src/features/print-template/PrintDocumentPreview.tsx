@@ -199,6 +199,85 @@ function SampleRecordRows({ rows }: { rows: { numeral: string; title: string; bo
   );
 }
 
+/** Dải ngăn giữa các trang của bộ hồ sơ trong bản xem trước (chỉ hiện trên màn hình; khi in thử, phần sau ngăn tự sang trang mới). */
+function RecordPageBreak({ label }: { label: string }) {
+  return (
+    <div className="my-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 print:hidden" aria-hidden="true">
+      <span className="h-px flex-1 border-t border-dashed border-slate-300" />
+      Trang tiếp theo · {label}
+      <span className="h-px flex-1 border-t border-dashed border-slate-300" />
+    </div>
+  );
+}
+
+/** Phiếu kết quả cận lâm sàng MẪU kèm theo bộ hồ sơ (chỉ minh hoạ vị trí/khung; bản in thật do máy chủ dựng từ kết quả đã duyệt). */
+function SampleRecordClsSheet() {
+  return (
+    <div className="break-before-page text-[12px]">
+      <p className="text-center text-[13px] font-semibold uppercase">Phiếu kết quả xét nghiệm</p>
+      <p className="mt-1 text-slate-600">LÝ THỊ HOÀI THƯƠNG · Mã BN BN2610000123 · Số lưu trữ LT2026-000042</p>
+      <table className="mt-2 w-full border-collapse border border-slate-300 text-[11px]">
+        <thead>
+          <tr className="bg-slate-50 text-left">
+            <th className="border border-slate-300 px-2 py-1">Chỉ số</th>
+            <th className="border border-slate-300 px-2 py-1">Kết quả</th>
+            <th className="border border-slate-300 px-2 py-1">Khoảng tham chiếu</th>
+            <th className="border border-slate-300 px-2 py-1">Đơn vị</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="border border-slate-300 px-2 py-1">Bạch cầu</td>
+            <td className="border border-slate-300 px-2 py-1 font-semibold underline">11,2</td>
+            <td className="border border-slate-300 px-2 py-1">4,0 – 10,0</td>
+            <td className="border border-slate-300 px-2 py-1">G/L</td>
+          </tr>
+          <tr>
+            <td className="border border-slate-300 px-2 py-1">Hemoglobin</td>
+            <td className="border border-slate-300 px-2 py-1">132</td>
+            <td className="border border-slate-300 px-2 py-1">120 – 150</td>
+            <td className="border border-slate-300 px-2 py-1">g/L</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="mt-1">
+        <strong>Nhận xét:</strong> Bạch cầu tăng nhẹ.
+      </p>
+    </div>
+  );
+}
+
+/** Đơn thuốc MẪU kèm theo bộ hồ sơ (minh hoạ; bản in thật gồm các đơn đã ký của lượt khám). */
+function SampleRecordPrescriptionSheet() {
+  return (
+    <div className="break-before-page text-[12px]">
+      <p className="text-center text-[13px] font-semibold uppercase">Đơn thuốc</p>
+      <p className="mt-1 text-slate-600">LÝ THỊ HOÀI THƯƠNG · 39 tuổi · Chẩn đoán: Viêm phế quản cấp (J20.9)</p>
+      <table className="mt-2 w-full border-collapse border border-slate-300 text-[11px]">
+        <thead>
+          <tr className="bg-slate-50 text-left">
+            <th className="border border-slate-300 px-2 py-1">Tên thuốc</th>
+            <th className="border border-slate-300 px-2 py-1">Liều dùng</th>
+            <th className="border border-slate-300 px-2 py-1">Số lượng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="border border-slate-300 px-2 py-1">Amoxicillin 500 mg</td>
+            <td className="border border-slate-300 px-2 py-1">Sáng 1 – Tối 1</td>
+            <td className="border border-slate-300 px-2 py-1">14 viên</td>
+          </tr>
+          <tr>
+            <td className="border border-slate-300 px-2 py-1">Acetylcysteine 200 mg</td>
+            <td className="border border-slate-300 px-2 py-1">Sáng 1 – Chiều 1</td>
+            <td className="border border-slate-300 px-2 py-1">14 gói</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function MedicalRecordPreview() {
   return (
     <PrintDocument
@@ -243,6 +322,19 @@ function MedicalRecordPreview() {
           <div className="mt-1 border border-slate-300 text-[12px]">
             <SampleRecordRows rows={SAMPLE_RECORD_SUMMARY} />
           </div>
+          {/* Phần kèm theo bật/tắt ở khối "Bộ hồ sơ khi in một lượt khám" (#272); bản mẫu chưa có khối = kèm hết. */}
+          {config.recordBundle?.includeParaclinical !== false && (
+            <>
+              <RecordPageBreak label="Phiếu kết quả cận lâm sàng" />
+              <SampleRecordClsSheet />
+            </>
+          )}
+          {config.recordBundle?.includePrescriptions !== false && (
+            <>
+              <RecordPageBreak label="Đơn thuốc" />
+              <SampleRecordPrescriptionSheet />
+            </>
+          )}
         </>
       )}
     </PrintDocument>

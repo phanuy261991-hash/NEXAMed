@@ -374,6 +374,20 @@ describe('bundleSummary — bộ hồ sơ in chỉ kể thứ thật sự có', 
   });
 });
 
+describe('bundleSummary — theo bản mẫu in Bệnh án (#272)', () => {
+  const sealed = { signedAt: '2026-10-20T07:30:00.000Z', documents: [] } as unknown as ConsultationDetailResponse['prescription'];
+  const view = { cls: [cls(), cls({ itemId: 'i2' })], prescription: sealed };
+  it('bản mẫu tắt "Phiếu kết quả" → hộp In không kể phiếu kết quả dù lượt khám có', () => {
+    expect(bundleSummary(view, { includeParaclinical: false, includePrescriptions: true })).toBe('Tờ khám theo mẫu + 1 đơn thuốc');
+  });
+  it('bản mẫu tắt "Đơn thuốc" → không kể đơn thuốc dù đã ký', () => {
+    expect(bundleSummary(view, { includeParaclinical: true, includePrescriptions: false })).toBe('Tờ khám theo mẫu + 2 phiếu kết quả');
+  });
+  it('chưa có cấu hình (chưa nạp xong) → kèm hết như mặc định', () => {
+    expect(bundleSummary(view, undefined)).toBe('Tờ khám theo mẫu + 2 phiếu kết quả + 1 đơn thuốc');
+  });
+});
+
 describe('buildFieldGroups — bảng "Theo trường dữ liệu"', () => {
   const view = buildMedicalRecordView({ item, detail: detail(), paraclinical: [cls()], patient: PATIENT, showBranch: false });
   const groups = buildFieldGroups(view, 'BS. Trần Văn Bình');

@@ -18,7 +18,7 @@ import {
  */
 
 /** Khoá cấu hình KẾ THỪA từ bản mặc định sang khổ khác. */
-const INHERITED_KEYS = ['header', 'title', 'footer', 'notice', 'prescriptionInfo', 'insurance', 'medicineLabel', 'copies'] as const;
+const INHERITED_KEYS = ['header', 'title', 'footer', 'notice', 'prescriptionInfo', 'insurance', 'medicineLabel', 'recordBundle', 'copies'] as const;
 /** Khoá RIÊNG TỪNG KHỔ có chủ đích: lề theo khổ giấy; bộ tuỳ chọn tem theo cỡ tem ("Mỗi khổ tem có bộ tuỳ chọn riêng"). */
 const PER_PAPER_KEYS = ['margins', 'label'] as const;
 
@@ -43,6 +43,7 @@ function customised(documentType: PrintDocumentType): PrintTemplateConfig {
       : {}),
     ...(base.insurance ? { insurance: { show: !base.insurance.show, whenSelfPay: base.insurance.whenSelfPay === 'hide' ? ('selfPay' as const) : ('hide' as const) } } : {}),
     ...(base.medicineLabel ? { medicineLabel: flip(base.medicineLabel) } : {}),
+    ...(base.recordBundle ? { recordBundle: flip(base.recordBundle) } : {}),
     copies: { count: 3, labels: ['Liên A', 'Liên B', 'Liên C'] },
   };
 }
@@ -112,5 +113,33 @@ describe('buildResolvedPrintTemplate — các lựa chọn khổ giấy của m�
     const resolved = buildResolvedPrintTemplate('PRESCRIPTION', 'A5', base, { A4: a4Own });
     expect(resolved.options.find((o) => o.paperSize === 'A4')!.config.prescriptionInfo!.showPhone).toBe(a4Own.prescriptionInfo.showPhone);
     expect(resolved.options.find((o) => o.paperSize === 'A5_LANDSCAPE')!.config.prescriptionInfo).toEqual(base.prescriptionInfo);
+  });
+});
+
+describe('recordBundle (#272) — bộ hồ sơ khi in một lượt khám', () => {
+  it('CHỈ bản mẫu Bệnh án có khối này, mặc định kèm hết (giữ hành vi trước đó)', () => {
+    const record = withDefaultPrintOptions('MEDICAL_RECORD', buildDefaultPrintTemplateConfig('A4'));
+    expect(record.recordBundle).toEqual({ includeParaclinical: true, includePrescriptions: true });
+    for (const type of printDocumentTypeSchema.options.filter((x) => x !== 'MEDICAL_RECORD')) {
+      const config = withDefaultPrintOptions(type, buildDefaultPrintTemplateConfig(PRINT_DOCUMENT_TYPE_REGISTRY[type].defaultPaper));
+      expect(config.recordBundle, type).toBeUndefined();
+    }
+  });
+
+  it('giữ lựa chọn đã lưu của phòng khám; chứng từ khác không mang khối này dù cấu hình lưu có', () => {
+    const saved = { ...buildDefaultPrintTemplateConfig('A4'), recordBundle: { includeParaclinical: false, includePrescriptions: true } };
+    expect(withDefaultPrintOptions('MEDICAL_RECORD', saved).recordBundle).toEqual({ includeParaclinical: false, includePrescriptions: true });
+    expect(withDefaultPrintOptions('INVOICE', saved).recordBundle).toBeUndefined();
+  });
+
+  it('schema từ chối khối thiếu trường hoặc sai kiểu', () => {
+    const base = buildDefaultPrintTemplateConfig('A4');
+    expect(printTemplateConfigSchema.safeParse({ ...base, recordBundle: { includeParaclinical: true } }).success).toBe(false);
+    expect(printTemplateConfigSchema.safeParse({ ...base, recordBundle: { includeParaclinical: 'x', includePrescriptions: true } }).success).toBe(false);
+    expect(printTemplateConfigSchema.safeParse({ ...base, recordBundle: { includeParaclinical: false, includePrescriptions: false } }).success).toBe(true);
+  });
+
+  it('ô gợi ý tiêu đề của Bệnh án khớp tiêu đề thật của tờ khám ("Bệnh án ngoại trú")', () => {
+    expect(PRINT_DOCUMENT_TYPE_REGISTRY.MEDICAL_RECORD.defaultTitle).toBe('Bệnh án ngoại trú');
   });
 });
