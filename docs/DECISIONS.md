@@ -441,4 +441,16 @@ Lượt test API đầy đủ của đợt này có 1 ca lỗi ngoài phạm vi 
 
 **Chưa làm / lưu ý**: chưa nhập chỉ số xét nghiệm + khoảng tham chiếu (nếu cần là đợt riêng); nhóm/loại mẫu tự tạo chưa có viết tắt tem/màu nắp ống (bổ sung ở Danh mục dùng chung); chưa có "tải danh sách lỗi ra Excel" (hiện xem ở bảng trong hộp thoại).
 
+## 277 — Giữ nguyên cách làm tròn giá vốn quy ra đơn vị nhỏ nhất (31/10/2026, chủ dự án chốt sau khi hỏi lại #275 mục a)
+
+**Quyết định**: giá vốn lưu `inventory_batch.unit_cost`/`stock_balance.average_unit_cost`/`stock_ledger.unit_cost` vẫn là SỐ NGUYÊN đồng cho MỖI đơn vị nhỏ nhất, làm tròn half-up lúc quy đổi từ đơn vị nhập (`convertLineToBaseUnit`). Không đổi sang giá vốn phân số/tổng giá trị theo lô.
+
+**Vì sao đủ**: sai lệch mỗi dòng nhập tối đa 0,5 đồng × số đơn vị nhỏ nhất của dòng (ví dụ Hộp 85.000 đ / 30 viên = 2.833,33 → 2.833 đ/viên, nhân lại 84.990 đ, lệch 10 đ/hộp; phần lớn trường hợp chia hết nên không lệch). Giá vốn chỉ dùng để hiển thị giá trị tồn, tiền chênh lệch kiểm kê và cột giá trị ở báo cáo Nhập-Xuất-Tồn — KHÔNG dùng cho tiền thu bệnh nhân (giá bán) và KHÔNG ảnh hưởng công nợ nhà cung cấp/tổng tiền phiếu nhập (dùng `netAmount`/`lineAmount` chính xác). Cách triệt để cần migration sổ kho + đổi mọi báo cáo giá trị và trái quy tắc "cột tiền là số nguyên đồng" nên rủi ro lớn hơn lợi ích.
+
+**Lãi lỗ sau này**: v1 chưa có báo cáo lãi lỗ. Khi làm, giá vốn hàng bán = số lượng xuất × giá vốn chụp trên dòng xuất; làm tròn half-up không thiên lệch nên sai số cộng dồn nhỏ (xuất 100.000 viên/năm lệch tối đa 50.000 đ, thực tế vài nghìn đồng, dưới 1/10.000 doanh thu). Dữ liệu gốc không mất: dòng phiếu nhập vẫn giữ đúng thành tiền, số lượng và đơn vị nhập nên tính lại giá vốn chính xác được (chính xác với hàng quản lý theo lô; hàng không theo lô dùng bình quân gia quyền nên chỉ gần đúng, sai số cũng nhỏ).
+
+**Ngoại lệ cần để ý**: hàng có giá vốn chỉ vài đồng/đơn vị nhỏ nhất (ví dụ 2,4 đ → 2 đ, sai tới 17%). Cách tránh: chọn đơn vị nhỏ nhất đủ lớn (Gói thay vì cái). Dữ liệu mẫu đều từ vài trăm đồng/đơn vị trở lên.
+
+**Không làm** (đã cân nhắc, chủ dự án chưa yêu cầu): dòng chữ "Giá vốn mỗi Viên ≈ 2.833 đ (đã làm tròn)" ở form phiếu nhập. Nếu kế toán khách đòi giá trị tồn khớp từng đồng với hoá đơn nhập thì làm thành đợt riêng có thiết kế và duyệt.
+
 **Ghi nhận, CHƯA làm**: (a) giá vốn theo đơn vị cơ sở làm tròn từng đơn vị nên `baseQuantity × baseUnitCost` có thể lệch vài đồng so với thành tiền dòng nhập (giá trị tồn lệch nhỏ; công nợ NCC dùng `netAmount` chính xác) — cần chủ dự án quyết có chấp nhận; (b) [đã xử lý ở mục Bổ sung] (c) danh sách "tồn theo lô" ẩn lô đã hết hàng (hành vi sẵn có, không phải lỗi); (d) thông báo 422/409/400 mới đi qua `friendlyApiMessage` — đã thêm test bảo đảm không bị lọc; form phiếu nhập hiện nguyên câu máy chủ tại chỗ lỗi.
