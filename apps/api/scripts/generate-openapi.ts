@@ -477,7 +477,6 @@ import {
   listBranchesResponseSchema,
   systemVersionSchema,
   softwareUpdateStatusSchema,
-  releaseNotesHistorySchema,
   tenantContextResponseSchema,
   platformLoginRequestSchema,
   platformLoginResponseSchema,
@@ -645,20 +644,6 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(softwareUpdateStatusSchema)),
-    401: errorResponse('Thiếu hoặc sai access token'),
-    403: errorResponse('Không có quyền software_update.read'),
-    404: errorResponse('Hệ thống đang chạy chế độ SaaS'),
-  },
-});
-
-registry.registerPath({
-  method: 'get',
-  path: '/api/v1/system/update/release-notes',
-  tags: ['system'],
-  summary: 'Ghi chú phát hành đóng kèm phần mềm: bản đang chạy + các bản trước (tối đa 10, mới nhất trước) — không cần máy chủ phát hành. Chỉ có ở hệ thống một công ty (SaaS trả 404)',
-  security: [{ bearerAuth: [] }],
-  responses: {
-    200: jsonResponse('Thành công', envelope(releaseNotesHistorySchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền software_update.read'),
     404: errorResponse('Hệ thống đang chạy chế độ SaaS'),

@@ -1,6 +1,6 @@
 /**
  * Ghi chú phát hành đóng trong gói cài đặt (mockup đã chốt https://claude.ai/artifact/R6oTbDuS7fczynmib7V5BT, 30/10/2026): `build-and-export.ps1` chép mọi `apps/api/release-notes/<phiên bản>.json` vào
- * thư mục `release-notes/` của gói. Khi NÂNG CẤP, bước "Bản đang chạy và bản mới" hiện ghi chú của MỌI bản từ bản đang chạy (không gồm) đến bản sắp cài (gồm).
+ * thư mục `release-notes/` của gói. Khi NÂNG CẤP, bước "Bản đang chạy và bản mới" hiện ghi chú của CHÍNH bản sắp cài (chủ dự án chốt 30/10/2026: không gộp các bản ở giữa).
  * Gói cũ không kèm ghi chú, hoặc file hỏng, thì không có gì để hiện — KHÔNG báo lỗi, không chặn nâng cấp. Trình cài đặt là ứng dụng riêng, không import `@nexamed/shared`, nên tự kiểm định dạng ở đây.
  */
 import { readFile, readdir } from 'node:fs/promises';
@@ -13,13 +13,6 @@ export interface BundledReleaseNotes {
   features: string[];
   improvements: string[];
   fixes: string[];
-}
-
-export interface UpgradeReleaseNotes {
-  from: string;
-  to: string;
-  /** Mới nhất trước. */
-  items: BundledReleaseNotes[];
 }
 
 const MAX_LINES_PER_GROUP = 50;
@@ -71,16 +64,8 @@ export async function loadBundledReleaseNotes(workDir: string): Promise<BundledR
   return all;
 }
 
-/** Ghi chú của các bản `installed < v <= target`, mới nhất trước; không có bản nào (hoặc thiếu một đầu) thì `null`. */
-export function notesForUpgrade(all: readonly BundledReleaseNotes[], installed: string | null, target: string | null): UpgradeReleaseNotes | null {
+/** Ghi chú của bản sắp cài (`target`), CHỈ khi đó là một lần nâng cấp (`target` cao hơn `installed`); gói không kèm ghi chú của bản đó (hoặc thiếu một đầu) thì `null`. */
+export function notesForUpgrade(all: readonly BundledReleaseNotes[], installed: string | null, target: string | null): BundledReleaseNotes | null {
   if (!installed || !target || compareVersions(target, installed) <= 0) return null;
-  const seen = new Set<string>();
-  const items = all
-    .filter((n) => {
-      if (seen.has(n.version) || compareVersions(n.version, installed) <= 0 || compareVersions(n.version, target) > 0) return false;
-      seen.add(n.version);
-      return true;
-    })
-    .sort((a, b) => compareVersions(b.version, a.version));
-  return items.length > 0 ? { from: installed, to: target, items } : null;
+  return all.find((n) => compareVersions(n.version, target) === 0) ?? null;
 }

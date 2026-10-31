@@ -141,18 +141,18 @@
       (job.error ? '<div class="err"><span>' + esc(job.error) + '</span></div>' : '') + (job.log.length ? '<div class="logbox" id="logbox">' + esc(job.log.slice(-40).join('\n')) + '</div>' : '');
   }
 
-  /** "Có gì mới từ X lên Y": ghi chú của MỌI bản giữa hai mốc, gộp theo nhóm (mockup đã chốt 30/10/2026). Không có ghi chú (gói cũ) thì không hiện gì. */
+  /** "Có gì mới trong bản Y": ghi chú của bản sắp cài, theo nhóm (mockup 30/10/2026; chủ dự án chốt không gộp các bản ở giữa). Không có ghi chú (gói cũ) thì không hiện gì. */
   function releaseNotesBlock(n) {
-    if (!n || !n.items || !n.items.length) return '';
+    if (!n) return '';
     var groups = [['features', 'Tính năng mới'], ['improvements', 'Cải tiến'], ['fixes', 'Sửa lỗi']];
-    var html = '<div class="box"><span class="t">Có gì mới từ ' + esc(n.from) + ' lên ' + esc(n.to) + '</span>';
+    var html = '', any = false;
     groups.forEach(function (g) {
-      var lines = [];
-      n.items.forEach(function (it) { (it[g[0]] || []).forEach(function (l) { lines.push(l); }); });
+      var lines = n[g[0]] || [];
       if (!lines.length) return;
+      any = true;
       html += '<b class="gt">' + g[1] + '</b><ul class="notes-list">' + lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>';
     });
-    return html + '</div>';
+    return any ? '<div class="box"><span class="t">Có gì mới trong bản ' + esc(n.version) + '</span>' + html + '</div>' : '';
   }
 
   function viewCurrent() {

@@ -22,13 +22,6 @@ export class SoftwareUpdateController {
     return this.service.getStatus(req.user!.tenantId);
   }
 
-  /** Ghi chú phát hành đóng kèm phần mềm (bản đang chạy + các bản trước) — luôn có, không cần máy chủ phát hành. */
-  @Get('release-notes')
-  @RequirePermission('software_update', 'read')
-  releaseNotes() {
-    return this.service.getReleaseNotesHistory();
-  }
-
   @Post('check')
   @RequirePermission('software_update', 'read')
   @HttpCode(200)

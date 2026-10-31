@@ -12,7 +12,7 @@ import { buildHandoffText } from './lib/handoff';
 import { buildInstallSteps, type InstallResult } from './lib/install';
 import { Job, type JobView } from './lib/job';
 import { discoverPackage, hasPlaceholderTenant, readInstalledVersion } from './lib/package-files';
-import { type UpgradeReleaseNotes, loadBundledReleaseNotes, notesForUpgrade } from './lib/release-notes';
+import { type BundledReleaseNotes, loadBundledReleaseNotes, notesForUpgrade } from './lib/release-notes';
 import { getEnvValue } from './lib/env-file';
 import { keyFingerprint } from './lib/key-fingerprint';
 import { buildKeyFileText } from './lib/keyfile';
@@ -56,7 +56,8 @@ export interface DetectView {
   services: Array<{ service: string; state: string; health: string }>;
   upToDate: boolean;
   /** Ghi chú của mọi bản từ bản đang chạy đến bản sắp cài (đọc từ thư mục `release-notes/` của gói); `null` khi không nâng cấp hoặc gói không kèm ghi chú. */
-  releaseNotes: UpgradeReleaseNotes | null;
+  /** Ghi chú của bản sắp cài, chỉ khi nâng cấp và gói có kèm ghi chú của bản đó. */
+  releaseNotes: BundledReleaseNotes | null;
   /** Lần cài trước CHƯA xong (đã có `.env` nhưng chưa tạo phòng khám/chưa hoàn tất): chế độ cài mới, nhập lại thông tin để cài tiếp — khoá bí mật cũ được giữ. */
   incompleteInstall: boolean;
   lastUpgrade: UpgradeRecord | null;

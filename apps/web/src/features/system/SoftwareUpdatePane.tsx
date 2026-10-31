@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Warning } from '@phosphor-icons/react';
-import type { ReleaseEntry, SoftwareUpdateStatus } from '@nexamed/shared';
+import type { ReleaseEntry, ReleaseNotes as ReleaseNotesData, SoftwareUpdateStatus } from '@nexamed/shared';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -10,7 +10,7 @@ import { formatDateTimeVn } from '../../shared/format/time';
 import { RELEASE_CHANNEL_LABELS } from '../../shared/version/app-version';
 import { formatHistoryResult } from './software-update-view';
 import { ReleaseNoteGroups, countReleaseNoteLines } from './ReleaseNoteGroups';
-import { useCheckSoftwareUpdateMutation, useReleaseNotesHistoryQuery, useSoftwareUpdateStatusQuery } from './software-update.queries';
+import { useCheckSoftwareUpdateMutation, useSoftwareUpdateStatusQuery } from './software-update.queries';
 import { formatReleaseDate } from './support-info';
 import { useSystemVersionQuery } from './system.queries';
 
@@ -30,14 +30,11 @@ function ReleaseNotes({ entry }: { entry: ReleaseEntry }) {
 }
 
 /**
- * "Có gì mới trong bản đang chạy" (mockup https://claude.ai/artifact/R6oTbDuS7fczynmib7V5BT, 30/10/2026; chủ dự án CHỐT chỉ hiện bản đang chạy, KHÔNG hiện "Các bản trước"): đọc ghi chú ĐÓNG KÈM phần mềm nên hiện
- * ngay cả khi chưa có máy chủ phát hành. Bản chưa có ghi chú thì ẩn cả khối. Lỗi tải chỉ ảnh hưởng khối này (có nút thử lại), không chặn phần còn lại của trang.
+ * "Có gì mới trong bản đang chạy" (mockup https://claude.ai/artifact/R6oTbDuS7fczynmib7V5BT, 30/10/2026; chủ dự án CHỐT chỉ hiện bản đang chạy, KHÔNG hiện "Các bản trước"): hiện `notes` của `GET /system/version`
+ * (ghi chú ĐÓNG KÈM phần mềm) nên hiện ngay cả khi chưa có máy chủ phát hành. Bản chưa có ghi chú thì ẩn cả khối. Không tự tải dữ liệu: thẻ "Cập nhật phần mềm" chỉ hiện sau khi `/system/version` đã tải xong
+ * (xem `useSoftwareUpdateVisible`), nên không có trạng thái đang tải/lỗi riêng cho khối này; `/system/version` lỗi thì cả thẻ ẩn theo.
  */
-function BundledReleaseNotes({ currentVersion }: { currentVersion: string }) {
-  const query = useReleaseNotesHistoryQuery(true);
-  if (query.isPending) return <Skeleton className="h-32 w-full" />;
-  if (query.isError) return <ErrorBanner message="Không tải được ghi chú phát hành. Thử lại sau ít phút." onRetry={() => void query.refetch()} />;
-  const { current } = query.data;
+function BundledReleaseNotes({ currentVersion, notes: current }: { currentVersion: string; notes: ReleaseNotesData | null }) {
   if (current === null || countReleaseNoteLines(current) === 0) return null;
   return (
     <BoxedSection badge={`Có gì mới trong bản ${currentVersion}`}>
@@ -209,7 +206,7 @@ export function SoftwareUpdatePane() {
         </dl>
       </BoxedSection>
 
-      <BundledReleaseNotes currentVersion={status.currentVersion} />
+      <BundledReleaseNotes currentVersion={status.currentVersion} notes={versionQuery.data?.notes ?? null} />
 
       <ResultBlock status={status} checking={checkMutation.isPending} onCheck={check} />
       {checkMutation.isError && <ErrorBanner message="Không gửi được yêu cầu kiểm tra. Thử lại." />}

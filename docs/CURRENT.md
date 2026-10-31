@@ -63,7 +63,7 @@ Mockup chủ dự án đã duyệt (https://claude.ai/artifact/MZosgMR3mKvT81q13
 
 ## Gợi ý theo cơ quan + ghi chú phát hành (30/10/2026, #271) — ĐÃ CODE, ĐÃ KIỂM CHROME (IP LAN HTTP) + BỘ CÀI (thư mục giả), test xanh
 
-Nút icon "Gợi ý theo cơ quan" ở ô "Kết quả khám bộ phận" (ô cao 5 dòng); khối "Có gì mới trong bản đang chạy" ở trang Cập nhật phần mềm (chủ dự án chốt KHÔNG hiện "Các bản trước"); bộ cài hiện "Có gì mới từ X lên Y" khi nâng cấp. Không migration. **Còn**: dọn trường `previous` thừa ở máy chủ (chờ chủ dự án đồng ý); kiểm bộ cài trên Docker/Windows sạch thật; **chữ ký logic vs Thông tư 13/2025 + mốc 31/12/2026 chờ chủ dự án quyết** (chỉ xếp được vào "hình thức xác nhận điện tử khác", chưa đạt "chữ ký điện tử chuyên dùng"/"chữ ký số"; phương án rẻ: lưu mã băm SHA-256 nội dung lúc ký; mức cao: ký số CA qua `SignaturePort`; nên hỏi Sở Y tế/luật sư). Bàn giao `docs/handoffs/HANDOFF-GoiYCoQuan-GhiChuPhatHanh-2026-10-30-p3.md`.
+Nút icon "Gợi ý theo cơ quan" ở ô "Kết quả khám bộ phận" (ô cao 5 dòng); khối "Có gì mới trong bản đang chạy" ở trang Cập nhật phần mềm (chủ dự án chốt KHÔNG hiện "Các bản trước"); bộ cài hiện "Có gì mới trong bản Y" (chỉ bản sắp cài) khi nâng cấp; đã dọn endpoint/trường `previous` thừa (ghi chú lấy từ `notes` của `/system/version`). Không migration. **Còn**: kiểm bộ cài trên Docker/Windows sạch thật; **chữ ký logic vs Thông tư 13/2025 + mốc 31/12/2026: chủ dự án chốt LÀM SAU (30/10/2026)** (chỉ xếp được vào "hình thức xác nhận điện tử khác", chưa đạt "chữ ký điện tử chuyên dùng"/"chữ ký số"; phương án rẻ: lưu mã băm SHA-256 nội dung lúc ký; mức cao: ký số CA qua `SignaturePort`; nên hỏi Sở Y tế/luật sư). Bàn giao `docs/handoffs/HANDOFF-GoiYCoQuan-GhiChuPhatHanh-2026-10-30-p3.md`.
 
 ## Bàn giao mới nhất
 

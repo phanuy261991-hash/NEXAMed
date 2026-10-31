@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { useHasPermission } from '../auth/usePermission';
-import { checkSoftwareUpdate, getReleaseNotesHistory, getSoftwareUpdateStatus } from './software-update.api';
+import { checkSoftwareUpdate, getSoftwareUpdateStatus } from './software-update.api';
 import { useSystemVersionQuery } from './system.queries';
 
 const FIVE_MINUTES_MS = 5 * 60_000;
@@ -26,18 +26,6 @@ export function useSoftwareUpdateStatusQuery(enabled: boolean) {
     enabled,
     staleTime: FIVE_MINUTES_MS,
     refetchInterval: FIVE_MINUTES_MS * 6,
-    retry: 1,
-  });
-}
-
-/** Ghi chú phát hành đóng kèm (bản đang chạy + các bản trước). Đổi theo từng lần phát hành chứ không theo thời gian nên giữ đệm lâu. */
-export function useReleaseNotesHistoryQuery(enabled: boolean) {
-  const { tenantId } = useAppConfig();
-  return useQuery({
-    queryKey: queryKey(tenantId, 'system', 'release-notes'),
-    queryFn: getReleaseNotesHistory,
-    enabled,
-    staleTime: 60 * 60_000,
     retry: 1,
   });
 }

@@ -1,9 +1,9 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { channelOfVersion, isValidSemver, selectReleaseNotesHistory } from '@nexamed/core';
-import { RELEASE_NOTES_HISTORY_LIMIT, releaseNotesSchema, type ReleaseChannel, type ReleaseNotes, type ReleaseNotesHistory, type SystemVersion } from '@nexamed/shared';
+import { channelOfVersion, isValidSemver } from '@nexamed/core';
+import { releaseNotesSchema, type ReleaseChannel, type ReleaseNotes, type SystemVersion } from '@nexamed/shared';
 import type { Env } from '../../config/env.schema';
 import { PrismaService } from '../../infrastructure/persistence/prisma.service';
 
@@ -23,7 +23,6 @@ export class SystemVersionService {
   private readonly logger = new Logger(SystemVersionService.name);
   private readonly version: string;
   private notes: ReleaseNotes | null | undefined;
-  private history: ReleaseNotesHistory | undefined;
   private schemaCache: { value: string | null; at: number } | null = null;
 
   constructor(
@@ -45,31 +44,6 @@ export class SystemVersionService {
       schemaVersion: await this.readSchemaVersion(),
       notes,
     };
-  }
-
-  /** Ghi chú của bản đang chạy + các bản trước đóng kèm phần mềm (đọc mọi `release-notes/*.json`, bỏ file sai định dạng) — dùng cho trang Cập nhật phần mềm, hoạt động không cần máy chủ phát hành. */
-  getReleaseNotesHistory(): ReleaseNotesHistory {
-    if (this.history === undefined) {
-      const all: ReleaseNotes[] = [];
-      try {
-        const dir = this.releaseNotesDir();
-        for (const file of readdirSync(dir)) {
-          if (!file.endsWith('.json')) continue;
-          try {
-            const parsed = releaseNotesSchema.safeParse(JSON.parse(readFileSync(join(dir, file), 'utf8')));
-            // Tên file phải khớp phiên bản bên trong, như quy ước của `scripts/release.mjs`.
-            if (parsed.success && `${parsed.data.version}.json` === file) all.push(parsed.data);
-            else this.logger.warn(`Ghi chú phát hành ${file} sai định dạng hoặc sai phiên bản — bỏ qua.`);
-          } catch {
-            this.logger.warn(`Không đọc được ghi chú phát hành ${file} — bỏ qua.`);
-          }
-        }
-      } catch {
-        // Không có thư mục ghi chú (ví dụ chạy từ mã nguồn khác cấu trúc) — coi như không có lịch sử.
-      }
-      this.history = { current: this.loadNotes(), previous: selectReleaseNotesHistory(all, this.version, RELEASE_NOTES_HISTORY_LIMIT) };
-    }
-    return this.history;
   }
 
   private releaseNotesDir(): string {

@@ -16,7 +16,7 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ### Gợi ý theo cơ quan ở màn khám; ghi chú "có gì mới" ở trang Cập nhật phần mềm và bộ cài (`docs/DECISIONS.md` #271)
 
-Ô **"Kết quả khám bộ phận"** ở màn khám có nút icon (chú thích "Gợi ý theo cơ quan", cạnh nhãn ô): bấm để chọn các cơ quan cần khám (10 cơ quan theo mẫu Nội khoa, ẩn/hiện từng cơ quan, nhớ theo tài khoản trên máy đang dùng) rồi chèn sẵn dòng tiêu đề "Tuần hoàn: ", "Hô hấp: "… vào cuối ô để bác sĩ gõ tiếp; dòng tiêu đề chưa gõ gì tự bỏ khi lưu. Ô này cao hơn (5 dòng). **Cấu hình hệ thống → Cập nhật phần mềm** có khối "Có gì mới trong bản đang chạy" (đọc ghi chú đóng kèm phần mềm, hiện cả khi chưa có máy chủ phát hành). **Trình cài đặt** khi nâng cấp hiện "Có gì mới từ X lên Y" gộp ghi chú của mọi bản ở giữa; gói cài có thêm thư mục `release-notes/`. Không migration.
+Ô **"Kết quả khám bộ phận"** ở màn khám có nút icon (chú thích "Gợi ý theo cơ quan", cạnh nhãn ô): bấm để chọn các cơ quan cần khám (10 cơ quan theo mẫu Nội khoa, ẩn/hiện từng cơ quan, nhớ theo tài khoản trên máy đang dùng) rồi chèn sẵn dòng tiêu đề "Tuần hoàn: ", "Hô hấp: "… vào cuối ô để bác sĩ gõ tiếp; dòng tiêu đề chưa gõ gì tự bỏ khi lưu. Ô này cao hơn (5 dòng). **Cấu hình hệ thống → Cập nhật phần mềm** có khối "Có gì mới trong bản đang chạy" (đọc ghi chú đóng kèm phần mềm, hiện cả khi chưa có máy chủ phát hành). **Trình cài đặt** khi nâng cấp hiện "Có gì mới trong bản Y" (ghi chú của bản sắp cài); gói cài có thêm thư mục `release-notes/`. Không migration.
 
 ### Hồ sơ bệnh án đổi sang mẫu MS 15/BV-01 hiện hành; "Số bệnh án" thành "Số lưu trữ" (`docs/DECISIONS.md` #270)
 

@@ -25,15 +25,10 @@ describe('parseReleaseNotes', () => {
 describe('notesForUpgrade', () => {
   const all = [note('0.9.0'), note('0.9.1'), note('0.9.2'), note('0.10.0')];
 
-  it('lấy mọi bản từ SAU bản đang chạy đến bản sắp cài (gồm), mới nhất trước, so theo số chứ không theo chuỗi', () => {
-    expect(notesForUpgrade(all, '0.9.0', '0.10.0')?.items.map((n) => n.version)).toEqual(['0.10.0', '0.9.2', '0.9.1']);
-    expect(notesForUpgrade(all, '0.9.0', '0.9.2')?.items.map((n) => n.version)).toEqual(['0.9.2', '0.9.1']);
-  });
-
-  it('nhảy đúng một bản → chỉ ghi chú của bản đó; ghi rõ from/to', () => {
-    const r = notesForUpgrade(all, '0.9.1', '0.9.2');
-    expect(r?.items.map((n) => n.version)).toEqual(['0.9.2']);
-    expect([r?.from, r?.to]).toEqual(['0.9.1', '0.9.2']);
+  it('chỉ lấy ghi chú của CHÍNH bản sắp cài, kể cả khi nhảy qua nhiều bản (không gộp các bản ở giữa); so theo số chứ không theo chuỗi', () => {
+    expect(notesForUpgrade(all, '0.9.0', '0.10.0')?.version).toBe('0.10.0');
+    expect(notesForUpgrade(all, '0.9.0', '0.9.2')?.version).toBe('0.9.2');
+    expect(notesForUpgrade(all, '0.9.1', '0.9.2')).toEqual(note('0.9.2'));
   });
 
   it('không nâng cấp (cùng bản / bản gói thấp hơn / thiếu một đầu) → null', () => {
@@ -43,9 +38,9 @@ describe('notesForUpgrade', () => {
     expect(notesForUpgrade(all, '0.9.0', null)).toBeNull();
   });
 
-  it('gói không kèm ghi chú của các bản giữa → null (không báo lỗi); bỏ bản trùng số', () => {
-    expect(notesForUpgrade([note('0.9.0')], '0.9.0', '0.9.2')).toBeNull();
-    expect(notesForUpgrade([note('0.9.1'), note('0.9.1', { features: ['trùng'] })], '0.9.0', '0.9.1')?.items).toHaveLength(1);
+  it('gói không kèm ghi chú của bản sắp cài (dù có ghi chú các bản khác) → null, không báo lỗi; trùng số thì lấy bản đầu', () => {
+    expect(notesForUpgrade([note('0.9.0'), note('0.9.1')], '0.9.0', '0.9.2')).toBeNull();
+    expect(notesForUpgrade([note('0.9.1'), note('0.9.1', { features: ['trùng'] })], '0.9.0', '0.9.1')?.features).toEqual(['tính năng 0.9.1']);
   });
 });
 

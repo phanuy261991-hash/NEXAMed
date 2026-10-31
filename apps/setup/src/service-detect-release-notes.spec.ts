@@ -36,17 +36,23 @@ async function writeNotes(version: string, extra: Partial<{ features: string[]; 
 }
 
 describe('detect() — ghi chú phát hành khi nâng cấp', () => {
-  it('nâng cấp 0.8.0 → 0.9.0: trả ghi chú của các bản SAU bản đang chạy đến bản sắp cài, mới nhất trước (không gồm chính bản đang chạy)', async () => {
+  it('nâng cấp 0.8.0 → 0.9.0: chỉ trả ghi chú của CHÍNH bản sắp cài, không gộp bản đang chạy hay các bản ở giữa', async () => {
     await installedAt('0.8.0');
     await writeNotes('0.8.0');
     await writeNotes('0.8.5', { fixes: ['Sửa lỗi in phiếu'] });
-    await writeNotes('0.9.0');
+    await writeNotes('0.9.0', { improvements: ['Cải tiến của 0.9.0'] });
     const detect = await makeService().detect();
     expect(detect.mode).toBe('upgrade');
-    expect(detect.releaseNotes?.from).toBe('0.8.0');
-    expect(detect.releaseNotes?.to).toBe('0.9.0');
-    expect(detect.releaseNotes?.items.map((i) => i.version)).toEqual(['0.9.0', '0.8.5']);
-    expect(detect.releaseNotes?.items[1]?.fixes).toEqual(['Sửa lỗi in phiếu']);
+    expect(detect.releaseNotes?.version).toBe('0.9.0');
+    expect(detect.releaseNotes?.features).toEqual(['Tính năng của 0.9.0']);
+    expect(detect.releaseNotes?.improvements).toEqual(['Cải tiến của 0.9.0']);
+    expect(detect.releaseNotes?.fixes).toEqual([]);
+  });
+
+  it('gói có ghi chú của các bản khác nhưng KHÔNG có của bản sắp cài → releaseNotes null', async () => {
+    await installedAt('0.8.0');
+    await writeNotes('0.8.5');
+    expect((await makeService().detect()).releaseNotes).toBeNull();
   });
 
   it('gói KHÔNG kèm thư mục ghi chú (gói cũ) → releaseNotes null, vẫn dò bình thường, không báo lỗi', async () => {
@@ -78,6 +84,6 @@ describe('detect() — ghi chú phát hành khi nâng cấp', () => {
     await writeFile(join(workDir, 'release-notes', '0.8.5.json'), '{ không phải JSON');
     await writeFile(join(workDir, 'release-notes', '0.8.6.json'), JSON.stringify({ version: '0.8.9', releasedAt: '2026-10-15', features: ['x'], improvements: [], fixes: [] }));
     const detect = await makeService().detect();
-    expect(detect.releaseNotes?.items.map((i) => i.version)).toEqual(['0.9.0']);
+    expect(detect.releaseNotes?.version).toBe('0.9.0');
   });
 });

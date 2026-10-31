@@ -175,19 +175,6 @@ describe('HTTP e2e — Cập nhật phần mềm (một công ty, đã cấu hì
     expect((await get(adminToken)).body.data).toMatchObject({ state: 'update_available' });
   });
 
-  it('ghi chú phát hành đóng kèm: bản đang chạy có ghi chú đúng hợp đồng, "các bản trước" chỉ gồm bản THẤP HƠN (không có thì rỗng), không cần máy chủ phát hành', async () => {
-    const res = await request(ctx.app.getHttpServer()).get('/api/v1/system/update/release-notes').set({ Authorization: `Bearer ${adminToken}` });
-    expect(res.status, JSON.stringify(res.body)).toBe(200);
-    const { current, previous } = res.body.data as { current: { version: string; releasedAt: string; features: string[]; improvements: string[]; fixes: string[] } | null; previous: { version: string }[] };
-    expect(current?.version).toBe('0.9.0');
-    expect(current?.releasedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(current!.features.length + current!.improvements.length + current!.fixes.length).toBeGreaterThan(0);
-    expect(Array.isArray(previous)).toBe(true);
-    // Bản 0.9.0 là bản đầu tiên có ghi chú → không có bản nào thấp hơn; không bản nào >= bản đang chạy lọt vào danh sách.
-    expect(previous.every((p) => p.version !== '0.9.0')).toBe(true);
-    expect(previous).toHaveLength(0);
-  });
-
   it('cách ly công ty: lịch sử kiểm tra của công ty A không hiện ở công ty B', async () => {
     expect((await get(adminBToken)).body.data.history).toEqual([]);
     expect(await ctx.privileged.auditLog.count({ where: { tenantId: ctx.fixture.tenantB.id, action: 'software_update.checked' } })).toBe(0);
@@ -196,12 +183,10 @@ describe('HTTP e2e — Cập nhật phần mềm (một công ty, đã cấu hì
   it('phân quyền: chưa đăng nhập 401; vai trò không có software_update.read 403 (cả xem lẫn kiểm tra)', async () => {
     expect((await request(ctx.app.getHttpServer()).get('/api/v1/system/update/status')).status).toBe(401);
     expect((await request(ctx.app.getHttpServer()).post('/api/v1/system/update/check')).status).toBe(401);
-    expect((await request(ctx.app.getHttpServer()).get('/api/v1/system/update/release-notes')).status).toBe(401);
     for (const role of ['doctor', 'receptionist']) {
       const token = await ctx.tokenFor(ctx.fixture.tenantA.id, role);
       expect((await get(token)).status, role).toBe(403);
       expect((await check(token)).status, role).toBe(403);
-      expect((await request(ctx.app.getHttpServer()).get('/api/v1/system/update/release-notes').set({ Authorization: `Bearer ${token}` })).status, role).toBe(403);
     }
   });
 });
@@ -250,7 +235,6 @@ describe('HTTP e2e — Cập nhật phần mềm (chế độ SaaS)', () => {
       const auth = { Authorization: `Bearer ${login.body.data.accessToken}`, Host: host };
       expect((await http().get('/api/v1/system/update/status').set(auth)).status).toBe(404);
       expect((await http().post('/api/v1/system/update/check').set(auth)).status).toBe(404);
-      expect((await http().get('/api/v1/system/update/release-notes').set(auth)).status).toBe(404);
       expect((await http().get('/api/v1/system/update/status').set('Host', host)).status).toBe(404);
       // Phiên bản vẫn công khai ở chế độ SaaS (hộp "Giới thiệu").
       expect((await http().get('/api/v1/system/version')).status).toBe(200);
