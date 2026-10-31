@@ -5,6 +5,7 @@ import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { formatVnd } from '../../shared/format/currency';
+import { useHasPermission } from '../auth/usePermission';
 import { useSupplierDebtAdjustmentsQuery } from './supplier-debt.queries';
 import { SupplierDebtAdjustmentDetailDialog } from './SupplierDebtAdjustmentDetailDialog';
 
@@ -26,7 +27,9 @@ const STATUS_META: Record<SupplierDebtAdjustment['status'], { label: string; ton
  * huỷ gắn phiếu này (đúng 1 trong `targetReceiptId`/`targetIssueId`) — tự ẩn nếu chưa từng có.
  */
 export function SupplierDebtAdjustmentBadge({ targetReceiptId, targetIssueId }: { targetReceiptId?: string; targetIssueId?: string }) {
-  const query = useSupplierDebtAdjustmentsQuery({ targetReceiptId, targetIssueId });
+  // Huy hiệu chỉ có nghĩa với người xem được công nợ NCC; không có quyền thì KHÔNG gọi API (sẽ 403) và không hiện gì.
+  const canReadDebt = useHasPermission('supplier_debt', 'read');
+  const query = useSupplierDebtAdjustmentsQuery({ targetReceiptId, targetIssueId }, canReadDebt);
   const [listOpen, setListOpen] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
 

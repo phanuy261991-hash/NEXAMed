@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-31
 
+### Cảnh báo khi rời trang biểu mẫu còn dữ liệu nhập dở; nhãn "N trang" ở xem trước Bệnh án (`docs/DECISIONS.md` #274)
+
+Các trang biểu mẫu dài (thêm bệnh nhân, tiếp nhận, phiếu nhập/xuất/kiểm kê/điều chuyển kho) nay hỏi lại khi bạn đã nhập dở mà bấm sang trang khác, bấm "Quay lại", đóng tab hoặc tải lại trang: hộp "Rời khỏi trang này?" có "Ở lại" và "Rời trang". Lưu thành công thì không hỏi; chưa nhập gì thì không hỏi. Xem trước mẫu in "Bệnh án" có chip "Bộ hồ sơ N trang" và đánh số "Trang 2/3/4" theo các ô tích đang bật. Sửa: người không có quyền xem công nợ nhà cung cấp (lễ tân, bác sĩ, điều dưỡng) mở chi tiết phiếu nhập kho không còn bị gọi ngầm hai API công nợ rồi nhận 403. Sửa tài liệu bị chèn nhầm mã ở `e04b7d0`. Không migration.
+
 ### Mẫu in "Bệnh án": chọn bộ hồ sơ khi in một lượt khám; hộp báo mất kết nối kiểu mới (`docs/DECISIONS.md` #272, #273)
 
 Ở **Quản trị → Mẫu in → Bệnh án** có khối mới **"Bộ hồ sơ khi in một lượt khám"**: tờ bệnh án và "Tổng kết bệnh án" luôn in; phòng khám tích hoặc bỏ tích **Phiếu kết quả cận lâm sàng** và **Đơn thuốc** (mặc định tích cả hai như trước). Xem trước đổi ngay theo ô tích; hộp "In bộ hồ sơ"/"Xuất PDF" ở tab Hồ sơ bệnh án ghi đúng bộ sẽ in ("Tờ khám theo mẫu + 1 đơn thuốc"). Ô gợi ý tiêu đề của Bệnh án nay ghi đúng tiêu đề thật "Bệnh án ngoại trú". Hộp báo lỗi hệ thống khi mất mạng/máy chủ chưa bật/lỗi 5xx được vẽ lại: biểu tượng nền nhạt (cam cho lỗi tạm thời, đỏ cho lỗi hệ thống), một câu dẫn và ba dòng ngắn thay cho đoạn chữ dài; tiêu đề "Không kết nối được máy chủ" đổi thành "Chưa kết nối được máy chủ". Không migration.

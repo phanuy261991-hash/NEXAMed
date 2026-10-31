@@ -199,12 +199,12 @@ function SampleRecordRows({ rows }: { rows: { numeral: string; title: string; bo
   );
 }
 
-/** Dải ngăn giữa các trang của bộ hồ sơ trong bản xem trước (chỉ hiện trên màn hình; khi in thử, phần sau ngăn tự sang trang mới). */
-function RecordPageBreak({ label }: { label: string }) {
+/** Dải ngăn đánh số trang của bộ hồ sơ trong bản xem trước (chỉ hiện trên màn hình; khi in thử, phần sau ngăn tự sang trang mới). */
+function RecordPageBreak({ page, label }: { page: number; label: string }) {
   return (
     <div className="my-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 print:hidden" aria-hidden="true">
       <span className="h-px flex-1 border-t border-dashed border-slate-300" />
-      Trang tiếp theo · {label}
+      Trang {page} · {label}
       <span className="h-px flex-1 border-t border-dashed border-slate-300" />
     </div>
   );
@@ -291,52 +291,61 @@ function MedicalRecordPreview() {
       signatureDateText={formatPrintDate('2026-10-01T07:30:00.000Z')}
       signatures={[{ label: 'Bác sĩ khám bệnh', name: 'BS. Đặng Quốc Hưng' }]}
     >
-      {({ config }) => (
-        <>
-          <div className="mt-3 border border-slate-300 text-[12px]">
-            <div className="grid grid-cols-[110px_1fr] border-b border-slate-300">
-              <div className="border-r border-slate-300 bg-slate-50 p-2 font-semibold">I. Hành chính</div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 p-2">
-                <p>
-                  1. Họ và tên: <strong>LÝ THỊ HOÀI THƯƠNG</strong>
-                </p>
-                <p>
-                  2. Sinh ngày: <strong>14/03/1987</strong> · 39 tuổi
-                </p>
-                <p>
-                  3. Giới: <strong>Nữ</strong>
-                </p>
-                <p className="col-span-2">
-                  7. Địa chỉ: <strong>45/7 Trần Hưng Đạo, P. Cầu Ông Lãnh, TP. Hồ Chí Minh</strong>
-                </p>
-                {config.insurance?.show && formatInsurancePrintValue(SAMPLE_INSURANCE, config.insurance.whenSelfPay) && (
-                  <p className="col-span-2">
-                    10. BHYT giá trị đến · Số thẻ BHYT: <strong>{formatInsurancePrintValue(SAMPLE_INSURANCE, config.insurance.whenSelfPay)}</strong>
+      {({ config }) => {
+        // Bộ hồ sơ: tờ khám (trang 1) + Tổng kết (trang 2) luôn có; phiếu kết quả và đơn thuốc theo khối "Bộ hồ sơ khi in một lượt khám" (#272); bản mẫu chưa có khối = kèm hết.
+        const withCls = config.recordBundle?.includeParaclinical !== false;
+        const withRx = config.recordBundle?.includePrescriptions !== false;
+        const pageCount = 2 + (withCls ? 1 : 0) + (withRx ? 1 : 0);
+        return (
+          <>
+            <p className="text-right text-[10px] font-semibold uppercase tracking-wide text-slate-400 print:hidden">Bộ hồ sơ {pageCount} trang</p>
+            <div className="mt-3 border border-slate-300 text-[12px]">
+              <div className="grid grid-cols-[110px_1fr] border-b border-slate-300">
+                <div className="border-r border-slate-300 bg-slate-50 p-2 font-semibold">I. Hành chính</div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 p-2">
+                  <p>
+                    1. Họ và tên: <strong>LÝ THỊ HOÀI THƯƠNG</strong>
                   </p>
-                )}
+                  <p>
+                    2. Sinh ngày: <strong>14/03/1987</strong> · 39 tuổi
+                  </p>
+                  <p>
+                    3. Giới: <strong>Nữ</strong>
+                  </p>
+                  <p className="col-span-2">
+                    7. Địa chỉ: <strong>45/7 Trần Hưng Đạo, P. Cầu Ông Lãnh, TP. Hồ Chí Minh</strong>
+                  </p>
+                  {config.insurance?.show && formatInsurancePrintValue(SAMPLE_INSURANCE, config.insurance.whenSelfPay) && (
+                    <p className="col-span-2">
+                      10. BHYT giá trị đến · Số thẻ BHYT: <strong>{formatInsurancePrintValue(SAMPLE_INSURANCE, config.insurance.whenSelfPay)}</strong>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <SampleRecordRows rows={SAMPLE_RECORD_SECTIONS} />
+            </div>
+            <RecordPageBreak page={2} label="Tổng kết bệnh án" />
+            <div className="break-before-page">
+              <p className="text-[11px] font-semibold uppercase tracking-wide">Tổng kết bệnh án</p>
+              <div className="mt-1 border border-slate-300 text-[12px]">
+                <SampleRecordRows rows={SAMPLE_RECORD_SUMMARY} />
               </div>
             </div>
-            <SampleRecordRows rows={SAMPLE_RECORD_SECTIONS} />
-          </div>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide">Tổng kết bệnh án</p>
-          <div className="mt-1 border border-slate-300 text-[12px]">
-            <SampleRecordRows rows={SAMPLE_RECORD_SUMMARY} />
-          </div>
-          {/* Phần kèm theo bật/tắt ở khối "Bộ hồ sơ khi in một lượt khám" (#272); bản mẫu chưa có khối = kèm hết. */}
-          {config.recordBundle?.includeParaclinical !== false && (
-            <>
-              <RecordPageBreak label="Phiếu kết quả cận lâm sàng" />
-              <SampleRecordClsSheet />
-            </>
-          )}
-          {config.recordBundle?.includePrescriptions !== false && (
-            <>
-              <RecordPageBreak label="Đơn thuốc" />
-              <SampleRecordPrescriptionSheet />
-            </>
-          )}
-        </>
-      )}
+            {withCls && (
+              <>
+                <RecordPageBreak page={3} label="Phiếu kết quả cận lâm sàng" />
+                <SampleRecordClsSheet />
+              </>
+            )}
+            {withRx && (
+              <>
+                <RecordPageBreak page={withCls ? 4 : 3} label="Đơn thuốc" />
+                <SampleRecordPrescriptionSheet />
+              </>
+            )}
+          </>
+        );
+      }}
     </PrintDocument>
   );
 }

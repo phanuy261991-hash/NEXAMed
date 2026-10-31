@@ -131,10 +131,11 @@ export function useRecordSupplierDebtPaymentMutation(supplierId: string) {
 // ============ Phần D — "Luồng xử lý sai sót" (docs/DECISIONS.md #180/#182/#187) ============
 
 /** Tab "Nhật ký điều chỉnh" (trang NCC, lọc `supplierId`) VÀ badge "Có điều chỉnh" trên phiếu nhập/
- * xuất gốc (lọc `targetReceiptId`/`targetIssueId`) — cùng 1 hook, nơi gọi tự truyền query khác nhau. */
-export function useSupplierDebtAdjustmentsQuery(query: ListSupplierDebtAdjustmentsQuery) {
+ * xuất gốc (lọc `targetReceiptId`/`targetIssueId`) — cùng 1 hook, nơi gọi tự truyền query khác nhau. `enabled=false` cho người không có `supplier_debt.read` (máy chủ trả 403). */
+export function useSupplierDebtAdjustmentsQuery(query: ListSupplierDebtAdjustmentsQuery, enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
+    enabled,
     queryKey: queryKey(
       tenantId,
       'supplier-debt-adjustments',

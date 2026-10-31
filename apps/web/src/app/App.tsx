@@ -1,6 +1,7 @@
 import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
 import { ApiError } from '../shared/api/client';
+import { useUnsavedChangesStore } from '../shared/hooks/unsaved-changes';
 import { classifySystemFailure } from '../shared/errors/system-failure';
 import { useSystemFailureStore } from '../shared/errors/system-failure.store';
 import { AppErrorBoundary } from '../shared/ui/AppErrorBoundary';
@@ -20,6 +21,8 @@ const queryClient = new QueryClient({
   // Lỗi HỆ THỐNG khi đang thực hiện một thao tác (mất mạng, máy chủ chưa bật, 5xx) → MỘT hộp thông báo giữ nguyên dữ liệu đang nhập (docs/DECISIONS.md
   // #255). Áp cho MỌI `useMutation` của ứng dụng tại một chỗ; lỗi nghiệp vụ 4xx vẫn hiện tại chỗ như cũ.
   mutationCache: new MutationCache({
+    // Một thao tác ghi thành công = dữ liệu nhập đã được lưu: tắt cờ "nhập dở" (cảnh báo rời trang) TRƯỚC khi form điều hướng sang trang khác.
+    onSuccess: () => useUnsavedChangesStore.getState().clear(),
     onError: (error) => {
       const kind = classifySystemFailure(error);
       if (kind) useSystemFailureStore.getState().show(kind);

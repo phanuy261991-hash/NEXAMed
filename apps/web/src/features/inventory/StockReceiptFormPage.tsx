@@ -279,7 +279,9 @@ export function StockReceiptFormPage() {
   const showPaymentSection = receiptType === 'PURCHASE' && Boolean(supplierId);
   const paymentMethods = useMemo(() => paymentMethodQuery.data?.items.filter((i) => i.isActive) ?? [], [paymentMethodQuery.data]);
   const cashAccounts = useMemo(() => cashAccountsQuery.data?.items.filter((a) => a.isActive) ?? [], [cashAccountsQuery.data]);
-  const supplierDebtSummaryQuery = useSupplierDebtSummaryQuery(supplierId, showPaymentSection);
+  // Số dư công nợ chỉ lấy khi người dùng có quyền xem công nợ NCC (không có thì máy chủ trả 403).
+  const canReadSupplierDebt = useHasPermission('supplier_debt', 'read');
+  const supplierDebtSummaryQuery = useSupplierDebtSummaryQuery(supplierId, showPaymentSection && canReadSupplierDebt);
   const currentDebtBalance = supplierDebtSummaryQuery.data?.balance ?? 0;
   const remainingToDebt = netAmount - (prepaidAmount ?? 0);
   const prepaidExceedsPayable = (prepaidAmount ?? 0) > netAmount;

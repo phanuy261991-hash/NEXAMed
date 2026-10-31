@@ -2,7 +2,7 @@
 // QUÉT QUYỀN THEO VAI TRÒ trên Chrome thật (docs/DECISIONS.md #260): tìm trang mà người dùng VÀO ĐƯỢC (không phải trang "Không có quyền truy cập") nhưng bên trong lại gặp API trả 403/5xx hoặc
 // khung lỗi "Không tải được…" — lớp lỗi "menu/route cho vào nhưng API từ chối theo phạm vi/quyền" (vd. lễ tân có `cashier_shift.read` ở phạm vi cá nhân nhưng danh sách phiếu chốt ca chỉ cho quản lý).
 // Ba phần (chọn bằng UI_AUDIT_SECTIONS, mặc định chạy cả ba):
-//   default — 7 vai trò mặc định (`rl.<vai trò>`) × MỌI route tĩnh; mỗi trang còn bấm lần lượt từng "pill" (thanh thẻ của trang cấu hình) và từng "tab" (role="tab") bên trong.
+//   default — 7 vai trò mặc định (`rl.<vai trò>`) × MỌI route tĩnh; mỗi trang còn bấm lần lượt từng "pill" (thanh thẻ của trang cấu hình), từng "tab" (role="tab") và từng nút chuyển kiểu xem ("toggle", SegmentedToggle) bên trong.
 //   params  — cùng 7 vai trò × các route CÓ THAM SỐ (`/patients/:id`, `/inventory/receipts/:id`...): tự lấy một id mẫu qua API bằng quản trị; route nào không có dữ liệu mẫu thì ghi "bỏ qua".
 //   custom  — VAI TRÒ TUỲ BIẾN: với mỗi route khai quyền đơn giản ở router, tạo một vai trò chỉ có quyền của route + các quyền ĐI KÈM (`PERMISSION_COMPANIONS`, #208) ở phạm vi toàn bộ, một tài khoản
 //             `sw.<n>`, đăng nhập và mở trang. Phát hiện bảng quyền đi kèm bị thiếu/lỗi thời. Dọn xong: ẩn vai trò `sw-sweep-*` và khoá tài khoản `sw.*` (lọc ĐÚNG tiền tố, in danh sách trước khi sửa).
@@ -180,6 +180,8 @@ async function visit(session, who, route, menuHrefs) {
   for (const [kind, selector] of [
     ['pill', 'main button.rounded-full'],
     ['tab', 'main [role=tab]'],
+    // Nút chuyển kiểu xem (SegmentedToggle) — mỗi kiểu có thể gọi API riêng; chỉ trong role=group để KHÔNG bấm nhầm công tắc có tác dụng ghi.
+    ['toggle', 'main [role=group] button[aria-pressed]'],
   ]) {
     const labels = await page.$$eval(selector, (bs) => bs.map((b) => (b.textContent || '').replace(/\s+/g, ' ').trim()));
     if (labels.length > MAX_TABS_PER_PAGE) console.log(`[quét] ${route}: ${labels.length} ${kind} — chỉ bấm ${MAX_TABS_PER_PAGE} đầu (UI_AUDIT_MAX_PILLS)`);
@@ -187,7 +189,7 @@ async function visit(session, who, route, menuHrefs) {
       if (labels[k] === '') continue; // nút tròn không nhãn (nút biểu tượng trong bảng) — không phải thẻ chuyển màn, bấm vào chỉ tốn 2 giây chờ hết hạn
       state.bad.clear();
       const btn = page.locator(selector).nth(k);
-      const selected = await btn.getAttribute('aria-selected', { timeout: 1000 }).catch(() => null);
+      const selected = (await btn.getAttribute('aria-selected', { timeout: 1000 }).catch(() => null)) ?? (await btn.getAttribute('aria-pressed', { timeout: 1000 }).catch(() => null));
       if (selected === 'true' || (kind === 'pill' && k === 0)) continue; // mục đang mở sẵn đã kiểm ở trên
       const tStep = Date.now();
       await btn.click({ timeout: 2000 }).catch(() => {});

@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, type ReactNode } from 'react';
 import { RoomSessionGate } from '../../features/clinic/RoomSessionGate';
 import { VersionMismatchBanner } from '../../features/system/VersionMismatchBanner';
 import { PageFallback } from '../ui/PageFallback';
+import { UnsavedChangesGuard } from '../ui/UnsavedChangesGuard';
 import { useClinicPrintHeaderQuery } from '../print/clinic-print-header.queries';
 import { usePrintPaperChoice } from '../print/print-paper-choice';
 import { useResolvedPrintTemplatesQuery } from '../print/print-template.queries';
@@ -77,6 +78,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <RoomSessionGate />
         <PrintTemplatePrefetch />
+        {/* Cảnh báo khi rời trang biểu mẫu dài lúc còn dữ liệu nhập dở (danh sách trang canh ở `shared/hooks/unsaved-changes.ts`). */}
+        <UnsavedChangesGuard />
       </SidebarProvider>
     </BreadcrumbProvider>
   );
