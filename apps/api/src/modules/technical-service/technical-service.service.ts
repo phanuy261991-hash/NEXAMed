@@ -88,47 +88,61 @@ export class TechnicalServiceService {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => this.loadDetail(tx, tenantId, id));
   }
 
+  /** Toàn bộ dịch vụ (cả đã ẩn) kèm giá đang hiệu lực — cho Xuất Excel (#276), đọc trong transaction của người gọi. */
+  async listAllInTx(tx: Prisma.TransactionClient, tenantId: string): Promise<TechnicalServiceItem[]> {
+    const rows = await this.repository.list(tx, tenantId, { includeInactive: true });
+    const prices = await this.repository.listPrices(
+      tx,
+      tenantId,
+      rows.map((r) => r.id),
+    );
+    return rows.map((row) => this.toItem(row, prices.filter((p) => p.technicalServiceId === row.id)));
+  }
+
   async create(tenantId: string, actorId: string, dto: CreateTechnicalServiceRequest, meta: RequestMeta): Promise<TechnicalServiceDetail> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      await this.assertIndicatorsValid(tx, tenantId, dto.indicators?.map((i) => i.indicatorId));
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => this.createInTx(tx, tenantId, actorId, dto, meta));
+  }
 
-      const code = await this.businessCodeService.generate(tx, tenantId, actorId, CODE_TYPE_BY_KIND[dto.serviceKind], new Date());
-      let created;
-      try {
-        created = await this.repository.create(tx, tenantId, actorId, {
-          code,
-          name: dto.name,
-          shortName: dto.shortName ?? null,
-          nationalCode: dto.nationalCode ?? null,
-          serviceKind: dto.serviceKind,
-          categoryCode: dto.categoryCode ?? null,
-          // Mẫu bệnh phẩm chỉ có nghĩa với xét nghiệm.
-          specimenTypeCode: dto.serviceKind === 'LAB' ? (dto.specimenTypeCode ?? null) : null,
-          isPerformedInHouse: dto.isPerformedInHouse,
-          departmentId: dto.departmentId ?? null,
-          turnaroundMinutes: dto.turnaroundMinutes ?? null,
-          resultType: dto.resultType ?? DEFAULT_RESULT_TYPE_BY_KIND[dto.serviceKind],
-          isActive: dto.isActive,
-          sortOrder: dto.sortOrder,
-        });
-      } catch (err) {
-        if (isForeignKeyViolation(err)) throw new BadRequestException('Khoa/Phòng không tồn tại.');
-        throw err;
-      }
+  /** Tạo dịch vụ trong transaction của người gọi — dùng chung cho form "Thêm dịch vụ" và Nhập Excel (#276, tạo hàng loạt trong MỘT giao dịch). */
+  async createInTx(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dto: CreateTechnicalServiceRequest, meta: RequestMeta): Promise<TechnicalServiceDetail> {
+    await this.assertIndicatorsValid(tx, tenantId, dto.indicators?.map((i) => i.indicatorId));
 
-      if (dto.prices !== undefined) await this.replacePrices(tx, tenantId, created.id, actorId, dto.prices);
-      if (dto.indicators !== undefined) await this.repository.replaceIndicatorLinks(tx, tenantId, created.id, actorId, this.toLinkData(dto.indicators));
-
-      await writeAuditLog(tx, tenantId, {
-        actorId,
-        action: 'technical_service.created',
-        entityType: 'technical_service',
-        entityId: created.id,
-        ip: meta.ip,
-        userAgent: meta.userAgent,
+    const code = await this.businessCodeService.generate(tx, tenantId, actorId, CODE_TYPE_BY_KIND[dto.serviceKind], new Date());
+    let created;
+    try {
+      created = await this.repository.create(tx, tenantId, actorId, {
+        code,
+        name: dto.name,
+        shortName: dto.shortName ?? null,
+        nationalCode: dto.nationalCode ?? null,
+        serviceKind: dto.serviceKind,
+        categoryCode: dto.categoryCode ?? null,
+        // Mẫu bệnh phẩm chỉ có nghĩa với xét nghiệm.
+        specimenTypeCode: dto.serviceKind === 'LAB' ? (dto.specimenTypeCode ?? null) : null,
+        isPerformedInHouse: dto.isPerformedInHouse,
+        departmentId: dto.departmentId ?? null,
+        turnaroundMinutes: dto.turnaroundMinutes ?? null,
+        resultType: dto.resultType ?? DEFAULT_RESULT_TYPE_BY_KIND[dto.serviceKind],
+        isActive: dto.isActive,
+        sortOrder: dto.sortOrder,
       });
-      return this.loadDetail(tx, tenantId, created.id);
+    } catch (err) {
+      if (isForeignKeyViolation(err)) throw new BadRequestException('Khoa/Phòng không tồn tại.');
+      throw err;
+    }
+
+    if (dto.prices !== undefined) await this.replacePrices(tx, tenantId, created.id, actorId, dto.prices);
+    if (dto.indicators !== undefined) await this.repository.replaceIndicatorLinks(tx, tenantId, created.id, actorId, this.toLinkData(dto.indicators));
+
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'technical_service.created',
+      entityType: 'technical_service',
+      entityId: created.id,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
     });
+    return this.loadDetail(tx, tenantId, created.id);
   }
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateTechnicalServiceRequest, meta: RequestMeta): Promise<TechnicalServiceDetail> {

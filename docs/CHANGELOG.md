@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-10-31
 
+### Nhập/Xuất Excel cho Dịch vụ kỹ thuật; báo lỗi rõ khi tải file lên (`docs/DECISIONS.md` #276)
+
+Trang **Danh mục Cận lâm sàng → Dịch vụ kỹ thuật** có thêm nút **Xuất Excel** và **Nhập Excel**. Nhập từ file mẫu (có hướng dẫn và danh mục sẵn có): mỗi dòng một dịch vụ kèm đơn giá gốc; dịch vụ cùng Loại + Tên đã có thì bỏ qua, không ghi đè; mã dịch vụ tự cấp; tên Nhóm dịch vụ/Loại mẫu/Đơn vị tính chưa có sẽ tự tạo. Khi tải file lên, hệ thống xem trước và **báo từng lỗi kèm số dòng, tên cột và cách sửa** (ví dụ `Cột "Giá bán": bắt buộc khi làm tại phòng khám…`), báo riêng các lỗi cả file (sai mẫu, không phải .xlsx, quá 5 MB, file không có dòng dữ liệu). Sửa file xong chọn lại đúng file cũ nay được đọc lại ngay (trước đây trình duyệt bỏ qua). Hộp thoại nhập Thuốc & Vật tư dùng chung thành phần mới nên cũng được các cải tiến này. Không migration.
+
 ### Kiểm quy đổi đơn vị kho: nhập Hộp/Vỉ → tồn Viên → kê → phát đúng; chặn 3 lỗ hổng dữ liệu (`docs/DECISIONS.md` #275)
 
 Đã kiểm đường nhập đơn vị lớn → tồn theo đơn vị nhỏ nhất → kê đơn → phát thuốc (FEFO, nhiều lô, huỷ phiếu) bằng 14 ca tự động mới: số liệu đúng. Đã chặn thêm ba chỗ dễ sai dữ liệu: (1) dòng phiếu nhập dùng đơn vị không thuộc bảng quy đổi của mặt hàng nay bị từ chối (trước đây âm thầm cộng tồn sai hệ số, ví dụ nháp nhập "Hộp" rồi bỏ "Hộp" khỏi bảng quy đổi); (2) không đổi được "Đơn vị nhỏ nhất" của mặt hàng khi còn tồn kho; (3) bảng quy đổi không được trùng đơn vị, trùng thứ tự bậc, lặp lại đơn vị nhỏ nhất, hoặc tổng quy đổi vượt 1.000.000. Không migration. Form danh mục thuốc nay báo ngay lý do khi bảng quy đổi sai và khoá nút Lưu. Nhãn "Hướng thần", "Gây nghiện", "Đông y" ở danh sách thuốc không còn bị bẻ thành hai dòng.

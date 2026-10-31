@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Eye, Flask, MagnifyingGlass, PencilSimple, Plus } from '@phosphor-icons/react';
+import { DownloadSimple, Eye, Flask, MagnifyingGlass, PencilSimple, Plus, UploadSimple } from '@phosphor-icons/react';
 import type { TechnicalServiceItem, TechnicalServiceKind } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
@@ -10,11 +10,14 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { formatVnd } from '../../shared/format/currency';
+import { describeSaveError } from '../../shared/api/save-error';
 import { useHasPermission } from '../auth/usePermission';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { TECHNICAL_SERVICE_KIND_LABELS } from './paraclinical-labels';
+import { exportTechnicalServices } from './paraclinical.api';
 import { useTechnicalServicesQuery } from './paraclinical.queries';
 import { TechnicalServiceFormDialog } from './TechnicalServiceFormDialog';
+import { TechnicalServiceImportDialog } from './TechnicalServiceImportDialog';
 
 // Tổng cột cố định + tên tối thiểu 150px ≈ 890px — vừa khung 1440px (trừ sidebar + khung nhóm) để cột Trạng thái/Thao tác không bị đẩy ra ngoài.
 const GRID_COLUMNS = '112px minmax(150px,1fr) 96px 112px 92px 100px 52px 96px 76px';
@@ -44,6 +47,9 @@ export function TechnicalServicePane() {
   const [searchText, setSearchText] = useState('');
   const search = useDebouncedValue(searchText.trim(), 300);
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const query = useTechnicalServicesQuery({
     kind: kind === 'ALL' ? undefined : kind,
@@ -63,6 +69,19 @@ export function TechnicalServicePane() {
   );
   const hasCategories = (categoryQuery.data?.items.length ?? 0) > 0;
   const isFiltering = search !== '' || kind !== 'ALL' || categoryCode !== '';
+
+  /** "Xuất Excel" — tải toàn bộ danh mục (cả dịch vụ đã ẩn), cùng định dạng file mẫu nên nhập lại được. */
+  async function handleExport() {
+    setExportError(null);
+    setExporting(true);
+    try {
+      await exportTechnicalServices();
+    } catch (err) {
+      setExportError(describeSaveError(err));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const items = query.data?.items ?? [];
   const counts = query.data?.counts;
@@ -112,6 +131,16 @@ export function TechnicalServicePane() {
               <Combobox id="ts-filter-category" value={categoryCode} onChange={setCategoryCode} options={categoryFilterOptions} placeholder="Tất cả nhóm" />
             </div>
           )}
+          <Button type="button" variant="secondary" loading={exporting} onClick={() => void handleExport()}>
+            <DownloadSimple size={15} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
+          {canCreate && (
+            <Button type="button" variant="secondary" onClick={() => setImportOpen(true)}>
+              <UploadSimple size={15} weight="bold" aria-hidden="true" />
+              Nhập Excel
+            </Button>
+          )}
           {canCreate && (
             <Button type="button" onClick={() => setDialog({ mode: 'create' })}>
               <Plus size={15} weight="bold" aria-hidden="true" />
@@ -120,6 +149,7 @@ export function TechnicalServicePane() {
           )}
         </div>
 
+        {exportError && <ErrorBanner message={exportError} />}
         {query.isError && <ErrorBanner message="Không tải được danh mục dịch vụ kỹ thuật." onRetry={() => query.refetch()} />}
         {categoryQuery.isError && <ErrorBanner message="Không tải được danh sách nhóm dịch vụ." onRetry={() => categoryQuery.refetch()} />}
 
@@ -185,6 +215,7 @@ export function TechnicalServicePane() {
         </div>
       </section>
 
+      {importOpen && <TechnicalServiceImportDialog onClose={() => setImportOpen(false)} />}
       {dialog && (
         <TechnicalServiceFormDialog
           key={dialog.mode === 'create' ? 'new' : `${dialog.mode}-${dialog.id}`}

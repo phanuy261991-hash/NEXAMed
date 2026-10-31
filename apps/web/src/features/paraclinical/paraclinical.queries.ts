@@ -10,6 +10,7 @@ import type {
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
+  commitTechnicalServiceImport,
   createLabIndicator,
   createResultTemplate,
   createTechnicalService,
@@ -73,6 +74,19 @@ function useInvalidate(domain: string) {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
   return () => void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, domain) });
+}
+
+/** Commit nhập Excel — làm mới danh sách dịch vụ VÀ mọi danh mục dùng chung (có thể vừa tạo mới Nhóm dịch vụ/Loại mẫu/Đơn vị tính). */
+export function useCommitTechnicalServiceImportMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => commitTechnicalServiceImport(file),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'technical-service') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'reference-catalog') });
+    },
+  });
 }
 
 export function useCreateTechnicalServiceMutation() {

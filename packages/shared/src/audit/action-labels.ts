@@ -149,6 +149,8 @@ const ACTION_LABELS: Record<string, string> = {
   'print_template.quick_setup': 'Thiết lập nhanh mẫu in',
   'technical_service.created': 'Thêm dịch vụ kỹ thuật',
   'technical_service.updated': 'Sửa dịch vụ kỹ thuật',
+  'technical_service.imported': 'Nhập dịch vụ kỹ thuật từ Excel',
+  'technical_service.exported': 'Xuất dịch vụ kỹ thuật ra Excel',
   'lab_indicator.created': 'Thêm chỉ số xét nghiệm',
   'lab_indicator.updated': 'Sửa chỉ số xét nghiệm',
   'result_template.created': 'Thêm mẫu kết quả',

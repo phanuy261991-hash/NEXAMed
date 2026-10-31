@@ -79,6 +79,11 @@ export class TechnicalServiceRepository {
     return tx.technicalService.findMany({ where: { tenantId, id: { in: ids }, deletedAt: null }, include: LIST_INCLUDE });
   }
 
+  /** Khoa/Phòng đang dùng (id + tên) — Nhập Excel (#276) đối chiếu cột "Khoa/Phòng thực hiện" theo TÊN. Chỉ đọc, cùng nguồn với `department` trong `LIST_INCLUDE`. */
+  listActiveDepartmentOptions(tx: Prisma.TransactionClient, tenantId: string): Promise<{ id: string; name: string }[]> {
+    return tx.department.findMany({ where: { tenantId, deletedAt: null, isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
+  }
+
   /** Không phân trang — danh mục vài trăm dịch vụ/phòng khám, cùng lý do `SupplierRepository.list()`. */
   list(tx: Prisma.TransactionClient, tenantId: string, filter: TechnicalServiceFilter): Promise<TechnicalServiceRow[]> {
     const where: Prisma.TechnicalServiceWhereInput = {

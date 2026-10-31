@@ -75,7 +75,11 @@ Bộ canh `UnsavedChangesGuard` ở `AppShell` (6 trang biểu mẫu dài; `shar
 
 ## Kiểm quy đổi đơn vị kho + luồng kê đơn → phát thuốc → trừ kho (31/10/2026, #275) — ĐÃ CODE, test xanh, full API xanh
 
-Đường chính ĐÚNG (spec mới `stock-unit-conversion-http.spec.ts` 14 ca, kể cả thuốc kê theo ml). Đã chặn 3 lỗ hổng: đơn vị dòng nhập ngoài chuỗi (`STOCK_RECEIPT_LINE_UNIT_INVALID` 422), đổi đơn vị nhỏ nhất khi còn tồn (`DRUG_BASE_UNIT_CHANGE_BLOCKED` 409), chuỗi đơn vị không hợp lệ (400, `checkUnitChain`). Không migration. **Bổ sung**: form danh mục thuốc báo lỗi chuỗi đơn vị tại chỗ (bộ ca dùng chung web/máy chủ), sửa nhãn kiểm soát bị bẻ dòng, rà soát Nhập Excel thuốc/vật tư (không lỗi, +2 ca). Full API 1897 xanh, Chrome thật 12/12. **Còn**: chủ dự án quyết có chấp nhận giá vốn làm tròn từng đơn vị lệch vài đồng (#275 mục a); **Nhập Excel cho Dịch vụ kỹ thuật chưa có — chủ dự án bảo làm (31/10/2026), cần chốt cột/quy tắc + mockup trước khi code**.
+Đường chính ĐÚNG (spec mới `stock-unit-conversion-http.spec.ts` 14 ca, kể cả thuốc kê theo ml). Đã chặn 3 lỗ hổng: đơn vị dòng nhập ngoài chuỗi (`STOCK_RECEIPT_LINE_UNIT_INVALID` 422), đổi đơn vị nhỏ nhất khi còn tồn (`DRUG_BASE_UNIT_CHANGE_BLOCKED` 409), chuỗi đơn vị không hợp lệ (400, `checkUnitChain`). Không migration. **Bổ sung**: form danh mục thuốc báo lỗi chuỗi đơn vị tại chỗ (bộ ca dùng chung web/máy chủ), sửa nhãn kiểm soát bị bẻ dòng, rà soát Nhập Excel thuốc/vật tư (không lỗi, +2 ca). Full API 1897 xanh, Chrome thật 12/12. **Còn**: chủ dự án quyết có chấp nhận giá vốn làm tròn từng đơn vị lệch vài đồng (#275 mục a); **Nhập Excel cho Dịch vụ kỹ thuật: ĐÃ LÀM, xem mục ngay dưới**.
+
+## Nhập/Xuất Excel Dịch vụ kỹ thuật + báo lỗi khi tải file (31/10/2026, #276) — ĐÃ CODE, test xanh, ĐÃ KIỂM CHROME (IP LAN HTTP)
+
+Chỉ dịch vụ + một đơn giá gốc; trùng Loại + Tên thì bỏ qua; danh mục mới tự tạo; giao diện đúng khuôn nhập thuốc (chủ dự án chốt theo khuyến nghị). Mọi lỗi dòng nêu sheet/dòng/TÊN CỘT/cách sửa, lỗi mức file báo tiếng Việt, file rỗng báo riêng, chọn lại file đã sửa đọc lại được. Tách phần dùng chung `apps/api/src/common/excel-import/` + `shared/ui/CatalogImportDialog.tsx` (nhập thuốc chuyển sang dùng, hành vi không đổi). Không migration. Full API 1926 xanh, Chrome 19/19 + 8/8. **Còn**: chưa nhập chỉ số xét nghiệm (đợt riêng nếu cần); chưa kiểm CI sau push; giá vốn làm tròn (#275 mục a) chờ chủ dự án.
 
 ## Bàn giao mới nhất
 

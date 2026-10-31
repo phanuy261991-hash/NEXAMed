@@ -8,14 +8,37 @@ import type {
   ListTechnicalServicesResponse,
   ResultTemplateItem,
   TechnicalServiceDetail,
+  TechnicalServiceImportCommitResponse,
+  TechnicalServiceImportPreviewResponse,
   TechnicalServiceKind,
   UpdateLabIndicatorRequest,
   UpdateResultTemplateRequest,
   UpdateTechnicalServiceRequest,
 } from '@nexamed/shared';
-import { getApiClient, unwrap } from '../../shared/api/client';
+import { downloadFile, getApiClient, unwrap, uploadFile } from '../../shared/api/client';
 
 /** Cận lâm sàng GĐ1 — Danh mục (docs/DECISIONS.md #212). */
+
+/** Nhập/Xuất Excel Dịch vụ kỹ thuật (docs/DECISIONS.md #276) — file nhị phân/multipart nên gọi `downloadFile`/`uploadFile`, không qua client sinh từ OpenAPI. */
+export async function downloadTechnicalServiceImportTemplate(): Promise<void> {
+  await downloadFile('/api/v1/technical-services/import-template', 'mau-nhap-dich-vu-ky-thuat.xlsx');
+}
+
+export async function exportTechnicalServices(): Promise<void> {
+  await downloadFile('/api/v1/technical-services/export', 'danh-muc-dich-vu-ky-thuat.xlsx');
+}
+
+export async function previewTechnicalServiceImport(file: File): Promise<TechnicalServiceImportPreviewResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return uploadFile<TechnicalServiceImportPreviewResponse>('/api/v1/technical-services/import/preview', formData);
+}
+
+export async function commitTechnicalServiceImport(file: File): Promise<TechnicalServiceImportCommitResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return uploadFile<TechnicalServiceImportCommitResponse>('/api/v1/technical-services/import/commit', formData);
+}
 
 export interface TechnicalServiceListParams {
   kind?: TechnicalServiceKind;

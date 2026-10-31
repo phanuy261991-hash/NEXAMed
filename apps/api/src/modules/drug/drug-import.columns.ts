@@ -1,4 +1,7 @@
 import { DRUG_IMPORT_EXAMPLE_CODE_PREFIX } from '@nexamed/shared';
+import type { ImportColumnBase, ImportRecord } from '../../common/excel-import/excel-import';
+
+export type { ImportRecord };
 
 /**
  * Định nghĩa cột + dữ liệu ví dụ của file Excel "Thuốc & Vật tư" (docs/DECISIONS.md #210) — MỘT
@@ -10,15 +13,8 @@ import { DRUG_IMPORT_EXAMPLE_CODE_PREFIX } from '@nexamed/shared';
  */
 export type ImportColumnRequirement = 'required' | 'medicineRequired' | 'medicineOnly' | 'optional';
 
-export interface ImportColumn {
-  key: string;
-  label: string;
+export interface ImportColumn extends ImportColumnBase {
   requirement: ImportColumnRequirement;
-  width: number;
-  /** Hướng dẫn điền — hiện ở sheet "Hướng dẫn". */
-  guide: string;
-  /** Cột lưu dạng CHỮ (mã/số đăng ký/mã vạch) — định dạng ô `@` để Excel không nuốt số 0 đầu. */
-  text?: boolean;
 }
 
 export const SHEET_ITEMS = 'Thuốc & Vật tư';
@@ -36,11 +32,6 @@ const REQUIREMENT_MARK: Record<ImportColumnRequirement, string> = {
 
 export function columnHeaderText(column: ImportColumn): string {
   return column.label + REQUIREMENT_MARK[column.requirement];
-}
-
-/** Lấy lại nhãn thuần từ ô tiêu đề (bỏ dấu hiệu bắt buộc/thuốc). */
-export function headerLabelOf(headerText: string): string {
-  return headerText.replace(/\s*[*(].*$/, '').trim();
 }
 
 export const ITEM_COLUMNS: ImportColumn[] = [
@@ -85,8 +76,6 @@ export const UNIT_COLUMNS: ImportColumn[] = [
   { key: 'factor', label: 'Quy đổi ra đơn vị ngay bên dưới', requirement: 'required', width: 20, guide: '1 đơn vị ở cột bên trái = BAO NHIÊU đơn vị ngay bên dưới nó (dòng 1: bao nhiêu đơn vị cơ sở). Số nguyên dương.' },
   { key: 'price', label: 'Giá bán', requirement: 'optional', width: 12, guide: 'Giá bán riêng của đơn vị này (đồng). Điền cho TẤT CẢ các bậc của cùng 1 mã thì hệ thống tự bật "Giá theo từng đơn vị"; để trống hết thì giá suy theo tỷ lệ quy đổi.' },
 ];
-
-export type ImportRecord = Record<string, string | number>;
 
 /**
  * Dữ liệu ví dụ trong file mẫu (3 mặt hàng) — mã bắt đầu bằng `VD-` nên bị bỏ qua khi nhập. Tên

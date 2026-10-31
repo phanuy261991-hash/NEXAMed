@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { DRUG_IMPORT_MAX_ROWS } from '@nexamed/shared';
+import { addCatalogSheet, addDataSheet, addListValidation, IMPORT_HEADER_FILL, workbookToBuffer } from '../../common/excel-import/excel-import-workbook';
 import {
   columnHeaderText,
   INGREDIENT_COLUMNS,
@@ -43,41 +44,6 @@ export const DRUG_IMPORT_CATEGORY_LABELS: Record<DrugImportCategory, string> = {
   ACTIVE_INGREDIENT: 'Hoạt chất',
 };
 
-const HEADER_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
-const EXAMPLE_FONT: Partial<ExcelJS.Font> = { italic: true, color: { argb: 'FF94A3B8' } };
-
-function addDataSheet(
-  workbook: ExcelJS.Workbook,
-  name: string,
-  columns: ImportColumn[],
-  rows: ImportRecord[],
-  options: { example: boolean; extraHeaders?: string[] },
-): ExcelJS.Worksheet {
-  const sheet = workbook.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 1 }] });
-  const extra = options.extraHeaders ?? [];
-  columns.forEach((c, i) => {
-    const col = sheet.getColumn(i + 1);
-    col.width = c.width;
-    if (c.text) col.numFmt = '@';
-  });
-  extra.forEach((_, i) => {
-    sheet.getColumn(columns.length + i + 1).width = 14;
-  });
-
-  const header = sheet.addRow([...columns.map(columnHeaderText), ...extra]);
-  header.font = { bold: true };
-  header.alignment = { vertical: 'middle', wrapText: true };
-  header.eachCell((cell) => {
-    cell.fill = HEADER_FILL;
-  });
-
-  for (const record of rows) {
-    const row = sheet.addRow([...columns.map((c) => record[c.key] ?? ''), ...extra.map((e) => record[`__${e}`] ?? '')]);
-    if (options.example) row.font = EXAMPLE_FONT;
-  }
-  return sheet;
-}
-
 /** Ô chọn sẵn cho các cột giá trị cố định (Loại, Có/Không, Phân loại kiểm soát) — chống gõ sai. */
 function addListValidations(sheet: ExcelJS.Worksheet): void {
   const lists: Record<string, string> = {
@@ -89,10 +55,7 @@ function addListValidations(sheet: ExcelJS.Worksheet): void {
   };
   ITEM_COLUMNS.forEach((c, i) => {
     const list = lists[c.key];
-    if (!list) return;
-    for (let r = 2; r <= DRUG_IMPORT_MAX_ROWS + 1; r++) {
-      sheet.getCell(r, i + 1).dataValidation = { type: 'list', allowBlank: true, formulae: [list], showErrorMessage: false };
-    }
+    if (list) addListValidation(sheet, i + 1, list, DRUG_IMPORT_MAX_ROWS);
   });
 }
 
@@ -139,7 +102,7 @@ function addGuideSheet(workbook: ExcelJS.Workbook): void {
   const header = sheet.addRow(['Sheet', 'Cột', 'Mức độ', 'Cách điền']);
   header.font = { bold: true };
   header.eachCell((cell) => {
-    cell.fill = HEADER_FILL;
+    cell.fill = IMPORT_HEADER_FILL;
   });
   for (const table of tables) {
     for (const c of table.columns) {
@@ -149,46 +112,24 @@ function addGuideSheet(workbook: ExcelJS.Workbook): void {
   }
 }
 
-function addCatalogSheet(workbook: ExcelJS.Workbook, names: Record<DrugImportCategory, string[]>): void {
-  const sheet = workbook.addWorksheet(SHEET_CATALOG);
-  sheet.columns = DRUG_IMPORT_CATEGORIES.map(() => ({ width: 28 }));
-  const header = sheet.addRow(DRUG_IMPORT_CATEGORIES.map((c) => DRUG_IMPORT_CATEGORY_LABELS[c]));
-  header.font = { bold: true };
-  header.eachCell((cell) => {
-    cell.fill = HEADER_FILL;
-  });
-  const longest = Math.max(0, ...DRUG_IMPORT_CATEGORIES.map((c) => names[c].length));
-  if (longest === 0) {
-    sheet.addRow(['(Danh mục đang trống — mọi tên bạn nhập sẽ được tạo mới)']);
-    return;
-  }
-  for (let i = 0; i < longest; i++) {
-    sheet.addRow(DRUG_IMPORT_CATEGORIES.map((c) => names[c][i] ?? ''));
-  }
-}
-
-async function toBuffer(workbook: ExcelJS.Workbook): Promise<Buffer> {
-  return Buffer.from(await workbook.xlsx.writeBuffer());
-}
-
 /** File mẫu: 3 sheet nhập (kèm dòng ví dụ) + "Hướng dẫn" + "Danh mục hiện có" (tên đang có của phòng khám). */
 export async function buildDrugImportTemplate(catalogNames: Record<DrugImportCategory, string[]>): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  const items = addDataSheet(workbook, SHEET_ITEMS, ITEM_COLUMNS, ITEM_EXAMPLES, { example: true });
+  const items = addDataSheet(workbook, SHEET_ITEMS, ITEM_COLUMNS, ITEM_EXAMPLES, { example: true, headerText: columnHeaderText });
   addListValidations(items);
-  addDataSheet(workbook, SHEET_INGREDIENTS, INGREDIENT_COLUMNS, INGREDIENT_EXAMPLES, { example: true });
-  addDataSheet(workbook, SHEET_UNITS, UNIT_COLUMNS, UNIT_EXAMPLES, { example: true });
+  addDataSheet(workbook, SHEET_INGREDIENTS, INGREDIENT_COLUMNS, INGREDIENT_EXAMPLES, { example: true, headerText: columnHeaderText });
+  addDataSheet(workbook, SHEET_UNITS, UNIT_COLUMNS, UNIT_EXAMPLES, { example: true, headerText: columnHeaderText });
   addGuideSheet(workbook);
-  addCatalogSheet(workbook, catalogNames);
-  return toBuffer(workbook);
+  addCatalogSheet(workbook, SHEET_CATALOG, DRUG_IMPORT_CATEGORIES, DRUG_IMPORT_CATEGORY_LABELS, catalogNames);
+  return workbookToBuffer(workbook);
 }
 
 /** File xuất: cùng 3 sheet với file mẫu (nhập lại được; mã trùng sẽ vào nhóm "Đã có sẵn") + cột "Trạng thái" cuối sheet 1. */
 export async function buildDrugExportWorkbook(items: ImportRecord[], ingredients: ImportRecord[], units: ImportRecord[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  const sheet = addDataSheet(workbook, SHEET_ITEMS, ITEM_COLUMNS, items, { example: false, extraHeaders: ['Trạng thái'] });
+  const sheet = addDataSheet(workbook, SHEET_ITEMS, ITEM_COLUMNS, items, { example: false, headerText: columnHeaderText, extraHeaders: ['Trạng thái'] });
   addListValidations(sheet);
-  addDataSheet(workbook, SHEET_INGREDIENTS, INGREDIENT_COLUMNS, ingredients, { example: false });
-  addDataSheet(workbook, SHEET_UNITS, UNIT_COLUMNS, units, { example: false });
-  return toBuffer(workbook);
+  addDataSheet(workbook, SHEET_INGREDIENTS, INGREDIENT_COLUMNS, ingredients, { example: false, headerText: columnHeaderText });
+  addDataSheet(workbook, SHEET_UNITS, UNIT_COLUMNS, units, { example: false, headerText: columnHeaderText });
+  return workbookToBuffer(workbook);
 }

@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import ExcelJS from 'exceljs';
 import type { Prisma } from '@prisma/client';
 import {
   IMPORT_CONTROL_TYPE_LABELS,
@@ -7,7 +6,6 @@ import {
   IMPORT_NO_LABEL,
   IMPORT_YES_LABEL,
   maxDataScope,
-  normalizeImportName,
   parseImportControlType,
   parseImportInteger,
   parseImportItemType,
@@ -20,30 +18,28 @@ import {
   DRUG_IMPORT_MAX_ROWS,
   type CreateDrugRequest,
   type DrugImportCommitResponse,
-  type DrugImportNewCatalogItem,
   type DrugImportPreviewResponse,
   type DrugImportRowError,
   type DrugImportValidRow,
   type DrugIngredientInput,
   type DrugUnitInput,
-  type ReferenceCatalogCategory,
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
 import { findScopesForUserPermission } from '../../infrastructure/persistence/permission-lookup.helper';
 import type { RequestMeta } from '../../common/request-meta';
+import { CatalogNameResolver, createNewCatalogItems, neededNewItems, replaceTemporaryCode, type NewCatalogItem } from '../../common/excel-import/catalog-name-resolver';
+import { cellText, collapseSpaces, loadWorkbook, readSheetRows, type Cell } from '../../common/excel-import/excel-import';
 import { ReferenceCatalogService } from '../reference-catalog/reference-catalog.service';
 import { DrugRepository } from './drug.repository';
 import { DrugService } from './drug.service';
 import {
-  headerLabelOf,
   INGREDIENT_COLUMNS,
   ITEM_COLUMNS,
   SHEET_INGREDIENTS,
   SHEET_ITEMS,
   SHEET_UNITS,
   UNIT_COLUMNS,
-  type ImportColumn,
   type ImportRecord,
 } from './drug-import.columns';
 import {
@@ -54,14 +50,6 @@ import {
   type DrugImportCategory,
 } from './drug-import.workbook';
 
-type Cell = string | number | null;
-interface SheetRow {
-  rowNumber: number;
-  cells: Record<string, Cell>;
-}
-
-/** Tiền tố đánh dấu mã danh mục CHƯA CÓ (sẽ tạo lúc commit) — thay bằng mã thật ở `fixCode()`. */
-const NEW_CODE_PREFIX = '\u0001NEW|';
 const IMPORT_TIMEOUT_MS = 120_000;
 const SHEET_ORDER: Record<string, number> = { [SHEET_ITEMS]: 0, [SHEET_INGREDIENTS]: 1, [SHEET_UNITS]: 2 };
 
@@ -89,33 +77,15 @@ interface ItemDraft {
 interface Analysis {
   drafts: ItemDraft[];
   looseErrors: DrugImportRowError[];
-  newItems: Map<string, DrugImportNewCatalogItem>;
+  newItems: ReadonlyMap<string, NewCatalogItem<DrugImportCategory>>;
   exampleRowCount: number;
 }
 
-function text(cell: Cell | undefined): string {
-  return cell === null || cell === undefined ? '' : String(cell).trim();
-}
-
-function collapse(raw: string): string {
-  return raw.replace(/\s+/g, ' ').trim();
-}
+const text = cellText;
+const collapse = collapseSpaces;
 
 function isExampleCode(code: string): boolean {
   return code.toLowerCase().startsWith(DRUG_IMPORT_EXAMPLE_CODE_PREFIX.toLowerCase());
-}
-
-function readCell(cell: ExcelJS.Cell): Cell {
-  const v = cell.value;
-  if (v === null || v === undefined) return null;
-  if (typeof v === 'number') return v;
-  if (typeof v === 'string') {
-    const t = v.trim();
-    return t === '' ? null : t;
-  }
-  if (typeof v === 'boolean') return v ? IMPORT_YES_LABEL : IMPORT_NO_LABEL;
-  const t = String(cell.text ?? '').trim();
-  return t === '' ? null : t;
 }
 
 /**
@@ -232,12 +202,8 @@ export class DrugImportService {
         const valid = analysis.drafts.filter((d) => d.parsed);
 
         // Tạo trước các mục danh mục chưa có (mã tự sinh) rồi thay mã tạm trong từng mặt hàng.
-        const newCodes = new Map<string, string>();
-        for (const item of preview.newCatalogItems) {
-          const key = `${item.category}|${normalizeImportName(item.name)}`;
-          newCodes.set(key, await this.referenceCatalogService.createByNameInTx(tx, tenantId, actorId, item.category, item.name, meta));
-        }
-        const fixCode = (c: string): string => (c.startsWith(NEW_CODE_PREFIX) ? (newCodes.get(c.slice(NEW_CODE_PREFIX.length)) ?? c) : c);
+        const newCodes = await createNewCatalogItems(this.referenceCatalogService, tx, tenantId, actorId, preview.newCatalogItems, meta);
+        const fixCode = (c: string): string => replaceTemporaryCode(c, newCodes);
         const fixOptional = (c: string | undefined): string | undefined => (c === undefined ? undefined : fixCode(c));
 
         for (const draft of valid) {
@@ -299,9 +265,7 @@ export class DrugImportService {
     // Chỉ tạo mới danh mục mà mặt hàng HỢP LỆ tham chiếu (mặt hàng lỗi không để lại rác trong danh mục dùng chung).
     const neededKeys = new Set<string>();
     for (const d of valid) for (const k of d.newKeys) neededKeys.add(k);
-    const newCatalogItems = [...neededKeys]
-      .map((k) => analysis.newItems.get(k)!)
-      .sort((a, b) => DRUG_IMPORT_CATEGORIES.indexOf(a.category as DrugImportCategory) - DRUG_IMPORT_CATEGORIES.indexOf(b.category as DrugImportCategory) || a.name.localeCompare(b.name, 'vi'));
+    const newCatalogItems = neededNewItems(analysis.newItems, neededKeys, DRUG_IMPORT_CATEGORIES);
 
     const errorRows = [...analysis.looseErrors, ...analysis.drafts.flatMap((d) => d.errors)].sort(
       (a, b) => (SHEET_ORDER[a.sheet] ?? 9) - (SHEET_ORDER[b.sheet] ?? 9) || a.rowNumber - b.rowNumber,
@@ -316,49 +280,13 @@ export class DrugImportService {
     };
   }
 
-  private async loadWorkbook(fileBuffer: Buffer): Promise<ExcelJS.Workbook> {
-    const workbook = new ExcelJS.Workbook();
-    try {
-      await workbook.xlsx.load(fileBuffer as unknown as ExcelJS.Buffer);
-    } catch {
-      throw new BadRequestException('Không đọc được file. Hãy dùng file .xlsx theo đúng file mẫu.');
-    }
-    return workbook;
-  }
-
-  private readSheet(sheet: ExcelJS.Worksheet | undefined, name: string, columns: ImportColumn[], maxRows: number): SheetRow[] {
-    if (!sheet) return [];
-    columns.forEach((c, i) => {
-      const got = headerLabelOf(String(sheet.getCell(1, i + 1).text ?? ''));
-      if (normalizeImportName(got) !== normalizeImportName(c.label)) {
-        throw new BadRequestException(`Sheet "${name}": cột ${i + 1} phải là "${c.label}" — file không đúng mẫu, hãy tải lại file mẫu.`);
-      }
-    });
-    const rows: SheetRow[] = [];
-    sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber === 1) return;
-      const cells: Record<string, Cell> = {};
-      let any = false;
-      columns.forEach((c, i) => {
-        const v = readCell(row.getCell(i + 1));
-        cells[c.key] = v;
-        if (v !== null) any = true;
-      });
-      if (any) rows.push({ rowNumber, cells });
-    });
-    if (rows.length > maxRows) {
-      throw new BadRequestException(`Sheet "${name}" có ${rows.length.toLocaleString('vi-VN')} dòng — tối đa ${maxRows.toLocaleString('vi-VN')} dòng mỗi lần nhập.`);
-    }
-    return rows;
-  }
-
   /** Đọc + đối chiếu toàn file (CHỈ đọc DB). `preview` và `commit` dùng chung nên 2 bước luôn cho cùng kết quả. */
   private async analyze(tx: Prisma.TransactionClient, tenantId: string, actorId: string, fileBuffer: Buffer): Promise<Analysis> {
-    const workbook = await this.loadWorkbook(fileBuffer);
+    const workbook = await loadWorkbook(fileBuffer);
     const itemSheet = workbook.getWorksheet(SHEET_ITEMS) ?? workbook.worksheets[0];
-    const itemRows = this.readSheet(itemSheet, SHEET_ITEMS, ITEM_COLUMNS, DRUG_IMPORT_MAX_ROWS + 1_000);
-    const ingredientRows = this.readSheet(workbook.getWorksheet(SHEET_INGREDIENTS), SHEET_INGREDIENTS, INGREDIENT_COLUMNS, DRUG_IMPORT_MAX_ROWS * 10);
-    const unitRows = this.readSheet(workbook.getWorksheet(SHEET_UNITS), SHEET_UNITS, UNIT_COLUMNS, DRUG_IMPORT_MAX_ROWS * 10);
+    const itemRows = readSheetRows(itemSheet, SHEET_ITEMS, ITEM_COLUMNS, DRUG_IMPORT_MAX_ROWS + 1_000);
+    const ingredientRows = readSheetRows(workbook.getWorksheet(SHEET_INGREDIENTS), SHEET_INGREDIENTS, INGREDIENT_COLUMNS, DRUG_IMPORT_MAX_ROWS * 10);
+    const unitRows = readSheetRows(workbook.getWorksheet(SHEET_UNITS), SHEET_UNITS, UNIT_COLUMNS, DRUG_IMPORT_MAX_ROWS * 10);
 
     const realItemRows = itemRows.filter((r) => !isExampleCode(text(r.cells.code)));
     if (realItemRows.length > DRUG_IMPORT_MAX_ROWS) {
@@ -367,20 +295,13 @@ export class DrugImportService {
 
     const canCreateCatalog = maxDataScope(await findScopesForUserPermission(tx, tenantId, actorId, 'reference_catalog', 'manage')) !== 'none';
 
-    // Chỉ mục tên (đã chuẩn hoá) → mục danh mục, ưu tiên mục đang hoạt động.
     const catalogRows = await this.referenceCatalogService.listAllForImport(tx, tenantId, [...DRUG_IMPORT_CATEGORIES]);
-    const catalogIndex = new Map<string, { code: string; name: string; isActive: boolean }>();
-    for (const r of catalogRows) {
-      const key = `${r.category}|${normalizeImportName(r.name)}`;
-      const existing = catalogIndex.get(key);
-      if (!existing || (!existing.isActive && r.isActive)) catalogIndex.set(key, { code: r.code, name: r.name, isActive: r.isActive });
-    }
+    const resolver = new CatalogNameResolver<DrugImportCategory>(catalogRows, canCreateCatalog, DRUG_IMPORT_CATEGORY_LABELS);
 
     const existingDrugs = await this.drugRepository.listCodesAndShortcuts(tx, tenantId);
     const existingCodes = new Set(existingDrugs.map((d) => d.code));
     const existingShortcuts = new Set(existingDrugs.map((d) => d.shortcutCode).filter((s): s is string => !!s));
 
-    const newItems = new Map<string, DrugImportNewCatalogItem>();
     const looseErrors: DrugImportRowError[] = [];
     let exampleRowCount = itemRows.length - realItemRows.length;
     const drafts: ItemDraft[] = [];
@@ -392,24 +313,13 @@ export class DrugImportService {
 
     /** Tên → mã danh mục. Trả `undefined` (và ghi lỗi) khi tên đang bị ẩn hoặc chưa có mà không có quyền tạo. */
     const resolve = (draft: ItemDraft, category: DrugImportCategory, raw: Cell | undefined, sheet: string, rowNumber: number): string | undefined => {
-      const name = collapse(text(raw));
-      const label = DRUG_IMPORT_CATEGORY_LABELS[category];
-      const key = `${category}|${normalizeImportName(name)}`;
-      const found = catalogIndex.get(key);
-      if (found) {
-        if (!found.isActive) {
-          err(draft, sheet, rowNumber, draft.code, `${label} "${name}" đang bị ẩn trong danh mục — kích hoạt lại hoặc dùng tên khác.`);
-          return undefined;
-        }
-        return found.code;
-      }
-      if (!canCreateCatalog) {
-        err(draft, sheet, rowNumber, draft.code, `${label} "${name}" chưa có trong danh mục và tài khoản của bạn không có quyền tạo mới danh mục dùng chung — chọn tên đã có (xem sheet "Danh mục hiện có") hoặc nhờ quản trị viên nhập.`);
+      const result = resolver.resolve(category, text(raw));
+      if (!result.ok) {
+        err(draft, sheet, rowNumber, draft.code, result.reason);
         return undefined;
       }
-      if (!newItems.has(key)) newItems.set(key, { category: category as ReferenceCatalogCategory, name });
-      draft.newKeys.add(key);
-      return `${NEW_CODE_PREFIX}${key}`;
+      if (result.newKey !== null) draft.newKeys.add(result.newKey);
+      return result.code;
     };
 
     const requiredCatalog = (draft: ItemDraft, category: DrugImportCategory, raw: Cell | undefined, columnLabel: string, sheet: string, rowNumber: number): string | undefined => {
@@ -653,6 +563,6 @@ export class DrugImportService {
       if (shortcut !== undefined) seenShortcuts.set(shortcut, draft.rowNumber);
     }
 
-    return { drafts, looseErrors, newItems, exampleRowCount };
+    return { drafts, looseErrors, newItems: resolver.newItems, exampleRowCount };
   }
 }

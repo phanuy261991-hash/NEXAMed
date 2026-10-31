@@ -32,7 +32,8 @@ function blank(raw: string | number | null | undefined): boolean {
   return raw === null || raw === undefined || (typeof raw === 'string' && raw.trim() === '');
 }
 
-function lookup<T>(raw: string | number | null | undefined, table: Record<string, T>): ImportParseResult<T> {
+/** Tra giá trị theo bảng nhãn đã chuẩn hoá (`normalizeImportName`); ô trống → `null`, nhãn lạ → lỗi. Dùng chung cho các chức năng Nhập Excel. */
+export function lookup<T>(raw: string | number | null | undefined, table: Record<string, T>): ImportParseResult<T> {
   if (blank(raw)) return { ok: true, value: null };
   const found = table[normalizeImportName(String(raw))];
   return found === undefined ? { ok: false } : { ok: true, value: found };
