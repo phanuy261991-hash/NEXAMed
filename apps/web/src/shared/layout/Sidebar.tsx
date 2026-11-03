@@ -60,6 +60,7 @@ import { useDoctorUnseenResultsQuery } from '../../features/reception/reception.
 import { useSupplierDebtSummariesQuery } from '../../features/supplier-debt/supplier-debt.queries';
 import { useStockTransferPendingCountsQuery } from '../../features/inventory/inventory.queries';
 import { usePrescriptionInteropStatusQuery } from '../../features/prescription-interop/prescription-interop.queries';
+import { SidebarBrand } from './SidebarBrand';
 import { useAutoCollapseSidebarOnNavigate, useSidebar } from './sidebar.context';
 
 /**
@@ -343,11 +344,8 @@ export function Sidebar() {
         collapsed ? 'w-16' : 'w-60'
       }`}
     >
-      <div className="flex h-14 flex-shrink-0 items-center gap-2.5 border-b border-slate-800 px-4">
-        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-semibold">
-          NX
-        </div>
-        {!collapsed && <span className="truncate text-[15px] font-semibold">NEXAMed</span>}
+      <div className="h-14 flex-shrink-0 border-b border-slate-800">
+        <SidebarBrand collapsed={collapsed} />
       </div>
 
       <nav className="scroll-hover flex-1 overflow-y-auto p-2.5" aria-label="Điều hướng chính">

@@ -84,6 +84,8 @@ interface LogoUploadBoxProps {
   version: number | undefined;
   aspectClassName: string;
   disabled: boolean;
+  /** Khung nền tối — logo chính hiện trên nền tối của thanh menu, xem trước đúng như thế để logo chữ tối bị chìm thì thấy ngay. */
+  darkBackground?: boolean;
   onUpload: (file: File) => Promise<void>;
 }
 
@@ -95,7 +97,7 @@ interface LogoUploadBoxProps {
  * chế độ Sửa) ẩn nút "Chọn ảnh" — đã hỏi và chốt với chủ dự án 2026-08-13 (nhất quán với trường
  * văn bản khác, áp dụng ngược cả cho `PatientAvatarUpload.tsx`).
  */
-function LogoUploadBox({ label, hint, imageUrl, version, aspectClassName, disabled, onUpload }: LogoUploadBoxProps) {
+function LogoUploadBox({ label, hint, imageUrl, version, aspectClassName, disabled, darkBackground = false, onUpload }: LogoUploadBoxProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -117,9 +119,9 @@ function LogoUploadBox({ label, hint, imageUrl, version, aspectClassName, disabl
   }
 
   return (
-    <div>
+    <div className="w-40">
       <span className="mb-1 block text-sm font-semibold text-slate-800">{label}</span>
-      <div className={`flex items-center justify-center overflow-hidden rounded-lg border border-slate-300 bg-slate-50 ${aspectClassName}`}>
+      <div className={`flex items-center justify-center overflow-hidden rounded-lg border ${darkBackground ? 'border-slate-700 bg-slate-900' : 'border-slate-300 bg-slate-50'} ${aspectClassName}`}>
         {imageUrl ? (
           <img src={resolveApiUrl(imageUrl)} alt={label} className="h-full w-full object-contain" />
         ) : (
@@ -267,7 +269,7 @@ export function ClinicInfoPane() {
       {query.isError && <ErrorBanner message="Không tải được thông tin phòng khám." onRetry={() => query.refetch()} />}
 
       {query.isLoading || !query.data ? (
-        <div className="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-2 lg:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-11 w-full" />
           ))}
@@ -276,11 +278,12 @@ export function ClinicInfoPane() {
         <div className="space-y-6">
           <div className="relative rounded-lg border border-slate-200 p-6 pt-8">
             <span className={SECTION_BADGE_CLASS}>Thông tin cơ bản</span>
-            <div className="flex flex-col gap-6 sm:flex-row">
-              <div className="flex flex-shrink-0 gap-4">
+            <div className="flex flex-col gap-6 xl:flex-row">
+              <div className="flex flex-shrink-0 flex-wrap gap-4 xl:w-40 xl:flex-col">
                 <LogoUploadBox
                   label="Logo chính"
-                  hint="Khuyến nghị 220×110px"
+                  hint="Đầu menu nền tối. Ngang 480×120px, chữ sáng, nền trong suốt"
+                  darkBackground
                   imageUrl={query.data.logoUrl}
                   version={query.data.version}
                   aspectClassName="h-20 w-40"
@@ -291,10 +294,10 @@ export function ClinicInfoPane() {
                 />
                 <LogoUploadBox
                   label="Logo dùng cho mẫu in"
-                  hint="Khuyến nghị 110×110px"
+                  hint="Đầu phiếu in. Vuông 110×110px hoặc ngang 480×120px"
                   imageUrl={query.data.printLogoUrl}
                   version={query.data.version}
-                  aspectClassName="h-20 w-20"
+                  aspectClassName="h-20 w-40"
                   disabled={!editing}
                   onUpload={async (file) => {
                     await printLogoMutation.mutateAsync({ file, version: query.data!.version });
@@ -302,7 +305,7 @@ export function ClinicInfoPane() {
                 />
               </div>
 
-              <div className="grid flex-1 grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+              <div className="grid flex-1 grid-cols-1 gap-x-6 gap-y-4 lg:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-slate-800">Tên phòng khám</label>
                   {editing ? (
@@ -433,7 +436,7 @@ export function ClinicInfoPane() {
                   )}
                 </div>
 
-                <div className="sm:col-span-2">
+                <div className="lg:col-span-2">
                   <label className="mb-1 block text-sm font-semibold text-slate-800">Địa chỉ</label>
                   {editing ? (
                     <input
@@ -526,7 +529,7 @@ export function ClinicInfoPane() {
 
           <div className="relative rounded-lg border border-slate-200 p-6 pt-8">
             <span className={SECTION_BADGE_CLASS}>Thông tin tài khoản & Thanh toán</span>
-            <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 xl:grid-cols-3">
               <div>
                 <label className="mb-1 block text-sm font-semibold text-slate-800">Tên tài khoản ngân hàng</label>
                 {editing ? (
@@ -573,7 +576,7 @@ export function ClinicInfoPane() {
 
           <div className="relative rounded-lg border border-slate-200 p-6 pt-8">
             <span className={SECTION_BADGE_CLASS}>Hiển thị</span>
-            <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 lg:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-semibold text-slate-800">Đơn vị tiền tệ</label>
                 {editing ? (

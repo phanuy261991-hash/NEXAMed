@@ -56316,6 +56316,12 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "logoUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
                       "required": [
@@ -56324,7 +56330,8 @@
                         "address",
                         "phone",
                         "taxCode",
-                        "printLogoUrl"
+                        "printLogoUrl",
+                        "logoUrl"
                       ]
                     },
                     "meta": {

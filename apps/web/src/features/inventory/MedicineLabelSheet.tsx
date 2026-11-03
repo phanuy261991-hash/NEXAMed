@@ -36,7 +36,7 @@ const FALLBACK_TEMPLATE: ResolvedPrintTemplate = {
   },
 };
 
-const EMPTY_HEADER: ClinicPrintHeader = { name: '', branchName: null, address: null, phone: null, taxCode: null, printLogoUrl: null };
+const EMPTY_HEADER: ClinicPrintHeader = { name: '', branchName: null, address: null, phone: null, taxCode: null, printLogoUrl: null, logoUrl: null };
 
 /** Cỡ chữ (pt) theo khổ tem: thanh họ tên / tên thuốc / câu dặn / dòng phụ. Khổ nhỏ chữ nhỏ hơn; câu dặn rất dài thu thêm 1 bậc. */
 const METRICS: Record<'LABEL_70X40' | 'LABEL_60X40' | 'LABEL_50X30', { bar: number; title: number; body: number; small: number }> = {

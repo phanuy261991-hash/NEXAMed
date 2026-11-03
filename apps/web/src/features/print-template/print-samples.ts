@@ -37,6 +37,7 @@ export const SAMPLE_CLINIC_HEADER: ClinicPrintHeader = {
   phone: '028 3822 1456',
   taxCode: '0312345678',
   printLogoUrl: SAMPLE_LOGO,
+  logoUrl: null,
 };
 
 /**

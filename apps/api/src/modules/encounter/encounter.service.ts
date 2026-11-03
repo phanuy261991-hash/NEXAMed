@@ -935,6 +935,8 @@ export class EncounterService {
     // chưa cấu hình thì dùng bản dựng sẵn (cùng bố cục cũ).
     const template = await this.printTemplateService.resolveOne(tenantId, 'MEDICAL_RECORD');
     const { printOptions, margins } = this.toMedicalRecordPrintOptions(template, insuranceEnabled);
+    // Logo nhúng sẵn vào PDF — chỉ đọc file khi bản mẫu bật "Hiện logo" (đọc kho lưu trữ, ngoài transaction).
+    if (template.config.header.showLogo) document.clinic.logoDataUri = await this.clinicProfileService.getPrintLogoDataUri(tenantId);
     const html = renderPatientMedicalRecordHtml(document, printOptions);
     const pdf = await this.pdfRenderer.renderHtmlToPdf(html, { marginsMm: { top: margins.topMm, right: margins.rightMm, bottom: margins.bottomMm, left: margins.leftMm } });
     return { pdf, patientCode: patient.patientCode, encounterCount: encounters.length };
@@ -963,7 +965,7 @@ export class EncounterService {
   ): { printOptions: MedicalRecordPrintOptions; margins: { topMm: number; rightMm: number; bottomMm: number; leftMm: number } } {
     const { header, margins } = template.config;
     const printOptions: MedicalRecordPrintOptions = {
-      header: { showClinicName: header.showClinicName, showAddress: header.showAddress, showPhone: header.showPhone, showTaxCode: header.showTaxCode, showDivider: header.showDivider },
+      header: { showLogo: header.showLogo, showClinicName: header.showClinicName, showAddress: header.showAddress, showPhone: header.showPhone, showTaxCode: header.showTaxCode, showDivider: header.showDivider },
       title: template.config.title.text.trim() || null,
       footerNote: template.config.footer.note.trim() || null,
       // Ô tích "Số thẻ BHYT" của bản mẫu in Bệnh án (S2-04, #243) — công tắc tổng tắt thì không in.
@@ -1128,6 +1130,7 @@ export class EncounterService {
     };
 
     const { printOptions, margins } = this.toMedicalRecordPrintOptions(template, insuranceEnabled);
+    if (template.config.header.showLogo) document.clinic.logoDataUri = await this.clinicProfileService.getPrintLogoDataUri(tenantId);
     const html = renderEncounterMedicalRecordHtml(document, printOptions);
     const pdf = await this.pdfRenderer.renderHtmlToPdf(html, { marginsMm: { top: margins.topMm, right: margins.rightMm, bottom: margins.bottomMm, left: margins.leftMm } });
     return { pdf, patientId: head.patientId, fileLabel: head.archiveNo ?? head.encounterNo };

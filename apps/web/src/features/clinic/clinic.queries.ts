@@ -327,13 +327,22 @@ export function useClinicProfileQuery() {
   });
 }
 
+/** Đầu thanh menu và đầu bản in đọc tên/logo qua `print-header` (cache riêng) — đổi thông tin hoặc logo ở đây phải làm mới luôn, không để chờ hết hạn cache. */
+function useInvalidatePrintHeader() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return () => void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'print-header') });
+}
+
 export function useUpdateClinicProfileMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
+  const invalidatePrintHeader = useInvalidatePrintHeader();
   return useMutation({
     mutationFn: (body: UpdateClinicProfileRequest) => updateClinicProfile(body),
     onSuccess: (updated: ClinicProfile) => {
       queryClient.setQueryData(queryKey(tenantId, 'clinic', 'profile'), updated);
+      invalidatePrintHeader();
     },
   });
 }
@@ -342,10 +351,12 @@ export function useUpdateClinicProfileMutation() {
 export function useUploadClinicLogoMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
+  const invalidatePrintHeader = useInvalidatePrintHeader();
   return useMutation({
     mutationFn: ({ file, version }: { file: File; version: number }) => uploadClinicLogo(file, version),
     onSuccess: (updated: ClinicProfile) => {
       queryClient.setQueryData(queryKey(tenantId, 'clinic', 'profile'), updated);
+      invalidatePrintHeader();
     },
   });
 }
@@ -353,10 +364,12 @@ export function useUploadClinicLogoMutation() {
 export function useUploadClinicPrintLogoMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
+  const invalidatePrintHeader = useInvalidatePrintHeader();
   return useMutation({
     mutationFn: ({ file, version }: { file: File; version: number }) => uploadClinicPrintLogo(file, version),
     onSuccess: (updated: ClinicProfile) => {
       queryClient.setQueryData(queryKey(tenantId, 'clinic', 'profile'), updated);
+      invalidatePrintHeader();
     },
   });
 }

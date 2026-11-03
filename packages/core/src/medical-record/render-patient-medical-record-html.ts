@@ -167,7 +167,8 @@ export interface MedicalRecordPatientInfo {
  * (không import `@nexamed/shared`, đúng nguyên tắc ở đầu file). Bỏ trống = bố cục mặc định như trước khi có Quản lý mẫu in.
  */
 export interface MedicalRecordPrintOptions {
-  header: { showClinicName: boolean; showAddress: boolean; showPhone: boolean; showTaxCode: boolean; showDivider: boolean };
+  /** `showLogo` vắng = hiện (nếu có ảnh logo trong `clinic.logoDataUri`). */
+  header: { showLogo?: boolean; showClinicName: boolean; showAddress: boolean; showPhone: boolean; showTaxCode: boolean; showDivider: boolean };
   /** Tiêu đề thay cho "Bệnh án bệnh nhân" — `null`/rỗng = giữ mặc định. */
   title: string | null;
   /** Dòng ghi chú cuối bệnh án — `null`/rỗng = không in. */
@@ -179,13 +180,14 @@ export interface MedicalRecordPrintOptions {
 }
 
 const DEFAULT_PRINT_OPTIONS: MedicalRecordPrintOptions = {
-  header: { showClinicName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
+  header: { showLogo: true, showClinicName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
   title: null,
   footerNote: null,
 };
 
 export interface PatientMedicalRecordDocument {
-  clinic: { name: string; address: string | null; phone: string | null; taxCode?: string | null };
+  /** `logoDataUri`: logo mẫu in nhúng sẵn dạng `data:image/...;base64,...` (bản PDF dựng bằng Chromium không gọi được địa chỉ ảnh có chữ ký của API). */
+  clinic: { name: string; address: string | null; phone: string | null; taxCode?: string | null; logoDataUri?: string | null };
   patient: MedicalRecordPatientInfo;
   encounters: MedicalRecordEncounterEntry[];
   generatedAt: string;
@@ -196,6 +198,13 @@ const DIAGNOSIS_TYPE_LABEL: Record<MedicalRecordDiagnosisType, string> = { PRIMA
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
+}
+
+/** Logo ở đầu bệnh án — chỉ khi bản mẫu bật "Hiện logo" và có ảnh; chỉ nhận `data:image/png|jpeg;base64` (không chèn địa chỉ ngoài vào PDF). */
+function renderClinicLogo(clinic: { logoDataUri?: string | null }, header: { showLogo?: boolean }): string {
+  const uri = clinic.logoDataUri;
+  if (header.showLogo === false || !uri || !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(uri)) return '';
+  return `<img class="clinic-logo" src="${uri}" alt="" />`;
 }
 
 /** Giờ Việt Nam là UTC+7 cố định (không có giờ mùa hè). Mọi mốc thời gian in ra giấy phải theo giờ này — `timestamptz` lưu UTC, chỉ đổi ở tầng hiển thị. */
@@ -390,6 +399,7 @@ export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument
   .clinic-header { text-align: center; margin-bottom: 16px; border-bottom: 1px solid #cbd5e1; padding-bottom: 10px; }
   .clinic-header .clinic-name { font-size: 15px; font-weight: 700; }
   .clinic-header .clinic-meta { font-size: 11px; color: #475569; }
+  .clinic-header .clinic-logo { display: block; margin: 0 auto 4px; max-height: 48px; max-width: 45%; object-fit: contain; }
   .doc-title { text-align: center; font-size: 16px; font-weight: 700; margin: 12px 0; text-transform: uppercase; }
   .patient-info { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
   .patient-info td { padding: 3px 6px; vertical-align: top; }
@@ -413,6 +423,7 @@ export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument
 </head>
 <body>
   <div class="clinic-header"${header.showDivider ? '' : ' style="border-bottom: none;"'}>
+    ${renderClinicLogo(doc.clinic, header)}
     ${header.showClinicName ? `<div class="clinic-name">${escapeHtml(doc.clinic.name)}</div>` : ''}
     <div class="clinic-meta">${clinicMeta.map(escapeHtml).join(' · ')}</div>
   </div>
@@ -451,7 +462,8 @@ export function renderPatientMedicalRecordHtml(doc: PatientMedicalRecordDocument
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface EncounterMedicalRecordDocument {
-  clinic: { name: string; address: string | null; phone: string | null; taxCode?: string | null };
+  /** `logoDataUri`: logo mẫu in nhúng sẵn dạng `data:image/...;base64,...` (bản PDF dựng bằng Chromium không gọi được địa chỉ ảnh có chữ ký của API). */
+  clinic: { name: string; address: string | null; phone: string | null; taxCode?: string | null; logoDataUri?: string | null };
   patient: MedicalRecordPatientInfo & {
     /** "Khi cần báo tin cho" đã ghép sẵn ("Trần Văn Khoa (chồng) — 0908…"); `null` = chưa có. */
     relative: string | null;
@@ -596,6 +608,7 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
     header.showTaxCode && doc.clinic.taxCode ? `MST: ${doc.clinic.taxCode}` : null,
   ].filter((v): v is string => Boolean(v));
   const clinicHeader = `<div class="clinic-header"${header.showDivider ? '' : ' style="border-bottom: none;"'}>
+    ${renderClinicLogo(doc.clinic, header)}
     ${header.showClinicName ? `<div class="clinic-name">${escapeHtml(doc.clinic.name)}</div>` : ''}
     <div class="clinic-meta">${clinicMeta.map(escapeHtml).join(' · ')}</div>
   </div>`;
@@ -674,6 +687,7 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
   .clinic-header { text-align: center; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; }
   .clinic-header .clinic-name { font-size: 15px; font-weight: 700; }
   .clinic-header .clinic-meta { font-size: 11px; color: #475569; }
+  .clinic-header .clinic-logo { display: block; margin: 0 auto 4px; max-height: 48px; max-width: 45%; object-fit: contain; }
   .doc-title { text-align: center; font-size: 16px; font-weight: 700; margin: 6px 0 8px; text-transform: uppercase; }
   .ms-line { text-align: right; font-size: 11px; color: #475569; }
   table.codes { margin-bottom: 8px; }

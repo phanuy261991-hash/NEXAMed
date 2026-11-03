@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-03
 
+### Logo và favicon thương hiệu mới; logo chính hiện ở đầu menu; logo trong PDF bệnh án (`docs/DECISIONS.md` #281)
+
+Favicon NEXAMed mới (SVG + ICO + PNG + biểu tượng iOS). Đầu thanh menu hiện **logo chính** của phòng khám trên nền tối (chưa tải thì hiện logo NEXAMed bản nền tối; menu thu gọn hiện biểu tượng N+); màn đăng nhập dùng logo NEXAMed cố định (không đổi theo phòng khám). Logo mẫu in giờ có thể là logo ngang dài (trước bị ép khung vuông 64px). PDF bệnh án và "In bộ hồ sơ" nay in logo mẫu in ở đầu trang, bật/tắt bằng công tắc "Hiện logo" của mẫu in Bệnh án. Sửa lỗi: tải logo xong đầu menu không tự cập nhật; địa chỉ ảnh logo đổi mỗi lần đọc. Trang Thông tin phòng khám xếp lại cột cho màn hẹp (dưới 1280px xếp dọc). `GET /clinic-profile/print-header` có thêm `logoUrl` (mọi vai trò đọc được). Không migration.
+
 ### "Khách không làm dịch vụ" ở quầy thu ngân (`docs/DECISIONS.md` #280)
 
 Trên phiếu thu có nút **Khách không làm dịch vụ** (lễ tân + quản trị, quyền hẹp `invoice.cancel_service`): chọn dịch vụ kỹ thuật bác sĩ đã chỉ định mà khách bỏ, chọn lý do (danh mục mới "Lý do không làm dịch vụ", có ô ghi thêm). **Phiếu chưa thu** → gỡ dòng và trừ tiền; **phiếu đã thu** → hoàn đúng phần tiền của dịch vụ đó theo phương thức đã thu (ví trước, phần dư tiền mặt/CK), phiếu vẫn "Đã thu". Dịch vụ đã lấy mẫu/thực hiện thì không bỏ được. Dòng chỉ định không bị xoá mà chuyển "Đã huỷ" kèm lý do + người xác nhận + thời điểm: bác sĩ thấy dòng nhắc ở tab Chỉ định cận lâm sàng và khối "Đã huỷ — khách không làm"; bệnh án in có khối "Đã chỉ định nhưng không thực hiện" (bật/tắt ở Quản lý mẫu in). Dịch vụ nằm trong gói: mặc định không cho bỏ lẻ, có công tắc 3 chế độ ở Cấu hình thanh toán (không cho bỏ lẻ / bỏ lẻ tính lại theo giá lẻ / bỏ lẻ giữ nguyên giá gói). Bác sĩ lưu lại chỉ định không làm dịch vụ đã bỏ sống lại. Có migration `20261103090000_service_decline` + `db:seed` (quyền và 5 lý do mặc định); áp migration bằng `pnpm run db:deploy`.

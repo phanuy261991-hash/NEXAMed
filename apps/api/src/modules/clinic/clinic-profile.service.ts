@@ -56,7 +56,7 @@ export class ClinicProfileService {
    */
   async getPrintHeader(tenantId: string, branchId: string | null): Promise<ClinicPrintHeader> {
     const profile = await this.getProfile(tenantId);
-    const base = { name: profile.name, taxCode: profile.taxCode, printLogoUrl: profile.printLogoUrl };
+    const base = { name: profile.name, taxCode: profile.taxCode, printLogoUrl: profile.printLogoUrl, logoUrl: profile.logoUrl };
     if (!branchId || !(await this.branchDirectory.isMultiBranch(tenantId))) {
       return { ...base, branchName: null, address: profile.address, phone: profile.phone };
     }
@@ -65,6 +65,25 @@ export class ClinicProfileService {
       return { ...base, branchName: null, address: profile.address, phone: profile.phone };
     }
     return { ...base, branchName: branch.name, address: branch.address?.trim() ? branch.address : profile.address, phone: branch.phone?.trim() ? branch.phone : profile.phone };
+  }
+
+  /**
+   * Logo mẫu in dạng `data:` URI để nhúng thẳng vào PDF (Chromium phía máy chủ không mang chữ ký/phiên để gọi `/api/v1/files/...`). `null` khi chưa có logo
+   * hoặc không đọc được file — thiếu logo không được làm hỏng bản xuất. Đọc kho lưu trữ NGOÀI transaction (port tự mở kết nối riêng).
+   */
+  async getPrintLogoDataUri(tenantId: string): Promise<string | null> {
+    const key = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => (await this.clinicProfileRepository.findByTenantId(tx, tenantId))?.printLogoKey ?? null);
+    if (!key) return null;
+    let bytes: Uint8Array;
+    try {
+      bytes = await this.storage.read(tenantId, key);
+    } catch {
+      // File logo mất/không đọc được: bản PDF vẫn xuất bình thường, chỉ không có logo.
+      return null;
+    }
+    const extension = sniffImageExtension(bytes);
+    if (!extension) return null;
+    return `data:${extension === 'jpg' ? 'image/jpeg' : 'image/png'};base64,${Buffer.from(bytes).toString('base64')}`;
   }
 
   async updateProfile(
@@ -212,7 +231,8 @@ export class ClinicProfileService {
   }
 
   private signFileUrl(tenantId: string, key: string, encryptionKey: string): string {
-    const exp = Math.floor(Date.now() / 1000) + LOGO_URL_TTL_SECONDS;
+    // Hạn tròn theo mốc 15 phút (sống 15–30 phút) để địa chỉ ảnh KHÔNG đổi giữa các lần tải lại trong cùng mốc — giao diện không tải lại ảnh mỗi lần làm mới dữ liệu.
+    const exp = (Math.floor(Date.now() / 1000 / LOGO_URL_TTL_SECONDS) + 2) * LOGO_URL_TTL_SECONDS;
     const token = signFileToken({ tenantId, key, exp }, encryptionKey);
     return `/api/v1/files/${token}`;
   }

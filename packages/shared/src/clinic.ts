@@ -636,6 +636,8 @@ export const clinicPrintHeaderSchema = z.object({
   /** Mã số thuế — chỉ hiện trên bản in khi bản mẫu bật "Mã số thuế" (docs/DECISIONS.md #211). */
   taxCode: z.string().nullable(),
   printLogoUrl: z.string().nullable(),
+  /** Logo chính — hiện ở đầu thanh menu cho MỌI vai trò (không có `clinic_config.read` nên không đọc được `GET /clinic-profile`). */
+  logoUrl: z.string().nullable(),
 });
 export type ClinicPrintHeader = z.infer<typeof clinicPrintHeaderSchema>;
 

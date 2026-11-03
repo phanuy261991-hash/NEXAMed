@@ -325,6 +325,50 @@ describe('HTTP e2e — /api/v1/clinic-profile', () => {
       currentVersion = res.body.data.version;
     });
 
+    it('print-header (lễ tân, không có clinic_config.read) trả cả logo chính lẫn logo in, đọc được thật', async () => {
+      const profile = await request(app.getHttpServer()).get('/api/v1/clinic-profile').set(authed(clinicAdminToken));
+      const res = await request(app.getHttpServer()).get('/api/v1/clinic-profile/print-header').set(authed(receptionistToken));
+
+      expect(res.status).toBe(200);
+      expect(fileKeyOf(res.body.data.logoUrl)).toBe(fileKeyOf(profile.body.data.logoUrl));
+      expect(fileKeyOf(res.body.data.printLogoUrl)).toBe(fileKeyOf(profile.body.data.printLogoUrl));
+      expect((await request(app.getHttpServer()).get(res.body.data.logoUrl)).status).toBe(200);
+      expect((await request(app.getHttpServer()).get(res.body.data.printLogoUrl)).status).toBe(200);
+    });
+
+    it('cô lập công ty: công ty B không thấy logo của A; B tải logo riêng thì hai bên giữ file khác nhau, nằm trong thư mục công ty của mình', async () => {
+      const aHeader = await request(app.getHttpServer()).get('/api/v1/clinic-profile/print-header').set(authed(receptionistToken));
+      const bBefore = await request(app.getHttpServer()).get('/api/v1/clinic-profile/print-header').set(authed(tenantBAdminToken));
+      expect(bBefore.status).toBe(200);
+      expect(bBefore.body.data.logoUrl).toBeNull();
+      expect(bBefore.body.data.printLogoUrl).toBeNull();
+
+      const bProfile = await request(app.getHttpServer()).get('/api/v1/clinic-profile').set(authed(tenantBAdminToken));
+      const up = await request(app.getHttpServer())
+        .post('/api/v1/clinic-profile/logo')
+        .set(authed(tenantBAdminToken))
+        .field('version', String(bProfile.body.data.version))
+        .attach('file', jpegBytes, 'logo-b.jpg');
+      expect(up.status, JSON.stringify(up.body)).toBe(200);
+
+      const bAfter = await request(app.getHttpServer()).get('/api/v1/clinic-profile/print-header').set(authed(tenantBAdminToken));
+      const aAfter = await request(app.getHttpServer()).get('/api/v1/clinic-profile/print-header').set(authed(receptionistToken));
+      const keyA = fileKeyOf(aAfter.body.data.logoUrl);
+      const keyB = fileKeyOf(bAfter.body.data.logoUrl);
+      expect(keyB).not.toBe(keyA);
+      expect(keyA).toContain(`tenant/${fixture.tenantA.id}/`);
+      expect(keyB).toContain(`tenant/${fixture.tenantB.id}/`);
+      expect(fileKeyOf(aAfter.body.data.logoUrl)).toBe(fileKeyOf(aHeader.body.data.logoUrl)); // logo của A không đổi khi B tải lên
+      expect(aAfter.body.data.printLogoUrl).toBeTruthy();
+      expect(bAfter.body.data.printLogoUrl).toBeNull(); // B chưa có logo mẫu in, không mượn của A
+    });
+
+    it('địa chỉ logo KHÔNG đổi giữa hai lần đọc liền nhau (giao diện không tải lại ảnh mỗi lần làm mới)', async () => {
+      const a = await request(app.getHttpServer()).get('/api/v1/clinic-profile/print-header').set(authed(receptionistToken));
+      const b = await request(app.getHttpServer()).get('/api/v1/clinic-profile/print-header').set(authed(receptionistToken));
+      expect(a.body.data.logoUrl).toBe(b.body.data.logoUrl);
+    });
+
     it('không có file đính kèm → 400', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/clinic-profile/logo')

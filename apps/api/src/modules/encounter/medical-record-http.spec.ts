@@ -490,6 +490,57 @@ describe('HTTP e2e — Hồ sơ bệnh án: Số lưu trữ + Tóm tắt/Tình t
       }
     });
 
+    it('logo mẫu in được nhúng vào PDF khi bản mẫu bật "Hiện logo"; tắt công tắc hoặc chưa có logo thì không có ảnh', async () => {
+      const { id } = await prepareEncounter();
+      await saveNote(id, baseNote());
+      await complete(id);
+      const exportHtml = async (reason: string): Promise<string> => {
+        const capture = captureHtml();
+        try {
+          expect((await http().post(exportUrl(id)).set(authed(doctorToken)).send({ reason })).status).toBe(200);
+          return capture.html();
+        } finally {
+          capture.restore();
+        }
+      };
+      const setLogoToggle = async (showLogo: boolean) => {
+        await privileged.printTemplate.deleteMany({ where: { tenantId: fixture.tenantA.id, documentType: 'MEDICAL_RECORD' } });
+        const config = buildDefaultPrintTemplateConfig('A4');
+        await privileged.printTemplate.create({
+          data: {
+            tenantId: fixture.tenantA.id,
+            documentType: 'MEDICAL_RECORD',
+            paperSize: 'A4',
+            name: 'Bệnh án A4',
+            isDefault: true,
+            configJson: { ...config, header: { ...config.header, showLogo } },
+            createdBy: SYSTEM_TEST_ACTOR,
+            updatedBy: SYSTEM_TEST_ACTOR,
+          },
+        });
+      };
+
+      try {
+        // Chưa tải logo: không có ảnh, bản xuất vẫn bình thường.
+        await privileged.tenant.update({ where: { id: fixture.tenantA.id }, data: { printLogoKey: null } });
+        expect(await exportHtml('Chưa có logo')).not.toContain('<img class="clinic-logo"');
+
+        const profile = await http().get('/api/v1/clinic-profile').set(authed(adminToken));
+        const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02, 0x03]);
+        const uploaded = await http().post('/api/v1/clinic-profile/print-logo').set(authed(adminToken)).field('version', String(profile.body.data.version)).attach('file', png, 'logo.png');
+        expect(uploaded.status, JSON.stringify(uploaded.body)).toBe(200);
+
+        await setLogoToggle(true);
+        expect(await exportHtml('Bật logo')).toContain('<img class="clinic-logo" src="data:image/png;base64,');
+
+        await setLogoToggle(false);
+        expect(await exportHtml('Tắt logo')).not.toContain('<img class="clinic-logo"');
+      } finally {
+        await privileged.printTemplate.deleteMany({ where: { tenantId: fixture.tenantA.id, documentType: 'MEDICAL_RECORD' } });
+        await privileged.tenant.update({ where: { id: fixture.tenantA.id }, data: { printLogoKey: null } });
+      }
+    });
+
     it('thiếu lý do → 400; lý do toàn khoảng trắng → 400', async () => {
       const { id } = await prepareEncounter();
       await saveNote(id, baseNote());

@@ -1,5 +1,6 @@
 import { useContext, type CSSProperties, type ReactNode } from 'react';
 import type { ClinicPrintHeader, PrintDocumentType, PrintPaperSize, PrintTemplateConfig, ResolvedPrintTemplate } from '@nexamed/shared';
+import { resolveApiUrl } from '../api/client';
 import { useClinicPrintHeaderQuery } from './clinic-print-header.queries';
 import { usePrintPaperChoice } from './print-paper-choice';
 import { PrintPreviewContext } from './print-preview.context';
@@ -26,7 +27,7 @@ export interface PrintRenderContext {
  */
 const PAPER_ZOOM: Record<PrintPaperSize, number> = { A4: 1, A5: 0.88, A5_LANDSCAPE: 0.88, K80: 0.82, LABEL_35X22: 1, LABEL_50X30: 1, LABEL_70X40: 1, LABEL_60X40: 1 };
 
-const EMPTY_HEADER: ClinicPrintHeader = { name: '', branchName: null, address: null, phone: null, taxCode: null, printLogoUrl: null };
+const EMPTY_HEADER: ClinicPrintHeader = { name: '', branchName: null, address: null, phone: null, taxCode: null, printLogoUrl: null, logoUrl: null };
 
 /** Dự phòng CHỈ trong khoảnh khắc trước khi `GET print-templates/resolved` nạp xong (app luôn nạp sớm ở `AppShell`). */
 function fallbackTemplate(documentType: PrintDocumentType): ResolvedPrintTemplate {
@@ -131,7 +132,7 @@ export function PrintDocument({
             {/* Đầu trang */}
             <div className={compact ? 'text-center' : 'flex items-center gap-4'}>
               {header.showLogo && clinicHeader.printLogoUrl && (
-                <img src={clinicHeader.printLogoUrl} alt="" className={compact ? 'mx-auto mb-1 h-12 w-12 object-contain' : 'h-16 w-16 flex-shrink-0 object-contain'} />
+                <img src={resolveApiUrl(clinicHeader.printLogoUrl)} alt="" className={compact ? 'mx-auto mb-1 h-12 w-auto max-w-full object-contain' : 'h-16 w-auto max-w-[45%] flex-shrink-0 object-contain'} />
               )}
               <div className="min-w-0">
                 {header.showClinicName && clinicHeader.name && <p className={`break-words font-bold uppercase ${compact ? 'text-sm' : 'text-lg'}`}>{clinicHeader.name}</p>}

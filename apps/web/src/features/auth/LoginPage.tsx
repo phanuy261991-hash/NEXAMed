@@ -182,13 +182,10 @@ export function LoginPage() {
       <div className="relative z-10 grid w-full max-w-[480px] grid-rows-[auto_1fr] bg-white [--login-w:1000px] [--login-h:600px] min-[1920px]:[--login-w:1120px] min-[1920px]:[--login-h:660px] min-[2560px]:[--login-w:1280px] min-[2560px]:[--login-h:720px] desktop:min-h-[var(--login-h)] desktop:max-w-[var(--login-w)] desktop:grid-cols-[minmax(340px,42%)_1fr] desktop:grid-rows-1 desktop:overflow-hidden desktop:rounded-xl desktop:shadow-xl">
         {/* Panel thương hiệu: điện thoại = header gọn (logo + tên + một dòng mô tả); màn lớn = logo, câu giới thiệu, hành trình 5 bước. */}
         <aside className="grid grid-cols-[auto_1fr] items-center gap-x-3 bg-brand-teal-tint px-6 py-[18px] desktop:flex desktop:flex-col desktop:items-stretch desktop:gap-8 desktop:px-10 desktop:py-9">
-          <div className="contents desktop:flex desktop:items-center desktop:gap-3">
-            <div className="row-span-2 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-sm font-semibold tracking-wide text-white desktop:row-span-1 desktop:h-9 desktop:w-9">
-              NX
-            </div>
-            <span className="self-end text-[17px] font-semibold leading-tight text-slate-900 desktop:self-auto desktop:text-lg">NEXAMed</span>
-          </div>
-          <p className="col-start-2 self-start text-[13px] font-medium leading-tight text-slate-700 desktop:hidden">Phần mềm quản lý phòng khám</p>
+          {/* Logo NEXAMed cố định (không đổi theo phòng khám): điện thoại dùng biểu tượng N+, màn lớn dùng logo ngang. */}
+          <img src="/brand/nexamed-icon.svg" alt="NEXAMed" className="h-10 w-10 flex-shrink-0 rounded-lg desktop:hidden" />
+          <img src="/brand/nexamed-logo-horizontal.svg" alt="NEXAMed" className="hidden h-9 w-auto self-start desktop:block" />
+          <p className="text-[13px] font-medium leading-tight text-slate-700 desktop:hidden">Phần mềm quản lý phòng khám</p>
 
           <p className="hidden max-w-[24ch] text-[22px] font-semibold leading-snug tracking-tight text-slate-900 desktop:block">
             Quản lý phòng khám từ lúc đặt lịch đến lúc thu tiền

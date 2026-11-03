@@ -21951,6 +21951,7 @@ export interface paths {
                                 phone: string | null;
                                 taxCode: string | null;
                                 printLogoUrl: string | null;
+                                logoUrl: string | null;
                             };
                             meta: Record<string, never>;
                         };

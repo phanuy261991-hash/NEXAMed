@@ -354,6 +354,29 @@ describe('renderEncounterMedicalRecordHtml — "Đã chỉ định nhưng không
   });
 });
 
+describe('renderEncounterMedicalRecordHtml — logo ở đầu bệnh án', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo=';
+  const withLogo = (logoDataUri: string | null | undefined) => base({ clinic: { name: 'Phòng khám Sao Mai', address: null, phone: null, logoDataUri } });
+
+  it('có logo + công tắc bật hoặc vắng → in ảnh ở đầu trang', () => {
+    expect(renderEncounterMedicalRecordHtml(withLogo(png), defaultOptions())).toContain(`<img class="clinic-logo" src="${png}"`);
+    const options: MedicalRecordPrintOptions = { ...defaultOptions(), header: { ...defaultOptions().header, showLogo: true } };
+    expect(renderEncounterMedicalRecordHtml(withLogo(png), options)).toContain('<img class="clinic-logo"');
+  });
+
+  it('công tắc tắt → không in ảnh', () => {
+    const options: MedicalRecordPrintOptions = { ...defaultOptions(), header: { ...defaultOptions().header, showLogo: false } };
+    expect(renderEncounterMedicalRecordHtml(withLogo(png), options)).not.toContain('<img class="clinic-logo"');
+  });
+
+  it('không có logo → không in ảnh; địa chỉ lạ (không phải data:image png/jpeg) bị bỏ, không chèn vào PDF', () => {
+    expect(renderEncounterMedicalRecordHtml(withLogo(null), defaultOptions())).not.toContain('<img class="clinic-logo"');
+    for (const bad of ['https://evil.example/x.png', 'data:text/html;base64,PGI+', 'data:image/png;base64,AA" onerror="x']) {
+      expect(renderEncounterMedicalRecordHtml(withLogo(bad), defaultOptions())).not.toContain('<img class="clinic-logo"');
+    }
+  });
+});
+
 function defaultOptions(): MedicalRecordPrintOptions {
   return {
     header: { showClinicName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
