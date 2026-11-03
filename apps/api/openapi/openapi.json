@@ -8837,6 +8837,14 @@
                         "deferredPaymentEnabled": {
                           "type": "boolean"
                         },
+                        "packageDeclineMode": {
+                          "type": "string",
+                          "enum": [
+                            "BLOCK",
+                            "REPRICE_SINGLE",
+                            "KEEP_PACKAGE_PRICE"
+                          ]
+                        },
                         "overdueWaitWarningMinutes": {
                           "type": "integer",
                           "minimum": 1,
@@ -8942,6 +8950,7 @@
                         "businessHours",
                         "slotDurationMinutes",
                         "deferredPaymentEnabled",
+                        "packageDeclineMode",
                         "overdueWaitWarningMinutes",
                         "noShowAutoEnabled",
                         "noShowThresholdMinutes",
@@ -16096,10 +16105,52 @@
                               "imageCount"
                             ]
                           }
+                        },
+                        "declined": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "orderItemId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "serviceName": {
+                                "type": "string"
+                              },
+                              "reasonLabel": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "declinedAt": {
+                                "type": "string"
+                              },
+                              "declinedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "orderItemId",
+                              "serviceName",
+                              "reasonLabel",
+                              "note",
+                              "declinedAt",
+                              "declinedByName"
+                            ]
+                          }
                         }
                       },
                       "required": [
-                        "results"
+                        "results",
+                        "declined"
                       ]
                     },
                     "meta": {
@@ -26044,6 +26095,1260 @@
           },
           "422": {
             "description": "Dòng không phải thuốc (INVOICE_LINE_NOT_REFUNDABLE), vượt số lượng còn hoàn được (INVOICE_REFUND_QUANTITY_EXCEEDED), hoặc tổng hoàn 0đ (INVOICE_REFUND_ZERO_AMOUNT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}/service-decline": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "#280 Xem trước hộp thoại \"Khách không làm dịch vụ\": dịch vụ liên quan tới phiếu + dòng nào bỏ được / vì sao không (quyền invoice.cancel_service)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "invoiceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "invoiceId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "invoiceStatus": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID",
+                            "REFUNDED",
+                            "CANCELLED"
+                          ]
+                        },
+                        "invoiceVersion": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "packageMode": {
+                          "type": "string",
+                          "enum": [
+                            "BLOCK",
+                            "REPRICE_SINGLE",
+                            "KEEP_PACKAGE_PRICE"
+                          ]
+                        },
+                        "action": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "REMOVE_LINE",
+                            "REFUND"
+                          ]
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "orderItemId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "ORDERED",
+                                  "CANCELLED",
+                                  "IN_PROGRESS",
+                                  "RESULTED",
+                                  "COMPLETED"
+                                ]
+                              },
+                              "packageId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "packageName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "amount": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "declinable": {
+                                "type": "boolean"
+                              },
+                              "blockedReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "WORK_STARTED",
+                                  "ALREADY_CANCELLED",
+                                  "ALREADY_REFUNDED",
+                                  "PACKAGE_ITEM_BLOCKED",
+                                  "PACKAGE_REPRICE_PAID",
+                                  "NOT_BILLED_HERE"
+                                ]
+                              },
+                              "blockedLabel": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "orderItemId",
+                              "name",
+                              "quantity",
+                              "status",
+                              "packageId",
+                              "packageName",
+                              "amount",
+                              "declinable",
+                              "blockedReason",
+                              "blockedLabel"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "invoiceId",
+                        "invoiceNo",
+                        "invoiceStatus",
+                        "invoiceVersion",
+                        "packageMode",
+                        "action",
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.cancel_service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Phiếu không thuộc lượt khám / chi nhánh này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "#280 Khách không làm dịch vụ: phiếu CHƯA THU → gỡ dòng + trừ tiền; phiếu ĐÃ THU → hoàn tiền theo phương thức đã thu (không nhập lại kho). Dòng chỉ định → CANCELLED kèm lý do (không xoá), quyền invoice.cancel_service",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "invoiceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "orderItemIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1
+                  },
+                  "reasonCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reasonNote": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "invoiceVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "invoiceId",
+                  "orderItemIds",
+                  "reasonCode",
+                  "invoiceVersion"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "invoiceNo": {
+                          "type": "string"
+                        },
+                        "invoiceType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "DRUG",
+                            "PARACLINICAL"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PAID",
+                            "CANCELLED",
+                            "REFUNDED"
+                          ]
+                        },
+                        "totalAmount": {
+                          "type": "integer"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "examTypeCode": {
+                                "type": "string"
+                              },
+                              "examTypeName": {
+                                "type": "string"
+                              },
+                              "priceTypeCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "unitPrice": {
+                                "type": "integer"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              },
+                              "lineTotal": {
+                                "type": "integer"
+                              },
+                              "discountType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "PERCENT",
+                                  "AMOUNT"
+                                ]
+                              },
+                              "discountValue": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "discountAmount": {
+                                "type": "integer"
+                              },
+                              "lineSource": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG",
+                                  "PARACLINICAL"
+                                ]
+                              },
+                              "stockIssueNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "clinicalOrderNo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "netAmount": {
+                                "type": "integer"
+                              },
+                              "refundedQuantity": {
+                                "type": "integer"
+                              },
+                              "refundedAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "examTypeCode",
+                              "examTypeName",
+                              "priceTypeCode",
+                              "unitCode",
+                              "unitPrice",
+                              "quantity",
+                              "lineTotal",
+                              "discountType",
+                              "discountValue",
+                              "discountAmount",
+                              "lineSource",
+                              "stockIssueNo",
+                              "clinicalOrderNo",
+                              "netAmount",
+                              "refundedQuantity",
+                              "refundedAmount"
+                            ]
+                          }
+                        },
+                        "discountMode": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TOTAL",
+                            "PER_LINE"
+                          ]
+                        },
+                        "discountType": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "PERCENT",
+                            "AMOUNT"
+                          ]
+                        },
+                        "discountValue": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "discountReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discountAmount": {
+                          "type": "integer"
+                        },
+                        "dueAmount": {
+                          "type": "integer"
+                        },
+                        "encounterNo": {
+                          "type": "string"
+                        },
+                        "checkedInAt": {
+                          "type": "string"
+                        },
+                        "patientId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "patientCode": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "departmentName": {
+                          "type": "string"
+                        },
+                        "encounterVersion": {
+                          "type": "integer"
+                        },
+                        "printedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pendingPaymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "pendingCashReceivedAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "payments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "encounterCancelled": {
+                          "type": "boolean"
+                        },
+                        "needsRefund": {
+                          "type": "boolean"
+                        },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "otherInvoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "invoiceId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "invoiceNo": {
+                                "type": "string"
+                              },
+                              "invoiceType": {
+                                "type": "string",
+                                "enum": [
+                                  "SERVICE",
+                                  "DRUG",
+                                  "PARACLINICAL"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "UNPAID",
+                                  "PAID",
+                                  "CANCELLED",
+                                  "REFUNDED"
+                                ]
+                              },
+                              "dueAmount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "invoiceId",
+                              "invoiceNo",
+                              "invoiceType",
+                              "status",
+                              "dueAmount"
+                            ]
+                          }
+                        },
+                        "refundedAmount": {
+                          "type": "integer"
+                        },
+                        "refunds": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "refundNo": {
+                                "type": "string"
+                              },
+                              "refundedAt": {
+                                "type": "string"
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "totalAmount": {
+                                "type": "integer"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "invoiceLineId": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "itemName": {
+                                      "type": "string"
+                                    },
+                                    "quantity": {
+                                      "type": "integer"
+                                    },
+                                    "amount": {
+                                      "type": "integer"
+                                    },
+                                    "restocked": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "invoiceLineId",
+                                    "itemName",
+                                    "quantity",
+                                    "amount",
+                                    "restocked"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "refundNo",
+                              "refundedAt",
+                              "reason",
+                              "totalAmount",
+                              "lines"
+                            ]
+                          }
+                        },
+                        "version": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "encounterId",
+                        "invoiceNo",
+                        "invoiceType",
+                        "status",
+                        "totalAmount",
+                        "lines",
+                        "discountMode",
+                        "discountType",
+                        "discountValue",
+                        "discountReason",
+                        "discountAmount",
+                        "dueAmount",
+                        "encounterNo",
+                        "checkedInAt",
+                        "patientId",
+                        "patientCode",
+                        "fullName",
+                        "departmentName",
+                        "encounterVersion",
+                        "printedAt",
+                        "pendingPaymentMethod",
+                        "pendingCashReceivedAmount",
+                        "paymentMethod",
+                        "paidAt",
+                        "payments",
+                        "encounterCancelled",
+                        "needsRefund",
+                        "refundedAt",
+                        "refundReason",
+                        "otherInvoices",
+                        "refundedAmount",
+                        "refunds",
+                        "version"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu lý do / không chọn dòng nào / dịch vụ không thuộc phiếu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.cancel_service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Phiếu không thuộc lượt khám / chi nhánh này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "invoiceVersion không khớp (CONCURRENT_MODIFICATION), dòng không bỏ được (SERVICE_DECLINE_BLOCKED) hoặc phiếu đã đóng (INVOICE_CLOSED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Lý do không có trong danh mục hoặc đã bị ẩn (SERVICE_DECLINE_REASON_INVALID)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{encounterId}/service-decline/quote": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "#280 Báo giá: số tiền giảm khỏi phiếu / hoàn lại khách / khách phải trả thêm — chỉ đọc, cùng nguồn tính với xác nhận (web không tự cộng trừ)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "invoiceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "orderItemIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "invoiceId",
+                  "orderItemIds"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "action": {
+                          "type": "string",
+                          "enum": [
+                            "REMOVE_LINE",
+                            "REFUND",
+                            "NO_MONEY_CHANGE"
+                          ]
+                        },
+                        "itemCount": {
+                          "type": "integer"
+                        },
+                        "amount": {
+                          "type": "integer"
+                        },
+                        "surcharge": {
+                          "type": "integer"
+                        },
+                        "newDueAmount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "refundBreakdown": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string"
+                              },
+                              "amount": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "action",
+                        "itemCount",
+                        "amount",
+                        "surcharge",
+                        "newDueAmount",
+                        "refundBreakdown"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dịch vụ không thuộc phiếu này / không chọn dòng nào",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền invoice.cancel_service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Phiếu không thuộc lượt khám / chi nhánh này",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Có dòng không bỏ được (SERVICE_DECLINE_BLOCKED) hoặc phiếu đã đóng (INVOICE_CLOSED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -48404,6 +49709,14 @@
                         "deferredPaymentEnabled": {
                           "type": "boolean"
                         },
+                        "packageDeclineMode": {
+                          "type": "string",
+                          "enum": [
+                            "BLOCK",
+                            "REPRICE_SINGLE",
+                            "KEEP_PACKAGE_PRICE"
+                          ]
+                        },
                         "overdueWaitWarningMinutes": {
                           "type": "integer",
                           "minimum": 1,
@@ -48509,6 +49822,7 @@
                         "businessHours",
                         "slotDurationMinutes",
                         "deferredPaymentEnabled",
+                        "packageDeclineMode",
                         "overdueWaitWarningMinutes",
                         "noShowAutoEnabled",
                         "noShowThresholdMinutes",
@@ -48796,6 +50110,14 @@
                   "deferredPaymentEnabled": {
                     "type": "boolean"
                   },
+                  "packageDeclineMode": {
+                    "type": "string",
+                    "enum": [
+                      "BLOCK",
+                      "REPRICE_SINGLE",
+                      "KEEP_PACKAGE_PRICE"
+                    ]
+                  },
                   "overdueWaitWarningMinutes": {
                     "type": "integer",
                     "minimum": 1,
@@ -49077,6 +50399,14 @@
                         "deferredPaymentEnabled": {
                           "type": "boolean"
                         },
+                        "packageDeclineMode": {
+                          "type": "string",
+                          "enum": [
+                            "BLOCK",
+                            "REPRICE_SINGLE",
+                            "KEEP_PACKAGE_PRICE"
+                          ]
+                        },
                         "overdueWaitWarningMinutes": {
                           "type": "integer",
                           "minimum": 1,
@@ -49182,6 +50512,7 @@
                         "businessHours",
                         "slotDurationMinutes",
                         "deferredPaymentEnabled",
+                        "packageDeclineMode",
                         "overdueWaitWarningMinutes",
                         "noShowAutoEnabled",
                         "noShowThresholdMinutes",
@@ -55786,7 +57117,8 @@
                 "TECH_SERVICE_CATEGORY",
                 "SPECIMEN_TYPE",
                 "LAB_RESULT_UNIT",
-                "TREATMENT_FORM"
+                "TREATMENT_FORM",
+                "SERVICE_DECLINE_REASON"
               ]
             },
             "required": true,
@@ -55858,7 +57190,8 @@
                                   "TECH_SERVICE_CATEGORY",
                                   "SPECIMEN_TYPE",
                                   "LAB_RESULT_UNIT",
-                                  "TREATMENT_FORM"
+                                  "TREATMENT_FORM",
+                                  "SERVICE_DECLINE_REASON"
                                 ]
                               },
                               "code": {
@@ -56185,7 +57518,8 @@
                       "TECH_SERVICE_CATEGORY",
                       "SPECIMEN_TYPE",
                       "LAB_RESULT_UNIT",
-                      "TREATMENT_FORM"
+                      "TREATMENT_FORM",
+                      "SERVICE_DECLINE_REASON"
                     ]
                   },
                   "code": {
@@ -56347,7 +57681,8 @@
                             "TECH_SERVICE_CATEGORY",
                             "SPECIMEN_TYPE",
                             "LAB_RESULT_UNIT",
-                            "TREATMENT_FORM"
+                            "TREATMENT_FORM",
+                            "SERVICE_DECLINE_REASON"
                           ]
                         },
                         "code": {
@@ -56814,7 +58149,8 @@
                             "TECH_SERVICE_CATEGORY",
                             "SPECIMEN_TYPE",
                             "LAB_RESULT_UNIT",
-                            "TREATMENT_FORM"
+                            "TREATMENT_FORM",
+                            "SERVICE_DECLINE_REASON"
                           ]
                         },
                         "code": {
@@ -57193,7 +58529,8 @@
                             "TECH_SERVICE_CATEGORY",
                             "SPECIMEN_TYPE",
                             "LAB_RESULT_UNIT",
-                            "TREATMENT_FORM"
+                            "TREATMENT_FORM",
+                            "SERVICE_DECLINE_REASON"
                           ]
                         },
                         "code": {
@@ -57574,7 +58911,8 @@
                             "TECH_SERVICE_CATEGORY",
                             "SPECIMEN_TYPE",
                             "LAB_RESULT_UNIT",
-                            "TREATMENT_FORM"
+                            "TREATMENT_FORM",
+                            "SERVICE_DECLINE_REASON"
                           ]
                         },
                         "code": {
@@ -63719,6 +65057,9 @@
                                       },
                                       "includePrescriptions": {
                                         "type": "boolean"
+                                      },
+                                      "includeDeclined": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "required": [
@@ -64165,6 +65506,9 @@
                                         },
                                         "includePrescriptions": {
                                           "type": "boolean"
+                                        },
+                                        "includeDeclined": {
+                                          "type": "boolean"
                                         }
                                       },
                                       "required": [
@@ -64448,6 +65792,9 @@
                                           "type": "boolean"
                                         },
                                         "includePrescriptions": {
+                                          "type": "boolean"
+                                        },
+                                        "includeDeclined": {
                                           "type": "boolean"
                                         }
                                       },
@@ -64733,6 +66080,9 @@
                                         },
                                         "includePrescriptions": {
                                           "type": "boolean"
+                                        },
+                                        "includeDeclined": {
+                                          "type": "boolean"
                                         }
                                       },
                                       "required": [
@@ -65016,6 +66366,9 @@
                                           "type": "boolean"
                                         },
                                         "includePrescriptions": {
+                                          "type": "boolean"
+                                        },
+                                        "includeDeclined": {
                                           "type": "boolean"
                                         }
                                       },
@@ -65301,6 +66654,9 @@
                                         },
                                         "includePrescriptions": {
                                           "type": "boolean"
+                                        },
+                                        "includeDeclined": {
+                                          "type": "boolean"
                                         }
                                       },
                                       "required": [
@@ -65584,6 +66940,9 @@
                                           "type": "boolean"
                                         },
                                         "includePrescriptions": {
+                                          "type": "boolean"
+                                        },
+                                        "includeDeclined": {
                                           "type": "boolean"
                                         }
                                       },
@@ -65869,6 +67228,9 @@
                                         },
                                         "includePrescriptions": {
                                           "type": "boolean"
+                                        },
+                                        "includeDeclined": {
+                                          "type": "boolean"
                                         }
                                       },
                                       "required": [
@@ -66152,6 +67514,9 @@
                                           "type": "boolean"
                                         },
                                         "includePrescriptions": {
+                                          "type": "boolean"
+                                        },
+                                        "includeDeclined": {
                                           "type": "boolean"
                                         }
                                       },
@@ -66584,6 +67949,9 @@
                           },
                           "includePrescriptions": {
                             "type": "boolean"
+                          },
+                          "includeDeclined": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -66941,6 +68309,9 @@
                                   "type": "boolean"
                                 },
                                 "includePrescriptions": {
+                                  "type": "boolean"
+                                },
+                                "includeDeclined": {
                                   "type": "boolean"
                                 }
                               },
@@ -67485,6 +68856,9 @@
                                       },
                                       "includePrescriptions": {
                                         "type": "boolean"
+                                      },
+                                      "includeDeclined": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "required": [
@@ -67801,6 +69175,9 @@
                                               "type": "boolean"
                                             },
                                             "includePrescriptions": {
+                                              "type": "boolean"
+                                            },
+                                            "includeDeclined": {
                                               "type": "boolean"
                                             }
                                           },
@@ -68416,6 +69793,9 @@
                           },
                           "includePrescriptions": {
                             "type": "boolean"
+                          },
+                          "includeDeclined": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -68778,6 +70158,9 @@
                                   "type": "boolean"
                                 },
                                 "includePrescriptions": {
+                                  "type": "boolean"
+                                },
+                                "includeDeclined": {
                                   "type": "boolean"
                                 }
                               },
@@ -69383,7 +70766,8 @@
                                   "TECH_SERVICE_CATEGORY",
                                   "SPECIMEN_TYPE",
                                   "LAB_RESULT_UNIT",
-                                  "TREATMENT_FORM"
+                                  "TREATMENT_FORM",
+                                  "SERVICE_DECLINE_REASON"
                                 ]
                               },
                               "name": {
@@ -108563,6 +109947,36 @@
                                   "amendmentPending": {
                                     "type": "boolean"
                                   },
+                                  "declineReasonCode": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "declineReasonLabel": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "declineNote": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "declinedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "declinedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
                                   "editable": {
                                     "type": "boolean"
                                   }
@@ -108585,6 +109999,11 @@
                                   "status",
                                   "resultReturnedAt",
                                   "amendmentPending",
+                                  "declineReasonCode",
+                                  "declineReasonLabel",
+                                  "declineNote",
+                                  "declinedAt",
+                                  "declinedByName",
                                   "editable"
                                 ]
                               }
@@ -109038,6 +110457,36 @@
                                   "amendmentPending": {
                                     "type": "boolean"
                                   },
+                                  "declineReasonCode": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "declineReasonLabel": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "declineNote": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "declinedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "declinedByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
                                   "editable": {
                                     "type": "boolean"
                                   }
@@ -109060,6 +110509,11 @@
                                   "status",
                                   "resultReturnedAt",
                                   "amendmentPending",
+                                  "declineReasonCode",
+                                  "declineReasonLabel",
+                                  "declineNote",
+                                  "declinedAt",
+                                  "declinedByName",
                                   "editable"
                                 ]
                               }

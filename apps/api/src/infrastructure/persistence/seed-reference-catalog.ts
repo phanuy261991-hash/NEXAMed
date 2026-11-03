@@ -89,6 +89,14 @@ export async function seedSystemReferenceDataForTenant(client: SeedClient, tenan
     { ...base, category: 'INCOME_EXPENSE_TYPE', code: 'SUPPLIER_DEBT_PAYMENT', name: 'Thanh toán công nợ nhà cung cấp', sortOrder: 0 },
     { ...base, category: 'INCOME_EXPENSE_TYPE', code: 'SUPPLIER_REFUND', name: 'Nhà cung cấp hoàn tiền', sortOrder: 0 },
     ...ICD10_ABBREVIATION_SEED_ITEMS.map((item, index) => ({ ...base, category: 'ICD10_ABBREVIATION' as const, code: item.code, name: item.name, sortOrder: index })),
+    // "Khách không làm dịch vụ" (docs/DECISIONS.md #280) — mã CỐ ĐỊNH (không tự sinh như UNIT) vì mã
+    // được lưu lên `clinical_order_item.decline_reason_code` và in ra bệnh án; phòng khám sửa TÊN
+    // hoặc thêm lý do mới được, nhưng 5 mã này phải ổn định giữa các bản cài.
+    { ...base, category: 'SERVICE_DECLINE_REASON', code: 'PRICE_HIGH', name: 'Khách thấy giá cao', sortOrder: 0 },
+    { ...base, category: 'SERVICE_DECLINE_REASON', code: 'LATER', name: 'Hẹn làm hôm khác', sortOrder: 1 },
+    { ...base, category: 'SERVICE_DECLINE_REASON', code: 'DONE_ELSEWHERE', name: 'Đã làm ở nơi khác', sortOrder: 2 },
+    { ...base, category: 'SERVICE_DECLINE_REASON', code: 'REFUSED', name: 'Khách không đồng ý làm', sortOrder: 3 },
+    { ...base, category: 'SERVICE_DECLINE_REASON', code: 'DOCTOR_CHANGED', name: 'Bác sĩ đổi chỉ định', sortOrder: 4 },
   ]);
 }
 

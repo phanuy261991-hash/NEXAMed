@@ -40,6 +40,29 @@ function SubLabel({ children }: { children: ReactNode }) {
   return <div className="mb-1 text-[12.5px] font-semibold text-slate-700">{children}</div>;
 }
 
+/** "Đã chỉ định nhưng không thực hiện" (#280): khối KHÔNG đánh số dưới phần cận lâm sàng — mẫu MS 15/BV-01 đánh số theo quy định nên không thêm mục số mới. Không có dòng nào thì không hiện gì. */
+function DeclinedBlock({ items }: { items: MedicalRecordView['declined'] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-2.5">
+      <SubLabel>Đã chỉ định nhưng không thực hiện</SubLabel>
+      <ul className="flex flex-col gap-1 text-[13.5px] text-slate-900">
+        {items.map((d) => (
+          <li key={d.orderItemId}>
+            <span className="font-semibold">{d.serviceName}</span>
+            {` — ${d.reasonLabel}${d.note ? ` (${d.note})` : ''}`}
+            <span className="text-slate-500">
+              {' · '}
+              {d.declinedByName ? `${d.declinedByName}, ` : ''}
+              {formatDateTimeVn(d.declinedAt)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function CodeChip({ code, name }: { code: string; name: string }) {
   return (
     <span className="rounded-[5px] border border-slate-300 bg-slate-50 px-2 py-0.5 text-xs text-slate-900">
@@ -275,6 +298,7 @@ export function MedicalRecordSheet({
                   ))}
                 </div>
               ))}
+            {paraclinical.state === 'ready' && <DeclinedBlock items={view.declined} />}
           </div>
           <div>
             <SubLabel>4. Chẩn đoán ban đầu</SubLabel>
@@ -328,6 +352,7 @@ export function MedicalRecordSheet({
             ))}
           </ul>
         )}
+        {paraclinical.state === 'ready' && <DeclinedBlock items={view.declined} />}
       </RecordSection>
 
       <RecordSection numeral="3" tone="teal" title="Chẩn đoán ra viện">

@@ -37,6 +37,19 @@ function dateOnly(d: Date): string {
 }
 
 /**
+ * Gói có dịch vụ con nhưng TẤT CẢ đều do khách từ chối ở quầy (#280) — không còn được thực hiện, không còn tính tiền. Chỉ tính dòng có `declinedAt`: dòng huỷ do huỷ lượt khám (#219) vẫn
+ * giữ nguyên cách hiển thị và tính tạm tính cũ.
+ */
+function deadPackageIdsOf(order: ClinicalOrderWithLines): Set<string> {
+  const dead = new Set<string>();
+  for (const p of order.packages) {
+    const children = order.items.filter((i) => i.clinicalOrderPackageId === p.id);
+    if (children.length > 0 && children.every((i) => i.status === 'CANCELLED' && i.declinedAt !== null)) dead.add(p.id);
+  }
+  return dead;
+}
+
+/**
  * Chỉ định cận lâm sàng của bác sĩ (Cận lâm sàng GĐ3, docs/DECISIONS.md #212). Mỗi lượt khám 1 phiếu; "Lưu chỉ định" = thay TOÀN BỘ danh sách mong muốn,
  * server so khớp theo `id`: dòng mới → tạo (+ dòng hoá đơn nếu làm tại phòng khám); dòng/gói bị bỏ → gỡ (chỉ khi tiền CHƯA thu); đổi số lượng/đường làm =
  * gỡ cũ + tạo mới. Tiền ghi vào hoá đơn đúng khuôn tiền thuốc (#163): cộng vào hoá đơn khám đang chưa thu, không thì hoá đơn `PARACLINICAL` riêng.
@@ -82,13 +95,18 @@ export class ClinicalOrderService {
       const today = getVietnamDateString();
 
       // ---- 1) so khớp dòng lẻ ----
-      const standalone = order.items.filter((i) => i.clinicalOrderPackageId === null);
+      // Dòng ĐÃ HUỶ (khách không làm ở quầy #280, hoặc huỷ lượt khám #219) là lịch sử, KHÔNG thuộc danh sách bác sĩ đang chỉnh: bỏ ra khỏi so khớp, nếu không dòng vắng mặt trong danh sách
+      // gửi lên sẽ bị coi là "bị gỡ" và ném ClinicalOrderItemLockedError — bác sĩ không lưu được chỉ định nữa sau khi thu ngân bỏ một dịch vụ.
+      const standalone = order.items.filter((i) => i.clinicalOrderPackageId === null && i.status !== 'CANCELLED');
       const standaloneById = new Map(standalone.map((i) => [i.id, i]));
       const kept = new Set<string>();
       const toRemove: OrderItemRow[] = [];
       const toAdd: ClinicalOrderItemInput[] = [];
       const noteUpdates: { id: string; note: string | null }[] = [];
+      // Client (kể cả bản cũ) có thể gửi lại dòng ĐÃ HUỶ cùng danh sách: bỏ qua lặng lẽ — dòng đóng băng không đổi được, báo 400 chỉ làm bác sĩ không lưu được chỉ định.
+      const frozenIds = new Set(order.items.filter((i) => i.status === 'CANCELLED').map((i) => i.id));
       for (const input of dto.items) {
+        if (input.id !== undefined && frozenIds.has(input.id)) continue;
         if (input.id === undefined) {
           toAdd.push(input);
           continue;
@@ -122,9 +140,11 @@ export class ClinicalOrderService {
         if (!packageById.has(input.id) || keptPackages.has(input.id)) throw new BadRequestException('Gói chỉ định không tồn tại hoặc bị trùng trong danh sách.');
         keptPackages.add(input.id);
       }
-      const removedPackages = order.packages.filter((p) => !keptPackages.has(p.id));
+      // Gói mà MỌI dịch vụ con đã huỷ (khách bỏ hết ở quầy, #280) là lịch sử, không còn ý nghĩa tiền: không coi là "bị gỡ" (sẽ ném ClinicalOrderItemLockedError vì phiếu đã thu).
+      const deadPackageIds = deadPackageIdsOf(order);
+      const removedPackages = order.packages.filter((p) => !keptPackages.has(p.id) && !deadPackageIds.has(p.id));
       const removedPackageIds = new Set(removedPackages.map((p) => p.id));
-      const removedPackageChildren = order.items.filter((i) => i.clinicalOrderPackageId !== null && removedPackageIds.has(i.clinicalOrderPackageId));
+      const removedPackageChildren = order.items.filter((i) => i.clinicalOrderPackageId !== null && i.status !== 'CANCELLED' && removedPackageIds.has(i.clinicalOrderPackageId));
 
       // ---- 3) gỡ: chỉ khi tiền CHƯA thu và dịch vụ chưa thực hiện ----
       await this.removeOrderParts(tx, tenantId, actorId, toRemove, removedPackages, removedPackageChildren);
@@ -385,6 +405,14 @@ export class ClinicalOrderService {
     const invoiceOfPackage = new Map(lines.filter((l) => l.sourceOrderPackageId !== null).map((l) => [l.sourceOrderPackageId as string, l.invoice]));
     const unpaid = (inv: Invoice | undefined): boolean => inv === undefined || inv.status === 'UNPAID';
 
+    const declined = order.items.filter((i) => i.declinedAt !== null);
+    const declineNames = await this.repository.findDeclineNames(
+      tx,
+      tenantId,
+      [...new Set(declined.map((i) => i.declineReasonCode).filter((v): v is string => v !== null))],
+      [...new Set(declined.map((i) => i.declinedBy).filter((v): v is string => v !== null))],
+    );
+
     const items: ClinicalOrderItemView[] = order.items.map((i) => ({
       id: i.id,
       itemKind: i.itemKind,
@@ -403,6 +431,12 @@ export class ClinicalOrderService {
       status: i.status,
       resultReturnedAt: i.results[0]?.signedAt?.toISOString() ?? null,
       amendmentPending: i.results[0] !== undefined && i.results[0].supersedesId !== null && i.results[0].signedAt === null,
+      declineReasonCode: i.declineReasonCode,
+      // Mã không còn trong danh mục (đã ẩn/đổi) → hiện chính mã, không để trống làm mất lý do.
+      declineReasonLabel: i.declineReasonCode === null ? null : (declineNames.reasons.get(i.declineReasonCode) ?? i.declineReasonCode),
+      declineNote: i.declineNote,
+      declinedAt: i.declinedAt?.toISOString() ?? null,
+      declinedByName: i.declinedBy === null ? null : (declineNames.users.get(i.declinedBy) ?? null),
       editable: i.status === 'ORDERED' && (i.clinicalOrderPackageId === null ? unpaid(invoiceOfItem.get(i.id)) : unpaid(invoiceOfPackage.get(i.clinicalOrderPackageId))),
     }));
     const packages: ClinicalOrderPackageView[] = order.packages.map((p) => ({
@@ -414,7 +448,8 @@ export class ClinicalOrderService {
       editable: unpaid(invoiceOfPackage.get(p.id)),
     }));
     // Dòng đã huỷ (huỷ lượt khám, #219) không còn tính vào tạm tính.
-    const inHouseTotal = items.reduce((sum, i) => sum + (i.status === 'CANCELLED' ? 0 : (i.lineTotal ?? 0)), 0) + packages.reduce((sum, p) => sum + p.unitPrice, 0);
+    const deadPackageIds = deadPackageIdsOf(order);
+    const inHouseTotal = items.reduce((sum, i) => sum + (i.status === 'CANCELLED' ? 0 : (i.lineTotal ?? 0)), 0) + packages.reduce((sum, p) => sum + (deadPackageIds.has(p.id) ? 0 : p.unitPrice), 0);
 
     const invoiceMap = new Map<string, Invoice>();
     for (const l of lines) invoiceMap.set(l.invoice.id, l.invoice);

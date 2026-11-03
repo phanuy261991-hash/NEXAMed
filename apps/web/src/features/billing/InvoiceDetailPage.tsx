@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowCounterClockwise, ArrowLeft, Bank, CheckCircle, CreditCard, Money, Receipt, Wallet, Warning, XCircle } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ArrowLeft, Bank, CheckCircle, CreditCard, MinusCircle, Money, Receipt, Wallet, Warning, XCircle } from '@phosphor-icons/react';
 import type { CombinedInvoicePrintResponse, DiscountType, PaymentMethod } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -29,6 +29,7 @@ import { useInsuranceEnabledQuery } from '../clinic/clinic.queries';
 import { useInvoiceInsuranceQuery } from '../insurance-card/insurance-card.queries';
 import { InvoicePrintView } from './InvoicePrintView';
 import { RefundDrugItemsDialog } from './RefundDrugItemsDialog';
+import { ServiceDeclineDialog } from './ServiceDeclineDialog';
 import {
   useApplyInvoiceDiscountMutation,
   useBillingInvoiceQuery,
@@ -95,6 +96,8 @@ export function InvoiceDetailPage() {
   const canRefund = useHasPermission('invoice', 'refund');
   // #203 — quyền RIÊNG hoàn tiền từng dòng thuốc (mặc định lễ tân + quản trị), khác `invoice.refund` ở trên.
   const canRefundDrug = useHasPermission('invoice', 'refund_drug');
+  // #280 — quyền HẸP của quầy (lễ tân + quản lý): bỏ dịch vụ kỹ thuật khách không làm. KHÁC `clinical_order.create` (thêm chỉ định — việc lâm sàng của bác sĩ).
+  const canDeclineService = useHasPermission('invoice', 'cancel_service');
   const canPrint = useHasPermission('invoice', 'print');
   // Phiếu thu tổng hợp — dữ liệu bản in gộp; có giá trị thì `InvoiceCombinedPrintView` được render
   // THAY `InvoicePrintView` (CSS in chỉ chịu 1 `.print-area` tại 1 thời điểm), in xong tự xoá.
@@ -117,8 +120,9 @@ export function InvoiceDetailPage() {
   const shiftFeatureUnavailable = currentShiftQuery.isError && currentShiftQuery.error instanceof ApiError && currentShiftQuery.error.code === 'PERMISSION_DENIED';
   const [openShiftDialogVisible, setOpenShiftDialogVisible] = useState(false);
   // Hành động đang chờ mở ca xong: thu tiền (mặc định, hành vi cũ) hoặc mở dialog hoàn tiền thuốc (#203).
-  const [afterOpenShift, setAfterOpenShift] = useState<'pay' | 'refund-drug'>('pay');
+  const [afterOpenShift, setAfterOpenShift] = useState<'pay' | 'refund-drug' | 'decline'>('pay');
   const [refundDrugOpen, setRefundDrugOpen] = useState(false);
+  const [declineOpen, setDeclineOpen] = useState(false);
   const invoice = invoiceQuery.data ?? null;
   const paymentMethods = useMemo(() => paymentMethodQuery.data?.items.filter((i) => i.isActive) ?? [], [paymentMethodQuery.data]);
   const paymentMethodName = (code: PaymentMethod | null) => paymentMethods.find((i) => i.code === code)?.name ?? code ?? '—';
@@ -327,6 +331,19 @@ export function InvoiceDetailPage() {
     setRefundDrugOpen(true);
   }
 
+  /**
+   * #280 — phiếu ĐÃ THU thì bỏ dịch vụ = hoàn tiền (có thể chi tiền mặt ra khỏi két) nên cùng cổng "phải có ca đang mở" như hoàn tiền thuốc; phiếu CHƯA THU chỉ gỡ dòng,
+   * không có tiền nào di chuyển nên mở thẳng.
+   */
+  function handleOpenDecline() {
+    if (invoice?.status === 'PAID' && shiftRequired && !shiftFeatureUnavailable && !openShift) {
+      setAfterOpenShift('decline');
+      setOpenShiftDialogVisible(true);
+      return;
+    }
+    setDeclineOpen(true);
+  }
+
   async function handleSaveDraft() {
     if (!invoice) return;
     setError(null);
@@ -511,6 +528,13 @@ export function InvoiceDetailPage() {
                   <PrintButton documentType="INVOICE_COMBINED" variant="primary" onPrint={() => void handlePrintCombined()} loading={printCombinedMutation.isPending}>
                     In gộp {combinedInvoiceCount} phiếu
                   </PrintButton>
+                )}
+                {/* #280 — chỉ khi phiếu còn mở (chưa thu / đã thu), có dòng dịch vụ cận lâm sàng bác sĩ chỉ định, và vai trò có quyền hẹp `invoice.cancel_service`. */}
+                {canDeclineService && !invoice.encounterCancelled && (invoice.status === 'UNPAID' || invoice.status === 'PAID') && invoice.lines.some((l) => l.lineSource === 'PARACLINICAL') && (
+                  <Button type="button" variant="dangerGhost" className="px-2.5 py-1 text-xs" onClick={handleOpenDecline}>
+                    <MinusCircle size={13} weight="bold" aria-hidden="true" />
+                    Khách không làm dịch vụ
+                  </Button>
                 )}
                 {!invoice.encounterCancelled && (
                   <Button type="button" variant="danger" className="px-2.5 py-1 text-xs" onClick={() => setCancelOpen(true)}>
@@ -1129,6 +1153,8 @@ export function InvoiceDetailPage() {
             setOpenShiftDialogVisible(false);
             if (afterOpenShift === 'refund-drug') {
               setRefundDrugOpen(true);
+            } else if (afterOpenShift === 'decline') {
+              setDeclineOpen(true);
             } else {
               void handlePay();
             }
@@ -1137,6 +1163,7 @@ export function InvoiceDetailPage() {
       )}
 
       {refundDrugOpen && invoice && <RefundDrugItemsDialog invoice={invoice} onClose={() => setRefundDrugOpen(false)} />}
+      {declineOpen && invoice && <ServiceDeclineDialog invoice={invoice} onClose={() => setDeclineOpen(false)} />}
     </div>
   );
 }

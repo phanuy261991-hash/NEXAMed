@@ -582,8 +582,9 @@ export class EncounterService {
       if (encounter.branchId !== branchId && encounter.status !== 'COMPLETED') throw new NotFoundException();
     });
     const byEncounter = await this.paraclinicalResultsReader.listSignedForEncounters(tenantId, [id]);
+    const declinedByEncounter = await this.paraclinicalResultsReader.listDeclinedForEncounters(tenantId, [id]);
     const results = (byEncounter[id] ?? []).flatMap((r) => (r.itemId ? [{ ...r, itemId: r.itemId }] : []));
-    return { results };
+    return { results, declined: declinedByEncounter[id] ?? [] };
   }
 
   async getConsultationDetail(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string): Promise<ConsultationDetailResponse> {
@@ -875,6 +876,11 @@ export class EncounterService {
       tenantId,
       encounterRows.map((e) => e.id),
     );
+    // Dịch vụ khách không làm (#280) — cùng cổng, cũng tự mở transaction riêng nên đọc ở đây (ngoài transaction chính).
+    const declinedByEncounter = await this.paraclinicalResultsReader.listDeclinedForEncounters(
+      tenantId,
+      encounterRows.map((e) => e.id),
+    );
 
     const encounters: MedicalRecordEncounterEntry[] = encounterRows.map((e) => {
       const noteRows = notesByEncounter.get(e.id) ?? [];
@@ -892,6 +898,7 @@ export class EncounterService {
         clinicalNoteSections: CLINICAL_NOTE_SECTION_LABELS.map(([key, label]) => ({ label, content: noteResponse[key]?.content ?? '' })),
         treatment: this.toMedicalRecordTreatment(noteResponse),
         paraclinicalResults: paraclinicalByEncounter[e.id] ?? [],
+        declinedOrderItems: declinedByEncounter[e.id] ?? [],
         prescriptionItems: this.toMedicalRecordRxItems(prescriptionRow, unitNames),
         prescriptionDocuments: (prescriptionRow?.documents ?? []).map((d) => ({ kind: d.kind, nationalCode: d.nationalCode })),
         insurance: this.toMedicalRecordInsurance(e.insuranceSnapshot, insuranceEnabled),
@@ -1024,11 +1031,12 @@ export class EncounterService {
     });
 
     const insuranceEnabled = await this.clinicConfigReader.getInsuranceEnabled(tenantId);
-    const [patient, clinicHeader, template, paraclinicalByEncounter] = await Promise.all([
+    const [patient, clinicHeader, template, paraclinicalByEncounter, declinedByEncounter] = await Promise.all([
       this.patientService.getPatient(tenantId, head.patientId),
       this.clinicProfileService.getPrintHeader(tenantId, head.branchId),
       this.printTemplateService.resolveOne(tenantId, 'MEDICAL_RECORD'),
       this.paraclinicalResultsReader.listSignedForEncounters(tenantId, [encounterId]),
+      this.paraclinicalResultsReader.listDeclinedForEncounters(tenantId, [encounterId]),
     ]);
     const [doctorNames, departmentNames, branchNames, multiBranch] = await Promise.all([
       head.doctorId ? this.doctorDirectory.getUserFullNames(tenantId, [head.doctorId]) : Promise.resolve(new Map<string, string>()),
@@ -1112,6 +1120,7 @@ export class EncounterService {
       },
       treatment: this.toMedicalRecordTreatment(noteResponse),
       paraclinicalResults: paraclinicalByEncounter[encounterId] ?? [],
+      declinedOrderItems: declinedByEncounter[encounterId] ?? [],
       prescriptionItems: this.toMedicalRecordRxItems(signedPrescription, unitNames),
       prescriptionDocuments: (signedPrescription?.documents ?? []).map((d) => ({ kind: d.kind, nationalCode: d.nationalCode })),
       generatedAt: new Date().toISOString(),

@@ -287,6 +287,12 @@ describe('summarizeSignatures — mốc ký gốc và vết đính chính', () =
 describe('buildMedicalRecordView', () => {
   const base = { item, detail: detail(), paraclinical: [cls()], patient: PATIENT, showBranch: false };
 
+  it('dịch vụ khách không làm (#280) đi vào hồ sơ; không truyền thì rỗng', () => {
+    const declined = [{ orderItemId: '00000000-0000-4000-8000-000000000001', serviceName: 'Siêu âm bụng', reasonLabel: 'Khách thấy giá cao', note: null, declinedAt: '2026-10-01T03:00:00.000Z', declinedByName: 'Lễ tân A' }];
+    expect(buildMedicalRecordView({ ...base, declined }).declined).toEqual(declined);
+    expect(buildMedicalRecordView(base).declined).toEqual([]);
+  });
+
   it('chẩn đoán chính xếp trước chẩn đoán kèm theo', () => {
     const v = buildMedicalRecordView(base);
     expect(v.diagnoses.map((d) => [d.code, d.primary])).toEqual([

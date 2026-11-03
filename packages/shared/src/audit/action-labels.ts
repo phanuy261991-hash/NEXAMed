@@ -40,6 +40,11 @@ const ACTION_LABELS: Record<string, string> = {
   'invoice.payment_reverted': 'Đánh dấu chưa thu',
   'invoice.refunded': 'Hoàn tiền',
   'invoice.partial_refunded': 'Hoàn tiền một phần (trả thuốc)',
+  // "Khách không làm dịch vụ" (docs/DECISIONS.md #280) — 2 nhãn cho 2 nhánh của CÙNG một thao tác ở
+  // quầy: phiếu chưa thu thì gỡ dòng, phiếu đã thu thì hoàn tiền. Tách nhãn để đọc nhật ký biết ngay
+  // lần đó có tiền ra khỏi két hay không.
+  'invoice.service_declined': 'Khách không làm dịch vụ (gỡ khỏi phiếu)',
+  'invoice.service_declined_refunded': 'Khách không làm dịch vụ (hoàn tiền)',
   'invoice.draft_saved': 'Lưu nháp phiếu thu',
   'invoice.printed': 'In phiếu thu',
   'invoice.cancelled': 'Huỷ phiếu thu',

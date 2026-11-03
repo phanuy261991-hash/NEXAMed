@@ -6,7 +6,10 @@ import {
   prescriptionKindMappingSchema,
   businessCodeTypeSchema,
   businessHoursSchema,
+  packageDeclineModeSchema,
+  DEFAULT_PACKAGE_DECLINE_MODE,
   type BusinessCodeType,
+  type PackageDeclineMode,
   DEFAULT_ALLOW_EMERGENCY_END_SHIFT,
   DEFAULT_REQUIRE_PREVIOUS_SHIFT_CLOSED,
   DEFAULT_ALLOW_FREE_TEXT_PRESCRIPTION_ENABLED,
@@ -47,6 +50,8 @@ const slotDurationSchema = z.number().int().min(5).max(240);
 // cấu hình (chưa từng lưu vào tenant_setting) — an toàn: mọi phòng khám mới bắt buộc thu tiền
 // trước khi vào Hàng đợi khám cho tới khi chủ động bật.
 const DEFERRED_PAYMENT_ENABLED_KEY = 'deferred_payment_enabled';
+/** "Khách không làm dịch vụ" (docs/DECISIONS.md #280) — xử lý khi bỏ một dịch vụ trong gói. */
+const PACKAGE_DECLINE_MODE_KEY = 'package_decline_mode';
 const deferredPaymentEnabledSchema = z.boolean();
 // Ngưỡng "chờ lâu" ở Hàng đợi khám (2026-08-28, chủ dự án yêu cầu trực tiếp) — mặc định giữ đúng
 // giá trị hardcode cũ (30 phút) khi tenant chưa từng cấu hình.
@@ -209,6 +214,19 @@ export class ClinicSettingsRepository {
     }
     const parsed = deferredPaymentEnabledSchema.safeParse(setting.valueJson);
     return parsed.success ? parsed.data : false;
+  }
+
+  /**
+   * Mặc định `BLOCK` (không cho bỏ lẻ dịch vụ trong gói) — phòng khám chưa cấu hình thì giữ cách an
+   * toàn nhất về tiền: gói có giá riêng/giá tổng trừ chiết khấu, bỏ lẻ làm đổi cách tính.
+   */
+  async getPackageDeclineMode(tx: Prisma.TransactionClient, tenantId: string): Promise<PackageDeclineMode> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: PACKAGE_DECLINE_MODE_KEY } });
+    if (!setting) {
+      return DEFAULT_PACKAGE_DECLINE_MODE;
+    }
+    const parsed = packageDeclineModeSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_PACKAGE_DECLINE_MODE;
   }
 
   async getOverdueWaitWarningMinutes(tx: Prisma.TransactionClient, tenantId: string): Promise<number> {
@@ -639,6 +657,10 @@ export class ClinicSettingsRepository {
 
   upsertDeferredPaymentEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, DEFERRED_PAYMENT_ENABLED_KEY, value);
+  }
+
+  upsertPackageDeclineMode(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: PackageDeclineMode) {
+    return this.upsert(tx, tenantId, actorId, PACKAGE_DECLINE_MODE_KEY, value);
   }
 
   upsertOverdueWaitWarningMinutes(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: number) {

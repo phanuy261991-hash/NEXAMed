@@ -43,6 +43,6 @@ import { PatientModule } from '../patient/patient.module';
   imports: [ClinicModule, forwardRef(() => CashierShiftModule), CashBookModule, ReferenceCatalogModule, PatientWalletModule, forwardRef(() => InventoryModule), PatientModule],
   controllers: [InvoiceController],
   providers: [InvoiceService, InvoiceRefundService, InvoiceRefundRepository, InvoiceRepository, PaymentRepository],
-  exports: [InvoiceRepository, PaymentRepository],
+  exports: [InvoiceRepository, PaymentRepository, InvoiceRefundService],
 })
 export class BillingModule {}

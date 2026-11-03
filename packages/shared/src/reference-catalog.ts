@@ -79,6 +79,11 @@ export const referenceCatalogCategorySchema = z.enum([
   'LAB_RESULT_UNIT',
   // Liên thông đơn thuốc quốc gia GĐ3 (docs/DECISIONS.md #242, mockup 8b) — Hình thức điều trị (đơn loại C). `code` = MÃ SỐ của Bộ Y tế (nhập tay, chỉ chữ số), `name` = tên hiển thị.
   'TREATMENT_FORM',
+  // "Khách không làm dịch vụ" (docs/DECISIONS.md #280) — lý do thu ngân chọn khi bỏ một dịch vụ kỹ
+  // thuật bác sĩ đã chỉ định. Mã tự sinh như UNIT; seed sẵn 5 lý do hay gặp bằng migration (phòng
+  // khám sửa/thêm/ẩn được). Lý do được lưu lên dòng chỉ định và IN ra bệnh án, nên sửa tên ở đây là
+  // đổi chữ trên bệnh án in về sau — dòng đã dùng chỉ ẩn, không xoá cứng (đúng khuôn mọi danh mục).
+  'SERVICE_DECLINE_REASON',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 

@@ -295,6 +295,7 @@ function MedicalRecordPreview() {
         // Bộ hồ sơ: tờ khám (trang 1) + Tổng kết (trang 2) luôn có; phiếu kết quả và đơn thuốc theo khối "Bộ hồ sơ khi in một lượt khám" (#272); bản mẫu chưa có khối = kèm hết.
         const withCls = config.recordBundle?.includeParaclinical !== false;
         const withRx = config.recordBundle?.includePrescriptions !== false;
+        const withDeclined = config.recordBundle?.includeDeclined !== false;
         const pageCount = 2 + (withCls ? 1 : 0) + (withRx ? 1 : 0);
         return (
           <>
@@ -323,6 +324,12 @@ function MedicalRecordPreview() {
                 </div>
               </div>
               <SampleRecordRows rows={SAMPLE_RECORD_SECTIONS} />
+              {withDeclined && (
+                <div className="grid grid-cols-[110px_1fr] border-t border-slate-300">
+                  <div className="border-r border-slate-300 bg-slate-50 p-2 font-semibold">Không thực hiện</div>
+                  <div className="p-2">Đã chỉ định nhưng không thực hiện: Siêu âm ổ bụng — khách không đồng ý làm (xác nhận tại quầy thu ngân 01/10/2026).</div>
+                </div>
+              )}
             </div>
             <RecordPageBreak page={2} label="Tổng kết bệnh án" />
             <div className="break-before-page">

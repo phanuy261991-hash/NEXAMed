@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DEFAULT_APPOINTMENT_DURATION_MINUTES } from './appointment';
 import { currencyCodeSchema } from './currency';
+import { packageDeclineModeSchema } from './service-decline';
 import { timezoneSchema } from './timezone';
 
 /**
@@ -138,6 +139,13 @@ export const clinicSettingsSchema = z.object({
   businessHours: businessHoursSchema.nullable(),
   slotDurationMinutes: z.number().int().min(5).max(240),
   deferredPaymentEnabled: z.boolean(),
+  /**
+   * "Khách không làm dịch vụ" (docs/DECISIONS.md #280, pill "Cấu hình thanh toán") — xử lý thế nào
+   * khi khách bỏ MỘT dịch vụ nằm trong gói dịch vụ. Mặc định `BLOCK` (không cho bỏ lẻ) vì gói có giá
+   * riêng hoặc giá tổng trừ chiết khấu, bỏ lẻ làm đổi cách tính tiền. Không ảnh hưởng dịch vụ LẺ —
+   * dịch vụ lẻ luôn bỏ được bất kể công tắc này.
+   */
+  packageDeclineMode: packageDeclineModeSchema,
   /**
    * Ngưỡng "chờ lâu" ở Hàng đợi khám (`ReceptionDoctorQueuePage.tsx`) — khách chờ (tính từ
    * `checkedInAt`) vượt số phút này thì hiện cảnh báo (viền/nền đỏ, badge "Chờ lâu"). Trước đây
@@ -365,6 +373,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   businessHours: businessHoursSchema.optional(),
   slotDurationMinutes: z.number().int().min(5).max(240).optional(),
   deferredPaymentEnabled: z.boolean().optional(),
+  packageDeclineMode: packageDeclineModeSchema.optional(),
   overdueWaitWarningMinutes: z.number().int().min(1).max(240).optional(),
   noShowAutoEnabled: z.boolean().optional(),
   noShowThresholdMinutes: z.number().int().min(1).max(1440).optional(),

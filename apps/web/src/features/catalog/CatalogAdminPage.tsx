@@ -30,6 +30,8 @@ const PILLS: ConfigScreenPill[] = [
   { key: 'income-expense-type', label: 'Loại thu chi' },
   // Liên thông đơn thuốc quốc gia GĐ3 (docs/DECISIONS.md #242, mockup 8b) — danh mục Hình thức điều trị (mã số của Bộ Y tế).
   { key: 'treatment-form', label: 'Hình thức điều trị' },
+  // "Khách không làm dịch vụ" (docs/DECISIONS.md #280) — lý do thu ngân chọn khi bỏ một dịch vụ kỹ thuật bác sĩ đã chỉ định.
+  { key: 'service-decline-reason', label: 'Lý do không làm dịch vụ' },
 ];
 const FIRST_PILL = PILLS[0]!;
 
@@ -72,6 +74,7 @@ export function CatalogAdminPage() {
       {activePillKey === 'payment-method' && <ReferenceCatalogPane category="PAYMENT_METHOD" categoryLabel="Hình thức thanh toán" />}
       {activePillKey === 'income-expense-type' && <ReferenceCatalogPane category="INCOME_EXPENSE_TYPE" categoryLabel="Loại thu chi" />}
       {activePillKey === 'treatment-form' && <ReferenceCatalogPane category="TREATMENT_FORM" categoryLabel="Hình thức điều trị" />}
+      {activePillKey === 'service-decline-reason' && <ReferenceCatalogPane category="SERVICE_DECLINE_REASON" categoryLabel="Lý do không làm dịch vụ" />}
       {activePillKey === 'province' && <GeoPane mode="province" />}
       {activePillKey === 'ward' && <GeoPane mode="ward" />}
     </ConfigScreenShell>

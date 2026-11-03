@@ -12,6 +12,16 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-11-03
+
+### "Khách không làm dịch vụ" ở quầy thu ngân (`docs/DECISIONS.md` #280)
+
+Trên phiếu thu có nút **Khách không làm dịch vụ** (lễ tân + quản trị, quyền hẹp `invoice.cancel_service`): chọn dịch vụ kỹ thuật bác sĩ đã chỉ định mà khách bỏ, chọn lý do (danh mục mới "Lý do không làm dịch vụ", có ô ghi thêm). **Phiếu chưa thu** → gỡ dòng và trừ tiền; **phiếu đã thu** → hoàn đúng phần tiền của dịch vụ đó theo phương thức đã thu (ví trước, phần dư tiền mặt/CK), phiếu vẫn "Đã thu". Dịch vụ đã lấy mẫu/thực hiện thì không bỏ được. Dòng chỉ định không bị xoá mà chuyển "Đã huỷ" kèm lý do + người xác nhận + thời điểm: bác sĩ thấy dòng nhắc ở tab Chỉ định cận lâm sàng và khối "Đã huỷ — khách không làm"; bệnh án in có khối "Đã chỉ định nhưng không thực hiện" (bật/tắt ở Quản lý mẫu in). Dịch vụ nằm trong gói: mặc định không cho bỏ lẻ, có công tắc 3 chế độ ở Cấu hình thanh toán (không cho bỏ lẻ / bỏ lẻ tính lại theo giá lẻ / bỏ lẻ giữ nguyên giá gói). Bác sĩ lưu lại chỉ định không làm dịch vụ đã bỏ sống lại. Có migration `20261103090000_service_decline` + `db:seed` (quyền và 5 lý do mặc định); áp migration bằng `pnpm run db:deploy`.
+
+### Kế hoạch hệ thống báo cáo + mở rộng v1 gồm báo cáo doanh thu (`docs/DECISIONS.md` #279)
+
+Chốt khung báo cáo theo quy mô phòng khám (`docs/product/reporting-plan.md`); mockup Tổng quan (4 vai trò) đã duyệt, chưa code. Chưa có thay đổi hành vi.
+
 ## 2026-10-31
 
 ### Liên thông đơn thuốc: gạt "Có liên thông" mà chưa Lưu nay hiện hướng dẫn "Bấm Lưu trước" thay vì để trống (`docs/DECISIONS.md` #278)

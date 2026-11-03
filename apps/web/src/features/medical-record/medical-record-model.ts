@@ -11,6 +11,7 @@ import { TREATMENT_DIRECTION_LABEL } from '../encounter/treatment-plan';
  */
 
 export type ParaclinicalResult = MedicalRecordParaclinicalResponse['results'][number];
+export type DeclinedItem = MedicalRecordParaclinicalResponse['declined'][number];
 
 export interface RecordField {
   label: string;
@@ -99,6 +100,8 @@ export interface MedicalRecordView {
   nationalCodes: string[];
   prescription: ConsultationDetailResponse['prescription'];
   cls: ParaclinicalResult[];
+  /** Dịch vụ đã chỉ định nhưng khách bỏ ở quầy (#280) — rỗng thì không hiện khối nào. */
+  declined: DeclinedItem[];
 }
 
 const DASH = '—';
@@ -242,12 +245,14 @@ export function buildMedicalRecordView(input: {
   item: PatientEncounterHistoryItem;
   detail: ConsultationDetailResponse;
   paraclinical: ParaclinicalResult[];
+  /** Dịch vụ khách không làm (#280); bỏ trống = không có. */
+  declined?: DeclinedItem[];
   patient: RecordPatientInfo;
   showBranch: boolean;
   /** Tên Loại tiếp nhận của lượt khám (đã tra danh mục) — `null` khi chưa chọn hoặc danh mục chưa tải. */
   visitTypeLabel?: string | null;
 }): MedicalRecordView {
-  const { item, detail, paraclinical, patient, showBranch, visitTypeLabel = null } = input;
+  const { item, detail, paraclinical, declined = [], patient, showBranch, visitTypeLabel = null } = input;
   const note = detail.clinicalNote;
   const text = (section: { content: string } | null | undefined): string => section?.content.trim() ?? '';
   const { signedAt, amendNote } = summarizeSignatures(detail);
@@ -301,6 +306,7 @@ export function buildMedicalRecordView(input: {
     nationalCodes: (detail.prescription?.documents ?? []).map((d) => d.nationalCode),
     prescription: detail.prescription,
     cls: paraclinical,
+    declined,
   };
 }
 

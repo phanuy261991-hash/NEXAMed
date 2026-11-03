@@ -1,6 +1,7 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ApplyInvoiceDiscountRequest,
+  DeclineServicesRequest,
   BillingListTabValue,
   MarkInvoicePaidRequest,
   PayInvoiceWithWalletRequest,
@@ -14,12 +15,15 @@ import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import {
   applyInvoiceDiscount,
+  declineServices,
   getBillingInvoice,
   getBillingInvoiceList,
+  getServiceDeclinePreview,
   markInvoicePaid,
   payInvoiceWithWallet,
   printCombinedInvoices,
   printInvoice,
+  quoteServiceDecline,
   refundInvoice,
   refundInvoiceItems,
   revertInvoicePayment,
@@ -162,6 +166,48 @@ export function useRefundInvoiceItemsMutation(encounterId: string) {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-balance') });
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-receipt') });
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'stock-ledger') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'wallet') });
+    },
+  });
+}
+
+/** #280 — dịch vụ liên quan tới phiếu + dòng nào bỏ được. Không dùng cache cũ: trạng thái dịch vụ (đã lấy mẫu chưa) đổi liên tục nên mỗi lần mở hộp thoại phải đọc lại. */
+export function useServiceDeclinePreviewQuery(encounterId: string, invoiceId: string) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'invoice', 'service-decline', 'preview', encounterId, invoiceId),
+    queryFn: () => getServiceDeclinePreview(encounterId, invoiceId),
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+/** #280 — báo giá theo dịch vụ đang tích; `enabled` khi đã chọn ít nhất một dòng. Khoá có danh sách id (đã sắp) để đổi lựa chọn là tính lại, tích lại đúng bộ cũ dùng được cache. */
+export function useServiceDeclineQuoteQuery(encounterId: string, invoiceId: string, orderItemIds: string[]) {
+  const { tenantId } = useAppConfig();
+  const sorted = [...orderItemIds].sort();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'invoice', 'service-decline', 'quote', encounterId, invoiceId, sorted.join(',')),
+    queryFn: () => quoteServiceDecline(encounterId, { invoiceId, orderItemIds: sorted }),
+    enabled: sorted.length > 0,
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * #280 — xác nhận khách không làm dịch vụ. Làm mới: phiếu thu + danh sách/tổng kết ngày ('invoice'), ví (tiền hoàn có thể trả ngược ví), và phiếu chỉ định của bác sĩ
+ * ('clinical-order') để dòng đã huỷ hiện ở khối "Đã huỷ" của màn khám.
+ */
+export function useDeclineServicesMutation(encounterId: string) {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateInvoice();
+  return useMutation({
+    mutationFn: (body: DeclineServicesRequest) => declineServices(encounterId, body),
+    onSuccess: () => {
+      void invalidate();
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinical-order') });
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'wallet') });
     },
   });

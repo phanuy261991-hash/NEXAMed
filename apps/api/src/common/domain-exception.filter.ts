@@ -63,6 +63,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   LAB_INDICATOR_VALUE_TYPE_LOCKED: HttpStatus.CONFLICT,
   // Cận lâm sàng GĐ3 — gỡ/đổi dòng chỉ định đã thu tiền/đã thực hiện: xung đột trạng thái, không phải lỗi input.
   CLINICAL_ORDER_ITEM_LOCKED: HttpStatus.CONFLICT,
+  // "Khách không làm dịch vụ" (#280): dòng không bỏ được ở quầy = xung đột trạng thái; lý do ngoài danh mục = lỗi nhập (422 mặc định).
+  SERVICE_DECLINE_BLOCKED: HttpStatus.CONFLICT,
   PARACLINICAL_ITEM_INVALID_STATE: HttpStatus.CONFLICT,
   BACKUP_NOT_AVAILABLE: HttpStatus.CONFLICT,
   PARACLINICAL_PAYMENT_REQUIRED: HttpStatus.CONFLICT,

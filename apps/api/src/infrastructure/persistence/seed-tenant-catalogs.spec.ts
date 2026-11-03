@@ -70,7 +70,7 @@ describe('seedTenantDefaultCatalogs — danh mục mặc định theo tenant', (
 
   it('bản hệ thống nhẹ (seedSystemReferenceDataForTenant) chỉ nạp dòng bắt buộc cho tenant', async () => {
     await seedSystemReferenceDataForTenant(privileged, fixture.tenantB.id, SYSTEM_TEST_ACTOR);
-    expect(await privileged.referenceCatalog.count({ where: { tenantId: fixture.tenantB.id } })).toBe(3 + 3 + 11);
+    expect(await privileged.referenceCatalog.count({ where: { tenantId: fixture.tenantB.id } })).toBe(3 + 3 + 11 + 5);
     expect(await count(fixture.tenantB.id, 'ETHNICITY')).toBe(0);
   });
 

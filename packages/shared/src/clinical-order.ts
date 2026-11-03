@@ -83,6 +83,15 @@ export const clinicalOrderItemViewSchema = z.object({
   resultReturnedAt: z.string().nullable(),
   /** Kết quả đã duyệt đang được đính chính (soạn lại, chờ bác sĩ duyệt lại) — màn khám hiện "Đang đính chính". */
   amendmentPending: z.boolean(),
+  /**
+   * "Khách không làm dịch vụ" (#280): chỉ có giá trị khi dòng bị thu ngân bỏ ở quầy (`status='CANCELLED'` + `declinedAt`). Dòng huỷ do huỷ lượt khám (#219) KHÔNG có các trường này.
+   * `declineReasonLabel` là TÊN lý do tra từ danh mục `SERVICE_DECLINE_REASON` (rơi về chính mã nếu mục đã bị ẩn/đổi) — màn khám và bệnh án in cái này.
+   */
+  declineReasonCode: z.string().nullable(),
+  declineReasonLabel: z.string().nullable(),
+  declineNote: z.string().nullable(),
+  declinedAt: z.string().nullable(),
+  declinedByName: z.string().nullable(),
   /** Có gỡ/đổi số lượng được không: còn `ORDERED` và dòng hoá đơn tương ứng chưa thu tiền. */
   editable: z.boolean(),
 });

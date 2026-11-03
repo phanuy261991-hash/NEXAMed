@@ -84,6 +84,19 @@ export interface MedicalRecordParaclinicalResult {
 }
 
 /**
+ * Dịch vụ bác sĩ ĐÃ CHỈ ĐỊNH nhưng khách không làm (thu ngân bỏ ở quầy, docs/DECISIONS.md #280): dòng chỉ định ở trạng thái CANCELLED kèm lý do. Bệnh án chỉ in kết quả ĐÃ DUYỆT
+ * nên thiếu mục này người đọc hồ sơ sau này không phân biệt được khách từ chối, bị bỏ sót hay bác sĩ quên. `reasonLabel` là TÊN lý do (đã tra từ danh mục).
+ */
+export interface MedicalRecordDeclinedItem {
+  orderItemId: string;
+  serviceName: string;
+  reasonLabel: string;
+  note: string | null;
+  declinedAt: string;
+  declinedByName: string | null;
+}
+
+/**
  * Điều trị & Hẹn tái khám của lượt khám (docs/DECISIONS.md #222) — in thành mục "Điều trị" sau ghi chú khám; chỉ in dòng nào có nội dung, không có dòng nào thì bỏ cả mục.
  * `followUpDateLabel` đã định dạng sẵn ("Thứ Năm, 15/10/2026").
  */
@@ -122,6 +135,8 @@ export interface MedicalRecordEncounterEntry {
   treatment?: MedicalRecordTreatment;
   /** Kết quả cận lâm sàng đã duyệt của lượt khám (bỏ trống/rỗng = không in mục này). */
   paraclinicalResults?: MedicalRecordParaclinicalResult[];
+  /** Dịch vụ đã chỉ định nhưng khách không làm (#280) — bỏ trống/rỗng = không in mục này. */
+  declinedOrderItems?: MedicalRecordDeclinedItem[];
   prescriptionItems: MedicalRecordPrescriptionItem[];
   /** Các đơn pháp lý đã cấp mã chuẩn Bộ Y tế (#242) — bỏ trống/rỗng = không in dòng "Mã đơn" (đơn ký trước ngày bật chế độ chuẩn). */
   prescriptionDocuments?: MedicalRecordPrescriptionDocument[];
@@ -160,7 +175,7 @@ export interface MedicalRecordPrintOptions {
   /** Dòng "Thẻ BHYT" từng lượt khám (ô tích của bản mẫu `MEDICAL_RECORD`, S2-04) — vắng = không in. */
   insurance?: { show: boolean; whenSelfPay: 'hide' | 'selfPay' };
   /** Phần kèm theo của "In bộ hồ sơ" một lượt khám (#272): tờ khám và Tổng kết luôn in. Vắng = kèm hết. Không áp cho bệnh án gộp nhiều lượt. */
-  bundle?: { includeParaclinical: boolean; includePrescriptions: boolean };
+  bundle?: { includeParaclinical: boolean; includePrescriptions: boolean; includeDeclined?: boolean };
 }
 
 const DEFAULT_PRINT_OPTIONS: MedicalRecordPrintOptions = {
@@ -266,6 +281,30 @@ function renderParaclinicalResult(r: MedicalRecordParaclinicalResult): string {
   return `<div class="paraclinical-result"><p class="meta"><strong>${escapeHtml(r.serviceName)}</strong> (${PARACLINICAL_KIND_LABEL[r.serviceKind]}) · Duyệt lúc ${formatDateTime(r.signedAt)}</p>${indicators}${narrative}</div>`;
 }
 
+function declinedItemsTable(items: MedicalRecordDeclinedItem[]): string {
+  return `<table class="data-table"><thead><tr><th>Dịch vụ</th><th>Lý do không thực hiện</th><th>Người xác nhận</th><th>Thời điểm</th></tr></thead><tbody>${items
+    .map(
+      (i) =>
+        `<tr><td>${escapeHtml(i.serviceName)}</td><td>${escapeHtml(i.reasonLabel)}${i.note ? ` — ${escapeHtml(i.note)}` : ''}</td><td>${i.declinedByName ? escapeHtml(i.declinedByName) : '—'}</td><td>${formatDateTime(i.declinedAt)}</td></tr>`,
+    )
+    .join('')}</tbody></table>`;
+}
+
+/** Bệnh án gộp nhiều lượt: tiêu đề `h3` ngay sau "Cận lâm sàng", trước "Hướng điều trị". Không có dòng nào thì không in gì. */
+function renderDeclinedOrderItems(items: MedicalRecordDeclinedItem[] | undefined): string {
+  if (!items || items.length === 0) return '';
+  return `<h3>Đã chỉ định nhưng không thực hiện</h3>${declinedItemsTable(items)}`;
+}
+
+/**
+ * Tờ bệnh án MS 15/BV-01: số mục của mẫu do Thông tư quy định nên KHÔNG thêm mục đánh số mới — khối này là phần không đánh số ngay dưới "Cận lâm sàng".
+ * Tắt bằng ô tích ở Quản lý mẫu in (`includeDeclined`); không có dòng nào thì không in gì.
+ */
+function recordDeclined(items: MedicalRecordDeclinedItem[] | undefined, enabled: boolean): string {
+  if (!enabled || !items || items.length === 0) return '';
+  return `<p class="sub">Đã chỉ định nhưng không thực hiện</p>${declinedItemsTable(items)}`;
+}
+
 function renderParaclinicalResults(results: MedicalRecordParaclinicalResult[] | undefined): string {
   if (!results || results.length === 0) return '';
   return `<h3>Cận lâm sàng</h3>${results.map(renderParaclinicalResult).join('')}`;
@@ -316,6 +355,7 @@ function renderEncounter(entry: MedicalRecordEncounterEntry, index: number, insu
       <h3>Ghi chú khám</h3>
       ${renderClinicalNote(entry.clinicalNoteSections)}
       ${renderParaclinicalResults(entry.paraclinicalResults)}
+      ${renderDeclinedOrderItems(entry.declinedOrderItems)}
       ${renderTreatment(entry.treatment)}
       <h3>Đơn thuốc</h3>
       ${renderPrescription(entry.prescriptionItems, entry.prescriptionDocuments)}
@@ -437,6 +477,8 @@ export interface EncounterMedicalRecordDocument {
   /** Hướng điều trị + nội dung điều trị + hẹn tái khám (lời dặn nằm ở `notes.advice`, in ở mục X). */
   treatment?: MedicalRecordTreatment;
   paraclinicalResults: MedicalRecordParaclinicalResult[];
+  /** Dịch vụ đã chỉ định nhưng khách không làm (#280) — bỏ trống/rỗng = không in mục này. */
+  declinedOrderItems?: MedicalRecordDeclinedItem[];
   prescriptionItems: MedicalRecordPrescriptionItem[];
   prescriptionDocuments?: MedicalRecordPrescriptionDocument[];
   generatedAt: string;
@@ -547,6 +589,7 @@ function recordCodesBar(doc: EncounterMedicalRecordDocument, withVisitType: bool
 export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocument, options: MedicalRecordPrintOptions = DEFAULT_PRINT_OPTIONS): string {
   const { header } = options;
   const bundle = options.bundle ?? { includeParaclinical: true, includePrescriptions: true };
+  const withDeclined = bundle.includeDeclined !== false;
   const clinicMeta = [
     header.showAddress ? doc.clinic.address : null,
     header.showPhone ? doc.clinic.phone : null,
@@ -579,7 +622,7 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
   ${recordSection(
     'IV',
     'Khám bệnh',
-    `${renderVitalSigns(doc.vitalSigns)}<p class="sub">1. Toàn thân</p>${recordProse(doc.notes.generalExam)}<p class="sub">2. Các bộ phận</p>${recordProse(doc.notes.regionalExam)}<p class="sub">3. Tóm tắt kết quả cận lâm sàng</p>${recordClsSummary(doc.paraclinicalResults, bundle.includeParaclinical)}<p class="sub">4. Chẩn đoán ban đầu</p>${recordProse(doc.notes.preliminaryDiagnosis)}<p class="sub">5. Đã xử lý (thuốc, chăm sóc)</p>${recordTreated(doc)}<p class="sub">6. Chẩn đoán khi ra viện</p>${recordDiagnoses(doc.diagnoses)}<p class="sub">7. Điều trị ngoại trú</p>${recordTreatmentPeriod(doc)}`,
+    `${renderVitalSigns(doc.vitalSigns)}<p class="sub">1. Toàn thân</p>${recordProse(doc.notes.generalExam)}<p class="sub">2. Các bộ phận</p>${recordProse(doc.notes.regionalExam)}<p class="sub">3. Tóm tắt kết quả cận lâm sàng</p>${recordClsSummary(doc.paraclinicalResults, bundle.includeParaclinical)}${recordDeclined(doc.declinedOrderItems, withDeclined)}<p class="sub">4. Chẩn đoán ban đầu</p>${recordProse(doc.notes.preliminaryDiagnosis)}<p class="sub">5. Đã xử lý (thuốc, chăm sóc)</p>${recordTreated(doc)}<p class="sub">6. Chẩn đoán khi ra viện</p>${recordDiagnoses(doc.diagnoses)}<p class="sub">7. Điều trị ngoại trú</p>${recordTreatmentPeriod(doc)}`,
   )}
   ${recordSignBlock(doc)}
   <section class="page-break">
@@ -588,7 +631,7 @@ export function renderEncounterMedicalRecordHtml(doc: EncounterMedicalRecordDocu
     <div class="doc-title">Tổng kết bệnh án</div>
     ${recordCodesBar(doc, false)}
     ${recordSection('1', 'Diễn biến', `<p class="sub">Quá trình bệnh lý và diễn biến lâm sàng</p>${recordProse(doc.notes.summary.trim() ? doc.notes.summary : doc.notes.illness)}`)}
-    ${recordSection('2', 'Cận lâm sàng', `<p class="sub">Tóm tắt kết quả xét nghiệm cận lâm sàng có giá trị chẩn đoán</p>${recordClsSummary(doc.paraclinicalResults, bundle.includeParaclinical)}`)}
+    ${recordSection('2', 'Cận lâm sàng', `<p class="sub">Tóm tắt kết quả xét nghiệm cận lâm sàng có giá trị chẩn đoán</p>${recordClsSummary(doc.paraclinicalResults, bundle.includeParaclinical)}${recordDeclined(doc.declinedOrderItems, withDeclined)}`)}
     ${recordSection('3', 'Chẩn đoán ra viện', recordDiagnoses(doc.diagnoses))}
     ${recordSection('4', 'Phương pháp điều trị', treatmentContent || '<p class="muted">Chưa ghi.</p>')}
     ${recordSection('5', 'Tình trạng ra viện', `<p class="sub">Tình trạng người bệnh khi kết thúc khám</p>${recordProse(doc.notes.prognosis)}`)}

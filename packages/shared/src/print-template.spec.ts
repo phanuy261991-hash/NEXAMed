@@ -119,7 +119,7 @@ describe('buildResolvedPrintTemplate — các lựa chọn khổ giấy của m�
 describe('recordBundle (#272) — bộ hồ sơ khi in một lượt khám', () => {
   it('CHỈ bản mẫu Bệnh án có khối này, mặc định kèm hết (giữ hành vi trước đó)', () => {
     const record = withDefaultPrintOptions('MEDICAL_RECORD', buildDefaultPrintTemplateConfig('A4'));
-    expect(record.recordBundle).toEqual({ includeParaclinical: true, includePrescriptions: true });
+    expect(record.recordBundle).toEqual({ includeParaclinical: true, includePrescriptions: true, includeDeclined: true });
     for (const type of printDocumentTypeSchema.options.filter((x) => x !== 'MEDICAL_RECORD')) {
       const config = withDefaultPrintOptions(type, buildDefaultPrintTemplateConfig(PRINT_DOCUMENT_TYPE_REGISTRY[type].defaultPaper));
       expect(config.recordBundle, type).toBeUndefined();

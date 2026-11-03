@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { evaluateLabValue, formatLabReferenceText, type MedicalRecordParaclinicalResult, type ParaclinicalResultsReaderPort } from '@nexamed/core';
+import { evaluateLabValue, formatLabReferenceText, type MedicalRecordDeclinedItem, type MedicalRecordParaclinicalResult, type ParaclinicalResultsReaderPort } from '@nexamed/core';
 import type { ParaclinicalReference } from '@nexamed/shared';
 import { UnitOfWorkService } from '../persistence/unit-of-work.service';
+import { ClinicalOrderRepository } from '../../modules/clinical-order/clinical-order.repository';
 import { ParaclinicalResultRepository } from '../../modules/paraclinical-result/paraclinical-result.repository';
 import { toReferenceRow } from '../../modules/paraclinical-result/paraclinical-result.service';
 
@@ -17,7 +18,35 @@ export class ParaclinicalResultsReaderAdapter implements ParaclinicalResultsRead
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly resultRepository: ParaclinicalResultRepository,
+    private readonly orderRepository: ClinicalOrderRepository,
   ) {}
+
+  async listDeclinedForEncounters(tenantId: string, encounterIds: string[]): Promise<Record<string, MedicalRecordDeclinedItem[]>> {
+    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
+      const rows = await this.orderRepository.listDeclinedByEncounterIds(tx, tenantId, encounterIds);
+      if (rows.length === 0) return {};
+      const names = await this.orderRepository.findDeclineNames(
+        tx,
+        tenantId,
+        [...new Set(rows.map((r) => r.declineReasonCode).filter((v): v is string => v !== null))],
+        [...new Set(rows.map((r) => r.declinedBy).filter((v): v is string => v !== null))],
+      );
+      const byEncounter: Record<string, MedicalRecordDeclinedItem[]> = {};
+      for (const r of rows) {
+        if (r.declinedAt === null) continue;
+        (byEncounter[r.order.encounterId] ??= []).push({
+          orderItemId: r.id,
+          serviceName: r.name,
+          // Mã không còn trong danh mục (đã ẩn/đổi) → in chính mã, không để mất lý do khỏi hồ sơ.
+          reasonLabel: r.declineReasonCode === null ? '—' : (names.reasons.get(r.declineReasonCode) ?? r.declineReasonCode),
+          note: r.declineNote,
+          declinedAt: r.declinedAt.toISOString(),
+          declinedByName: r.declinedBy === null ? null : (names.users.get(r.declinedBy) ?? null),
+        });
+      }
+      return byEncounter;
+    });
+  }
 
   async listSignedForEncounters(tenantId: string, encounterIds: string[]): Promise<Record<string, MedicalRecordParaclinicalResult[]>> {
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.resultRepository.listSignedByEncounterIds(tx, tenantId, encounterIds));

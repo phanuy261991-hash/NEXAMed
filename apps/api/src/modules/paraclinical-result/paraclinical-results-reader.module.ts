@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { PARACLINICAL_RESULTS_READER_PORT } from '@nexamed/core';
 import { ParaclinicalResultsReaderAdapter } from '../../infrastructure/paraclinical/paraclinical-results-reader.adapter';
+import { ClinicalOrderModule } from '../clinical-order/clinical-order.module';
 import { ParaclinicalResultModule } from './paraclinical-result.module';
 
 /**
@@ -10,7 +11,7 @@ import { ParaclinicalResultModule } from './paraclinical-result.module';
  */
 @Global()
 @Module({
-  imports: [ParaclinicalResultModule],
+  imports: [ParaclinicalResultModule, ClinicalOrderModule],
   providers: [{ provide: PARACLINICAL_RESULTS_READER_PORT, useClass: ParaclinicalResultsReaderAdapter }],
   exports: [PARACLINICAL_RESULTS_READER_PORT],
 })

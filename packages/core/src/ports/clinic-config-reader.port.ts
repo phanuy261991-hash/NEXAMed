@@ -1,3 +1,4 @@
+import type { DeclinePackageMode } from '../billing/service-decline';
 import type { PrescriptionKindMapping } from '../prescription/prescription-kind';
 /** Giờ mở/đóng cửa một ngày trong tuần; `null` = đóng cửa cả ngày. Khớp `businessHoursSchema` ở
  * `packages/shared/src/clinic.ts` — định nghĩa lại cục bộ (không import `packages/shared` vào
@@ -41,6 +42,13 @@ export interface ClinicConfigReaderPort {
    * `false`, không phân biệt giá trị đã lưu.
    */
   getDeferredPaymentEnabled(tenantId: string): Promise<boolean>;
+
+  /**
+   * "Khách không làm dịch vụ" (docs/DECISIONS.md #280) — công tắc cấp phòng khám quyết định khi khách bỏ MỘT dịch vụ nằm trong gói: chặn (mặc định) / tính lại theo giá lẻ /
+   * giữ nguyên giá gói (`tenant_setting` key `package_decline_mode`). Module `clinical-order` đọc qua port này (không import thẳng `ClinicSettingsRepository`), cùng lý do
+   * `getDeferredPaymentEnabled` ở trên. Port tự mở transaction đọc riêng nên PHẢI gọi TRƯỚC khi mở transaction chính (CLAUDE.md, #264).
+   */
+  getPackageDeclineMode(tenantId: string): Promise<DeclinePackageMode>;
 
   /**
    * Tự động đánh dấu "Không đến" (S5-07, APP-05) — job nền (`apps/api/src/modules/appointment/

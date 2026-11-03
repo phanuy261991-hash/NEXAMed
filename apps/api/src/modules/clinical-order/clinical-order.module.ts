@@ -9,6 +9,8 @@ import { ClinicalOrderBookService } from './clinical-order-book.service';
 import { ClinicalOrderController } from './clinical-order.controller';
 import { ClinicalOrderRepository } from './clinical-order.repository';
 import { ClinicalOrderService } from './clinical-order.service';
+import { ServiceDeclineController } from './service-decline.controller';
+import { ServiceDeclineService } from './service-decline.service';
 
 /**
  * Cận lâm sàng GĐ3 — Chỉ định của bác sĩ (docs/DECISIONS.md #212). Đọc lượt khám (`EncounterRepository`), ghi tiền vào hoá đơn (`InvoiceRepository`), tra
@@ -17,8 +19,8 @@ import { ClinicalOrderService } from './clinical-order.service';
  */
 @Module({
   imports: [BillingModule, ClinicModule, EncounterModule, PricingModule, TechnicalServiceModule],
-  controllers: [ClinicalOrderController, ClinicalOrderBookController],
-  providers: [ClinicalOrderService, ClinicalOrderBookService, ClinicalOrderRepository],
+  controllers: [ClinicalOrderController, ClinicalOrderBookController, ServiceDeclineController],
+  providers: [ClinicalOrderService, ClinicalOrderBookService, ClinicalOrderRepository, ServiceDeclineService],
   exports: [ClinicalOrderRepository],
 })
 export class ClinicalOrderModule {}

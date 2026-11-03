@@ -936,6 +936,9 @@ enum ReferenceCatalogCategory {
   LAB_RESULT_UNIT
   // Liên thông đơn thuốc quốc gia GĐ3 (docs/DECISIONS.md #242, mockup 8b) — "Hình thức điều trị" (bắt buộc với đơn loại C khi gửi). `code` = MÃ SỐ của Bộ Y tế, nhập tay; không seed cứng.
   TREATMENT_FORM
+  // "Khách không làm dịch vụ" (docs/DECISIONS.md #280) — lý do thu ngân chọn khi bỏ một dịch vụ kỹ thuật bác sĩ đã chỉ định. Lý do được lưu lên
+  // dòng chỉ định và IN ra bệnh án ("Đã chỉ định nhưng không thực hiện"), nên dòng đã dùng chỉ ẩn chứ không xoá. Seed sẵn 5 lý do, mã tự sinh như UNIT.
+  SERVICE_DECLINE_REASON
 
   @@map("reference_catalog_category")
 }
@@ -4704,6 +4707,13 @@ model ClinicalOrderItem {
   specimenTubeId         String?                  @map("specimen_tube_id") @db.Uuid
   /// Lúc bác sĩ phụ trách mở tab "Kết quả cận lâm sàng" xem kết quả (docs/DECISIONS.md #221). NULL + COMPLETED = kết quả mới chưa xem; đặt lại NULL khi duyệt/duyệt lại (đính chính).
   doctorSeenAt           DateTime?                @map("doctor_seen_at") @db.Timestamptz(6)
+  /// "Khách không làm dịch vụ" (docs/DECISIONS.md #280) — 4 cột CHỈ có giá trị khi `status='CANCELLED'` do thu ngân bỏ ở quầy. Dòng KHÔNG bị soft-delete
+  /// (khác việc bác sĩ tự gỡ dòng vừa thêm sai): giữ nguyên để hiện ở khối "Đã huỷ" màn khám và in mục "Đã chỉ định nhưng không thực hiện" trên bệnh án.
+  /// `declineReasonCode` = mã danh mục `SERVICE_DECLINE_REASON` (không FK cứng, đúng khuôn `payment.method`/`exam_type_code`).
+  declineReasonCode      String?                  @map("decline_reason_code")
+  declineNote            String?                  @map("decline_note")
+  declinedAt             DateTime?                @map("declined_at") @db.Timestamptz(6)
+  declinedBy             String?                  @map("declined_by") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

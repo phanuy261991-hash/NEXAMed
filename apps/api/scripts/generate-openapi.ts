@@ -35,6 +35,11 @@ import {
   payInvoiceWithWalletRequestSchema,
   printInvoiceRequestSchema,
   refundInvoiceItemsRequestSchema,
+  declineServicesRequestSchema,
+  declineQuoteRequestSchema,
+  declinePreviewQuerySchema,
+  serviceDeclinePreviewSchema,
+  serviceDeclineQuoteSchema,
   refundInvoiceRequestSchema,
   revertInvoicePaymentRequestSchema,
   saveInvoiceDraftRequestSchema,
@@ -1770,6 +1775,58 @@ registry.registerPath({
     404: errorResponse('Không có hoá đơn này thuộc lượt khám'),
     409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), phiếu chưa thu (INVOICE_NOT_REFUNDABLE) hoặc đã đóng (INVOICE_CLOSED)'),
     422: errorResponse('Dòng không phải thuốc (INVOICE_LINE_NOT_REFUNDABLE), vượt số lượng còn hoàn được (INVOICE_REFUND_QUANTITY_EXCEEDED), hoặc tổng hoàn 0đ (INVOICE_REFUND_ZERO_AMOUNT)'),
+  },
+});
+
+// "Khách không làm dịch vụ" ở quầy thu ngân (#280) — module clinical-order, tiền tố billing/invoices.
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/billing/invoices/{encounterId}/service-decline',
+  tags: ['billing'],
+  summary: '#280 Xem trước hộp thoại "Khách không làm dịch vụ": dịch vụ liên quan tới phiếu + dòng nào bỏ được / vì sao không (quyền invoice.cancel_service)',
+  security: [{ bearerAuth: [] }],
+  request: { params: billingEncounterIdParams, query: declinePreviewQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(serviceDeclinePreviewSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.cancel_service'),
+    404: errorResponse('Phiếu không thuộc lượt khám / chi nhánh này'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/service-decline/quote',
+  tags: ['billing'],
+  summary: '#280 Báo giá: số tiền giảm khỏi phiếu / hoàn lại khách / khách phải trả thêm — chỉ đọc, cùng nguồn tính với xác nhận (web không tự cộng trừ)',
+  security: [{ bearerAuth: [] }],
+  request: { params: billingEncounterIdParams, body: { content: { 'application/json': { schema: declineQuoteRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(serviceDeclineQuoteSchema)),
+    400: errorResponse('Dịch vụ không thuộc phiếu này / không chọn dòng nào'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.cancel_service'),
+    404: errorResponse('Phiếu không thuộc lượt khám / chi nhánh này'),
+    409: errorResponse('Có dòng không bỏ được (SERVICE_DECLINE_BLOCKED) hoặc phiếu đã đóng (INVOICE_CLOSED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/billing/invoices/{encounterId}/service-decline',
+  tags: ['billing'],
+  summary:
+    '#280 Khách không làm dịch vụ: phiếu CHƯA THU → gỡ dòng + trừ tiền; phiếu ĐÃ THU → hoàn tiền theo phương thức đã thu (không nhập lại kho). Dòng chỉ định → CANCELLED kèm lý do (không xoá), quyền invoice.cancel_service',
+  security: [{ bearerAuth: [] }],
+  request: { params: billingEncounterIdParams, body: { content: { 'application/json': { schema: declineServicesRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(invoiceResponseSchema)),
+    400: errorResponse('Thiếu lý do / không chọn dòng nào / dịch vụ không thuộc phiếu'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền invoice.cancel_service'),
+    404: errorResponse('Phiếu không thuộc lượt khám / chi nhánh này'),
+    409: errorResponse('invoiceVersion không khớp (CONCURRENT_MODIFICATION), dòng không bỏ được (SERVICE_DECLINE_BLOCKED) hoặc phiếu đã đóng (INVOICE_CLOSED)'),
+    422: errorResponse('Lý do không có trong danh mục hoặc đã bị ẩn (SERVICE_DECLINE_REASON_INVALID)'),
   },
 });
 

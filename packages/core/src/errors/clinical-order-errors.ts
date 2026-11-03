@@ -35,3 +35,24 @@ export class ClinicalOrderPackageNotOrderableError extends DomainError {
     super(`Gói "${packageName}" hiện không dùng được (đã ngừng, ngoài thời gian hiệu lực hoặc chưa có giá).`);
   }
 }
+
+/**
+ * "Khách không làm dịch vụ" (docs/DECISIONS.md #280): dòng được chọn KHÔNG bỏ được ở quầy — đã lấy mẫu/thực hiện, đã huỷ, đã hoàn, thuộc gói đang chặn bỏ lẻ... `label` là nhãn tiếng Việt
+ * của lý do (`SERVICE_DECLINE_BLOCKED_LABELS`) do nơi gọi truyền vào, để câu báo cho thu ngân nêu đúng tên dịch vụ và đúng lý do. Xung đột trạng thái (409), không phải lỗi nhập liệu.
+ */
+export class ServiceDeclineBlockedError extends DomainError {
+  readonly code = 'SERVICE_DECLINE_BLOCKED';
+
+  constructor(itemName: string, label: string) {
+    super(`"${itemName}" không bỏ được ở quầy: ${label.charAt(0).toLowerCase()}${label.slice(1)}.`);
+  }
+}
+
+/** Lý do khách không làm dịch vụ không có trong danh mục `SERVICE_DECLINE_REASON` (hoặc đã bị ẩn) — lý do được in ra bệnh án nên không nhận mã lạ. */
+export class ServiceDeclineReasonInvalidError extends DomainError {
+  readonly code = 'SERVICE_DECLINE_REASON_INVALID';
+
+  constructor() {
+    super('Lý do khách không làm dịch vụ không hợp lệ hoặc đã bị ẩn — chọn lại từ danh sách.');
+  }
+}

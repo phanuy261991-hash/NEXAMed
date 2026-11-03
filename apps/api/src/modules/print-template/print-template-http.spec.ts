@@ -460,7 +460,7 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
   it('Bệnh án (#272): khối "Bộ hồ sơ khi in một lượt khám" mặc định kèm hết, tắt được, lưu và đọc lại đúng ở cả danh sách lẫn resolved; chứng từ khác không có khối', async () => {
     const all = await list(adminToken);
     const builtin = all.find((i) => i.documentType === 'MEDICAL_RECORD')!;
-    expect(builtin.config.recordBundle).toEqual({ includeParaclinical: true, includePrescriptions: true });
+    expect(builtin.config.recordBundle).toEqual({ includeParaclinical: true, includePrescriptions: true, includeDeclined: true });
     expect(all.filter((i) => i.documentType !== 'MEDICAL_RECORD').every((i) => i.config.recordBundle === undefined)).toBe(true);
 
     // Cấu hình lưu từ bản cũ (chưa có khối) vẫn đọc được và coi như kèm hết.
@@ -471,7 +471,7 @@ describe('HTTP e2e — /api/v1/print-templates', () => {
       ? await request(app.getHttpServer()).patch(`${API}/${builtin.id}`).set(authed(adminToken)).send({ version: builtin.version, config: legacyConfig })
       : await request(app.getHttpServer()).post(API).set(authed(adminToken)).send({ documentType: 'MEDICAL_RECORD', name: 'Bệnh án A4 (bản cũ)', paperSize: 'A4', config: legacyConfig });
     expect(created.status, JSON.stringify(created.body)).toBe(200);
-    expect(created.body.data.config.recordBundle).toEqual({ includeParaclinical: true, includePrescriptions: true });
+    expect(created.body.data.config.recordBundle).toEqual({ includeParaclinical: true, includePrescriptions: true, includeDeclined: true });
 
     const off = await request(app.getHttpServer())
       .patch(`${API}/${created.body.data.id}`)

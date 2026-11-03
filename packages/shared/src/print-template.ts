@@ -162,9 +162,10 @@ export const INSURANCE_PRINT_DOCUMENT_TYPES: PrintDocumentType[] = ['PRESCRIPTIO
  * Bộ hồ sơ khi "In bộ hồ sơ" MỘT lượt khám (bản mẫu `MEDICAL_RECORD`, mockup đã duyệt 31/10/2026, docs/DECISIONS.md #272): tờ bệnh án MS 15/BV-01 và "Tổng kết bệnh án" LUÔN in;
  * phòng khám chọn có kèm các phiếu kết quả cận lâm sàng / đơn thuốc không. Mặc định BẬT hết (giữ hành vi trước đó). Không áp cho "Xuất toàn bộ bệnh án" (gộp mọi lượt).
  */
-export const recordBundleConfigSchema = z.object({ includeParaclinical: z.boolean(), includePrescriptions: z.boolean() });
+// `includeDeclined` (#280) là trường MỚI nên để TUỲ CHỌN: cấu hình bản mẫu đã lưu của các phòng khám hiện có không có nó và vẫn phải đọc được (thiếu = bật), không cần migration.
+export const recordBundleConfigSchema = z.object({ includeParaclinical: z.boolean(), includePrescriptions: z.boolean(), includeDeclined: z.boolean().optional() });
 export type RecordBundleConfig = z.infer<typeof recordBundleConfigSchema>;
-export const DEFAULT_RECORD_BUNDLE_CONFIG: RecordBundleConfig = { includeParaclinical: true, includePrescriptions: true };
+export const DEFAULT_RECORD_BUNDLE_CONFIG: RecordBundleConfig = { includeParaclinical: true, includePrescriptions: true, includeDeclined: true };
 /** Chứng từ có khối "Bộ hồ sơ khi in một lượt khám". */
 export const RECORD_BUNDLE_DOCUMENT_TYPES: PrintDocumentType[] = ['MEDICAL_RECORD'];
 

@@ -1,3 +1,4 @@
+import type { PackageDeclineMode } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -7,6 +8,16 @@ import { useClinicSettingsQuery, useUpdateClinicSettingsMutation } from './clini
 const sectionBoxClassName = 'relative rounded-lg border border-slate-200 p-4 pt-6';
 const sectionBadgeClassName =
   'absolute -top-3 left-4 rounded-md bg-blue-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white';
+
+/**
+ * Chế độ xử lý khi khách bỏ MỘT dịch vụ nằm trong gói (docs/DECISIONS.md #280). Web không import giá trị lúc chạy từ `@nexamed/shared` (#073) nên nhãn/mô tả
+ * lặp lại ở đây — nguồn sự thật là `PACKAGE_DECLINE_MODE_LABELS/HINTS` trong `packages/shared/src/service-decline.ts`.
+ */
+const PACKAGE_DECLINE_OPTIONS: { value: PackageDeclineMode; label: string; hint: string }[] = [
+  { value: 'BLOCK', label: 'Không cho bỏ lẻ', hint: 'Chỉ bỏ được cả gói.' },
+  { value: 'REPRICE_SINGLE', label: 'Bỏ lẻ, tính lại theo giá lẻ', hint: 'Các dịch vụ còn lại tính theo giá lẻ; khách có thể phải trả thêm.' },
+  { value: 'KEEP_PACKAGE_PRICE', label: 'Bỏ lẻ, giữ nguyên giá gói', hint: 'Số tiền không đổi, khách vẫn trả đủ giá gói.' },
+];
 
 /**
  * "Cấu hình thanh toán" (Thu ngân cơ bản, Sprint 5/6) — pill riêng trong `/admin/system-config`
@@ -47,6 +58,7 @@ export function PaymentConfigPane() {
   const allowFreeTextPrescriptionEnabled = settingsQuery.data?.allowFreeTextPrescriptionEnabled ?? false;
   const paraclinicalBeforePaymentEnabled = settingsQuery.data?.paraclinicalBeforePaymentEnabled ?? false;
   const specimenScanRequired = settingsQuery.data?.specimenScanRequired ?? false;
+  const packageDeclineMode: PackageDeclineMode = settingsQuery.data?.packageDeclineMode ?? 'BLOCK';
 
   return (
     <div className="space-y-8">
@@ -278,6 +290,40 @@ export function PaymentConfigPane() {
             <span className="absolute inset-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand-teal peer-disabled:opacity-60" />
             <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
           </label>
+        </div>
+      </div>
+
+      <div className={sectionBoxClassName}>
+        <span className={sectionBadgeClassName}>Khách không làm dịch vụ</span>
+
+        <p className="text-[14.5px] font-semibold text-slate-900">Khi khách bỏ một dịch vụ trong gói</p>
+        <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+          Dịch vụ lẻ ngoài gói luôn bỏ được. Phiếu đã thu không dùng được chế độ &quot;tính lại theo giá lẻ&quot;.
+        </p>
+        <div role="radiogroup" aria-label="Chế độ bỏ lẻ dịch vụ trong gói" className="mt-3 grid gap-2.5 md:grid-cols-3">
+          {PACKAGE_DECLINE_OPTIONS.map((o) => {
+            const checked = packageDeclineMode === o.value;
+            return (
+              <label
+                key={o.value}
+                className={`relative flex cursor-pointer flex-col rounded-lg border px-3.5 py-2.5 focus-within:ring-2 focus-within:ring-blue-500/30 ${
+                  checked ? 'border-brand-teal bg-brand-teal-tint' : 'border-slate-300 hover:border-blue-400'
+                } ${updateMutation.isPending ? 'opacity-60' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="package-decline-mode"
+                  value={o.value}
+                  checked={checked}
+                  disabled={updateMutation.isPending}
+                  onChange={() => updateMutation.mutate({ packageDeclineMode: o.value })}
+                  className="sr-only"
+                />
+                <span className="text-sm font-semibold text-slate-900">{o.label}</span>
+                <span className="mt-1 text-[12.5px] leading-snug text-slate-500">{o.hint}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 

@@ -150,6 +150,13 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // bình thường. Quyền RIÊNG (chủ dự án chốt): lễ tân/thu ngân có sẵn mặc định, KHÁC `invoice.refund`
   // (hoàn toàn phần cho lượt khám đã huỷ, chỉ clinic_admin).
   { module: 'invoice', action: 'refund_drug', description: 'Hoàn tiền từng dòng thuốc (khách trả thuốc)' },
+  // "Khách không làm dịch vụ" (docs/DECISIONS.md #280) — bác sĩ đã chỉ định dịch vụ kỹ thuật nhưng ra
+  // quầy khách không muốn làm. Quyền HẸP, mặc định cấp lễ tân + clinic_admin, đúng tiền lệ
+  // `invoice.refund_drug` ngay trên: việc này phát sinh ở QUẦY nên người đứng quầy phải tự làm được.
+  // CỐ Ý KHÔNG cấp `clinical_order.create` cho lễ tân thay vì tạo quyền này — quyền đó còn cho phép
+  // THÊM chỉ định, là hành vi lâm sàng, không phải việc của quầy. Máy chủ tự chọn nhánh theo trạng
+  // thái phiếu (chưa thu → gỡ dòng; đã thu → hoàn tiền) nên một quyền phủ cả hai nhánh là đủ.
+  { module: 'invoice', action: 'cancel_service', description: 'Bỏ dịch vụ kỹ thuật khách không làm (gỡ khỏi phiếu hoặc hoàn tiền)' },
   // "Tạm nghỉ / Đóng ca" của bác sĩ — RBAC chỉ gác "ai được PHÉP THỬ" (giống mọi permission khác);
   // bác sĩ tự thao tác cho chính mình luôn qua được (scope personal). Lễ tân/clinic_admin thao tác
   // hộ CÒN CẦN THÊM 2 công tắc `ClinicSettings.allowEmergencyEndShift`/`allowReceptionistEndShift`
@@ -320,6 +327,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'invoice.update': 'global',
     'invoice.print': 'global',
     'invoice.refund_drug': 'global',
+    'invoice.cancel_service': 'global',
     // "Tạm nghỉ / Đóng ca" hộ bác sĩ — chỉ thật sự dùng được khi phòng khám bật thêm
     // `allowReceptionistEndShift` (mặc định tắt), xem PERMISSIONS ở trên.
     'doctor_availability.update': 'global',
@@ -574,6 +582,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // `syncRolePermissionsForAllTenants()`, không cần thao tác tay.
     'invoice.refund': 'global',
     'invoice.refund_drug': 'global',
+    'invoice.cancel_service': 'global',
     'doctor_availability.update': 'global',
     // Người quản lý — xem/tạo/xoá TOÀN BỘ lịch làm việc nhân viên, không giới hạn thời gian tự sửa
     // (khác `personal` của 4 vai trò còn lại). `create=global` (khác 4 vai trò kia) — bắt buộc để

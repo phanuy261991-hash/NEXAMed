@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircle, Lock, MagnifyingGlass, Package, Plus, Trash, Warning } from '@phosphor-icons/react';
 import type { ClinicalOrderDetail, ClinicalOrderPerformance, SaveClinicalOrderRequest, TechnicalServiceItem } from '@nexamed/shared';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { NoticeRow } from '../../shared/ui/NoticeRow';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
 import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { formatVnd } from '../../shared/format/currency';
+import { formatShortDateTimeVn } from '../../shared/format/time';
 import { stripDiacritics } from '../../shared/format/strip-diacritics';
 import { makeDraftId } from '../../shared/make-draft-id';
 import { PrintButton } from '../../shared/print/PrintButton';
@@ -63,11 +66,17 @@ interface Draft {
   packages: DraftPackage[];
 }
 
+/** Gói mà MỌI dịch vụ con đều do khách từ chối ở quầy (#280) — không còn thực hiện, không còn tính tiền, chỉ còn hiện ở khối "Đã huỷ — khách không làm". */
+function isDeadPackage(order: ClinicalOrderDetail, packageId: string): boolean {
+  const children = order.items.filter((i) => i.packageId === packageId);
+  return children.length > 0 && children.every((i) => i.declinedAt !== null);
+}
+
 function fromServer(order: ClinicalOrderDetail | null): Draft {
   if (!order) return { items: [], packages: [] };
   return {
     items: order.items
-      .filter((i) => i.packageId === null)
+      .filter((i) => i.packageId === null && i.declinedAt === null)
       .map((i) => ({
         key: i.id,
         id: i.id,
@@ -83,14 +92,16 @@ function fromServer(order: ClinicalOrderDetail | null): Draft {
         locked: !i.editable,
         cancelled: i.status === 'CANCELLED',
       })),
-    packages: order.packages.map((p) => ({
+    packages: order.packages
+      .filter((p) => !isDeadPackage(order, p.id))
+      .map((p) => ({
       key: p.id,
       id: p.id,
       servicePackageId: p.servicePackageId,
       code: p.code,
       name: p.name,
       unitPrice: p.unitPrice,
-      children: order.items.filter((i) => i.packageId === p.id).map((i) => ({ code: i.code, name: i.name, placeName: i.placeName, quantity: i.quantity })),
+      children: order.items.filter((i) => i.packageId === p.id && i.declinedAt === null).map((i) => ({ code: i.code, name: i.name, placeName: i.placeName, quantity: i.quantity })),
       locked: !p.editable,
     })),
   };
@@ -137,6 +148,7 @@ export function ClinicalOrderPanel({
   doctorName: string;
 }) {
   const canCreate = useHasPermission('clinical_order', 'create');
+  const canViewInvoice = useHasPermission('invoice', 'read');
   const canEdit = canCreate && isEditableEncounter;
   const query = useClinicalOrderQuery(encounterId);
   const saveMutation = useSaveClinicalOrderMutation(encounterId);
@@ -178,6 +190,8 @@ export function ClinicalOrderPanel({
   }, [search, servicesQuery.data, draft.items, mode]);
 
   const dirty = loadedFor === serverKey && signature(draft) !== signature(fromServer(serverOrder));
+  /** Dòng khách từ chối ở quầy (#280): chỉ ĐỌC, lấy thẳng từ server — không nằm trong bản nháp nên không bao giờ bị gửi lại lúc Lưu. */
+  const declinedItems = (serverOrder?.items ?? []).filter((i) => i.declinedAt !== null);
   const inHouseItems = draft.items.filter((i) => i.performance === 'IN_HOUSE');
   const externalItems = draft.items.filter((i) => i.performance === 'EXTERNAL');
   const inHouseTotal = inHouseItems.filter((i) => !i.cancelled).reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.quantity, 0) + draft.packages.reduce((sum, p) => sum + p.unitPrice, 0);
@@ -299,6 +313,11 @@ export function ClinicalOrderPanel({
 
   return (
     <div className="flex flex-col gap-4">
+      {declinedItems.length > 0 && (
+        <NoticeRow title={`Khách không làm ${declinedItems.length} dịch vụ ở quầy thu ngân.`} label="Dịch vụ khách không làm">
+          Xem chi tiết ở khối "Đã huỷ — khách không làm" bên dưới.
+        </NoticeRow>
+      )}
       {canEdit && (
         <div className="rounded-lg border border-slate-200 bg-white p-3.5">
           <div className="flex flex-wrap items-center gap-2.5">
@@ -397,7 +416,7 @@ export function ClinicalOrderPanel({
         </p>
       )}
 
-      {draft.items.length === 0 && draft.packages.length === 0 && (
+      {draft.items.length === 0 && draft.packages.length === 0 && declinedItems.length === 0 && (
         <EmptyState icon={Package} title="Chưa có chỉ định cận lâm sàng nào" description="Gõ tên dịch vụ vào ô tìm phía trên hoặc bấm 'Thêm theo gói' để chỉ định xét nghiệm, chẩn đoán hình ảnh, thăm dò chức năng." />
       )}
 
@@ -519,6 +538,49 @@ export function ClinicalOrderPanel({
                   <td className="px-2 py-2.5 text-center">
                     <RowTail locked={false} canEdit={canEdit} label={item.name} onRemove={() => setDraft((p) => ({ ...p, items: p.items.filter((i) => i.key !== item.key) }))} />
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {declinedItems.length > 0 && (
+        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-label="Đã huỷ — khách không làm">
+          <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3.5 py-2.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-400" aria-hidden="true" />
+            <h3 className="text-[13.5px] font-semibold text-slate-900">Đã huỷ — khách không làm</h3>
+            <span className="text-xs text-slate-500">{declinedItems.length} dịch vụ · không tính tiền</span>
+            {canViewInvoice && (
+              <Link to={`/billing/${encounterId}`} className="ml-auto text-xs font-semibold text-blue-700 hover:underline">
+                Xem phiếu thu
+              </Link>
+            )}
+          </div>
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b-2 border-blue-600 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-800">
+                <th className="px-2 py-2.5 text-center">Dịch vụ</th>
+                <th className="w-64 px-2 py-2.5 text-center">Lý do</th>
+                <th className="w-44 px-2 py-2.5 text-center">Người xác nhận</th>
+                <th className="w-36 px-2 py-2.5 text-center">Thời điểm</th>
+                <th className="w-32 px-2 py-2.5 text-center">Giá lúc chỉ định</th>
+              </tr>
+            </thead>
+            <tbody>
+              {declinedItems.map((item) => (
+                <tr key={item.id} className="border-b border-slate-100 text-slate-700">
+                  <td className="px-2 py-2.5 text-left font-medium text-slate-900">
+                    {item.name}
+                    {item.packageId !== null && <div className="text-[11.5px] font-semibold text-violet-700">Thuộc gói</div>}
+                  </td>
+                  <td className="px-2 py-2.5 text-left">
+                    <span className="font-medium text-slate-800">{item.declineReasonLabel ?? '—'}</span>
+                    {item.declineNote && <div className="text-xs text-slate-500">{item.declineNote}</div>}
+                  </td>
+                  <td className="px-2 py-2.5 text-center">{item.declinedByName ?? '—'}</td>
+                  <td className="px-2 py-2.5 text-center tabular-nums">{item.declinedAt ? formatShortDateTimeVn(item.declinedAt) : '—'}</td>
+                  <td className="px-2.5 py-2.5 text-right tabular-nums">{item.unitPrice === null ? '—' : formatVnd(item.unitPrice * item.quantity)}</td>
                 </tr>
               ))}
             </tbody>

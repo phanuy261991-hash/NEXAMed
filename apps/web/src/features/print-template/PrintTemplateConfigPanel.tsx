@@ -431,6 +431,13 @@ export function PrintTemplateConfigPanel({
             <BundleRow label="Tổng kết bệnh án" />
             <BundleRow id="pt-bundle-cls" label="Phiếu kết quả cận lâm sàng" hint="Mỗi dịch vụ đã duyệt một phiếu" checked={recordBundle.includeParaclinical} onChange={(v) => setRecordBundle({ includeParaclinical: v })} />
             <BundleRow id="pt-bundle-rx" label="Đơn thuốc" hint="Các đơn đã ký của lượt khám" checked={recordBundle.includePrescriptions} onChange={(v) => setRecordBundle({ includePrescriptions: v })} />
+            <BundleRow
+              id="pt-bundle-declined"
+              label="Đã chỉ định nhưng không thực hiện"
+              hint="Dịch vụ khách bỏ ở quầy, kèm lý do — in dưới phần Cận lâm sàng"
+              checked={recordBundle.includeDeclined !== false}
+              onChange={(v) => setRecordBundle({ includeDeclined: v })}
+            />
           </div>
           <div className="mt-3 rounded-md border border-slate-200 bg-white px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hộp "In bộ hồ sơ" sẽ ghi</p>

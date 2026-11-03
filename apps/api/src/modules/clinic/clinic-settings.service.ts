@@ -35,6 +35,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         businessHours,
         slotDurationMinutes,
         deferredPaymentEnabled,
+        packageDeclineMode,
         overdueWaitWarningMinutes,
         noShowAutoEnabled,
         noShowThresholdMinutes,
@@ -69,6 +70,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
         this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getPackageDeclineMode(tx, tenantId),
         this.clinicSettingsRepository.getOverdueWaitWarningMinutes(tx, tenantId),
         this.clinicSettingsRepository.getNoShowAutoEnabled(tx, tenantId),
         this.clinicSettingsRepository.getNoShowThresholdMinutes(tx, tenantId),
@@ -104,6 +106,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         businessHours,
         slotDurationMinutes,
         deferredPaymentEnabled,
+        packageDeclineMode,
         overdueWaitWarningMinutes,
         noShowAutoEnabled,
         noShowThresholdMinutes,
@@ -208,6 +211,11 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId));
   }
 
+  /** `ClinicConfigReaderPort` (#280) — xem comment ở khai báo class. */
+  getPackageDeclineMode(tenantId: string): ReturnType<ClinicConfigReaderPort['getPackageDeclineMode']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getPackageDeclineMode(tx, tenantId));
+  }
+
   /** `ClinicConfigReaderPort` (S5-07, APP-05) — xem comment ở khai báo class. */
   getNoShowConfig(tenantId: string): ReturnType<ClinicConfigReaderPort['getNoShowConfig']> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
@@ -290,6 +298,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       }
       if (dto.deferredPaymentEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertDeferredPaymentEnabled(tx, tenantId, actorId, dto.deferredPaymentEnabled);
+      }
+      if (dto.packageDeclineMode !== undefined) {
+        await this.clinicSettingsRepository.upsertPackageDeclineMode(tx, tenantId, actorId, dto.packageDeclineMode);
       }
       if (dto.overdueWaitWarningMinutes !== undefined) {
         await this.clinicSettingsRepository.upsertOverdueWaitWarningMinutes(tx, tenantId, actorId, dto.overdueWaitWarningMinutes);
@@ -386,6 +397,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.businessHours !== undefined ||
         dto.slotDurationMinutes !== undefined ||
         dto.deferredPaymentEnabled !== undefined ||
+        dto.packageDeclineMode !== undefined ||
         dto.overdueWaitWarningMinutes !== undefined ||
         dto.noShowAutoEnabled !== undefined ||
         dto.noShowThresholdMinutes !== undefined ||
@@ -432,6 +444,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         businessHours,
         slotDurationMinutes,
         deferredPaymentEnabled,
+        packageDeclineMode,
         overdueWaitWarningMinutes,
         noShowAutoEnabled,
         noShowThresholdMinutes,
@@ -466,6 +479,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
         this.clinicSettingsRepository.getDeferredPaymentEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getPackageDeclineMode(tx, tenantId),
         this.clinicSettingsRepository.getOverdueWaitWarningMinutes(tx, tenantId),
         this.clinicSettingsRepository.getNoShowAutoEnabled(tx, tenantId),
         this.clinicSettingsRepository.getNoShowThresholdMinutes(tx, tenantId),
@@ -501,6 +515,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         businessHours,
         slotDurationMinutes,
         deferredPaymentEnabled,
+        packageDeclineMode,
         overdueWaitWarningMinutes,
         noShowAutoEnabled,
         noShowThresholdMinutes,

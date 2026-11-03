@@ -469,6 +469,26 @@ export class InvoiceRepository {
     return result.count;
   }
 
+  /**
+   * "Khách không làm dịch vụ" (docs/DECISIONS.md #280), chế độ "tính lại theo giá lẻ": đổi giá MỘT dòng gói (đã bỏ bớt dịch vụ con) và cộng chênh lệch vào `total_amount`.
+   * Chỉ phiếu còn `UNPAID`. KHÔNG kiểm `version` — nơi gọi đã khoá phiếu (`lockForRefund`) và kiểm phiên bản ngay đầu giao dịch; hàm này vẫn tăng `version` để mọi
+   * màn đang mở thấy phiếu đã đổi. Dòng gói luôn có `quantity = 1` nên `unit_price` = `line_total`. Trả 0 nếu dòng/phiếu không còn hợp lệ.
+   */
+  async repriceOrderLine(tx: Prisma.TransactionClient, tenantId: string, invoiceId: string, invoiceLineId: string, newLineTotal: bigint, actorId: string): Promise<number> {
+    const line = await tx.invoiceLine.findFirst({ where: { tenantId, invoiceId, id: invoiceLineId, deletedAt: null }, select: { lineTotal: true } });
+    if (!line) return 0;
+    const invoice = await tx.invoice.updateMany({
+      where: { tenantId, id: invoiceId, status: 'UNPAID', deletedAt: null },
+      data: { totalAmount: { increment: newLineTotal - line.lineTotal }, updatedBy: actorId, version: { increment: 1 } },
+    });
+    if (invoice.count === 0) return 0;
+    await tx.invoiceLine.updateMany({
+      where: { tenantId, invoiceId, id: invoiceLineId, deletedAt: null },
+      data: { unitPrice: newLineTotal, lineTotal: newLineTotal, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return invoice.count;
+  }
+
   /** Kho Thuốc GĐ3 (#163) — huỷ phiếu xuất: xoá (soft) ĐÚNG các dòng invoice_line do CHÍNH phiếu đó
    * sinh ra (`stockIssueLineIds` — không xoá lan sang dòng của phiếu xuất KHÁC cộng chung 1 hoá đơn
    * SERVICE, ví dụ 2 lượt phát thuốc khác nhau trong cùng ngày) + trừ lại `totalAmount`. Gọi khi đã

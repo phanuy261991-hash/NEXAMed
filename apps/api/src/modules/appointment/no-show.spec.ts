@@ -108,6 +108,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getScheduleConfig: () => Promise.reject(new Error('không dùng trong test này')),
       getTodayDoctorRoomAssignments: () => Promise.reject(new Error('không dùng trong test này')),
       getDeferredPaymentEnabled: () => Promise.reject(new Error('không dùng trong test này')),
+      getPackageDeclineMode: () => Promise.reject(new Error('không dùng trong test này')),
       getNoShowConfig: (tid: string) => Promise.resolve(overrides[tid] ?? { enabled: false, thresholdMinutes: 60 }),
       getDoctorAvailabilityPolicy: () => Promise.reject(new Error('không dùng trong test này')),
       getPrescriptionKindMapping: () => Promise.reject(new Error('không dùng trong test này')),

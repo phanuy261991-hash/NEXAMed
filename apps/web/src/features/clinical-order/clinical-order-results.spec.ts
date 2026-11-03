@@ -5,7 +5,7 @@ import { resultStatusOf, selectResultItems } from './clinical-order-results';
 function item(over: Partial<ClinicalOrderItemView>): ClinicalOrderItemView {
   return {
     id: 'i', itemKind: 'TECHNICAL_SERVICE', technicalServiceId: null, examTypeCode: null, code: 'XN1', name: 'Dịch vụ', performance: 'IN_HOUSE', quantity: 1, unitPrice: 1000, lineTotal: 1000,
-    packageId: null, placeName: null, serviceKind: 'LAB', note: null, status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true, ...over,
+    packageId: null, placeName: null, serviceKind: 'LAB', note: null, status: 'ORDERED', resultReturnedAt: null, amendmentPending: false, editable: true, declineReasonCode: null, declineReasonLabel: null, declineNote: null, declinedAt: null, declinedByName: null, ...over,
   };
 }
 

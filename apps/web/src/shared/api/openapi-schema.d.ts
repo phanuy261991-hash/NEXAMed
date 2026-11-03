@@ -3702,6 +3702,8 @@ export interface paths {
                                 } | null;
                                 slotDurationMinutes: number;
                                 deferredPaymentEnabled: boolean;
+                                /** @enum {string} */
+                                packageDeclineMode: "BLOCK" | "REPRICE_SINGLE" | "KEEP_PACKAGE_PRICE";
                                 overdueWaitWarningMinutes: number;
                                 noShowAutoEnabled: boolean;
                                 noShowThresholdMinutes: number;
@@ -6385,6 +6387,15 @@ export interface paths {
                                     descriptionText: string | null;
                                     conclusionText: string | null;
                                     imageCount: number;
+                                }[];
+                                declined: {
+                                    /** Format: uuid */
+                                    orderItemId: string;
+                                    serviceName: string;
+                                    reasonLabel: string;
+                                    note: string | null;
+                                    declinedAt: string;
+                                    declinedByName: string | null;
                                 }[];
                             };
                             meta: Record<string, never>;
@@ -9807,6 +9818,472 @@ export interface paths {
                 };
                 /** @description Dòng không phải thuốc (INVOICE_LINE_NOT_REFUNDABLE), vượt số lượng còn hoàn được (INVOICE_REFUND_QUANTITY_EXCEEDED), hoặc tổng hoàn 0đ (INVOICE_REFUND_ZERO_AMOUNT) */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}/service-decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** #280 Xem trước hộp thoại "Khách không làm dịch vụ": dịch vụ liên quan tới phiếu + dòng nào bỏ được / vì sao không (quyền invoice.cancel_service) */
+        get: {
+            parameters: {
+                query: {
+                    invoiceId: string;
+                };
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                invoiceId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                invoiceStatus: "UNPAID" | "PAID" | "REFUNDED" | "CANCELLED";
+                                invoiceVersion: number;
+                                /** @enum {string} */
+                                packageMode: "BLOCK" | "REPRICE_SINGLE" | "KEEP_PACKAGE_PRICE";
+                                /** @enum {string|null} */
+                                action: "REMOVE_LINE" | "REFUND" | null;
+                                items: {
+                                    /** Format: uuid */
+                                    orderItemId: string;
+                                    name: string;
+                                    quantity: number;
+                                    /** @enum {string} */
+                                    status: "ORDERED" | "CANCELLED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED";
+                                    /** Format: uuid */
+                                    packageId: string | null;
+                                    packageName: string | null;
+                                    amount: number | null;
+                                    declinable: boolean;
+                                    /** @enum {string|null} */
+                                    blockedReason: "WORK_STARTED" | "ALREADY_CANCELLED" | "ALREADY_REFUNDED" | "PACKAGE_ITEM_BLOCKED" | "PACKAGE_REPRICE_PAID" | "NOT_BILLED_HERE" | null;
+                                    blockedLabel: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.cancel_service */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu không thuộc lượt khám / chi nhánh này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** #280 Khách không làm dịch vụ: phiếu CHƯA THU → gỡ dòng + trừ tiền; phiếu ĐÃ THU → hoàn tiền theo phương thức đã thu (không nhập lại kho). Dòng chỉ định → CANCELLED kèm lý do (không xoá), quyền invoice.cancel_service */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        invoiceId: string;
+                        orderItemIds: string[];
+                        reasonCode: string;
+                        reasonNote?: string;
+                        invoiceVersion: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                encounterId: string;
+                                invoiceNo: string;
+                                /** @enum {string} */
+                                invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
+                                /** @enum {string} */
+                                status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                totalAmount: number;
+                                lines: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    examTypeCode: string;
+                                    examTypeName: string;
+                                    priceTypeCode: string | null;
+                                    unitCode: string | null;
+                                    unitPrice: number;
+                                    quantity: number;
+                                    lineTotal: number;
+                                    /** @enum {string|null} */
+                                    discountType: "PERCENT" | "AMOUNT" | null;
+                                    discountValue: number | null;
+                                    discountAmount: number;
+                                    /** @enum {string} */
+                                    lineSource: "SERVICE" | "DRUG" | "PARACLINICAL";
+                                    stockIssueNo: string | null;
+                                    clinicalOrderNo: string | null;
+                                    netAmount: number;
+                                    refundedQuantity: number;
+                                    refundedAmount: number;
+                                }[];
+                                /** @enum {string} */
+                                discountMode: "NONE" | "TOTAL" | "PER_LINE";
+                                /** @enum {string|null} */
+                                discountType: "PERCENT" | "AMOUNT" | null;
+                                discountValue: number | null;
+                                discountReason: string | null;
+                                discountAmount: number;
+                                dueAmount: number;
+                                encounterNo: string;
+                                checkedInAt: string;
+                                /** Format: uuid */
+                                patientId: string;
+                                patientCode: string;
+                                fullName: string;
+                                departmentName: string;
+                                encounterVersion: number;
+                                printedAt: string | null;
+                                pendingPaymentMethod: string | null;
+                                pendingCashReceivedAmount: number | null;
+                                paymentMethod: string | null;
+                                paidAt: string | null;
+                                payments: {
+                                    method: string;
+                                    amount: number;
+                                }[];
+                                encounterCancelled: boolean;
+                                needsRefund: boolean;
+                                refundedAt: string | null;
+                                refundReason: string | null;
+                                otherInvoices: {
+                                    /** Format: uuid */
+                                    invoiceId: string;
+                                    invoiceNo: string;
+                                    /** @enum {string} */
+                                    invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
+                                    /** @enum {string} */
+                                    status: "UNPAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                                    dueAmount: number;
+                                }[];
+                                refundedAmount: number;
+                                refunds: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    refundNo: string;
+                                    refundedAt: string;
+                                    reason: string;
+                                    totalAmount: number;
+                                    lines: {
+                                        /** Format: uuid */
+                                        invoiceLineId: string;
+                                        itemName: string;
+                                        quantity: number;
+                                        amount: number;
+                                        restocked: boolean;
+                                    }[];
+                                }[];
+                                version: number;
+                            } | null;
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu lý do / không chọn dòng nào / dịch vụ không thuộc phiếu */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.cancel_service */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu không thuộc lượt khám / chi nhánh này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description invoiceVersion không khớp (CONCURRENT_MODIFICATION), dòng không bỏ được (SERVICE_DECLINE_BLOCKED) hoặc phiếu đã đóng (INVOICE_CLOSED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lý do không có trong danh mục hoặc đã bị ẩn (SERVICE_DECLINE_REASON_INVALID) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{encounterId}/service-decline/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** #280 Báo giá: số tiền giảm khỏi phiếu / hoàn lại khách / khách phải trả thêm — chỉ đọc, cùng nguồn tính với xác nhận (web không tự cộng trừ) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        invoiceId: string;
+                        orderItemIds: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                action: "REMOVE_LINE" | "REFUND" | "NO_MONEY_CHANGE";
+                                itemCount: number;
+                                amount: number;
+                                surcharge: number;
+                                newDueAmount: number | null;
+                                refundBreakdown: {
+                                    method: string;
+                                    amount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dịch vụ không thuộc phiếu này / không chọn dòng nào */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền invoice.cancel_service */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu không thuộc lượt khám / chi nhánh này */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Có dòng không bỏ được (SERVICE_DECLINE_BLOCKED) hoặc phiếu đã đóng (INVOICE_CLOSED) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -18606,6 +19083,8 @@ export interface paths {
                                 } | null;
                                 slotDurationMinutes: number;
                                 deferredPaymentEnabled: boolean;
+                                /** @enum {string} */
+                                packageDeclineMode: "BLOCK" | "REPRICE_SINGLE" | "KEEP_PACKAGE_PRICE";
                                 overdueWaitWarningMinutes: number;
                                 noShowAutoEnabled: boolean;
                                 noShowThresholdMinutes: number;
@@ -18721,6 +19200,8 @@ export interface paths {
                         };
                         slotDurationMinutes?: number;
                         deferredPaymentEnabled?: boolean;
+                        /** @enum {string} */
+                        packageDeclineMode?: "BLOCK" | "REPRICE_SINGLE" | "KEEP_PACKAGE_PRICE";
                         overdueWaitWarningMinutes?: number;
                         noShowAutoEnabled?: boolean;
                         noShowThresholdMinutes?: number;
@@ -18795,6 +19276,8 @@ export interface paths {
                                 } | null;
                                 slotDurationMinutes: number;
                                 deferredPaymentEnabled: boolean;
+                                /** @enum {string} */
+                                packageDeclineMode: "BLOCK" | "REPRICE_SINGLE" | "KEEP_PACKAGE_PRICE";
                                 overdueWaitWarningMinutes: number;
                                 noShowAutoEnabled: boolean;
                                 noShowThresholdMinutes: number;
@@ -21783,7 +22266,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
                 };
                 cookie?: never;
             };
@@ -21801,7 +22284,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
@@ -21912,7 +22395,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
                         code?: string;
                         name: string;
                         /** @default 0 */
@@ -21953,7 +22436,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -22075,7 +22558,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -22226,7 +22709,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -22358,7 +22841,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -25324,6 +25807,7 @@ export interface paths {
                                         recordBundle?: {
                                             includeParaclinical: boolean;
                                             includePrescriptions: boolean;
+                                            includeDeclined?: boolean;
                                         };
                                         copies: {
                                             count: number;
@@ -25420,6 +25904,7 @@ export interface paths {
                                             recordBundle?: {
                                                 includeParaclinical: boolean;
                                                 includePrescriptions: boolean;
+                                                includeDeclined?: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25490,6 +25975,7 @@ export interface paths {
                                             recordBundle?: {
                                                 includeParaclinical: boolean;
                                                 includePrescriptions: boolean;
+                                                includeDeclined?: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25560,6 +26046,7 @@ export interface paths {
                                             recordBundle?: {
                                                 includeParaclinical: boolean;
                                                 includePrescriptions: boolean;
+                                                includeDeclined?: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25630,6 +26117,7 @@ export interface paths {
                                             recordBundle?: {
                                                 includeParaclinical: boolean;
                                                 includePrescriptions: boolean;
+                                                includeDeclined?: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25700,6 +26188,7 @@ export interface paths {
                                             recordBundle?: {
                                                 includeParaclinical: boolean;
                                                 includePrescriptions: boolean;
+                                                includeDeclined?: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25770,6 +26259,7 @@ export interface paths {
                                             recordBundle?: {
                                                 includeParaclinical: boolean;
                                                 includePrescriptions: boolean;
+                                                includeDeclined?: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25840,6 +26330,7 @@ export interface paths {
                                             recordBundle?: {
                                                 includeParaclinical: boolean;
                                                 includePrescriptions: boolean;
+                                                includeDeclined?: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -25910,6 +26401,7 @@ export interface paths {
                                             recordBundle?: {
                                                 includeParaclinical: boolean;
                                                 includePrescriptions: boolean;
+                                                includeDeclined?: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -26036,6 +26528,7 @@ export interface paths {
                             recordBundle?: {
                                 includeParaclinical: boolean;
                                 includePrescriptions: boolean;
+                                includeDeclined?: boolean;
                             };
                             copies: {
                                 count: number;
@@ -26128,6 +26621,7 @@ export interface paths {
                                     recordBundle?: {
                                         includeParaclinical: boolean;
                                         includePrescriptions: boolean;
+                                        includeDeclined?: boolean;
                                     };
                                     copies: {
                                         count: number;
@@ -26319,6 +26813,7 @@ export interface paths {
                                         recordBundle?: {
                                             includeParaclinical: boolean;
                                             includePrescriptions: boolean;
+                                            includeDeclined?: boolean;
                                         };
                                         copies: {
                                             count: number;
@@ -26396,6 +26891,7 @@ export interface paths {
                                             recordBundle?: {
                                                 includeParaclinical: boolean;
                                                 includePrescriptions: boolean;
+                                                includeDeclined?: boolean;
                                             };
                                             copies: {
                                                 count: number;
@@ -26723,6 +27219,7 @@ export interface paths {
                             recordBundle?: {
                                 includeParaclinical: boolean;
                                 includePrescriptions: boolean;
+                                includeDeclined?: boolean;
                             };
                             copies: {
                                 count: number;
@@ -26817,6 +27314,7 @@ export interface paths {
                                     recordBundle?: {
                                         includeParaclinical: boolean;
                                         includePrescriptions: boolean;
+                                        includeDeclined?: boolean;
                                     };
                                     copies: {
                                         count: number;
@@ -26968,7 +27466,7 @@ export interface paths {
                                 }[];
                                 newCatalogItems: {
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
                                     name: string;
                                 }[];
                                 exampleRowCount: number;
@@ -41675,6 +42173,11 @@ export interface paths {
                                         status: "ORDERED" | "CANCELLED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED";
                                         resultReturnedAt: string | null;
                                         amendmentPending: boolean;
+                                        declineReasonCode: string | null;
+                                        declineReasonLabel: string | null;
+                                        declineNote: string | null;
+                                        declinedAt: string | null;
+                                        declinedByName: string | null;
                                         editable: boolean;
                                     }[];
                                     packages: {
@@ -41827,6 +42330,11 @@ export interface paths {
                                         status: "ORDERED" | "CANCELLED" | "IN_PROGRESS" | "RESULTED" | "COMPLETED";
                                         resultReturnedAt: string | null;
                                         amendmentPending: boolean;
+                                        declineReasonCode: string | null;
+                                        declineReasonLabel: string | null;
+                                        declineNote: string | null;
+                                        declinedAt: string | null;
+                                        declinedByName: string | null;
                                         editable: boolean;
                                     }[];
                                     packages: {

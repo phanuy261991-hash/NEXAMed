@@ -917,8 +917,18 @@ export const medicalRecordParaclinicalResultSchema = z.object({
   conclusionText: z.string().nullable(),
   imageCount: z.number().int(),
 });
+/** Dịch vụ bác sĩ đã chỉ định nhưng khách bỏ ở quầy thu ngân (#280) — hiện ở bệnh án trên màn hình, cùng nội dung bản in. */
+export const medicalRecordDeclinedItemSchema = z.object({
+  orderItemId: z.string().uuid(),
+  serviceName: z.string(),
+  reasonLabel: z.string(),
+  note: z.string().nullable(),
+  declinedAt: z.string(),
+  declinedByName: z.string().nullable(),
+});
 export const medicalRecordParaclinicalResponseSchema = z.object({
   results: z.array(medicalRecordParaclinicalResultSchema),
+  declined: z.array(medicalRecordDeclinedItemSchema),
 });
 export type MedicalRecordParaclinicalResponse = z.infer<typeof medicalRecordParaclinicalResponseSchema>;
 

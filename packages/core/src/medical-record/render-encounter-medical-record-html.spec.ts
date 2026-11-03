@@ -302,3 +302,62 @@ describe('renderEncounterMedicalRecordHtml — bộ hồ sơ theo bản mẫu in
     expect(html).not.toContain('Đơn thuốc</div>');
   });
 });
+
+describe('renderEncounterMedicalRecordHtml — "Đã chỉ định nhưng không thực hiện" (#280)', () => {
+  const declined = [
+    { orderItemId: 'd1', serviceName: 'Siêu âm ổ bụng tổng quát', reasonLabel: 'Khách thấy giá cao', note: null, declinedAt: '2026-10-20T07:28:00.000Z', declinedByName: 'Phạm Thuỳ Dung' },
+    { orderItemId: 'd2', serviceName: 'Điện tâm đồ <b>12</b> chuyển đạo', reasonLabel: 'Hẹn làm hôm khác', note: 'Khách bận <script>', declinedAt: '2026-10-20T07:29:00.000Z', declinedByName: null },
+  ];
+
+  it('in bảng dịch vụ + lý do + người xác nhận + giờ Việt Nam, ở CẢ mục IV.3 của tờ khám và mục 2 của Tổng kết', () => {
+    const html = renderEncounterMedicalRecordHtml(base({ declinedOrderItems: declined }));
+    expect(html.match(/Đã chỉ định nhưng không thực hiện/g)).toHaveLength(2);
+    expect(html).toContain('Siêu âm ổ bụng tổng quát');
+    expect(html).toContain('Khách thấy giá cao');
+    expect(html).toContain('Phạm Thuỳ Dung');
+    expect(html).toContain('14:28'); // 07:28 UTC = 14:28 giờ Việt Nam
+  });
+
+  it('KHÔNG đánh số lại mẫu: số mục của MS 15/BV-01 giữ nguyên (I–IV và Tổng kết 1–6), khối mới không có số La Mã', () => {
+    const withBlock = renderEncounterMedicalRecordHtml(base({ declinedOrderItems: declined }));
+    const without = renderEncounterMedicalRecordHtml(base());
+    const nums = (html: string): string[] => [...html.matchAll(/<span class="rec-num">([^<]+)<\/span>/g)].map((m) => m[1]!);
+    expect(nums(withBlock)).toEqual(nums(without));
+    expect(nums(withBlock)).toEqual(['I', 'II', 'III', 'IV', '1', '2', '3', '4', '5', '6']);
+  });
+
+  it('không có dòng nào → không in tiêu đề (bệnh án cũ giữ nguyên từng chữ)', () => {
+    expect(renderEncounterMedicalRecordHtml(base())).not.toContain('Đã chỉ định nhưng không thực hiện');
+    expect(renderEncounterMedicalRecordHtml(base({ declinedOrderItems: [] }))).not.toContain('Đã chỉ định nhưng không thực hiện');
+  });
+
+  it('ô tích Quản lý mẫu in: includeDeclined=false → ẩn; THIẾU trường (cấu hình đã lưu từ trước) → vẫn in', () => {
+    const off = renderEncounterMedicalRecordHtml(base({ declinedOrderItems: declined }), { ...defaultOptions(), bundle: { includeParaclinical: true, includePrescriptions: true, includeDeclined: false } });
+    expect(off).not.toContain('Đã chỉ định nhưng không thực hiện');
+    const legacy = renderEncounterMedicalRecordHtml(base({ declinedOrderItems: declined }), { ...defaultOptions(), bundle: { includeParaclinical: true, includePrescriptions: true } });
+    expect(legacy).toContain('Đã chỉ định nhưng không thực hiện');
+  });
+
+  it('chống chèn HTML ở tên dịch vụ và ghi thêm; ghi thêm nối sau lý do', () => {
+    const html = renderEncounterMedicalRecordHtml(base({ declinedOrderItems: declined }));
+    expect(html).not.toContain('<script>');
+    expect(html).not.toContain('<b>12</b>');
+    expect(html).toContain('Hẹn làm hôm khác — Khách bận &lt;script&gt;');
+  });
+
+  it('tắt phiếu kết quả cận lâm sàng KHÔNG làm mất khối này (hai ô tích độc lập)', () => {
+    const html = renderEncounterMedicalRecordHtml(base({ declinedOrderItems: declined, paraclinicalResults: [cls('Công thức máu')] }), {
+      ...defaultOptions(),
+      bundle: { includeParaclinical: false, includePrescriptions: true },
+    });
+    expect(html).toContain('Đã chỉ định nhưng không thực hiện');
+  });
+});
+
+function defaultOptions(): MedicalRecordPrintOptions {
+  return {
+    header: { showClinicName: true, showAddress: true, showPhone: true, showTaxCode: false, showDivider: true },
+    title: null,
+    footerNote: null,
+  };
+}

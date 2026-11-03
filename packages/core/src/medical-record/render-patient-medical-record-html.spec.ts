@@ -376,3 +376,33 @@ describe('dòng "Thẻ BHYT" của từng lượt khám (S2-04, ô tích của b
     expect(renderPatientMedicalRecordHtml(noInfoDoc, { ...baseOptions, insurance: { show: true, whenSelfPay: 'selfPay' } })).not.toContain('Số thẻ BHYT');
   });
 });
+
+describe('bệnh án gộp nhiều lượt — "Đã chỉ định nhưng không thực hiện" (#280)', () => {
+  const entryWith = (declinedOrderItems: { orderItemId: string; serviceName: string; reasonLabel: string; note: string | null; declinedAt: string; declinedByName: string | null }[] | undefined) => ({
+    encounterNo: 'LK0001',
+    checkedInAt: '2026-10-20T01:15:00.000Z',
+    doctorName: 'BS. A',
+    chiefComplaint: 'Đau bụng',
+    vitalSigns: null,
+    diagnoses: [],
+    clinicalNoteSections: [],
+    prescriptionItems: [],
+    signedAt: null,
+    ...(declinedOrderItems ? { declinedOrderItems } : {}),
+  });
+  const docOf = (entry: ReturnType<typeof entryWith>) => ({
+    clinic: { name: 'PK', address: null, phone: null, taxCode: null },
+    patient: { patientCode: 'BN1', fullName: 'Nguyễn Văn A', dob: '1990-01-01', genderLabel: 'Nam', phone: '0900000000', address: null, nationalId: null, occupation: null, ethnicity: null, nationality: null, personalHistory: null, allergenNames: [], conditionNames: [], familyHistoryLines: [] },
+    encounters: [entry],
+    generatedAt: '2026-10-30T03:00:00.000Z',
+    reason: 'x',
+  });
+
+  it('in h3 sau "Cận lâm sàng" và trước "Hướng điều trị"; không có dòng nào thì không in', () => {
+    const items = [{ orderItemId: 'd1', serviceName: 'Siêu âm ổ bụng', reasonLabel: 'Khách thấy giá cao', note: null, declinedAt: '2026-10-20T07:28:00.000Z', declinedByName: 'Dung' }];
+    const html = renderPatientMedicalRecordHtml(docOf(entryWith(items)) as never);
+    expect(html).toContain('<h3>Đã chỉ định nhưng không thực hiện</h3>');
+    expect(html).toContain('Khách thấy giá cao');
+    expect(renderPatientMedicalRecordHtml(docOf(entryWith(undefined)) as never)).not.toContain('Đã chỉ định nhưng không thực hiện');
+  });
+});

@@ -1,5 +1,9 @@
 import type {
   ApplyInvoiceDiscountRequest,
+  DeclineQuoteRequest,
+  DeclineServicesRequest,
+  ServiceDeclinePreview,
+  ServiceDeclineQuote,
   BillingListTabValue,
   CombinedInvoicePrintResponse,
   Invoice,
@@ -72,6 +76,27 @@ export async function refundInvoice(encounterId: string, body: RefundInvoiceRequ
 export async function refundInvoiceItems(encounterId: string, body: RefundInvoiceItemsRequest): Promise<Invoice> {
   return unwrap(
     await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/refund-items', { params: { path: { encounterId } }, body }),
+  ) as Invoice;
+}
+
+/** #280 — mở hộp thoại "Khách không làm dịch vụ": dịch vụ liên quan tới phiếu + dòng nào bỏ được / vì sao không. Quyền riêng `invoice.cancel_service`. */
+export async function getServiceDeclinePreview(encounterId: string, invoiceId: string): Promise<ServiceDeclinePreview> {
+  return unwrap(
+    await getApiClient().GET('/api/v1/billing/invoices/{encounterId}/service-decline', { params: { path: { encounterId }, query: { invoiceId } } }),
+  ) as ServiceDeclinePreview;
+}
+
+/** #280 — số tiền hiện ở chân hộp thoại. Web KHÔNG tự cộng trừ (không import @nexamed/core) nên mọi con số do máy chủ tính, cùng nguồn với bước xác nhận. */
+export async function quoteServiceDecline(encounterId: string, body: DeclineQuoteRequest): Promise<ServiceDeclineQuote> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/service-decline/quote', { params: { path: { encounterId } }, body }),
+  ) as ServiceDeclineQuote;
+}
+
+/** #280 — xác nhận khách không làm dịch vụ: phiếu chưa thu → gỡ dòng; phiếu đã thu → hoàn tiền. Máy chủ tự chọn nhánh. */
+export async function declineServices(encounterId: string, body: DeclineServicesRequest): Promise<Invoice> {
+  return unwrap(
+    await getApiClient().POST('/api/v1/billing/invoices/{encounterId}/service-decline', { params: { path: { encounterId } }, body }),
   ) as Invoice;
 }
 

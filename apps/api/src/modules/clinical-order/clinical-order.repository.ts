@@ -331,6 +331,76 @@ export class ClinicalOrderRepository {
   }
 
   /**
+   * "Khách không làm dịch vụ" (docs/DECISIONS.md #280): đặt các dòng còn `ORDERED` sang `CANCELLED` KÈM lý do — KHÔNG soft-delete, để dòng còn nguyên cho khối "Đã huỷ" ở màn khám
+   * và mục "Đã chỉ định nhưng không thực hiện" trên bệnh án. Có điều kiện `status = ORDERED` (chống ghi chồng: kỹ thuật viên vừa lấy mẫu giữa lúc thu ngân bấm xác nhận);
+   * trả số dòng thật sự đổi — nơi gọi so với số dòng yêu cầu, lệch thì huỷ cả giao dịch.
+   */
+  async markDeclined(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    ids: string[],
+    data: { reasonCode: string; note: string | null; actorId: string; at: Date },
+  ): Promise<number> {
+    if (ids.length === 0) return 0;
+    const r = await tx.clinicalOrderItem.updateMany({
+      where: { tenantId, id: { in: ids }, status: 'ORDERED', deletedAt: null },
+      data: {
+        status: 'CANCELLED',
+        declineReasonCode: data.reasonCode,
+        declineNote: data.note,
+        declinedAt: data.at,
+        declinedBy: data.actorId,
+        updatedBy: data.actorId,
+        version: { increment: 1 },
+      },
+    });
+    return r.count;
+  }
+
+  /**
+   * Các dịch vụ khách không làm (thu ngân bỏ ở quầy, #280) của nhiều lượt khám — đưa vào bệnh án in. Chỉ dòng có `declinedAt` (dòng CANCELLED do huỷ lượt khám #219 KHÔNG phải sự kiện
+   * "khách không làm" nên không vào bệnh án mục này). Theo thứ tự thời điểm bỏ.
+   */
+  listDeclinedByEncounterIds(tx: Prisma.TransactionClient, tenantId: string, encounterIds: string[]) {
+    if (encounterIds.length === 0) return Promise.resolve([]);
+    return tx.clinicalOrderItem.findMany({
+      where: { tenantId, deletedAt: null, status: 'CANCELLED', declinedAt: { not: null }, order: { encounterId: { in: encounterIds }, deletedAt: null } },
+      orderBy: [{ declinedAt: 'asc' }, { sortOrder: 'asc' }],
+      include: { order: { select: { encounterId: true } } },
+    });
+  }
+
+  /** Chốt lại giá gói sau khi tính lại theo giá lẻ (chế độ `REPRICE_SINGLE`, #280) — để màn chỉ định và hoá đơn cùng một con số. */
+  async updatePackagePrice(tx: Prisma.TransactionClient, tenantId: string, packageId: string, unitPrice: bigint, actorId: string): Promise<void> {
+    await tx.clinicalOrderPackage.updateMany({ where: { tenantId, id: packageId, deletedAt: null }, data: { unitPrice, updatedBy: actorId, version: { increment: 1 } } });
+  }
+
+  /** Lý do còn ĐANG DÙNG trong danh mục `SERVICE_DECLINE_REASON`? Lý do được in ra bệnh án nên không nhận mã lạ hoặc mã đã ẩn khi GHI mới (hiển thị dòng cũ thì vẫn tra cả mã đã ẩn). */
+  async isActiveDeclineReason(tx: Prisma.TransactionClient, tenantId: string, code: string): Promise<boolean> {
+    const row = await tx.referenceCatalog.findFirst({ where: { tenantId, category: 'SERVICE_DECLINE_REASON', code, isActive: true, deletedAt: null }, select: { id: true } });
+    return row !== null;
+  }
+
+  /**
+   * Tên hiển thị cho khối "Đã huỷ" + bệnh án: tên lý do (theo mã danh mục `SERVICE_DECLINE_REASON`) và tên người xác nhận. Gộp hai tra cứu nhỏ vào một chỗ để nơi dựng
+   * view không phải biết bảng nào chứa gì. Mã lý do không còn trong danh mục (bị ẩn/đổi) → để nơi gọi rơi về chính mã.
+   */
+  async findDeclineNames(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    reasonCodes: string[],
+    userIds: string[],
+  ): Promise<{ reasons: Map<string, string>; users: Map<string, string> }> {
+    const [reasons, users] = await Promise.all([
+      reasonCodes.length === 0
+        ? Promise.resolve([])
+        : tx.referenceCatalog.findMany({ where: { tenantId, category: 'SERVICE_DECLINE_REASON', code: { in: reasonCodes } }, select: { code: true, name: true } }),
+      userIds.length === 0 ? Promise.resolve([]) : tx.userAccount.findMany({ where: { tenantId, id: { in: userIds } }, select: { id: true, fullName: true } }),
+    ]);
+    return { reasons: new Map(reasons.map((r) => [r.code, r.name])), users: new Map(users.map((u) => [u.id, u.fullName])) };
+  }
+
+  /**
    * Chuyển trạng thái có điều kiện `status = from` (chống ghi chồng); trả số dòng thật sự chuyển. Chuyển sang `COMPLETED` (duyệt lần đầu hoặc duyệt lại sau đính chính) đặt lại
    * `doctor_seen_at` về NULL để kết quả hiện lại là "mới" ở Hàng đợi khám của bác sĩ (#221).
    */

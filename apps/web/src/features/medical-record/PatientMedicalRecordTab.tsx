@@ -143,7 +143,7 @@ function MedicalRecordPane({ item, patient, showBranch, visitTypeLabel }: { item
   const recordBundle = useResolvedPrintTemplate('MEDICAL_RECORD')?.config.recordBundle;
 
   const view = useMemo(
-    () => (detailQuery.data ? buildMedicalRecordView({ item, detail: detailQuery.data, paraclinical: clsQuery.data?.results ?? [], patient: patientInfo, showBranch, visitTypeLabel }) : null),
+    () => (detailQuery.data ? buildMedicalRecordView({ item, detail: detailQuery.data, paraclinical: clsQuery.data?.results ?? [], declined: clsQuery.data?.declined ?? [], patient: patientInfo, showBranch, visitTypeLabel }) : null),
     [item, detailQuery.data, clsQuery.data, patientInfo, showBranch, visitTypeLabel],
   );
   const fieldGroups = useMemo(() => (view ? buildFieldGroups(view, item.doctorName) : []), [view, item.doctorName]);

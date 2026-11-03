@@ -26,6 +26,7 @@ export * from './prescription';
 export * from './prescription-template';
 export * from './advice-template';
 export * from './billing';
+export * from './service-decline';
 export * from './cashier-shift';
 export * from './cash-book';
 export * from './patient-wallet';

@@ -1,7 +1,7 @@
 import type { RecordBundleConfig } from '@nexamed/shared';
 
 /** Mặc định "kèm hết" — khớp `DEFAULT_RECORD_BUNDLE_CONFIG` của `@nexamed/shared` (web chỉ import được KIỂU). Bản mẫu chưa có khối này = kèm hết (docs/DECISIONS.md #272). */
-export const DEFAULT_RECORD_BUNDLE: RecordBundleConfig = { includeParaclinical: true, includePrescriptions: true };
+export const DEFAULT_RECORD_BUNDLE: RecordBundleConfig = { includeParaclinical: true, includePrescriptions: true, includeDeclined: true };
 
 /** Chứng từ có khối "Bộ hồ sơ khi in một lượt khám" — khớp `RECORD_BUNDLE_DOCUMENT_TYPES` của `@nexamed/shared`. */
 export const RECORD_BUNDLE_DOCUMENT_TYPES: readonly string[] = ['MEDICAL_RECORD'];
