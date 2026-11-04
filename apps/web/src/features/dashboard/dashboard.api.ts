@@ -1,5 +1,9 @@
-import type { CashierDashboard, DashboardPeriodKind, OwnerDashboard } from '@nexamed/shared';
+import type { CashierDashboard, DashboardPeriodKind, OwnerDashboard, ReceptionDashboard } from '@nexamed/shared';
 import { getApiClient, unwrap } from '../../shared/api/client';
+
+export async function getReceptionDashboard(): Promise<ReceptionDashboard> {
+  return unwrap(await getApiClient().GET('/api/v1/reports/dashboard/reception')) as ReceptionDashboard;
+}
 
 export async function getCashierDashboard(): Promise<CashierDashboard> {
   return unwrap(await getApiClient().GET('/api/v1/reports/dashboard/cashier')) as CashierDashboard;

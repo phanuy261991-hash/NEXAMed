@@ -67,6 +67,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'dashboard', action: 'owner', description: 'Xem Trang Tổng quan của chủ phòng khám (doanh thu, lượt khám, cảnh báo)' },
   // `cashier` = Tổng quan của thu ngân (phiếu chờ thu, tiền thu trong ngày theo phương thức/giờ). Mặc định lễ tân (thu ngân chính, PRD 4.7) có — #283.
   { module: 'dashboard', action: 'cashier', description: 'Xem Trang Tổng quan của thu ngân (phiếu chờ thu, tiền thu trong ngày)' },
+  // `reception` = Tổng quan của lễ tân (lịch hẹn, hàng đợi, hẹn tái khám, bác sĩ nghỉ) — #284. Không có số tiền.
+  { module: 'dashboard', action: 'reception', description: 'Xem Trang Tổng quan của lễ tân (lịch hẹn, hàng đợi, hẹn tái khám)' },
   { module: 'clinic_config', action: 'read', description: 'Xem cấu hình phòng khám' },
   { module: 'clinic_config', action: 'update', description: 'Sửa cấu hình phòng khám' },
   { module: 'user_account', action: 'read', description: 'Xem tài khoản người dùng' },
@@ -353,6 +355,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'cashier_shift.read': 'personal',
     // Tổng quan thu ngân (#283) — lễ tân là thu ngân chính nên thấy bản này làm trang chủ; số liệu theo chi nhánh/ngày, không phải "của riêng mình" nên 'global'.
     'dashboard.cashier': 'global',
+    'dashboard.reception': 'global',
     'cash_account.read': 'global',
     'cash_voucher.create': 'global',
     'cash_voucher.read': 'global',

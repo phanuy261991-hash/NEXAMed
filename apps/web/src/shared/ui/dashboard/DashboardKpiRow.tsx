@@ -39,16 +39,16 @@ export interface DashboardKpiItem {
  * Dải KPI của trang Tổng quan (docs/DECISIONS.md #283, hướng B): mỗi chỉ số một khối trắng bo góc với ô biểu tượng màu nhạt, số lớn không tô màu; riêng ô `solid` nền xanh đặc.
  * Chỉ dùng cho trang Tổng quan — trang khác dùng `StatCardRow` (kiểu dải liền cũ).
  */
-export function DashboardKpiRow({ items }: { items: DashboardKpiItem[] }) {
+export function DashboardKpiRow({ items, minCardWidth = 220 }: { items: DashboardKpiItem[]; /** Bề rộng tối thiểu một ô (px) — dải 5 ô dùng nhỏ hơn để vẫn nằm một hàng ở màn 1280. */ minCardWidth?: number }) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
+    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${minCardWidth}px, 1fr))` }}>
       {items.map((item) => (
         <div key={item.label} className={`min-w-0 rounded-2xl px-5 py-5 ${item.solid ? 'bg-blue-600 text-white' : 'bg-white text-slate-900'}`}>
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-h-9 items-center gap-2.5">
             <span className={`flex size-8 flex-none items-center justify-center rounded-[10px] ${item.solid ? 'bg-white/20 text-white' : CHIP_CLASS[item.tone]}`}>
               <item.icon size={17} weight="bold" aria-hidden="true" />
             </span>
-            <span className={`min-w-0 truncate text-sm ${item.solid ? 'text-blue-100' : 'text-slate-500'}`}>{item.label}</span>
+            <span className={`min-w-0 text-sm leading-tight ${item.solid ? 'text-blue-100' : 'text-slate-500'}`}>{item.label}</span>
           </div>
           <div className="mt-3.5 flex items-end justify-between gap-2">
             <span className="text-[32px] font-semibold leading-none tracking-tight tabular-nums">{item.value}</span>

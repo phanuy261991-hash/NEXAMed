@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CalendarBlank, CaretLeft, CaretRight, Clock, ListBullets, Plus, SquaresFour, Warning } from '@phosphor-icons/react';
 import type { AppointmentSummary } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
@@ -36,7 +37,12 @@ const LEGEND = [
 export function AppointmentSchedulePage() {
   useBreadcrumb([{ label: 'Tiếp nhận và Đặt lịch' }, { label: 'Lịch hẹn' }]);
 
-  const [date, setDate] = useState(getVietnamTodayDateString());
+  // Liên kết sâu từ Tổng quan lễ tân (#284): `?date=YYYY-MM-DD&appointmentId=…&mode=reschedule` mở trang ở đúng ngày và mở sẵn chi tiết lịch đó.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [date, setDate] = useState(() => {
+    const fromLink = searchParams.get('date');
+    return fromLink && /^\d{4}-\d{2}-\d{2}$/.test(fromLink) ? fromLink : getVietnamTodayDateString();
+  });
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [quickCreate, setQuickCreate] = useState<{ open: boolean; doctorId: string | null; time: string }>({
     open: false,
@@ -80,6 +86,16 @@ export function AppointmentSchedulePage() {
     setDetailMode(mode);
     setDetailAppointment(appointment);
   }
+
+  // Mở chi tiết lịch được liên kết ngay khi danh sách ngày tải xong, rồi xoá tham số để tải lại trang không mở lại; không tìm thấy (đã tiếp nhận/huỷ) thì chỉ xoá tham số.
+  const linkedAppointmentId = searchParams.get('appointmentId');
+  useEffect(() => {
+    if (!linkedAppointmentId || !dayQuery.data) return;
+    const found = dayQuery.data.items.find((a) => a.id === linkedAppointmentId);
+    if (found) openDetail(found, searchParams.get('mode') === 'reschedule' ? 'reschedule' : 'view');
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy lại khi liên kết đổi hoặc danh sách ngày về xong
+  }, [linkedAppointmentId, dayQuery.data]);
 
   const loadingBase = doctorsQuery.isPending || scheduleConfigQuery.isPending;
   const baseError = doctorsQuery.error ?? scheduleConfigQuery.error;

@@ -70,8 +70,100 @@ export interface QueueRow {
   oldestWaitingAt: Date | null;
 }
 
+/** Lịch hẹn đang hiệu lực (chưa đến / đã chuyển khám) của một ngày, kèm bác sĩ và ngày sinh bệnh nhân (nếu lịch gắn hồ sơ). */
+export interface AppointmentDayRow {
+  id: string;
+  status: 'SCHEDULED' | 'CONVERTED';
+  scheduledAt: Date;
+  durationMinutes: number;
+  patientName: string;
+  doctorId: string;
+  doctorName: string;
+  dob: string | null;
+}
+
+export interface FollowUpCounts {
+  dueToday: number;
+  arrivedToday: number;
+  overdueNotArrived: number;
+}
+
 @Injectable()
 export class DashboardRepository {
+  /** Lịch hẹn hôm nay đang hiệu lực (`SCHEDULED` chưa đến, `CONVERTED` đã đến); không tính huỷ/không đến/đã dời. */
+  async listAppointmentsForDay(tx: Prisma.TransactionClient, tenantId: string, branchId: string, start: Date, end: Date): Promise<AppointmentDayRow[]> {
+    const rows = await tx.$queryRaw<
+      Array<{ id: string; status: AppointmentDayRow['status']; scheduled_at: Date; duration_minutes: number; full_name: string; doctor_id: string; doctor_name: string; dob: string | null }>
+    >`
+      SELECT a.id, a.status, a.scheduled_at, a.duration_minutes, a.full_name, a.doctor_id, COALESCE(u.display_name, u.full_name) AS doctor_name,
+             to_char(p.dob, 'YYYY-MM-DD') AS dob
+        FROM appointment a
+        JOIN user_account u ON u.tenant_id = a.tenant_id AND u.id = a.doctor_id
+        LEFT JOIN patient p ON p.tenant_id = a.tenant_id AND p.id = a.patient_id
+       WHERE a.tenant_id = ${tenantId}::uuid AND a.branch_id = ${branchId}::uuid AND a.deleted_at IS NULL AND a.status IN ('SCHEDULED', 'CONVERTED')
+         AND a.scheduled_at >= ${start} AND a.scheduled_at < ${end}
+       ORDER BY a.scheduled_at ASC, a.id ASC`;
+    return rows.map((r) => ({
+      id: r.id,
+      status: r.status,
+      scheduledAt: r.scheduled_at,
+      durationMinutes: r.duration_minutes,
+      patientName: r.full_name,
+      doctorId: r.doctor_id,
+      doctorName: r.doctor_name,
+      dob: r.dob,
+    }));
+  }
+
+  /** Đơn nghỉ ĐÃ DUYỆT của chi nhánh trong một ngày (`workDate` `YYYY-MM-DD`); khung nghỉ là phút trong ngày giờ VN. */
+  async listApprovedLeaves(tx: Prisma.TransactionClient, tenantId: string, branchId: string, workDate: string): Promise<Array<{ userId: string; startMinute: number; endMinute: number }>> {
+    const rows = await tx.$queryRaw<Array<{ user_id: string; start_minute: number; end_minute: number }>>`
+      SELECT user_id, start_minute, end_minute FROM leave_request
+       WHERE tenant_id = ${tenantId}::uuid AND branch_id = ${branchId}::uuid AND leave_date = ${workDate}::date AND status = 'APPROVED' AND deleted_at IS NULL`;
+    return rows.map((r) => ({ userId: r.user_id, startMinute: r.start_minute, endMinute: r.end_minute }));
+  }
+
+  /** Số lượt khám đã tiếp nhận trong khoảng theo Loại tiếp nhận (chỉ các mã được hỏi). */
+  async countEncountersByReceptionType(tx: Prisma.TransactionClient, tenantId: string, branchId: string, start: Date, end: Date, codes: readonly string[]): Promise<Map<string, number>> {
+    const rows = await tx.$queryRaw<Array<{ code: string; n: number }>>`
+      SELECT e.reception_type_code AS code, COUNT(*)::int AS n
+        FROM encounter e
+       WHERE e.tenant_id = ${tenantId}::uuid AND e.branch_id = ${branchId}::uuid AND e.deleted_at IS NULL AND ${COUNTED_STATUSES}
+         AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end} AND e.reception_type_code = ANY(${codes as string[]})
+       GROUP BY 1`;
+    return new Map(rows.map((r) => [r.code, r.n]));
+  }
+
+  /**
+   * Hẹn tái khám: kế hoạch điều trị ĐÃ KÝ (còn hiệu lực) của lượt khám đã hoàn tất ở chi nhánh, có hướng "Hẹn tái khám" và ngày hẹn trong `[fromDate, today]`. "Đã quay lại" = bệnh nhân có
+   * lượt khám đã tiếp nhận (mọi chi nhánh) sau lượt khám gốc. Đến hạn hôm nay = ngày hẹn là `today`; quá hạn = ngày hẹn trước `today` mà chưa quay lại.
+   */
+  async countFollowUps(tx: Prisma.TransactionClient, tenantId: string, branchId: string, today: string, fromDate: string): Promise<FollowUpCounts> {
+    const rows = await tx.$queryRaw<Array<{ due_today: number; arrived_today: number; overdue: number }>>`
+      WITH f AS (
+        SELECT p.follow_up_date AS d, e.id AS eid, e.patient_id, e.checked_in_at AS at
+          FROM encounter_treatment_plan p
+          JOIN encounter e ON e.tenant_id = p.tenant_id AND e.id = p.encounter_id
+         WHERE p.tenant_id = ${tenantId}::uuid AND p.deleted_at IS NULL AND p.signed_at IS NOT NULL AND 'FOLLOW_UP' = ANY(p.directions::text[])
+           AND p.follow_up_date >= ${fromDate}::date AND p.follow_up_date <= ${today}::date
+           AND e.branch_id = ${branchId}::uuid AND e.deleted_at IS NULL AND e.status = 'COMPLETED'
+      ), x AS (
+        SELECT f.d,
+               EXISTS (
+                 SELECT 1 FROM encounter n
+                  WHERE n.tenant_id = ${tenantId}::uuid AND n.patient_id = f.patient_id AND n.deleted_at IS NULL AND n.id <> f.eid
+                    AND n.status IN ('CHECKED_IN', 'IN_CONSULTATION', 'COMPLETED') AND n.checked_in_at > f.at
+               ) AS returned
+          FROM f
+      )
+      SELECT COUNT(*) FILTER (WHERE d = ${today}::date)::int AS due_today,
+             COUNT(*) FILTER (WHERE d = ${today}::date AND returned)::int AS arrived_today,
+             COUNT(*) FILTER (WHERE d < ${today}::date AND NOT returned)::int AS overdue
+        FROM x`;
+    const r = rows[0];
+    return { dueToday: r?.due_today ?? 0, arrivedToday: r?.arrived_today ?? 0, overdueNotArrived: r?.overdue ?? 0 };
+  }
+
   /** Lượt khám đã tiếp nhận theo ngày tiếp nhận. */
   async countEncountersByDay(tx: Prisma.TransactionClient, tenantId: string, branchId: string, start: Date, end: Date): Promise<DayCount[]> {
     const rows = await tx.$queryRaw<Array<{ d: string; n: number }>>`

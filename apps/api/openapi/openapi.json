@@ -56812,6 +56812,331 @@
         }
       }
     },
+    "/api/v1/reports/dashboard/reception": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Trang Tổng quan của lễ tân (quyền dashboard.reception) — lịch hẹn hôm nay, hàng đợi theo bác sĩ, lịch hẹn sắp tới, bác sĩ nghỉ, hẹn tái khám; theo chi nhánh đang làm việc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string"
+                        },
+                        "appointments": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "number"
+                            },
+                            "arrived": {
+                              "type": "number"
+                            },
+                            "notArrived": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "arrived",
+                            "notArrived"
+                          ]
+                        },
+                        "waiting": {
+                          "type": "number"
+                        },
+                        "reception": {
+                          "type": "object",
+                          "properties": {
+                            "newCount": {
+                              "type": "number"
+                            },
+                            "returnCount": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "newCount",
+                            "returnCount"
+                          ]
+                        },
+                        "leaveAlerts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "doctorName": {
+                                "type": "string"
+                              },
+                              "startMinute": {
+                                "type": "number"
+                              },
+                              "endMinute": {
+                                "type": "number"
+                              },
+                              "appointmentCount": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "doctorName",
+                              "startMinute",
+                              "endMinute",
+                              "appointmentCount"
+                            ]
+                          }
+                        },
+                        "upcoming": {
+                          "type": "object",
+                          "properties": {
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "appointmentId": {
+                                    "type": "string"
+                                  },
+                                  "scheduledAt": {
+                                    "type": "string"
+                                  },
+                                  "patientName": {
+                                    "type": "string"
+                                  },
+                                  "age": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "doctorName": {
+                                    "type": "string"
+                                  },
+                                  "doctorOnLeave": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "appointmentId",
+                                  "scheduledAt",
+                                  "patientName",
+                                  "age",
+                                  "doctorName",
+                                  "doctorOnLeave"
+                                ]
+                              }
+                            },
+                            "moreCount": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "items",
+                            "moreCount"
+                          ]
+                        },
+                        "hourly": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "hour": {
+                                "type": "number"
+                              },
+                              "arrived": {
+                                "type": "number"
+                              },
+                              "notArrived": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "hour",
+                              "arrived",
+                              "notArrived"
+                            ]
+                          }
+                        },
+                        "queue": {
+                          "type": "object",
+                          "properties": {
+                            "rows": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "doctorName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "roomName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "inProgress": {
+                                    "type": "number"
+                                  },
+                                  "waiting": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "doctorName",
+                                  "roomName",
+                                  "inProgress",
+                                  "waiting"
+                                ]
+                              }
+                            },
+                            "totalInProgress": {
+                              "type": "number"
+                            },
+                            "totalWaiting": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "rows",
+                            "totalInProgress",
+                            "totalWaiting"
+                          ]
+                        },
+                        "followUp": {
+                          "type": "object",
+                          "properties": {
+                            "dueToday": {
+                              "type": "number"
+                            },
+                            "arrivedToday": {
+                              "type": "number"
+                            },
+                            "overdueNotArrived": {
+                              "type": "number"
+                            },
+                            "overdueWithinDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "dueToday",
+                            "arrivedToday",
+                            "overdueNotArrived",
+                            "overdueWithinDays"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "date",
+                        "appointments",
+                        "waiting",
+                        "reception",
+                        "leaveAlerts",
+                        "upcoming",
+                        "hourly",
+                        "queue",
+                        "followUp"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền dashboard.reception",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/reports/dashboard/cashier": {
       "get": {
         "tags": [

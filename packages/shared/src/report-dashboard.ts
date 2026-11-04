@@ -128,3 +128,47 @@ export const cashierDashboardSchema = z.object({
   hourly: z.array(z.object({ hour: z.number(), amount: z.number() })),
 });
 export type CashierDashboard = z.infer<typeof cashierDashboardSchema>;
+
+/**
+ * Trang Tổng quan của LỄ TÂN (docs/DECISIONS.md #279/#284, mockup "Lễ tân" hướng B đã chốt 04/11/2026). Chỉ NGÀY HÔM NAY của chi nhánh đang làm việc; máy chủ tính mọi số.
+ * "Lịch hẹn hôm nay" = lịch đang hiệu lực (chưa đến hoặc đã chuyển khám), không tính huỷ/không đến/đã dời.
+ */
+export const receptionDashboardSchema = z.object({
+  generatedAt: z.string(),
+  /** Ngày báo cáo `YYYY-MM-DD` (giờ VN). */
+  date: z.string(),
+  /** Lịch hẹn hôm nay: tổng, đã đến (đã chuyển thành lượt khám), chưa đến. */
+  appointments: z.object({ total: z.number(), arrived: z.number(), notArrived: z.number() }),
+  /** Lượt khám đang chờ bác sĩ (đã tiếp nhận, chưa vào khám). */
+  waiting: z.number(),
+  /** Lượt khám hôm nay theo Loại tiếp nhận: khám mới (RT_NEW) và tái khám (RT_RETURN). */
+  reception: z.object({ newCount: z.number(), returnCount: z.number() }),
+  /** Bác sĩ có đơn nghỉ đã duyệt hôm nay mà còn lịch hẹn chưa đến trùng giờ nghỉ (cần đổi bác sĩ). `startMinute`/`endMinute` là phút trong ngày giờ VN. */
+  leaveAlerts: z.array(z.object({ doctorName: z.string(), startMinute: z.number(), endMinute: z.number(), appointmentCount: z.number() })),
+  /** Lịch hẹn chưa đến, từ 30 phút trước giờ hiện tại trở đi; `items` là các lịch đầu danh sách, `moreCount` là số còn lại. */
+  upcoming: z.object({
+    items: z.array(
+      z.object({
+        appointmentId: z.string(),
+        scheduledAt: z.string(),
+        patientName: z.string(),
+        /** Tuổi (năm) nếu lịch gắn với hồ sơ bệnh nhân; `null` nếu chưa có hồ sơ. */
+        age: z.number().nullable(),
+        doctorName: z.string(),
+        doctorOnLeave: z.boolean(),
+      }),
+    ),
+    moreCount: z.number(),
+  }),
+  /** Lịch hẹn theo giờ hẹn (đủ 24 giờ, giờ VN), tách đã đến / chưa đến. */
+  hourly: z.array(z.object({ hour: z.number(), arrived: z.number(), notArrived: z.number() })),
+  /** Hàng đợi hôm nay theo bác sĩ (cùng nguồn với Tổng quan chủ phòng khám). */
+  queue: z.object({
+    rows: z.array(z.object({ doctorName: z.string().nullable(), roomName: z.string().nullable(), inProgress: z.number(), waiting: z.number() })),
+    totalInProgress: z.number(),
+    totalWaiting: z.number(),
+  }),
+  /** Hẹn tái khám (kế hoạch điều trị đã ký có hướng "Hẹn tái khám"): đến hạn hôm nay, trong đó đã quay lại; quá hạn (trong `overdueWithinDays` ngày gần nhất) chưa quay lại. */
+  followUp: z.object({ dueToday: z.number(), arrivedToday: z.number(), overdueNotArrived: z.number(), overdueWithinDays: z.number() }),
+});
+export type ReceptionDashboard = z.infer<typeof receptionDashboardSchema>;

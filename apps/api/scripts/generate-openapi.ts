@@ -27,6 +27,7 @@ import {
   ownerDashboardQuerySchema,
   ownerDashboardSchema,
   cashierDashboardSchema,
+  receptionDashboardSchema,
   deferredPaymentStatusSchema,
   applyInvoiceDiscountRequestSchema,
   combinedInvoicePrintResponseSchema,
@@ -3507,6 +3508,19 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(ownerDashboardSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền dashboard.owner'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/dashboard/reception',
+  tags: ['report'],
+  summary: 'Trang Tổng quan của lễ tân (quyền dashboard.reception) — lịch hẹn hôm nay, hàng đợi theo bác sĩ, lịch hẹn sắp tới, bác sĩ nghỉ, hẹn tái khám; theo chi nhánh đang làm việc',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(receptionDashboardSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền dashboard.reception'),
   },
 });
 

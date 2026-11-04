@@ -15,12 +15,13 @@ import {
   sameSpanPreviousMonth,
   summarizeInvoiceLineNames,
   summarizePayments,
+  summarizeReceptionAppointments,
   vietnamDateRangeHalfOpenUtc,
   type ReferenceCatalogReaderPort,
   type RevenueGroup,
   type RevenueLineInput,
 } from '@nexamed/core';
-import type { CashierDashboard, DashboardKpi, DashboardPeriod, DashboardPeriodKind, OwnerDashboard } from '@nexamed/shared';
+import type { CashierDashboard, DashboardKpi, DashboardPeriod, DashboardPeriodKind, OwnerDashboard, ReceptionDashboard } from '@nexamed/shared';
 import { requireBranchId } from '../../common/branch-context';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { DashboardRepository } from './dashboard.repository';
@@ -30,6 +31,13 @@ const EXPIRY_WINDOW_DAYS = 30;
 const SERIES_DAYS = 7;
 /** Số phiếu chờ thu hiện trên Tổng quan thu ngân; còn lại báo "+N phiếu" và mở danh sách đầy đủ ở màn Thu ngân. */
 const PENDING_LIST_LIMIT = 8;
+/** Số lịch hẹn sắp tới hiện trên Tổng quan lễ tân; còn lại báo "+N" và mở trang Lịch hẹn. */
+const UPCOMING_LIMIT = 5;
+/** "Quá hạn chưa đến" của hẹn tái khám chỉ tính trong chừng này ngày gần nhất (hẹn quá cũ coi như đã bỏ). */
+const FOLLOW_UP_OVERDUE_DAYS = 30;
+/** Mã Loại tiếp nhận (`reference_catalog` RECEPTION_TYPE) mặc định của hệ thống: Khám mới / Tái khám. */
+const RECEPTION_TYPE_NEW = 'RT_NEW';
+const RECEPTION_TYPE_RETURN = 'RT_RETURN';
 
 interface Actor {
   tenantId: string;
@@ -122,6 +130,45 @@ export class DashboardService {
       net: totals.netAmount,
       byMethod: totals.byMethod,
       hourly: totals.hourly,
+    };
+  }
+
+  /**
+   * Trang Tổng quan của LỄ TÂN (docs/DECISIONS.md #284): chỉ HÔM NAY của chi nhánh đang làm việc. Lịch hẹn đang hiệu lực = chưa đến + đã chuyển khám; hàng đợi dùng chung nguồn với
+   * Tổng quan chủ phòng khám; cảnh báo bác sĩ nghỉ theo đúng quy tắc trùng giờ của trang Lịch hẹn. Một request = MỘT transaction, không gọi port.
+   */
+  async getReceptionDashboard(actor: Actor, now: Date = new Date()): Promise<ReceptionDashboard> {
+    const branchId = requireBranchId(actor);
+    const today = getVietnamDateString(now);
+    const range = vietnamDateRangeHalfOpenUtc(today, today);
+    const overdueFrom = addDaysToDateString(today, -FOLLOW_UP_OVERDUE_DAYS)!;
+
+    const data = await this.unitOfWork.runInTenantScope(actor.tenantId, async (tx) => {
+      const [appointments, leaves, types, queue, followUp] = await Promise.all([
+        this.repository.listAppointmentsForDay(tx, actor.tenantId, branchId, range.startUtc, range.endUtc),
+        this.repository.listApprovedLeaves(tx, actor.tenantId, branchId, today),
+        this.repository.countEncountersByReceptionType(tx, actor.tenantId, branchId, range.startUtc, range.endUtc, [RECEPTION_TYPE_NEW, RECEPTION_TYPE_RETURN]),
+        this.repository.listQueue(tx, actor.tenantId, branchId, range.startUtc, range.endUtc, today),
+        this.repository.countFollowUps(tx, actor.tenantId, branchId, today, overdueFrom),
+      ]);
+      return { appointments, leaves, types, queue, followUp };
+    });
+
+    const summary = summarizeReceptionAppointments(data.appointments, data.leaves, today, now, UPCOMING_LIMIT);
+    const queueRows = data.queue.map((r) => ({ doctorName: r.doctorName, roomName: r.roomName, inProgress: r.inProgress, waiting: r.waiting }));
+    const totalWaiting = queueRows.reduce((s, r) => s + r.waiting, 0);
+
+    return {
+      generatedAt: now.toISOString(),
+      date: today,
+      appointments: { total: summary.total, arrived: summary.arrived, notArrived: summary.notArrived },
+      waiting: totalWaiting,
+      reception: { newCount: data.types.get(RECEPTION_TYPE_NEW) ?? 0, returnCount: data.types.get(RECEPTION_TYPE_RETURN) ?? 0 },
+      leaveAlerts: summary.leaveAlerts,
+      upcoming: summary.upcoming,
+      hourly: summary.hourly,
+      queue: { rows: queueRows, totalInProgress: queueRows.reduce((s, r) => s + r.inProgress, 0), totalWaiting },
+      followUp: { ...data.followUp, overdueWithinDays: FOLLOW_UP_OVERDUE_DAYS },
     };
   }
 

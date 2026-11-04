@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-04
 
+### Trang Tổng quan của lễ tân (`docs/DECISIONS.md` #284)
+
+Quyền mới **`dashboard.reception`** (mặc định lễ tân): lịch hẹn hôm nay (đã đến / chưa đến), đang chờ khám, khám mới / tái khám, lịch hẹn sắp tới (nút "Tiếp nhận" và "Đổi bác sĩ" mở thẳng chi tiết lịch), hàng đợi theo bác sĩ, lịch hẹn theo giờ, hẹn tái khám (đến hạn, đã đến, quá hạn chưa đến) và cảnh báo bác sĩ nghỉ phép còn lịch cần đổi. Lễ tân có thanh chuyển giữa bản Lễ tân và Thu ngân. Trang Lịch hẹn nhận liên kết `?date=&appointmentId=&mode=`. Môi trường khác cần `db:seed`. Không migration.
+
 ### Trang Tổng quan của thu ngân (`docs/DECISIONS.md` #283)
 
 Tài khoản có quyền mới **`dashboard.cashier`** (mặc định lễ tân) thấy trang chủ thu ngân: chờ thu / đã thu / đã hoàn / thực thu hôm nay, danh sách phiếu chờ thu (bấm để mở phiếu, "Thu tiền" ở phiếu đầu), ca đang mở với nút Chốt ca và tiền mặt dự kiến trong két, tiền thu theo giờ và theo phương thức. Tài khoản có nhiều quyền tổng quan có thanh chuyển giữa các bản. Môi trường khác cần `db:seed`. Không migration.

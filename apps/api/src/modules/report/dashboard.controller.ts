@@ -22,6 +22,12 @@ export class DashboardController {
     return this.dashboardService.getOwnerDashboard(req.user!, period);
   }
 
+  @Get('reception')
+  @RequirePermission('dashboard', 'reception')
+  async reception(@Req() req: Request) {
+    return this.dashboardService.getReceptionDashboard(req.user!);
+  }
+
   @Get('cashier')
   @RequirePermission('dashboard', 'cashier')
   async cashier(@Req() req: Request) {

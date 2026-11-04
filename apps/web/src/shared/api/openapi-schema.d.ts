@@ -22086,6 +22086,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/dashboard/reception": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trang Tổng quan của lễ tân (quyền dashboard.reception) — lịch hẹn hôm nay, hàng đợi theo bác sĩ, lịch hẹn sắp tới, bác sĩ nghỉ, hẹn tái khám; theo chi nhánh đang làm việc */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                date: string;
+                                appointments: {
+                                    total: number;
+                                    arrived: number;
+                                    notArrived: number;
+                                };
+                                waiting: number;
+                                reception: {
+                                    newCount: number;
+                                    returnCount: number;
+                                };
+                                leaveAlerts: {
+                                    doctorName: string;
+                                    startMinute: number;
+                                    endMinute: number;
+                                    appointmentCount: number;
+                                }[];
+                                upcoming: {
+                                    items: {
+                                        appointmentId: string;
+                                        scheduledAt: string;
+                                        patientName: string;
+                                        age: number | null;
+                                        doctorName: string;
+                                        doctorOnLeave: boolean;
+                                    }[];
+                                    moreCount: number;
+                                };
+                                hourly: {
+                                    hour: number;
+                                    arrived: number;
+                                    notArrived: number;
+                                }[];
+                                queue: {
+                                    rows: {
+                                        doctorName: string | null;
+                                        roomName: string | null;
+                                        inProgress: number;
+                                        waiting: number;
+                                    }[];
+                                    totalInProgress: number;
+                                    totalWaiting: number;
+                                };
+                                followUp: {
+                                    dueToday: number;
+                                    arrivedToday: number;
+                                    overdueNotArrived: number;
+                                    overdueWithinDays: number;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền dashboard.reception */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/dashboard/cashier": {
         parameters: {
             query?: never;
