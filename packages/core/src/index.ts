@@ -25,6 +25,7 @@ export * from './code-sequence/format-display-code';
 export * from './code-sequence/format-short-sequential-code';
 export * from './search/strip-vietnamese-diacritics';
 export * from './date/vietnam-day-range';
+export * from './date/vietnam-period';
 export * from './specialty/registry';
 export * from './storage/sniff-image-extension';
 export * from './encounter/encounter-state-machine';

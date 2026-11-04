@@ -1,3 +1,5 @@
+import { vietnamDateRangeUtc } from './vietnam-period';
+
 const VIETNAM_UTC_OFFSET_MINUTES = 7 * 60;
 
 /**
@@ -50,8 +52,5 @@ export function resolveRecentDateRange(fromStr: string | undefined, toStr: strin
   const todayStr = getVietnamDateString();
   const to = toStr ?? todayStr;
   const from = fromStr ?? getVietnamDateString(new Date(Date.now() - defaultDaysBack * 24 * 60 * 60_000));
-  return {
-    from: new Date(`${from}T00:00:00+07:00`),
-    to: new Date(`${to}T23:59:59.999+07:00`),
-  };
+  return vietnamDateRangeUtc(from, to);
 }

@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { REFERENCE_CATALOG_READER_PORT, type ReferenceCatalogReaderPort } from '@nexamed/core';
+import { REFERENCE_CATALOG_READER_PORT, type ReferenceCatalogReaderPort, vietnamDayStartUtc, vietnamDayEndUtc } from '@nexamed/core';
 import type { CashBookLedgerAccountsQuery, CashBookLedgerResponse, CashFlowReportResponse, CashVoucher, ListCashVouchersQuery } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
@@ -17,10 +17,10 @@ import { PaymentRepository } from '../billing/payment.repository';
  * `packages/core` mới có `vietnamDayRange`, nhưng import ngược từ `apps/api` sang không hợp lý cho
  * một hằng offset đơn giản — giữ đúng offset `+07:00` cố định như chỗ khác trong module này). */
 function endOfDayVn(date: string): Date {
-  return new Date(`${date}T23:59:59.999+07:00`);
+  return vietnamDayEndUtc(date);
 }
 function startOfDayVn(date: string): Date {
-  return new Date(`${date}T00:00:00+07:00`);
+  return vietnamDayStartUtc(date);
 }
 
 /** Ngày lịch Việt Nam dạng `YYYY-MM-DD` — dùng để nhóm 2 nguồn dữ liệu có bản chất thời gian khác

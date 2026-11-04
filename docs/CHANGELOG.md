@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-11-04
+
+### Hệ thống báo cáo — Đợt 0: hàm ngày giờ Việt Nam dùng chung + đầu báo cáo Excel (`docs/DECISIONS.md` #279, `docs/product/reporting-plan.md`)
+
+Ghi phạm vi báo cáo vào `CLAUDE.md`, `docs/product/prd.md`, `docs/product/plan.md` (đảo ngược việc xếp "báo cáo doanh thu theo kỳ" vào v2). Thêm `packages/core/src/date/vietnam-period.ts`: mốc đầu/cuối ngày giờ VN, khoảng ngày, kỳ ngày/tuần/tháng/quý/năm, kỳ trước, cùng kỳ tháng trước, liệt kê ngày (dùng lại `addDaysToDateString`/`diffDateStrings` sẵn có, không nhân bản). Thay 7 chỗ viết cứng `+07:00` ở cash-book-report, stock-issue/receipt/transfer/ledger-report, supplier-debt, prescription-submission bằng hàm này (hành vi giữ nguyên, 354 test các module đó vẫn xanh). Thêm `addReportExcelHeader` (`apps/api/src/common/report-excel-header.ts`): đầu chuẩn cho mọi bản Excel báo cáo mới (phòng khám/chi nhánh, tên báo cáo, kỳ, phạm vi, người xuất, giờ xuất). Chưa có thay đổi nhìn thấy trên giao diện.
+
 ## 2026-11-03
 
 ### Logo và favicon thương hiệu mới; logo chính hiện ở đầu menu; logo trong PDF bệnh án (`docs/DECISIONS.md` #281)

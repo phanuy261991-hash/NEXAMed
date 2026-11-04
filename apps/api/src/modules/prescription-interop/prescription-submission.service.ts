@@ -18,6 +18,7 @@ import {
   type InteropProblem,
   type InteropSubmissionInput,
   type InteropSubmissionSourcePort,
+  vietnamDayStartUtc,
 } from '@nexamed/core';
 import type {
   DataScope,
@@ -42,11 +43,10 @@ interface ProcessResult {
 
 /** Số đơn tối đa một lượt chạy nền xử lý cho mỗi công ty (tránh một công ty chiếm cả lượt). */
 const DUE_BATCH_SIZE = 20;
-const VN_OFFSET = '+07:00';
 
 /** Đầu ngày Việt Nam (UTC) của `YYYY-MM-DD`, cộng `plusDays` ngày. */
 function startOfVietnamDayUtc(isoDate: string, plusDays = 0): Date {
-  return new Date(new Date(`${isoDate}T00:00:00${VN_OFFSET}`).getTime() + plusDays * 86_400_000);
+  return new Date(vietnamDayStartUtc(isoDate).getTime() + plusDays * 86_400_000);
 }
 
 /**

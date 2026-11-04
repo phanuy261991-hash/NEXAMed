@@ -8,6 +8,7 @@ import type { ReportBranchScope } from '../../common/report-branch-scope.service
 import { DrugRepository } from '../drug/drug.repository';
 import { WarehouseRepository } from '../drug/warehouse.repository';
 import { StockLedgerRepository } from './stock-ledger.repository';
+import { vietnamDayStartUtc, vietnamDayEndUtc } from '@nexamed/core';
 
 /**
  * "Báo cáo Nhập-Xuất-Tồn" (Kho Thuốc GĐ4, "Báo cáo Nhập-Xuất-Tồn", docs/DECISIONS.md #170, kế hoạch
@@ -26,8 +27,8 @@ export class StockLedgerReportService {
 
   /** `scope` đã được `ReportBranchScopeService` kiểm quyền (Đợt 3 #235); `warehouseId` của chi nhánh ngoài phạm vi chỉ cho ra báo cáo rỗng vì `branchIds` luôn nằm trong bộ lọc. */
   async getReport(tenantId: string, scope: ReportBranchScope, query: GetStockLedgerReportQuery): Promise<GetStockLedgerReportResponse> {
-    const fromAt = new Date(`${query.from}T00:00:00+07:00`);
-    const toAt = new Date(`${query.to}T23:59:59.999+07:00`);
+    const fromAt = vietnamDayStartUtc(query.from);
+    const toAt = vietnamDayEndUtc(query.to);
     const { branchIds, names } = scope;
     const filter = { branchIds, warehouseId: query.warehouseId, drugId: query.drugId };
 

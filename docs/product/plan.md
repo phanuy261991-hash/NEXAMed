@@ -197,6 +197,8 @@ Phần đệm lỗi ở sprint này lớn có chủ ý. Nếu pilot ít lỗi, d
 - **GĐ1 — Danh mục nền: đã xong** (mở rộng `drug`, 4 bảng mới `drug_unit`/`drug_ingredient`/`supplier`/`warehouse`, 3 danh mục `reference_catalog` mới).
 - GĐ2 (Nhập kho & tồn theo lô, **đã xây xong**) → GĐ3 (Xuất kho + FEFO + tiền thuốc, duy nhất chạm `invoice` đang chạy thật, **đã xây xong, đang chạy tại pilot**) → GĐ4 (Kiểm kê/Điều chuyển kho/Mở rộng Nhập-Xuất kho/Báo cáo Nhập-Xuất-Tồn, **đã xây xong 23/09/2026, `docs/DECISIONS.md` #170...#179**) → GĐ5 (trải nghiệm kê đơn) — **code+test xong 28/09/2026, CHƯA verify Playwright, `docs/DECISIONS.md` #190**.
 
+**Ngoài kế hoạch, sau GA (02/11/2026) — Hệ thống báo cáo + Trang Tổng quan (mở rộng phạm vi v1, `docs/DECISIONS.md` #279, kế hoạch đầy đủ `docs/product/reporting-plan.md`)**: Đợt 0 hàm ngày giờ Việt Nam + đầu báo cáo dùng chung → Đợt 1 Trang Tổng quan theo vai trò + Báo cáo ngày → Đợt 2 Sổ khám bệnh/dịch vụ/thuốc đã phát → Đợt 3 doanh thu theo kỳ + theo bác sĩ → Đợt 4 vận hành & bệnh nhân → Đợt 5 nhiều chi nhánh ("Toàn hệ thống"). Báo cáo gửi cơ quan quản lý (cần tra văn bản hiện hành) làm sau.
+
 ---
 
 ## 10. Phương án A — nếu bắt buộc giữ mốc 8 tuần

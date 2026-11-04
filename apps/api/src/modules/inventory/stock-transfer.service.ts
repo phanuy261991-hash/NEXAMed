@@ -16,6 +16,8 @@ import {
   StockTransferVarianceReasonRequiredError,
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
+  vietnamDayStartUtc,
+  vietnamDayEndUtc,
 } from '@nexamed/core';
 import type {
   ConfirmStockTransferReturnRequest,
@@ -251,8 +253,8 @@ export class StockTransferService {
 
   /** "Báo cáo hao hụt điều chuyển" — chỉ phần hao hụt của chi nhánh GỬI đang làm. */
   async getShrinkageReport(tenantId: string, branchId: string, query: GetStockTransferShrinkageQuery): Promise<GetStockTransferShrinkageResponse> {
-    const from = new Date(`${query.from}T00:00:00+07:00`);
-    const to = new Date(`${query.to}T23:59:59.999+07:00`);
+    const from = vietnamDayStartUtc(query.from);
+    const to = vietnamDayEndUtc(query.to);
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.stockTransferRepository.listShrinkage(tx, tenantId, [branchId], from, to, query.fromWarehouseId));
     // Dải số theo nguyên nhân tính TRƯỚC bộ lọc nguyên nhân để cả hai nhóm luôn hiện; bảng và tổng thì áp đủ bộ lọc.
     const countByCause = { WRITE_OFF: rows.filter((r) => r.cause === 'WRITE_OFF').length, RETURN_SHORTAGE: rows.filter((r) => r.cause === 'RETURN_SHORTAGE').length };

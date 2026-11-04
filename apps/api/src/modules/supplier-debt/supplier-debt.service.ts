@@ -16,6 +16,8 @@ import {
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
   type SupplierDebtEntryInput,
+  vietnamDayStartUtc,
+  vietnamDayEndUtc,
 } from '@nexamed/core';
 import type {
   CreateSupplierDebtAdjustmentRequest,
@@ -717,8 +719,8 @@ export class SupplierDebtService {
 
       const all = await this.entryRepository.listByAccountId(tx, tenantId, account.id);
       const reversedIds = new Set(all.filter((e) => e.reversalOfId).map((e) => e.reversalOfId!));
-      const fromDate = query.from ? new Date(`${query.from}T00:00:00+07:00`) : null;
-      const toDate = query.to ? new Date(`${query.to}T23:59:59.999+07:00`) : null;
+      const fromDate = query.from ? vietnamDayStartUtc(query.from) : null;
+      const toDate = query.to ? vietnamDayEndUtc(query.to) : null;
       const filtered = all.filter((e) => (!fromDate || e.occurredAt >= fromDate) && (!toDate || e.occurredAt <= toDate));
       return { reversedIds, filtered, refs: await this.resolveDocumentRefs(tx, tenantId, filtered) };
     });
@@ -1060,7 +1062,7 @@ export class SupplierDebtService {
   /** `yyyy-mm-dd` → cuối ngày giờ Việt Nam (đúng khuôn `listLedger()`'s `toDate`) — bao trọn mọi
    * chứng từ trong ngày đối chiếu. */
   private parseAsOfDate(asOfDate: string): Date {
-    return new Date(`${asOfDate}T23:59:59.999+07:00`);
+    return vietnamDayEndUtc(asOfDate);
   }
 
   /** "Số hệ thống tại ngày X" — `0` nếu NCC chưa từng có bút toán nào (chưa có account). */

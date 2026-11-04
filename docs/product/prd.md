@@ -20,7 +20,7 @@ Hệ thống thay thế sổ giấy và file Excel bằng bệnh án điện t�
 | Team | 3-5 developer |
 | Timeline đề xuất | Pilot tuần 8, GA tuần 12 (xem mục 7 về rủi ro timeline) |
 
-**Ngoài phạm vi v1**: viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp tiền BỆNH NHÂN), tích hợp BHYT và cổng giám định, báo cáo doanh thu theo kỳ, ứng dụng cho bệnh nhân, chữ ký số theo chuẩn CA. (**Dược/kho** đảo ngược vào v1 — chốt 2026-09-15, xem mục 4.8. **Công nợ nhà cung cấp** — khác công nợ bệnh nhân, mở rộng vào v1 — chốt 2026-09-24, xem mục 4.9.)
+**Ngoài phạm vi v1**: viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp tiền BỆNH NHÂN), tích hợp BHYT và cổng giám định, lãi lỗ toàn diện (chi phí nhân sự, khấu hao, mặt bằng), ứng dụng cho bệnh nhân, chữ ký số theo chuẩn CA. (**Dược/kho** đảo ngược vào v1 — chốt 2026-09-15, xem mục 4.8. **Công nợ nhà cung cấp** — khác công nợ bệnh nhân, mở rộng vào v1 — chốt 2026-09-24, xem mục 4.9.)
 
 ---
 
@@ -173,7 +173,7 @@ Ký hiệu: **P0** bắt buộc cho v1, **P1** làm nếu còn thời gian, **P2
 
 > *Là lễ tân, tôi muốn thu tiền và in phiếu thu ngay trên phần mềm, để không phải ghi sổ tiền song song.*
 
-Phạm vi giới hạn ở **thu ngân mức 1** (một phiếu thu cho một lượt khám). Viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp theo lộ trình điều trị), BHYT và báo cáo doanh thu theo kỳ **vẫn ngoài v1**.
+Phạm vi giới hạn ở **thu ngân mức 1** (một phiếu thu cho một lượt khám). Viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp theo lộ trình điều trị), BHYT **vẫn ngoài v1**; **báo cáo doanh thu theo kỳ đã vào v1** (chốt 02/11/2026, #279, xem `docs/product/reporting-plan.md`).
 
 | ID | Yêu cầu | Ưu tiên |
 |---|---|---|
@@ -220,7 +220,7 @@ Mở rộng tiếp của Kho Thuốc GĐ2/GĐ3 (mục 4.8) — mỗi Phiếu nh�
 | SUP-05 | Luồng xử lý sai sót: Huỷ chứng từ (còn đủ tồn để đảo)/Phiếu điều chỉnh công nợ (hàng đã dùng một phần)/Đề nghị huỷ (không có quyền duyệt) — không có nút "Sửa" trên chứng từ đã duyệt | P1 (Phần D, chưa xây) |
 | SUP-06 | Đối chiếu & chốt công nợ theo kỳ — đúng khuôn "Khoá bảng ca" (mục 4.6) | P2 (Phần E, chưa có mockup) |
 
-**Vẫn ngoài v1**: công nợ/trả góp tiền BỆNH NHÂN theo lộ trình điều trị (ngoài phạm vi, xem mục 7), báo cáo doanh thu-lãi lỗ (khác Sổ công nợ NCC — chỉ theo dõi số dư, không tính lãi/lỗ).
+**Vẫn ngoài v1**: công nợ/trả góp tiền BỆNH NHÂN theo lộ trình điều trị (ngoài phạm vi, xem mục 7), lãi lỗ toàn diện (chi phí nhân sự, khấu hao, mặt bằng). **Báo cáo doanh thu theo kỳ + Trang Tổng quan + lãi gộp thuốc/vật tư đã vào v1** (chốt 02/11/2026, #279, `docs/product/reporting-plan.md`) — khác Sổ công nợ NCC (chỉ theo dõi số dư).
 
 ---
 
@@ -365,7 +365,7 @@ Các câu hỏi cần trả lời, kèm hạn chót vì chúng ảnh hưởng t�
 | v1 | Đặt lịch, tiếp nhận, khám bệnh, kê đơn in, **thu ngân cơ bản** (BIL-01→04, Sprint 5/6 — `docs/DECISIONS.md` #072), **gộp hồ sơ trùng** (PAT-04, S5-06), **xuất PDF bệnh án** (ADM-05, S6-06 — Sprint 6, trước GA, theo `docs/product/plan.md` mục 9), **Kho Thuốc & Vật tư y tế** (INV-01→05, mục 4.8 — GĐ1→4 đã xong 23/09/2026, GĐ5 chưa xây, `docs/DECISIONS.md` #146), và **Công nợ nhà cung cấp** (SUP-01→06, mục 4.9 — Phần A đã xong 24/09/2026, Phần B→E chưa xây, `docs/DECISIONS.md` #180) | Đang thực hiện |
 | v1.1 | Nhắc lịch SMS/Zalo | Sau GA v1, pilot ổn định 4 tuần |
 | **v1.5** | **Gói chuyên khoa: Nhi khoa (trước) → Sản phụ khoa (sau)** — cam kết với 2 khách hàng thật đã có (`docs/DECISIONS.md` #070/#071). Viết cụ thể từng gói trên kernel hiện có, không dựng khung "Specialty Pack" trước; gating gói (`tenant.enabled_specialties`) làm cùng gói đầu tiên | Sau GA v1. Mỗi gói cần bác sĩ chuyên khoa tương ứng thẩm định mẫu bệnh án + luồng dữ liệu (đã xong cho cả 2) |
-| v2 | Viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp theo lộ trình), báo cáo doanh thu | Sau v1.1, có ít nhất 3 khách hàng đang dùng |
+| v2 | Viện phí đầy đủ (bảng giá đa đối tượng, công nợ/trả góp theo lộ trình) — báo cáo doanh thu đã chuyển vào v1 (#279) | Sau v1.1, có ít nhất 3 khách hàng đang dùng |
 | v3 | Tích hợp BHYT và cổng giám định, chữ ký số (gồm tích hợp thật Cổng Đơn thuốc quốc gia — chặn bởi 2 điều kiện ở mục 4.8) | Sau khi làm rõ yêu cầu pháp lý và có nhu cầu thực từ khách hàng |
 | v3+ | Hồ sơ bệnh nhân dùng chung liên chi nhánh, cận lâm sàng (LIS/PACS) | Khi có khách hàng chuỗi |
 

@@ -10,6 +10,8 @@ import {
   StockReceiptNotDraftError,
   StockReceiptVoidNotAllowedError,
   type DoctorDirectoryPort,
+  vietnamDayStartUtc,
+  vietnamDayEndUtc,
 } from '@nexamed/core';
 import type {
   ApproveStockReceiptRequest,
@@ -242,8 +244,8 @@ export class StockReceiptService {
         warehouseId: query.warehouseId,
         receiptType: query.receiptType,
         status: query.status,
-        from: query.from ? new Date(`${query.from}T00:00:00+07:00`) : undefined,
-        to: query.to ? new Date(`${query.to}T23:59:59.999+07:00`) : undefined,
+        from: query.from ? vietnamDayStartUtc(query.from) : undefined,
+        to: query.to ? vietnamDayEndUtc(query.to) : undefined,
         q: query.q,
         supplierId: query.supplierId,
         cursor: query.cursor,

@@ -17,6 +17,8 @@ import {
   type ClinicConfigReaderPort,
   type DoctorDirectoryPort,
   type PricingPort,
+  vietnamDayStartUtc,
+  vietnamDayEndUtc,
 } from '@nexamed/core';
 import { formatPrescriptionDose, type MedicineLabelBatch, type MedicineLabelItem, type MedicineLabelsResponse } from '@nexamed/shared';
 import type {
@@ -945,8 +947,8 @@ export class StockIssueService {
         warehouseId: query.warehouseId,
         status: query.status,
         issueType: query.issueType,
-        from: query.from ? new Date(`${query.from}T00:00:00+07:00`) : undefined,
-        to: query.to ? new Date(`${query.to}T23:59:59.999+07:00`) : undefined,
+        from: query.from ? vietnamDayStartUtc(query.from) : undefined,
+        to: query.to ? vietnamDayEndUtc(query.to) : undefined,
         q: query.q,
         cursor: query.cursor,
         take: query.limit + 1,
