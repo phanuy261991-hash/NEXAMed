@@ -27,6 +27,10 @@ import {
   ownerDashboardQuerySchema,
   ownerDashboardSchema,
   cashierDashboardSchema,
+  listFollowUpsQuerySchema,
+  listFollowUpsResponseSchema,
+  listFollowUpRemindersResponseSchema,
+  createFollowUpReminderRequestSchema,
   receptionDashboardSchema,
   deferredPaymentStatusSchema,
   applyInvoiceDiscountRequestSchema,
@@ -146,6 +150,7 @@ import {
   createInsuranceCardRequestSchema,
   encounterInsuranceSchema,
   insuranceStatusSchema,
+  followUpFeatureStatusSchema,
   listInsuranceCardsResponseSchema,
   saveInsuranceCardResponseSchema,
   updateInsuranceCardRequestSchema,
@@ -3282,6 +3287,18 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/follow-up-enabled',
+  tags: ['clinic'],
+  summary: '"Dùng Hẹn tái khám" (#285) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(followUpFeatureStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
 const insuranceCardParams = z.object({ patientId: z.string().uuid(), cardId: z.string().uuid() });
 
 registry.registerPath({
@@ -3508,6 +3525,69 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(ownerDashboardSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền dashboard.owner'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/follow-ups',
+  tags: ['follow-up'],
+  summary: 'Danh sách Hẹn tái khám (quyền follow_up.read; bác sĩ chỉ hẹn của lượt khám do mình khám) — theo tab Hôm nay/Quá hạn/Sắp tới/Tất cả, tìm kiếm, lọc bác sĩ, phân trang con trỏ, kèm số từng tab',
+  security: [{ bearerAuth: [] }],
+  request: { query: listFollowUpsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listFollowUpsResponseSchema)),
+    400: errorResponse('Con trỏ phân trang hoặc tham số không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền follow_up.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/follow-ups/export',
+  tags: ['follow-up'],
+  summary: 'Xuất Excel danh sách Hẹn tái khám đúng bộ lọc đang xem (tối đa 5.000 dòng, ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listFollowUpsQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền follow_up.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/follow-ups/{encounterId}/reminders',
+  tags: ['follow-up'],
+  summary: 'Nhật ký các lần nhắc của một hẹn tái khám (mới nhất trước)',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ encounterId: z.string().uuid() }) },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listFollowUpRemindersResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền follow_up.read'),
+    404: errorResponse('Không có hẹn tái khám này ở chi nhánh đang làm việc, hoặc ngoài phạm vi của bác sĩ'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/follow-ups/{encounterId}/reminders',
+  tags: ['follow-up'],
+  summary: 'Ghi một lần nhắc hẹn tái khám (kết quả liên lạc + ghi chú); thời điểm và người ghi do máy chủ đặt. Kết quả NOT_RETURNING làm hẹn biến khỏi danh sách',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ encounterId: z.string().uuid() }),
+    body: { content: { 'application/json': { schema: createFollowUpReminderRequestSchema } } },
+  },
+  responses: {
+    200: jsonResponse('Thành công', envelope(z.object({ id: z.string().uuid(), remindedAt: z.string() }))),
+    400: errorResponse('Dữ liệu không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền follow_up.remind'),
+    404: errorResponse('Không có hẹn tái khám này ở chi nhánh đang làm việc, hoặc ngoài phạm vi'),
   },
 });
 

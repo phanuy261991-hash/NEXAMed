@@ -34,6 +34,7 @@ import {
   getPrescriptionSplitBlockStatus,
   getIcd10SuggestionStatus,
   getInsuranceStatus,
+  getFollowUpFeatureStatus,
   getAllowStaffSelfScheduleStatus,
   getBackupConfig,
   getBackupStatus,
@@ -283,6 +284,19 @@ export function useInsuranceEnabledQuery() {
   });
 }
 
+/**
+ * "Dùng Hẹn tái khám" (#285) — menu, trang Hẹn tái khám và khối ở Tổng quan lễ tân đọc qua hook tự-phục vụ này (KHÔNG dùng `useClinicSettingsQuery()`, cần `clinic_config.read`).
+ * Máy chủ vẫn là nơi chặn thật (409 FOLLOW_UP_DISABLED); web chỉ ẩn cho gọn.
+ */
+export function useFollowUpFeatureEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'follow-up-enabled'),
+    queryFn: getFollowUpFeatureStatus,
+    staleTime: STALE_REFERENCE_MS,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -306,6 +320,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'icd10-suggestion-enabled') });
       // "Áp dụng BHYT" (S2-04) — mọi màn đọc qua hook tự-phục vụ riêng (useInsuranceEnabledQuery), làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'insurance-enabled') });
+      // "Dùng Hẹn tái khám" (#285) — menu/trang/Tổng quan đọc qua hook tự-phục vụ riêng, làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'follow-up-enabled') });
       // "Tự động thu gọn menu khi chuyển trang" — Sidebar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'sidebar-auto-collapse-enabled') });
       // "Chế độ phòng khám 1 người" — TopBar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.

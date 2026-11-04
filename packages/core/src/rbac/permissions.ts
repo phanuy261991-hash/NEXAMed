@@ -69,6 +69,9 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'dashboard', action: 'cashier', description: 'Xem Trang Tổng quan của thu ngân (phiếu chờ thu, tiền thu trong ngày)' },
   // `reception` = Tổng quan của lễ tân (lịch hẹn, hàng đợi, hẹn tái khám, bác sĩ nghỉ) — #284. Không có số tiền.
   { module: 'dashboard', action: 'reception', description: 'Xem Trang Tổng quan của lễ tân (lịch hẹn, hàng đợi, hẹn tái khám)' },
+  // Trang "Hẹn tái khám" (#285): `read` xem danh sách (lễ tân/quản trị toàn bộ, bác sĩ chỉ hẹn của lượt khám do mình khám — vì `encounter.read` của bác sĩ là global nên cần quyền riêng); `remind` ghi lần nhắc.
+  { module: 'follow_up', action: 'read', description: 'Xem danh sách Hẹn tái khám' },
+  { module: 'follow_up', action: 'remind', description: 'Ghi lần nhắc hẹn tái khám (đã gọi, không nghe máy...)' },
   { module: 'clinic_config', action: 'read', description: 'Xem cấu hình phòng khám' },
   { module: 'clinic_config', action: 'update', description: 'Sửa cấu hình phòng khám' },
   { module: 'user_account', action: 'read', description: 'Xem tài khoản người dùng' },
@@ -356,6 +359,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // Tổng quan thu ngân (#283) — lễ tân là thu ngân chính nên thấy bản này làm trang chủ; số liệu theo chi nhánh/ngày, không phải "của riêng mình" nên 'global'.
     'dashboard.cashier': 'global',
     'dashboard.reception': 'global',
+    // Hẹn tái khám (#285): lễ tân là người gọi nhắc.
+    'follow_up.read': 'global',
+    'follow_up.remind': 'global',
     'cash_account.read': 'global',
     'cash_voucher.create': 'global',
     'cash_voucher.read': 'global',
@@ -437,6 +443,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'appointment.cancel': 'personal',
     'encounter.read': 'global',
     'encounter.read_clinical': 'global',
+    // Hẹn tái khám (#285): bác sĩ chỉ thấy hẹn của lượt khám do chính mình khám.
+    'follow_up.read': 'personal',
     // Bắt đầu khám (CHECKED_IN→IN_CONSULTATION) chỉ cho lượt khám do chính bác sĩ phụ trách —
     // mirror appointment.update=personal đã có. "Bỏ về" mirror appointment.cancel=personal.
     'encounter.update': 'personal',
@@ -514,6 +522,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'branch.manage': 'global',
     'company_report.read': 'global',
     'dashboard.owner': 'global',
+    // Hẹn tái khám (#285).
+    'follow_up.read': 'global',
+    'follow_up.remind': 'global',
     'clinic_config.read': 'global',
     'clinic_config.update': 'global',
     'user_account.read': 'global',

@@ -3734,6 +3734,7 @@ export interface paths {
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
                                 insuranceEnabled: boolean;
+                                followUpEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -19115,6 +19116,7 @@ export interface paths {
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
                                 insuranceEnabled: boolean;
+                                followUpEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -19232,6 +19234,7 @@ export interface paths {
                         icd10SuggestionEnabled?: boolean;
                         icd10SuggestionLearningEnabled?: boolean;
                         insuranceEnabled?: boolean;
+                        followUpEnabled?: boolean;
                     };
                 };
             };
@@ -19308,6 +19311,7 @@ export interface paths {
                                 icd10SuggestionEnabled: boolean;
                                 icd10SuggestionLearningEnabled: boolean;
                                 insuranceEnabled: boolean;
+                                followUpEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -20396,6 +20400,62 @@ export interface paths {
             cookie?: never;
         };
         /** "Áp dụng BHYT" (S2-04, #243) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/follow-up-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Dùng Hẹn tái khám" (#285) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read) */
         get: {
             parameters: {
                 query?: never;
@@ -22080,6 +22140,393 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách Hẹn tái khám (quyền follow_up.read; bác sĩ chỉ hẹn của lượt khám do mình khám) — theo tab Hôm nay/Quá hạn/Sắp tới/Tất cả, tìm kiếm, lọc bác sĩ, phân trang con trỏ, kèm số từng tab */
+        get: {
+            parameters: {
+                query?: {
+                    tab?: "today" | "overdue" | "upcoming" | "all";
+                    q?: string;
+                    doctorId?: string;
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    encounterNo: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientCode: string;
+                                    patientName: string;
+                                    phone: string;
+                                    followUpDate: string;
+                                    /** @enum {string} */
+                                    status: "DUE_TODAY" | "ARRIVED" | "OVERDUE" | "UPCOMING";
+                                    sourceDate: string;
+                                    /** Format: uuid */
+                                    doctorId: string | null;
+                                    doctorName: string | null;
+                                    diagnosisName: string | null;
+                                    reminderCount: number;
+                                    lastReminder: {
+                                        remindedAt: string;
+                                        /** @enum {string} */
+                                        result: "REACHED" | "NO_ANSWER" | "CALL_BACK_LATER" | "NOT_RETURNING";
+                                        byName: string;
+                                    } | null;
+                                }[];
+                                nextCursor: string | null;
+                                counts: {
+                                    today: number;
+                                    overdue: number;
+                                    upcoming: number;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Con trỏ phân trang hoặc tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền follow_up.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-ups/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel danh sách Hẹn tái khám đúng bộ lọc đang xem (tối đa 5.000 dòng, ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query?: {
+                    tab?: "today" | "overdue" | "upcoming" | "all";
+                    q?: string;
+                    doctorId?: string;
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền follow_up.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-ups/{encounterId}/reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Nhật ký các lần nhắc của một hẹn tái khám (mới nhất trước) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** @enum {string} */
+                                    result: "REACHED" | "NO_ANSWER" | "CALL_BACK_LATER" | "NOT_RETURNING";
+                                    note: string | null;
+                                    remindedAt: string;
+                                    byName: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền follow_up.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có hẹn tái khám này ở chi nhánh đang làm việc, hoặc ngoài phạm vi của bác sĩ */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Ghi một lần nhắc hẹn tái khám (kết quả liên lạc + ghi chú); thời điểm và người ghi do máy chủ đặt. Kết quả NOT_RETURNING làm hẹn biến khỏi danh sách */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        result: "REACHED" | "NO_ANSWER" | "CALL_BACK_LATER" | "NOT_RETURNING";
+                        note?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                remindedAt: string;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền follow_up.remind */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có hẹn tái khám này ở chi nhánh đang làm việc, hoặc ngoài phạm vi */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

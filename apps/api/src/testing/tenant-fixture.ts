@@ -168,6 +168,8 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.clinicalOrder.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.diagnosis.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalNote.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Nhật ký nhắc hẹn tái khám (#285) tham chiếu encounter (FK RESTRICT) — xoá trước.
+      await prisma.followUpReminder.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.encounterTreatmentPlan.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // prescription_item (Sprint 4) tham chiếu prescription + drug (FK RESTRICT) — xoá trước cả
       // hai. prescription tự tham chiếu (supersedes_id, đính chính) — KHÔNG null-hoá-rồi-xoá được

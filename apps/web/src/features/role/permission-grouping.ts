@@ -40,6 +40,8 @@ export const MODULE_LABELS: Record<string, string> = {
   company_report: 'Báo cáo toàn công ty',
   // Trang Tổng quan theo vai trò (#279) — nhãn thêm NGAY lúc tạo quyền.
   dashboard: 'Trang Tổng quan',
+  // Trang "Hẹn tái khám" (#285) — nhãn thêm NGAY lúc tạo quyền.
+  follow_up: 'Hẹn tái khám',
   // Cập nhật phần mềm (#236, bước 2) — nhãn thêm NGAY lúc tạo quyền (`permission-grouping.spec.ts` chặn nếu thiếu).
   software_update: 'Cập nhật phần mềm',
   shift_swap: 'Đổi ca',
@@ -93,7 +95,7 @@ export function moduleLabel(module: string): string {
  */
 const SECTIONS: { label: string; modules: string[] }[] = [
   { label: 'Quản lý bệnh nhân', modules: ['patient'] },
-  { label: 'Đặt lịch hẹn', modules: ['appointment'] },
+  { label: 'Đặt lịch hẹn', modules: ['appointment', 'follow_up'] },
   { label: 'Tiếp nhận & Lượt khám', modules: ['encounter', 'vital_sign', 'diagnosis'] },
   { label: 'Khám bệnh & Kê đơn', modules: ['clinical_note', 'prescription', 'prescription_template', 'advice_template'] },
   { label: 'Cấu hình & Quản trị', modules: ['clinic_config', 'user_account', 'role_permission', 'audit_log', 'system_backup', 'software_update'] },

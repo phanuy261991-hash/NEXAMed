@@ -107,6 +107,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   INTEROP_SEND_DISABLED: HttpStatus.CONFLICT,
   // Thẻ BHYT (S2-04, #243) — công tắc "Áp dụng BHYT" tắt là xung đột trạng thái cấu hình (409), khuôn INTEROP_SEND_DISABLED.
   INSURANCE_DISABLED: HttpStatus.CONFLICT,
+  // "Dùng Hẹn tái khám" tắt (#285) — xung đột trạng thái cấu hình (409), cùng khuôn INSURANCE_DISABLED.
+  FOLLOW_UP_DISABLED: HttpStatus.CONFLICT,
   INTEROP_SUBMISSION_NOT_SENDABLE: HttpStatus.CONFLICT,
   INTEROP_GUARDIAN_EDIT_FORBIDDEN: HttpStatus.FORBIDDEN,
   DRUG_DUPLICATE_CODE: HttpStatus.CONFLICT,

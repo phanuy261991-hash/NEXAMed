@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  FOLLOW_UP_OVERDUE_DAYS,
   REFERENCE_CATALOG_READER_PORT,
   REVENUE_GROUPS,
   addDaysToDateString,
@@ -33,8 +34,6 @@ const SERIES_DAYS = 7;
 const PENDING_LIST_LIMIT = 8;
 /** Số lịch hẹn sắp tới hiện trên Tổng quan lễ tân; còn lại báo "+N" và mở trang Lịch hẹn. */
 const UPCOMING_LIMIT = 5;
-/** "Quá hạn chưa đến" của hẹn tái khám chỉ tính trong chừng này ngày gần nhất (hẹn quá cũ coi như đã bỏ). */
-const FOLLOW_UP_OVERDUE_DAYS = 30;
 /** Mã Loại tiếp nhận (`reference_catalog` RECEPTION_TYPE) mặc định của hệ thống: Khám mới / Tái khám. */
 const RECEPTION_TYPE_NEW = 'RT_NEW';
 const RECEPTION_TYPE_RETURN = 'RT_RETURN';

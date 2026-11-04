@@ -1,5 +1,6 @@
 import type {
   InsuranceStatus,
+  FollowUpFeatureStatus,
   AllowFreeTextPrescriptionStatus,
   PrescriptionSplitBlockStatus,
   AllowStaffSelfScheduleStatus,
@@ -115,6 +116,11 @@ export async function getIcd10SuggestionStatus(): Promise<Icd10SuggestionStatus>
 /** "Áp dụng BHYT" (S2-04, #243) — tự-phục vụ, mọi nhân viên đọc được để web ẩn/hiện khung thẻ, nhãn BHYT và ô tích in. */
 export async function getInsuranceStatus(): Promise<InsuranceStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/insurance-enabled')) as InsuranceStatus;
+}
+
+/** "Dùng Hẹn tái khám" (#285) — tự-phục vụ, mọi nhân viên đọc được để web ẩn/hiện mục menu, trang và khối ở Tổng quan lễ tân. */
+export async function getFollowUpFeatureStatus(): Promise<FollowUpFeatureStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/follow-up-enabled')) as FollowUpFeatureStatus;
 }
 
 /** S6-01 (ADM-04) — chỉ `clinic_admin` gọi được (`clinic_config.read`), dùng cho banner cảnh báo toàn cục. */

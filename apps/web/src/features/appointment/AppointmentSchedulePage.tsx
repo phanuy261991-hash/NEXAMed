@@ -44,10 +44,16 @@ export function AppointmentSchedulePage() {
     return fromLink && /^\d{4}-\d{2}-\d{2}$/.test(fromLink) ? fromLink : getVietnamTodayDateString();
   });
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [quickCreate, setQuickCreate] = useState<{ open: boolean; doctorId: string | null; time: string }>({
-    open: false,
-    doctorId: null,
-    time: '08:00',
+  // `book=1` (từ trang Hẹn tái khám, #285): mở sẵn form Đặt lịch với tên/SĐT/bác sĩ điền sẵn; tham số bị xoá khỏi địa chỉ ngay sau đó.
+  const [quickCreate, setQuickCreate] = useState<{ open: boolean; doctorId: string | null; time: string; prefill: { fullName: string; phone: string; reason: string } | null }>(() => {
+    if (searchParams.get('book') !== '1') return { open: false, doctorId: null, time: '08:00', prefill: null };
+    const doctor = searchParams.get('doctorId');
+    return {
+      open: true,
+      doctorId: doctor && /^[0-9a-f-]{36}$/i.test(doctor) ? doctor : null,
+      time: '08:00',
+      prefill: { fullName: searchParams.get('name') ?? '', phone: searchParams.get('phone') ?? '', reason: searchParams.get('reason') ?? '' },
+    };
   });
   const [detailAppointment, setDetailAppointment] = useState<AppointmentSummary | null>(null);
   // "Đơn xin nghỉ" (#224): chế độ mở sẵn của panel chi tiết (từ danh sách "Cần xử lý"), công tắc bác sĩ chưa đăng ký ca, panel "Cần xử lý".
@@ -78,7 +84,7 @@ export function AppointmentSchedulePage() {
 
   function openQuickCreate(doctorId: string | null, time: string) {
     setDetailAppointment(null);
-    setQuickCreate({ open: true, doctorId, time });
+    setQuickCreate({ open: true, doctorId, time, prefill: null });
   }
 
   function openDetail(appointment: AppointmentSummary, mode: 'view' | 'edit' | 'reschedule' = 'view') {
@@ -89,6 +95,10 @@ export function AppointmentSchedulePage() {
 
   // Mở chi tiết lịch được liên kết ngay khi danh sách ngày tải xong, rồi xoá tham số để tải lại trang không mở lại; không tìm thấy (đã tiếp nhận/huỷ) thì chỉ xoá tham số.
   const linkedAppointmentId = searchParams.get('appointmentId');
+  useEffect(() => {
+    if (searchParams.get('book')) setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ xoá tham số một lần khi vào trang
+  }, []);
   useEffect(() => {
     if (!linkedAppointmentId || !dayQuery.data) return;
     const found = dayQuery.data.items.find((a) => a.id === linkedAppointmentId);
@@ -296,6 +306,9 @@ export function AppointmentSchedulePage() {
         date={date}
         initialDoctorId={quickCreate.doctorId}
         initialTime={quickCreate.time}
+        initialFullName={quickCreate.prefill?.fullName}
+        initialPhone={quickCreate.prefill?.phone}
+        initialReason={quickCreate.prefill?.reason}
         doctors={doctors}
         defaultDurationMinutes={defaultDuration}
       />

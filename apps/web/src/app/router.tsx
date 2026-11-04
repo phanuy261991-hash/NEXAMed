@@ -59,6 +59,7 @@ const PatientDetailPage = lazy(() => import('../features/patient/PatientDetailPa
 const AppointmentSchedulePage = lazy(() =>
   import('../features/appointment/AppointmentSchedulePage').then((m) => ({ default: m.AppointmentSchedulePage })),
 );
+const FollowUpListPage = lazy(() => import('../features/follow-up/FollowUpListPage').then((m) => ({ default: m.FollowUpListPage })));
 const ReceptionListPage = lazy(() => import('../features/reception/ReceptionListPage').then((m) => ({ default: m.ReceptionListPage })));
 const ReceptionRegisterPage = lazy(() =>
   import('../features/reception/ReceptionRegisterPage').then((m) => ({ default: m.ReceptionRegisterPage })),
@@ -173,6 +174,7 @@ export const router = createBrowserRouter([
       { path: 'patients/new', element: <RequirePermissionRoute module="patient" action="create"><PatientNewPage /></RequirePermissionRoute> },
       { path: 'patients/:id', element: <RequirePermissionRoute module="patient" action="read"><PatientDetailPage /></RequirePermissionRoute> },
       { path: 'appointments', element: <RequirePermissionRoute module="appointment" action="read"><AppointmentSchedulePage /></RequirePermissionRoute> },
+      { path: 'follow-ups', element: <RequirePermissionRoute module="follow_up" action="read"><FollowUpListPage /></RequirePermissionRoute> },
       { path: 'reception', element: <RequirePermissionRoute module="encounter" action="read"><ReceptionListPage /></RequirePermissionRoute> },
       { path: 'reception/new', element: <RequirePermissionRoute module="encounter" action="create"><ReceptionRegisterPage /></RequirePermissionRoute> },
       // "Hàng đợi khám" — chặn theo TÊN VAI TRÒ (quyết định workflow đã chốt, không phải quyền cụ

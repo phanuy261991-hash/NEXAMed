@@ -171,6 +171,17 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Dùng Hẹn tái khám" (#285) — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn `getInsuranceEnabled` ở trên): lễ tân/bác sĩ (không có `clinic_config.read`)
+   * cần biết công tắc để web ẩn/hiện mục menu "Hẹn tái khám" và khối hẹn tái khám ở Tổng quan lễ tân.
+   */
+  @Get('follow-up-enabled')
+  async getFollowUpEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getFollowUpEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

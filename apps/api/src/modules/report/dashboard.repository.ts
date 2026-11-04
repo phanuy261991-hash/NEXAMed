@@ -147,6 +147,9 @@ export class DashboardRepository {
          WHERE p.tenant_id = ${tenantId}::uuid AND p.deleted_at IS NULL AND p.signed_at IS NOT NULL AND 'FOLLOW_UP' = ANY(p.directions::text[])
            AND p.follow_up_date >= ${fromDate}::date AND p.follow_up_date <= ${today}::date
            AND e.branch_id = ${branchId}::uuid AND e.deleted_at IS NULL AND e.status = 'COMPLETED'
+           AND NOT EXISTS (
+             SELECT 1 FROM follow_up_reminder r
+              WHERE r.tenant_id = e.tenant_id AND r.encounter_id = e.id AND r.result = 'NOT_RETURNING' AND r.deleted_at IS NULL)
       ), x AS (
         SELECT f.d,
                EXISTS (

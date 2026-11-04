@@ -279,6 +279,25 @@ export function GeneralConfigPane() {
     </div>
 
     <div className={sectionBoxClassName}>
+      <span className={sectionBadgeClassName}>Hẹn tái khám</span>
+
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-[14.5px] font-semibold text-slate-900">Dùng danh sách Hẹn tái khám</p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+            Tắt: ẩn trang Hẹn tái khám và khối hẹn tái khám ở Tổng quan lễ tân; bác sĩ vẫn chọn được hướng điều trị &quot;Hẹn tái khám&quot;.
+          </p>
+        </div>
+        <ToggleSwitch
+          checked={settingsQuery.data.followUpEnabled}
+          disabled={updateMutation.isPending}
+          onChange={(checked) => updateMutation.mutate({ followUpEnabled: checked })}
+          ariaLabel="Dùng danh sách Hẹn tái khám"
+        />
+      </div>
+    </div>
+
+    <div className={sectionBoxClassName}>
       <span className={sectionBadgeClassName}>Kho</span>
 
       <div className="flex items-start justify-between gap-5">

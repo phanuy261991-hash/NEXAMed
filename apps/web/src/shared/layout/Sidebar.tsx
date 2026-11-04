@@ -3,6 +3,7 @@ import {
   Archive,
   ArrowsLeftRight,
   CalendarBlank,
+  CalendarCheck,
   CaretRight,
   ChartBar,
   ClipboardText,
@@ -52,7 +53,7 @@ import {
   PRICE_LIST_ADMIN_PERMISSIONS,
 } from '../../features/auth/admin-permissions';
 import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
-import { useAllowStaffSelfScheduleEnabledQuery, useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
+import { useAllowStaffSelfScheduleEnabledQuery, useFollowUpFeatureEnabledQuery, useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
 import { useLeaveRequestPendingCountQuery } from '../../features/leave-request/leave-request.queries';
 import { useShiftSwapUnseenCountQuery } from '../../features/shift-swap/shift-swap.queries';
 import { useScheduleSubmissionPendingCountQuery } from '../../features/work-shift-assignment/schedule-submission.queries';
@@ -85,7 +86,7 @@ const PARACLINICAL_GROUP_PATH = '/paraclinical';
  * đó. Loại trừ `EXAMINATION_GROUP_PATH` vì cùng tiền tố `/reception` nhưng nay thuộc nhóm khác.
  * KHÔNG còn `/patients` (2026-09-08) — "Danh sách bệnh nhân" đã chuyển sang nhóm "Hồ sơ Bệnh nhân"
  * riêng, xem `PATIENT_RECORDS_GROUP_PATHS`. */
-const RECEPTION_GROUP_PATHS = ['/appointments', '/reception'];
+const RECEPTION_GROUP_PATHS = ['/appointments', '/reception', '/follow-ups'];
 /** Đường dẫn thuộc nhóm "Hồ sơ Bệnh nhân" (tách khỏi "Tiếp nhận và Đặt lịch", 2026-09-08, chủ dự án
  * yêu cầu trực tiếp — đặt ngay dưới "Khám bệnh") — hiện chỉ có "Danh sách bệnh nhân", cùng khuôn
  * "Thu ngân" (1 mục con thật vẫn dựng dạng nhóm cha/con để mở rộng thêm mục sau này không phải đổi
@@ -291,6 +292,10 @@ export function Sidebar() {
   const canSeePatients = useHasPermission('patient', 'read');
   const canSeeAppointments = useHasPermission('appointment', 'read');
   const canSeeReception = useHasPermission('encounter', 'read');
+  // "Hẹn tái khám" (#285) — gate theo ĐÚNG quyền của route (`follow_up.read`); bác sĩ có quyền này ở phạm vi cá nhân.
+  // + công tắc "Dùng Hẹn tái khám" (chưa tải xong thì ẩn, tránh nháy mục menu của phòng khám đã tắt).
+  const followUpFeatureEnabled = useFollowUpFeatureEnabledQuery().data?.enabled ?? false;
+  const canSeeFollowUps = useHasPermission('follow_up', 'read') && followUpFeatureEnabled;
   // Mỗi mục menu phải khớp ĐÚNG quyền của route guard tương ứng (`router.tsx`) — không mượn quyền của mục
   // cùng nhóm (docs/DECISIONS.md #207: quét 80 quyền phát hiện vai trò tuỳ biến thấy mục menu mà bấm vào bị chặn).
   const canCreateReception = useHasPermission('encounter', 'create');
@@ -352,7 +357,7 @@ export function Sidebar() {
         <ul className="flex flex-col gap-0.5">
           <NavItem to="/" label="Tổng quan" icon={House} end collapsed={collapsed} />
 
-          {(canSeeAppointments || canSeeReception) && (
+          {(canSeeAppointments || canSeeReception || canSeeFollowUps) && (
             <li>
               <button
                 type="button"
@@ -388,6 +393,7 @@ export function Sidebar() {
               {receptionGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   {canSeeAppointments && <NavItem to="/appointments" label="Lịch hẹn" icon={CalendarBlank} collapsed={false} indent />}
+                  {canSeeFollowUps && <NavItem to="/follow-ups" label="Hẹn tái khám" icon={CalendarCheck} collapsed={false} indent />}
                   {canCreateReception && <NavItem to="/reception/new" label="Tiếp nhận bệnh nhân" icon={UserPlus} collapsed={false} indent />}
                   {canSeeReception && <NavItem to="/reception" label="Bệnh nhân trong ngày" icon={ClipboardText} end collapsed={false} indent />}
                 </ul>

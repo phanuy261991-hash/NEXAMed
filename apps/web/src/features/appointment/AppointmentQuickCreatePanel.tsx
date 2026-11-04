@@ -43,6 +43,9 @@ export function AppointmentQuickCreatePanel({
   date,
   initialDoctorId,
   initialTime,
+  initialFullName,
+  initialPhone,
+  initialReason,
   doctors,
   defaultDurationMinutes,
 }: {
@@ -51,6 +54,10 @@ export function AppointmentQuickCreatePanel({
   date: string;
   initialDoctorId: string | null;
   initialTime: string;
+  /** Điền sẵn (ví dụ từ trang Hẹn tái khám): tên, SĐT, lý do. Nguồn đặt lịch vẫn phải chọn tay. */
+  initialFullName?: string;
+  initialPhone?: string;
+  initialReason?: string;
   doctors: DoctorOption[];
   defaultDurationMinutes: number;
 }) {
@@ -83,13 +90,13 @@ export function AppointmentQuickCreatePanel({
     setTime(initialTime);
     setDoctorId(initialDoctorId);
     setSource(null);
-    setPhone('');
-    setFullName('');
-    setReason('');
+    setPhone(initialPhone ?? '');
+    setFullName(initialFullName ?? '');
+    setReason(initialReason ?? '');
     setLockedPatient(null);
     setSubmitError(null);
     setConfirmedBooking(null);
-  }, [open, date, initialTime, initialDoctorId]);
+  }, [open, date, initialTime, initialDoctorId, initialFullName, initialPhone, initialReason]);
 
   function pickPatient(p: { id: string; fullName: string; phone: string; patientCode: string }) {
     setLockedPatient({ id: p.id, patientCode: p.patientCode });

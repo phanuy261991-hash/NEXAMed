@@ -286,3 +286,15 @@ Enum `drug_dose_mode` = `SCHEDULED` (theo buổi Sáng/Trưa/Chiều/Tối × s�
 | CHECK `reference_catalog_default_price_type_chk` | Chặn dữ liệu sai dù đi đường nào | `NOT is_default OR (category = 'PRICE_TYPE' AND is_active)` — mặc định chỉ có ở Loại giá và phải đang dùng (Tiếp nhận chỉ liệt kê mục đang dùng). Ẩn mục đang mặc định thì cờ mất theo (service/repository xử lý). |
 | Partial unique `reference_catalog_one_default_per_category_uq` | Tối đa MỘT mặc định/công ty | `(tenant_id, category) WHERE is_default AND deleted_at IS NULL`. Đặt mục mới làm mặc định: bỏ cờ mục cũ TRƯỚC trong cùng giao dịch (mỗi dòng đổi vẫn tăng `version`). Hai người đặt đồng thời → người sau 409 `CONCURRENT_MODIFICATION`. |
 | `technical_service_price` | KHÔNG đổi | Dịch vụ kỹ thuật chỉ còn MỘT giá gốc ở giao diện (+ "Hẹn đổi giá"), nhưng cột `price_type_code` và khoảng ngày giữ nguyên để không mất dữ liệu cũ và mở lại được. Mức hiển thị/tính tiền = Loại giá mặc định (nếu có dòng hiệu lực) rồi theo thứ tự danh mục (`PriceableCatalogService.priceTypeOrder`). Lưu giá là "thay sạch" nên giao diện gửi kèm MỌI dòng ẩn nguyên vẹn. |
+
+### 3.19 Hẹn tái khám — nhật ký nhắc (v1.91, `docs/DECISIONS.md` #285)
+
+| Bảng / cột | Ý nghĩa | Ghi chú |
+|---|---|---|
+| `follow_up_reminder` | Nhật ký các lần NHẮC hẹn tái khám — chỉ thêm, không sửa | Đủ cột chuẩn (`id` UUIDv7, `tenant_id`, `created_at/updated_at/deleted_at/deleted_reason`, `version`, `created_by/updated_by`). RLS `tenant_isolation` + FORCE. Composite FK `(tenant_id, encounter_id)` → `encounter`. |
+| `follow_up_reminder.encounter_id` | LƯỢT KHÁM GỐC (nơi bác sĩ ký hướng "Hẹn tái khám") | Không gắn `encounter_treatment_plan` vì đính chính kế hoạch tạo bản mới còn nhật ký nhắc phải sống qua đính chính. CHI NHÁNH kế thừa qua `encounter.branch_id` (#231 câu 2), repository lọc theo chi nhánh đang làm việc. |
+| `follow_up_reminder.result` | enum `follow_up_reminder_result`: `REACHED`, `NO_ANSWER`, `CALL_BACK_LATER`, `NOT_RETURNING` | `NOT_RETURNING` làm hẹn biến khỏi mọi tab và khỏi số "quá hạn chưa đến" của Tổng quan lễ tân. |
+| `follow_up_reminder.note` | Ghi chú tuỳ chọn | CHECK độ dài ≤ 1000. Audit KHÔNG chứa ghi chú (có thể có thông tin cá nhân). |
+| `follow_up_reminder.reminded_at` | Thời điểm liên lạc | Máy chủ đặt (`now()`), không nhập tay. |
+| Index `follow_up_reminder_encounter_idx` | `(tenant_id, encounter_id, reminded_at DESC) WHERE deleted_at IS NULL` | Lịch sử nhắc của một lượt khám + "lần nhắc gần nhất" của danh sách. |
+| `tenant_setting` khoá `follow_up_enabled` | Công tắc "Dùng danh sách Hẹn tái khám" | Boolean, mặc định BẬT khi chưa có dòng; chung cả công ty; không migration. |

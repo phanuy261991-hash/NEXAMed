@@ -13,6 +13,8 @@ import { StackedBarStrip } from '../../shared/ui/dashboard/StackedBarStrip';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { useAuthStore } from '../auth/auth.store';
+import { useHasPermission } from '../auth/usePermission';
+import { useFollowUpFeatureEnabledQuery } from '../clinic/clinic.queries';
 import { appointmentHref, buildHourlyAppointments, leaveAlertSentence, leaveAlertsTotal, upcomingSubtitle, withDoctorTitle } from './reception-dashboard-model';
 import { formatWeekdayDate } from './dashboard-model';
 import { useReceptionDashboardQuery } from './dashboard.queries';
@@ -199,8 +201,29 @@ function HourlyPanel({ data }: { data: ReceptionDashboard }) {
 
 function FollowUpPanel({ data }: { data: ReceptionDashboard }) {
   const f = data.followUp;
+  // Liên kết sang trang "Hẹn tái khám" (#285) chỉ hiện khi tài khoản được vào trang đó.
+  const canOpenList = useHasPermission('follow_up', 'read');
+  const overdueRowClass = `flex items-center rounded-xl px-3.5 py-3 ${f.overdueNotArrived > 0 ? 'bg-amber-50' : 'bg-slate-50'}`;
+  const overdueRow = (
+    <>
+      <span className={`flex-grow ${f.overdueNotArrived > 0 ? 'text-amber-900' : 'text-slate-500'}`}>
+        Quá hạn chưa đến <span className="text-xs text-slate-400">({f.overdueWithinDays} ngày qua)</span>
+      </span>
+      <span className={`font-semibold tabular-nums ${f.overdueNotArrived > 0 ? 'text-amber-600' : 'text-slate-900'}`}>{f.overdueNotArrived.toLocaleString('vi-VN')}</span>
+    </>
+  );
   return (
-    <DashboardPanel title="Hẹn tái khám hôm nay" className="flex-[1_1_340px]">
+    <DashboardPanel
+      title="Hẹn tái khám hôm nay"
+      className="flex-[1_1_340px]"
+      action={
+        canOpenList ? (
+          <Link to="/follow-ups" className="text-blue-600 hover:text-blue-700 hover:underline">
+            Xem tất cả
+          </Link>
+        ) : undefined
+      }
+    >
       <div className="flex flex-col gap-1 text-[15px]">
         <div className="flex items-center py-2.5">
           <span className="flex-grow text-slate-500">Hẹn hôm nay</span>
@@ -210,12 +233,13 @@ function FollowUpPanel({ data }: { data: ReceptionDashboard }) {
           <span className="flex-grow text-slate-500">Đã đến</span>
           <span className="font-semibold tabular-nums text-emerald-600">{f.arrivedToday.toLocaleString('vi-VN')}</span>
         </div>
-        <div className={`flex items-center rounded-xl px-3.5 py-3 ${f.overdueNotArrived > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}>
-          <span className={`flex-grow ${f.overdueNotArrived > 0 ? 'text-amber-900' : 'text-slate-500'}`}>
-            Quá hạn chưa đến <span className="text-xs text-slate-400">({f.overdueWithinDays} ngày qua)</span>
-          </span>
-          <span className={`font-semibold tabular-nums ${f.overdueNotArrived > 0 ? 'text-amber-600' : 'text-slate-900'}`}>{f.overdueNotArrived.toLocaleString('vi-VN')}</span>
-        </div>
+        {canOpenList ? (
+          <Link to="/follow-ups?tab=overdue" className={`${overdueRowClass} hover:bg-amber-100`}>
+            {overdueRow}
+          </Link>
+        ) : (
+          <div className={overdueRowClass}>{overdueRow}</div>
+        )}
       </div>
     </DashboardPanel>
   );
@@ -250,6 +274,8 @@ export function ReceptionDashboardPage() {
   const user = useAuthStore((s) => s.user);
   const query = useReceptionDashboardQuery();
   const header = useClinicPrintHeaderQuery();
+  // Phòng khám tắt "Dùng Hẹn tái khám" (#285) thì ẩn khối hẹn tái khám (chưa tải xong cũng ẩn, tránh nháy).
+  const followUpFeatureEnabled = useFollowUpFeatureEnabledQuery().data?.enabled ?? false;
   const data = query.data;
   const clinicName = header.data?.name ?? '';
   const name = user?.displayName ?? user?.fullName ?? '';
@@ -287,7 +313,7 @@ export function ReceptionDashboardPage() {
           </div>
           <div className="flex flex-wrap gap-4">
             <HourlyPanel data={data} />
-            <FollowUpPanel data={data} />
+            {followUpFeatureEnabled && <FollowUpPanel data={data} />}
           </div>
         </>
       )}

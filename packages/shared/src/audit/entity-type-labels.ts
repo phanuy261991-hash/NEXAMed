@@ -52,6 +52,8 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   doctor_availability: 'Trạng thái làm việc bác sĩ',
   tenant_setting: 'Cấu hình phòng khám',
   cashier_shift: 'Phiếu chốt ca',
+  follow_up_reminder: 'Lần nhắc hẹn tái khám',
+  follow_up: 'Danh sách hẹn tái khám',
   // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — thêm nhãn NGAY từ đầu, tránh lặp lại lỗ
   // hổng "quên nhãn tiếng Việt" đã ghi chú nhiều lần ở permission-grouping.ts.
   supplier: 'Nhà cung cấp',

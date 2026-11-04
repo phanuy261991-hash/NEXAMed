@@ -151,6 +151,7 @@ model Tenant {
   patientAllergens            PatientAllergen[]
   patientConditions           PatientCondition[]
   insuranceCards              InsuranceCard[]
+  followUpReminders           FollowUpReminder[]
   patientFamilyHistories      PatientFamilyHistory[]
   examTypePrices              ExamTypePrice[]
   invoices                    Invoice[]
@@ -711,16 +712,16 @@ model UserAccount {
 
   // Khoá tài khoản tạm sau 5 lần đăng nhập sai trong 15 phút — xem
   // .claude/docs/security-audit.md mục Xác thực, packages/core/src/iam/lockout.ts.
-  failedLoginCount    Int       @default(0) @map("failed_login_count")
-  lastFailedLoginAt   DateTime? @map("last_failed_login_at") @db.Timestamptz(6)
-  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
+  failedLoginCount          Int       @default(0) @map("failed_login_count")
+  lastFailedLoginAt         DateTime? @map("last_failed_login_at") @db.Timestamptz(6)
+  lockedUntil               DateTime? @map("locked_until") @db.Timestamptz(6)
   // Khoá luỹ tiến → vĩnh viễn của nhân viên (#239): bậc khoá tạm liên tiếp (0..3) và mốc khoá vĩnh viễn (null = chưa).
-  lockoutLevel        Int       @default(0) @map("lockout_level") @db.SmallInt
-  lockedPermanentlyAt DateTime? @map("locked_permanently_at") @db.Timestamptz(6)
+  lockoutLevel              Int       @default(0) @map("lockout_level") @db.SmallInt
+  lockedPermanentlyAt       DateTime? @map("locked_permanently_at") @db.Timestamptz(6)
   // Khoá THÔNG MINH theo "máy quen" (#259): đăng nhập SAI từ máy quen đếm riêng ở đây (khoá tạm, không bao giờ vĩnh viễn); 4 cột khoá ở trên chỉ đếm máy LẠ.
-  familiarFailedLoginCount   Int       @default(0) @map("familiar_failed_login_count")
-  familiarLastFailedLoginAt  DateTime? @map("familiar_last_failed_login_at") @db.Timestamptz(6)
-  familiarLockedUntil        DateTime? @map("familiar_locked_until") @db.Timestamptz(6)
+  familiarFailedLoginCount  Int       @default(0) @map("familiar_failed_login_count")
+  familiarLastFailedLoginAt DateTime? @map("familiar_last_failed_login_at") @db.Timestamptz(6)
+  familiarLockedUntil       DateTime? @map("familiar_locked_until") @db.Timestamptz(6)
 
   // Chi nhánh làm việc lần gần nhất (#231) — "Nhớ lựa chọn": đăng nhập lần sau vào thẳng chi nhánh này nếu còn được gán.
   lastBranchId String? @map("last_branch_id") @db.Uuid
@@ -1569,7 +1570,7 @@ model Encounter {
   appointmentId         String?         @map("appointment_id") @db.Uuid
   encounterNo           String          @map("encounter_no")
   // "Số bệnh án" (docs/DECISIONS.md #269) — cấp lúc "Hoàn tất khám"; NULL với lượt chưa hoàn tất và lượt hoàn tất TRƯỚC khi có tính năng. Duy nhất theo công ty (partial unique index raw SQL, Prisma không biểu diễn được).
-  archiveNo              String?         @map("archive_no")
+  archiveNo             String?         @map("archive_no")
   status                EncounterStatus
   specialty             String          @default("general")
   checkedInAt           DateTime        @map("checked_in_at") @db.Timestamptz(6)
@@ -1639,6 +1640,7 @@ model Encounter {
   diagnoses               Diagnosis[]
   clinicalNotes           ClinicalNote[]
   treatmentPlans          EncounterTreatmentPlan[]
+  followUpReminders       FollowUpReminder[]
   prescriptions           Prescription[]
   // Liên thông đơn thuốc quốc gia GĐ3 (#242): ô bổ sung 8b theo (lượt khám, loại đơn) + hàng chờ gửi đơn.
   interopKindInfos        EncounterInteropKindInfo[]
@@ -2952,26 +2954,26 @@ model Prescription {
 }
 
 model PrescriptionItem {
-  id               String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId         String  @map("tenant_id") @db.Uuid
-  prescriptionId   String  @map("prescription_id") @db.Uuid
+  id               String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId         String       @map("tenant_id") @db.Uuid
+  prescriptionId   String       @map("prescription_id") @db.Uuid
   // Nullable từ "Kê thuốc tự do" (mở rộng Kho Thuốc GĐ5, đảo ngược 1 điểm của #190) — đúng 1 trong 2
   // với `freeTextDrugName` (CHECK ở migration, cùng khuôn `invoice_line_source_exactly_one_check`).
   // Dòng tự do KHÔNG tính tiền/tồn kho/không phát được qua "Phát thuốc" — chỉ ghi bệnh án + in đơn.
-  drugId           String? @map("drug_id") @db.Uuid
-  freeTextDrugName String? @map("free_text_drug_name")
+  drugId           String?      @map("drug_id") @db.Uuid
+  freeTextDrugName String?      @map("free_text_drug_name")
   // Liều dùng theo buổi trong ngày (docs/DECISIONS.md #196, mockup đã duyệt) — thay hẳn 2 cột tự do
   // `dose`/`frequency` cũ. Đơn vị luôn là đơn vị NHỎ NHẤT của thuốc (`drug.baseUnitCode`, resolve qua
   // JOIN lúc đọc — KHÔNG snapshot cột riêng). `quantity` = tổng 4 cột này × `durationDays`, LUÔN do
   // Service tính (`toCreateItemData()`), KHÔNG nhận trực tiếp từ client nữa.
   // #241: liều có thể LẺ theo bước ¼ viên (NUMERIC(5,2), CHECK bội của 0,25 — ngoại lệ có chủ đích của
   // quy tắc "cấm numeric", vốn chỉ áp cho cột TIỀN). Prisma trả Decimal — repository đổi sang number.
-  doseMorning      Decimal @default(0) @map("dose_morning") @db.Decimal(5, 2)
-  doseNoon         Decimal @default(0) @map("dose_noon") @db.Decimal(5, 2)
-  doseAfternoon    Decimal @default(0) @map("dose_afternoon") @db.Decimal(5, 2)
-  doseEvening      Decimal @default(0) @map("dose_evening") @db.Decimal(5, 2)
+  doseMorning      Decimal      @default(0) @map("dose_morning") @db.Decimal(5, 2)
+  doseNoon         Decimal      @default(0) @map("dose_noon") @db.Decimal(5, 2)
+  doseAfternoon    Decimal      @default(0) @map("dose_afternoon") @db.Decimal(5, 2)
+  doseEvening      Decimal      @default(0) @map("dose_evening") @db.Decimal(5, 2)
   // NULL khi dòng kiểu "Khi cần" (#267) — CHECK `prescription_item_dose_mode_check` ràng buộc theo `dose_mode`.
-  durationDays     Int?    @map("duration_days") @db.SmallInt
+  durationDays     Int?         @map("duration_days") @db.SmallInt
   // Kiểu kê của dòng (#267): SCHEDULED = Sáng/Trưa/Chiều/Tối × số ngày (quantity do server tính); AS_NEEDED = "Khi cần" (liều mỗi lần `single_dose` + quantity bác sĩ nhập thẳng).
   doseMode         DrugDoseMode @default(SCHEDULED) @map("dose_mode")
   singleDose       Decimal?     @map("single_dose") @db.Decimal(5, 2)
@@ -2982,7 +2984,7 @@ model PrescriptionItem {
   quantity         Int
   instruction      String?
   // Đơn pháp lý (mã chuẩn Bộ Y tế, #242) chứa dòng này — NULL khi còn nháp hoặc đơn ký trước ngày bật chế độ chuẩn.
-  documentId       String? @map("document_id") @db.Uuid
+  documentId       String?      @map("document_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -3061,17 +3063,17 @@ model Icd10PhraseUsage {
 }
 
 model PrescriptionTemplateItem {
-  id            String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId      String  @map("tenant_id") @db.Uuid
-  templateId    String  @map("template_id") @db.Uuid
-  drugId        String  @map("drug_id") @db.Uuid
+  id            String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId      String       @map("tenant_id") @db.Uuid
+  templateId    String       @map("template_id") @db.Uuid
+  drugId        String       @map("drug_id") @db.Uuid
   // Đúng khuôn `PrescriptionItem` (docs/DECISIONS.md #196) — thay hẳn dose/frequency tự do.
-  doseMorning   Decimal @default(0) @map("dose_morning") @db.Decimal(5, 2)
-  doseNoon      Decimal @default(0) @map("dose_noon") @db.Decimal(5, 2)
-  doseAfternoon Decimal @default(0) @map("dose_afternoon") @db.Decimal(5, 2)
-  doseEvening   Decimal @default(0) @map("dose_evening") @db.Decimal(5, 2)
+  doseMorning   Decimal      @default(0) @map("dose_morning") @db.Decimal(5, 2)
+  doseNoon      Decimal      @default(0) @map("dose_noon") @db.Decimal(5, 2)
+  doseAfternoon Decimal      @default(0) @map("dose_afternoon") @db.Decimal(5, 2)
+  doseEvening   Decimal      @default(0) @map("dose_evening") @db.Decimal(5, 2)
   // Cùng khuôn `PrescriptionItem` (#267): NULL khi "Khi cần".
-  durationDays  Int?    @map("duration_days") @db.SmallInt
+  durationDays  Int?         @map("duration_days") @db.SmallInt
   doseMode      DrugDoseMode @default(SCHEDULED) @map("dose_mode")
   singleDose    Decimal?     @map("single_dose") @db.Decimal(5, 2)
   quantity      Int
@@ -5209,18 +5211,18 @@ model PrescriptionSubmission {
 // Lối tắt mã công ty cũ (docs/DECISIONS.md #245): sau khi người vận hành đổi mã tên miền, mã cũ còn dẫn sang mã mới đến `expires_at` và không được cấp lại cho công ty khác. Bảng nền tảng — không RLS
 // (tra theo tên miền TRƯỚC khi biết công ty), chỉ thêm không sửa.
 model TenantCodeAlias {
-  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  targetTenantId String @map("target_tenant_id") @db.Uuid
-  oldCode   String    @map("old_code")
-  newCode   String    @map("new_code")
-  reason    String
-  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  version   Int       @default(1)
-  createdBy String    @map("created_by") @db.Uuid
-  updatedBy String    @map("updated_by") @db.Uuid
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  targetTenantId String    @map("target_tenant_id") @db.Uuid
+  oldCode        String    @map("old_code")
+  newCode        String    @map("new_code")
+  reason         String
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  version        Int       @default(1)
+  createdBy      String    @map("created_by") @db.Uuid
+  updatedBy      String    @map("updated_by") @db.Uuid
 
   tenant Tenant @relation(fields: [targetTenantId], references: [id])
 
@@ -5261,4 +5263,39 @@ model IdempotencyKey {
   @@unique([tenantId, userId, requestKey])
   @@index([tenantId, expiresAt])
   @@map("idempotency_key")
+}
+
+// Nhật ký các lần NHẮC hẹn tái khám (docs/DECISIONS.md #285) — chỉ thêm, gắn với lượt khám gốc (kế thừa chi nhánh qua encounter).
+enum FollowUpReminderResult {
+  REACHED
+  NO_ANSWER
+  CALL_BACK_LATER
+  // "Bệnh nhân không tái khám" — hẹn biến khỏi danh sách Hẹn tái khám và khỏi số "quá hạn" ở Tổng quan.
+  NOT_RETURNING
+
+  @@map("follow_up_reminder_result")
+}
+
+model FollowUpReminder {
+  id          String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String                 @map("tenant_id") @db.Uuid
+  encounterId String                 @map("encounter_id") @db.Uuid
+  result      FollowUpReminderResult
+  note        String?
+  // Thời điểm liên lạc — máy chủ tự đặt.
+  remindedAt  DateTime               @default(now()) @map("reminded_at") @db.Timestamptz(6)
+
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  encounter Encounter @relation(fields: [tenantId, encounterId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("follow_up_reminder")
 }

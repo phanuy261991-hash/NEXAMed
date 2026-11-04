@@ -360,6 +360,11 @@ export const clinicSettingsSchema = z.object({
    * ba ô tích in (đơn thuốc, phiếu thu, bệnh án PDF) dùng được. TẮT: ẩn hết, máy chủ chặn thêm/sửa thẻ (409), lượt khám mới ghi tự chi trả; thẻ đã nhập giữ nguyên.
    */
   insuranceEnabled: z.boolean(),
+  /**
+   * "Dùng Hẹn tái khám" (#285) — công tắc chung cả công ty, BẬT (mặc định, giữ nguyên với pilot đang chạy). TẮT: ẩn mục menu và trang "Hẹn tái khám", ẩn khối hẹn tái khám ở Tổng quan lễ tân,
+   * máy chủ từ chối các API của trang (409). Bác sĩ vẫn chọn được hướng "Hẹn tái khám" ở kế hoạch điều trị (dữ liệu lâm sàng, in trong bệnh án) — chỉ phần danh sách nhắc của lễ tân bị ẩn.
+   */
+  followUpEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -404,6 +409,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   icd10SuggestionEnabled: z.boolean().optional(),
   icd10SuggestionLearningEnabled: z.boolean().optional(),
   insuranceEnabled: z.boolean().optional(),
+  followUpEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -472,6 +478,11 @@ export const DEFAULT_ICD10_SUGGESTION_ENABLED = false;
 export const DEFAULT_ICD10_SUGGESTION_LEARNING_ENABLED = false;
 /** Tắt theo mặc định ("Áp dụng BHYT", #243) — phòng khám không dùng BHYT không thấy gì thay đổi tới khi chủ động bật. */
 export const DEFAULT_INSURANCE_ENABLED = false;
+/** Bật theo mặc định ("Dùng Hẹn tái khám", #285) — pilot đang chạy không đổi gì; phòng khám không dùng chủ động tắt. */
+export const DEFAULT_FOLLOW_UP_ENABLED = true;
+/** `GET /clinic-settings/follow-up-enabled` — chiếu tối thiểu tự-phục vụ (lễ tân/bác sĩ không có `clinic_config.read`), khuôn `insuranceStatusSchema`. */
+export const followUpFeatureStatusSchema = z.object({ enabled: z.boolean() });
+export type FollowUpFeatureStatus = z.infer<typeof followUpFeatureStatusSchema>;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý

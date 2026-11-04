@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-04
 
+### Trang "Hẹn tái khám" của lễ tân + công tắc "Dùng danh sách Hẹn tái khám" (`docs/DECISIONS.md` #285)
+
+Menu con mới **"Hẹn tái khám"** (nhóm "Tiếp nhận và Đặt lịch"): danh sách hẹn tái khám đã ký của chi nhánh đang làm việc, 4 tab Hôm nay / Quá hạn / Sắp tới 7 ngày / Tất cả kèm số, tìm tên-mã BN-SĐT, lọc bác sĩ, xuất Excel; mỗi dòng có Xem hồ sơ, Sao chép SĐT, Đặt lịch hẹn (mở Lịch hẹn điền sẵn) và Ghi lần nhắc (kết quả liên lạc + ghi chú, xem các lần nhắc trước; "Bệnh nhân không tái khám" đưa hẹn khỏi danh sách). Quyền mới `follow_up.read` (lễ tân, quản trị; bác sĩ chỉ hẹn của mình) và `follow_up.remind` (lễ tân, quản trị). Tổng quan lễ tân có liên kết "Xem tất cả" và ô "Quá hạn chưa đến" mở thẳng trang này. Lễ tân không thấy chẩn đoán (chỉ số lượt khám). **Phòng khám không dùng** tắt công tắc "Dùng danh sách Hẹn tái khám" ở Cấu hình phòng khám → Cấu hình chung (mặc định BẬT): ẩn menu, trang và khối ở Tổng quan; bác sĩ vẫn chọn hướng "Hẹn tái khám" ở tab Điều trị. Migration `20261104120000_follow_up_reminder` (môi trường khác cần `db:deploy` + `db:seed`).
+
 ### Trang Tổng quan của lễ tân (`docs/DECISIONS.md` #284)
 
 Quyền mới **`dashboard.reception`** (mặc định lễ tân): lịch hẹn hôm nay (đã đến / chưa đến), đang chờ khám, khám mới / tái khám, lịch hẹn sắp tới (nút "Tiếp nhận" và "Đổi bác sĩ" mở thẳng chi tiết lịch), hàng đợi theo bác sĩ, lịch hẹn theo giờ, hẹn tái khám (đến hạn, đã đến, quá hạn chưa đến) và cảnh báo bác sĩ nghỉ phép còn lịch cần đổi. Lễ tân có thanh chuyển giữa bản Lễ tân và Thu ngân. Trang Lịch hẹn nhận liên kết `?date=&appointmentId=&mode=`. Môi trường khác cần `db:seed`. Không migration.

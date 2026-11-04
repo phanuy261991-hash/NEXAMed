@@ -298,6 +298,10 @@ const ACTION_LABELS: Record<string, string> = {
 
   // cashier-shift ("Chốt ca", 2026-09-03) — thêm nhãn NGAY lúc code, đúng bài học lặp lại
   // #087/#089/#104/#109 (thêm module mới mà quên vá bảng nhãn).
+  // Hẹn tái khám (#285)
+  'follow_up_reminder.created': 'Ghi lần nhắc hẹn tái khám',
+  'follow_up.exported': 'Xuất Excel danh sách hẹn tái khám',
+
   'cashier_shift.opened': 'Mở ca',
   'cashier_shift.closed': 'Chốt ca',
   'cashier_shift.discrepancy_resolved': 'Xử lý chênh lệch phiếu chốt ca',
