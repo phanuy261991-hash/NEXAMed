@@ -21,4 +21,10 @@ export class DashboardController {
     const { period } = ownerDashboardQuerySchema.parse(query);
     return this.dashboardService.getOwnerDashboard(req.user!, period);
   }
+
+  @Get('cashier')
+  @RequirePermission('dashboard', 'cashier')
+  async cashier(@Req() req: Request) {
+    return this.dashboardService.getCashierDashboard(req.user!);
+  }
 }

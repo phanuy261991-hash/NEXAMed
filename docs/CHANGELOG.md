@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-04
 
+### Trang Tổng quan của thu ngân (`docs/DECISIONS.md` #283)
+
+Tài khoản có quyền mới **`dashboard.cashier`** (mặc định lễ tân) thấy trang chủ thu ngân: chờ thu / đã thu / đã hoàn / thực thu hôm nay, danh sách phiếu chờ thu (bấm để mở phiếu, "Thu tiền" ở phiếu đầu), ca đang mở với nút Chốt ca và tiền mặt dự kiến trong két, tiền thu theo giờ và theo phương thức. Tài khoản có nhiều quyền tổng quan có thanh chuyển giữa các bản. Môi trường khác cần `db:seed`. Không migration.
+
 ### Trang Tổng quan của chủ phòng khám (`docs/DECISIONS.md` #282)
 
 Trang chủ của tài khoản có quyền mới **`dashboard.owner`** (mặc định clinic_admin) nay hiện số liệu thật thay cho khung trống: lượt khám, thực thu (thu trừ hoàn, theo ngày thu), chờ thu, bệnh nhân khám lần đầu — mỗi ô có so sánh với kỳ trước và đường 7 ngày; lượt khám theo giờ; thực thu theo nhóm (Khám bệnh / Cận lâm sàng / Thuốc và vật tư / Gói dịch vụ); thực thu 7 ngày; "Cần xử lý" (phiếu chưa thu, ca chưa chốt, lô sắp hết hạn, mặt hàng dưới ngưỡng); dịch vụ dùng nhiều; hàng đợi hiện tại theo bác sĩ. Chọn kỳ Hôm nay / 7 ngày / Tháng này; số chỉ tải khi vào trang, đổi kỳ hoặc bấm "Làm mới" (ghi "Số lúc HH:MM"). Chỉ chi nhánh đang làm việc. Vai trò khác vẫn thấy khung trống cho tới khi có bản riêng. Môi trường khác cần `db:seed` (quyền mới). Không migration.

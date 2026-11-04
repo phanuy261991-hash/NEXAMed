@@ -65,6 +65,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'company_report', action: 'read', description: 'Xem báo cáo toàn công ty (gộp mọi chi nhánh)' },
   // Trang Tổng quan theo vai trò (docs/DECISIONS.md #279) — mỗi vai trò một quyền riêng để tài khoản tuỳ biến chọn được ai xem trang nào. `owner` = Tổng quan của chủ phòng khám (tiền, lượt khám, cảnh báo); mặc định CHỈ clinic_admin.
   { module: 'dashboard', action: 'owner', description: 'Xem Trang Tổng quan của chủ phòng khám (doanh thu, lượt khám, cảnh báo)' },
+  // `cashier` = Tổng quan của thu ngân (phiếu chờ thu, tiền thu trong ngày theo phương thức/giờ). Mặc định lễ tân (thu ngân chính, PRD 4.7) có — #283.
+  { module: 'dashboard', action: 'cashier', description: 'Xem Trang Tổng quan của thu ngân (phiếu chờ thu, tiền thu trong ngày)' },
   { module: 'clinic_config', action: 'read', description: 'Xem cấu hình phòng khám' },
   { module: 'clinic_config', action: 'update', description: 'Sửa cấu hình phòng khám' },
   { module: 'user_account', action: 'read', description: 'Xem tài khoản người dùng' },
@@ -349,6 +351,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // `CashierShiftService`), không xem lịch sử toàn phòng khám (đó là màn Quản lý, dưới đây).
     'cashier_shift.create': 'personal',
     'cashier_shift.read': 'personal',
+    // Tổng quan thu ngân (#283) — lễ tân là thu ngân chính nên thấy bản này làm trang chủ; số liệu theo chi nhánh/ngày, không phải "của riêng mình" nên 'global'.
+    'dashboard.cashier': 'global',
     'cash_account.read': 'global',
     'cash_voucher.create': 'global',
     'cash_voucher.read': 'global',

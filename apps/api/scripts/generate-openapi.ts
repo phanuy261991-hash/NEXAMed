@@ -26,6 +26,7 @@ import {
   clinicPrintHeaderSchema,
   ownerDashboardQuerySchema,
   ownerDashboardSchema,
+  cashierDashboardSchema,
   deferredPaymentStatusSchema,
   applyInvoiceDiscountRequestSchema,
   combinedInvoicePrintResponseSchema,
@@ -3506,6 +3507,19 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(ownerDashboardSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền dashboard.owner'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/dashboard/cashier',
+  tags: ['report'],
+  summary: 'Trang Tổng quan của thu ngân (quyền dashboard.cashier) — phiếu chờ thu, tiền đã thu/đã hoàn/thực thu hôm nay, theo phương thức và theo giờ; theo chi nhánh đang làm việc',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(cashierDashboardSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền dashboard.cashier'),
   },
 });
 

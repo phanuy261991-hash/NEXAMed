@@ -88,3 +88,43 @@ export const ownerDashboardSchema = z.object({
   }),
 });
 export type OwnerDashboard = z.infer<typeof ownerDashboardSchema>;
+
+/**
+ * Trang Tổng quan của THU NGÂN (docs/DECISIONS.md #283, mockup "Thu ngân" đã chốt 02/11/2026). Chỉ NGÀY HÔM NAY của chi nhánh đang làm việc (không chọn kỳ).
+ * Khối "ca đang mở / tiền mặt dự kiến trong két" KHÔNG nằm ở đây: web dùng lại endpoint Chốt ca sẵn có (`/cashier-shifts/current` + `/summary`) để không nhân đôi công thức két.
+ */
+export const cashierDashboardSchema = z.object({
+  /** Thời điểm chụp số (ISO UTC) — web ghi "Số lúc HH:MM". */
+  generatedAt: z.string(),
+  /** Ngày báo cáo `YYYY-MM-DD` (giờ VN). */
+  date: z.string(),
+  /** Phiếu thu chưa thanh toán của các lượt khám tiếp nhận hôm nay, `dueAmount` sau chiết khấu. `items` chỉ gồm các phiếu đầu danh sách (cũ trước); `moreCount` là số phiếu còn lại. */
+  pending: z.object({
+    invoiceCount: z.number(),
+    amount: z.number(),
+    items: z.array(
+      z.object({
+        invoiceId: z.string(),
+        encounterId: z.string(),
+        invoiceNo: z.string(),
+        invoiceType: z.enum(['SERVICE', 'DRUG', 'PARACLINICAL']),
+        patientName: z.string(),
+        /** Tóm tắt dịch vụ trên phiếu ("Khám nội, Công thức máu +1"). */
+        summary: z.string(),
+        dueAmount: z.number(),
+      }),
+    ),
+    moreCount: z.number(),
+  }),
+  /** Tiền ĐÃ THU trong ngày (theo ngày thu, chưa trừ hoàn) và số phiếu có thu. */
+  collected: z.object({ invoiceCount: z.number(), amount: z.number() }),
+  /** Tiền ĐÃ HOÀN trong ngày và số phiếu có hoàn. */
+  refunded: z.object({ invoiceCount: z.number(), amount: z.number() }),
+  /** Thực thu = đã thu − đã hoàn. */
+  net: z.number(),
+  /** Đã thu theo phương thức (chưa trừ hoàn); tổng khớp `collected.amount`. */
+  byMethod: z.array(z.object({ methodCode: z.string(), methodName: z.string(), amount: z.number(), paymentCount: z.number() })),
+  /** Thực thu ròng theo giờ thu (đủ 24 giờ, giờ VN). */
+  hourly: z.array(z.object({ hour: z.number(), amount: z.number() })),
+});
+export type CashierDashboard = z.infer<typeof cashierDashboardSchema>;

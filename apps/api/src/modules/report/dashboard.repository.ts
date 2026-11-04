@@ -33,11 +33,24 @@ export interface CollectedLineRow {
 
 export interface UnpaidInvoiceRow {
   invoiceId: string;
+  encounterId: string;
+  invoiceNo: string;
+  invoiceType: 'SERVICE' | 'DRUG' | 'PARACLINICAL';
+  patientName: string;
   date: string;
   totalAmount: number;
   discountType: DiscountType | null;
   discountValue: number | null;
-  lines: Array<{ lineTotal: number; discountType: DiscountType | null; discountValue: number | null }>;
+  lines: Array<{ name: string; isDrug: boolean; lineTotal: number; discountType: DiscountType | null; discountValue: number | null }>;
+}
+
+/** Thanh toán trong khoảng đã gộp theo (phương thức, loại, giờ thu VN). */
+export interface PaymentGroupRow {
+  methodCode: string;
+  type: 'PAYMENT' | 'REFUND';
+  hour: number;
+  paymentCount: number;
+  amount: number;
 }
 
 export interface ServiceLineGroup {
@@ -155,27 +168,49 @@ export class DashboardRepository {
   /** Phiếu CHƯA THU của các lượt khám tiếp nhận trong khoảng, kèm dòng — `dueAmount` tính ở `@nexamed/core`. */
   async listUnpaidInvoices(tx: Prisma.TransactionClient, tenantId: string, branchId: string, start: Date, end: Date): Promise<UnpaidInvoiceRow[]> {
     const [invoices, lines] = await Promise.all([
-      tx.$queryRaw<Array<{ id: string; d: string; total_amount: bigint; discount_type: DiscountType | null; discount_value: bigint | null }>>`
-        SELECT i.id, ${vnDay('e.checked_in_at')} AS d, i.total_amount, i.discount_type, i.discount_value
-          FROM invoice i JOIN encounter e ON e.tenant_id = i.tenant_id AND e.id = i.encounter_id
+      tx.$queryRaw<
+        Array<{
+          id: string;
+          encounter_id: string;
+          invoice_no: string;
+          invoice_type: UnpaidInvoiceRow['invoiceType'];
+          full_name: string;
+          d: string;
+          total_amount: bigint;
+          discount_type: DiscountType | null;
+          discount_value: bigint | null;
+        }>
+      >`
+        SELECT i.id, e.id AS encounter_id, i.invoice_no, i.invoice_type, p.full_name, ${vnDay('e.checked_in_at')} AS d, i.total_amount, i.discount_type, i.discount_value
+          FROM invoice i
+          JOIN encounter e ON e.tenant_id = i.tenant_id AND e.id = i.encounter_id
+          JOIN patient p ON p.tenant_id = e.tenant_id AND p.id = e.patient_id
          WHERE i.tenant_id = ${tenantId}::uuid AND e.branch_id = ${branchId}::uuid AND i.deleted_at IS NULL AND i.status = 'UNPAID'
-           AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}`,
-      tx.$queryRaw<Array<{ invoice_id: string; line_total: bigint; discount_type: DiscountType | null; discount_value: bigint | null }>>`
-        SELECT l.invoice_id, l.line_total, l.discount_type, l.discount_value
+           AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}
+         ORDER BY e.checked_in_at ASC, i.created_at ASC, i.id ASC`,
+      tx.$queryRaw<
+        Array<{ invoice_id: string; exam_type_name: string; is_drug: boolean; line_total: bigint; discount_type: DiscountType | null; discount_value: bigint | null }>
+      >`
+        SELECT l.invoice_id, l.exam_type_name, (l.source_stock_issue_line_id IS NOT NULL) AS is_drug, l.line_total, l.discount_type, l.discount_value
           FROM invoice_line l
           JOIN invoice i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
           JOIN encounter e ON e.tenant_id = i.tenant_id AND e.id = i.encounter_id
          WHERE l.tenant_id = ${tenantId}::uuid AND l.deleted_at IS NULL AND e.branch_id = ${branchId}::uuid AND i.deleted_at IS NULL AND i.status = 'UNPAID'
-           AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}`,
+           AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}
+         ORDER BY l.created_at ASC, l.id ASC`,
     ]);
     const byInvoice = new Map<string, UnpaidInvoiceRow['lines']>();
     for (const l of lines) {
       const list = byInvoice.get(l.invoice_id) ?? [];
-      list.push({ lineTotal: Number(l.line_total), discountType: l.discount_type, discountValue: l.discount_value === null ? null : Number(l.discount_value) });
+      list.push({ name: l.exam_type_name, isDrug: l.is_drug, lineTotal: Number(l.line_total), discountType: l.discount_type, discountValue: l.discount_value === null ? null : Number(l.discount_value) });
       byInvoice.set(l.invoice_id, list);
     }
     return invoices.map((r) => ({
       invoiceId: r.id,
+      encounterId: r.encounter_id,
+      invoiceNo: r.invoice_no,
+      invoiceType: r.invoice_type,
+      patientName: r.full_name,
       date: r.d,
       totalAmount: Number(r.total_amount),
       discountType: r.discount_type,
@@ -201,6 +236,32 @@ export class DashboardRepository {
          AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}
        GROUP BY l.exam_type_name, l.line_total, l.discount_type, l.discount_value`;
     return rows.map((r) => ({ name: r.name, count: r.n, lineTotal: Number(r.line_total), discountType: r.discount_type, discountValue: r.discount_value === null ? null : Number(r.discount_value) }));
+  }
+
+  /** Thanh toán (thu và hoàn) trong khoảng của chi nhánh, gộp theo (phương thức, loại, giờ thu VN) — theo NGÀY THU (`payment.paid_at`), cùng định nghĩa "thực thu" của Tổng quan chủ phòng khám. */
+  async listPaymentGroups(tx: Prisma.TransactionClient, tenantId: string, branchId: string, start: Date, end: Date): Promise<PaymentGroupRow[]> {
+    const rows = await tx.$queryRaw<Array<{ method: string; type: PaymentGroupRow['type']; h: number; n: number; amount: bigint }>>`
+      SELECT pay.method, pay.type, ${vnHour('pay.paid_at')} AS h, COUNT(*)::int AS n, SUM(pay.amount) AS amount
+        FROM payment pay
+        JOIN invoice i ON i.tenant_id = pay.tenant_id AND i.id = pay.invoice_id
+        JOIN encounter e ON e.tenant_id = i.tenant_id AND e.id = i.encounter_id
+       WHERE pay.tenant_id = ${tenantId}::uuid AND e.branch_id = ${branchId}::uuid AND pay.deleted_at IS NULL AND i.deleted_at IS NULL
+         AND pay.paid_at >= ${start} AND pay.paid_at < ${end}
+       GROUP BY pay.method, pay.type, 3`;
+    return rows.map((r) => ({ methodCode: r.method, type: r.type, hour: r.h, paymentCount: r.n, amount: Number(r.amount) }));
+  }
+
+  /** Số PHIẾU (không phải số lượt thanh toán) có thu và có hoàn trong khoảng — một phiếu thu nhiều lần chỉ đếm một. */
+  async countInvoicesByPaymentType(tx: Prisma.TransactionClient, tenantId: string, branchId: string, start: Date, end: Date): Promise<{ collected: number; refunded: number }> {
+    const rows = await tx.$queryRaw<Array<{ type: 'PAYMENT' | 'REFUND'; n: number }>>`
+      SELECT pay.type, COUNT(DISTINCT pay.invoice_id)::int AS n
+        FROM payment pay
+        JOIN invoice i ON i.tenant_id = pay.tenant_id AND i.id = pay.invoice_id
+        JOIN encounter e ON e.tenant_id = i.tenant_id AND e.id = i.encounter_id
+       WHERE pay.tenant_id = ${tenantId}::uuid AND e.branch_id = ${branchId}::uuid AND pay.deleted_at IS NULL AND i.deleted_at IS NULL
+         AND pay.paid_at >= ${start} AND pay.paid_at < ${end}
+       GROUP BY pay.type`;
+    return { collected: rows.find((r) => r.type === 'PAYMENT')?.n ?? 0, refunded: rows.find((r) => r.type === 'REFUND')?.n ?? 0 };
   }
 
   async listOpenCashierShifts(tx: Prisma.TransactionClient, tenantId: string, branchId: string): Promise<Array<{ label: string; openedAt: Date }>> {

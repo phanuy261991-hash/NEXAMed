@@ -27,6 +27,7 @@ export * from './search/strip-vietnamese-diacritics';
 export * from './date/vietnam-day-range';
 export * from './date/vietnam-period';
 export * from './report/dashboard-math';
+export * from './report/cashier-dashboard-math';
 export * from './specialty/registry';
 export * from './storage/sniff-image-extension';
 export * from './encounter/encounter-state-machine';

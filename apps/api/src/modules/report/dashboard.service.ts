@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
+  REFERENCE_CATALOG_READER_PORT,
   REVENUE_GROUPS,
   addDaysToDateString,
   allocateCollectionToGroups,
@@ -12,11 +13,14 @@ import {
   percentOf,
   resolveReportPeriod,
   sameSpanPreviousMonth,
+  summarizeInvoiceLineNames,
+  summarizePayments,
   vietnamDateRangeHalfOpenUtc,
+  type ReferenceCatalogReaderPort,
   type RevenueGroup,
   type RevenueLineInput,
 } from '@nexamed/core';
-import type { DashboardKpi, DashboardPeriod, DashboardPeriodKind, OwnerDashboard } from '@nexamed/shared';
+import type { CashierDashboard, DashboardKpi, DashboardPeriod, DashboardPeriodKind, OwnerDashboard } from '@nexamed/shared';
 import { requireBranchId } from '../../common/branch-context';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { DashboardRepository } from './dashboard.repository';
@@ -24,6 +28,8 @@ import { DashboardRepository } from './dashboard.repository';
 const TOP_SERVICE_COUNT = 5;
 const EXPIRY_WINDOW_DAYS = 30;
 const SERIES_DAYS = 7;
+/** Số phiếu chờ thu hiện trên Tổng quan thu ngân; còn lại báo "+N phiếu" và mở danh sách đầy đủ ở màn Thu ngân. */
+const PENDING_LIST_LIMIT = 8;
 
 interface Actor {
   tenantId: string;
@@ -64,7 +70,60 @@ export class DashboardService {
   constructor(
     private readonly unitOfWork: UnitOfWorkService,
     private readonly repository: DashboardRepository,
+    @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
   ) {}
+
+  /**
+   * Trang Tổng quan của THU NGÂN (docs/DECISIONS.md #283): chỉ HÔM NAY của chi nhánh đang làm việc. Tiền đã thu/hoàn theo NGÀY THU (cùng định nghĩa "thực thu" của chủ phòng khám),
+   * phiếu chờ thu = phiếu chưa thanh toán của các lượt khám tiếp nhận hôm nay, `dueAmount` sau chiết khấu qua `computeInvoiceDiscount` — KHÔNG dùng `invoice.total_amount`.
+   * Tên phương thức thanh toán đọc qua port TRƯỚC khi mở transaction (một request = MỘT transaction, #264).
+   */
+  async getCashierDashboard(actor: Actor, now: Date = new Date()): Promise<CashierDashboard> {
+    const branchId = requireBranchId(actor);
+    const today = getVietnamDateString(now);
+    const range = vietnamDateRangeHalfOpenUtc(today, today);
+    const methods = await this.referenceCatalogReader.listByCategory(actor.tenantId, 'PAYMENT_METHOD');
+    const methodNames = new Map(methods.map((m) => [m.code, m.name]));
+
+    const data = await this.unitOfWork.runInTenantScope(actor.tenantId, async (tx) => {
+      const [unpaid, paymentGroups, invoiceCounts] = await Promise.all([
+        this.repository.listUnpaidInvoices(tx, actor.tenantId, branchId, range.startUtc, range.endUtc),
+        this.repository.listPaymentGroups(tx, actor.tenantId, branchId, range.startUtc, range.endUtc),
+        this.repository.countInvoicesByPaymentType(tx, actor.tenantId, branchId, range.startUtc, range.endUtc),
+      ]);
+      return { unpaid, paymentGroups, invoiceCounts };
+    });
+
+    const pendingRows = data.unpaid.map((row) => ({
+      row,
+      dueAmount: computeInvoiceDiscount({ totalAmount: row.totalAmount, discountType: row.discountType, discountValue: row.discountValue, lines: row.lines }).dueAmount,
+    }));
+    const totals = summarizePayments(data.paymentGroups, methodNames);
+
+    return {
+      generatedAt: now.toISOString(),
+      date: today,
+      pending: {
+        invoiceCount: pendingRows.length,
+        amount: pendingRows.reduce((s, r) => s + r.dueAmount, 0),
+        items: pendingRows.slice(0, PENDING_LIST_LIMIT).map(({ row, dueAmount }) => ({
+          invoiceId: row.invoiceId,
+          encounterId: row.encounterId,
+          invoiceNo: row.invoiceNo,
+          invoiceType: row.invoiceType,
+          patientName: row.patientName,
+          summary: summarizeInvoiceLineNames(row.lines.map((l) => (l.isDrug ? 'Thuốc' : l.name))),
+          dueAmount,
+        })),
+        moreCount: Math.max(0, pendingRows.length - PENDING_LIST_LIMIT),
+      },
+      collected: { invoiceCount: data.invoiceCounts.collected, amount: totals.collectedAmount },
+      refunded: { invoiceCount: data.invoiceCounts.refunded, amount: totals.refundedAmount },
+      net: totals.netAmount,
+      byMethod: totals.byMethod,
+      hourly: totals.hourly,
+    };
+  }
 
   async getOwnerDashboard(actor: Actor, kind: DashboardPeriodKind, now: Date = new Date()): Promise<OwnerDashboard> {
     const branchId = requireBranchId(actor);

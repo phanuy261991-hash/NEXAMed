@@ -91,7 +91,7 @@ Máy chủ + web xong (nhánh chưa thu/đã thu, bác sĩ thấy khối "Đã h
 
 ## Hệ thống báo cáo (04/11/2026, #279 + #282) — Đợt 0 XONG; Đợt 1 lát 1 (Tổng quan chủ phòng khám) XONG, đã kiểm Chrome IP LAN, đã push
 
-Đợt 0: hàm ngày giờ VN dùng chung + đầu báo cáo Excel (`4e9269a`). Lát 1: `GET /reports/dashboard/owner?period=today|week|month` (quyền mới `dashboard.owner`, mặc định clinic_admin — môi trường khác cần `db:seed`), module `apps/api/src/modules/report/`, tính toán thuần ở `packages/core/src/report/dashboard-math.ts`, web `features/dashboard/OwnerDashboardPage.tsx` + `shared/ui/charts/*` + `ReportPanel`, `StatCardRow` có thêm `delta` và `trend`. Số chỉ tải khi vào trang/đổi kỳ/bấm "Làm mới". Còn: Tổng quan thu ngân/lễ tân/bác sĩ, Báo cáo ngày + nhóm menu "Báo cáo", các đợt sau (`docs/product/reporting-plan.md` mục 7).
+Đợt 0: hàm ngày giờ VN dùng chung + đầu báo cáo Excel (`4e9269a`). Lát 1: `GET /reports/dashboard/owner?period=today|week|month` (quyền mới `dashboard.owner`, mặc định clinic_admin — môi trường khác cần `db:seed`), module `apps/api/src/modules/report/`, tính toán thuần ở `packages/core/src/report/dashboard-math.ts`, web `features/dashboard/OwnerDashboardPage.tsx` + `shared/ui/charts/*` + `ReportPanel`, `StatCardRow` có thêm `delta` và `trend`. Số chỉ tải khi vào trang/đổi kỳ/bấm "Làm mới". Lát 2 — Tổng quan THU NGÂN (`GET /reports/dashboard/cashier`, quyền `dashboard.cashier` mặc định lễ tân, #283) đã code + test + kiểm Chrome IP LAN, CHƯA commit (môi trường khác cần `db:seed`). Còn: Tổng quan lễ tân/bác sĩ, Báo cáo ngày + nhóm menu "Báo cáo", các đợt sau (`docs/product/reporting-plan.md` mục 7).
 
 ## Bàn giao mới nhất
 

@@ -474,3 +474,17 @@ Chưa làm đủ các mục dưới đây thì chức năng CHƯA xong, không �
 3. **Route mới**: nằm trong nhóm `AppShell` ở `app/router.tsx` thì tự có màn lỗi trong vùng nội dung; route NGOÀI nhóm đó (như `/login`) phải tự gắn `errorElement: <RouteErrorScreen />`. Không tạo `ErrorBoundary`/màn lỗi riêng.
 4. **Không hiện** `error.code`, thông điệp thô của thư viện/mạng, JSON, stack trace; chỉ hiện `ApiError.message` khi đó là thông điệp tiếng Việt do máy chủ chủ đích trả cho người dùng, lỗi mạng/5xx dùng câu thân thiện cố định. Không `catch {}` rỗng, không để lỗi thành trang trắng.
 5. **Kiểm bằng Chrome thật** các trạng thái lỗi của chức năng đó (chặn hoặc giả lập phản hồi lỗi 4xx/5xx/mất mạng/ngoại lệ khi hiển thị, như `scratchpad` phiên 23/10/2026), không chỉ đường chạy đúng; ghi kết quả vào báo cáo hoàn thành.
+
+---
+
+## 18. Trang Tổng quan (dashboard) — phong cách mềm, hướng B (chốt 04/11/2026, `docs/DECISIONS.md` #283)
+
+**Phạm vi CHẶT: chỉ các trang Tổng quan** (Tổng quan thu ngân, Tổng quan chủ phòng khám và các bản Tổng quan sau này: lễ tân, bác sĩ, "Toàn hệ thống"). **KHÔNG áp dụng cho trang khác** của ứng dụng (danh sách, form, báo cáo, hộp thoại...) — chủ dự án nói rõ "không đổi gì" ở các trang khác; các trang đó giữ nguyên kiểu ở mục 2–17. Muốn mở rộng phải hỏi lại.
+
+- **Bộ thành phần riêng** `shared/ui/dashboard/`: `DashboardSurface` (nền `bg-slate-100` bao trang), `DashboardPanel` (khối), `DashboardTotalRow` (dòng tổng), `DashboardKpiRow` (dải KPI), `InitialsAvatar` (ô tròn chữ cái đầu), `BarStrip` (dải cột theo giờ). Trang Tổng quan mới PHẢI dùng lại, không tự viết khung. Không dùng `StatCardRow`/thẻ viền cũ ở trang Tổng quan.
+- **Khối**: `rounded-2xl bg-white px-6 py-5`, **không viền, không bóng, không thanh tiêu đề tô nền**; tiêu đề `text-base font-semibold` nằm trong khối, phụ đề `text-sm text-slate-500`, liên kết phụ ở góc phải. Các khối cách nhau `gap-4`/`gap-5`.
+- **Dải KPI**: mỗi chỉ số một khối riêng, ô biểu tượng `size-8 rounded-[10px]` tô nhạt theo tông (amber/emerald/rose/blue/violet), số `text-[32px] font-semibold` màu trung tính; **đúng một ô "chốt hạ" (Thực thu) nền `bg-blue-600` chữ trắng**.
+- **Bảng/danh sách trong khối**: không kẻ ô, đầu cột `text-xs uppercase text-slate-400`, kẻ ngang mảnh `border-slate-100` hoặc hàng bo `rounded-xl` khi rê chuột; dòng tổng là ô `rounded-xl bg-slate-50` (`bg-blue-50` cho số chốt). Tên người dùng ô tròn chữ cái đầu. Số tiền ghi **không hậu tố "đ"**.
+- **Nút/viên trong trang Tổng quan**: nút dùng `Button` dùng chung kèm `rounded-full!` (và `ring-0!` cho nút phụ trên nền xám); nhãn đếm là viên `rounded-full` nền nhạt. Không tự viết `<button>` tay.
+- **Màu số tiền**: tiền chờ thu amber, tiền vào emerald, tiền ra rose, số chốt blue — như mục 2.1 nhưng gắn vào con số/ô biểu tượng, không tô nền cả khối.
+- Số chỉ tải khi vào trang / bấm "Làm mới" (nút ghi giờ chụp số); đủ 4 trạng thái (Skeleton bo `rounded-2xl`, trống, lỗi có "Thử lại", đủ dữ liệu); kiểm 1280/1440/1920 và 768.

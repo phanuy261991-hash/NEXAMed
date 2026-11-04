@@ -56812,6 +56812,264 @@
         }
       }
     },
+    "/api/v1/reports/dashboard/cashier": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Trang Tổng quan của thu ngân (quyền dashboard.cashier) — phiếu chờ thu, tiền đã thu/đã hoàn/thực thu hôm nay, theo phương thức và theo giờ; theo chi nhánh đang làm việc",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string"
+                        },
+                        "pending": {
+                          "type": "object",
+                          "properties": {
+                            "invoiceCount": {
+                              "type": "number"
+                            },
+                            "amount": {
+                              "type": "number"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "invoiceId": {
+                                    "type": "string"
+                                  },
+                                  "encounterId": {
+                                    "type": "string"
+                                  },
+                                  "invoiceNo": {
+                                    "type": "string"
+                                  },
+                                  "invoiceType": {
+                                    "type": "string",
+                                    "enum": [
+                                      "SERVICE",
+                                      "DRUG",
+                                      "PARACLINICAL"
+                                    ]
+                                  },
+                                  "patientName": {
+                                    "type": "string"
+                                  },
+                                  "summary": {
+                                    "type": "string"
+                                  },
+                                  "dueAmount": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "invoiceId",
+                                  "encounterId",
+                                  "invoiceNo",
+                                  "invoiceType",
+                                  "patientName",
+                                  "summary",
+                                  "dueAmount"
+                                ]
+                              }
+                            },
+                            "moreCount": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "invoiceCount",
+                            "amount",
+                            "items",
+                            "moreCount"
+                          ]
+                        },
+                        "collected": {
+                          "type": "object",
+                          "properties": {
+                            "invoiceCount": {
+                              "type": "number"
+                            },
+                            "amount": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "invoiceCount",
+                            "amount"
+                          ]
+                        },
+                        "refunded": {
+                          "type": "object",
+                          "properties": {
+                            "invoiceCount": {
+                              "type": "number"
+                            },
+                            "amount": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "invoiceCount",
+                            "amount"
+                          ]
+                        },
+                        "net": {
+                          "type": "number"
+                        },
+                        "byMethod": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "methodCode": {
+                                "type": "string"
+                              },
+                              "methodName": {
+                                "type": "string"
+                              },
+                              "amount": {
+                                "type": "number"
+                              },
+                              "paymentCount": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "methodCode",
+                              "methodName",
+                              "amount",
+                              "paymentCount"
+                            ]
+                          }
+                        },
+                        "hourly": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "hour": {
+                                "type": "number"
+                              },
+                              "amount": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "hour",
+                              "amount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "date",
+                        "pending",
+                        "collected",
+                        "refunded",
+                        "net",
+                        "byMethod",
+                        "hourly"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền dashboard.cashier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/clinic-profile/print-header": {
       "get": {
         "tags": [

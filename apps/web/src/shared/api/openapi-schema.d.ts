@@ -22086,6 +22086,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/dashboard/cashier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trang Tổng quan của thu ngân (quyền dashboard.cashier) — phiếu chờ thu, tiền đã thu/đã hoàn/thực thu hôm nay, theo phương thức và theo giờ; theo chi nhánh đang làm việc */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                date: string;
+                                pending: {
+                                    invoiceCount: number;
+                                    amount: number;
+                                    items: {
+                                        invoiceId: string;
+                                        encounterId: string;
+                                        invoiceNo: string;
+                                        /** @enum {string} */
+                                        invoiceType: "SERVICE" | "DRUG" | "PARACLINICAL";
+                                        patientName: string;
+                                        summary: string;
+                                        dueAmount: number;
+                                    }[];
+                                    moreCount: number;
+                                };
+                                collected: {
+                                    invoiceCount: number;
+                                    amount: number;
+                                };
+                                refunded: {
+                                    invoiceCount: number;
+                                    amount: number;
+                                };
+                                net: number;
+                                byMethod: {
+                                    methodCode: string;
+                                    methodName: string;
+                                    amount: number;
+                                    paymentCount: number;
+                                }[];
+                                hourly: {
+                                    hour: number;
+                                    amount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền dashboard.cashier */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clinic-profile/print-header": {
         parameters: {
             query?: never;

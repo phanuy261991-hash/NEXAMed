@@ -7,3 +7,8 @@
 export function formatVnd(amount: number): string {
   return `${amount.toLocaleString('vi-VN')} đ`;
 }
+
+/** Số tiền chỉ có chữ số và dấu chấm hàng nghìn, KHÔNG hậu tố "đ" — dùng ở trang báo cáo/Tổng quan nơi đơn vị đã rõ từ ngữ cảnh (đúng mockup Tổng quan thu ngân). */
+export function formatVndPlain(amount: number): string {
+  return amount.toLocaleString('vi-VN');
+}
