@@ -56251,6 +56251,567 @@
         }
       }
     },
+    "/api/v1/reports/dashboard/owner": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Trang Tổng quan của chủ phòng khám (quyền dashboard.owner) — lượt khám, bệnh nhân mới, thực thu, phiếu chưa thu, giờ cao điểm, cảnh báo, hàng đợi; theo chi nhánh đang làm việc, so với kỳ trước",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "week",
+                "month"
+              ],
+              "default": "today"
+            },
+            "required": false,
+            "name": "period",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "period": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "today",
+                                "week",
+                                "month"
+                              ]
+                            },
+                            "from": {
+                              "type": "string"
+                            },
+                            "to": {
+                              "type": "string"
+                            },
+                            "compareFrom": {
+                              "type": "string"
+                            },
+                            "compareTo": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "from",
+                            "to",
+                            "compareFrom",
+                            "compareTo"
+                          ]
+                        },
+                        "encounters": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "number"
+                            },
+                            "previous": {
+                              "type": "number"
+                            },
+                            "diff": {
+                              "type": "number"
+                            },
+                            "diffPercent": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": [
+                                "up",
+                                "down",
+                                "flat"
+                              ]
+                            },
+                            "series": {
+                              "type": "array",
+                              "items": {
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "previous",
+                            "diff",
+                            "diffPercent",
+                            "direction",
+                            "series"
+                          ]
+                        },
+                        "collected": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "number"
+                            },
+                            "previous": {
+                              "type": "number"
+                            },
+                            "diff": {
+                              "type": "number"
+                            },
+                            "diffPercent": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": [
+                                "up",
+                                "down",
+                                "flat"
+                              ]
+                            },
+                            "series": {
+                              "type": "array",
+                              "items": {
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "previous",
+                            "diff",
+                            "diffPercent",
+                            "direction",
+                            "series"
+                          ]
+                        },
+                        "newPatients": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "number"
+                            },
+                            "previous": {
+                              "type": "number"
+                            },
+                            "diff": {
+                              "type": "number"
+                            },
+                            "diffPercent": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": [
+                                "up",
+                                "down",
+                                "flat"
+                              ]
+                            },
+                            "series": {
+                              "type": "array",
+                              "items": {
+                                "type": "number"
+                              }
+                            },
+                            "shareOfEncountersPercent": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "previous",
+                            "diff",
+                            "diffPercent",
+                            "direction",
+                            "series",
+                            "shareOfEncountersPercent"
+                          ]
+                        },
+                        "pending": {
+                          "type": "object",
+                          "properties": {
+                            "invoiceCount": {
+                              "type": "number"
+                            },
+                            "amount": {
+                              "type": "number"
+                            },
+                            "series": {
+                              "type": "array",
+                              "items": {
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "required": [
+                            "invoiceCount",
+                            "amount",
+                            "series"
+                          ]
+                        },
+                        "hourly": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "hour": {
+                                "type": "number"
+                              },
+                              "count": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "hour",
+                              "count"
+                            ]
+                          }
+                        },
+                        "collectedByGroup": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "group": {
+                                "type": "string",
+                                "enum": [
+                                  "EXAM",
+                                  "PARACLINICAL",
+                                  "DRUG",
+                                  "PACKAGE"
+                                ]
+                              },
+                              "amount": {
+                                "type": "number"
+                              },
+                              "percent": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "group",
+                              "amount",
+                              "percent"
+                            ]
+                          }
+                        },
+                        "collectedDaily": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string"
+                              },
+                              "amount": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "date",
+                              "amount"
+                            ]
+                          }
+                        },
+                        "needsAttention": {
+                          "type": "object",
+                          "properties": {
+                            "unpaidInvoices": {
+                              "type": "object",
+                              "properties": {
+                                "count": {
+                                  "type": "number"
+                                },
+                                "amount": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "count",
+                                "amount"
+                              ]
+                            },
+                            "openShifts": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "openedAt": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "label",
+                                  "openedAt"
+                                ]
+                              }
+                            },
+                            "expiringBatches": {
+                              "type": "object",
+                              "properties": {
+                                "count": {
+                                  "type": "number"
+                                },
+                                "withinDays": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "count",
+                                "withinDays"
+                              ]
+                            },
+                            "belowMinStockItems": {
+                              "type": "object",
+                              "properties": {
+                                "count": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "count"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "unpaidInvoices",
+                            "openShifts",
+                            "expiringBatches",
+                            "belowMinStockItems"
+                          ]
+                        },
+                        "topServices": {
+                          "type": "object",
+                          "properties": {
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "number"
+                                  },
+                                  "amount": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "count",
+                                  "amount"
+                                ]
+                              }
+                            },
+                            "totalCount": {
+                              "type": "number"
+                            },
+                            "totalAmount": {
+                              "type": "number"
+                            },
+                            "shareOfServiceAmountPercent": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "items",
+                            "totalCount",
+                            "totalAmount",
+                            "shareOfServiceAmountPercent"
+                          ]
+                        },
+                        "queue": {
+                          "type": "object",
+                          "properties": {
+                            "rows": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "doctorName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "roomName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "inProgress": {
+                                    "type": "number"
+                                  },
+                                  "waiting": {
+                                    "type": "number"
+                                  },
+                                  "longestWaitMinutes": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "doctorName",
+                                  "roomName",
+                                  "inProgress",
+                                  "waiting",
+                                  "longestWaitMinutes"
+                                ]
+                              }
+                            },
+                            "totalInProgress": {
+                              "type": "number"
+                            },
+                            "totalWaiting": {
+                              "type": "number"
+                            },
+                            "longestWaitMinutes": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "doctorsInProgress": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "rows",
+                            "totalInProgress",
+                            "totalWaiting",
+                            "longestWaitMinutes",
+                            "doctorsInProgress"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "period",
+                        "encounters",
+                        "collected",
+                        "newPatients",
+                        "pending",
+                        "hourly",
+                        "collectedByGroup",
+                        "collectedDaily",
+                        "needsAttention",
+                        "topServices",
+                        "queue"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền dashboard.owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/clinic-profile/print-header": {
       "get": {
         "tags": [

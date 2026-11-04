@@ -38,6 +38,8 @@ export const MODULE_LABELS: Record<string, string> = {
   branch: 'Chi nhánh',
   // Đợt 3 chi nhánh (#235) — nhãn thêm NGAY lúc tạo quyền; `permission-grouping.spec.ts` chặn nếu thiếu.
   company_report: 'Báo cáo toàn công ty',
+  // Trang Tổng quan theo vai trò (#279) — nhãn thêm NGAY lúc tạo quyền.
+  dashboard: 'Trang Tổng quan',
   // Cập nhật phần mềm (#236, bước 2) — nhãn thêm NGAY lúc tạo quyền (`permission-grouping.spec.ts` chặn nếu thiếu).
   software_update: 'Cập nhật phần mềm',
   shift_swap: 'Đổi ca',

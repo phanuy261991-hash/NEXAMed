@@ -21918,6 +21918,174 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/reports/dashboard/owner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trang Tổng quan của chủ phòng khám (quyền dashboard.owner) — lượt khám, bệnh nhân mới, thực thu, phiếu chưa thu, giờ cao điểm, cảnh báo, hàng đợi; theo chi nhánh đang làm việc, so với kỳ trước */
+        get: {
+            parameters: {
+                query?: {
+                    period?: "today" | "week" | "month";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                period: {
+                                    /** @enum {string} */
+                                    kind: "today" | "week" | "month";
+                                    from: string;
+                                    to: string;
+                                    compareFrom: string;
+                                    compareTo: string;
+                                };
+                                encounters: {
+                                    value: number;
+                                    previous: number;
+                                    diff: number;
+                                    diffPercent: number | null;
+                                    /** @enum {string} */
+                                    direction: "up" | "down" | "flat";
+                                    series: number[];
+                                };
+                                collected: {
+                                    value: number;
+                                    previous: number;
+                                    diff: number;
+                                    diffPercent: number | null;
+                                    /** @enum {string} */
+                                    direction: "up" | "down" | "flat";
+                                    series: number[];
+                                };
+                                newPatients: {
+                                    value: number;
+                                    previous: number;
+                                    diff: number;
+                                    diffPercent: number | null;
+                                    /** @enum {string} */
+                                    direction: "up" | "down" | "flat";
+                                    series: number[];
+                                    shareOfEncountersPercent: number;
+                                };
+                                pending: {
+                                    invoiceCount: number;
+                                    amount: number;
+                                    series: number[];
+                                };
+                                hourly: {
+                                    hour: number;
+                                    count: number;
+                                }[];
+                                collectedByGroup: {
+                                    /** @enum {string} */
+                                    group: "EXAM" | "PARACLINICAL" | "DRUG" | "PACKAGE";
+                                    amount: number;
+                                    percent: number;
+                                }[];
+                                collectedDaily: {
+                                    date: string;
+                                    amount: number;
+                                }[];
+                                needsAttention: {
+                                    unpaidInvoices: {
+                                        count: number;
+                                        amount: number;
+                                    };
+                                    openShifts: {
+                                        label: string;
+                                        openedAt: string;
+                                    }[];
+                                    expiringBatches: {
+                                        count: number;
+                                        withinDays: number;
+                                    };
+                                    belowMinStockItems: {
+                                        count: number;
+                                    };
+                                };
+                                topServices: {
+                                    items: {
+                                        name: string;
+                                        count: number;
+                                        amount: number;
+                                    }[];
+                                    totalCount: number;
+                                    totalAmount: number;
+                                    shareOfServiceAmountPercent: number;
+                                };
+                                queue: {
+                                    rows: {
+                                        doctorName: string | null;
+                                        roomName: string | null;
+                                        inProgress: number;
+                                        waiting: number;
+                                        longestWaitMinutes: number | null;
+                                    }[];
+                                    totalInProgress: number;
+                                    totalWaiting: number;
+                                    longestWaitMinutes: number | null;
+                                    doctorsInProgress: number;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền dashboard.owner */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clinic-profile/print-header": {
         parameters: {
             query?: never;

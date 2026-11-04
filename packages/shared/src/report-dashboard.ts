@@ -1,0 +1,90 @@
+import { z } from 'zod';
+
+/**
+ * Trang Tổng quan (docs/DECISIONS.md #279, `docs/product/reporting-plan.md`, mockup đã chốt 02/11/2026). Máy chủ tính MỌI số, web chỉ hiển thị — không tính lại tiền ở trình duyệt.
+ * Ngày luôn là `YYYY-MM-DD` theo lịch Việt Nam; tiền là số nguyên đồng; thời điểm là ISO UTC.
+ */
+
+/** Kỳ của Trang Tổng quan: hôm nay / 7 ngày gần nhất (gồm hôm nay) / tháng này (từ mùng 1 đến hôm nay). */
+export const dashboardPeriodKindSchema = z.enum(['today', 'week', 'month']);
+export type DashboardPeriodKind = z.infer<typeof dashboardPeriodKindSchema>;
+
+export const ownerDashboardQuerySchema = z.object({ period: dashboardPeriodKindSchema.default('today') });
+export type OwnerDashboardQuery = z.infer<typeof ownerDashboardQuerySchema>;
+
+export const dashboardPeriodSchema = z.object({
+  kind: dashboardPeriodKindSchema,
+  from: z.string(),
+  to: z.string(),
+  /** Kỳ so sánh: hôm qua / 7 ngày liền trước / cùng khoảng ngày của tháng trước. */
+  compareFrom: z.string(),
+  compareTo: z.string(),
+});
+export type DashboardPeriod = z.infer<typeof dashboardPeriodSchema>;
+
+/** Một chỉ số kèm số kỳ trước và chuỗi 7 ngày gần nhất (đường nhỏ dưới số). */
+export const dashboardKpiSchema = z.object({
+  value: z.number(),
+  previous: z.number(),
+  /** `value − previous`. */
+  diff: z.number(),
+  /** Phần trăm so với kỳ trước; `null` khi kỳ trước bằng 0. */
+  diffPercent: z.number().nullable(),
+  direction: z.enum(['up', 'down', 'flat']),
+  /** 7 ngày kết thúc hôm nay, cũ → mới (không phụ thuộc kỳ đang chọn). */
+  series: z.array(z.number()),
+});
+export type DashboardKpi = z.infer<typeof dashboardKpiSchema>;
+
+export const revenueGroupSchema = z.enum(['EXAM', 'PARACLINICAL', 'DRUG', 'PACKAGE']);
+
+export const ownerDashboardSchema = z.object({
+  /** Thời điểm chụp số (ISO UTC) — web ghi "Số lúc HH:MM". */
+  generatedAt: z.string(),
+  period: dashboardPeriodSchema,
+  /** Lượt khám đã tiếp nhận (đang chờ, đang khám, đã xong) theo ngày tiếp nhận. */
+  encounters: dashboardKpiSchema,
+  /** Thực thu = tiền đã thu trừ đã hoàn, theo NGÀY THU. */
+  collected: dashboardKpiSchema,
+  /** Bệnh nhân khám lần đầu (lượt khám đầu tiên trong đời của bệnh nhân rơi vào kỳ). */
+  newPatients: dashboardKpiSchema.extend({ shareOfEncountersPercent: z.number() }),
+  /** Phiếu thu chưa thanh toán của các lượt khám trong kỳ. */
+  pending: z.object({ invoiceCount: z.number(), amount: z.number(), series: z.array(z.number()) }),
+  /** Lượt khám theo giờ trong kỳ (đủ 24 giờ, giờ VN). */
+  hourly: z.array(z.object({ hour: z.number(), count: z.number() })),
+  /** Thực thu theo nhóm, chia theo tỉ trọng các dòng của từng phiếu. */
+  collectedByGroup: z.array(z.object({ group: revenueGroupSchema, amount: z.number(), percent: z.number() })),
+  /** Thực thu từng ngày trong 7 ngày gần nhất. */
+  collectedDaily: z.array(z.object({ date: z.string(), amount: z.number() })),
+  needsAttention: z.object({
+    unpaidInvoices: z.object({ count: z.number(), amount: z.number() }),
+    openShifts: z.array(z.object({ label: z.string(), openedAt: z.string() })),
+    expiringBatches: z.object({ count: z.number(), withinDays: z.number() }),
+    belowMinStockItems: z.object({ count: z.number() }),
+  }),
+  /** Dịch vụ dùng nhiều nhất trong kỳ (đếm theo DÒNG chỉ định/dịch vụ trên phiếu thu), không gồm thuốc. */
+  topServices: z.object({
+    items: z.array(z.object({ name: z.string(), count: z.number(), amount: z.number() })),
+    totalCount: z.number(),
+    totalAmount: z.number(),
+    /** Tỉ trọng của nhóm hàng đầu trong tổng giá trị dịch vụ của kỳ. */
+    shareOfServiceAmountPercent: z.number(),
+  }),
+  /** Hàng đợi tại thời điểm chụp số (hôm nay, theo bác sĩ). */
+  queue: z.object({
+    rows: z.array(
+      z.object({
+        doctorName: z.string().nullable(),
+        roomName: z.string().nullable(),
+        inProgress: z.number(),
+        waiting: z.number(),
+        longestWaitMinutes: z.number().nullable(),
+      }),
+    ),
+    totalInProgress: z.number(),
+    totalWaiting: z.number(),
+    longestWaitMinutes: z.number().nullable(),
+    doctorsInProgress: z.number(),
+  }),
+});
+export type OwnerDashboard = z.infer<typeof ownerDashboardSchema>;

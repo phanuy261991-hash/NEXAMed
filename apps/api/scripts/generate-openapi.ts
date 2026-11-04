@@ -24,6 +24,8 @@ import {
   breakGlassRequestSchema,
   breakGlassResponseSchema,
   clinicPrintHeaderSchema,
+  ownerDashboardQuerySchema,
+  ownerDashboardSchema,
   deferredPaymentStatusSchema,
   applyInvoiceDiscountRequestSchema,
   combinedInvoicePrintResponseSchema,
@@ -3490,6 +3492,20 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(clinicProfileSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền clinic_config.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/dashboard/owner',
+  tags: ['report'],
+  summary: 'Trang Tổng quan của chủ phòng khám (quyền dashboard.owner) — lượt khám, bệnh nhân mới, thực thu, phiếu chưa thu, giờ cao điểm, cảnh báo, hàng đợi; theo chi nhánh đang làm việc, so với kỳ trước',
+  security: [{ bearerAuth: [] }],
+  request: { query: ownerDashboardQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(ownerDashboardSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền dashboard.owner'),
   },
 });
 

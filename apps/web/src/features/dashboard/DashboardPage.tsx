@@ -1,12 +1,19 @@
 import { CalendarBlank } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { EmptyState } from '../../shared/ui/EmptyState';
+import { useHasPermission } from '../auth/usePermission';
+import { OwnerDashboardPage } from './OwnerDashboardPage';
 
 /**
- * Trang tổng quan sau đăng nhập — empty state (không bịa số liệu), vì patient/appointment/
- * encounter chưa tồn tại tới S2-S3. Thay bằng thẻ thống kê thật khi các module đó ra đời.
+ * Trang tổng quan sau đăng nhập, KHÁC THEO VAI TRÒ (docs/DECISIONS.md #279): có quyền `dashboard.owner` (chủ phòng khám) → Tổng quan chủ phòng khám. Các vai trò còn lại (thu ngân, lễ tân, bác sĩ)
+ * sẽ có bản riêng ở các đợt sau; trong lúc đó giữ trạng thái trống (không bịa số liệu).
  */
 export function DashboardPage() {
+  const isOwner = useHasPermission('dashboard', 'owner');
+  return isOwner ? <OwnerDashboardPage /> : <EmptyDashboard />;
+}
+
+function EmptyDashboard() {
   useBreadcrumb([{ label: 'Tổng quan' }]);
 
   return (
@@ -15,7 +22,7 @@ export function DashboardPage() {
       <EmptyState
         icon={CalendarBlank}
         title="Chưa có dữ liệu để hiển thị"
-        description="Lịch hẹn, hàng đợi tiếp nhận và lượt khám hôm nay sẽ hiện ở đây khi các module tương ứng ra đời (giai đoạn sau)."
+        description="Trang tổng quan dành cho vai trò của bạn sẽ có ở bản cập nhật sau."
       />
     </div>
   );

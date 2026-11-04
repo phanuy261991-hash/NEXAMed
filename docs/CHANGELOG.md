@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-04
 
+### Trang Tổng quan của chủ phòng khám (`docs/DECISIONS.md` #282)
+
+Trang chủ của tài khoản có quyền mới **`dashboard.owner`** (mặc định clinic_admin) nay hiện số liệu thật thay cho khung trống: lượt khám, thực thu (thu trừ hoàn, theo ngày thu), chờ thu, bệnh nhân khám lần đầu — mỗi ô có so sánh với kỳ trước và đường 7 ngày; lượt khám theo giờ; thực thu theo nhóm (Khám bệnh / Cận lâm sàng / Thuốc và vật tư / Gói dịch vụ); thực thu 7 ngày; "Cần xử lý" (phiếu chưa thu, ca chưa chốt, lô sắp hết hạn, mặt hàng dưới ngưỡng); dịch vụ dùng nhiều; hàng đợi hiện tại theo bác sĩ. Chọn kỳ Hôm nay / 7 ngày / Tháng này; số chỉ tải khi vào trang, đổi kỳ hoặc bấm "Làm mới" (ghi "Số lúc HH:MM"). Chỉ chi nhánh đang làm việc. Vai trò khác vẫn thấy khung trống cho tới khi có bản riêng. Môi trường khác cần `db:seed` (quyền mới). Không migration.
+
 ### Hệ thống báo cáo — Đợt 0: hàm ngày giờ Việt Nam dùng chung + đầu báo cáo Excel (`docs/DECISIONS.md` #279, `docs/product/reporting-plan.md`)
 
 Ghi phạm vi báo cáo vào `CLAUDE.md`, `docs/product/prd.md`, `docs/product/plan.md` (đảo ngược việc xếp "báo cáo doanh thu theo kỳ" vào v2). Thêm `packages/core/src/date/vietnam-period.ts`: mốc đầu/cuối ngày giờ VN, khoảng ngày, kỳ ngày/tuần/tháng/quý/năm, kỳ trước, cùng kỳ tháng trước, liệt kê ngày (dùng lại `addDaysToDateString`/`diffDateStrings` sẵn có, không nhân bản). Thay 7 chỗ viết cứng `+07:00` ở cash-book-report, stock-issue/receipt/transfer/ledger-report, supplier-debt, prescription-submission bằng hàm này (hành vi giữ nguyên, 354 test các module đó vẫn xanh). Thêm `addReportExcelHeader` (`apps/api/src/common/report-excel-header.ts`): đầu chuẩn cho mọi bản Excel báo cáo mới (phòng khám/chi nhánh, tên báo cáo, kỳ, phạm vi, người xuất, giờ xuất). Chưa có thay đổi nhìn thấy trên giao diện.

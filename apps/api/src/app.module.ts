@@ -43,6 +43,7 @@ import { LeaveReaderModule } from './modules/leave-request/leave-reader.module';
 import { AppointmentImpactReaderModule } from './modules/appointment/appointment-impact-reader.module';
 import { CashierShiftModule } from './modules/cashier-shift/cashier-shift.module';
 import { CashBookModule } from './modules/cash-book/cash-book.module';
+import { ReportModule } from './modules/report/report.module';
 import { CashBookReportModule } from './modules/cash-book/cash-book-report.module';
 import { PatientWalletModule } from './modules/patient-wallet/patient-wallet.module';
 import { SupplierDebtModule } from './modules/supplier-debt/supplier-debt.module';
@@ -113,6 +114,8 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     CashierShiftModule,
     CashBookModule,
     CashBookReportModule,
+    // Hệ thống báo cáo + Trang Tổng quan (#279) — mô-đun đọc tổng hợp.
+    ReportModule,
     PatientWalletModule,
     SupplierDebtModule,
     HealthModule,

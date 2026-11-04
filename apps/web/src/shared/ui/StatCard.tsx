@@ -1,5 +1,7 @@
 import { Fragment } from 'react';
+import { ArrowDown, ArrowUp } from '@phosphor-icons/react';
 import type { Icon } from '@phosphor-icons/react';
+import { Sparkline } from './charts/Sparkline';
 
 /**
  * Dải số liệu tổng kết (KPI row) dùng chung kiểu "Tổng thu/Tổng chi/Chênh lệch" — trích xuất từ
@@ -61,7 +63,22 @@ export interface StatCardItem {
   emphasis?: boolean;
   /** Dòng chú thích phụ nhỏ dưới con số (ví dụ "từ 12/01/2026 đến 08/10/2026") — tuỳ chọn, không truyền thì ô giữ nguyên như cũ. */
   hint?: string;
+  /** Dòng so sánh với kỳ trước ("tăng 6 so với hôm qua"): mũi tên theo chiều thay đổi, màu theo tốt/xấu/trung tính — màu do nơi gọi quyết định vì "tăng" có thể là xấu (phiếu chưa thu tăng). */
+  delta?: { direction: 'up' | 'down' | 'flat'; text: string; tone: 'good' | 'bad' | 'neutral' };
+  /** Diễn biến nhiều ngày dưới con số (đường nhỏ, tô theo `tone` của ô). `label` đọc cho trình đọc màn hình. */
+  trend?: { values: readonly number[]; label: string };
 }
+
+const DELTA_TONE_CLASS = { good: 'text-emerald-700', bad: 'text-rose-700', neutral: 'text-slate-500' } as const;
+
+const TONE_SPARKLINE_COLOR: Record<StatCardTone, string> = {
+  emerald: '#10b981',
+  rose: '#f43f5e',
+  blue: '#2563eb',
+  slate: '#64748b',
+  amber: '#f59e0b',
+  violet: '#8b5cf6',
+};
 
 export function StatCardRow({ items }: { items: StatCardItem[] }) {
   return (
@@ -78,6 +95,14 @@ export function StatCardRow({ items }: { items: StatCardItem[] }) {
               {item.value}
             </span>
             {item.hint && <span className="max-w-full truncate text-xs font-medium text-slate-500" title={item.hint}>{item.hint}</span>}
+            {item.delta && (
+              <span className={`flex items-center gap-1 text-xs font-medium ${DELTA_TONE_CLASS[item.delta.tone]}`}>
+                {item.delta.direction === 'up' && <ArrowUp size={11} weight="bold" aria-hidden="true" />}
+                {item.delta.direction === 'down' && <ArrowDown size={11} weight="bold" aria-hidden="true" />}
+                {item.delta.text}
+              </span>
+            )}
+            {item.trend && <Sparkline values={item.trend.values} color={TONE_SPARKLINE_COLOR[item.tone]} ariaLabel={item.trend.label} />}
           </div>
         </Fragment>
       ))}

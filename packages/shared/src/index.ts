@@ -29,6 +29,7 @@ export * from './billing';
 export * from './service-decline';
 export * from './cashier-shift';
 export * from './cash-book';
+export * from './report-dashboard';
 export * from './patient-wallet';
 export * from './business-code';
 export * from './prescription-kind-mapping';
