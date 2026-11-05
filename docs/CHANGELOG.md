@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-05
 
+### Nhóm báo cáo "Khám bệnh và vận hành" — 6 tab (`docs/DECISIONS.md` #287)
+
+Menu mới **Khám bệnh và vận hành** (nhóm Báo cáo) gồm 6 tab: **Sổ khám bệnh** (lượt khám đã hoàn tất theo khoảng ngày, lọc bác sĩ / mã ICD-10 / tên-mã BN-SĐT, thay sổ giấy), **Giờ cao điểm** (bản đồ nhiệt thứ × giờ, chờ theo khung giờ, phân bố thời gian chờ), **Thời gian chờ**, **Huỷ và không đến**, **Tái khám**, **Nguồn đặt lịch**. Mỗi tab có Xuất Excel và In; chọn Phạm vi nhiều chi nhánh như các báo cáo khác. Quyền mới **`operations_report.read`** ("Báo cáo Khám bệnh và vận hành"), mặc định chỉ quản lý phòng khám. Môi trường khác cần `db:seed` (quyền mới). Không migration.
+
 ### Tổng quan bác sĩ: "N chỉ số ngoài khoảng" ở kết quả cận lâm sàng mới (`docs/DECISIONS.md` #286 bổ sung)
 
 Dòng kết quả cận lâm sàng mới chưa xem ở Tổng quan bác sĩ nay ghi thêm chữ đỏ "N chỉ số ngoài khoảng" khi kết quả đã ký có chỉ số cao/thấp/bất thường so với khoảng tham chiếu; kết quả không có chỉ số ngoài khoảng thì không hiện thêm gì. Không migration, không quyền mới.

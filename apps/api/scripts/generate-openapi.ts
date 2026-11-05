@@ -32,6 +32,15 @@ import {
   exportWalletsQuerySchema,
   listStockBalancesQuerySchema as exportStockBalancesQuerySchema,
   dailyReportSchema,
+  visitBookQuerySchema,
+  visitBookExportQuerySchema,
+  visitBookResponseSchema,
+  operationsPeriodQuerySchema,
+  peakHoursReportSchema,
+  waitingReportSchema,
+  cancellationReportSchema,
+  followUpReportSchema,
+  bookingSourceReportSchema,
   cashierDashboardSchema,
   listFollowUpsQuerySchema,
   listFollowUpsResponseSchema,
@@ -3694,6 +3703,186 @@ registry.registerPath({
     200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền daily_report.read hoặc company_report.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/visit-book',
+  tags: ['report'],
+  summary: 'Sổ khám bệnh — lượt khám ĐÃ HOÀN TẤT theo khoảng ngày (tối đa 366 ngày), lọc bác sĩ/mã ICD-10 chẩn đoán chính (tiền tố)/tìm tên-mã BN-SĐT, mới nhất trước, phân trang theo khoá, kèm tổng số dòng (quyền operations_report.read, #287; scope=all|pick cần thêm company_report.read)',
+  security: [{ bearerAuth: [] }],
+  request: { query: visitBookQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(visitBookResponseSchema)),
+    400: errorResponse('Tham số không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+    404: errorResponse('Chi nhánh không thuộc công ty'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/visit-book/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Sổ khám bệnh đúng bộ lọc đang xem (tối đa 5.000 dòng mới nhất) (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: visitBookExportQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/peak-hours',
+  tags: ['report'],
+  summary: 'Giờ cao điểm — bản đồ nhiệt lượt khám theo thứ × giờ tiếp nhận, giờ cao điểm, ngày ít khách nhất, kèm thời gian chờ theo khung giờ và phân bố (quyền operations_report.read, #287; scope=all|pick cần thêm company_report.read)',
+  security: [{ bearerAuth: [] }],
+  request: { query: operationsPeriodQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(peakHoursReportSchema)),
+    400: errorResponse('Tham số không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+    404: errorResponse('Chi nhánh không thuộc công ty'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/peak-hours/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Giờ cao điểm (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: operationsPeriodQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/waiting',
+  tags: ['report'],
+  summary: 'Thời gian chờ (tiếp nhận → vào khám) — trung bình, chờ quá 30 phút, chờ lâu nhất, theo bác sĩ và theo ngày (quyền operations_report.read, #287; scope=all|pick cần thêm company_report.read)',
+  security: [{ bearerAuth: [] }],
+  request: { query: operationsPeriodQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(waitingReportSchema)),
+    400: errorResponse('Tham số không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+    404: errorResponse('Chi nhánh không thuộc công ty'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/waiting/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Thời gian chờ (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: operationsPeriodQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/cancellations',
+  tags: ['report'],
+  summary: 'Huỷ và không đến — lượt khám và lịch hẹn tách riêng, lý do huỷ, theo bác sĩ và theo ngày (quyền operations_report.read, #287; scope=all|pick cần thêm company_report.read)',
+  security: [{ bearerAuth: [] }],
+  request: { query: operationsPeriodQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(cancellationReportSchema)),
+    400: errorResponse('Tham số không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+    404: errorResponse('Chi nhánh không thuộc công ty'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/cancellations/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Huỷ và không đến (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: operationsPeriodQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/follow-ups',
+  tags: ['report'],
+  summary: 'Tái khám — hẹn có ngày hẹn trong kỳ: đã đến, quá hạn chưa đến, còn chờ, không tái khám; theo bác sĩ; các lần nhắc theo kết quả (quyền operations_report.read, #287; scope=all|pick cần thêm company_report.read)',
+  security: [{ bearerAuth: [] }],
+  request: { query: operationsPeriodQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(followUpReportSchema)),
+    400: errorResponse('Tham số không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+    404: errorResponse('Chi nhánh không thuộc công ty'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/follow-ups/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Tái khám (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: operationsPeriodQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/booking-sources',
+  tags: ['report'],
+  summary: 'Nguồn đặt lịch — lịch hẹn trong kỳ theo nguồn (điện thoại, online, walk-in): đã đến, huỷ, không đến, dời, tỉ lệ đến (quyền operations_report.read, #287; scope=all|pick cần thêm company_report.read)',
+  security: [{ bearerAuth: [] }],
+  request: { query: operationsPeriodQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(bookingSourceReportSchema)),
+    400: errorResponse('Tham số không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
+    404: errorResponse('Chi nhánh không thuộc công ty'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/operations/booking-sources/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Nguồn đặt lịch (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: operationsPeriodQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
   },
 });
 

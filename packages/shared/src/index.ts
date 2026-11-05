@@ -31,6 +31,8 @@ export * from './cashier-shift';
 export * from './cash-book';
 export * from './report-dashboard';
 export * from './report-daily';
+export * from './report-visit-book';
+export * from './report-operations';
 export * from './follow-up';
 export * from './patient-wallet';
 export * from './business-code';

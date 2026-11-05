@@ -89,6 +89,7 @@ const CashBookPage = lazy(() => import('../features/cash-book/CashBookPage').the
 const CashFlowReportPage = lazy(() => import('../features/cash-book/CashFlowReportPage').then((m) => ({ default: m.CashFlowReportPage })));
 const ReportCenterPage = lazy(() => import('../features/report/ReportCenterPage').then((m) => ({ default: m.ReportCenterPage })));
 const DailyReportPage = lazy(() => import('../features/report/DailyReportPage').then((m) => ({ default: m.DailyReportPage })));
+const OperationsReportPage = lazy(() => import('../features/report/operations/OperationsReportPage').then((m) => ({ default: m.OperationsReportPage })));
 const WalletListPage = lazy(() => import('../features/patient-wallet/WalletListPage').then((m) => ({ default: m.WalletListPage })));
 // Kho Thuốc GĐ2 — "Phiếu nhập kho"/"Tồn kho" (docs/DECISIONS.md #146, kế hoạch precious-humming-goblet.md).
 const StockReceiptListPage = lazy(() => import('../features/inventory/StockReceiptListPage').then((m) => ({ default: m.StockReceiptListPage })));
@@ -211,6 +212,8 @@ export const router = createBrowserRouter([
       // Hệ thống báo cáo (docs/DECISIONS.md #287): Trung tâm báo cáo (mở cho ai xem được ít nhất một báo cáo trong danh mục — trang tự lọc) + Báo cáo ngày (daily_report.read).
       { path: 'reports', element: <ReportCenterPage /> },
       { path: 'reports/daily', element: <RequirePermissionRoute module="daily_report" action="read"><DailyReportPage /></RequirePermissionRoute> },
+      // Nhóm báo cáo "Khám bệnh và vận hành" (#287): 6 tab (Sổ khám bệnh, Giờ cao điểm, Thời gian chờ, Huỷ và không đến, Tái khám, Nguồn đặt lịch), quyền operations_report.read.
+      { path: 'reports/operations', element: <RequirePermissionRoute module="operations_report" action="read"><OperationsReportPage /></RequirePermissionRoute> },
       { path: 'cash-book/wallets', element: <RequirePermissionRoute module="patient_wallet" action="settle"><WalletListPage /></RequirePermissionRoute> },
 
       { path: 'inventory/receipts', element: <RequirePermissionRoute module="stock_receipt" action="read"><StockReceiptListPage /></RequirePermissionRoute> },

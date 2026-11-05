@@ -8,6 +8,9 @@ import { DailyReportService } from './daily-report.service';
 import { DashboardController } from './dashboard.controller';
 import { DashboardRepository } from './dashboard.repository';
 import { DashboardService } from './dashboard.service';
+import { OperationsReportController } from './operations-report.controller';
+import { OperationsReportRepository } from './operations-report.repository';
+import { OperationsReportService } from './operations-report.service';
 
 /**
  * Hệ thống báo cáo + Trang Tổng quan (docs/DECISIONS.md #279, `docs/product/reporting-plan.md`). Mô-đun ĐỌC TỔNG HỢP, không sở hữu bảng nào và không ghi dữ liệu (ngoài nhật ký xuất Excel):
@@ -17,7 +20,7 @@ import { DashboardService } from './dashboard.service';
  */
 @Module({
   imports: [ReferenceCatalogModule, ClinicModule, IamModule],
-  controllers: [DashboardController, DailyReportController],
-  providers: [DashboardService, DashboardRepository, DailyReportService, DailyReportRepository],
+  controllers: [DashboardController, DailyReportController, OperationsReportController],
+  providers: [DashboardService, DashboardRepository, DailyReportService, DailyReportRepository, OperationsReportService, OperationsReportRepository],
 })
 export class ReportModule {}

@@ -79,6 +79,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   prescription_submission: 'Đơn thuốc gửi liên thông',
   reception_list_export: 'Danh sách tiếp nhận',
   daily_report_export: 'Báo cáo ngày',
+  operations_report_export: 'Báo cáo Khám bệnh và vận hành',
   wallet_export: 'Ví tạm ứng',
   supplier_debt_export: 'Công nợ nhà cung cấp',
   stock_balance_export: 'Tồn kho và hạn dùng',

@@ -72,6 +72,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'dashboard', action: 'doctor', description: 'Xem Trang Tổng quan của bác sĩ (lượt khám của mình, hàng chờ, kết quả mới, hẹn tái khám)' },
   // "Báo cáo ngày" (#287): tờ chốt ngày một hoặc nhiều chi nhánh. Gộp từ hai chi nhánh trở lên cần THÊM company_report.read. Mặc định CHỈ clinic_admin.
   { module: 'daily_report', action: 'read', description: 'Xem và xuất Báo cáo ngày' },
+  // Nhóm báo cáo "Khám bệnh và vận hành" (#287): sổ khám bệnh, giờ cao điểm, thời gian chờ, huỷ và không đến, tái khám, nguồn đặt lịch. Gộp nhiều chi nhánh cần THÊM company_report.read. Mặc định CHỈ clinic_admin (chủ dự án chốt 05/11/2026).
+  { module: 'operations_report', action: 'read', description: 'Xem và xuất báo cáo Khám bệnh và vận hành (sổ khám bệnh, giờ cao điểm, thời gian chờ, huỷ và không đến, tái khám, nguồn đặt lịch)' },
   // Trang "Hẹn tái khám" (#285): `read` xem danh sách (lễ tân/quản trị toàn bộ, bác sĩ chỉ hẹn của lượt khám do mình khám — vì `encounter.read` của bác sĩ là global nên cần quyền riêng); `remind` ghi lần nhắc.
   { module: 'follow_up', action: 'read', description: 'Xem danh sách Hẹn tái khám' },
   { module: 'follow_up', action: 'remind', description: 'Ghi lần nhắc hẹn tái khám (đã gọi, không nghe máy...)' },
@@ -528,6 +530,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'company_report.read': 'global',
     'dashboard.owner': 'global',
     'daily_report.read': 'global',
+    'operations_report.read': 'global',
     // Hẹn tái khám (#285).
     'follow_up.read': 'global',
     'follow_up.remind': 'global',

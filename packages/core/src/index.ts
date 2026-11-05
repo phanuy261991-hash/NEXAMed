@@ -31,6 +31,8 @@ export * from './report/cashier-dashboard-math';
 export * from './report/reception-dashboard-math';
 export * from './report/doctor-dashboard-math';
 export * from './report/daily-report-math';
+export * from './report/visit-book-math';
+export * from './report/operations-report-math';
 export * from './follow-up/follow-up-status';
 export * from './specialty/registry';
 export * from './storage/sniff-image-extension';
