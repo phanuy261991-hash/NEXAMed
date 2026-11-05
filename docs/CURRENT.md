@@ -7,7 +7,7 @@ Nhật ký trạng thái đầy đủ cũ (từng đợt) ở `docs/archive/CURR
 ## Bức tranh hiện tại
 
 - Phiên bản phần mềm `0.9.0` (chốt `1.0.0` SAU pilot). Đang pilot tại phòng khám thật; môi trường dev dùng tenant test cố định `01a0cc3c-8626-746b-9d2a-5ea0268ec19f`, đăng nhập `dev.admin` / `Dev@12345` (tài khoản quét quyền `rl.<vai trò>`, mật khẩu `12345678`).
-- `master` = `e8476a7` (04/11/2026, CI GitHub XANH). Full API 2005, core 686, shared 126, web 567 đều xanh khi push.
+- `master` = `73cb453` (05/11/2026; CI GitHub XANH). Full API 2021, core 696, shared 126, web 575 đều xanh khi push.
 - Phạm vi v1 đã mở rộng nhiều so với PRD gốc (danh sách chốt đầy đủ ở `CLAUDE.md`, mục Phạm vi v1): Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn, Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư GĐ1–5, Công nợ nhà cung cấp A–E, Cận lâm sàng, Điều trị & Hẹn tái khám, Lịch làm việc/đơn nghỉ/đổi ca, Bảng giá có thời hạn, Thẻ BHYT (chỉ lưu/hiển thị), Hồ sơ bệnh án MS 15/BV-01, Khách không làm dịch vụ, hệ thống báo cáo + Tổng quan theo vai trò.
 - **Tầng chi nhánh** (#231/#233/#235): Đợt 1–3 xong; chưa bật chi nhánh thứ 2 ở khách thật. Mọi chức năng mới trả lời 4 câu hỏi chi nhánh (`CLAUDE.md`). **SaaS** (#237): nền tên miền phụ + Khu quản trị nền tảng xong; còn hạ tầng thật (chờ báo giá). **Trình cài đặt `nexamed-setup`** (#238) xong; chưa kiểm Let's Encrypt/NAS/Windows sạch.
 - **Runtime Node 26** (#253), NestJS 11, Vite 6/Vitest 4 (#249, #252). Mọi mã mới chạy được ở LAN HTTP on-prem (#257); lỗi hiện qua màn thông báo cụ thể (#255); POST có `Idempotency-Key` (#257); một request = MỘT transaction (#264).
@@ -16,7 +16,7 @@ Nhật ký trạng thái đầy đủ cũ (từng đợt) ở `docs/archive/CURR
 
 Đã xong và đã push: Đợt 0 (hàm ngày giờ VN dùng chung `packages/core/src/date/`, đầu báo cáo Excel); Tổng quan **chủ phòng khám** (#282, `dashboard.owner`), **thu ngân** (#283, `dashboard.cashier`), **lễ tân** (#284, `dashboard.reception`), cùng phong cách "hướng B" (`.claude/docs/ui-guidelines.md` mục 18, CHỈ áp cho các trang Tổng quan).
 
-Tổng quan **bác sĩ** (#286, 05/11/2026, `dashboard.doctor`, công tắc "hiện doanh thu sinh ra" mặc định tắt) đã code + test + kiểm Chrome IP LAN, CHƯA commit/CHƯA full API — mockup đã chốt (https://claude.ai/artifact/D3dfooh1FoDkXv513RQJ5p, tệp BacSi); 6 điểm khác mockup chờ chủ dự án xem (DECISIONS #286); môi trường khác cần `db:seed`.
+Tổng quan **bác sĩ** (#286, 05/11/2026, `dashboard.doctor`, công tắc "hiện doanh thu sinh ra" mặc định tắt) đã code + test + kiểm Chrome IP LAN, full API 2021 xanh, đã push `73cb453` (CI GitHub XANH) — mockup đã chốt (https://claude.ai/artifact/D3dfooh1FoDkXv513RQJ5p, tệp BacSi); 6 điểm khác mockup chờ chủ dự án xem (DECISIONS #286); môi trường khác cần `db:seed`.
 
 **Còn lại**: Báo cáo ngày (A2, một trang in được) + nhóm menu "Báo cáo" (chưa có mockup), Đợt 2–5 (Sổ khám bệnh, dịch vụ, thuốc đã phát, doanh thu theo kỳ, theo bác sĩ, vận hành, màn "Toàn hệ thống" nhiều chi nhánh + lãi gộp thuốc) — xem `reporting-plan.md` mục 7.
 
@@ -40,7 +40,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-TongQuanThuNgan-LeTan-HenTaiKham-2026-11-04-p2.md`** (04/11/2026 phần 2; đầu file có ghi #285 đã xong). Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
+**`docs/handoffs/HANDOFF-HenTaiKham-TongQuanBacSi-2026-11-05.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 05/11/2026: #285 Hẹn tái khám + #286 Tổng quan bác sĩ đã push `73cb453`; CI xanh; việc kế tiếp: hỏi 6 điểm khác mockup, dựng mockup Báo cáo ngày). Bản trước: `docs/handoffs/HANDOFF-TongQuanThuNgan-LeTan-HenTaiKham-2026-11-04-p2.md`. Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 
