@@ -303,6 +303,7 @@ const ACTION_LABELS: Record<string, string> = {
   'follow_up.exported': 'Xuất Excel danh sách hẹn tái khám',
   'daily_report.exported': 'Xuất Excel Báo cáo ngày',
   'operations_report.exported': 'Xuất Excel báo cáo Khám bệnh và vận hành',
+  'revenue_report.exported': 'Xuất Excel báo cáo Doanh thu',
   'wallet_list.exported': 'Xuất Excel danh sách ví tạm ứng',
   'supplier_debt.exported': 'Xuất Excel công nợ nhà cung cấp',
   'stock_balance.exported': 'Xuất Excel tồn kho và hạn dùng',

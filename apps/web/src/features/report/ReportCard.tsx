@@ -8,8 +8,8 @@ export function ReportCard({ title, hint, children, bodyClassName = '' }: { titl
   return (
     <section aria-label={title} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
-        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
-        {hint && <span className="text-[12.5px] text-slate-600">{hint}</span>}
+        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        {hint && <span className="text-[13px] text-slate-600">{hint}</span>}
       </div>
       <div className={bodyClassName}>{children}</div>
     </section>

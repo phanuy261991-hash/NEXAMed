@@ -11,9 +11,19 @@ export interface ReportGridColumn {
   width?: string;
 }
 
+/** Một ô của hàng nhóm cột phía trên đầu bảng: gộp `span` cột, có gạch chân màu; bỏ `label` để chừa trống. */
+export interface ReportGridGroupHeader {
+  span: number;
+  label?: string;
+  tone?: 'slate' | 'green';
+}
+
+const GROUP_TONE_CLASS = { slate: 'border-slate-400 text-slate-700', green: 'border-emerald-700 text-emerald-800' } as const;
+
 const ALIGN_CLASS = { left: 'text-left', right: 'text-right tabular-nums', center: 'text-center' } as const;
 
 export function ReportGridTable({
+  groupHeaders,
   columns,
   rows,
   footer,
@@ -22,6 +32,8 @@ export function ReportGridTable({
   emptyText,
   maxBodyHeightClass,
 }: {
+  /** Hàng nhóm cột trên đầu bảng (ví dụ "GHI NHẬN" gộp 5 cột); tổng `span` phải bằng số cột. */
+  groupHeaders?: readonly ReportGridGroupHeader[];
   columns: readonly ReportGridColumn[];
   rows: readonly ReactNode[][];
   /** Dòng cộng (cùng số cột). */
@@ -41,7 +53,16 @@ export function ReportGridTable({
   return (
     <div className="scroll-hover overflow-x-auto">
       <div role="table" aria-label={ariaLabel} style={minWidth > 0 ? { minWidth } : undefined}>
-        <div role="row" style={{ gridTemplateColumns: template }} className="grid gap-x-3 border-b border-slate-100 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
+        {groupHeaders && (
+          <div role="presentation" style={{ gridTemplateColumns: template }} className="grid gap-x-3 px-4 pb-0.5 pt-3 text-[13px] font-semibold uppercase tracking-wide">
+            {groupHeaders.map((g, i) => (
+              <div key={i} style={{ gridColumn: `span ${g.span}` }} className={g.label ? `border-b-2 pb-1 ${GROUP_TONE_CLASS[g.tone ?? 'slate']}` : undefined}>
+                {g.label}
+              </div>
+            ))}
+          </div>
+        )}
+        <div role="row" style={{ gridTemplateColumns: template }} className="grid gap-x-3 border-b border-slate-100 px-4 py-2.5 text-[13px] font-semibold uppercase tracking-wide text-slate-800">
           {columns.map((c) => (
             <div key={c.header} role="columnheader" className={cell(c)}>
               {c.header}

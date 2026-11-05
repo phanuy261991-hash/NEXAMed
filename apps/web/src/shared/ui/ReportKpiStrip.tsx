@@ -27,7 +27,7 @@ export function ReportKpiStrip({ items, ariaLabel }: { items: readonly ReportKpi
     <div role="group" aria-label={ariaLabel} className="flex flex-wrap rounded-lg border border-slate-200 bg-white shadow-sm">
       {items.map((item) => (
         <div key={item.label} className="flex min-w-[200px] flex-1 basis-[200px] flex-col gap-1 border-r border-slate-100 px-5 py-4 last:border-r-0">
-          <div className="text-[13px] text-slate-600">{item.label}</div>
+          <div className="text-[15px] font-semibold text-slate-800">{item.label}</div>
           <div className={`text-2xl font-semibold tabular-nums ${TONE_CLASS[item.tone ?? 'default']}`}>{item.value}</div>
           {item.sub && <div className="text-[12.5px] text-slate-600">{item.sub}</div>}
         </div>

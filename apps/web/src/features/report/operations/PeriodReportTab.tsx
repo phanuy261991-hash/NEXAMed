@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import type { UseQueryResult } from '@tanstack/react-query';
+import { useMutation, type UseQueryResult } from '@tanstack/react-query';
 import type { ReportScopeSelection } from '@nexamed/shared';
 import { ErrorBanner } from '../../../shared/ui/ErrorBanner';
 import { ListLoadError } from '../../../shared/ui/ListLoadError';
@@ -12,9 +12,7 @@ import { ReportActionBar } from '../ReportActionBar';
 import { ReportPeriodControl } from '../ReportPeriodControl';
 import type { PeriodKind } from '../report-period';
 import type { ReportPeriodState } from '../useReportPeriod';
-import type { OperationsPeriodParams } from './operations.api';
-import { useExportOperationsMutation } from './operations.queries';
-import type { OperationsExportKind } from './operations.api';
+import { exportOperationsExcel, type OperationsExportKind, type OperationsPeriodParams } from './operations.api';
 
 /** Kỳ của mọi tab trong nhóm (đúng mockup Giờ cao điểm): Tháng này, Tháng trước, Quý, Tuỳ chọn. Mọi tab dùng CÙNG tập kỳ vì trạng thái kỳ được giữ chung giữa các tab. */
 export const OPERATIONS_PERIOD_KINDS: readonly PeriodKind[] = ['thisMonth', 'lastMonth', 'quarter', 'custom'];
@@ -36,10 +34,14 @@ export function scopeText(selection: ReportScopeSelection, branchCount: number):
  * bên phải, rồi nội dung. Lo đủ 4 trạng thái (đang tải, lỗi kèm "Thử lại", kỳ nhập sai, dữ liệu); mỗi tab chỉ truyền cách tải, cách dựng bản in và phần thân. Kỳ "Tuỳ chọn" nhập sai thì KHÔNG gọi
  * máy chủ mà báo ngay. Số chỉ tải khi vào tab, đổi bộ lọc hoặc bấm "Làm mới".
  */
-export function PeriodReportTab<T extends { generatedAt: string; branchCount: number }>({
+export function PeriodReportTab<T extends { generatedAt: string; branchCount: number }, P extends OperationsPeriodParams = OperationsPeriodParams>({
   period,
   scope,
   exportKind,
+  exportFile,
+  kinds = OPERATIONS_PERIOD_KINDS,
+  controls,
+  extraParams,
   useReport,
   buildPrint,
   errorMessage,
@@ -47,15 +49,25 @@ export function PeriodReportTab<T extends { generatedAt: string; branchCount: nu
 }: {
   period: ReportPeriodState;
   scope: ReportScopeState;
-  exportKind: OperationsExportKind;
-  useReport: (params: OperationsPeriodParams, enabled: boolean) => UseQueryResult<T>;
+  /** Excel của nhóm "Khám bệnh và vận hành"; báo cáo ở nhóm khác truyền `exportFile` thay vào đây. */
+  exportKind?: OperationsExportKind;
+  exportFile?: (params: P) => Promise<void>;
+  /** Các kỳ báo cáo cho phép; mặc định bốn kỳ của nhóm vận hành. */
+  kinds?: readonly PeriodKind[];
+  /** Bộ lọc riêng của báo cáo (ví dụ "Gom theo"), đặt ngay sau bộ chọn Kỳ. */
+  controls?: ReactNode;
+  /** Tham số riêng thêm vào yêu cầu (ví dụ `groupBy`); đổi giá trị là tải lại. */
+  extraParams?: Omit<P, keyof OperationsPeriodParams>;
+  useReport: (params: P, enabled: boolean) => UseQueryResult<T>;
   buildPrint: (report: T, ctx: PrintContext) => ReportPrintSpec;
   errorMessage: string;
   children: (report: T) => ReactNode;
 }) {
-  const params: OperationsPeriodParams = useMemo(() => ({ from: period.range.from, to: period.range.to, ...scope.selection }), [period.range.from, period.range.to, scope.selection]);
+  const extraKey = JSON.stringify(extraParams ?? {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `extraParams` so sánh theo nội dung qua `extraKey`, nơi gọi không cần giữ nguyên tham chiếu.
+  const params = useMemo(() => ({ from: period.range.from, to: period.range.to, ...scope.selection, ...extraParams }) as P, [period.range.from, period.range.to, scope.selection, extraKey]);
   const query = useReport(params, period.error === null);
-  const exportMutation = useExportOperationsMutation(exportKind);
+  const exportMutation = useMutation({ mutationFn: (p: P) => (exportFile ? exportFile(p) : exportOperationsExcel(exportKind!, p)) });
   const report = query.data;
   const printSpec = useMemo(
     () => (report ? buildPrint(report, { from: params.from, to: params.to, scopeLabel: scopeText(scope.selection, report.branchCount) }) : null),
@@ -67,7 +79,8 @@ export function PeriodReportTab<T extends { generatedAt: string; branchCount: nu
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
           <ReportScopeControl scope={scope} />
-          <ReportPeriodControl period={period} kinds={OPERATIONS_PERIOD_KINDS} />
+          <ReportPeriodControl period={period} kinds={kinds} />
+          {controls}
         </div>
         <ReportActionBar
           generatedAt={report?.generatedAt}

@@ -24,7 +24,9 @@ Tổng quan **bác sĩ** (#286, 05/11/2026, `dashboard.doctor`, công tắc "hi�
 
 **Trang "Khám bệnh và vận hành" (#287, 05/11/2026) — XONG, 6/6 tab** (Sổ khám bệnh, Giờ cao điểm, Thời gian chờ, Huỷ và không đến, Tái khám, Nguồn đặt lịch; quyền `operations_report.read` chỉ quản lý phòng khám; Excel + In; Chrome IP LAN 58/58; môi trường khác cần `db:seed`). Khung dùng chung cho các trang sau: `PeriodReportTab`, `ReportKpiStrip`, `ReportCard`, `ReportGridTable`, `useReportPeriod`.
 
-**Còn lại — chủ dự án yêu cầu làm ĐỦ MỌI TAB của mockup đã duyệt** (danh sách đủ ở `docs/TASK.md`): **Doanh thu** (5 tab, làm tiếp theo), **Bác sĩ** (3 tab), **Thuốc và vật tư** (7 tab, gồm Đã phát, Lãi gộp, Kiểm soát đặc biệt cần tra văn bản + gom 4 báo cáo đã có), **Toàn hệ thống** (4 tab, làm sau cùng), rồi các nhóm Bệnh nhân/Chuyên môn/Chất lượng (chưa có hình vẽ, hỏi chủ dự án).
+**Trang "Doanh thu" (#287, 05/11/2026) — XONG, 5/5 tab** (Theo kỳ, Theo nhóm và dịch vụ, Theo phương thức, Phiếu chưa thu, Theo thu ngân và chốt ca; quyền `revenue_report.read` chỉ quản lý phòng khám; Excel + In; Chrome IP LAN 64/64; môi trường khác cần `db:seed`; CHƯA commit). Tiêu đề các trang báo cáo điều hành đã được làm to/đậm hơn theo yêu cầu chủ dự án (KPI 15px, tiêu đề khung 16px, đầu cột 13px).
+
+**Còn lại — chủ dự án yêu cầu làm ĐỦ MỌI TAB của mockup đã duyệt** (danh sách đủ ở `docs/TASK.md`): **Bác sĩ** (3 tab, làm tiếp theo), **Thuốc và vật tư** (7 tab, gồm Đã phát, Lãi gộp, Kiểm soát đặc biệt cần tra văn bản + gom 4 báo cáo đã có), **Toàn hệ thống** (4 tab, làm sau cùng), rồi các nhóm Bệnh nhân/Chuyên môn/Chất lượng (chưa có hình vẽ, hỏi chủ dự án).
 
 ## Trang "Hẹn tái khám" + công tắc (#285, 04/11/2026) — XONG, đã push, CI xanh
 

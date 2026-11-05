@@ -33,6 +33,7 @@ export * from './report-dashboard';
 export * from './report-daily';
 export * from './report-visit-book';
 export * from './report-operations';
+export * from './report-revenue';
 export * from './follow-up';
 export * from './patient-wallet';
 export * from './business-code';

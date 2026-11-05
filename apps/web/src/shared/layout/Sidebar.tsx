@@ -319,6 +319,7 @@ export function Sidebar() {
   const canSeeReportCenter = useFilterByPermission(REPORT_CATALOG).length > 0;
   const canSeeDailyReport = useHasPermission('daily_report', 'read');
   const canSeeOperationsReport = useHasPermission('operations_report', 'read');
+  const canSeeRevenueReport = useHasPermission('revenue_report', 'read');
   // "Báo cáo dòng tiền" (Sổ quỹ & Thu chi GĐ2) — báo cáo quản trị tổng hợp toàn phòng khám, CHỈ
   // clinic_admin (`cash_voucher.report`), khác "Phiếu thu/chi"/"Sổ quỹ" (receptionist cũng thấy).
   const canSeeCashFlowReport = useHasPermission('cash_voucher', 'report');
@@ -811,6 +812,7 @@ export function Sidebar() {
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
                   <NavItem to="/reports" label="Trung tâm báo cáo" icon={ListMagnifyingGlass} end collapsed={false} indent />
                   {canSeeDailyReport && <NavItem to="/reports/daily" label="Báo cáo ngày" icon={FileText} collapsed={false} indent />}
+                  {canSeeRevenueReport && <NavItem to="/reports/revenue" label="Doanh thu" icon={ChartBar} collapsed={false} indent />}
                   {canSeeOperationsReport && <NavItem to="/reports/operations" label="Khám bệnh và vận hành" icon={ChartLine} collapsed={false} indent />}
                 </ul>
               )}

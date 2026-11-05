@@ -36,6 +36,13 @@ import {
   visitBookExportQuerySchema,
   visitBookResponseSchema,
   operationsPeriodQuerySchema,
+  revenuePeriodQuerySchema,
+  revenueByPeriodQuerySchema,
+  revenueByPeriodReportSchema,
+  revenueByServiceReportSchema,
+  revenueByMethodReportSchema,
+  revenueUnpaidReportSchema,
+  revenueByCashierReportSchema,
   peakHoursReportSchema,
   waitingReportSchema,
   cancellationReportSchema,
@@ -3885,6 +3892,47 @@ registry.registerPath({
     403: errorResponse('Không có quyền operations_report.read hoặc company_report.read'),
   },
 });
+
+// Trang báo cáo "Doanh thu" (#287): 5 báo cáo, mỗi báo cáo một route xem và một route xuất Excel.
+const REVENUE_FORBIDDEN = 'Không có quyền revenue_report.read hoặc company_report.read';
+const REVENUE_SCOPE_NOTE = '(quyền revenue_report.read, #287; scope=all|pick cần thêm company_report.read)';
+const revenueReports: Array<{ path: string; label: string; summary: string; query: typeof revenuePeriodQuerySchema | typeof revenueByPeriodQuerySchema; schema: Parameters<typeof envelope>[0] }> = [
+  { path: 'by-period', label: 'Doanh thu theo kỳ', summary: 'Doanh thu theo kỳ — hai cột Ghi nhận (theo ngày khám, sau chiết khấu) và Thực thu (theo ngày thu, thu trừ hoàn), chia 4 nhóm, gom theo ngày/tuần/tháng/quý, so với khoảng liền trước', query: revenueByPeriodQuerySchema, schema: revenueByPeriodReportSchema },
+  { path: 'by-service', label: 'Doanh thu theo nhóm và dịch vụ', summary: 'Doanh thu theo nhóm và dịch vụ — số lượng và doanh thu ghi nhận của từng dịch vụ đã dùng, tỉ trọng', query: revenuePeriodQuerySchema, schema: revenueByServiceReportSchema },
+  { path: 'by-method', label: 'Doanh thu theo phương thức', summary: 'Doanh thu theo phương thức thanh toán — thu, hoàn và thực thu theo ngày thu', query: revenuePeriodQuerySchema, schema: revenueByMethodReportSchema },
+  { path: 'unpaid', label: 'Phiếu chưa thu', summary: 'Phiếu chưa thu của các lượt khám trong kỳ — cũ nhất trước, phân nhóm theo tuổi phiếu, số phải thu sau chiết khấu', query: revenuePeriodQuerySchema, schema: revenueUnpaidReportSchema },
+  { path: 'by-cashier', label: 'Doanh thu theo thu ngân và chốt ca', summary: 'Doanh thu theo thu ngân và chốt ca — thu/hoàn theo người ghi nhận, số ca, chênh lệch kiểm đếm, danh sách ca', query: revenuePeriodQuerySchema, schema: revenueByCashierReportSchema },
+];
+for (const r of revenueReports) {
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/revenue/${r.path}`,
+    tags: ['report'],
+    summary: `${r.summary} ${REVENUE_SCOPE_NOTE}`,
+    security: [{ bearerAuth: [] }],
+    request: { query: r.query },
+    responses: {
+      200: jsonResponse('Thành công', envelope(r.schema)),
+      400: errorResponse('Tham số không hợp lệ'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(REVENUE_FORBIDDEN),
+      404: errorResponse('Chi nhánh không thuộc công ty'),
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/revenue/${r.path}/export`,
+    tags: ['report'],
+    summary: `Xuất Excel ${r.label} (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: r.query },
+    responses: {
+      200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(REVENUE_FORBIDDEN),
+    },
+  });
+}
 
 registry.registerPath({
   method: 'get',
