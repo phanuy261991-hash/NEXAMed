@@ -28,7 +28,9 @@ Tổng quan **bác sĩ** (#286, 05/11/2026, `dashboard.doctor`, công tắc "hi�
 
 **Trang "Bác sĩ" (#287, 05/11/2026) — XONG, 3/3 tab** (Hiệu suất theo bác sĩ, Cơ cấu kê đơn và chỉ định, Giờ làm việc và lượt khám; quyền `doctor_report.read` chỉ quản lý phòng khám, bác sĩ không xem; lọc Khoa; Excel + In; Chrome IP LAN 51/51; môi trường khác cần `db:seed`; CHƯA commit). Đã trích `report-export-support.ts` dùng chung cho ba service báo cáo.
 
-**Còn lại — chủ dự án yêu cầu làm ĐỦ MỌI TAB của mockup đã duyệt** (danh sách đủ ở `docs/TASK.md`): **Thuốc và vật tư** (7 tab, làm tiếp theo), gồm Đã phát, Lãi gộp, Kiểm soát đặc biệt cần tra văn bản + gom 4 báo cáo đã có), **Toàn hệ thống** (4 tab, làm sau cùng), rồi các nhóm Bệnh nhân/Chuyên môn/Chất lượng (chưa có hình vẽ, hỏi chủ dự án).
+**Trang "Thuốc và vật tư" (#287, 05/11/2026) — XONG 7/7 tab** (Đã phát, Lãi gộp, Kiểm soát đặc biệt là 3 tab mới; 4 tab kho Nhập-Xuất-Tồn, Tồn kho và hạn dùng, Hao hụt điều chuyển, Công nợ NCC bấm là chuyển sang trang cũ — chủ dự án chọn; quyền riêng `pharmacy_report.read` chỉ quản lý phòng khám; Excel + In; Chrome IP LAN 54/54; môi trường khác cần `db:seed`; CHƯA commit). **Tab Kiểm soát đặc biệt là bảng theo dõi nội bộ, CHƯA phải mẫu báo cáo gửi cơ quan quản lý**: tra văn bản cho thấy Thông tư 20/2017/TT-BYT đã được thay bằng Thông tư 18/2026/TT-BYT (hiệu lực 16/07/2026) và Nghị định 163/2025/NĐ-CP (mẫu ở Phụ lục II) nhưng không đọc được nguyên văn mẫu dành cho phòng khám — chờ chủ dự án cung cấp/đối chiếu bản gốc (DECISIONS #287).
+
+**Còn lại — chủ dự án yêu cầu làm ĐỦ MỌI TAB của mockup đã duyệt** (danh sách đủ ở `docs/TASK.md`): **Toàn hệ thống** (4 tab, làm tiếp theo), rồi các nhóm Bệnh nhân/Chuyên môn/Chất lượng (chưa có hình vẽ, hỏi chủ dự án).
 
 ## Trang "Hẹn tái khám" + công tắc (#285, 04/11/2026) — XONG, đã push, CI xanh
 

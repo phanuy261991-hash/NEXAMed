@@ -35,6 +35,7 @@ export * from './report/revenue-report-math';
 export * from './report/doctor-report-math';
 export * from './report/visit-book-math';
 export * from './report/operations-report-math';
+export * from './report/pharmacy-report-math';
 export * from './follow-up/follow-up-status';
 export * from './specialty/registry';
 export * from './storage/sniff-image-extension';

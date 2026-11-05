@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-05
 
+### Trang báo cáo "Thuốc và vật tư" — 3 tab mới + 4 tab dẫn sang báo cáo kho (`docs/DECISIONS.md` #287)
+
+Menu mới **Thuốc và vật tư** (nhóm Báo cáo) gồm 7 tab: **Đã phát** (số lượng và giá trị đã xuất theo phiếu xuất kho bán theo đơn, trừ phần khách trả lại), **Lãi gộp** (tiền bán sau chiết khấu trừ giá vốn thẻ kho theo mặt hàng, biên lãi gộp; chỉ tính thuốc và vật tư, chưa trừ nhân sự, mặt bằng, khấu hao), **Kiểm soát đặc biệt** (tồn đầu kỳ, nhập, phát, xuất khác, tồn cuối kỳ của thuốc gây nghiện, hướng thần, tiền chất, thuốc độc và từng lượt phát cho người bệnh — bảng theo dõi nội bộ, chưa phải mẫu báo cáo gửi cơ quan quản lý) và bốn báo cáo kho đã có (Nhập-Xuất-Tồn, Tồn kho và hạn dùng, Hao hụt điều chuyển, Công nợ nhà cung cấp) — bấm tab là mở đúng trang cũ. Có bộ lọc Loại (Tất cả / Thuốc / Vật tư y tế) và Phân loại; mỗi tab mới có Xuất Excel và In; chọn Phạm vi nhiều chi nhánh như các báo cáo khác. Quyền mới **`pharmacy_report.read`** ("Báo cáo Thuốc và vật tư"), mặc định chỉ quản lý phòng khám (có giá vốn). Môi trường khác cần `db:seed` (quyền mới). Không migration.
+
 ### Trang báo cáo "Bác sĩ" — 3 tab (`docs/DECISIONS.md` #287)
 
 Menu mới **Bác sĩ** (nhóm Báo cáo) gồm 3 tab: **Hiệu suất theo bác sĩ** (lượt khám, phút khám mỗi lượt, doanh thu sinh ra, doanh thu một lượt, tỉ lệ có cận lâm sàng / thuốc / hẹn tái khám, xếp theo doanh thu, nút "Xem" mở Sổ khám bệnh của bác sĩ đó), **Cơ cấu kê đơn và chỉ định** (lượt có thuốc, dòng thuốc mỗi đơn, chỉ định cận lâm sàng tại phòng khám và ra ngoài, 10 thuốc và 10 chỉ định nhiều nhất), **Giờ làm việc và lượt khám** (ca đã xếp theo Lịch làm việc, nghỉ phép đã duyệt, giờ khám thực tế, tỉ lệ sử dụng giờ ca). Có bộ lọc Khoa; mỗi tab có Xuất Excel và In; chọn Phạm vi nhiều chi nhánh như các báo cáo khác. Quyền mới **`doctor_report.read`** ("Báo cáo Bác sĩ"), mặc định chỉ quản lý phòng khám (bác sĩ không xem trang này). Môi trường khác cần `db:seed` (quyền mới). Không migration.

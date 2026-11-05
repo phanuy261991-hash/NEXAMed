@@ -26120,6 +26120,626 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/pharmacy/dispensed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thuốc và vật tư đã phát theo mặt hàng — số lượng xuất theo phiếu xuất kho bán theo đơn, phần khách trả lại, thực phát, giá trị theo giá bán; lọc theo Loại (quyền pharmacy_report.read, #287; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    itemType?: "ALL" | "MEDICINE" | "SUPPLY";
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                /** @enum {string} */
+                                itemType: "ALL" | "MEDICINE" | "SUPPLY";
+                                issueCount: number;
+                                itemCount: number;
+                                amount: number;
+                                returnedAmount: number;
+                                rows: {
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    code: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    itemType: "MEDICINE" | "SUPPLY";
+                                    unitName: string;
+                                    quantity: number;
+                                    returnedQuantity: number;
+                                    netQuantity: number;
+                                    issueCount: number;
+                                    amount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền pharmacy_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/pharmacy/dispensed/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Thuốc và vật tư đã phát (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    itemType?: "ALL" | "MEDICINE" | "SUPPLY";
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền pharmacy_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/pharmacy/margin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lãi gộp thuốc và vật tư — tiền bán sau chiết khấu (trừ phần hoàn) trừ giá vốn thẻ kho, theo mặt hàng; lọc theo Loại (quyền pharmacy_report.read, #287; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    itemType?: "ALL" | "MEDICINE" | "SUPPLY";
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                /** @enum {string} */
+                                itemType: "ALL" | "MEDICINE" | "SUPPLY";
+                                totals: {
+                                    sell: number;
+                                    cost: number;
+                                    margin: number;
+                                    marginPercent: number | null;
+                                    itemCount: number;
+                                };
+                                rows: {
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    code: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    itemType: "MEDICINE" | "SUPPLY";
+                                    unitName: string;
+                                    quantity: number;
+                                    sell: number;
+                                    cost: number;
+                                    margin: number;
+                                    marginPercent: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền pharmacy_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/pharmacy/margin/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Lãi gộp thuốc và vật tư (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    itemType?: "ALL" | "MEDICINE" | "SUPPLY";
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền pharmacy_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/pharmacy/controlled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thuốc kiểm soát đặc biệt — tồn đầu kỳ, nhập, phát cho người bệnh, xuất khác, tồn cuối kỳ và từng lượt phát; lọc theo Phân loại (quyền pharmacy_report.read, #287; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    controlType?: "ALL" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR" | "TOXIC";
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                /** @enum {string} */
+                                controlType: "ALL" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR" | "TOXIC";
+                                itemCount: number;
+                                entryCount: number;
+                                rows: {
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    code: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    controlType: "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR" | "TOXIC";
+                                    unitName: string;
+                                    openingQuantity: number;
+                                    receivedQuantity: number;
+                                    dispensedQuantity: number;
+                                    otherOutQuantity: number;
+                                    closingQuantity: number;
+                                }[];
+                                entries: {
+                                    date: string;
+                                    issueNo: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** @enum {string} */
+                                    controlType: "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR" | "TOXIC";
+                                    unitName: string;
+                                    quantity: number;
+                                    patientCode: string;
+                                    patientName: string;
+                                    branchName: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền pharmacy_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/pharmacy/controlled/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Thuốc kiểm soát đặc biệt (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    controlType?: "ALL" | "NARCOTIC" | "PSYCHOTROPIC" | "PRECURSOR" | "TOXIC";
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền pharmacy_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/dashboard/doctor": {
         parameters: {
             query?: never;

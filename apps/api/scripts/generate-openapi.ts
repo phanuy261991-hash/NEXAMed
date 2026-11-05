@@ -38,6 +38,11 @@ import {
   operationsPeriodQuerySchema,
   revenuePeriodQuerySchema,
   doctorReportQuerySchema,
+  pharmacyReportQuerySchema,
+  controlledReportQuerySchema,
+  pharmacyDispensedReportSchema,
+  pharmacyMarginReportSchema,
+  pharmacyControlledReportSchema,
   doctorPerformanceReportSchema,
   doctorOrderMixReportSchema,
   doctorHoursReportSchema,
@@ -3972,6 +3977,44 @@ for (const r of doctorReports) {
       200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
       401: errorResponse('Thiếu hoặc sai access token'),
       403: errorResponse(DOCTOR_FORBIDDEN),
+    },
+  });
+}
+
+// Trang báo cáo "Thuốc và vật tư" (#287): 3 báo cáo mới, mỗi báo cáo một route xem và một route xuất Excel. 4 tab kho còn lại giữ route cũ.
+const PHARMACY_FORBIDDEN = 'Không có quyền pharmacy_report.read hoặc company_report.read';
+const pharmacyReports: Array<{ path: string; label: string; summary: string; query: unknown; schema: Parameters<typeof envelope>[0] }> = [
+  { path: 'dispensed', label: 'Thuốc và vật tư đã phát', summary: 'Thuốc và vật tư đã phát theo mặt hàng — số lượng xuất theo phiếu xuất kho bán theo đơn, phần khách trả lại, thực phát, giá trị theo giá bán; lọc theo Loại', query: pharmacyReportQuerySchema, schema: pharmacyDispensedReportSchema },
+  { path: 'margin', label: 'Lãi gộp thuốc và vật tư', summary: 'Lãi gộp thuốc và vật tư — tiền bán sau chiết khấu (trừ phần hoàn) trừ giá vốn thẻ kho, theo mặt hàng; lọc theo Loại', query: pharmacyReportQuerySchema, schema: pharmacyMarginReportSchema },
+  { path: 'controlled', label: 'Thuốc kiểm soát đặc biệt', summary: 'Thuốc kiểm soát đặc biệt — tồn đầu kỳ, nhập, phát cho người bệnh, xuất khác, tồn cuối kỳ và từng lượt phát; lọc theo Phân loại', query: controlledReportQuerySchema, schema: pharmacyControlledReportSchema },
+];
+for (const r of pharmacyReports) {
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/pharmacy/${r.path}`,
+    tags: ['report'],
+    summary: `${r.summary} (quyền pharmacy_report.read, #287; scope=all|pick cần thêm company_report.read)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: r.query as typeof pharmacyReportQuerySchema },
+    responses: {
+      200: jsonResponse('Thành công', envelope(r.schema)),
+      400: errorResponse('Tham số không hợp lệ'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(PHARMACY_FORBIDDEN),
+      404: errorResponse('Chi nhánh không thuộc công ty'),
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/pharmacy/${r.path}/export`,
+    tags: ['report'],
+    summary: `Xuất Excel ${r.label} (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: r.query as typeof pharmacyReportQuerySchema },
+    responses: {
+      200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(PHARMACY_FORBIDDEN),
     },
   });
 }

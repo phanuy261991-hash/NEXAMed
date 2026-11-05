@@ -14,6 +14,9 @@ import { DoctorReportService } from './doctor-report.service';
 import { OperationsReportController } from './operations-report.controller';
 import { OperationsReportRepository } from './operations-report.repository';
 import { OperationsReportService } from './operations-report.service';
+import { PharmacyReportController } from './pharmacy-report.controller';
+import { PharmacyReportRepository } from './pharmacy-report.repository';
+import { PharmacyReportService } from './pharmacy-report.service';
 import { RevenueReportController } from './revenue-report.controller';
 import { RevenueReportRepository } from './revenue-report.repository';
 import { RevenueReportService } from './revenue-report.service';
@@ -26,7 +29,7 @@ import { RevenueReportService } from './revenue-report.service';
  */
 @Module({
   imports: [ReferenceCatalogModule, ClinicModule, IamModule],
-  controllers: [DashboardController, DailyReportController, OperationsReportController, RevenueReportController, DoctorReportController],
-  providers: [DashboardService, DashboardRepository, DailyReportService, DailyReportRepository, OperationsReportService, OperationsReportRepository, RevenueReportService, RevenueReportRepository, DoctorReportService, DoctorReportRepository],
+  controllers: [DashboardController, DailyReportController, OperationsReportController, RevenueReportController, DoctorReportController, PharmacyReportController],
+  providers: [DashboardService, DashboardRepository, DailyReportService, DailyReportRepository, OperationsReportService, OperationsReportRepository, RevenueReportService, RevenueReportRepository, DoctorReportService, DoctorReportRepository, PharmacyReportService, PharmacyReportRepository],
 })
 export class ReportModule {}

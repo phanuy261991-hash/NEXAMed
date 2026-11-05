@@ -82,6 +82,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   operations_report_export: 'Báo cáo Khám bệnh và vận hành',
   revenue_report_export: 'Báo cáo Doanh thu',
   doctor_report_export: 'Báo cáo Bác sĩ',
+  pharmacy_report_export: 'Báo cáo Thuốc và vật tư',
   wallet_export: 'Ví tạm ứng',
   supplier_debt_export: 'Công nợ nhà cung cấp',
   stock_balance_export: 'Tồn kho và hạn dùng',

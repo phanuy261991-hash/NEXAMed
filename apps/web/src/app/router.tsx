@@ -91,6 +91,7 @@ const ReportCenterPage = lazy(() => import('../features/report/ReportCenterPage'
 const DailyReportPage = lazy(() => import('../features/report/DailyReportPage').then((m) => ({ default: m.DailyReportPage })));
 const DoctorReportPage = lazy(() => import('../features/report/doctors/DoctorReportPage').then((m) => ({ default: m.DoctorReportPage })));
 const RevenueReportPage = lazy(() => import('../features/report/revenue/RevenueReportPage').then((m) => ({ default: m.RevenueReportPage })));
+const PharmacyReportPage = lazy(() => import('../features/report/pharmacy/PharmacyReportPage').then((m) => ({ default: m.PharmacyReportPage })));
 const OperationsReportPage = lazy(() => import('../features/report/operations/OperationsReportPage').then((m) => ({ default: m.OperationsReportPage })));
 const WalletListPage = lazy(() => import('../features/patient-wallet/WalletListPage').then((m) => ({ default: m.WalletListPage })));
 // Kho Thuốc GĐ2 — "Phiếu nhập kho"/"Tồn kho" (docs/DECISIONS.md #146, kế hoạch precious-humming-goblet.md).
@@ -219,6 +220,8 @@ export const router = createBrowserRouter([
       { path: 'reports/revenue', element: <RequirePermissionRoute module="revenue_report" action="read"><RevenueReportPage /></RequirePermissionRoute> },
       // Trang báo cáo "Bác sĩ" (#287): 3 tab (Hiệu suất theo bác sĩ, Cơ cấu kê đơn và chỉ định, Giờ làm việc và lượt khám), quyền doctor_report.read.
       { path: 'reports/doctors', element: <RequirePermissionRoute module="doctor_report" action="read"><DoctorReportPage /></RequirePermissionRoute> },
+      // Trang báo cáo "Thuốc và vật tư" (#287): 3 tab (Đã phát, Lãi gộp, Kiểm soát đặc biệt) + 4 tab dẫn sang báo cáo kho cũ, quyền pharmacy_report.read.
+      { path: 'reports/pharmacy', element: <RequirePermissionRoute module="pharmacy_report" action="read"><PharmacyReportPage /></RequirePermissionRoute> },
       { path: 'reports/operations', element: <RequirePermissionRoute module="operations_report" action="read"><OperationsReportPage /></RequirePermissionRoute> },
       { path: 'cash-book/wallets', element: <RequirePermissionRoute module="patient_wallet" action="settle"><WalletListPage /></RequirePermissionRoute> },
 
