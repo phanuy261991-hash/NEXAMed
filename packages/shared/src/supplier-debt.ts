@@ -377,3 +377,14 @@ export type SupplierDebtReconciliation = z.infer<typeof supplierDebtReconciliati
 
 export const listSupplierDebtReconciliationsResponseSchema = z.object({ items: z.array(supplierDebtReconciliationSchema) });
 export type ListSupplierDebtReconciliationsResponse = z.infer<typeof listSupplierDebtReconciliationsResponseSchema>;
+
+/** Xuất Excel "Công nợ nhà cung cấp" (docs/DECISIONS.md #287) — đúng bộ lọc đang xem: tìm theo mã/tên và công tắc "Hiện cả nhà cung cấp đã tất toán / chưa phát sinh" (mặc định bật như màn hình). */
+export const exportSupplierDebtQuerySchema = z.object({
+  q: z.string().max(100).optional(),
+  showAll: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .optional()
+    .default(true)
+    .transform((v) => (typeof v === 'string' ? v === 'true' : v)),
+});
+export type ExportSupplierDebtQuery = z.infer<typeof exportSupplierDebtQuerySchema>;

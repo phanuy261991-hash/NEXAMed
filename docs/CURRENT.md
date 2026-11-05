@@ -18,7 +18,11 @@ Nhật ký trạng thái đầy đủ cũ (từng đợt) ở `docs/archive/CURR
 
 Tổng quan **bác sĩ** (#286, 05/11/2026, `dashboard.doctor`, công tắc "hiện doanh thu sinh ra" mặc định tắt) đã code + test + kiểm Chrome IP LAN, full API 2021 xanh, đã push `73cb453` (CI GitHub XANH) — mockup đã chốt (https://claude.ai/artifact/D3dfooh1FoDkXv513RQJ5p, tệp BacSi); 6 điểm khác mockup chờ chủ dự án xem (DECISIONS #286); môi trường khác cần `db:seed`.
 
-**Còn lại**: Báo cáo ngày (A2, một trang in được) + nhóm menu "Báo cáo" (chưa có mockup), Đợt 2–5 (Sổ khám bệnh, dịch vụ, thuốc đã phát, doanh thu theo kỳ, theo bác sĩ, vận hành, màn "Toàn hệ thống" nhiều chi nhánh + lãi gộp thuốc) — xem `reporting-plan.md` mục 7.
+**Báo cáo ngày + nhóm menu "Báo cáo" + Trung tâm báo cáo (#287, 05/11/2026) — ĐÃ LÀM, CHƯA COMMIT**: mockup 8 màn đã duyệt (https://claude.ai/artifact/9XELE6UCXLKwdUN4KcVymV), Báo cáo ngày có Phạm vi nhiều chi nhánh (tờ in trang tổng + mỗi chi nhánh một trang) + Excel, Trung tâm báo cáo gọn (chỉ báo cáo đã làm), quyền `daily_report.read`, loại chứng từ in `REPORT`. Quy tắc mới: **mọi báo cáo phải có Excel và In** — ĐÃ bổ sung cho cả 8 báo cáo cũ (05/11/2026), báo cáo mới nào cũng phải đủ cả hai. Môi trường khác cần `db:deploy` (migration `20261105100000_print_report_document`) + `db:seed`.
+
+"N chỉ số ngoài khoảng" của Tổng quan bác sĩ (#286 bổ sung) đã làm xong 05/11/2026 (Chrome IP LAN 5/5).
+
+**Còn lại**: Đợt 2–5 (Sổ khám bệnh, dịch vụ, thuốc đã phát, doanh thu theo kỳ, theo bác sĩ, vận hành, màn "Toàn hệ thống" nhiều chi nhánh + lãi gộp thuốc; mockup 8 màn đã duyệt) — xem `reporting-plan.md` mục 7.
 
 ## Trang "Hẹn tái khám" + công tắc (#285, 04/11/2026) — XONG, đã push, CI xanh
 
@@ -40,7 +44,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-HenTaiKham-TongQuanBacSi-2026-11-05.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 05/11/2026: #285 Hẹn tái khám + #286 Tổng quan bác sĩ đã push `73cb453`; CI xanh; việc kế tiếp: hỏi 6 điểm khác mockup, dựng mockup Báo cáo ngày). Bản trước: `docs/handoffs/HANDOFF-TongQuanThuNgan-LeTan-HenTaiKham-2026-11-04-p2.md`. Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
+**`docs/handoffs/HANDOFF-BaoCaoNgay-TrungTamBaoCao-ExcelIn-ChiSoNgoaiKhoang-2026-11-05-p2.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 05/11/2026 phần 2: Báo cáo ngày + Trung tâm báo cáo + Excel/In cho mọi báo cáo + "chỉ số ngoài khoảng"; TOÀN BỘ CHƯA COMMIT, cần kiểm lần cuối rồi commit). Bản trước: `docs/handoffs/HANDOFF-HenTaiKham-TongQuanBacSi-2026-11-05.md`. Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 
@@ -49,6 +53,6 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 ## Lưu ý môi trường
 
 - Máy dev: Node v26, Docker Desktop. **Postgres container map ra cổng 5433** (máy dev có Postgres native chiếm 5432); `DATABASE_URL` trong `.env` đã trỏ 5433. Mật khẩu role `nexamed_app` hard-code trong migration chỉ dùng cho local/CI — **bắt buộc đổi** khi triển khai on-prem thật (`docs/DECISIONS.md` #010).
-- Môi trường khác sau khi lấy mã mới cần: `pnpm install`, `db:deploy`, `db:seed`, khởi động lại API (migration mới nhất `20261104120000_follow_up_reminder`).
+- Môi trường khác sau khi lấy mã mới cần: `pnpm install`, `db:deploy`, `db:seed`, khởi động lại API (migration mới nhất `20261105100000_print_report_document`).
 - Windows: Git Bash đổi giá trị biến môi trường bắt đầu bằng `/` thành đường dẫn Windows (đặt `MSYS_NO_PATHCONV=1`); `prisma generate` lỗi EPERM khi dev server đang chạy (tắt `pnpm dev` trước); full test API cùng lúc dev server + Chrome có thể báo "paging file is too small"/"Memory allocation error" — tắt dev server rồi chạy nền một mình (~7 phút). Tài liệu `docs/*.md` nhiều file CRLF/LF lẫn lộn — script vá phải nhận biết kiểu xuống dòng từng đoạn (không dùng `node -e` nhiều dòng có dấu backtick trong Bash).
 - Kiểm giao diện bằng Chrome thật qua IP LAN: `pnpm dev:lan` (tự khôi phục `config.json`), `scripts/ui-audit/` (README). `playwright-core` cài ở thư mục tạm, không đưa vào repo.

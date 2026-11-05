@@ -18,6 +18,8 @@ import { StockIssuePrintView } from '../inventory/StockIssuePrintView';
 import { StockReceiptPrintView } from '../inventory/StockReceiptPrintView';
 import { StockTransferPrintView } from '../inventory/StockTransferPrintView';
 import { WalletReceiptPrintView } from '../patient-wallet/WalletReceiptPrintView';
+import { DailyReportPrintView } from '../report/DailyReportPrintView';
+import { SAMPLE_DAILY_REPORT } from '../report/daily-report-sample';
 import {
   SAMPLE_CASH_VOUCHER,
   SAMPLE_CLINICAL_ORDER,
@@ -141,6 +143,8 @@ export function PrintDocumentPreview({ documentType }: { documentType: PrintDocu
           ]}
         />
       );
+    case 'REPORT':
+      return <DailyReportPrintView report={SAMPLE_DAILY_REPORT} exportedBy="Trần Thị Lan" />;
     case 'SPECIMEN_LABEL':
       return (
         <SpecimenLabelSheet

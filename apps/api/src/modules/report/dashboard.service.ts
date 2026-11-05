@@ -10,6 +10,7 @@ import {
   computeDelta,
   computeDiscountAmount,
   computeInvoiceDiscount,
+  countAbnormalLabValues,
   fillDailySeries,
   getVietnamDateString,
   listDateStrings,
@@ -22,6 +23,7 @@ import {
   summarizeReceptionAppointments,
   vietnamDateRangeHalfOpenUtc,
   type ClinicConfigReaderPort,
+  type LabReferenceRow,
   type ReferenceCatalogReaderPort,
   type RevenueGroup,
   type RevenueLineInput,
@@ -117,7 +119,13 @@ export class DashboardService {
         this.repository.countFollowUps(tx, actor.tenantId, branchId, today, overdueFrom, actor.userId),
         moneyEnabled ? this.repository.listDoctorInvoices(tx, actor.tenantId, branchId, actor.userId, range.startUtc, range.endUtc) : Promise.resolve([]),
       ]);
-      return { encounters, previousDays, commonQueue, unseen, followUp, invoices };
+      // Giá trị chỉ số của các dòng kết quả ĐANG HIỂN THỊ (tối đa vài dòng) để đếm "N chỉ số ngoài khoảng".
+      const resultValues = await this.repository.listSignedResultValues(
+        tx,
+        actor.tenantId,
+        unseen.items.map((i) => i.itemId),
+      );
+      return { encounters, previousDays, commonQueue, unseen, followUp, invoices, resultValues };
     });
 
     const summary = summarizeDoctorEncounters(data.encounters, now, today, DOCTOR_WAITING_LIMIT);
@@ -141,7 +149,16 @@ export class DashboardService {
       commonQueue: { count: data.commonQueue },
       unseenResults: {
         count: data.unseen.total,
-        items: data.unseen.items.map((i) => ({ name: i.name, patientName: i.patientName, resultedAt: i.resultedAt.toISOString() })),
+        items: data.unseen.items.map((i) => ({
+          name: i.name,
+          patientName: i.patientName,
+          resultedAt: i.resultedAt.toISOString(),
+          abnormalCount: countAbnormalLabValues(
+            data.resultValues
+              .filter((v) => v.itemId === i.itemId)
+              .map((v) => ({ valueType: v.valueType, valueText: v.valueText, reference: (v.referenceSnapshot as LabReferenceRow | null) ?? null })),
+          ).abnormalCount,
+        })),
         moreCount: Math.max(0, data.unseen.total - data.unseen.items.length),
       },
       hourly: summary.hourly,

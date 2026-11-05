@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Archive, CurrencyCircleDollar, DownloadSimple, Package, Receipt, Scales } from '@phosphor-icons/react';
 import type { StockTransferShrinkageCause } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
+import { ReportPrintAction } from '../../shared/print/ReportPrintAction';
+import { buildStockShrinkagePrintSpec } from '../report/report-print-builders';
 import { formatVnd } from '../../shared/format/currency';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
@@ -47,6 +49,18 @@ export function StockTransferShrinkageReport() {
   const reportQuery = useStockTransferShrinkageQuery(query);
   const exportMutation = useExportStockTransferShrinkageMutation();
   const items = reportQuery.data?.items ?? [];
+  const printSpec = useMemo(
+    () =>
+      reportQuery.data
+        ? buildStockShrinkagePrintSpec(reportQuery.data, {
+            from: dateFrom,
+            to: dateTo,
+            warehouseLabel: warehousesQuery.data?.items.find((w) => w.id === fromWarehouseId)?.name ?? null,
+            causeLabel: cause ? CAUSE_META[cause].label : null,
+          })
+        : null,
+    [reportQuery.data, dateFrom, dateTo, fromWarehouseId, cause, warehousesQuery.data],
+  );
 
   return (
     <div className="flex min-h-0 flex-col gap-4">
@@ -82,10 +96,13 @@ export function StockTransferShrinkageReport() {
             />
           </div>
         </div>
-        <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate(query)}>
-          <DownloadSimple size={16} weight="bold" aria-hidden="true" />
-          Xuất Excel
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate(query)}>
+            <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
+          <ReportPrintAction spec={printSpec} />
+        </div>
       </div>
 
       {reportQuery.isError && (

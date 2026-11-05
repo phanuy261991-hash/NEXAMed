@@ -60,3 +60,8 @@ export function buildDoctorHourlyChart(hourly: DoctorDashboard['hourly'], curren
 export function peakText(peak: DoctorHourlyChart['peak']): string {
   return peak === null ? '' : `đông nhất ${pad2(peak.hour)}:00 — ${peak.count.toLocaleString('vi-VN')} lượt`;
 }
+
+/** Chữ "N chỉ số ngoài khoảng" của một dòng kết quả mới (xét nghiệm có chỉ số cao/thấp/bất thường); `null` khi không có để hiện. */
+export function abnormalIndicatorText(count: number): string | null {
+  return count > 0 ? `${count} chỉ số ngoài khoảng` : null;
+}

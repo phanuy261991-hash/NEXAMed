@@ -26,6 +26,12 @@ import {
   clinicPrintHeaderSchema,
   ownerDashboardQuerySchema,
   ownerDashboardSchema,
+  dailyReportQuerySchema,
+  exportAuditLogQuerySchema,
+  exportSupplierDebtQuerySchema,
+  exportWalletsQuerySchema,
+  listStockBalancesQuerySchema as exportStockBalancesQuerySchema,
+  dailyReportSchema,
   cashierDashboardSchema,
   listFollowUpsQuerySchema,
   listFollowUpsResponseSchema,
@@ -3602,6 +3608,92 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(receptionDashboardSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền dashboard.reception'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/wallet/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Ví tạm ứng đúng bộ lọc đang xem (quyền patient_wallet.settle, tối đa 5.000 dòng, ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: exportWalletsQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền patient_wallet.settle'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/supplier-debt/summaries/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Công nợ nhà cung cấp đúng bộ lọc đang xem (quyền supplier_debt.read, ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: exportSupplierDebtQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/balances/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Tồn kho và Cảnh báo hạn dùng (hai sheet) đúng bộ lọc đang xem, chi nhánh đang làm việc (quyền stock_receipt.read, ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: exportStockBalancesQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_receipt.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/audit-log/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Nhật ký kiểm toán đúng bộ lọc đang xem (quyền audit_log.read, tối đa 5.000 dòng, việc xuất cũng được ghi nhật ký)',
+  security: [{ bearerAuth: [] }],
+  request: { query: exportAuditLogQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền audit_log.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/daily',
+  tags: ['report'],
+  summary: 'Báo cáo ngày (quyền daily_report.read, #287) — hôm nay hoặc hôm qua giờ Việt Nam, theo chi nhánh đang làm hoặc nhiều chi nhánh (scope=all|pick cần thêm company_report.read): lượt khám, tiền thu theo phương thức, ghi nhận theo nhóm, phiếu chưa thu, ca thu ngân, thu chi tại quầy, kèm dòng cộng',
+  security: [{ bearerAuth: [] }],
+  request: { query: dailyReportQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(dailyReportSchema)),
+    400: errorResponse('Tham số không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền daily_report.read hoặc company_report.read'),
+    404: errorResponse('Chi nhánh không thuộc công ty'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/daily/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Báo cáo ngày (cùng tham số và số liệu với màn hình; nhiều chi nhánh thì có sheet Tổng hợp và mỗi chi nhánh một sheet; ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { query: dailyReportQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền daily_report.read hoặc company_report.read'),
   },
 });
 

@@ -1,3 +1,5 @@
+import { evaluateLabValue, type LabIndicatorValueType, type LabReferenceRow } from '../lab/lab-reference';
+
 /**
  * Logic thuần của hai màn tra cứu cận lâm sàng (docs/DECISIONS.md #232): tiến độ + thanh toán của một dòng "Phiếu chỉ định" (phiếu × nhóm dịch vụ), và tóm tắt kết quả
  * của dòng "Tra cứu kết quả". Không phụ thuộc framework — API dùng ở service; web chỉ hiển thị phần đã tính.
@@ -63,4 +65,27 @@ export function summarizeLookupResult(input: { isLab: boolean; abnormalCount: nu
 /** Cờ vượt khoảng tham chiếu (cao/thấp/bất thường chữ) tính là "bất thường". */
 export function isAbnormalFlag(flag: string | null | undefined): boolean {
   return flag === 'LOW' || flag === 'HIGH' || flag === 'ABNORMAL';
+}
+
+export interface LabValueForCount {
+  valueType: LabIndicatorValueType;
+  valueText: string | null;
+  /** Khoảng tham chiếu đã chụp lúc nhập kết quả (`referenceSnapshot`); `null` = không có để so. */
+  reference: LabReferenceRow | null;
+}
+
+/**
+ * Đếm chỉ số xét nghiệm của một tập giá trị: `evaluatedCount` = số chỉ số đã so được với khoảng tham chiếu, `abnormalCount` = số chỉ số cao/thấp/bất thường. Ô chưa nhập (rỗng) bỏ qua.
+ * Một nguồn dùng chung cho màn "Tra cứu kết quả" và dòng "N chỉ số ngoài khoảng" ở Tổng quan bác sĩ.
+ */
+export function countAbnormalLabValues(values: readonly LabValueForCount[]): { abnormalCount: number; evaluatedCount: number } {
+  let abnormalCount = 0;
+  let evaluatedCount = 0;
+  for (const v of values) {
+    if (v.valueText === null || v.valueText.trim() === '') continue;
+    const flag = evaluateLabValue(v.valueType, v.valueText, v.reference);
+    if (flag !== null) evaluatedCount += 1;
+    if (isAbnormalFlag(flag)) abnormalCount += 1;
+  }
+  return { abnormalCount, evaluatedCount };
 }

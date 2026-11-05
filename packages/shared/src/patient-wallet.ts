@@ -148,3 +148,7 @@ export const listWalletsResponseSchema = z.object({
   deductedToday: z.number().int(),
 });
 export type ListWalletsResponse = z.infer<typeof listWalletsResponseSchema>;
+
+/** Xuất Excel "Ví tạm ứng" (docs/DECISIONS.md #287) — đúng bộ lọc đang xem (tìm, trạng thái), không phân trang. */
+export const exportWalletsQuerySchema = listWalletsQuerySchema.pick({ q: true, status: true });
+export type ExportWalletsQuery = z.infer<typeof exportWalletsQuerySchema>;

@@ -19,7 +19,7 @@ import { useAuthStore } from '../auth/auth.store';
 import { useHasPermission } from '../auth/usePermission';
 import { useFollowUpFeatureEnabledQuery, useMyClosingStateQuery } from '../clinic/clinic.queries';
 import { formatDayMonth, formatWait, formatWeekdayDate } from './dashboard-model';
-import { averagePerDayText, buildDoctorHourlyChart, doneText, inProgressText, longestWaitText, patientSubtitle, peakText } from './doctor-dashboard-model';
+import { abnormalIndicatorText, averagePerDayText, buildDoctorHourlyChart, doneText, inProgressText, longestWaitText, patientSubtitle, peakText } from './doctor-dashboard-model';
 import { useDoctorDashboardQuery } from './dashboard.queries';
 
 /** Màn "Hàng đợi khám" của bác sĩ — nơi thật sự bắt đầu khám/nhận ca (đóng ca, chọn phòng, nhận bệnh nhân đều xử lý ở đó). */
@@ -155,6 +155,7 @@ function UnseenResultsPanel({ data }: { data: DoctorDashboard }) {
                 <div className="truncate text-[15px] font-medium text-slate-900">{item.name}</div>
                 <div className="mt-0.5 truncate text-[13px] text-slate-500">
                   {item.patientName} · {formatClockTime(item.resultedAt)}
+                  {abnormalIndicatorText(item.abnormalCount) && <span className="font-semibold text-rose-700"> · {abnormalIndicatorText(item.abnormalCount)}</span>}
                 </div>
               </Link>
             </li>

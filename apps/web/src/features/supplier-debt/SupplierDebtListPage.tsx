@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, HandCoins, MagnifyingGlass, Scales } from '@phosphor-icons/react';
+import { DownloadSimple, Eye, HandCoins, MagnifyingGlass, Scales } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
+import { Button } from '../../shared/ui/Button';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
+import { ReportPrintAction } from '../../shared/print/ReportPrintAction';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { StatCardRow } from '../../shared/ui/StatCard';
 import { formatVnd } from '../../shared/format/currency';
 import { useSuppliersQuery } from '../drug/supplier.queries';
+import { useExportSupplierDebtMutation } from '../report/report-exports';
+import { buildSupplierDebtPrintSpec } from '../report/report-print-builders';
 import { useSupplierDebtSummariesQuery } from './supplier-debt.queries';
 
 /**
@@ -50,6 +54,24 @@ export function SupplierDebtListPage() {
 
   const isLoading = suppliersQuery.isLoading || summariesQuery.isLoading;
   const isError = suppliersQuery.isError || summariesQuery.isError;
+  const exportMutation = useExportSupplierDebtMutation();
+  const printSpec = useMemo(
+    () =>
+      isLoading || isError
+        ? null
+        : buildSupplierDebtPrintSpec(
+            rows.map(({ supplier, debt }) => ({
+              code: supplier.code,
+              name: supplier.name,
+              totalPurchase: debt?.totalPurchase ?? null,
+              totalPaid: debt?.totalPaid ?? null,
+              balance: debt?.balance ?? null,
+              pendingApprovalAmount: debt?.pendingApprovalAmount ?? 0,
+            })),
+            { search: search.trim() || null, showAll },
+          ),
+    [rows, search, showAll, isLoading, isError],
+  );
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -66,10 +88,17 @@ export function SupplierDebtListPage() {
             className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
-        <label className="flex items-center gap-1.5 text-sm text-slate-600">
-          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-          Hiện cả nhà cung cấp đã tất toán / chưa phát sinh
-        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-1.5 text-sm text-slate-600">
+            <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+            Hiện cả nhà cung cấp đã tất toán / chưa phát sinh
+          </label>
+          <Button type="button" variant="secondary" disabled={isLoading || isError} loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ q: search.trim() || undefined, showAll })}>
+            <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
+          <ReportPrintAction spec={printSpec} />
+        </div>
       </div>
 
       {summariesQuery.isSuccess && (

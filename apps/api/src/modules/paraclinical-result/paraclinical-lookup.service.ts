@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { evaluateLabValue, isAbnormalFlag, resolveRecentDateRange, stripVietnameseDiacritics, summarizeLookupResult } from '@nexamed/core';
+import { countAbnormalLabValues, resolveRecentDateRange, stripVietnameseDiacritics, summarizeLookupResult } from '@nexamed/core';
 import { calculateAgeYears, type ListParaclinicalLookupQuery, type ListParaclinicalLookupResponse, type ParaclinicalLookupRow, type ParaclinicalReference } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { ClinicalOrderRepository, type LookupOrderRow } from '../clinical-order/clinical-order.repository';
@@ -89,17 +89,14 @@ export class ParaclinicalLookupService {
         const results = items.flatMap((i) => i.results);
         if (results.length === 0) continue;
         const latest = results.reduce((best, r) => (r.signedAt! > best.signedAt! ? r : best));
-        let abnormalCount = 0;
-        let evaluatedCount = 0;
-        for (const r of results) {
-          for (const v of r.values) {
-            if (v.valueText === null || v.valueText.trim() === '') continue;
-            const reference = (v.referenceSnapshot as ParaclinicalReference | null) ?? null;
-            const flag = evaluateLabValue(v.valueType, v.valueText, reference ? toReferenceRow(reference) : null);
-            if (flag !== null) evaluatedCount += 1;
-            if (isAbnormalFlag(flag)) abnormalCount += 1;
-          }
-        }
+        const { abnormalCount, evaluatedCount } = countAbnormalLabValues(
+          results.flatMap((r) =>
+            r.values.map((v) => {
+              const reference = (v.referenceSnapshot as ParaclinicalReference | null) ?? null;
+              return { valueType: v.valueType, valueText: v.valueText, reference: reference ? toReferenceRow(reference) : null };
+            }),
+          ),
+        );
         const hasConclusion = results.some((r) => r.conclusionText !== null && r.conclusionText.trim() !== '');
         const summary = summarizeLookupResult({ isLab, abnormalCount, evaluatedCount, hasConclusion });
         if (isLab && abnormalOnly && summary !== 'ABNORMAL') continue;

@@ -70,6 +70,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // `reception` = Tổng quan của lễ tân (lịch hẹn, hàng đợi, hẹn tái khám, bác sĩ nghỉ) — #284. Không có số tiền.
   { module: 'dashboard', action: 'reception', description: 'Xem Trang Tổng quan của lễ tân (lịch hẹn, hàng đợi, hẹn tái khám)' },
   { module: 'dashboard', action: 'doctor', description: 'Xem Trang Tổng quan của bác sĩ (lượt khám của mình, hàng chờ, kết quả mới, hẹn tái khám)' },
+  // "Báo cáo ngày" (#287): tờ chốt ngày một hoặc nhiều chi nhánh. Gộp từ hai chi nhánh trở lên cần THÊM company_report.read. Mặc định CHỈ clinic_admin.
+  { module: 'daily_report', action: 'read', description: 'Xem và xuất Báo cáo ngày' },
   // Trang "Hẹn tái khám" (#285): `read` xem danh sách (lễ tân/quản trị toàn bộ, bác sĩ chỉ hẹn của lượt khám do mình khám — vì `encounter.read` của bác sĩ là global nên cần quyền riêng); `remind` ghi lần nhắc.
   { module: 'follow_up', action: 'read', description: 'Xem danh sách Hẹn tái khám' },
   { module: 'follow_up', action: 'remind', description: 'Ghi lần nhắc hẹn tái khám (đã gọi, không nghe máy...)' },
@@ -525,6 +527,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'branch.manage': 'global',
     'company_report.read': 'global',
     'dashboard.owner': 'global',
+    'daily_report.read': 'global',
     // Hẹn tái khám (#285).
     'follow_up.read': 'global',
     'follow_up.remind': 'global',

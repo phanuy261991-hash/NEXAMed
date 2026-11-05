@@ -485,9 +485,9 @@ export class DashboardRepository {
     start: Date,
     end: Date,
     limit: number,
-  ): Promise<{ total: number; items: Array<{ name: string; patientName: string; resultedAt: Date }> }> {
-    const rows = await tx.$queryRaw<Array<{ name: string; full_name: string; resulted_at: Date; total: number }>>`
-      SELECT i.name, p.full_name, i.updated_at AS resulted_at, COUNT(*) OVER ()::int AS total
+  ): Promise<{ total: number; items: Array<{ itemId: string; name: string; patientName: string; resultedAt: Date }> }> {
+    const rows = await tx.$queryRaw<Array<{ id: string; name: string; full_name: string; resulted_at: Date; total: number }>>`
+      SELECT i.id, i.name, p.full_name, i.updated_at AS resulted_at, COUNT(*) OVER ()::int AS total
         FROM clinical_order_item i
         JOIN clinical_order o ON o.tenant_id = i.tenant_id AND o.id = i.clinical_order_id
         JOIN encounter e ON e.tenant_id = o.tenant_id AND e.id = o.encounter_id
@@ -498,6 +498,22 @@ export class DashboardRepository {
          AND e.status IN ('IN_CONSULTATION', 'COMPLETED') AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}
        ORDER BY i.updated_at DESC, i.id ASC
        LIMIT ${limit}`;
-    return { total: rows[0]?.total ?? 0, items: rows.map((r) => ({ name: r.name, patientName: r.full_name, resultedAt: r.resulted_at })) };
+    return { total: rows[0]?.total ?? 0, items: rows.map((r) => ({ itemId: r.id, name: r.name, patientName: r.full_name, resultedAt: r.resulted_at })) };
+  }
+
+  /** Giá trị các chỉ số của kết quả ĐÃ KÝ còn hiệu lực (chưa bị thay bằng bản đính chính) của các dòng chỉ định, kèm khoảng tham chiếu đã chụp — để đếm chỉ số ngoài khoảng. */
+  async listSignedResultValues(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    itemIds: readonly string[],
+  ): Promise<Array<{ itemId: string; valueType: 'NUMBER' | 'TEXT' | 'CHOICE'; valueText: string | null; referenceSnapshot: unknown }>> {
+    if (itemIds.length === 0) return [];
+    const rows = await tx.$queryRaw<Array<{ item_id: string; value_type: 'NUMBER' | 'TEXT' | 'CHOICE'; value_text: string | null; reference_snapshot: unknown }>>`
+      SELECT r.clinical_order_item_id AS item_id, v.value_type::text AS value_type, v.value_text, v.reference_snapshot
+        FROM paraclinical_result r
+        JOIN paraclinical_result_value v ON v.tenant_id = r.tenant_id AND v.result_id = r.id AND v.deleted_at IS NULL
+       WHERE r.tenant_id = ${tenantId}::uuid AND r.clinical_order_item_id = ANY(${itemIds as string[]}::uuid[]) AND r.deleted_at IS NULL AND r.signed_at IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM paraclinical_result s WHERE s.tenant_id = r.tenant_id AND s.supersedes_id = r.id AND s.deleted_at IS NULL AND s.signed_at IS NOT NULL)`;
+    return rows.map((x) => ({ itemId: x.item_id, valueType: x.value_type, valueText: x.value_text, referenceSnapshot: x.reference_snapshot }));
   }
 }

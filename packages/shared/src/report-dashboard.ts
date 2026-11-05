@@ -200,7 +200,8 @@ export const doctorDashboardSchema = z.object({
   /** Kết quả cận lâm sàng đã duyệt mà tôi chưa xem. */
   unseenResults: z.object({
     count: z.number(),
-    items: z.array(z.object({ name: z.string(), patientName: z.string(), resultedAt: z.string() })),
+    /** `abnormalCount` = số chỉ số xét nghiệm cao/thấp/bất thường của kết quả đã ký (0 với CĐHA/thăm dò hoặc khi chưa so được khoảng tham chiếu). */
+    items: z.array(z.object({ name: z.string(), patientName: z.string(), resultedAt: z.string(), abnormalCount: z.number().int().nonnegative() })),
     moreCount: z.number(),
   }),
   /** Lượt khám của tôi theo giờ nhận (đủ 24 giờ, giờ VN). */

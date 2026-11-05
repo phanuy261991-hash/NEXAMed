@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveOrderRowPayment, deriveOrderRowProgress, isAbnormalFlag, summarizeLookupResult } from './clinical-order-list';
+import { deriveOrderRowPayment, deriveOrderRowProgress, isAbnormalFlag, summarizeLookupResult, countAbnormalLabValues } from './clinical-order-list';
 
 describe('deriveOrderRowProgress', () => {
   it('tất cả chưa bắt đầu → Chờ; có người đang làm → Đang thực hiện; xong hết → Đã có kết quả', () => {
@@ -61,5 +61,34 @@ describe('summarizeLookupResult / isAbnormalFlag', () => {
     expect(['LOW', 'HIGH', 'ABNORMAL'].every(isAbnormalFlag)).toBe(true);
     expect(isAbnormalFlag('NORMAL')).toBe(false);
     expect(isAbnormalFlag(null)).toBe(false);
+  });
+});
+
+describe('countAbnormalLabValues', () => {
+  const ref = { sex: 'ANY' as const, ageFromYears: 0, ageToYears: null, lowValue: 4, highValue: 10, lowInclusive: true, highInclusive: true, normalText: null, displayText: null };
+  const textRef = { ...ref, lowValue: null, highValue: null, normalText: 'Âm tính' };
+
+  it('đếm cao, thấp, bất thường dạng chữ; bình thường không tính; ô trống bỏ qua; không có tham chiếu thì không đánh giá', () => {
+    const r = countAbnormalLabValues([
+      { valueType: 'NUMBER', valueText: '12', reference: ref },
+      { valueType: 'NUMBER', valueText: '2', reference: ref },
+      { valueType: 'NUMBER', valueText: '7', reference: ref },
+      { valueType: 'TEXT', valueText: 'Dương tính', reference: textRef },
+      { valueType: 'TEXT', valueText: 'âm tính', reference: textRef },
+      { valueType: 'NUMBER', valueText: '  ', reference: ref },
+      { valueType: 'NUMBER', valueText: null, reference: ref },
+      { valueType: 'NUMBER', valueText: '99', reference: null },
+    ]);
+    expect(r).toEqual({ abnormalCount: 3, evaluatedCount: 5 });
+  });
+
+  it('biên của khoảng: bằng đầu mút được tính bình thường khi bao gồm, ngoài khoảng khi không bao gồm', () => {
+    expect(countAbnormalLabValues([{ valueType: 'NUMBER', valueText: '4', reference: ref }]).abnormalCount).toBe(0);
+    expect(countAbnormalLabValues([{ valueType: 'NUMBER', valueText: '4', reference: { ...ref, lowInclusive: false } }]).abnormalCount).toBe(1);
+    expect(countAbnormalLabValues([{ valueType: 'NUMBER', valueText: '10,5', reference: ref }]).abnormalCount).toBe(1);
+  });
+
+  it('danh sách rỗng cho 0', () => {
+    expect(countAbnormalLabValues([])).toEqual({ abnormalCount: 0, evaluatedCount: 0 });
   });
 });

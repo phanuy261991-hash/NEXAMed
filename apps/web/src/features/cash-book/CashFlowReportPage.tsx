@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowCircleDown, ArrowCircleUp, DownloadSimple, Scales } from '@phosphor-icons/react';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
 import { DateInput } from '../../shared/ui/DateInput';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { ReportPrintAction } from '../../shared/print/ReportPrintAction';
+import { buildCashFlowPrintSpec } from '../report/report-print-builders';
 import { StatCardRow } from '../../shared/ui/StatCard';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
@@ -37,6 +39,10 @@ export function CashFlowReportPage() {
   const exportMutation = useExportCashFlowReportMutation();
   // Báo cáo gộp từ 2 chi nhánh trở lên (Đợt 3, #235): thêm bảng "Theo chi nhánh" và cột Chi nhánh ở "Theo Quỹ". Phạm vi 1 chi nhánh: giao diện y như trước.
   const multiBranch = isMultiBranchScope(reportQuery.data?.byBranch.length ?? 0);
+  const printSpec = useMemo(
+    () => (reportQuery.data ? buildCashFlowPrintSpec(reportQuery.data, { from: dateFrom, to: dateTo, scopeLabel: reportQuery.data.byBranch.length > 1 ? reportQuery.data.byBranch.map((b) => b.branchName).join(', ') : null }) : null),
+    [reportQuery.data, dateFrom, dateTo],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-6">
@@ -56,10 +62,13 @@ export function CashFlowReportPage() {
             <DateInput id="cfr-to" value={dateTo} onChange={setDateTo} dense />
           </div>
         </div>
-        <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ from: dateFrom, to: dateTo, ...scope.selection })}>
-          <DownloadSimple size={16} weight="bold" aria-hidden="true" />
-          Xuất Excel
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ from: dateFrom, to: dateTo, ...scope.selection })}>
+            <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
+          <ReportPrintAction spec={printSpec} />
+        </div>
       </div>
 
       <ReportScopeSummary scope={scope} />

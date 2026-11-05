@@ -1,9 +1,10 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
-import type { Request } from 'express';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import {
   approveSupplierDebtAdjustmentRequestSchema,
   createSupplierDebtAdjustmentRequestSchema,
   createSupplierDebtReconciliationRequestSchema,
+  exportSupplierDebtQuerySchema,
   finalizeSupplierDebtReconciliationRequestSchema,
   listSupplierDebtAdjustmentsQuerySchema,
   listSupplierDebtLedgerQuerySchema,
@@ -19,7 +20,10 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { SupplierDebtExportService } from './supplier-debt-export.service';
 import { SupplierDebtService } from './supplier-debt.service';
+
+const EXCEL_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 /** "Công nợ nhà cung cấp" — Phần A (docs/DECISIONS.md #180/#182). `:supplierId` khai TRƯỚC
  * `/summaries` không xung đột vì Nest so khớp theo path CỤ THỂ hơn trước — nhưng để tránh mọi nhầm
@@ -28,7 +32,22 @@ import { SupplierDebtService } from './supplier-debt.service';
 @Controller('supplier-debt')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class SupplierDebtController {
-  constructor(private readonly supplierDebtService: SupplierDebtService) {}
+  constructor(
+    private readonly supplierDebtService: SupplierDebtService,
+    private readonly exportService: SupplierDebtExportService,
+  ) {}
+
+  /** Xuất Excel "Công nợ nhà cung cấp" đúng bộ lọc đang xem (docs/DECISIONS.md #287) — cùng quyền `supplier_debt.read`; ghi nhật ký xuất. Route cố định, khai TRƯỚC các route `:supplierId`. */
+  @Get('summaries/export')
+  @RequirePermission('supplier_debt', 'read')
+  async exportSummaries(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const dto = exportSupplierDebtQuerySchema.parse(query);
+    const buffer = await this.exportService.exportExcel(req.user!, dto);
+    await this.exportService.recordExportAudit(req.user!, dto, extractRequestMeta(req));
+    res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
+    res.setHeader('Content-Disposition', 'attachment; filename="cong-no-nha-cung-cap.xlsx"');
+    res.send(buffer);
+  }
 
   @Get('summaries')
   @RequirePermission('supplier_debt', 'read')

@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { ClinicModule } from '../clinic/clinic.module';
 import { PatientModule } from '../patient/patient.module';
 import { EncounterModule } from '../encounter/encounter.module';
 import { AuditLogController } from './audit-log.controller';
+import { AuditLogExportService } from './audit-log-export.service';
 import { AuditLogService } from './audit-log.service';
 import { AuditLogRepository } from './audit-log.repository';
 import { SystemLogPurgeJob } from './system-log-purge.job';
@@ -14,9 +16,9 @@ import { SystemLogPurgeJob } from './system-log-purge.job';
  * khuôn `ReceptionModule`, xem comment ở `patient-merge.module.ts`).
  */
 @Module({
-  imports: [PatientModule, EncounterModule],
+  imports: [PatientModule, EncounterModule, ClinicModule],
   controllers: [AuditLogController],
-  providers: [AuditLogService, AuditLogRepository, SystemLogPurgeJob],
+  providers: [AuditLogService, AuditLogExportService, AuditLogRepository, SystemLogPurgeJob],
   // Chỉ để module khác ĐỌC lịch sử một hành động cụ thể (vd `software-update`, #236) — ghi vẫn qua `writeAuditLog()`.
   exports: [AuditLogRepository],
 })

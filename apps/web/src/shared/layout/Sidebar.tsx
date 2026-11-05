@@ -42,7 +42,8 @@ import {
 } from '@phosphor-icons/react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/auth.store';
-import { useHasAnyPermission, useDataScope, useHasPermission, useHasPermissionAtLeast } from '../../features/auth/usePermission';
+import { useHasAnyPermission, useDataScope, useFilterByPermission, useHasPermission, useHasPermissionAtLeast } from '../../features/auth/usePermission';
+import { REPORT_CATALOG } from '../../features/report/report-catalog';
 import {
   ADMIN_ANY_PERMISSIONS,
   CLINICAL_CATALOG_PILL_PERMISSIONS,
@@ -98,6 +99,8 @@ const PATIENT_RECORDS_GROUP_PATHS = ['/patients'];
 const BILLING_GROUP_PATHS = ['/billing'];
 /** Đường dẫn thuộc nhóm "Sổ quỹ & Thu chi" (Sổ quỹ & Thu chi GĐ1, ngoài kế hoạch, 2026-09-05). */
 const CASH_BOOK_GROUP_PATHS = ['/cash-book'];
+/** Đường dẫn thuộc nhóm "Báo cáo" (docs/DECISIONS.md #287): Trung tâm báo cáo và các trang báo cáo mới. Báo cáo cũ giữ nguyên chỗ cũ (Sổ quỹ, Kho, Quản trị). */
+const REPORT_GROUP_PATHS = ['/reports'];
 /** Đường dẫn thuộc nhóm "Lịch làm việc" (Giai đoạn 2 #101). */
 const WORK_SCHEDULE_GROUP_PATHS = ['/work-schedule'];
 /** Đường dẫn thuộc nhóm "Quản lý kho" (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — tách
@@ -223,6 +226,7 @@ export function Sidebar() {
   const [cashBookGroupOpen, setCashBookGroupOpen] = useState(
     CASH_BOOK_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
+  const [reportGroupOpen, setReportGroupOpen] = useState(REPORT_GROUP_PATHS.some((path) => location.pathname.startsWith(path)));
   const [warehouseGroupOpen, setWarehouseGroupOpen] = useState(
     WAREHOUSE_GROUP_PATHS.some((path) => location.pathname.startsWith(path)),
   );
@@ -311,6 +315,9 @@ export function Sidebar() {
   const canSeeInteropSubmissions = useHasPermission('encounter', 'read_clinical') && interopStatusQuery.data?.enabled === true;
   const canSeeBilling = useHasPermission('invoice', 'read');
   const canSeeCashBook = useHasPermission('cash_voucher', 'read');
+  // Nhóm "Báo cáo" (#287): Trung tâm báo cáo hiện khi có ít nhất một báo cáo trong danh mục mà người dùng xem được; "Báo cáo ngày" theo quyền riêng.
+  const canSeeReportCenter = useFilterByPermission(REPORT_CATALOG).length > 0;
+  const canSeeDailyReport = useHasPermission('daily_report', 'read');
   // "Báo cáo dòng tiền" (Sổ quỹ & Thu chi GĐ2) — báo cáo quản trị tổng hợp toàn phòng khám, CHỈ
   // clinic_admin (`cash_voucher.report`), khác "Phiếu thu/chi"/"Sổ quỹ" (receptionist cũng thấy).
   const canSeeCashFlowReport = useHasPermission('cash_voucher', 'report');
@@ -339,6 +346,7 @@ export function Sidebar() {
   const adminGroupExpanded = adminGroupOpen && !collapsed;
   const billingGroupExpanded = billingGroupOpen && !collapsed;
   const cashBookGroupExpanded = cashBookGroupOpen && !collapsed;
+  const reportGroupExpanded = reportGroupOpen && !collapsed;
   const warehouseGroupExpanded = warehouseGroupOpen && !collapsed;
   const supplierGroupExpanded = supplierGroupOpen && !collapsed;
   const workScheduleGroupExpanded = workScheduleGroupOpen && !collapsed;
@@ -766,6 +774,42 @@ export function Sidebar() {
                   {canSeeStaffSchedule && (
                     <NavItem to="/work-schedule/staff" label="Lịch làm việc nhân viên" icon={Users} collapsed={false} indent badge={staffScheduleBadge} />
                   )}
+                </ul>
+              )}
+            </li>
+          )}
+
+          {/* "Báo cáo" (docs/DECISIONS.md #287, mockup đã duyệt 05/11/2026) — nhóm riêng cho báo cáo mới; chỉ hiện mục đã làm thật. */}
+          {canSeeReportCenter && (
+            <li>
+              <button
+                type="button"
+                title={collapsed ? 'Báo cáo' : undefined}
+                onClick={() => {
+                  if (collapsed) {
+                    setCollapsed(false);
+                    setReportGroupOpen(true);
+                  } else {
+                    setReportGroupOpen((v) => !v);
+                  }
+                }}
+                aria-expanded={reportGroupExpanded}
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                  collapsed ? 'justify-center px-2' : 'px-3'
+                }`}
+              >
+                <ChartLine size={collapsed ? 20 : 18} weight="regular" aria-hidden="true" className="flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-left">Báo cáo</span>
+                    <CaretRight size={13} weight="bold" aria-hidden="true" className={`ml-auto flex-shrink-0 transition-transform ${reportGroupExpanded ? 'rotate-90' : ''}`} />
+                  </>
+                )}
+              </button>
+              {reportGroupExpanded && (
+                <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
+                  <NavItem to="/reports" label="Trung tâm báo cáo" icon={ListMagnifyingGlass} end collapsed={false} indent />
+                  {canSeeDailyReport && <NavItem to="/reports/daily" label="Báo cáo ngày" icon={FileText} collapsed={false} indent />}
                 </ul>
               )}
             </li>

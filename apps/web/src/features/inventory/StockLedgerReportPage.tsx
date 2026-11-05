@@ -12,6 +12,8 @@ import { StatCardRow } from '../../shared/ui/StatCard';
 import { SegmentedToggle } from '../../shared/ui/SegmentedToggle';
 import { TabBar } from '../../shared/ui/TabBar';
 import { ApiError } from '../../shared/api/client';
+import { ReportPrintAction } from '../../shared/print/ReportPrintAction';
+import { buildStockLedgerPrintSpec } from '../report/report-print-builders';
 import { BranchChip } from '../branch/BranchChip';
 import { ReportScopeControl, ReportScopeSummary } from '../branch/ReportScopeControl';
 import { isMultiBranchScope } from '../branch/report-scope';
@@ -54,6 +56,17 @@ function StockLedgerTab() {
   }, [warehouses, warehouseId]);
   const rows = useMemo(() => toStockLedgerDisplayRows(reportQuery.data?.items ?? [], multiBranch && gather), [reportQuery.data, multiBranch, gather]);
   const items = rows;
+  const printSpec = useMemo(() => {
+    if (!reportQuery.data) return null;
+    const picked = reportQuery.data.warehouses.find((w) => w.id === warehouseId);
+    return buildStockLedgerPrintSpec(reportQuery.data, rows, {
+      from: dateFrom,
+      to: dateTo,
+      multiBranch,
+      warehouseLabel: picked ? (multiBranch ? `${picked.name} · ${picked.branchName}` : picked.name) : null,
+      scopeLabel: multiBranch ? [...new Set(reportQuery.data.warehouses.map((w) => w.branchName))].join(', ') : null,
+    });
+  }, [reportQuery.data, rows, dateFrom, dateTo, multiBranch, warehouseId]);
   // Có cột Chi nhánh thì thêm một cột lưới; tiêu đề và dòng dữ liệu dùng CHUNG gridTemplateColumns (quy tắc mục 14 ui-guidelines).
   const gridColumns = multiBranch ? '110px 1.6fr 90px 170px 170px 110px 110px 110px 110px' : '110px 1.6fr 90px 180px 120px 120px 120px 120px';
   const tableMinWidth = multiBranch ? 1100 : 900;
@@ -82,10 +95,13 @@ function StockLedgerTab() {
             <Combobox id="slr-warehouse" value={warehouseId} onChange={setWarehouseId} options={[{ value: '', label: 'Tất cả kho' }, ...(warehouses ?? []).map((w) => ({ value: w.id, label: multiBranch ? `${w.name} · ${w.branchName}` : w.name }))]} />
           </div>
         </div>
-        <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ from: dateFrom, to: dateTo, warehouseId: warehouseId || undefined, ...scope.selection })}>
-          <DownloadSimple size={16} weight="bold" aria-hidden="true" />
-          Xuất Excel
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button type="button" variant="secondary" loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ from: dateFrom, to: dateTo, warehouseId: warehouseId || undefined, ...scope.selection })}>
+            <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
+          <ReportPrintAction spec={printSpec} />
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

@@ -7,6 +7,7 @@ import { CashBookModule } from '../cash-book/cash-book.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { SupplierDebtController } from './supplier-debt.controller';
 import { SupplierDebtService } from './supplier-debt.service';
+import { SupplierDebtExportService } from './supplier-debt-export.service';
 import { SupplierDebtAccountRepository } from './supplier-debt-account.repository';
 import { SupplierDebtEntryRepository } from './supplier-debt-entry.repository';
 import { SupplierDebtAdjustmentRepository } from './supplier-debt-adjustment.repository';
@@ -72,6 +73,7 @@ import { SupplierDebtReconciliationRepository } from './supplier-debt-reconcilia
   controllers: [SupplierDebtController],
   providers: [
     SupplierDebtService,
+    SupplierDebtExportService,
     SupplierDebtAccountRepository,
     SupplierDebtEntryRepository,
     SupplierDebtAdjustmentRepository,

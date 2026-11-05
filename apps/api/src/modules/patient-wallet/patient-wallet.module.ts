@@ -6,6 +6,7 @@ import { CashierShiftModule } from '../cashier-shift/cashier-shift.module';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
 import { PatientModule } from '../patient/patient.module';
 import { PatientWalletController } from './patient-wallet.controller';
+import { PatientWalletExportService } from './patient-wallet-export.service';
 import { PatientWalletService } from './patient-wallet.service';
 import { PatientWalletRepository } from './patient-wallet.repository';
 
@@ -30,7 +31,7 @@ import { PatientWalletRepository } from './patient-wallet.repository';
 @Module({
   imports: [IamModule, ClinicModule, CashBookModule, CashierShiftModule, ReferenceCatalogModule, PatientModule],
   controllers: [PatientWalletController],
-  providers: [PatientWalletService, PatientWalletRepository],
+  providers: [PatientWalletService, PatientWalletRepository, PatientWalletExportService],
   exports: [PatientWalletService],
 })
 export class PatientWalletModule {}

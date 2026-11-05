@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowCircleDown, ArrowCircleUp, Eye, MagnifyingGlass, UsersThree, Wallet } from '@phosphor-icons/react';
+import { ArrowCircleDown, ArrowCircleUp, DownloadSimple, Eye, MagnifyingGlass, UsersThree, Wallet } from '@phosphor-icons/react';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -10,7 +10,13 @@ import { StatCardRow, type StatCardItem } from '../../shared/ui/StatCard';
 import { formatVnd } from '../../shared/format/currency';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
+import { loadAllByCursor, PRINT_LOAD_PAGE_SIZE } from '../../shared/print/load-all-pages';
+import { ReportPrintAction } from '../../shared/print/ReportPrintAction';
+import { REPORT_PRINT_ROW_CAP } from '../../shared/print/report-print-spec';
+import { useExportWalletsMutation } from '../report/report-exports';
+import { buildWalletsPrintSpec } from '../report/report-print-builders';
 import { formatWalletDate } from './wallet-format';
+import { listWallets } from './patient-wallet.api';
 import { useWalletListQuery } from './patient-wallet.queries';
 
 type StatusFilter = 'ACTIVE' | 'CLOSED' | undefined;
@@ -30,6 +36,24 @@ export function WalletListPage() {
   const query = useWalletListQuery({ q: debouncedSearch || undefined, status });
   const items = query.data?.pages.flatMap((p) => p.items) ?? [];
   const firstPage = query.data?.pages[0];
+  const exportMutation = useExportWalletsMutation();
+  // In: tải ĐỦ các trang theo bộ lọc đang xem (không chỉ phần đã cuộn tới) rồi mới mở hộp in.
+  const loadPrintSpec = async () => {
+    const all = await loadAllByCursor((cursor) => listWallets({ q: debouncedSearch || undefined, status, cursor, limit: PRINT_LOAD_PAGE_SIZE }), REPORT_PRINT_ROW_CAP);
+    const first = all.pages[0];
+    return buildWalletsPrintSpec(
+      all.pages.flatMap((p) => p.items).slice(0, REPORT_PRINT_ROW_CAP),
+      {
+        statusLabel: status === 'ACTIVE' ? 'Đang hoạt động' : status === 'CLOSED' ? 'Đã khoá' : 'Tất cả',
+        search: debouncedSearch || null,
+        totalHeldBalance: first?.totalHeldBalance ?? 0,
+        activeWalletCount: first?.activeWalletCount ?? 0,
+        toppedUpToday: first?.toppedUpToday ?? 0,
+        deductedToday: first?.deductedToday ?? 0,
+        capped: all.capped,
+      },
+    );
+  };
 
   const kpis: StatCardItem[] = [
     { icon: Wallet, tone: 'blue', label: 'Đang giữ hộ khách', value: formatVnd(firstPage?.totalHeldBalance ?? 0), emphasis: true },
@@ -56,7 +80,7 @@ export function WalletListPage() {
             className="w-full text-sm text-slate-900 outline-none placeholder:text-slate-400"
           />
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {(
             [
               { value: 'ACTIVE' as StatusFilter, label: 'Đang hoạt động' },
@@ -75,6 +99,11 @@ export function WalletListPage() {
               {f.label}
             </button>
           ))}
+          <Button type="button" variant="secondary" className="ml-2" loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ q: debouncedSearch || undefined, status })}>
+            <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
+          <ReportPrintAction loadSpec={loadPrintSpec} disabled={query.isPending} />
         </div>
       </div>
 

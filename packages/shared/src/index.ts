@@ -30,6 +30,7 @@ export * from './service-decline';
 export * from './cashier-shift';
 export * from './cash-book';
 export * from './report-dashboard';
+export * from './report-daily';
 export * from './follow-up';
 export * from './patient-wallet';
 export * from './business-code';

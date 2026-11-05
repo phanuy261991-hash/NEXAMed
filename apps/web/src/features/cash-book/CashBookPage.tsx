@@ -7,6 +7,8 @@ import { DateInput } from '../../shared/ui/DateInput';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { ReportPrintAction } from '../../shared/print/ReportPrintAction';
+import { buildCashBookLedgerPrintSpec } from '../report/report-print-builders';
 import { StatCardRow } from '../../shared/ui/StatCard';
 import { ApiError } from '../../shared/api/client';
 import { formatVnd } from '../../shared/format/currency';
@@ -82,6 +84,10 @@ export function CashBookPage() {
 
   const ledgerQuery = useCashBookLedgerQuery({ cashAccountId, from: dateFrom, to: dateTo }, cashAccountId !== '');
   const exportMutation = useExportCashBookLedgerMutation();
+  const printSpec = useMemo(
+    () => (ledgerQuery.data ? buildCashBookLedgerPrintSpec(ledgerQuery.data, { from: dateFrom, to: dateTo, accountLabel: accounts.find((a) => a.id === cashAccountId)?.name ?? ledgerQuery.data.cashAccountName }) : null),
+    [ledgerQuery.data, dateFrom, dateTo, accounts, cashAccountId],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-6">
@@ -115,16 +121,19 @@ export function CashBookPage() {
             <DateInput id="cb-to" value={dateTo} onChange={setDateTo} dense />
           </div>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          loading={exportMutation.isPending}
-          disabled={cashAccountId === ''}
-          onClick={() => exportMutation.mutate({ cashAccountId, from: dateFrom, to: dateTo })}
-        >
-          <DownloadSimple size={16} weight="bold" aria-hidden="true" />
-          Xuất Excel
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button
+            type="button"
+            variant="secondary"
+            loading={exportMutation.isPending}
+            disabled={cashAccountId === ''}
+            onClick={() => exportMutation.mutate({ cashAccountId, from: dateFrom, to: dateTo })}
+          >
+            <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
+          <ReportPrintAction spec={printSpec} />
+        </div>
       </div>
 
       {multiBranch && ledgerQuery.isSuccess && (

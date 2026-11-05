@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DoctorDashboard } from '@nexamed/shared';
-import { averagePerDayText, buildDoctorHourlyChart, doneText, inProgressText, longestWaitText, patientSubtitle, peakText } from './doctor-dashboard-model';
+import { abnormalIndicatorText, averagePerDayText, buildDoctorHourlyChart, doneText, inProgressText, longestWaitText, patientSubtitle, peakText } from './doctor-dashboard-model';
 
 const hourly = (counts: Record<number, number>): DoctorDashboard['hourly'] => Array.from({ length: 24 }, (_, hour) => ({ hour, count: counts[hour] ?? 0 }));
 
@@ -52,5 +52,13 @@ describe('buildDoctorHourlyChart', () => {
     expect(chart.peak).toBeNull();
     expect(chart.total).toBe(0);
     expect(peakText(chart.peak)).toBe('');
+  });
+});
+
+describe('abnormalIndicatorText', () => {
+  it('có chỉ số ngoài khoảng thì ghi số, không có thì không hiện gì', () => {
+    expect(abnormalIndicatorText(2)).toBe('2 chỉ số ngoài khoảng');
+    expect(abnormalIndicatorText(1)).toBe('1 chỉ số ngoài khoảng');
+    expect(abnormalIndicatorText(0)).toBeNull();
   });
 });

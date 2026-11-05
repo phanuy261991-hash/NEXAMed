@@ -45,3 +45,7 @@ export const listAuditLogResponseSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 export type ListAuditLogResponse = z.infer<typeof listAuditLogResponseSchema>;
+
+/** Xuất Excel "Nhật ký kiểm toán" (docs/DECISIONS.md #287) — đúng bộ lọc đang xem (bệnh nhân, người dùng, khoảng ngày), không phân trang. */
+export const exportAuditLogQuerySchema = listAuditLogQuerySchema.omit({ cursor: true, limit: true });
+export type ExportAuditLogQuery = z.infer<typeof exportAuditLogQuerySchema>;

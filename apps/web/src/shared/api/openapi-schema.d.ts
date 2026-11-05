@@ -22657,6 +22657,559 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/wallet/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Ví tạm ứng đúng bộ lọc đang xem (quyền patient_wallet.settle, tối đa 5.000 dòng, ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    status?: "ACTIVE" | "CLOSED";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_wallet.settle */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplier-debt/summaries/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Công nợ nhà cung cấp đúng bộ lọc đang xem (quyền supplier_debt.read, ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    showAll?: boolean | ("true" | "false");
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/balances/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Tồn kho và Cảnh báo hạn dùng (hai sheet) đúng bộ lọc đang xem, chi nhánh đang làm việc (quyền stock_receipt.read, ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query?: {
+                    warehouseId?: string;
+                    q?: string;
+                    belowMinOnly?: boolean | ("true" | "false");
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền stock_receipt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-log/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Nhật ký kiểm toán đúng bộ lọc đang xem (quyền audit_log.read, tối đa 5.000 dòng, việc xuất cũng được ghi nhật ký) */
+        get: {
+            parameters: {
+                query?: {
+                    patientId?: string;
+                    actorId?: string;
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền audit_log.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Báo cáo ngày (quyền daily_report.read, #287) — hôm nay hoặc hôm qua giờ Việt Nam, theo chi nhánh đang làm hoặc nhiều chi nhánh (scope=all|pick cần thêm company_report.read): lượt khám, tiền thu theo phương thức, ghi nhận theo nhóm, phiếu chưa thu, ca thu ngân, thu chi tại quầy, kèm dòng cộng */
+        get: {
+            parameters: {
+                query?: {
+                    day?: "today" | "yesterday";
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                date: string;
+                                branches: {
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                    visits: {
+                                        received: number;
+                                        newCount: number;
+                                        returnCount: number;
+                                        completed: number;
+                                        stillOpen: number;
+                                        cancelled: number;
+                                        noShow: number;
+                                    };
+                                    collection: {
+                                        byMethod: {
+                                            methodCode: string;
+                                            methodName: string;
+                                            paymentCount: number;
+                                            amount: number;
+                                        }[];
+                                        collectedCount: number;
+                                        collectedAmount: number;
+                                        refundedCount: number;
+                                        refundedAmount: number;
+                                        netAmount: number;
+                                    };
+                                    recognized: {
+                                        total: number;
+                                        byGroup: {
+                                            EXAM: number;
+                                            PARACLINICAL: number;
+                                            DRUG: number;
+                                            PACKAGE: number;
+                                        };
+                                    };
+                                    unpaid: {
+                                        invoiceCount: number;
+                                        amount: number;
+                                    };
+                                    shifts: {
+                                        shiftNo: string;
+                                        label: string;
+                                        cashierName: string;
+                                        openedAt: string;
+                                        closedAt: string | null;
+                                        /** @enum {string} */
+                                        status: "OPEN" | "CLOSED";
+                                        expectedCash: number | null;
+                                        countedCash: number | null;
+                                        discrepancy: number | null;
+                                    }[];
+                                    counterVouchers: {
+                                        incomeAmount: number;
+                                        expenseAmount: number;
+                                    };
+                                }[];
+                                totals: {
+                                    visits: {
+                                        received: number;
+                                        newCount: number;
+                                        returnCount: number;
+                                        completed: number;
+                                        stillOpen: number;
+                                        cancelled: number;
+                                        noShow: number;
+                                    };
+                                    collection: {
+                                        byMethod: {
+                                            methodCode: string;
+                                            methodName: string;
+                                            paymentCount: number;
+                                            amount: number;
+                                        }[];
+                                        collectedCount: number;
+                                        collectedAmount: number;
+                                        refundedCount: number;
+                                        refundedAmount: number;
+                                        netAmount: number;
+                                    };
+                                    recognized: {
+                                        total: number;
+                                        byGroup: {
+                                            EXAM: number;
+                                            PARACLINICAL: number;
+                                            DRUG: number;
+                                            PACKAGE: number;
+                                        };
+                                    };
+                                    unpaid: {
+                                        invoiceCount: number;
+                                        amount: number;
+                                    };
+                                    counterVouchers: {
+                                        incomeAmount: number;
+                                        expenseAmount: number;
+                                    };
+                                    shiftDiscrepancy: number;
+                                };
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền daily_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/daily/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Báo cáo ngày (cùng tham số và số liệu với màn hình; nhiều chi nhánh thì có sheet Tổng hợp và mỗi chi nhánh một sheet; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query?: {
+                    day?: "today" | "yesterday";
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền daily_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/dashboard/doctor": {
         parameters: {
             query?: never;
@@ -22721,6 +23274,7 @@ export interface paths {
                                         name: string;
                                         patientName: string;
                                         resultedAt: string;
+                                        abnormalCount: number;
                                     }[];
                                     moreCount: number;
                                 };
@@ -26708,7 +27262,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string | null;
                                     /** @enum {string} */
-                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                                     name: string;
                                     /** @enum {string} */
                                     paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
@@ -26790,7 +27344,7 @@ export interface paths {
                                 catalog: {
                                     documentTypes: {
                                         /** @enum {string} */
-                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
+                                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                                         label: string;
                                         group: string;
                                         allowedPapers: ("A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40")[];
@@ -27431,7 +27985,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
+                        documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                         name: string;
                         /** @enum {string} */
                         paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
@@ -27522,7 +28076,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string | null;
                                 /** @enum {string} */
-                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                                 name: string;
                                 /** @enum {string} */
                                 paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
@@ -27715,7 +28269,7 @@ export interface paths {
                             data: {
                                 items: {
                                     /** @enum {string} */
-                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
+                                    documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                                     /** @enum {string} */
                                     paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";
                                     widthMm: number;
@@ -27933,7 +28487,7 @@ export interface paths {
                             showTaxCode: boolean;
                             showDivider: boolean;
                         };
-                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL")[];
+                        documentTypes: ("PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT")[];
                     };
                 };
             };
@@ -28215,7 +28769,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string | null;
                                 /** @enum {string} */
-                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL";
+                                documentType: "PRESCRIPTION" | "MEDICAL_RECORD" | "CLINICAL_ORDER" | "LAB_RESULT" | "IMAGING_RESULT" | "INVOICE" | "INVOICE_COMBINED" | "WALLET_TOPUP_RECEIPT" | "CASHIER_SHIFT_RECEIPT" | "CASH_VOUCHER" | "STOCK_RECEIPT" | "STOCK_ISSUE" | "STOCK_COUNT" | "STOCK_TRANSFER" | "SPECIMEN_LABEL" | "MEDICINE_LABEL" | "REPORT";
                                 name: string;
                                 /** @enum {string} */
                                 paperSize: "A4" | "A5" | "A5_LANDSCAPE" | "K80" | "LABEL_35X22" | "LABEL_50X30" | "LABEL_70X40" | "LABEL_60X40";

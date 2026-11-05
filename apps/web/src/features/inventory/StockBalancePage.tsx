@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChartBar, Eye, Warning } from '@phosphor-icons/react';
+import { ChartBar, DownloadSimple, Eye, Warning } from '@phosphor-icons/react';
 import type { DrugItemType, StockBalanceStatus, StockExpiryWarningItem } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
+import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
+import { ReportPrintAction } from '../../shared/print/ReportPrintAction';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
@@ -16,6 +18,8 @@ import { useHasAnyPermission } from '../auth/usePermission';
 import { DrugItemTypeBadge } from '../drug/drug-item-type';
 import { useUnitNameByCode, unitLabel } from '../drug/useUnitNameByCode';
 import { useWarehousesQuery } from '../drug/warehouse.queries';
+import { useExportStockBalancesMutation } from '../report/report-exports';
+import { buildStockBalancePrintSpec } from '../report/report-print-builders';
 import { useStockBalancesQuery, useStockExpiryWarningsQuery } from './inventory.queries';
 
 type ViewMode = 'byitem' | 'expiry';
@@ -57,6 +61,21 @@ export function StockBalancePage() {
   const expiringSoonCount = expiryQuery.data?.expiringSoonCount ?? 0;
   const expiredCount = expiryQuery.data?.expiredCount ?? 0;
   const balanceItems = useMemo(() => balancesQuery.data?.items ?? [], [balancesQuery.data]);
+  const exportMutation = useExportStockBalancesMutation();
+  const pageUnitNames = useUnitNameByCode();
+  // In cả hai bảng (tồn kho + cảnh báo hạn dùng) theo bộ lọc Kho/Tìm/Dưới định mức đang chọn.
+  const printSpec = useMemo(
+    () =>
+      balancesQuery.data && expiryQuery.data
+        ? buildStockBalancePrintSpec(balancesQuery.data.items, expiryQuery.data.items, {
+            warehouseLabel: warehousesQuery.data?.items.find((w) => w.id === warehouseId)?.name ?? null,
+            belowMinOnly,
+            keyword: debouncedQ.trim() || null,
+            unitName: (code) => unitLabel(pageUnitNames, code),
+          })
+        : null,
+    [balancesQuery.data, expiryQuery.data, warehousesQuery.data, warehouseId, belowMinOnly, debouncedQ, pageUnitNames],
+  );
 
   return (
     <div className="flex h-full flex-col gap-2.5 p-3">
@@ -115,6 +134,18 @@ export function StockBalancePage() {
             Chỉ hiện dưới định mức tồn
           </label>
         )}
+        <div className="ml-auto flex items-center gap-2.5">
+          <Button
+            type="button"
+            variant="secondary"
+            loading={exportMutation.isPending}
+            onClick={() => exportMutation.mutate({ warehouseId: warehouseId || undefined, q: debouncedQ.trim() || undefined, belowMinOnly })}
+          >
+            <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
+          <ReportPrintAction spec={printSpec} />
+        </div>
       </div>
 
       {view === 'byitem' && (

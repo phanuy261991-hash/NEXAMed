@@ -392,6 +392,7 @@ Mẫu sai đã gặp 2 lần liên tiếp ở `WaitingCard`/`InProgressCard` (`a
 ## 13. In ấn — chọn khổ giấy (chốt 2026-10-06, `docs/DECISIONS.md` #211)
 
 - Mọi chứng từ in dùng `shared/print/PrintDocument` + nút `PrintButton` (không viết `window.print()` + header riêng từng màn). Bấm "In phiếu" mở **hộp thoại chọn khổ** (thẻ chọn 2 cột, khổ mặc định chọn sẵn, Enter để in, Esc huỷ) — **KHÔNG dùng menu thả xuống có mũi tên** (bị cắt ở mép dưới màn hình, khó thấy; phản hồi trực tiếp chủ dự án). Chứng từ chỉ có 1 khổ thì in thẳng.
+- **Báo cáo** (chốt 05/11/2026, #287): MỌI báo cáo có nút "Xuất Excel" và nút "In" cạnh nhau ở thanh trên. "In" dùng `PrintButton documentType="REPORT"` + `PrintDocument` (loại chứng từ dùng chung, A4) trong tệp tên `*PrintView.tsx`; tờ in hiện sẵn trên màn hình (`display="screen"`) bọc trong `.print-stack` (nhiều tờ, ngắt trang giữa các tờ) và `print:block`; nút gọi `window.print()`. Tờ in một chi nhánh nên vừa một trang A4 (siết khoảng cách dọc, mẫu: `DailyReportPrintView`).
 - Cụm nút chọn số lượng trong khung hẹp (ví dụ "Số liên") xếp `grid grid-cols-3` dưới nhãn, `whitespace-nowrap` — không đặt cạnh nhãn dài trong khung 380px (vỡ chữ).
 
 ## 14. Giao diện chi nhánh & bảng dạng lưới (chốt 14/10/2026, `docs/DECISIONS.md` #233, phản hồi trực tiếp chủ dự án)

@@ -58112,6 +58112,1241 @@
         }
       }
     },
+    "/api/v1/wallet/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Ví tạm ứng đúng bộ lọc đang xem (quyền patient_wallet.settle, tối đa 5.000 dòng, ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "CLOSED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_wallet.settle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/summaries/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Công nợ nhà cung cấp đúng bộ lọc đang xem (quyền supplier_debt.read, ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ],
+              "default": true
+            },
+            "required": false,
+            "name": "showAll",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/balances/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Tồn kho và Cảnh báo hạn dùng (hai sheet) đúng bộ lọc đang xem, chi nhánh đang làm việc (quyền stock_receipt.read, ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "warehouseId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ],
+              "default": false
+            },
+            "required": false,
+            "name": "belowMinOnly",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền stock_receipt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-log/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Nhật ký kiểm toán đúng bộ lọc đang xem (quyền audit_log.read, tối đa 5.000 dòng, việc xuất cũng được ghi nhật ký)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "patientId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "actorId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền audit_log.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/daily": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Báo cáo ngày (quyền daily_report.read, #287) — hôm nay hoặc hôm qua giờ Việt Nam, theo chi nhánh đang làm hoặc nhiều chi nhánh (scope=all|pick cần thêm company_report.read): lượt khám, tiền thu theo phương thức, ghi nhận theo nhóm, phiếu chưa thu, ca thu ngân, thu chi tại quầy, kèm dòng cộng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "yesterday"
+              ],
+              "default": "today"
+            },
+            "required": false,
+            "name": "day",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string"
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchName": {
+                                "type": "string"
+                              },
+                              "visits": {
+                                "type": "object",
+                                "properties": {
+                                  "received": {
+                                    "type": "integer"
+                                  },
+                                  "newCount": {
+                                    "type": "integer"
+                                  },
+                                  "returnCount": {
+                                    "type": "integer"
+                                  },
+                                  "completed": {
+                                    "type": "integer"
+                                  },
+                                  "stillOpen": {
+                                    "type": "integer"
+                                  },
+                                  "cancelled": {
+                                    "type": "integer"
+                                  },
+                                  "noShow": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "received",
+                                  "newCount",
+                                  "returnCount",
+                                  "completed",
+                                  "stillOpen",
+                                  "cancelled",
+                                  "noShow"
+                                ]
+                              },
+                              "collection": {
+                                "type": "object",
+                                "properties": {
+                                  "byMethod": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "methodCode": {
+                                          "type": "string"
+                                        },
+                                        "methodName": {
+                                          "type": "string"
+                                        },
+                                        "paymentCount": {
+                                          "type": "integer"
+                                        },
+                                        "amount": {
+                                          "type": "integer"
+                                        }
+                                      },
+                                      "required": [
+                                        "methodCode",
+                                        "methodName",
+                                        "paymentCount",
+                                        "amount"
+                                      ]
+                                    }
+                                  },
+                                  "collectedCount": {
+                                    "type": "integer"
+                                  },
+                                  "collectedAmount": {
+                                    "type": "integer"
+                                  },
+                                  "refundedCount": {
+                                    "type": "integer"
+                                  },
+                                  "refundedAmount": {
+                                    "type": "integer"
+                                  },
+                                  "netAmount": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "byMethod",
+                                  "collectedCount",
+                                  "collectedAmount",
+                                  "refundedCount",
+                                  "refundedAmount",
+                                  "netAmount"
+                                ]
+                              },
+                              "recognized": {
+                                "type": "object",
+                                "properties": {
+                                  "total": {
+                                    "type": "integer"
+                                  },
+                                  "byGroup": {
+                                    "type": "object",
+                                    "properties": {
+                                      "EXAM": {
+                                        "type": "integer"
+                                      },
+                                      "PARACLINICAL": {
+                                        "type": "integer"
+                                      },
+                                      "DRUG": {
+                                        "type": "integer"
+                                      },
+                                      "PACKAGE": {
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "required": [
+                                      "EXAM",
+                                      "PARACLINICAL",
+                                      "DRUG",
+                                      "PACKAGE"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "total",
+                                  "byGroup"
+                                ]
+                              },
+                              "unpaid": {
+                                "type": "object",
+                                "properties": {
+                                  "invoiceCount": {
+                                    "type": "integer"
+                                  },
+                                  "amount": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "invoiceCount",
+                                  "amount"
+                                ]
+                              },
+                              "shifts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "shiftNo": {
+                                      "type": "string"
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "cashierName": {
+                                      "type": "string"
+                                    },
+                                    "openedAt": {
+                                      "type": "string"
+                                    },
+                                    "closedAt": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "OPEN",
+                                        "CLOSED"
+                                      ]
+                                    },
+                                    "expectedCash": {
+                                      "type": [
+                                        "integer",
+                                        "null"
+                                      ]
+                                    },
+                                    "countedCash": {
+                                      "type": [
+                                        "integer",
+                                        "null"
+                                      ]
+                                    },
+                                    "discrepancy": {
+                                      "type": [
+                                        "integer",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "shiftNo",
+                                    "label",
+                                    "cashierName",
+                                    "openedAt",
+                                    "closedAt",
+                                    "status",
+                                    "expectedCash",
+                                    "countedCash",
+                                    "discrepancy"
+                                  ]
+                                }
+                              },
+                              "counterVouchers": {
+                                "type": "object",
+                                "properties": {
+                                  "incomeAmount": {
+                                    "type": "integer"
+                                  },
+                                  "expenseAmount": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "incomeAmount",
+                                  "expenseAmount"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "branchId",
+                              "branchName",
+                              "visits",
+                              "collection",
+                              "recognized",
+                              "unpaid",
+                              "shifts",
+                              "counterVouchers"
+                            ]
+                          }
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "visits": {
+                              "type": "object",
+                              "properties": {
+                                "received": {
+                                  "type": "integer"
+                                },
+                                "newCount": {
+                                  "type": "integer"
+                                },
+                                "returnCount": {
+                                  "type": "integer"
+                                },
+                                "completed": {
+                                  "type": "integer"
+                                },
+                                "stillOpen": {
+                                  "type": "integer"
+                                },
+                                "cancelled": {
+                                  "type": "integer"
+                                },
+                                "noShow": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "received",
+                                "newCount",
+                                "returnCount",
+                                "completed",
+                                "stillOpen",
+                                "cancelled",
+                                "noShow"
+                              ]
+                            },
+                            "collection": {
+                              "type": "object",
+                              "properties": {
+                                "byMethod": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "methodCode": {
+                                        "type": "string"
+                                      },
+                                      "methodName": {
+                                        "type": "string"
+                                      },
+                                      "paymentCount": {
+                                        "type": "integer"
+                                      },
+                                      "amount": {
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "required": [
+                                      "methodCode",
+                                      "methodName",
+                                      "paymentCount",
+                                      "amount"
+                                    ]
+                                  }
+                                },
+                                "collectedCount": {
+                                  "type": "integer"
+                                },
+                                "collectedAmount": {
+                                  "type": "integer"
+                                },
+                                "refundedCount": {
+                                  "type": "integer"
+                                },
+                                "refundedAmount": {
+                                  "type": "integer"
+                                },
+                                "netAmount": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "byMethod",
+                                "collectedCount",
+                                "collectedAmount",
+                                "refundedCount",
+                                "refundedAmount",
+                                "netAmount"
+                              ]
+                            },
+                            "recognized": {
+                              "type": "object",
+                              "properties": {
+                                "total": {
+                                  "type": "integer"
+                                },
+                                "byGroup": {
+                                  "type": "object",
+                                  "properties": {
+                                    "EXAM": {
+                                      "type": "integer"
+                                    },
+                                    "PARACLINICAL": {
+                                      "type": "integer"
+                                    },
+                                    "DRUG": {
+                                      "type": "integer"
+                                    },
+                                    "PACKAGE": {
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "required": [
+                                    "EXAM",
+                                    "PARACLINICAL",
+                                    "DRUG",
+                                    "PACKAGE"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "total",
+                                "byGroup"
+                              ]
+                            },
+                            "unpaid": {
+                              "type": "object",
+                              "properties": {
+                                "invoiceCount": {
+                                  "type": "integer"
+                                },
+                                "amount": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "invoiceCount",
+                                "amount"
+                              ]
+                            },
+                            "counterVouchers": {
+                              "type": "object",
+                              "properties": {
+                                "incomeAmount": {
+                                  "type": "integer"
+                                },
+                                "expenseAmount": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "incomeAmount",
+                                "expenseAmount"
+                              ]
+                            },
+                            "shiftDiscrepancy": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "visits",
+                            "collection",
+                            "recognized",
+                            "unpaid",
+                            "counterVouchers",
+                            "shiftDiscrepancy"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "date",
+                        "branches",
+                        "totals"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền daily_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chi nhánh không thuộc công ty",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/daily/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Báo cáo ngày (cùng tham số và số liệu với màn hình; nhiều chi nhánh thì có sheet Tổng hợp và mỗi chi nhánh một sheet; ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "yesterday"
+              ],
+              "default": "today"
+            },
+            "required": false,
+            "name": "day",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền daily_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/reports/dashboard/doctor": {
       "get": {
         "tags": [
@@ -58295,12 +59530,17 @@
                                   },
                                   "resultedAt": {
                                     "type": "string"
+                                  },
+                                  "abnormalCount": {
+                                    "type": "integer",
+                                    "minimum": 0
                                   }
                                 },
                                 "required": [
                                   "name",
                                   "patientName",
-                                  "resultedAt"
+                                  "resultedAt",
+                                  "abnormalCount"
                                 ]
                               }
                             },
@@ -67263,7 +68503,8 @@
                                   "STOCK_COUNT",
                                   "STOCK_TRANSFER",
                                   "SPECIMEN_LABEL",
-                                  "MEDICINE_LABEL"
+                                  "MEDICINE_LABEL",
+                                  "REPORT"
                                 ]
                               },
                               "name": {
@@ -67620,7 +68861,8 @@
                                       "STOCK_COUNT",
                                       "STOCK_TRANSFER",
                                       "SPECIMEN_LABEL",
-                                      "MEDICINE_LABEL"
+                                      "MEDICINE_LABEL",
+                                      "REPORT"
                                     ]
                                   },
                                   "label": {
@@ -70159,7 +71401,8 @@
                       "STOCK_COUNT",
                       "STOCK_TRANSFER",
                       "SPECIMEN_LABEL",
-                      "MEDICINE_LABEL"
+                      "MEDICINE_LABEL",
+                      "REPORT"
                     ]
                   },
                   "name": {
@@ -70516,7 +71759,8 @@
                             "STOCK_COUNT",
                             "STOCK_TRANSFER",
                             "SPECIMEN_LABEL",
-                            "MEDICINE_LABEL"
+                            "MEDICINE_LABEL",
+                            "REPORT"
                           ]
                         },
                         "name": {
@@ -71062,7 +72306,8 @@
                                   "STOCK_COUNT",
                                   "STOCK_TRANSFER",
                                   "SPECIMEN_LABEL",
-                                  "MEDICINE_LABEL"
+                                  "MEDICINE_LABEL",
+                                  "REPORT"
                                 ]
                               },
                               "paperSize": {
@@ -71848,7 +73093,8 @@
                         "STOCK_COUNT",
                         "STOCK_TRANSFER",
                         "SPECIMEN_LABEL",
-                        "MEDICINE_LABEL"
+                        "MEDICINE_LABEL",
+                        "REPORT"
                       ]
                     },
                     "minItems": 1
@@ -72365,7 +73611,8 @@
                             "STOCK_COUNT",
                             "STOCK_TRANSFER",
                             "SPECIMEN_LABEL",
-                            "MEDICINE_LABEL"
+                            "MEDICINE_LABEL",
+                            "REPORT"
                           ]
                         },
                         "name": {

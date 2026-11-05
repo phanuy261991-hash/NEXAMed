@@ -1,6 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { IamModule } from '../iam/iam.module';
 import { ClinicModule } from '../clinic/clinic.module';
+import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
 import { DrugModule } from '../drug/drug.module';
 import { BillingModule } from '../billing/billing.module';
 import { EncounterModule } from '../encounter/encounter.module';
@@ -27,6 +28,7 @@ import { StockTransferRepository } from './stock-transfer.repository';
 import { StockLedgerReportController } from './stock-ledger-report.controller';
 import { StockLedgerReportService } from './stock-ledger-report.service';
 import { StockLedgerReportExportService } from './stock-ledger-report-export.service';
+import { StockBalanceExportService } from './stock-balance-export.service';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146). Module
@@ -84,7 +86,7 @@ import { StockLedgerReportExportService } from './stock-ledger-report-export.ser
  * 'PURCHASE'` có `supplierId` — ghi PURCHASE + xử lý "Trả ngay".
  */
 @Module({
-  imports: [IamModule, ClinicModule, forwardRef(() => DrugModule), forwardRef(() => BillingModule), forwardRef(() => EncounterModule), forwardRef(() => SupplierDebtModule)],
+  imports: [IamModule, ClinicModule, ReferenceCatalogModule, forwardRef(() => DrugModule), forwardRef(() => BillingModule), forwardRef(() => EncounterModule), forwardRef(() => SupplierDebtModule)],
   controllers: [
     StockReceiptController,
     StockLedgerController,
@@ -96,6 +98,7 @@ import { StockLedgerReportExportService } from './stock-ledger-report-export.ser
   ],
   providers: [
     StockReceiptService,
+    StockBalanceExportService,
     StockReceiptRepository,
     StockLedgerService,
     StockLedgerRepository,

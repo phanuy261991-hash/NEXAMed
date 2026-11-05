@@ -89,7 +89,7 @@ Chưa tra cứu. Phải xác nhận **nguyên văn văn bản hiện hành** tr�
 
 ## 5. Chuẩn định dạng báo cáo (áp cho MỌI báo cáo, không mỗi trang một kiểu)
 
-**Bốn lớp xuất:**
+**Bốn lớp xuất** (từ 05/11/2026 MỌI báo cáo bắt buộc có cả Excel lẫn In trực tiếp, chủ dự án chốt, #287):
 1. **Màn hình** — xem và đào sâu (bấm số tổng → ra danh sách chi tiết)
 2. **Excel** — qua `exceljs` ở máy chủ (nguyên tắc hiệu năng #073, đã có tiền lệ ở 2 báo cáo cũ)
 3. **PDF / In** — cho báo cáo phải ký, lưu, hoặc gửi cơ quan; dùng `shared/print/PrintDocument` + `PrintButton` (ui-guidelines mục 13)

@@ -4151,6 +4151,8 @@ enum PrintDocumentType {
   SPECIMEN_LABEL
   /// Nhãn dán bì thuốc in từ màn Phát thuốc (docs/DECISIONS.md #267) — khổ LABEL_70X40 / LABEL_60X40 / LABEL_50X30.
   MEDICINE_LABEL
+  /// Bản in dùng chung của mọi báo cáo (docs/DECISIONS.md #287) — khổ A4.
+  REPORT
 }
 
 /// Khổ giấy của một bản mẫu in. K80 = máy in nhiệt 80mm (chỉ 4 chứng từ tiền).

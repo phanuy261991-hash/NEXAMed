@@ -87,6 +87,8 @@ const CashVoucherListPage = lazy(() => import('../features/cash-book/CashVoucher
 // Sổ quỹ & Thu chi Giai đoạn 2 (Sổ quỹ + Báo cáo dòng tiền).
 const CashBookPage = lazy(() => import('../features/cash-book/CashBookPage').then((m) => ({ default: m.CashBookPage })));
 const CashFlowReportPage = lazy(() => import('../features/cash-book/CashFlowReportPage').then((m) => ({ default: m.CashFlowReportPage })));
+const ReportCenterPage = lazy(() => import('../features/report/ReportCenterPage').then((m) => ({ default: m.ReportCenterPage })));
+const DailyReportPage = lazy(() => import('../features/report/DailyReportPage').then((m) => ({ default: m.DailyReportPage })));
 const WalletListPage = lazy(() => import('../features/patient-wallet/WalletListPage').then((m) => ({ default: m.WalletListPage })));
 // Kho Thuốc GĐ2 — "Phiếu nhập kho"/"Tồn kho" (docs/DECISIONS.md #146, kế hoạch precious-humming-goblet.md).
 const StockReceiptListPage = lazy(() => import('../features/inventory/StockReceiptListPage').then((m) => ({ default: m.StockReceiptListPage })));
@@ -206,6 +208,9 @@ export const router = createBrowserRouter([
       // cáo dòng tiền (cash_voucher.report, CHỈ clinic_admin).
       { path: 'cash-book/ledger', element: <RequirePermissionRoute module="cash_voucher" action="read"><CashBookPage /></RequirePermissionRoute> },
       { path: 'cash-book/report', element: <RequirePermissionRoute module="cash_voucher" action="report"><CashFlowReportPage /></RequirePermissionRoute> },
+      // Hệ thống báo cáo (docs/DECISIONS.md #287): Trung tâm báo cáo (mở cho ai xem được ít nhất một báo cáo trong danh mục — trang tự lọc) + Báo cáo ngày (daily_report.read).
+      { path: 'reports', element: <ReportCenterPage /> },
+      { path: 'reports/daily', element: <RequirePermissionRoute module="daily_report" action="read"><DailyReportPage /></RequirePermissionRoute> },
       { path: 'cash-book/wallets', element: <RequirePermissionRoute module="patient_wallet" action="settle"><WalletListPage /></RequirePermissionRoute> },
 
       { path: 'inventory/receipts', element: <RequirePermissionRoute module="stock_receipt" action="read"><StockReceiptListPage /></RequirePermissionRoute> },

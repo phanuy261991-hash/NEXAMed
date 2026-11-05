@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, Post, Query, Req, UseGuards } from '@nestjs/common';
-import type { Request } from 'express';
+import { Body, Controller, Get, HttpCode, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import {
+  exportWalletsQuerySchema,
   getPatientWalletQuerySchema,
   listWalletsQuerySchema,
   listWalletTransactionsQuerySchema,
@@ -12,7 +13,10 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermissionGuard } from '../../common/permission.guard';
 import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
+import { PatientWalletExportService } from './patient-wallet-export.service';
 import { PatientWalletService } from './patient-wallet.service';
+
+const EXCEL_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 /**
  * "Ví tạm ứng" — tài chính CỦA BỆNH NHÂN, không phải dữ liệu lâm sàng khẩn cấp nên KHÔNG gắn
@@ -23,7 +27,10 @@ import { PatientWalletService } from './patient-wallet.service';
 @Controller('wallet')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class PatientWalletController {
-  constructor(private readonly walletService: PatientWalletService) {}
+  constructor(
+    private readonly walletService: PatientWalletService,
+    private readonly exportService: PatientWalletExportService,
+  ) {}
 
   @Get()
   @RequirePermission('patient', 'read')
@@ -47,6 +54,18 @@ export class PatientWalletController {
     const dto = listWalletsQuerySchema.parse(query);
     const { tenantId } = req.user!;
     return this.walletService.listWallets(tenantId, dto);
+  }
+
+  /** Xuất Excel "Ví tạm ứng" đúng bộ lọc đang xem (docs/DECISIONS.md #287) — cùng quyền `patient_wallet.settle` với danh sách; ghi nhật ký xuất. Route cố định, không có tham số trong đường dẫn. */
+  @Get('export')
+  @RequirePermission('patient_wallet', 'settle')
+  async exportWallets(@Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const dto = exportWalletsQuerySchema.parse(query);
+    const buffer = await this.exportService.exportExcel(req.user!, dto);
+    await this.exportService.recordExportAudit(req.user!, dto, extractRequestMeta(req));
+    res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
+    res.setHeader('Content-Disposition', 'attachment; filename="vi-tam-ung.xlsx"');
+    res.send(buffer);
   }
 
   @Post('topup')

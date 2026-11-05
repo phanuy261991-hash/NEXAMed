@@ -109,6 +109,25 @@ describe('HTTP e2e — Trang Tổng quan bác sĩ (/api/v1/reports/dashboard/doc
     });
   }
 
+  const REF_4_10 = { sex: 'ANY', ageFromYears: 0, ageToYears: null, lowValue: 4, highValue: 10, lowInclusive: true, highInclusive: true, normalText: null, displayText: null };
+  const REF_TEXT = { sex: 'ANY', ageFromYears: 0, ageToYears: null, lowValue: null, highValue: null, lowInclusive: true, highInclusive: true, normalText: 'Âm tính', displayText: null };
+
+  /** Kết quả ĐÃ KÝ của một dòng chỉ định kèm các giá trị chỉ số; `supersedesId` = bản đính chính của một kết quả cũ. */
+  async function addSignedResult(itemId: string, values: Array<{ valueType: 'NUMBER' | 'TEXT' | 'CHOICE'; valueText: string | null; reference: object | null }>, supersedesId?: string) {
+    const result = await privileged.paraclinicalResult.create({
+      data: { tenantId: fixture.tenantA.id, clinicalOrderItemId: itemId, supersedesId: supersedesId ?? null, amendmentReason: supersedesId ? 'Đính chính thử' : null, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+    });
+    for (const [i, v] of values.entries()) {
+      // Mỗi chỉ số xét nghiệm chỉ xuất hiện một lần trong một kết quả (ràng buộc duy nhất) → mỗi giá trị một chỉ số riêng.
+      const indicator = await privileged.labIndicator.create({ data: { tenantId: fixture.tenantA.id, code: `CS-BS-${randomUUID().slice(0, 8)}`, name: `Chỉ số thử ${i}`, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR } });
+      await privileged.paraclinicalResultValue.create({
+        data: { tenantId: fixture.tenantA.id, resultId: result.id, labIndicatorId: indicator.id, indicatorCode: `CS${i}`, indicatorName: `Chỉ số ${i}`, valueType: v.valueType, valueText: v.valueText, referenceSnapshot: v.reference ?? undefined, sortOrder: i, createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+      });
+    }
+    // Đã ký thì không thêm được chỉ số (bất biến) — nên thêm giá trị TRƯỚC rồi mới ký.
+    return privileged.paraclinicalResult.update({ where: { id: result.id }, data: { resultedAt: new Date(), signedAt: new Date(), signedBy: SYSTEM_TEST_ACTOR } });
+  }
+
   async function makeInvoice(encounterId: string, status: 'UNPAID' | 'PAID' | 'CANCELLED', total: number, discountPercent?: number) {
     const invoice = await privileged.invoice.create({
       data: {
@@ -195,8 +214,22 @@ describe('HTTP e2e — Trang Tổng quan bác sĩ (/api/v1/reports/dashboard/doc
     await makeEncounter('Old1', 'COMPLETED', { date: ago(3), hhmm: '09:00' }, { started: '09:05', completed: '09:15' });
 
     // Kết quả chưa xem: 2 của bác sĩ 1 (một ở lượt đang khám, một ở lượt đã xong hôm qua); loại: đã xem, chưa có kết quả, của bác sĩ 2.
-    await makeResultItem(enc.InProg!, 'Công thức máu');
-    await makeResultItem(enc.Y1!, 'Đường huyết lúc đói');
+    // Công thức máu: cao (12), thấp (2), bình thường (7), chữ "Dương tính" so với "Âm tính" (bất thường), ô trống (bỏ qua) → 3 chỉ số ngoài khoảng.
+    const cbc = await makeResultItem(enc.InProg!, 'Công thức máu');
+    await addSignedResult(cbc.id, [
+      { valueType: 'NUMBER', valueText: '12', reference: REF_4_10 },
+      { valueType: 'NUMBER', valueText: '2', reference: REF_4_10 },
+      { valueType: 'NUMBER', valueText: '7', reference: REF_4_10 },
+      { valueType: 'TEXT', valueText: 'Dương tính', reference: REF_TEXT },
+      { valueType: 'NUMBER', valueText: '', reference: REF_4_10 },
+      { valueType: 'NUMBER', valueText: '99', reference: null },
+    ]);
+    // Đường huyết: bản gốc có 2 chỉ số bất thường nhưng đã được ĐÍNH CHÍNH bằng bản mới bình thường → chỉ tính bản mới (0).
+    const glucose = await makeResultItem(enc.Y1!, 'Đường huyết lúc đói');
+    const original = await addSignedResult(glucose.id, [{ valueType: 'NUMBER', valueText: '20', reference: REF_4_10 }, { valueType: 'NUMBER', valueText: '1', reference: REF_4_10 }]);
+    // Luồng đính chính thật: bản gốc bị xoá mềm rồi bản mới trỏ về bản gốc (mỗi dòng chỉ định chỉ có MỘT kết quả còn hiệu lực).
+    await privileged.paraclinicalResult.update({ where: { id: original.id }, data: { deletedAt: new Date(), deletedReason: 'Đính chính' } });
+    await addSignedResult(glucose.id, [{ valueType: 'NUMBER', valueText: '6', reference: REF_4_10 }], original.id);
     await makeResultItem(enc.InProg!, 'Đã xem rồi', { seen: true });
     await makeResultItem(enc.InProg!, 'Chưa có kết quả', { status: 'ORDERED' });
     await makeResultItem(enc.D2Done!, 'Của bác sĩ khác');
@@ -284,6 +317,13 @@ describe('HTTP e2e — Trang Tổng quan bác sĩ (/api/v1/reports/dashboard/doc
       expect(d.unseenResults.moreCount).toBe(0);
       expect(d.unseenResults.items.map((i) => i.name).sort()).toEqual(['Công thức máu', 'Đường huyết lúc đói']);
       expect(d.unseenResults.items.every((i) => typeof i.patientName === 'string' && i.resultedAt.length > 10)).toBe(true);
+    });
+
+    it('"N chỉ số ngoài khoảng": đếm cao/thấp/bất thường của kết quả đã ký; bỏ ô trống và chỉ số không có khoảng tham chiếu; bản đã bị đính chính không tính', async () => {
+      const d = await viaService(d1Id);
+      const byName = new Map(d.unseenResults.items.map((i) => [i.name, i.abnormalCount]));
+      expect(byName.get('Công thức máu')).toBe(3);
+      expect(byName.get('Đường huyết lúc đói')).toBe(0);
     });
 
     it('hẹn tái khám chỉ của lượt khám bác sĩ này khám (1), không lẫn của bác sĩ khác', async () => {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CaretDown, CaretUp, ClockCounterClockwise, MagnifyingGlass, Warning, X } from '@phosphor-icons/react';
+import { CaretDown, CaretUp, ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Warning, X } from '@phosphor-icons/react';
 import type { AuditLogEntry, PatientSummary } from '@nexamed/shared';
 import { formatAuditFieldValue, isHiddenAuditField, labelForAuditField } from './field-labels';
 import { ApiError } from '../../shared/api/client';
@@ -10,9 +10,16 @@ import { DateInput } from '../../shared/ui/DateInput';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { Skeleton } from '../../shared/ui/Skeleton';
+import { formatDobDisplay } from '../../shared/format/date';
+import { loadAllByCursor, PRINT_LOAD_PAGE_SIZE } from '../../shared/print/load-all-pages';
+import { ReportPrintAction } from '../../shared/print/ReportPrintAction';
+import { REPORT_PRINT_ROW_CAP } from '../../shared/print/report-print-spec';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
 import { usePatientSearchQuery } from '../patient/patient.queries';
 import { useUserAccountsQuery } from '../user-account/user-account.queries';
+import { useExportAuditLogMutation } from '../report/report-exports';
+import { buildAuditLogPrintSpec } from '../report/report-print-builders';
+import { listAuditLog } from './audit.api';
 import { useAuditLogQuery } from './audit.queries';
 
 const GRID_COLUMNS = '170px 200px 260px 1fr 40px';
@@ -202,6 +209,18 @@ export function ActivityLogPage() {
 
   const items = useMemo(() => listQuery.data?.pages.flatMap((p) => p.items) ?? [], [listQuery.data]);
   const hasFilters = Boolean(patient || actorId || from || to);
+  const exportMutation = useExportAuditLogMutation();
+  // In: tải ĐỦ các trang theo bộ lọc đang xem rồi mới mở hộp in (tối đa REPORT_PRINT_ROW_CAP dòng mới nhất).
+  const loadPrintSpec = async () => {
+    const all = await loadAllByCursor((cursor) => listAuditLog({ patientId: patient?.id, actorId: actorId || undefined, from: from || undefined, to: to || undefined, cursor, limit: PRINT_LOAD_PAGE_SIZE }), REPORT_PRINT_ROW_CAP);
+    const actor = usersQuery.data?.items.find((u) => u.id === actorId);
+    const filterLines = [
+      from || to ? `Khoảng ngày: ${from ? formatDobDisplay(from) : '…'} – ${to ? formatDobDisplay(to) : '…'}` : null,
+      patient ? `Bệnh nhân: ${patient.fullName}` : null,
+      actorId ? `Người dùng: ${actor ? (actor.displayName ?? actor.fullName) : 'một người dùng'}` : null,
+    ].filter((l): l is string => l !== null);
+    return buildAuditLogPrintSpec(all.pages.flatMap((p) => p.items).slice(0, REPORT_PRINT_ROW_CAP), { filterLines: filterLines.length > 0 ? filterLines : ['Không lọc'], capped: all.capped });
+  };
 
   function clearFilters() {
     setPatient(null);
@@ -230,6 +249,18 @@ export function ActivityLogPage() {
             Xoá lọc
           </Button>
         )}
+        <div className="ml-auto flex items-center gap-2.5">
+          <Button
+            type="button"
+            variant="secondary"
+            loading={exportMutation.isPending}
+            onClick={() => exportMutation.mutate({ patientId: patient?.id, actorId: actorId || undefined, from: from || undefined, to: to || undefined })}
+          >
+            <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+            Xuất Excel
+          </Button>
+          <ReportPrintAction loadSpec={loadPrintSpec} disabled={listQuery.isPending} />
+        </div>
       </div>
 
       {listQuery.isPending && (
