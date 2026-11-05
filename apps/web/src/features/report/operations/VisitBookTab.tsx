@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { BookOpen, MagnifyingGlass } from '@phosphor-icons/react';
 import { ApiError } from '../../../shared/api/client';
 import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue';
@@ -54,8 +54,16 @@ function DoctorFilter({ value, onChange }: { value: string; onChange: (id: strin
  */
 export function VisitBookTab({ scope }: { scope: ReportScopeState }) {
   const today = getVietnamTodayDateString();
-  const [range, setRange] = useState<PeriodRange>(() => resolvePeriod('thisMonth', today));
-  const [doctorId, setDoctorId] = useState('');
+  // Đường dẫn "Xem" của trang báo cáo Bác sĩ mang sẵn bác sĩ và kỳ (`?doctorId=&from=&to=`); chỉ dùng làm giá trị khởi tạo, người dùng vẫn đổi được.
+  const [searchParams] = useSearchParams();
+  const [range, setRange] = useState<PeriodRange>(() => {
+    const linked = { from: searchParams.get('from') ?? '', to: searchParams.get('to') ?? '' };
+    return periodError(linked) === null ? linked : resolvePeriod('thisMonth', today);
+  });
+  const [doctorId, setDoctorId] = useState(() => {
+    const linked = searchParams.get('doctorId') ?? '';
+    return /^[0-9a-f-]{36}$/i.test(linked) ? linked : '';
+  });
   const [icd, setIcd] = useState({ code: '', name: '' });
   const [q, setQ] = useState('');
   const debouncedQ = useDebouncedValue(q, 300);

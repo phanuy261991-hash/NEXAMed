@@ -89,6 +89,7 @@ const CashBookPage = lazy(() => import('../features/cash-book/CashBookPage').the
 const CashFlowReportPage = lazy(() => import('../features/cash-book/CashFlowReportPage').then((m) => ({ default: m.CashFlowReportPage })));
 const ReportCenterPage = lazy(() => import('../features/report/ReportCenterPage').then((m) => ({ default: m.ReportCenterPage })));
 const DailyReportPage = lazy(() => import('../features/report/DailyReportPage').then((m) => ({ default: m.DailyReportPage })));
+const DoctorReportPage = lazy(() => import('../features/report/doctors/DoctorReportPage').then((m) => ({ default: m.DoctorReportPage })));
 const RevenueReportPage = lazy(() => import('../features/report/revenue/RevenueReportPage').then((m) => ({ default: m.RevenueReportPage })));
 const OperationsReportPage = lazy(() => import('../features/report/operations/OperationsReportPage').then((m) => ({ default: m.OperationsReportPage })));
 const WalletListPage = lazy(() => import('../features/patient-wallet/WalletListPage').then((m) => ({ default: m.WalletListPage })));
@@ -216,6 +217,8 @@ export const router = createBrowserRouter([
       // Nhóm báo cáo "Khám bệnh và vận hành" (#287): 6 tab (Sổ khám bệnh, Giờ cao điểm, Thời gian chờ, Huỷ và không đến, Tái khám, Nguồn đặt lịch), quyền operations_report.read.
       // Trang báo cáo "Doanh thu" (#287): 5 tab (Theo kỳ, Theo nhóm và dịch vụ, Theo phương thức, Phiếu chưa thu, Theo thu ngân và chốt ca), quyền revenue_report.read.
       { path: 'reports/revenue', element: <RequirePermissionRoute module="revenue_report" action="read"><RevenueReportPage /></RequirePermissionRoute> },
+      // Trang báo cáo "Bác sĩ" (#287): 3 tab (Hiệu suất theo bác sĩ, Cơ cấu kê đơn và chỉ định, Giờ làm việc và lượt khám), quyền doctor_report.read.
+      { path: 'reports/doctors', element: <RequirePermissionRoute module="doctor_report" action="read"><DoctorReportPage /></RequirePermissionRoute> },
       { path: 'reports/operations', element: <RequirePermissionRoute module="operations_report" action="read"><OperationsReportPage /></RequirePermissionRoute> },
       { path: 'cash-book/wallets', element: <RequirePermissionRoute module="patient_wallet" action="settle"><WalletListPage /></RequirePermissionRoute> },
 

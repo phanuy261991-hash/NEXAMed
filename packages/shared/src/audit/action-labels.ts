@@ -304,6 +304,7 @@ const ACTION_LABELS: Record<string, string> = {
   'daily_report.exported': 'Xuất Excel Báo cáo ngày',
   'operations_report.exported': 'Xuất Excel báo cáo Khám bệnh và vận hành',
   'revenue_report.exported': 'Xuất Excel báo cáo Doanh thu',
+  'doctor_report.exported': 'Xuất Excel báo cáo Bác sĩ',
   'wallet_list.exported': 'Xuất Excel danh sách ví tạm ứng',
   'supplier_debt.exported': 'Xuất Excel công nợ nhà cung cấp',
   'stock_balance.exported': 'Xuất Excel tồn kho và hạn dùng',

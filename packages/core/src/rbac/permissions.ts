@@ -73,6 +73,8 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // "Báo cáo ngày" (#287): tờ chốt ngày một hoặc nhiều chi nhánh. Gộp từ hai chi nhánh trở lên cần THÊM company_report.read. Mặc định CHỈ clinic_admin.
   { module: 'daily_report', action: 'read', description: 'Xem và xuất Báo cáo ngày' },
   // Nhóm báo cáo "Khám bệnh và vận hành" (#287): sổ khám bệnh, giờ cao điểm, thời gian chờ, huỷ và không đến, tái khám, nguồn đặt lịch. Gộp nhiều chi nhánh cần THÊM company_report.read. Mặc định CHỈ clinic_admin (chủ dự án chốt 05/11/2026).
+  // Trang báo cáo "Bác sĩ" (#287): hiệu suất theo bác sĩ, cơ cấu kê đơn và chỉ định, giờ làm việc và lượt khám. Gộp nhiều chi nhánh cần THÊM company_report.read. Mặc định CHỈ clinic_admin (bác sĩ không xem trang này, chủ dự án chốt 05/11/2026).
+  { module: 'doctor_report', action: 'read', description: 'Xem và xuất báo cáo Bác sĩ (hiệu suất theo bác sĩ, cơ cấu kê đơn và chỉ định, giờ làm việc và lượt khám)' },
   // Trang báo cáo "Doanh thu" (#287): theo kỳ, theo nhóm và dịch vụ, theo phương thức, phiếu chưa thu, theo thu ngân và chốt ca. Gộp nhiều chi nhánh cần THÊM company_report.read. Mặc định CHỈ clinic_admin.
   { module: 'revenue_report', action: 'read', description: 'Xem và xuất báo cáo Doanh thu (theo kỳ, theo nhóm và dịch vụ, theo phương thức, phiếu chưa thu, theo thu ngân và chốt ca)' },
   { module: 'operations_report', action: 'read', description: 'Xem và xuất báo cáo Khám bệnh và vận hành (sổ khám bệnh, giờ cao điểm, thời gian chờ, huỷ và không đến, tái khám, nguồn đặt lịch)' },
@@ -534,6 +536,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'daily_report.read': 'global',
     'operations_report.read': 'global',
     'revenue_report.read': 'global',
+    'doctor_report.read': 'global',
     // Hẹn tái khám (#285).
     'follow_up.read': 'global',
     'follow_up.remind': 'global',

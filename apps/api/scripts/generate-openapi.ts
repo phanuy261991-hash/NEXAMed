@@ -37,6 +37,10 @@ import {
   visitBookResponseSchema,
   operationsPeriodQuerySchema,
   revenuePeriodQuerySchema,
+  doctorReportQuerySchema,
+  doctorPerformanceReportSchema,
+  doctorOrderMixReportSchema,
+  doctorHoursReportSchema,
   revenueByPeriodQuerySchema,
   revenueByPeriodReportSchema,
   revenueByServiceReportSchema,
@@ -3930,6 +3934,44 @@ for (const r of revenueReports) {
       200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
       401: errorResponse('Thiếu hoặc sai access token'),
       403: errorResponse(REVENUE_FORBIDDEN),
+    },
+  });
+}
+
+// Trang báo cáo "Bác sĩ" (#287): 3 báo cáo, mỗi báo cáo một route xem và một route xuất Excel.
+const DOCTOR_FORBIDDEN = 'Không có quyền doctor_report.read hoặc company_report.read';
+const doctorReports: Array<{ path: string; label: string; summary: string; schema: Parameters<typeof envelope>[0] }> = [
+  { path: 'performance', label: 'Hiệu suất theo bác sĩ', summary: 'Hiệu suất theo bác sĩ — lượt khám đã hoàn tất, phút/lượt, doanh thu ghi nhận sinh ra, tỉ lệ có cận lâm sàng/thuốc/hẹn tái khám, xếp theo doanh thu; lọc theo Khoa', schema: doctorPerformanceReportSchema },
+  { path: 'order-mix', label: 'Cơ cấu kê đơn và chỉ định', summary: 'Cơ cấu kê đơn và chỉ định theo bác sĩ — lượt có thuốc, số dòng thuốc, chỉ định cận lâm sàng tại phòng khám/ra ngoài, hẹn tái khám, 10 thuốc và 10 chỉ định nhiều nhất', schema: doctorOrderMixReportSchema },
+  { path: 'hours', label: 'Giờ làm việc và lượt khám', summary: 'Giờ làm việc và lượt khám — ca đã xếp, nghỉ phép đã duyệt, ngày/lượt/phút khám thực tế, tỉ lệ sử dụng', schema: doctorHoursReportSchema },
+];
+for (const r of doctorReports) {
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/doctors/${r.path}`,
+    tags: ['report'],
+    summary: `${r.summary} (quyền doctor_report.read, #287; scope=all|pick cần thêm company_report.read)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: doctorReportQuerySchema },
+    responses: {
+      200: jsonResponse('Thành công', envelope(r.schema)),
+      400: errorResponse('Tham số không hợp lệ'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(DOCTOR_FORBIDDEN),
+      404: errorResponse('Chi nhánh không thuộc công ty'),
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/doctors/${r.path}/export`,
+    tags: ['report'],
+    summary: `Xuất Excel ${r.label} (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: doctorReportQuerySchema },
+    responses: {
+      200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(DOCTOR_FORBIDDEN),
     },
   });
 }

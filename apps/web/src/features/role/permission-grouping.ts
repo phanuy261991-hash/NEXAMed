@@ -45,6 +45,7 @@ export const MODULE_LABELS: Record<string, string> = {
   daily_report: 'Báo cáo ngày',
   operations_report: 'Báo cáo Khám bệnh và vận hành',
   revenue_report: 'Báo cáo Doanh thu',
+  doctor_report: 'Báo cáo Bác sĩ',
   // Cập nhật phần mềm (#236, bước 2) — nhãn thêm NGAY lúc tạo quyền (`permission-grouping.spec.ts` chặn nếu thiếu).
   software_update: 'Cập nhật phần mềm',
   shift_swap: 'Đổi ca',

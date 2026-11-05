@@ -31,7 +31,7 @@ import { VISIT_BOOK_MAX_RANGE_DAYS } from '@nexamed/shared';
 import { ReportBranchScopeService, type ReportBranchScope } from '../../common/report-branch-scope.service';
 import { REPORT_EXPORT_ROW_LIMIT } from '../../common/report-table-excel';
 import type { RequestMeta } from '../../common/request-meta';
-import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
+import { buildReportExportContext, writeReportExportAudit } from '../../common/report-export-support';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { ClinicProfileService } from '../clinic/clinic-profile.service';
 import { OperationsReportRepository, type OpsPeriod, type VisitBookCursor, type VisitBookFilter } from './operations-report.repository';
@@ -322,28 +322,13 @@ export class OperationsReportService {
   /** Tên phòng khám, tên chi nhánh và người xuất cho đầu báo cáo — đọc qua service/port TRƯỚC transaction chính. */
   async exportContext(actor: Actor, scope: ReportBranchScope, now: Date) {
     const [header, names] = await Promise.all([this.clinicProfileService.getPrintHeader(actor.tenantId, actor.branchId), this.doctorDirectory.getUserFullNames(actor.tenantId, [actor.userId])]);
-    const multi = scope.branchIds.length > 1;
-    return {
-      clinicName: header.name,
-      branchName: multi ? null : (header.branchName ?? null),
-      scopeLabel: multi ? scope.branchIds.map((id) => scope.names.get(id) ?? '').join(', ') : null,
-      exportedByName: names.get(actor.userId) ?? 'Không rõ',
-      exportedAt: now,
-    };
+    return buildReportExportContext(header.name, header.branchName ?? null, scope, names.get(actor.userId) ?? 'Không rõ', now);
   }
 
   /** Ghi nhật ký xuất Excel: ai xuất, báo cáo nào, kỳ nào, chi nhánh nào thật sự đã đọc (không ghi từ khoá tìm vì có thể là tên/SĐT). */
   async recordExportAudit(actor: Actor, report: string, query: { from: string; to: string }, resolvedBranchIds: string[], meta: RequestMeta, extra: Record<string, unknown> = {}): Promise<void> {
     await this.unitOfWork.runInTenantScope(actor.tenantId, (tx) =>
-      writeAuditLog(tx, actor.tenantId, {
-        actorId: actor.userId,
-        action: 'operations_report.exported',
-        entityType: 'operations_report_export',
-        entityId: actor.tenantId,
-        afterJson: { report, from: query.from, to: query.to, resolvedBranchIds, ...extra },
-        ip: meta.ip,
-        userAgent: meta.userAgent,
-      }),
+      writeReportExportAudit(tx, actor, { action: 'operations_report.exported', entityType: 'operations_report_export' }, report, query, resolvedBranchIds, meta, extra),
     );
   }
 }

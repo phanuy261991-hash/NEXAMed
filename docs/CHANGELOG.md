@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-05
 
+### Trang báo cáo "Bác sĩ" — 3 tab (`docs/DECISIONS.md` #287)
+
+Menu mới **Bác sĩ** (nhóm Báo cáo) gồm 3 tab: **Hiệu suất theo bác sĩ** (lượt khám, phút khám mỗi lượt, doanh thu sinh ra, doanh thu một lượt, tỉ lệ có cận lâm sàng / thuốc / hẹn tái khám, xếp theo doanh thu, nút "Xem" mở Sổ khám bệnh của bác sĩ đó), **Cơ cấu kê đơn và chỉ định** (lượt có thuốc, dòng thuốc mỗi đơn, chỉ định cận lâm sàng tại phòng khám và ra ngoài, 10 thuốc và 10 chỉ định nhiều nhất), **Giờ làm việc và lượt khám** (ca đã xếp theo Lịch làm việc, nghỉ phép đã duyệt, giờ khám thực tế, tỉ lệ sử dụng giờ ca). Có bộ lọc Khoa; mỗi tab có Xuất Excel và In; chọn Phạm vi nhiều chi nhánh như các báo cáo khác. Quyền mới **`doctor_report.read`** ("Báo cáo Bác sĩ"), mặc định chỉ quản lý phòng khám (bác sĩ không xem trang này). Môi trường khác cần `db:seed` (quyền mới). Không migration.
+
 ### Trang báo cáo "Doanh thu" — 5 tab (`docs/DECISIONS.md` #287)
 
 Menu mới **Doanh thu** (nhóm Báo cáo) gồm 5 tab: **Theo kỳ** (hai cột Ghi nhận theo ngày khám và Thực thu theo ngày thu, chia Khám bệnh / Cận lâm sàng / Thuốc và vật tư / Gói dịch vụ, gom theo ngày, tuần, tháng, quý, biểu đồ cột đôi, so với kỳ trước), **Theo nhóm và dịch vụ** (số lượng và doanh thu từng dịch vụ), **Theo phương thức** (thu, hoàn, thực thu theo hình thức thanh toán), **Phiếu chưa thu** (theo tuổi phiếu, cũ nhất trước), **Theo thu ngân và chốt ca** (thu/hoàn theo thu ngân, chênh lệch kiểm đếm các ca). Mỗi tab có Xuất Excel và In; chọn Phạm vi nhiều chi nhánh như các báo cáo khác. Quyền mới **`revenue_report.read`** ("Báo cáo Doanh thu"), mặc định chỉ quản lý phòng khám. Tiêu đề trên mọi trang báo cáo điều hành to và đậm hơn (nhãn số liệu, tiêu đề khung, đầu cột). Môi trường khác cần `db:seed` (quyền mới). Không migration.

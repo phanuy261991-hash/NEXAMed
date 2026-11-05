@@ -32,6 +32,7 @@ export * from './report/reception-dashboard-math';
 export * from './report/doctor-dashboard-math';
 export * from './report/daily-report-math';
 export * from './report/revenue-report-math';
+export * from './report/doctor-report-math';
 export * from './report/visit-book-math';
 export * from './report/operations-report-math';
 export * from './follow-up/follow-up-status';
