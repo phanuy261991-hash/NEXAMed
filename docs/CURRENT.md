@@ -16,7 +16,9 @@ Nhật ký trạng thái đầy đủ cũ (từng đợt) ở `docs/archive/CURR
 
 Đã xong và đã push: Đợt 0 (hàm ngày giờ VN dùng chung `packages/core/src/date/`, đầu báo cáo Excel); Tổng quan **chủ phòng khám** (#282, `dashboard.owner`), **thu ngân** (#283, `dashboard.cashier`), **lễ tân** (#284, `dashboard.reception`), cùng phong cách "hướng B" (`.claude/docs/ui-guidelines.md` mục 18, CHỈ áp cho các trang Tổng quan).
 
-**Còn lại**: Tổng quan BÁC SĨ (quyền `dashboard.doctor`; mockup cũ ở https://claude.ai/artifact/TmC456MFRXBGAWYPkWFPs1 cần dựng lại theo hướng B, bỏ khối "Báo cáo của tôi" cho tới khi có báo cáo, đề xuất bỏ công tắc bác sĩ xem tiền — **chờ chủ dự án "chốt" mockup**), Báo cáo ngày + nhóm menu "Báo cáo", Đợt 2–5 (Sổ khám bệnh, dịch vụ, thuốc đã phát, doanh thu theo kỳ, theo bác sĩ, vận hành, màn "Toàn hệ thống" nhiều chi nhánh + lãi gộp thuốc) — xem `reporting-plan.md` mục 7.
+Tổng quan **bác sĩ** (#286, 05/11/2026, `dashboard.doctor`, công tắc "hiện doanh thu sinh ra" mặc định tắt) đã code + test + kiểm Chrome IP LAN, CHƯA commit/CHƯA full API — mockup đã chốt (https://claude.ai/artifact/D3dfooh1FoDkXv513RQJ5p, tệp BacSi); 6 điểm khác mockup chờ chủ dự án xem (DECISIONS #286); môi trường khác cần `db:seed`.
+
+**Còn lại**: Báo cáo ngày (A2, một trang in được) + nhóm menu "Báo cáo" (chưa có mockup), Đợt 2–5 (Sổ khám bệnh, dịch vụ, thuốc đã phát, doanh thu theo kỳ, theo bác sĩ, vận hành, màn "Toàn hệ thống" nhiều chi nhánh + lãi gộp thuốc) — xem `reporting-plan.md` mục 7.
 
 ## Trang "Hẹn tái khám" + công tắc (#285, 04/11/2026) — XONG, đã push, CI xanh
 
@@ -24,7 +26,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Đang chờ / việc treo
 
-- **Cần chủ dự án**: "chốt" mockup Tổng quan bác sĩ; chốt gói thuê bao + giấy phép ký số (làm SAU, đảo ngược #070/#072 khi bắt đầu); chữ ký điện tử bệnh án theo Thông tư 13/2025 (mốc 31/12/2026, chủ dự án chốt LÀM SAU, #270/#271 — phương án rẻ: lưu mã băm SHA-256 lúc ký; mức cao: ký số CA qua `SignaturePort`; nên hỏi Sở Y tế/luật sư); gói Nhi khoa (kế hoạch `docs/product/pediatric-pack-plan.md`, tạm dừng, còn 6 câu chưa chốt).
+- **Cần chủ dự án**: xem 6 điểm khác mockup của Tổng quan bác sĩ (#286); duyệt mockup Báo cáo ngày khi có; chốt gói thuê bao + giấy phép ký số (làm SAU, đảo ngược #070/#072 khi bắt đầu); chữ ký điện tử bệnh án theo Thông tư 13/2025 (mốc 31/12/2026, chủ dự án chốt LÀM SAU, #270/#271 — phương án rẻ: lưu mã băm SHA-256 lúc ký; mức cao: ký số CA qua `SignaturePort`; nên hỏi Sở Y tế/luật sư); gói Nhi khoa (kế hoạch `docs/product/pediatric-pack-plan.md`, tạm dừng, còn 6 câu chưa chốt).
 - **Cần máy/đơn vị bên ngoài**: pilot thật — S6-02 diễn tập phục hồi, S6-04 đo tải trên máy chủ pilot (`perf:load` đã có), phát hành `1.0.0`; hạ tầng SaaS (báo giá, `docs/product/saas-hosting-comparison.md`); kiểm bộ cài trên Windows sạch/Linux/NAS và Let's Encrypt thật; cài MỚI bản có khoá mã hoá (#262); gỡ luật tường lửa "NEXAMed LAN test 8181" (cần Administrator: `Remove-NetFirewallRule -DisplayName "NEXAMed LAN test 8181"`).
 - **Liên thông đơn thuốc quốc gia** (#242): đã code đủ, kiểm bằng cổng giả; chưa kiểm cổng thật, chờ câu trả lời đơn vị vận hành (`docs/product/prescription-interop-questions.md`: sandbox, chữ ký số, danh mục "hình thức điều trị", app-name/app-key — khoá đặt ở `.env` `INTEROP_APP_NAME`/`INTEROP_APP_KEY`, câu 22a "khi cần" không số ngày); API nhà thuốc (8e) làm SAU, duyệt riêng.
 - Gói on-prem chưa dựng lại cho các thay đổi từ 16/10 (dựng khi sắp giao khách: `build-and-export.ps1`, bản giao khách = số phát hành chính thức + ghi chú; bản demo máy dev `0.9.2`/`0.9.3` ở `C:\Projects\NEXAMed-demo-package\`, chưa có sửa #278). CSP vẫn Report-Only tới sau pilot.

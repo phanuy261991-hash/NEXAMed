@@ -172,3 +172,42 @@ export const receptionDashboardSchema = z.object({
   followUp: z.object({ dueToday: z.number(), arrivedToday: z.number(), overdueNotArrived: z.number(), overdueWithinDays: z.number() }),
 });
 export type ReceptionDashboard = z.infer<typeof receptionDashboardSchema>;
+
+/**
+ * Trang Tổng quan của BÁC SĨ (docs/DECISIONS.md #286, mockup hướng B đã chốt 04/11/2026). Chỉ HÔM NAY, chỉ lượt khám do CHÍNH bác sĩ đang đăng nhập khám, ở chi nhánh đang làm việc.
+ * Khối "ca chưa đóng" KHÔNG nằm ở đây: web dùng lại `GET /doctor-availability/me/closing-state` sẵn có. Số tiền (`revenue`) chỉ có khi phòng khám bật "Hiện doanh thu sinh ra trên Tổng quan bác sĩ".
+ */
+export const doctorDashboardSchema = z.object({
+  /** Thời điểm chụp số (ISO UTC) — web ghi "Số lúc HH:MM". */
+  generatedAt: z.string(),
+  /** Ngày báo cáo `YYYY-MM-DD` (giờ VN). */
+  date: z.string(),
+  /** Lượt khám đã tiếp nhận của tôi hôm nay (đang chờ, đang khám, đã xong); `averagePerDay` = trung bình các ngày CÓ khám trong 7 ngày trước, `null` khi chưa có ngày nào. */
+  total: z.object({ count: z.number(), averagePerDay: z.number().nullable() }),
+  /** Đang chờ tôi + người chờ lâu nhất (phút). */
+  waiting: z.object({ count: z.number(), longestWaitMinutes: z.number().nullable() }),
+  /** Đang khám: số lượt, bệnh nhân đầu tiên và số phút đã khám. */
+  inProgress: z.object({ count: z.number(), patientName: z.string().nullable(), minutes: z.number().nullable() }),
+  /** Đã xong + thời gian khám trung bình (phút, từ lúc bắt đầu đến lúc hoàn tất). */
+  done: z.object({ count: z.number(), averageMinutes: z.number().nullable() }),
+  /** Bệnh nhân đang chờ tôi, người chờ lâu nhất đứng đầu. */
+  waitingList: z.object({
+    items: z.array(z.object({ encounterId: z.string().uuid(), patientName: z.string(), patientCode: z.string(), age: z.number().nullable(), waitMinutes: z.number() })),
+    moreCount: z.number(),
+  }),
+  /** Hàng chờ chung của cùng Khoa: lượt chưa có bác sĩ mà tôi nhận được ("Nhận ca"). */
+  commonQueue: z.object({ count: z.number() }),
+  /** Kết quả cận lâm sàng đã duyệt mà tôi chưa xem. */
+  unseenResults: z.object({
+    count: z.number(),
+    items: z.array(z.object({ name: z.string(), patientName: z.string(), resultedAt: z.string() })),
+    moreCount: z.number(),
+  }),
+  /** Lượt khám của tôi theo giờ nhận (đủ 24 giờ, giờ VN). */
+  hourly: z.array(z.object({ hour: z.number(), count: z.number() })),
+  /** Hẹn tái khám của tôi: cùng định nghĩa với Tổng quan lễ tân nhưng chỉ lượt khám tôi khám. */
+  followUp: z.object({ dueToday: z.number(), arrivedToday: z.number(), overdueNotArrived: z.number(), overdueWithinDays: z.number() }),
+  /** Doanh thu sinh ra hôm nay (tiền sau chiết khấu của phiếu thu các lượt khám của tôi, gồm phiếu chưa thu, không gồm phiếu đã huỷ/hoàn). `null` khi phòng khám không bật hiển thị tiền. */
+  revenue: z.object({ amount: z.number() }).nullable(),
+});
+export type DoctorDashboard = z.infer<typeof doctorDashboardSchema>;

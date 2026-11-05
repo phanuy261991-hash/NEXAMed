@@ -3,7 +3,7 @@ import type { DashboardPeriodKind } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
 import { getCashierShiftSummary } from '../cashier-shift/cashier-shift.api';
-import { getCashierDashboard, getOwnerDashboard, getReceptionDashboard } from './dashboard.api';
+import { getCashierDashboard, getDoctorDashboard, getOwnerDashboard, getReceptionDashboard } from './dashboard.api';
 
 /**
  * Trang Tổng quan chủ phòng khám. CHỈ tải khi vào trang, khi đổi kỳ và khi bấm "Làm mới" (docs/DECISIONS.md #279, điểm chốt 7): không tự làm mới theo chu kỳ, không làm mới khi quay lại cửa sổ,
@@ -29,6 +29,20 @@ export function useReceptionDashboardQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'report', 'dashboard', 'reception'),
     queryFn: getReceptionDashboard,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 1,
+  });
+}
+
+/** Trang Tổng quan bác sĩ (#286) — cùng nguyên tắc "chỉ tải khi vào trang / bấm Làm mới"; số luôn là của CHÍNH người đăng nhập. */
+export function useDoctorDashboardQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'report', 'dashboard', 'doctor'),
+    queryFn: getDoctorDashboard,
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,

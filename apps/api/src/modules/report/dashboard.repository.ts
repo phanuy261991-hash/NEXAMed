@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { DiscountType } from '@nexamed/core';
+import type { DiscountType, DoctorEncounterInput } from '@nexamed/core';
 
 /**
  * Nạp số liệu thô cho Trang Tổng quan (docs/DECISIONS.md #279). Đây là mô-đun ĐỌC TỔNG HỢP nên truy vấn đi qua nhiều bảng bằng SQL phẳng (đúng tiền lệ `InvoiceRepository.listForDay`,
@@ -138,7 +138,7 @@ export class DashboardRepository {
    * Hẹn tái khám: kế hoạch điều trị ĐÃ KÝ (còn hiệu lực) của lượt khám đã hoàn tất ở chi nhánh, có hướng "Hẹn tái khám" và ngày hẹn trong `[fromDate, today]`. "Đã quay lại" = bệnh nhân có
    * lượt khám đã tiếp nhận (mọi chi nhánh) sau lượt khám gốc. Đến hạn hôm nay = ngày hẹn là `today`; quá hạn = ngày hẹn trước `today` mà chưa quay lại.
    */
-  async countFollowUps(tx: Prisma.TransactionClient, tenantId: string, branchId: string, today: string, fromDate: string): Promise<FollowUpCounts> {
+  async countFollowUps(tx: Prisma.TransactionClient, tenantId: string, branchId: string, today: string, fromDate: string, doctorId: string | null = null): Promise<FollowUpCounts> {
     const rows = await tx.$queryRaw<Array<{ due_today: number; arrived_today: number; overdue: number }>>`
       WITH f AS (
         SELECT p.follow_up_date AS d, e.id AS eid, e.patient_id, e.checked_in_at AS at
@@ -147,6 +147,7 @@ export class DashboardRepository {
          WHERE p.tenant_id = ${tenantId}::uuid AND p.deleted_at IS NULL AND p.signed_at IS NOT NULL AND 'FOLLOW_UP' = ANY(p.directions::text[])
            AND p.follow_up_date >= ${fromDate}::date AND p.follow_up_date <= ${today}::date
            AND e.branch_id = ${branchId}::uuid AND e.deleted_at IS NULL AND e.status = 'COMPLETED'
+           AND (${doctorId}::uuid IS NULL OR e.doctor_id = ${doctorId}::uuid)
            AND NOT EXISTS (
              SELECT 1 FROM follow_up_reminder r
               WHERE r.tenant_id = e.tenant_id AND r.encounter_id = e.id AND r.result = 'NOT_RETURNING' AND r.deleted_at IS NULL)
@@ -261,7 +262,24 @@ export class DashboardRepository {
   }
 
   /** Phiếu CHƯA THU của các lượt khám tiếp nhận trong khoảng, kèm dòng — `dueAmount` tính ở `@nexamed/core`. */
-  async listUnpaidInvoices(tx: Prisma.TransactionClient, tenantId: string, branchId: string, start: Date, end: Date): Promise<UnpaidInvoiceRow[]> {
+  listUnpaidInvoices(tx: Prisma.TransactionClient, tenantId: string, branchId: string, start: Date, end: Date): Promise<UnpaidInvoiceRow[]> {
+    return this.listInvoicesWithLines(tx, tenantId, branchId, start, end, ['UNPAID'], null);
+  }
+
+  /** Phiếu chưa thu VÀ đã thu (không gồm đã huỷ/hoàn) của các lượt khám do MỘT bác sĩ khám trong khoảng, kèm dòng — cho ô "Doanh thu sinh ra" (#286). */
+  listDoctorInvoices(tx: Prisma.TransactionClient, tenantId: string, branchId: string, doctorId: string, start: Date, end: Date): Promise<UnpaidInvoiceRow[]> {
+    return this.listInvoicesWithLines(tx, tenantId, branchId, start, end, ['UNPAID', 'PAID'], doctorId);
+  }
+
+  private async listInvoicesWithLines(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    branchId: string,
+    start: Date,
+    end: Date,
+    statuses: readonly string[],
+    doctorId: string | null,
+  ): Promise<UnpaidInvoiceRow[]> {
     const [invoices, lines] = await Promise.all([
       tx.$queryRaw<
         Array<{
@@ -280,7 +298,8 @@ export class DashboardRepository {
           FROM invoice i
           JOIN encounter e ON e.tenant_id = i.tenant_id AND e.id = i.encounter_id
           JOIN patient p ON p.tenant_id = e.tenant_id AND p.id = e.patient_id
-         WHERE i.tenant_id = ${tenantId}::uuid AND e.branch_id = ${branchId}::uuid AND i.deleted_at IS NULL AND i.status = 'UNPAID'
+         WHERE i.tenant_id = ${tenantId}::uuid AND e.branch_id = ${branchId}::uuid AND i.deleted_at IS NULL AND i.status::text = ANY(${statuses as string[]}::text[])
+           AND (${doctorId}::uuid IS NULL OR e.doctor_id = ${doctorId}::uuid)
            AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}
          ORDER BY e.checked_in_at ASC, i.created_at ASC, i.id ASC`,
       tx.$queryRaw<
@@ -290,7 +309,8 @@ export class DashboardRepository {
           FROM invoice_line l
           JOIN invoice i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
           JOIN encounter e ON e.tenant_id = i.tenant_id AND e.id = i.encounter_id
-         WHERE l.tenant_id = ${tenantId}::uuid AND l.deleted_at IS NULL AND e.branch_id = ${branchId}::uuid AND i.deleted_at IS NULL AND i.status = 'UNPAID'
+         WHERE l.tenant_id = ${tenantId}::uuid AND l.deleted_at IS NULL AND e.branch_id = ${branchId}::uuid AND i.deleted_at IS NULL AND i.status::text = ANY(${statuses as string[]}::text[])
+           AND (${doctorId}::uuid IS NULL OR e.doctor_id = ${doctorId}::uuid)
            AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}
          ORDER BY l.created_at ASC, l.id ASC`,
     ]);
@@ -412,5 +432,72 @@ export class DashboardRepository {
        GROUP BY e.doctor_id, u.full_name, r.name
        ORDER BY r.name NULLS LAST, u.full_name NULLS LAST`;
     return rows.map((r) => ({ doctorId: r.doctor_id, doctorName: r.full_name, roomName: r.room_name, inProgress: r.in_progress, waiting: r.waiting, oldestWaitingAt: r.oldest }));
+  }
+  // ----- Tổng quan bác sĩ (#286): mọi truy vấn lọc theo `doctor_id` = CHÍNH bác sĩ đăng nhập -----
+
+  /** Lượt khám đã tiếp nhận hôm nay của MỘT bác sĩ, kèm bệnh nhân (tên, mã, ngày sinh) — một bác sĩ chỉ có vài chục lượt/ngày nên kéo về rồi tính ở `@nexamed/core`. */
+  async listDoctorEncountersForDay(tx: Prisma.TransactionClient, tenantId: string, branchId: string, doctorId: string, start: Date, end: Date): Promise<DoctorEncounterInput[]> {
+    const rows = await tx.$queryRaw<
+      Array<{ id: string; status: DoctorEncounterInput['status']; checked_in_at: Date; started_at: Date | null; completed_at: Date | null; full_name: string; patient_code: string; dob: string | null }>
+    >`
+      SELECT e.id, e.status, e.checked_in_at, e.started_at, e.completed_at, p.full_name, p.patient_code, to_char(p.dob, 'YYYY-MM-DD') AS dob
+        FROM encounter e
+        JOIN patient p ON p.tenant_id = e.tenant_id AND p.id = e.patient_id
+       WHERE e.tenant_id = ${tenantId}::uuid AND e.branch_id = ${branchId}::uuid AND e.doctor_id = ${doctorId}::uuid AND e.deleted_at IS NULL AND ${COUNTED_STATUSES}
+         AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}
+       ORDER BY e.checked_in_at ASC, e.id ASC`;
+    return rows.map((r) => ({ encounterId: r.id, status: r.status, checkedInAt: r.checked_in_at, startedAt: r.started_at, completedAt: r.completed_at, patientName: r.full_name, patientCode: r.patient_code, dob: r.dob }));
+  }
+
+  /** Số lượt khám đã tiếp nhận của MỘT bác sĩ theo ngày tiếp nhận (để tính trung bình mỗi ngày). */
+  async countDoctorEncountersByDay(tx: Prisma.TransactionClient, tenantId: string, branchId: string, doctorId: string, start: Date, end: Date): Promise<DayCount[]> {
+    const rows = await tx.$queryRaw<Array<{ d: string; n: number }>>`
+      SELECT ${vnDay('e.checked_in_at')} AS d, COUNT(*)::int AS n
+        FROM encounter e
+       WHERE e.tenant_id = ${tenantId}::uuid AND e.branch_id = ${branchId}::uuid AND e.doctor_id = ${doctorId}::uuid AND e.deleted_at IS NULL AND ${COUNTED_STATUSES}
+         AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}
+       GROUP BY 1`;
+    return rows.map((r) => ({ date: r.d, count: r.n }));
+  }
+
+  /** Khoa của một nhân viên (`user_account.department_id`), `null` nếu chưa gán. */
+  async getUserDepartmentId(tx: Prisma.TransactionClient, tenantId: string, userId: string): Promise<string | null> {
+    const rows = await tx.$queryRaw<Array<{ department_id: string | null }>>`
+      SELECT department_id FROM user_account WHERE tenant_id = ${tenantId}::uuid AND id = ${userId}::uuid AND deleted_at IS NULL`;
+    return rows[0]?.department_id ?? null;
+  }
+
+  /** Hàng chờ chung của một Khoa hôm nay: lượt đã tiếp nhận, chưa có bác sĩ nào nhận (đúng điều kiện "Nhận ca"). */
+  async countCommonQueue(tx: Prisma.TransactionClient, tenantId: string, branchId: string, departmentId: string, start: Date, end: Date): Promise<number> {
+    const rows = await tx.$queryRaw<Array<{ n: number }>>`
+      SELECT COUNT(*)::int AS n FROM encounter e
+       WHERE e.tenant_id = ${tenantId}::uuid AND e.branch_id = ${branchId}::uuid AND e.department_id = ${departmentId}::uuid AND e.doctor_id IS NULL
+         AND e.status = 'CHECKED_IN' AND e.deleted_at IS NULL AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}`;
+    return rows[0]?.n ?? 0;
+  }
+
+  /** Kết quả cận lâm sàng làm tại phòng khám đã duyệt mà bác sĩ CHƯA xem (`doctor_seen_at IS NULL`) của lượt khám do bác sĩ khám từ `start`; mới nhất trước, trả `limit` dòng đầu + tổng. */
+  async listDoctorUnseenResults(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    branchId: string,
+    doctorId: string,
+    start: Date,
+    end: Date,
+    limit: number,
+  ): Promise<{ total: number; items: Array<{ name: string; patientName: string; resultedAt: Date }> }> {
+    const rows = await tx.$queryRaw<Array<{ name: string; full_name: string; resulted_at: Date; total: number }>>`
+      SELECT i.name, p.full_name, i.updated_at AS resulted_at, COUNT(*) OVER ()::int AS total
+        FROM clinical_order_item i
+        JOIN clinical_order o ON o.tenant_id = i.tenant_id AND o.id = i.clinical_order_id
+        JOIN encounter e ON e.tenant_id = o.tenant_id AND e.id = o.encounter_id
+        JOIN patient p ON p.tenant_id = e.tenant_id AND p.id = e.patient_id
+       WHERE i.tenant_id = ${tenantId}::uuid AND i.deleted_at IS NULL AND i.item_kind = 'TECHNICAL_SERVICE' AND i.performance = 'IN_HOUSE'
+         AND i.status = 'COMPLETED' AND i.doctor_seen_at IS NULL AND o.deleted_at IS NULL
+         AND e.branch_id = ${branchId}::uuid AND e.doctor_id = ${doctorId}::uuid AND e.deleted_at IS NULL
+         AND e.status IN ('IN_CONSULTATION', 'COMPLETED') AND e.checked_in_at >= ${start} AND e.checked_in_at < ${end}
+       ORDER BY i.updated_at DESC, i.id ASC
+       LIMIT ${limit}`;
+    return { total: rows[0]?.total ?? 0, items: rows.map((r) => ({ name: r.name, patientName: r.full_name, resultedAt: r.resulted_at })) };
   }
 }

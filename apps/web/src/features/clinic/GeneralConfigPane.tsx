@@ -295,6 +295,21 @@ export function GeneralConfigPane() {
           ariaLabel="Dùng danh sách Hẹn tái khám"
         />
       </div>
+
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-[14.5px] font-semibold text-slate-900">Hiện doanh thu sinh ra trên Tổng quan bác sĩ</p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
+            Bật: bác sĩ thấy thêm ô doanh thu của các lượt khám mình khám hôm nay. Tắt (mặc định): bác sĩ không thấy số tiền.
+          </p>
+        </div>
+        <ToggleSwitch
+          checked={settingsQuery.data.doctorDashboardMoneyEnabled}
+          disabled={updateMutation.isPending}
+          onChange={(checked) => updateMutation.mutate({ doctorDashboardMoneyEnabled: checked })}
+          ariaLabel="Hiện doanh thu sinh ra trên Tổng quan bác sĩ"
+        />
+      </div>
     </div>
 
     <div className={sectionBoxClassName}>

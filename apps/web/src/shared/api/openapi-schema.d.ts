@@ -3735,6 +3735,7 @@ export interface paths {
                                 icd10SuggestionLearningEnabled: boolean;
                                 insuranceEnabled: boolean;
                                 followUpEnabled: boolean;
+                                doctorDashboardMoneyEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -19117,6 +19118,7 @@ export interface paths {
                                 icd10SuggestionLearningEnabled: boolean;
                                 insuranceEnabled: boolean;
                                 followUpEnabled: boolean;
+                                doctorDashboardMoneyEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -19235,6 +19237,7 @@ export interface paths {
                         icd10SuggestionLearningEnabled?: boolean;
                         insuranceEnabled?: boolean;
                         followUpEnabled?: boolean;
+                        doctorDashboardMoneyEnabled?: boolean;
                     };
                 };
             };
@@ -19312,6 +19315,7 @@ export interface paths {
                                 icd10SuggestionLearningEnabled: boolean;
                                 insuranceEnabled: boolean;
                                 followUpEnabled: boolean;
+                                doctorDashboardMoneyEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -22629,6 +22633,131 @@ export interface paths {
                     };
                 };
                 /** @description Không có quyền dashboard.reception */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/dashboard/doctor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trang Tổng quan của bác sĩ (quyền dashboard.doctor, #286) — chỉ lượt khám do chính bác sĩ đăng nhập khám hôm nay: hàng chờ, đang khám, đã xong, kết quả mới chưa xem, hẹn tái khám; doanh thu sinh ra chỉ có khi phòng khám bật */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                date: string;
+                                total: {
+                                    count: number;
+                                    averagePerDay: number | null;
+                                };
+                                waiting: {
+                                    count: number;
+                                    longestWaitMinutes: number | null;
+                                };
+                                inProgress: {
+                                    count: number;
+                                    patientName: string | null;
+                                    minutes: number | null;
+                                };
+                                done: {
+                                    count: number;
+                                    averageMinutes: number | null;
+                                };
+                                waitingList: {
+                                    items: {
+                                        /** Format: uuid */
+                                        encounterId: string;
+                                        patientName: string;
+                                        patientCode: string;
+                                        age: number | null;
+                                        waitMinutes: number;
+                                    }[];
+                                    moreCount: number;
+                                };
+                                commonQueue: {
+                                    count: number;
+                                };
+                                unseenResults: {
+                                    count: number;
+                                    items: {
+                                        name: string;
+                                        patientName: string;
+                                        resultedAt: string;
+                                    }[];
+                                    moreCount: number;
+                                };
+                                hourly: {
+                                    hour: number;
+                                    count: number;
+                                }[];
+                                followUp: {
+                                    dueToday: number;
+                                    arrivedToday: number;
+                                    overdueNotArrived: number;
+                                    overdueWithinDays: number;
+                                };
+                                revenue: {
+                                    amount: number;
+                                } | null;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền dashboard.doctor */
                 403: {
                     headers: {
                         [name: string]: unknown;

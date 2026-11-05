@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-11-05
+
+### Trang Tổng quan của bác sĩ + công tắc "Hiện doanh thu sinh ra trên Tổng quan bác sĩ" (`docs/DECISIONS.md` #286)
+
+Quyền mới **`dashboard.doctor`** (mặc định bác sĩ): trang chủ của bác sĩ hiện lượt khám CỦA CHÍNH MÌNH hôm nay — Tổng lượt (kèm trung bình lượt/ngày), Đang chờ tôi (người chờ lâu nhất), Đang khám, Đã xong (thời gian khám trung bình), danh sách bệnh nhân đang chờ với nút "Bắt đầu khám", hàng chờ chung của Khoa (+ "Nhận ca"), kết quả cận lâm sàng mới chưa xem, lượt khám theo giờ, hẹn tái khám của tôi, dải nhắc "ca chưa đóng" (có nút đóng ca) và khối "Báo cáo của tôi" mờ "Sắp có". Công tắc mới ở Cấu hình phòng khám → Cấu hình chung: **"Hiện doanh thu sinh ra trên Tổng quan bác sĩ"** (mặc định TẮT) — bật thì bác sĩ thấy thêm ô doanh thu của các lượt khám mình khám hôm nay (tiền sau chiết khấu, gồm phiếu chưa thu); tắt thì máy chủ không gửi số tiền. Các nút của Tổng quan mở Hàng đợi khám (bắt đầu khám/nhận ca vẫn làm ở đó). Môi trường khác cần `db:seed` (quyền mới). Không migration.
+
 ## 2026-11-04
 
 ### Trang "Hẹn tái khám" của lễ tân + công tắc "Dùng danh sách Hẹn tái khám" (`docs/DECISIONS.md` #285)

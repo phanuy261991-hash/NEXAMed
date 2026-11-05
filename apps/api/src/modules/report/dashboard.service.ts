@@ -1,10 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  CLINIC_CONFIG_READER_PORT,
   FOLLOW_UP_OVERDUE_DAYS,
   REFERENCE_CATALOG_READER_PORT,
   REVENUE_GROUPS,
   addDaysToDateString,
   allocateCollectionToGroups,
+  averagePerActiveDay,
   computeDelta,
   computeDiscountAmount,
   computeInvoiceDiscount,
@@ -14,15 +16,17 @@ import {
   percentOf,
   resolveReportPeriod,
   sameSpanPreviousMonth,
+  summarizeDoctorEncounters,
   summarizeInvoiceLineNames,
   summarizePayments,
   summarizeReceptionAppointments,
   vietnamDateRangeHalfOpenUtc,
+  type ClinicConfigReaderPort,
   type ReferenceCatalogReaderPort,
   type RevenueGroup,
   type RevenueLineInput,
 } from '@nexamed/core';
-import type { CashierDashboard, DashboardKpi, DashboardPeriod, DashboardPeriodKind, OwnerDashboard, ReceptionDashboard } from '@nexamed/shared';
+import type { CashierDashboard, DashboardKpi, DashboardPeriod, DashboardPeriodKind, DoctorDashboard, OwnerDashboard, ReceptionDashboard } from '@nexamed/shared';
 import { requireBranchId } from '../../common/branch-context';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { DashboardRepository } from './dashboard.repository';
@@ -37,10 +41,19 @@ const UPCOMING_LIMIT = 5;
 /** Mã Loại tiếp nhận (`reference_catalog` RECEPTION_TYPE) mặc định của hệ thống: Khám mới / Tái khám. */
 const RECEPTION_TYPE_NEW = 'RT_NEW';
 const RECEPTION_TYPE_RETURN = 'RT_RETURN';
+/** Số bệnh nhân chờ / kết quả mới hiện trên Tổng quan bác sĩ; còn lại báo "+N". */
+const DOCTOR_WAITING_LIMIT = 5;
+const DOCTOR_UNSEEN_LIMIT = 4;
+/** Số ngày trước hôm nay dùng tính "trung bình lượt/ngày" và nhìn lại kết quả chưa xem. */
+const DOCTOR_LOOKBACK_DAYS = 7;
 
 interface Actor {
   tenantId: string;
   branchId: string | null;
+}
+
+interface DoctorActor extends Actor {
+  userId: string;
 }
 
 /** Kỳ báo cáo + kỳ so sánh theo giờ Việt Nam. Tháng này so với CÙNG KHOẢNG NGÀY của tháng trước (mùng 1 → hôm nay). */
@@ -78,7 +91,64 @@ export class DashboardService {
     private readonly unitOfWork: UnitOfWorkService,
     private readonly repository: DashboardRepository,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
+    @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
+
+  /**
+   * Trang Tổng quan của BÁC SĨ (docs/DECISIONS.md #286): chỉ HÔM NAY, chỉ lượt khám do CHÍNH bác sĩ đăng nhập khám (`doctor_id` = actor), ở chi nhánh đang làm việc. Số tiền (doanh thu sinh ra) chỉ
+   * tính và gửi khi phòng khám bật công tắc — đọc công tắc qua port TRƯỚC khi mở transaction (một request = MỘT transaction, #264); tiền là `dueAmount` sau chiết khấu qua `computeInvoiceDiscount`.
+   */
+  async getDoctorDashboard(actor: DoctorActor, now: Date = new Date()): Promise<DoctorDashboard> {
+    const branchId = requireBranchId(actor);
+    const today = getVietnamDateString(now);
+    const range = vietnamDateRangeHalfOpenUtc(today, today);
+    const previous = vietnamDateRangeHalfOpenUtc(addDaysToDateString(today, -DOCTOR_LOOKBACK_DAYS)!, addDaysToDateString(today, -1)!);
+    const unseenRange = vietnamDateRangeHalfOpenUtc(addDaysToDateString(today, -(DOCTOR_LOOKBACK_DAYS - 1))!, today);
+    const overdueFrom = addDaysToDateString(today, -FOLLOW_UP_OVERDUE_DAYS)!;
+    const moneyEnabled = await this.clinicConfigReader.getDoctorDashboardMoneyEnabled(actor.tenantId);
+
+    const data = await this.unitOfWork.runInTenantScope(actor.tenantId, async (tx) => {
+      const departmentId = await this.repository.getUserDepartmentId(tx, actor.tenantId, actor.userId);
+      const [encounters, previousDays, commonQueue, unseen, followUp, invoices] = await Promise.all([
+        this.repository.listDoctorEncountersForDay(tx, actor.tenantId, branchId, actor.userId, range.startUtc, range.endUtc),
+        this.repository.countDoctorEncountersByDay(tx, actor.tenantId, branchId, actor.userId, previous.startUtc, previous.endUtc),
+        departmentId ? this.repository.countCommonQueue(tx, actor.tenantId, branchId, departmentId, range.startUtc, range.endUtc) : Promise.resolve(0),
+        this.repository.listDoctorUnseenResults(tx, actor.tenantId, branchId, actor.userId, unseenRange.startUtc, unseenRange.endUtc, DOCTOR_UNSEEN_LIMIT),
+        this.repository.countFollowUps(tx, actor.tenantId, branchId, today, overdueFrom, actor.userId),
+        moneyEnabled ? this.repository.listDoctorInvoices(tx, actor.tenantId, branchId, actor.userId, range.startUtc, range.endUtc) : Promise.resolve([]),
+      ]);
+      return { encounters, previousDays, commonQueue, unseen, followUp, invoices };
+    });
+
+    const summary = summarizeDoctorEncounters(data.encounters, now, today, DOCTOR_WAITING_LIMIT);
+    const revenue = moneyEnabled
+      ? {
+          amount: data.invoices.reduce(
+            (sum, row) => sum + computeInvoiceDiscount({ totalAmount: row.totalAmount, discountType: row.discountType, discountValue: row.discountValue, lines: row.lines }).dueAmount,
+            0,
+          ),
+        }
+      : null;
+
+    return {
+      generatedAt: now.toISOString(),
+      date: today,
+      total: { count: summary.total, averagePerDay: averagePerActiveDay(data.previousDays.map((d) => d.count)) },
+      waiting: summary.waiting,
+      inProgress: summary.inProgress,
+      done: summary.done,
+      waitingList: summary.waitingList,
+      commonQueue: { count: data.commonQueue },
+      unseenResults: {
+        count: data.unseen.total,
+        items: data.unseen.items.map((i) => ({ name: i.name, patientName: i.patientName, resultedAt: i.resultedAt.toISOString() })),
+        moreCount: Math.max(0, data.unseen.total - data.unseen.items.length),
+      },
+      hourly: summary.hourly,
+      followUp: { ...data.followUp, overdueWithinDays: FOLLOW_UP_OVERDUE_DAYS },
+      revenue,
+    };
+  }
 
   /**
    * Trang Tổng quan của THU NGÂN (docs/DECISIONS.md #283): chỉ HÔM NAY của chi nhánh đang làm việc. Tiền đã thu/hoàn theo NGÀY THU (cùng định nghĩa "thực thu" của chủ phòng khám),

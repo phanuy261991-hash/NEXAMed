@@ -32,6 +32,7 @@ import {
   listFollowUpRemindersResponseSchema,
   createFollowUpReminderRequestSchema,
   receptionDashboardSchema,
+  doctorDashboardSchema,
   deferredPaymentStatusSchema,
   applyInvoiceDiscountRequestSchema,
   combinedInvoicePrintResponseSchema,
@@ -3601,6 +3602,19 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(receptionDashboardSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền dashboard.reception'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/reports/dashboard/doctor',
+  tags: ['report'],
+  summary: 'Trang Tổng quan của bác sĩ (quyền dashboard.doctor, #286) — chỉ lượt khám do chính bác sĩ đăng nhập khám hôm nay: hàng chờ, đang khám, đã xong, kết quả mới chưa xem, hẹn tái khám; doanh thu sinh ra chỉ có khi phòng khám bật',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(doctorDashboardSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền dashboard.doctor'),
   },
 });
 

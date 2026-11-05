@@ -298,3 +298,4 @@ Enum `drug_dose_mode` = `SCHEDULED` (theo buổi Sáng/Trưa/Chiều/Tối × s�
 | `follow_up_reminder.reminded_at` | Thời điểm liên lạc | Máy chủ đặt (`now()`), không nhập tay. |
 | Index `follow_up_reminder_encounter_idx` | `(tenant_id, encounter_id, reminded_at DESC) WHERE deleted_at IS NULL` | Lịch sử nhắc của một lượt khám + "lần nhắc gần nhất" của danh sách. |
 | `tenant_setting` khoá `follow_up_enabled` | Công tắc "Dùng danh sách Hẹn tái khám" | Boolean, mặc định BẬT khi chưa có dòng; chung cả công ty; không migration. |
+| `tenant_setting` khoá `doctor_dashboard_money_enabled` | Công tắc "Hiện doanh thu sinh ra trên Tổng quan bác sĩ" (#286) | Boolean, mặc định TẮT khi chưa có dòng; chung cả công ty; không migration. |

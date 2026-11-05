@@ -8947,6 +8947,9 @@
                         },
                         "followUpEnabled": {
                           "type": "boolean"
+                        },
+                        "doctorDashboardMoneyEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -8984,7 +8987,8 @@
                         "icd10SuggestionEnabled",
                         "icd10SuggestionLearningEnabled",
                         "insuranceEnabled",
-                        "followUpEnabled"
+                        "followUpEnabled",
+                        "doctorDashboardMoneyEnabled"
                       ]
                     },
                     "meta": {
@@ -49823,6 +49827,9 @@
                         },
                         "followUpEnabled": {
                           "type": "boolean"
+                        },
+                        "doctorDashboardMoneyEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -49860,7 +49867,8 @@
                         "icd10SuggestionEnabled",
                         "icd10SuggestionLearningEnabled",
                         "insuranceEnabled",
-                        "followUpEnabled"
+                        "followUpEnabled",
+                        "doctorDashboardMoneyEnabled"
                       ]
                     },
                     "meta": {
@@ -50228,6 +50236,9 @@
                   },
                   "followUpEnabled": {
                     "type": "boolean"
+                  },
+                  "doctorDashboardMoneyEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -50520,6 +50531,9 @@
                         },
                         "followUpEnabled": {
                           "type": "boolean"
+                        },
+                        "doctorDashboardMoneyEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -50557,7 +50571,8 @@
                         "icd10SuggestionEnabled",
                         "icd10SuggestionLearningEnabled",
                         "insuranceEnabled",
-                        "followUpEnabled"
+                        "followUpEnabled",
+                        "doctorDashboardMoneyEnabled"
                       ]
                     },
                     "meta": {
@@ -58065,6 +58080,357 @@
           },
           "403": {
             "description": "Không có quyền dashboard.reception",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/dashboard/doctor": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Trang Tổng quan của bác sĩ (quyền dashboard.doctor, #286) — chỉ lượt khám do chính bác sĩ đăng nhập khám hôm nay: hàng chờ, đang khám, đã xong, kết quả mới chưa xem, hẹn tái khám; doanh thu sinh ra chỉ có khi phòng khám bật",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string"
+                        },
+                        "total": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "number"
+                            },
+                            "averagePerDay": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "averagePerDay"
+                          ]
+                        },
+                        "waiting": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "number"
+                            },
+                            "longestWaitMinutes": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "longestWaitMinutes"
+                          ]
+                        },
+                        "inProgress": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "number"
+                            },
+                            "patientName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "minutes": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "patientName",
+                            "minutes"
+                          ]
+                        },
+                        "done": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "number"
+                            },
+                            "averageMinutes": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "averageMinutes"
+                          ]
+                        },
+                        "waitingList": {
+                          "type": "object",
+                          "properties": {
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "encounterId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "patientName": {
+                                    "type": "string"
+                                  },
+                                  "patientCode": {
+                                    "type": "string"
+                                  },
+                                  "age": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "waitMinutes": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "encounterId",
+                                  "patientName",
+                                  "patientCode",
+                                  "age",
+                                  "waitMinutes"
+                                ]
+                              }
+                            },
+                            "moreCount": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "items",
+                            "moreCount"
+                          ]
+                        },
+                        "commonQueue": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "count"
+                          ]
+                        },
+                        "unseenResults": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "number"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "patientName": {
+                                    "type": "string"
+                                  },
+                                  "resultedAt": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "patientName",
+                                  "resultedAt"
+                                ]
+                              }
+                            },
+                            "moreCount": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "items",
+                            "moreCount"
+                          ]
+                        },
+                        "hourly": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "hour": {
+                                "type": "number"
+                              },
+                              "count": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "hour",
+                              "count"
+                            ]
+                          }
+                        },
+                        "followUp": {
+                          "type": "object",
+                          "properties": {
+                            "dueToday": {
+                              "type": "number"
+                            },
+                            "arrivedToday": {
+                              "type": "number"
+                            },
+                            "overdueNotArrived": {
+                              "type": "number"
+                            },
+                            "overdueWithinDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "dueToday",
+                            "arrivedToday",
+                            "overdueNotArrived",
+                            "overdueWithinDays"
+                          ]
+                        },
+                        "revenue": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "amount": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "amount"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "date",
+                        "total",
+                        "waiting",
+                        "inProgress",
+                        "done",
+                        "waitingList",
+                        "commonQueue",
+                        "unseenResults",
+                        "hourly",
+                        "followUp",
+                        "revenue"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền dashboard.doctor",
             "content": {
               "application/json": {
                 "schema": {

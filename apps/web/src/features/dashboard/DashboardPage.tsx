@@ -6,23 +6,26 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { SegmentedToggle } from '../../shared/ui/SegmentedToggle';
 import { useHasPermission } from '../auth/usePermission';
 import { CashierDashboardPage } from './CashierDashboardPage';
+import { DoctorDashboardPage } from './DoctorDashboardPage';
 import { OwnerDashboardPage } from './OwnerDashboardPage';
 import { ReceptionDashboardPage } from './ReceptionDashboardPage';
 
-type DashboardView = 'owner' | 'reception' | 'cashier';
+type DashboardView = 'owner' | 'reception' | 'cashier' | 'doctor';
 
 /**
- * Trang tổng quan sau đăng nhập, KHÁC THEO VAI TRÒ (docs/DECISIONS.md #279/#283): quyền `dashboard.owner` → Tổng quan chủ phòng khám, `dashboard.reception` → lễ tân, `dashboard.cashier` → thu ngân (thứ tự mặc định: chủ phòng khám, lễ tân, thu ngân).
- * Tài khoản có nhiều quyền (ví dụ vai trò tuỳ biến) thấy thanh chuyển giữa các bản; bản đầu tiên theo thứ tự trên là mặc định. Bác sĩ sẽ có bản riêng ở đợt sau;
- * vai trò chưa có bản nào giữ trạng thái trống (không bịa số liệu).
+ * Trang tổng quan sau đăng nhập, KHÁC THEO VAI TRÒ (docs/DECISIONS.md #279/#283/#286): quyền `dashboard.owner` → Tổng quan chủ phòng khám, `dashboard.reception` → lễ tân, `dashboard.doctor` → bác sĩ, `dashboard.cashier` → thu ngân
+ * (thứ tự mặc định: chủ phòng khám, lễ tân, bác sĩ, thu ngân). Tài khoản có nhiều quyền (ví dụ vai trò tuỳ biến) thấy thanh chuyển giữa các bản; bản đầu tiên theo thứ tự trên là mặc định.
+ * Vai trò chưa có bản nào giữ trạng thái trống (không bịa số liệu).
  */
 export function DashboardPage() {
   const isOwner = useHasPermission('dashboard', 'owner');
   const isReception = useHasPermission('dashboard', 'reception');
+  const isDoctor = useHasPermission('dashboard', 'doctor');
   const isCashier = useHasPermission('dashboard', 'cashier');
   const views: Array<{ id: DashboardView; label: string }> = [
     ...(isOwner ? [{ id: 'owner' as const, label: 'Chủ phòng khám' }] : []),
     ...(isReception ? [{ id: 'reception' as const, label: 'Lễ tân' }] : []),
+    ...(isDoctor ? [{ id: 'doctor' as const, label: 'Bác sĩ' }] : []),
     ...(isCashier ? [{ id: 'cashier' as const, label: 'Thu ngân' }] : []),
   ];
   const [chosen, setChosen] = useState<DashboardView | null>(null);
@@ -36,7 +39,7 @@ export function DashboardPage() {
           <SegmentedToggle items={views} value={current.id} onChange={setChosen} ariaLabel="Chọn bản tổng quan" />
         </div>
       )}
-      {current.id === 'owner' ? <OwnerDashboardPage /> : current.id === 'reception' ? <ReceptionDashboardPage /> : <CashierDashboardPage />}
+      {current.id === 'owner' ? <OwnerDashboardPage /> : current.id === 'reception' ? <ReceptionDashboardPage /> : current.id === 'doctor' ? <DoctorDashboardPage /> : <CashierDashboardPage />}
     </DashboardSurface>
   );
 }

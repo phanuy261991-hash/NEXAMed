@@ -365,6 +365,11 @@ export const clinicSettingsSchema = z.object({
    * máy chủ từ chối các API của trang (409). Bác sĩ vẫn chọn được hướng "Hẹn tái khám" ở kế hoạch điều trị (dữ liệu lâm sàng, in trong bệnh án) — chỉ phần danh sách nhắc của lễ tân bị ẩn.
    */
   followUpEnabled: z.boolean(),
+  /**
+   * "Hiện doanh thu sinh ra trên Tổng quan bác sĩ" (#286) — chung cả công ty, TẮT (mặc định). BẬT: Tổng quan của bác sĩ có thêm ô "Doanh thu sinh ra" (tiền các phiếu thu của lượt khám bác sĩ đó khám hôm nay).
+   * TẮT: máy chủ không gửi số tiền, bác sĩ không thấy.
+   */
+  doctorDashboardMoneyEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -410,6 +415,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   icd10SuggestionLearningEnabled: z.boolean().optional(),
   insuranceEnabled: z.boolean().optional(),
   followUpEnabled: z.boolean().optional(),
+  doctorDashboardMoneyEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -480,6 +486,8 @@ export const DEFAULT_ICD10_SUGGESTION_LEARNING_ENABLED = false;
 export const DEFAULT_INSURANCE_ENABLED = false;
 /** Bật theo mặc định ("Dùng Hẹn tái khám", #285) — pilot đang chạy không đổi gì; phòng khám không dùng chủ động tắt. */
 export const DEFAULT_FOLLOW_UP_ENABLED = true;
+/** Tắt theo mặc định ("Hiện doanh thu sinh ra trên Tổng quan bác sĩ", #286) — bác sĩ không thấy tiền tới khi chủ phòng khám chủ động bật. */
+export const DEFAULT_DOCTOR_DASHBOARD_MONEY_ENABLED = false;
 /** `GET /clinic-settings/follow-up-enabled` — chiếu tối thiểu tự-phục vụ (lễ tân/bác sĩ không có `clinic_config.read`), khuôn `insuranceStatusSchema`. */
 export const followUpFeatureStatusSchema = z.object({ enabled: z.boolean() });
 export type FollowUpFeatureStatus = z.infer<typeof followUpFeatureStatusSchema>;

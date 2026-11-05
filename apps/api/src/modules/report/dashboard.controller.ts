@@ -33,4 +33,11 @@ export class DashboardController {
   async cashier(@Req() req: Request) {
     return this.dashboardService.getCashierDashboard(req.user!);
   }
+
+  /** Tổng quan của bác sĩ (#286): số liệu luôn là của CHÍNH người đăng nhập (`req.user.userId`), không nhận mã bác sĩ từ client. */
+  @Get('doctor')
+  @RequirePermission('dashboard', 'doctor')
+  async doctor(@Req() req: Request) {
+    return this.dashboardService.getDoctorDashboard(req.user!);
+  }
 }

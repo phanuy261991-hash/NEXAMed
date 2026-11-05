@@ -67,6 +67,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         icd10SuggestionLearningEnabled,
         insuranceEnabled,
         followUpEnabled,
+        doctorDashboardMoneyEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -103,6 +104,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getIcd10SuggestionLearningEnabled(tx, tenantId),
         this.clinicSettingsRepository.getInsuranceEnabled(tx, tenantId),
         this.clinicSettingsRepository.getFollowUpEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getDoctorDashboardMoneyEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -140,6 +142,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         icd10SuggestionLearningEnabled,
         insuranceEnabled,
         followUpEnabled,
+        doctorDashboardMoneyEnabled,
       };
     });
   }
@@ -398,6 +401,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.followUpEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertFollowUpEnabled(tx, tenantId, actorId, dto.followUpEnabled);
       }
+      if (dto.doctorDashboardMoneyEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertDoctorDashboardMoneyEnabled(tx, tenantId, actorId, dto.doctorDashboardMoneyEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -434,7 +440,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.icd10SuggestionEnabled !== undefined ||
         dto.icd10SuggestionLearningEnabled !== undefined ||
         dto.insuranceEnabled !== undefined ||
-        dto.followUpEnabled !== undefined;
+        dto.followUpEnabled !== undefined ||
+        dto.doctorDashboardMoneyEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -483,6 +490,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         icd10SuggestionLearningEnabled,
         insuranceEnabled,
         followUpEnabled,
+        doctorDashboardMoneyEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -519,6 +527,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getIcd10SuggestionLearningEnabled(tx, tenantId),
         this.clinicSettingsRepository.getInsuranceEnabled(tx, tenantId),
         this.clinicSettingsRepository.getFollowUpEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getDoctorDashboardMoneyEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -556,6 +565,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         icd10SuggestionLearningEnabled,
         insuranceEnabled,
         followUpEnabled,
+        doctorDashboardMoneyEnabled,
       };
     });
   }
@@ -647,5 +657,10 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` — công tắc "Dùng Hẹn tái khám" (#285). */
   getFollowUpEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getFollowUpEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getFollowUpEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` — công tắc "Hiện doanh thu sinh ra trên Tổng quan bác sĩ" (#286). */
+  getDoctorDashboardMoneyEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getDoctorDashboardMoneyEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getDoctorDashboardMoneyEnabled(tx, tenantId));
   }
 }
