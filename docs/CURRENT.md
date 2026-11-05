@@ -7,7 +7,7 @@ Nhật ký trạng thái đầy đủ cũ (từng đợt) ở `docs/archive/CURR
 ## Bức tranh hiện tại
 
 - Phiên bản phần mềm `0.9.0` (chốt `1.0.0` SAU pilot). Đang pilot tại phòng khám thật; môi trường dev dùng tenant test cố định `01a0cc3c-8626-746b-9d2a-5ea0268ec19f`, đăng nhập `dev.admin` / `Dev@12345` (tài khoản quét quyền `rl.<vai trò>`, mật khẩu `12345678`).
-- `master` = `73cb453` (05/11/2026; CI GitHub XANH). Full API 2021, core 696, shared 126, web 575 đều xanh khi push.
+- `master` = `5f5c82c` (05/11/2026; CI GitHub XANH). Full API 2055, core 710, shared 127, web 604, setup 112 đều xanh khi push.
 - Phạm vi v1 đã mở rộng nhiều so với PRD gốc (danh sách chốt đầy đủ ở `CLAUDE.md`, mục Phạm vi v1): Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn, Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư GĐ1–5, Công nợ nhà cung cấp A–E, Cận lâm sàng, Điều trị & Hẹn tái khám, Lịch làm việc/đơn nghỉ/đổi ca, Bảng giá có thời hạn, Thẻ BHYT (chỉ lưu/hiển thị), Hồ sơ bệnh án MS 15/BV-01, Khách không làm dịch vụ, hệ thống báo cáo + Tổng quan theo vai trò.
 - **Tầng chi nhánh** (#231/#233/#235): Đợt 1–3 xong; chưa bật chi nhánh thứ 2 ở khách thật. Mọi chức năng mới trả lời 4 câu hỏi chi nhánh (`CLAUDE.md`). **SaaS** (#237): nền tên miền phụ + Khu quản trị nền tảng xong; còn hạ tầng thật (chờ báo giá). **Trình cài đặt `nexamed-setup`** (#238) xong; chưa kiểm Let's Encrypt/NAS/Windows sạch.
 - **Runtime Node 26** (#253), NestJS 11, Vite 6/Vitest 4 (#249, #252). Mọi mã mới chạy được ở LAN HTTP on-prem (#257); lỗi hiện qua màn thông báo cụ thể (#255); POST có `Idempotency-Key` (#257); một request = MỘT transaction (#264).
@@ -18,7 +18,7 @@ Nhật ký trạng thái đầy đủ cũ (từng đợt) ở `docs/archive/CURR
 
 Tổng quan **bác sĩ** (#286, 05/11/2026, `dashboard.doctor`, công tắc "hiện doanh thu sinh ra" mặc định tắt) đã code + test + kiểm Chrome IP LAN, full API 2021 xanh, đã push `73cb453` (CI GitHub XANH) — mockup đã chốt (https://claude.ai/artifact/D3dfooh1FoDkXv513RQJ5p, tệp BacSi); 6 điểm khác mockup chờ chủ dự án xem (DECISIONS #286); môi trường khác cần `db:seed`.
 
-**Báo cáo ngày + nhóm menu "Báo cáo" + Trung tâm báo cáo (#287, 05/11/2026) — ĐÃ LÀM, CHƯA COMMIT**: mockup 8 màn đã duyệt (https://claude.ai/artifact/9XELE6UCXLKwdUN4KcVymV), Báo cáo ngày có Phạm vi nhiều chi nhánh (tờ in trang tổng + mỗi chi nhánh một trang) + Excel, Trung tâm báo cáo gọn (chỉ báo cáo đã làm), quyền `daily_report.read`, loại chứng từ in `REPORT`. Quy tắc mới: **mọi báo cáo phải có Excel và In** — ĐÃ bổ sung cho cả 8 báo cáo cũ (05/11/2026), báo cáo mới nào cũng phải đủ cả hai. Môi trường khác cần `db:deploy` (migration `20261105100000_print_report_document`) + `db:seed`.
+**Báo cáo ngày + nhóm menu "Báo cáo" + Trung tâm báo cáo (#287, 05/11/2026) — XONG, đã push `5f5c82c`, CI xanh**: mockup 8 màn đã duyệt (https://claude.ai/artifact/9XELE6UCXLKwdUN4KcVymV), Báo cáo ngày có Phạm vi nhiều chi nhánh (tờ in trang tổng + mỗi chi nhánh một trang) + Excel, Trung tâm báo cáo gọn (chỉ báo cáo đã làm), quyền `daily_report.read`, loại chứng từ in `REPORT`. Quy tắc mới: **mọi báo cáo phải có Excel và In** — ĐÃ bổ sung cho cả 8 báo cáo cũ (05/11/2026), báo cáo mới nào cũng phải đủ cả hai. Môi trường khác cần `db:deploy` (migration `20261105100000_print_report_document`) + `db:seed`.
 
 "N chỉ số ngoài khoảng" của Tổng quan bác sĩ (#286 bổ sung) đã làm xong 05/11/2026 (Chrome IP LAN 5/5).
 
@@ -44,7 +44,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-BaoCaoNgay-TrungTamBaoCao-ExcelIn-ChiSoNgoaiKhoang-2026-11-05-p2.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 05/11/2026 phần 2: Báo cáo ngày + Trung tâm báo cáo + Excel/In cho mọi báo cáo + "chỉ số ngoài khoảng"; TOÀN BỘ CHƯA COMMIT, cần kiểm lần cuối rồi commit). Bản trước: `docs/handoffs/HANDOFF-HenTaiKham-TongQuanBacSi-2026-11-05.md`. Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
+**`docs/handoffs/HANDOFF-BaoCaoNgay-TrungTamBaoCao-ExcelIn-ChiSoNgoaiKhoang-2026-11-05-p2.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 05/11/2026 phần 2: Báo cáo ngày + Trung tâm báo cáo + Excel/In cho mọi báo cáo + "chỉ số ngoài khoảng"; đã commit + push `5f5c82c`, CI xanh). Bản trước: `docs/handoffs/HANDOFF-HenTaiKham-TongQuanBacSi-2026-11-05.md`. Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 
