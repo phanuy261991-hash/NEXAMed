@@ -25,6 +25,7 @@ import {
   Receipt,
   Scales,
   SidebarSimple,
+  ShieldCheck,
   SlidersHorizontal,
   Stack,
   Buildings,
@@ -324,6 +325,7 @@ export function Sidebar() {
   const canSeeDoctorReport = useHasPermission('doctor_report', 'read');
   const canSeePatientReport = useHasPermission('patient_report', 'read');
   const canSeeClinicalReport = useHasPermission('clinical_report', 'read');
+  const canSeeQualityReport = useHasPermission('quality_report', 'read');
   const canSeePharmacyReport = useHasPermission('pharmacy_report', 'read');
   const canSeeSystemReport = useHasPermission('company_report', 'read');
   // "Báo cáo dòng tiền" (Sổ quỹ & Thu chi GĐ2) — báo cáo quản trị tổng hợp toàn phòng khám, CHỈ
@@ -825,6 +827,7 @@ export function Sidebar() {
                   {canSeePharmacyReport && <NavItem to="/reports/pharmacy" label="Thuốc và vật tư" icon={Pill} collapsed={false} indent />}
                   {canSeeSystemReport && <NavItem to="/reports/system" label="Toàn hệ thống" icon={Buildings} collapsed={false} indent />}
                   {canSeeOperationsReport && <NavItem to="/reports/operations" label="Khám bệnh và vận hành" icon={ChartLine} collapsed={false} indent />}
+                  {canSeeQualityReport && <NavItem to="/reports/quality" label="Chất lượng và tuân thủ" icon={ShieldCheck} collapsed={false} indent />}
                 </ul>
               )}
             </li>

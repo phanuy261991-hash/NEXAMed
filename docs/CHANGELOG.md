@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-06
 
+### Báo cáo: trang "Chất lượng và tuân thủ" (3 tab) (`docs/DECISIONS.md` #290)
+
+Menu mới **Chất lượng và tuân thủ** (nhóm Báo cáo, quyền mới `quality_report.read`, mặc định chỉ quản lý phòng khám): **Lượt khám chưa hoàn tất** (ảnh chụp đến hôm nay, không theo kỳ: lượt chờ khám/đang khám từ ngày trước, ca thu ngân chưa đóng, số phiếu chưa thu kèm liên kết sang Doanh thu → Phiếu chưa thu), **Liên thông đơn thuốc** (đơn đã ký trong kỳ: đã gửi / chờ gửi / cổng từ chối, theo bác sĩ, danh sách đơn tồn cũ nhất trước kèm lỗi của cổng) và **Nhật ký kiểm toán** (bấm tab mở trang nhật ký hoạt động đã có). Hai tab đầu có Xuất Excel và In, chọn Phạm vi nhiều chi nhánh như các báo cáo khác. Môi trường khác cần `db:seed` (quyền mới). Không migration.
+
 ### Trang "Cập nhật phần mềm" thiết kế lại (`docs/DECISIONS.md` #288, mockup chủ dự án chốt 06/11/2026)
 
 Thẻ thương hiệu bên trái (logo NEXA Med canh giữa, dòng "Phần Mềm Quản Lý Phòng Khám Chuyên Nghiệp", phiên bản, ngày phát hành, chế độ triển khai, số bản dựng, khối "Bản quyền" và nút "Sao chép thông tin gửi hỗ trợ"); bên phải là khung kiểm tra cập nhật, "Có gì mới" với ba nhóm Tính năng mới / Cải tiến / Sửa lỗi **mặc định thu gọn** (bấm "Xem chi tiết" mới xổ ra) và lịch sử kiểm tra. Thông tin bản quyền/hỗ trợ khai báo ở một nơi (`shared/version/copyright-info.ts`), dòng chưa có thông tin tự ẩn. Khung có đầu khung dùng chung mới `shared/ui/SectionCard.tsx`. Không migration, không quyền mới.

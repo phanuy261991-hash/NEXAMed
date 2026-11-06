@@ -67,3 +67,4 @@ export * from './platform';
 export * from './medicine-label';
 export * from './report-patients';
 export * from './report-clinical';
+export * from './report-quality';

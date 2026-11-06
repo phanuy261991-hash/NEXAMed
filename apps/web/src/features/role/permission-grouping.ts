@@ -47,6 +47,7 @@ export const MODULE_LABELS: Record<string, string> = {
   revenue_report: 'Báo cáo Doanh thu',
   doctor_report: 'Báo cáo Bác sĩ',
   clinical_report: 'Báo cáo Chuyên môn',
+  quality_report: 'Báo cáo Chất lượng và tuân thủ',
   patient_report: 'Báo cáo Bệnh nhân',
   pharmacy_report: 'Báo cáo Thuốc và vật tư',
   // Cập nhật phần mềm (#236, bước 2) — nhãn thêm NGAY lúc tạo quyền (`permission-grouping.spec.ts` chặn nếu thiếu).

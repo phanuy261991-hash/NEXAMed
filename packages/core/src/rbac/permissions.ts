@@ -79,6 +79,7 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'revenue_report', action: 'read', description: 'Xem và xuất báo cáo Doanh thu (theo kỳ, theo nhóm và dịch vụ, theo phương thức, phiếu chưa thu, theo thu ngân và chốt ca)' },
   // Trang báo cáo "Thuốc và vật tư" (#287): đã phát, lãi gộp (có giá vốn), kiểm soát đặc biệt. 4 tab kho còn lại giữ quyền kho cũ. Gộp nhiều chi nhánh cần THÊM company_report.read. Mặc định CHỈ clinic_admin.
   { module: 'clinical_report', action: 'read', description: 'Xem và xuất báo cáo Chuyên môn (cơ cấu chẩn đoán ICD-10, cận lâm sàng)' },
+  { module: 'quality_report', action: 'read', description: 'Xem và xuất báo cáo Chất lượng và tuân thủ (lượt khám chưa hoàn tất, liên thông đơn thuốc)' },
   { module: 'patient_report', action: 'read', description: 'Xem và xuất báo cáo Bệnh nhân (mới và cũ, tuổi giới địa bàn, bệnh nhân không quay lại)' },
   { module: 'pharmacy_report', action: 'read', description: 'Xem và xuất báo cáo Thuốc và vật tư (đã phát, lãi gộp, kiểm soát đặc biệt)' },
   { module: 'operations_report', action: 'read', description: 'Xem và xuất báo cáo Khám bệnh và vận hành (sổ khám bệnh, giờ cao điểm, thời gian chờ, huỷ và không đến, tái khám, nguồn đặt lịch)' },
@@ -542,6 +543,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'revenue_report.read': 'global',
     'doctor_report.read': 'global',
     'clinical_report.read': 'global',
+    'quality_report.read': 'global',
     'patient_report.read': 'global',
     'pharmacy_report.read': 'global',
     // Hẹn tái khám (#285).

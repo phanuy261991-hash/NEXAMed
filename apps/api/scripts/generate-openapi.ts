@@ -40,6 +40,10 @@ import {
   doctorReportQuerySchema,
   patientReportQuerySchema,
   clinicalReportQuerySchema,
+  qualityIncompleteQuerySchema,
+  qualityInteropQuerySchema,
+  qualityIncompleteReportSchema,
+  qualityInteropReportSchema,
   clinicalDiagnosisReportSchema,
   clinicalParaclinicalReportSchema,
   patientNewReturningReportSchema,
@@ -4065,6 +4069,43 @@ for (const r of clinicalReports) {
       200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
       401: errorResponse('Thiếu hoặc sai access token'),
       403: errorResponse(CLINICAL_FORBIDDEN),
+    },
+  });
+}
+
+// Trang báo cáo "Chất lượng và tuân thủ" (#290): 2 báo cáo (tab "Nhật ký kiểm toán" dẫn sang trang cũ), mỗi báo cáo một route xem và một route xuất Excel.
+const QUALITY_FORBIDDEN = 'Không có quyền quality_report.read hoặc company_report.read';
+const qualityReports: Array<{ path: string; label: string; summary: string; query: typeof qualityInteropQuerySchema | typeof qualityIncompleteQuerySchema; schema: Parameters<typeof envelope>[0] }> = [
+  { path: 'incomplete', label: 'Lượt khám chưa hoàn tất', summary: 'Lượt khám chưa hoàn tất — ảnh chụp đến hôm nay: lượt chờ khám/đang khám từ các ngày trước, ca thu ngân mở từ các ngày trước, số phiếu chưa thu từ các ngày trước (không theo kỳ, chỉ phạm vi chi nhánh)', query: qualityIncompleteQuerySchema, schema: qualityIncompleteReportSchema },
+  { path: 'interop', label: 'Liên thông đơn thuốc', summary: 'Liên thông đơn thuốc — đơn đã ký trong kỳ: đã gửi, chờ gửi, cổng từ chối, theo bác sĩ, danh sách đơn tồn kèm lỗi', query: qualityInteropQuerySchema, schema: qualityInteropReportSchema },
+];
+for (const r of qualityReports) {
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/quality/${r.path}`,
+    tags: ['report'],
+    summary: `${r.summary} (quyền quality_report.read, #290; scope=all|pick cần thêm company_report.read)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: r.query },
+    responses: {
+      200: jsonResponse('Thành công', envelope(r.schema)),
+      400: errorResponse('Tham số không hợp lệ'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(QUALITY_FORBIDDEN),
+      404: errorResponse('Chi nhánh không thuộc công ty'),
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/quality/${r.path}/export`,
+    tags: ['report'],
+    summary: `Xuất Excel ${r.label} (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: r.query },
+    responses: {
+      200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(QUALITY_FORBIDDEN),
     },
   });
 }

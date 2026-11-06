@@ -1,6 +1,6 @@
 # Current — NEXAMed
 
-Trạng thái HIỆN TẠI của dự án (cập nhật 05/11/2026). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
+Trạng thái HIỆN TẠI của dự án (cập nhật 06/11/2026). File này chỉ giữ bức tranh hiện tại + việc đang làm/đang chờ; **không phải nhật ký** (nhật ký ở `docs/CHANGELOG.md`, quyết định ở `docs/DECISIONS.md`, việc theo phase ở `docs/TASK.md`).
 
 Nhật ký trạng thái đầy đủ cũ (từng đợt) ở `docs/archive/CURRENT-den-2026-10-16.md` và `docs/archive/CURRENT-den-2026-11-04.md` (bản dài đến 04/11/2026, gồm chi tiết kiểm thử từng chức năng) — **chỉ mở khi cần tra một mục cụ thể**. Khi file này vượt ~40 KB thì chuyển phần cũ sang `docs/archive/CURRENT-*.md` mới và viết lại bản ngắn (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
@@ -32,7 +32,7 @@ Tổng quan **bác sĩ** (#286, 05/11/2026, `dashboard.doctor`, công tắc "hi�
 
 **Trang "Toàn hệ thống" (#287, 05/11/2026) — XONG 4/4 tab** (So sánh chi nhánh có mockup đúng số liệu; Xếp hạng, Tổng hợp tháng, Khám chéo chi nhánh chưa có hình vẽ nên dựng theo khuôn và liệt kê cột ở DECISIONS #287; dùng quyền `company_report.read`, không quyền mới, không cần `db:seed`; phạm vi mặc định "Tất cả chi nhánh"; Excel + In; Chrome IP LAN 68/68). Khám chéo chi nhánh KHÔNG hiện tiền theo bệnh nhân (#231).
 
-**Trang "Bệnh nhân" (3 tab) và "Chuyên môn" (3 tab) (#289, 06/11/2026) — XONG** (quyền `patient_report.read`/`clinical_report.read`, cần `db:seed`; Excel + In; Chrome IP LAN 58/58 và 42/42; CHƯA commit). **Còn lại: nhóm "Chất lượng và tuân thủ"** (Lượt khám chưa hoàn tất, Liên thông đơn thuốc, Nhật ký kiểm toán) — mockup `Main.dc.html` đã duyệt.
+**Trang "Bệnh nhân" (3 tab) và "Chuyên môn" (3 tab) (#289, 06/11/2026) — XONG** (quyền `patient_report.read`/`clinical_report.read`, cần `db:seed`; Excel + In; Chrome IP LAN 58/58 và 42/42; đã commit `701a507`). **Trang "Chất lượng và tuân thủ" (#290, 06/11/2026) — XONG, 3/3 tab** (Lượt khám chưa hoàn tất là ảnh chụp đến hôm nay không theo kỳ, Liên thông đơn thuốc theo ngày ký đơn, Nhật ký kiểm toán dẫn sang trang cũ; quyền `quality_report.read` chỉ quản lý phòng khám, cần `db:seed`; Excel + In; API 14 ca + đột biến 4/4, Chrome IP LAN 49/49; CHƯA commit). Với trang này danh mục 39 báo cáo đã duyệt không còn nhóm nào chưa làm.
 
 **Trang "Cập nhật phần mềm" làm lại (#288, 06/11/2026) — XONG** theo mockup chủ dự án chốt; chờ thông tin bản quyền thật (`shared/version/copyright-info.ts`). **Luồng gửi mẫu xét nghiệm cho đối tác**: chủ dự án đã chốt nghiệp vụ, mockup viết dở, CHƯA code (xem handoff).
 
@@ -56,7 +56,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-CapNhatPhanMem-BaoCaoBenhNhanChuyenMon-GuiMauDoiTac-2026-11-06-p2.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 06/11/2026 phần 6: trang Cập nhật phần mềm làm lại, báo cáo Bệnh nhân + Chuyên môn xong nhưng CHƯA COMMIT; kế tiếp "Chất lượng và tuân thủ" và luồng gửi mẫu xét nghiệm cho đối tác). Bản trước: `docs/handoffs/HANDOFF-BaoCaoThuocVatTu-ToanHeThong-2026-11-06.md`. Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
+**`docs/handoffs/HANDOFF-BaoCaoChatLuongTuanThu-GuiMauDoiTac-2026-11-06-p3.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 06/11/2026 phần 7: báo cáo "Chất lượng và tuân thủ" xong phần máy chủ + test, còn web + kiểm Chrome; kế tiếp mockup gửi mẫu đối tác). Bản trước: `docs/handoffs/HANDOFF-CapNhatPhanMem-BaoCaoBenhNhanChuyenMon-GuiMauDoiTac-2026-11-06-p2.md` (có KHUÔN dựng trang báo cáo ở mục 4). Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 
