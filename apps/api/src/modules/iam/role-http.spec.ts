@@ -237,7 +237,7 @@ describe('HTTP e2e — /api/v1/roles', () => {
     it('GET/PUT ma trận trả `companions` (quyền đi kèm gợi ý, docs/DECISIONS.md #208) — quyền có phụ thuộc có danh sách, quyền khác rỗng', async () => {
       const res = await request(app.getHttpServer()).get(`/api/v1/roles/${customRoleId}/permissions`).set(authed(clinicAdminToken));
       const perm = (m: string, a: string) => res.body.data.permissions.find((p: { module: string; action: string }) => p.module === m && p.action === a);
-      expect([...perm('stock_receipt', 'create').companions].sort()).toEqual(['cash_account.read', 'drug.read', 'reference_catalog.read']);
+      expect([...perm('stock_receipt', 'create').companions].sort()).toEqual(['cash_account.read', 'drug.read', 'reference_catalog.read', 'supplier.read']);
       expect(perm('patient', 'read').companions).toEqual([]);
       // Mọi companion trả về đều là quyền có thật trong danh mục (không gợi ý quyền không tồn tại).
       const keys = new Set(res.body.data.permissions.map((p: { module: string; action: string }) => `${p.module}.${p.action}`));
@@ -248,7 +248,7 @@ describe('HTTP e2e — /api/v1/roles', () => {
         .set(authed(clinicAdminToken))
         .send({ version: res.body.data.role.version, entries: [] });
       expect(put.status).toBe(200);
-      expect(put.body.data.permissions.find((p: { module: string; action: string }) => p.module === 'stock_receipt' && p.action === 'create').companions.length).toBe(3);
+      expect(put.body.data.permissions.find((p: { module: string; action: string }) => p.module === 'stock_receipt' && p.action === 'create').companions.length).toBe(4);
     });
 
     it('cấp LẠI một quyền từng thu hồi (cấp → thu hồi → cấp lại) → 200, hiệu lực đúng — không vỡ unique (docs/DECISIONS.md #207)', async () => {
