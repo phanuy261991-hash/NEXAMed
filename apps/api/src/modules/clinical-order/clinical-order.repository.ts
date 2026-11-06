@@ -69,7 +69,7 @@ const QUEUE_ITEM_INCLUDE = {
     },
   },
   technicalService: {
-    select: { id: true, code: true, name: true, serviceKind: true, resultType: true, specimenTypeCode: true, categoryCode: true, departmentId: true, department: { select: { id: true, name: true } } },
+    select: { id: true, code: true, name: true, serviceKind: true, resultType: true, sentToPartner: true, specimenTypeCode: true, categoryCode: true, departmentId: true, department: { select: { id: true, name: true } } },
   },
   invoiceLines: INVOICE_STATUS_SELECT,
   results: { where: { deletedAt: null }, select: { supersedesId: true, signedAt: true } },

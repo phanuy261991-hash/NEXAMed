@@ -87,6 +87,7 @@ export const businessCodeTypeSchema = z.enum([
   'CLINICAL_ORDER',
   'SPECIMEN_TUBE',
   'ARCHIVE_NO',
+  'LAB_PARTNER_DISPATCH',
 ]);
 export type BusinessCodeType = z.infer<typeof businessCodeTypeSchema>;
 
@@ -168,6 +169,8 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, BusinessCodeT
   // "Số lưu trữ" của hồ sơ bệnh án (docs/DECISIONS.md #269, đổi từ "Số bệnh án" ngày 30/10/2026 theo mẫu MS 15/BV-01 của Thông tư 32/2023/TT-BYT) — cấp lúc "Hoàn tất khám". Mặc định theo NĂM,
   // chung cả công ty, đặt lại về 1 mỗi đầu năm (LT2026-000042) — chủ dự án chốt; tenant tự đổi khuôn ở "Cấu hình mẫu mã phát sinh". Tên trung tính (không gắn "của lượt khám") để sau này gói Sản/Nhi
   // có thể cấp số lưu trữ cho cả đợt theo dõi thay vì từng lượt.
+  // "Gửi mẫu đối tác" (docs/DECISIONS.md #291) — mã đợt gửi mẫu cho đối tác xét nghiệm (GM2611000001), in trên phiếu giao mẫu và bảng kê.
+  LAB_PARTNER_DISPATCH: { label: 'Mã đợt gửi mẫu đối tác', internalPrefix: 'GM' },
   ARCHIVE_NO: {
     label: 'Số lưu trữ',
     internalPrefix: 'LT',

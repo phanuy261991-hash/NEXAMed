@@ -54536,7 +54536,8 @@
                                   "PRICE_LIST",
                                   "CLINICAL_ORDER",
                                   "SPECIMEN_TUBE",
-                                  "ARCHIVE_NO"
+                                  "ARCHIVE_NO",
+                                  "LAB_PARTNER_DISPATCH"
                                 ]
                               },
                               "label": {
@@ -55464,7 +55465,8 @@
                 "PRICE_LIST",
                 "CLINICAL_ORDER",
                 "SPECIMEN_TUBE",
-                "ARCHIVE_NO"
+                "ARCHIVE_NO",
+                "LAB_PARTNER_DISPATCH"
               ]
             },
             "required": true,
@@ -55549,7 +55551,8 @@
                             "PRICE_LIST",
                             "CLINICAL_ORDER",
                             "SPECIMEN_TUBE",
-                            "ARCHIVE_NO"
+                            "ARCHIVE_NO",
+                            "LAB_PARTNER_DISPATCH"
                           ]
                         },
                         "label": {
@@ -58306,6 +58309,154 @@
           },
           "403": {
             "description": "Không có quyền patient_wallet.settle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/supplier-debt/{supplierId}/ledger/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Sổ công nợ của một nhà cung cấp/đối tác theo khoảng ngày (quyền supplier_debt.read, ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp",
             "content": {
               "application/json": {
                 "schema": {
@@ -116322,10 +116473,36 @@
                               "sourceBranchName"
                             ]
                           }
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "openingBalance": {
+                              "type": "integer"
+                            },
+                            "totalIncrease": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "totalDecrease": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "closingBalance": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "openingBalance",
+                            "totalIncrease",
+                            "totalDecrease",
+                            "closingBalance"
+                          ]
                         }
                       },
                       "required": [
-                        "items"
+                        "items",
+                        "summary"
                       ]
                     },
                     "meta": {

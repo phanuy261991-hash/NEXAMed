@@ -74,6 +74,18 @@ export class SupplierDebtController {
     return this.supplierDebtService.getSummary(tenantId, supplierId);
   }
 
+  /** Xuất Excel Sổ công nợ của MỘT nhà cung cấp theo khoảng ngày đang xem — cùng quyền `supplier_debt.read`; ghi nhật ký xuất. */
+  @Get(':supplierId/ledger/export')
+  @RequirePermission('supplier_debt', 'read')
+  async exportLedger(@Param('supplierId') supplierId: string, @Query() query: unknown, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const dto = listSupplierDebtLedgerQuerySchema.parse(query);
+    const buffer = await this.exportService.exportLedgerExcel(req.user!, supplierId, dto);
+    await this.exportService.recordLedgerExportAudit(req.user!, supplierId, dto, extractRequestMeta(req));
+    res.setHeader('Content-Type', EXCEL_CONTENT_TYPE);
+    res.setHeader('Content-Disposition', 'attachment; filename="so-cong-no-nha-cung-cap.xlsx"');
+    res.send(buffer);
+  }
+
   @Get(':supplierId/ledger')
   @RequirePermission('supplier_debt', 'read')
   async getLedger(@Param('supplierId') supplierId: string, @Query() query: unknown, @Req() req: Request) {

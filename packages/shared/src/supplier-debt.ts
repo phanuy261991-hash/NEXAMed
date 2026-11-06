@@ -25,6 +25,18 @@ export const supplierDebtEntryTypeSchema = z.enum([
 ]);
 export type SupplierDebtEntryType = z.infer<typeof supplierDebtEntryTypeSchema>;
 
+/** Nhãn tiếng Việt của loại bút toán — dùng chung Sổ công nợ trên web, bản in và Excel. */
+export const SUPPLIER_DEBT_ENTRY_TYPE_LABELS: Record<SupplierDebtEntryType, string> = {
+  OPENING_BALANCE: 'Nợ đầu kỳ',
+  PURCHASE: 'Phát sinh nợ',
+  PAYMENT: 'Thanh toán',
+  RETURN: 'Trả hàng',
+  REFUND_RECEIVED: 'NCC hoàn tiền',
+  ADJUSTMENT_INCREASE: 'Điều chỉnh tăng',
+  ADJUSTMENT_DECREASE: 'Điều chỉnh giảm',
+  REVERSAL: 'Bút toán đảo',
+};
+
 export const supplierDebtItemStatusSchema = z.enum(['UNPAID', 'PARTIALLY_PAID', 'FULLY_PAID']);
 export type SupplierDebtItemStatus = z.infer<typeof supplierDebtItemStatusSchema>;
 
@@ -118,7 +130,19 @@ export const listSupplierDebtLedgerQuerySchema = z.object({
 });
 export type ListSupplierDebtLedgerQuery = z.infer<typeof listSupplierDebtLedgerQuerySchema>;
 
-export const listSupplierDebtLedgerResponseSchema = z.object({ items: z.array(supplierDebtLedgerEntrySchema) });
+/**
+ * Tổng hợp biến động công nợ của khoảng ngày đang xem (theo NGÀY CHỨNG TỪ `occurredAt`): số dư ĐẦU KỲ = tổng bút toán trước `from` (0 khi không chọn `from`), tăng nợ/giảm nợ = tổng các bút toán trong kỳ
+ * (bút toán đảo tính theo dấu của nó), số dư CUỐI KỲ = đầu kỳ + tăng − giảm. Dương = còn nợ nhà cung cấp, âm = nhà cung cấp nợ lại.
+ */
+export const supplierDebtLedgerSummarySchema = z.object({
+  openingBalance: z.number().int(),
+  totalIncrease: z.number().int().nonnegative(),
+  totalDecrease: z.number().int().nonnegative(),
+  closingBalance: z.number().int(),
+});
+export type SupplierDebtLedgerSummary = z.infer<typeof supplierDebtLedgerSummarySchema>;
+
+export const listSupplierDebtLedgerResponseSchema = z.object({ items: z.array(supplierDebtLedgerEntrySchema), summary: supplierDebtLedgerSummarySchema });
 export type ListSupplierDebtLedgerResponse = z.infer<typeof listSupplierDebtLedgerResponseSchema>;
 
 /** Tab "Phiếu nhập" — mỗi khoản NỢ (PURCHASE, hoặc dòng ảo "Nợ đầu kỳ") kèm trạng thái đã

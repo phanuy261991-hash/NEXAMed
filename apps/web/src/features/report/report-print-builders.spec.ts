@@ -6,6 +6,7 @@ import {
   buildStockBalancePrintSpec,
   buildStockLedgerPrintSpec,
   buildStockShrinkagePrintSpec,
+  buildSupplierDebtLedgerPrintSpec,
   buildSupplierDebtPrintSpec,
   buildWalletsPrintSpec,
 } from './report-print-builders';
@@ -146,6 +147,38 @@ describe('buildSupplierDebtPrintSpec', () => {
     expect(spec.infoLines![0]).toBe('Tổng còn nợ: 3.000.000 · NCC đang nợ lại: 200.000 · Phiếu chi chờ duyệt: 500.000');
     expect(spec.sections[0]!.rows.map((r) => r[4])).toEqual(['3.000.000', '200.000 (NCC nợ lại)', 'Đã tất toán', '—']);
     expectRectangular(spec);
+  });
+});
+
+describe('buildSupplierDebtLedgerPrintSpec', () => {
+  const entry = (over: Record<string, unknown>) => ({ id: 'e', entryType: 'PURCHASE', amountChange: 0, balanceAfter: 0, occurredAt: '2026-03-10T05:00:00.000Z', createdAt: '2026-03-10T05:00:00.000Z', stockReceiptId: null, stockReceiptNo: null, stockIssueId: null, stockIssueNo: null, cashVoucherId: null, cashVoucherNo: null, reversalOfId: null, reversed: false, note: null, createdByName: 'Thu ngân', sourceBranchId: null, sourceBranchName: null, ...over });
+  it('đủ tiêu đề, kỳ, tổng hợp và tăng/giảm nợ ở hai cột riêng; dòng đảo và nợ lại được ghi rõ', () => {
+    const spec = buildSupplierDebtLedgerPrintSpec(
+      [
+        entry({ entryType: 'PURCHASE', amountChange: 800_000, balanceAfter: 800_000, stockReceiptNo: 'PN001' }),
+        entry({ entryType: 'RETURN', amountChange: -80_000, balanceAfter: 720_000, stockIssueNo: 'PX009', reversed: true }),
+        entry({ entryType: 'PAYMENT', amountChange: -900_000, balanceAfter: -180_000, cashVoucherNo: 'PC77', note: 'Trả dư' }),
+      ] as never,
+      { openingBalance: 0, totalIncrease: 800_000, totalDecrease: 980_000, closingBalance: -180_000 },
+      { supplierCode: 'DT00001', supplierName: 'Phòng xét nghiệm Bình Minh', from: '2026-03-01', to: '2026-03-31' },
+    );
+    expect(spec.title).toBe('Sổ công nợ nhà cung cấp');
+    expect(spec.subtitleLines).toEqual(['DT00001 · Phòng xét nghiệm Bình Minh', 'Từ 01/03/2026 đến 31/03/2026']);
+    expect(spec.infoLines![0]).toBe('Số dư đầu kỳ: 0 · Tăng nợ: 800.000 · Giảm nợ: 980.000 · Số dư cuối kỳ: 180.000 (NCC nợ lại)');
+    expect(spec.sections[0]!.rows.map((r) => [r[1], r[2], r[3], r[4], r[5], r[6]])).toEqual([
+      ['Phát sinh nợ', 'PN001', '—', '800.000', '—', '800.000'],
+      ['Trả hàng', 'PX009', 'đã bị đảo', '—', '80.000', '720.000'],
+      ['Thanh toán', 'PC77', 'Trả dư', '—', '900.000', '-180.000'],
+    ]);
+    expect(spec.sections[0]!.totalRows![0]).toEqual(['Cộng trong kỳ', '', '', '', '800.000', '980.000', '180.000 (NCC nợ lại)']);
+    expectRectangular(spec);
+  });
+
+  it('không chọn kỳ thì ghi "Toàn bộ lịch sử"; không có bút toán thì có chữ thay bảng và không có dòng cộng', () => {
+    const spec = buildSupplierDebtLedgerPrintSpec([], { openingBalance: 0, totalIncrease: 0, totalDecrease: 0, closingBalance: 0 }, { supplierCode: 'NCC1', supplierName: 'Công ty A', from: '', to: '' });
+    expect(spec.subtitleLines![1]).toBe('Toàn bộ lịch sử');
+    expect(spec.sections[0]!.emptyText).toBe('Không có bút toán nào trong kỳ.');
+    expect(spec.sections[0]!.totalRows).toBeUndefined();
   });
 });
 

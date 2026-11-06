@@ -159,6 +159,9 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // Cận lâm sàng GĐ4 — kết quả (và giá trị chỉ số) tham chiếu dòng chỉ định + chỉ số xét nghiệm (FK RESTRICT): xoá giá trị trước kết quả, kết quả trước dòng chỉ định.
       await prisma.paraclinicalResultImage.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.paraclinicalResultValue.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // "Gửi mẫu đối tác" (#291): dòng gửi trỏ dòng chỉ định/ống mẫu, đợt gửi trỏ nhà cung cấp + chi nhánh — xoá trước.
+      await prisma.labPartnerDispatchItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.labPartnerDispatch.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.paraclinicalResult.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalOrderItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // Ống mẫu xét nghiệm (#220): trỏ vào phiếu chỉ định, và tự tham chiếu `replaces_tube_id` (RESTRICT tức thì) → gỡ liên kết thay thế trước khi xoá.

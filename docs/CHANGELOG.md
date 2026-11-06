@@ -14,6 +14,14 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-06
 
+### Sổ công nợ nhà cung cấp: lọc khoảng ngày, tổng hợp kỳ, Xuất Excel, In (`docs/DECISIONS.md` #292)
+
+Tab "Sổ công nợ" ở trang nhà cung cấp/đối tác có "Từ ngày/Đến ngày", dải tổng hợp (số dư đầu kỳ, tăng nợ, giảm nợ, số dư cuối kỳ), Xuất Excel và In theo kỳ đang xem. Không cần `db:seed`/`db:deploy`.
+
+### Gửi mẫu đối tác — giai đoạn 2, máy chủ phần "Gửi mẫu đi" (`docs/DECISIONS.md` #291 bổ sung 3)
+
+Máy chủ: hàng đợi "Chờ gửi"/"Đã gửi", gửi một đợt cho một đối tác với giá đúng của cặp dịch vụ × đối tác được chụp lại, hạn trả tính từ giờ gửi; quyền mới `lab_partner.read/send/receive`. Chưa có giao diện (giai đoạn kế tiếp). Môi trường khác cần `db:deploy` (migration `20261106150000_lab_partner_dispatch`) + `db:seed` (3 quyền mới).
+
 ### Quyền nhà cung cấp riêng, che giá trả đối tác, thời gian trả theo giờ, quyền đi kèm mới (`docs/DECISIONS.md` #291 bổ sung 2)
 
 Xem nhà cung cấp không còn gắn với kho thuốc: quyền mới **Nhà cung cấp & Đối tác xét nghiệm** (xem/thêm/sửa), vai trò đang có quyền kho thuốc được cấp tương ứng một lần khi nâng cấp. Giá trả đối tác không hiện cho bác sĩ/lễ tân/khách, chỉ người cấu hình dịch vụ hoặc xem công nợ thấy; cột giá ở form dịch vụ đổi tên "Giá niêm yết". "Thời gian trả kết quả" nhập được theo **phút hoặc giờ** (ô chọn đơn vị cạnh ô nhập). Bảng gợi ý quyền đi kèm ở Vai trò & Phân quyền bổ sung cho báo cáo Bác sĩ, báo cáo Khám bệnh và vận hành, Tổng quan thu ngân, "Hẹn tái khám" ghi nhắc, "Khách không làm dịch vụ" và nhà cung cấp. Môi trường khác cần `db:seed`.

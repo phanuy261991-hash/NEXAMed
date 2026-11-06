@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
+import ExcelJS from 'exceljs';
 import { AppModule } from '../../app.module';
 import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
@@ -1020,6 +1021,96 @@ describe('HTTP e2e — /api/v1/supplier-debt (Công nợ nhà cung cấp, Phần
       const ok = [a.status, b.status].filter((s) => s === 200).length;
       expect(ok, JSON.stringify([a.body, b.body])).toBe(1);
       expect(await balanceOf(supplierId)).toBe(40000);
+    });
+  });
+
+  describe('Sổ công nợ — bộ lọc khoảng ngày, tổng hợp kỳ và xuất Excel (docs/DECISIONS.md #292)', () => {
+    const ledger = (supplierId: string, query: string, token = clinicAdminToken) => request(app.getHttpServer()).get(`/api/v1/supplier-debt/${supplierId}/ledger${query}`).set(authed(token));
+    const download = (url: string, token: string) =>
+      request(app.getHttpServer())
+        .get(url)
+        .set(authed(token))
+        .buffer(true)
+        .parse((res, cb) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c: Buffer) => chunks.push(c));
+          res.on('end', () => cb(null, Buffer.concat(chunks)));
+        });
+    const textOf = (sheet: ExcelJS.Worksheet): string => {
+      const out: string[] = [];
+      sheet.eachRow((row) => out.push((row.values as ExcelJS.CellValue[]).filter((v) => v !== null && v !== undefined).join(' | ')));
+      return out.join('\n');
+    };
+    let supplierId: string;
+
+    beforeAll(async () => {
+      supplierId = await createSupplier(clinicAdminToken);
+      const opening = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/${supplierId}/opening-balance`).set(authed(clinicAdminToken)).send({ amount: 5_000_000, occurredAt: '2026-01-15', note: 'Nợ đầu kỳ kiểm sổ' });
+      expect(opening.status, JSON.stringify(opening.body)).toBe(200);
+      for (const [amount, occurredAt] of [[2_000_000, '2026-03-10'], [500_000, '2026-04-20']] as const) {
+        const pay = await request(app.getHttpServer()).post(`/api/v1/supplier-debt/${supplierId}/payment`).set(authed(clinicAdminToken)).send({ amount, paymentMethodCode: 'CASH', cashAccountId, occurredAt });
+        expect(pay.status, JSON.stringify(pay.body)).toBe(200);
+      }
+    });
+
+    it('tổng hợp kỳ: đầu kỳ = tổng bút toán TRƯỚC kỳ, tăng/giảm trong kỳ, cuối kỳ = đầu + tăng − giảm; chỉ lọc dòng hiển thị', async () => {
+      const march = await ledger(supplierId, '?from=2026-03-01&to=2026-03-31');
+      expect(march.status, JSON.stringify(march.body)).toBe(200);
+      expect(march.body.data.items.map((e: { entryType: string; amountChange: number }) => [e.entryType, e.amountChange])).toEqual([['PAYMENT', -2_000_000]]);
+      expect(march.body.data.summary).toEqual({ openingBalance: 5_000_000, totalIncrease: 0, totalDecrease: 2_000_000, closingBalance: 3_000_000 });
+      // số dư sau của dòng KHÔNG đổi theo bộ lọc (tính theo toàn bộ lịch sử lúc ghi sổ).
+      expect(march.body.data.items[0].balanceAfter).toBe(3_000_000);
+
+      const all = await ledger(supplierId, '');
+      expect(all.body.data.items).toHaveLength(3);
+      expect(all.body.data.summary).toEqual({ openingBalance: 0, totalIncrease: 5_000_000, totalDecrease: 2_500_000, closingBalance: 2_500_000 });
+
+      const fromApril = await ledger(supplierId, '?from=2026-04-01');
+      expect(fromApril.body.data.summary).toEqual({ openingBalance: 3_000_000, totalIncrease: 0, totalDecrease: 500_000, closingBalance: 2_500_000 });
+
+      const toFebruary = await ledger(supplierId, '?to=2026-02-28');
+      expect(toFebruary.body.data.summary).toEqual({ openingBalance: 0, totalIncrease: 5_000_000, totalDecrease: 0, closingBalance: 5_000_000 });
+
+      // Kỳ không có bút toán: đầu kỳ = cuối kỳ.
+      const quiet = await ledger(supplierId, '?from=2026-02-01&to=2026-02-28');
+      expect(quiet.body.data.items).toEqual([]);
+      expect(quiet.body.data.summary).toEqual({ openingBalance: 5_000_000, totalIncrease: 0, totalDecrease: 0, closingBalance: 5_000_000 });
+    });
+
+    it('ngày bắt đầu sau ngày kết thúc → 400; nhà cung cấp chưa có sổ → danh sách rỗng, tổng hợp bằng 0', async () => {
+      expect((await ledger(supplierId, '?from=2026-05-01&to=2026-04-01')).status).toBe(400);
+      const fresh = await createSupplier(clinicAdminToken);
+      const empty = await ledger(fresh, '?from=2026-01-01');
+      expect(empty.body.data).toEqual({ items: [], summary: { openingBalance: 0, totalIncrease: 0, totalDecrease: 0, closingBalance: 0 } });
+    });
+
+    it('xuất Excel theo kỳ: tăng/giảm nợ ở hai cột SỐ, có tổng hợp đầu kỳ/cuối kỳ, ghi nhật ký; lễ tân 403; công ty khác 404; kỳ ngược 400', async () => {
+      const before = await privileged.auditLog.count({ where: { tenantId: fixture.tenantA.id, action: 'supplier_debt.ledger_exported' } });
+      const res = await download(`/api/v1/supplier-debt/${supplierId}/ledger/export?from=2026-03-01&to=2026-03-31`, clinicAdminToken);
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('spreadsheetml');
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(res.body as unknown as ArrayBuffer);
+      const sheet = wb.worksheets[0]!;
+      expect(sheet.name).toBe('Sổ công nợ');
+      const text = textOf(sheet);
+      expect(text).toContain('Số dư đầu kỳ: 5.000.000');
+      expect(text).toContain('Số dư cuối kỳ: 3.000.000');
+      expect(text).toContain('Từ 01/03/2026 đến 31/03/2026');
+      const rows = [...Array(sheet.rowCount)].map((_, i) => sheet.getRow(i + 1).values as ExcelJS.CellValue[]);
+      const payRow = rows.find((v) => v[3] === 'Thanh toán')!;
+      expect(payRow).toBeDefined();
+      expect(payRow[1]).toBe('10/03/2026');
+      expect(payRow[5] ?? null).toBeNull(); // ô trống không ghi giá trị
+      expect(payRow[6]).toBe(2_000_000);
+      expect(payRow[7]).toBe(3_000_000);
+      expect(await privileged.auditLog.count({ where: { tenantId: fixture.tenantA.id, action: 'supplier_debt.ledger_exported' } })).toBe(before + 1);
+
+      expect((await download(`/api/v1/supplier-debt/${supplierId}/ledger/export`, receptionistToken)).status).toBe(403);
+      expect((await download(`/api/v1/supplier-debt/${supplierId}/ledger/export`, tenantBAdminToken)).status).toBe(404);
+      expect((await download(`/api/v1/supplier-debt/${supplierId}/ledger/export?from=2026-05-01&to=2026-04-01`, clinicAdminToken)).status).toBe(400);
+      // Bị từ chối thì không ghi nhật ký xuất.
+      expect(await privileged.auditLog.count({ where: { tenantId: fixture.tenantA.id, action: 'supplier_debt.ledger_exported' } })).toBe(before + 1);
     });
   });
 });

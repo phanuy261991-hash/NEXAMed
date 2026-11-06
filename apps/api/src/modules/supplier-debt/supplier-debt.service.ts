@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
   allocateSupplierDebt,
   CASHIER_SHIFT_READER_PORT,
@@ -711,6 +711,7 @@ export class SupplierDebtService {
   /** Tab "Sổ công nợ" — CŨ→MỚI, `from`/`to` (nếu có) lọc theo `occurredAt` chỉ ở TẦNG HIỂN THỊ
    * (không ảnh hưởng số liệu — `balanceAfter` đã tính sẵn theo TOÀN BỘ lịch sử lúc ghi sổ). */
   async listLedger(tenantId: string, supplierId: string, query: ListSupplierDebtLedgerQuery): Promise<ListSupplierDebtLedgerResponse> {
+    if (query.from && query.to && query.from > query.to) throw new BadRequestException('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.');
     const loaded = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const supplier = await this.supplierRepository.findById(tx, tenantId, supplierId);
       if (!supplier) throw new NotFoundException();
@@ -722,10 +723,20 @@ export class SupplierDebtService {
       const fromDate = query.from ? vietnamDayStartUtc(query.from) : null;
       const toDate = query.to ? vietnamDayEndUtc(query.to) : null;
       const filtered = all.filter((e) => (!fromDate || e.occurredAt >= fromDate) && (!toDate || e.occurredAt <= toDate));
-      return { reversedIds, filtered, refs: await this.resolveDocumentRefs(tx, tenantId, filtered) };
+      // Tổng hợp biến động kỳ (theo ngày chứng từ): đầu kỳ = tổng bút toán TRƯỚC `from`; tăng/giảm = tổng trong kỳ.
+      let opening = 0n;
+      if (fromDate) for (const e of all) if (e.occurredAt < fromDate) opening += e.amountChange;
+      let increase = 0n;
+      let decrease = 0n;
+      for (const e of filtered) {
+        if (e.amountChange > 0n) increase += e.amountChange;
+        else decrease += -e.amountChange;
+      }
+      const summary = { openingBalance: Number(opening), totalIncrease: Number(increase), totalDecrease: Number(decrease), closingBalance: Number(opening + increase - decrease) };
+      return { reversedIds, filtered, summary, refs: await this.resolveDocumentRefs(tx, tenantId, filtered) };
     });
-    if (!loaded) return { items: [] };
-    const { reversedIds, filtered, refs } = loaded;
+    if (!loaded) return { items: [], summary: { openingBalance: 0, totalIncrease: 0, totalDecrease: 0, closingBalance: 0 } };
+    const { reversedIds, filtered, refs, summary } = loaded;
 
     const ids = new Set<string>();
     for (const e of filtered) ids.add(e.createdBy);
@@ -758,7 +769,7 @@ export class SupplierDebtService {
         sourceBranchName: sourceRef?.branchName ?? null,
       };
     });
-    return { items };
+    return { items, summary };
   }
 
   /** Tab "Phiếu nhập" — trạng thái đã trả/còn nợ của mỗi khoản PURCHASE/OPENING_BALANCE, tính bằng

@@ -121,6 +121,8 @@ export class ParaclinicalResultService {
 
   async listQueue(tenantId: string, actorId: string, scope: ResultAccessScope, query: ListParaclinicalQueueQuery): Promise<ListParaclinicalQueueResponse> {
     const allowBeforePayment = await this.clinicConfigReader.getParaclinicalBeforePaymentEnabled(tenantId);
+    // "Gửi mẫu đối tác" (#291): công tắc bật thì mẫu ĐÃ LẤY của dịch vụ gửi đối tác sang hàng đợi riêng, không còn ở đây (chưa lấy mẫu thì vẫn ở "Chờ lấy mẫu").
+    const partnerEnabled = await this.clinicConfigReader.getLabPartnerEnabled(tenantId);
     const date = query.date ?? getVietnamDateString();
     const { startUtc, endUtc } = vietnamDayRange(date);
 
@@ -128,7 +130,11 @@ export class ParaclinicalResultService {
       const scopeDepartmentId = await this.resolveScopeDepartment(tx, tenantId, actorId, scope.dataScope);
       // Scope `department` mà actor chưa gán Khoa/Phòng thì không khớp phòng nào → hàng đợi rỗng (không lỗi).
       const items = enrich(await this.orderRepository.listQueueItems(tx, tenantId, scope.branchId, { from: startUtc, to: endUtc })).filter(
-        (i) => scope.kinds.includes(i.serviceKind) && (scopeDepartmentId === undefined || (scopeDepartmentId !== null && i.row.technicalService?.departmentId === scopeDepartmentId)),
+        (i) =>
+          scope.kinds.includes(i.serviceKind) &&
+          // Lọc TỪNG DÒNG trước khi gộp nhóm (các dịch vụ cùng phiếu + cùng trạng thái gộp một nhóm; bỏ cả nhóm sẽ làm mất dịch vụ tại phòng khám đi chung).
+          !(partnerEnabled && i.row.technicalService?.sentToPartner && i.status === 'IN_PROGRESS') &&
+          (scopeDepartmentId === undefined || (scopeDepartmentId !== null && i.row.technicalService?.departmentId === scopeDepartmentId)),
       );
       const groups = groupQueueItems(items);
 

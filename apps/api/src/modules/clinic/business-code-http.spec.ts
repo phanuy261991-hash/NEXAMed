@@ -83,7 +83,7 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
     expect(res.status).toBe(403);
   });
 
-  it('tenant chưa cấu hình gì → 29 loại mã đúng khuôn mặc định, KHÔNG locked, số bắt đầu = 1', async () => {
+  it('tenant chưa cấu hình gì → 30 loại mã đúng khuôn mặc định, KHÔNG locked, số bắt đầu = 1', async () => {
     const res = await request(app.getHttpServer()).get('/api/v1/clinic-settings/code-templates').set(authed(clinicAdminToken));
     expect(res.status).toBe(200);
     // 10 loại mã cũ + 2 (Ví tạm ứng — WALLET_TOPUP/WALLET_SETTLEMENT) + 1 (Kho Thuốc GĐ2 — STOCK_RECEIPT)
@@ -91,7 +91,7 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
     // + 1 (Kho Thuốc GĐ4, "Kiểm kê" #170 — STOCK_COUNT) + 1 (Kho Thuốc GĐ4, "Điều chuyển kho" #170 — STOCK_TRANSFER)
     // + 1 (Công nợ NCC Phần D #180/#182 — SUPPLIER_DEBT_ADJUSTMENT) + 1 (Công nợ NCC Phần E #182 câu 3 — SUPPLIER_DEBT_RECONCILIATION)
     // + 1 (Hoàn tiền một phần #203 — INVOICE_REFUND) + 4 (Cận lâm sàng GĐ1 #212 — TECH_SERVICE_LAB/IMAGING/FUNCTIONAL, LAB_INDICATOR) + 2 (Cận lâm sàng GĐ2 #212 — SERVICE_PACKAGE, PRICE_LIST) + 1 (Cận lâm sàng GĐ3 #212 — CLINICAL_ORDER) + 1 (Lấy mẫu xét nghiệm #220 — SPECIMEN_TUBE) + 1 (Hồ sơ bệnh án #269 — MEDICAL_RECORD).
-    expect(res.body.data.items).toHaveLength(29);
+    expect(res.body.data.items).toHaveLength(30);
 
     const patient = res.body.data.items.find((i: { codeType: string }) => i.codeType === 'PATIENT');
     expect(patient).toMatchObject({
@@ -153,6 +153,8 @@ describe('HTTP e2e — /api/v1/clinic-settings/code-templates', () => {
         'SPECIMEN_TUBE',
         // Hồ sơ bệnh án (#269) — "Số lưu trữ" của hồ sơ bệnh án.
         'ARCHIVE_NO',
+        // "Gửi mẫu đối tác" (#291) — mã đợt gửi mẫu.
+        'LAB_PARTNER_DISPATCH',
         'WALLET_SETTLEMENT',
         'WALLET_TOPUP',
       ].sort(),

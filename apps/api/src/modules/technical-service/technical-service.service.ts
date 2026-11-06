@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { TechnicalServicePrice } from '@prisma/client';
-import { CLINIC_CONFIG_READER_PORT, ConcurrentModificationError, getVietnamDateString, LabPartnerDisabledError, maxDataScope, TechnicalServicePriceOverlapError, type ClinicConfigReaderPort } from '@nexamed/core';
+import { CLINIC_CONFIG_READER_PORT, ConcurrentModificationError, getVietnamDateString, LabPartnerDisabledError, TechnicalServicePriceOverlapError, type ClinicConfigReaderPort } from '@nexamed/core';
 import {
   DEFAULT_RESULT_TYPE_BY_KIND,
   type BusinessCodeType,
@@ -17,7 +17,7 @@ import {
 } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
 import { writeAuditLog } from '../../infrastructure/persistence/audit-log.helper';
-import { findScopesForUserPermission } from '../../infrastructure/persistence/permission-lookup.helper';
+import { canSeePartnerCost } from '../../common/partner-cost-access';
 import type { RequestMeta } from '../../common/request-meta';
 import { BusinessCodeService } from '../clinic/business-code.service';
 import { LabIndicatorRepository } from './lab-indicator.repository';
@@ -226,11 +226,7 @@ export class TechnicalServiceService {
    * bác sĩ, điều dưỡng, lễ tân xem dịch vụ nhận danh sách rỗng. Cũng không có trong phiếu chỉ định/phiếu thu/kết quả in cho bệnh nhân.
    */
   private async canSeePartnerCost(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<boolean> {
-    const scopes = [
-      ...(await findScopesForUserPermission(tx, tenantId, actorId, 'technical_service', 'update')),
-      ...(await findScopesForUserPermission(tx, tenantId, actorId, 'supplier_debt', 'read')),
-    ];
-    return maxDataScope(scopes) !== 'none';
+    return canSeePartnerCost(tx, tenantId, actorId);
   }
 
   private async loadDetail(tx: Prisma.TransactionClient, tenantId: string, id: string, actorId: string): Promise<TechnicalServiceDetail> {

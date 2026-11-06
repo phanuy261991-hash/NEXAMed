@@ -30,6 +30,8 @@ export const MODULE_LABELS: Record<string, string> = {
   drug: 'Danh mục Thuốc, Vật tư & Kho',
   // Quyền nhà cung cấp tách khỏi kho thuốc (#291) — nhãn thêm NGAY lúc tạo quyền; `permission-grouping.spec.ts` chặn nếu thiếu.
   supplier: 'Nhà cung cấp & Đối tác xét nghiệm',
+  // "Gửi mẫu đối tác" (#291) — nhãn thêm NGAY lúc tạo quyền.
+  lab_partner: 'Gửi mẫu đối tác',
   invoice: 'Phiếu thu',
   doctor_availability: 'Tạm nghỉ / Đóng ca',
   work_shift_assignment: 'Đăng ký ca làm việc',

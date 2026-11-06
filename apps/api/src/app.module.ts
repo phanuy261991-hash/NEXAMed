@@ -28,6 +28,7 @@ import { ClinicalOrderCancellationModule } from './modules/clinical-order/clinic
 import { ParaclinicalProgressReaderModule } from './modules/clinical-order/paraclinical-progress-reader.module';
 import { EncounterBillingReaderModule } from './modules/billing/encounter-billing-reader.module';
 import { ParaclinicalResultModule } from './modules/paraclinical-result/paraclinical-result.module';
+import { LabPartnerModule } from './modules/lab-partner/lab-partner.module';
 import { ParaclinicalResultsReaderModule } from './modules/paraclinical-result/paraclinical-results-reader.module';
 import { PricingPortModule } from './modules/pricing/pricing-port.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
@@ -102,6 +103,7 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     BillingModule,
     ClinicalOrderModule,
     ParaclinicalResultModule,
+    LabPartnerModule,
     ReceptionModule,
     AuditModule,
     DoctorAvailabilityModule,

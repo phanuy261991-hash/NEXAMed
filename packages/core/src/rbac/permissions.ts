@@ -120,6 +120,10 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'supplier', action: 'read', description: 'Xem nhà cung cấp và đối tác xét nghiệm' },
   { module: 'supplier', action: 'create', description: 'Thêm nhà cung cấp/đối tác xét nghiệm' },
   { module: 'supplier', action: 'update', description: 'Sửa/ngưng nhà cung cấp/đối tác xét nghiệm' },
+  // "Gửi mẫu đối tác" (#291): hàng đợi gửi mẫu cho đối tác xét nghiệm. `read` xem hàng đợi; `send` gửi mẫu đi / ghi đối tác không nhận; `receive` nhận kết quả PDF (giai đoạn sau). Duyệt kết quả dùng `lab_result.approve`.
+  { module: 'lab_partner', action: 'read', description: 'Xem hàng đợi Gửi mẫu đối tác' },
+  { module: 'lab_partner', action: 'send', description: 'Gửi mẫu cho đối tác, ghi đối tác không nhận mẫu' },
+  { module: 'lab_partner', action: 'receive', description: 'Nhận kết quả từ đối tác xét nghiệm' },
   // Kho Thuốc GĐ5 (trải nghiệm kê đơn) — "Đơn thuốc mẫu" dùng CHUNG toàn tenant. `read` mở cho mọi
   // vai trò lâm sàng (chọn mẫu lúc kê đơn); `manage` (thêm/sửa/xoá mẫu) chỉ bác sĩ/clinic_admin —
   // điều dưỡng không tự quyết định phác đồ/liều dùng mẫu.
@@ -395,6 +399,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
   lab_technician: {
     'lab_result.read': 'global',
     'lab_result.enter': 'global',
+    'lab_partner.read': 'global',
+    'lab_partner.send': 'global',
+    'lab_partner.receive': 'global',
     'result_template.read': 'global',
   },
   imaging_technician: {
@@ -426,6 +433,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'lab_result.read': 'global',
     'imaging_result.read': 'global',
     'lab_result.enter': 'global',
+    'lab_partner.read': 'global',
+    'lab_partner.send': 'global',
+    'lab_partner.receive': 'global',
     'imaging_result.enter': 'global',
     'result_template.read': 'global',
     // Kho Thuốc GĐ5 — điều dưỡng chỉ xem đơn thuốc mẫu, không tự thêm/sửa (bác sĩ/clinic_admin quyết định phác đồ).
@@ -494,6 +504,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'lab_result.read': 'global',
     'imaging_result.read': 'global',
     'lab_result.enter': 'global',
+    'lab_partner.read': 'global',
+    'lab_partner.send': 'global',
+    'lab_partner.receive': 'global',
     'imaging_result.enter': 'global',
     'lab_result.approve': 'global',
     'imaging_result.approve': 'global',
@@ -580,6 +593,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'lab_result.read': 'global',
     'imaging_result.read': 'global',
     'lab_result.enter': 'global',
+    'lab_partner.read': 'global',
+    'lab_partner.send': 'global',
+    'lab_partner.receive': 'global',
     'imaging_result.enter': 'global',
     'lab_result.approve': 'global',
     'imaging_result.approve': 'global',

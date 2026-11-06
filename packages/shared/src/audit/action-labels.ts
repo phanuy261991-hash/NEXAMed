@@ -170,6 +170,8 @@ const ACTION_LABELS: Record<string, string> = {
   'clinical_order.saved': 'Lưu chỉ định cận lâm sàng',
   'clinical_order.printed': 'In phiếu chỉ định cận lâm sàng',
   'paraclinical.started': 'Lấy mẫu / gọi vào phòng thực hiện cận lâm sàng',
+  // "Gửi mẫu đối tác" (#291)
+  'lab_partner_dispatch.created': 'Gửi mẫu xét nghiệm cho đối tác',
   'specimen_tube.created': 'Tạo ống mẫu xét nghiệm (sinh mã ống)',
   'specimen_tube.split': 'Tách xét nghiệm sang ống mẫu riêng',
   'specimen_tube.printed': 'In tem ống mẫu xét nghiệm',
@@ -312,6 +314,7 @@ const ACTION_LABELS: Record<string, string> = {
   'system_report.exported': 'Xuất Excel báo cáo Toàn hệ thống',
   'wallet_list.exported': 'Xuất Excel danh sách ví tạm ứng',
   'supplier_debt.exported': 'Xuất Excel công nợ nhà cung cấp',
+  'supplier_debt.ledger_exported': 'Xuất Excel sổ công nợ nhà cung cấp',
   'stock_balance.exported': 'Xuất Excel tồn kho và hạn dùng',
   'audit_log.exported': 'Xuất Excel nhật ký kiểm toán',
 

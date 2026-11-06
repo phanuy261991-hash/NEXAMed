@@ -3683,6 +3683,21 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'get',
+  path: '/api/v1/supplier-debt/{supplierId}/ledger/export',
+  tags: ['report'],
+  summary: 'Xuất Excel Sổ công nợ của một nhà cung cấp/đối tác theo khoảng ngày (quyền supplier_debt.read, ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ supplierId: z.string().uuid() }), query: listSupplierDebtLedgerQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+    404: errorResponse('Không tìm thấy nhà cung cấp'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
   path: '/api/v1/supplier-debt/summaries/export',
   tags: ['report'],
   summary: 'Xuất Excel Công nợ nhà cung cấp đúng bộ lọc đang xem (quyền supplier_debt.read, ghi nhật ký kiểm toán)',

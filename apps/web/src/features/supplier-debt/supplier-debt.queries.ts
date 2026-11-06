@@ -53,11 +53,12 @@ export function useSupplierDebtSummaryQuery(supplierId: string, enabled = true) 
   });
 }
 
-export function useSupplierDebtLedgerQuery(supplierId: string, query: ListSupplierDebtLedgerQuery) {
+export function useSupplierDebtLedgerQuery(supplierId: string, query: ListSupplierDebtLedgerQuery, enabled = true) {
   const { tenantId } = useAppConfig();
   return useQuery({
     queryKey: queryKey(tenantId, 'supplier-debt-ledger', supplierId, query.from ?? '', query.to ?? ''),
     queryFn: () => listSupplierDebtLedger(supplierId, query),
+    enabled,
   });
 }
 

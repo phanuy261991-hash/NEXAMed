@@ -132,6 +132,8 @@ model Tenant {
   technicalServices           TechnicalService[]
   technicalServicePrices      TechnicalServicePrice[]
   labPartnerServicePrices     LabPartnerServicePrice[]
+  labPartnerDispatches        LabPartnerDispatch[]
+  labPartnerDispatchItems     LabPartnerDispatchItem[]
   labIndicators               LabIndicator[]
   labIndicatorReferences      LabIndicatorReference[]
   technicalServiceIndicators  TechnicalServiceIndicator[]
@@ -2139,15 +2141,15 @@ model DrugIngredient {
 // Nhà cung cấp (docs/DECISIONS.md #146, GĐ1) — RIÊNG theo tenant, mã tự sinh ngắn tuần tự
 // (formatShortSequentialCode, tiền tố "NCC", đúng khuôn work_shift #113/#101) — không nhập tay.
 model Supplier {
-  id          String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId    String  @map("tenant_id") @db.Uuid
-  code        String
-  name        String
-  taxCode     String? @map("tax_code")
-  phone       String?
-  address     String?
-  contactName String? @map("contact_name")
-  isActive    Boolean @default(true) @map("is_active")
+  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId     String  @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  taxCode      String? @map("tax_code")
+  phone        String?
+  address      String?
+  contactName  String? @map("contact_name")
+  isActive     Boolean @default(true) @map("is_active")
   // "Gửi mẫu đối tác" (docs/DECISIONS.md #291): nhà cung cấp này là ĐỐI TÁC XÉT NGHIỆM (chip "Đối tác XN", dùng chung sổ công nợ NCC).
   isLabPartner Boolean @default(false) @map("is_lab_partner")
 
@@ -2160,22 +2162,23 @@ model Supplier {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant              Tenant                       @relation(fields: [tenantId], references: [id])
+  tenant               Tenant                       @relation(fields: [tenantId], references: [id])
   // "Gửi mẫu đối tác" (#291) — giá trả đối tác theo từng dịch vụ kỹ thuật.
-  labPartnerPrices    LabPartnerServicePrice[]
+  labPartnerPrices     LabPartnerServicePrice[]
+  labPartnerDispatches LabPartnerDispatch[]
   // Kho Thuốc GĐ2 — phiếu nhập từ nhà cung cấp này (receiptType=PURCHASE).
-  stockReceipts       StockReceipt[]
+  stockReceipts        StockReceipt[]
   // "Công nợ nhà cung cấp" Phần A — 1 NCC có nhiều nhất 1 sổ công nợ (find-or-create lúc phát sinh
   // bút toán đầu tiên, chưa chắc đã tồn tại với NCC chưa từng mua/khai nợ).
-  debtAccount         SupplierDebtAccount?
+  debtAccount          SupplierDebtAccount?
   // "Công nợ nhà cung cấp" — cash_voucher gắn NCC (Trả ngay lúc nhập/Thanh toán công nợ/NCC hoàn tiền).
-  cashVouchers        CashVoucher[]
+  cashVouchers         CashVoucher[]
   // "Công nợ nhà cung cấp" Phần C — phiếu xuất trả NCC (issueType=RETURN_TO_SUPPLIER) gắn NCC này.
-  stockIssues         StockIssue[]
+  stockIssues          StockIssue[]
   // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh công nợ/Đề nghị huỷ gắn NCC này.
-  debtAdjustments     SupplierDebtAdjustment[]
+  debtAdjustments      SupplierDebtAdjustment[]
   // "Công nợ nhà cung cấp" Phần E — Biên bản đối chiếu công nợ gắn NCC này.
-  debtReconciliations SupplierDebtReconciliation[]
+  debtReconciliations  SupplierDebtReconciliation[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -4315,6 +4318,81 @@ model TechnicalServicePrice {
   @@map("technical_service_price")
 }
 
+enum LabPartnerDispatchItemStatus {
+  /// Đã gửi, chờ kết quả.
+  SENT
+  /// Đã nhận kết quả từ đối tác (đã ghi nợ).
+  RECEIVED
+  /// Đối tác không nhận mẫu — mẫu về "Chờ gửi", dòng này giữ làm lịch sử.
+  REJECTED
+
+  @@map("lab_partner_dispatch_item_status")
+}
+
+/// Một ĐỢT gửi mẫu cho một đối tác xét nghiệm (docs/DECISIONS.md #291) — THEO CHI NHÁNH (nơi lấy và gửi mẫu), mã `GM…`.
+model LabPartnerDispatch {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  branchId   String   @map("branch_id") @db.Uuid
+  dispatchNo String   @map("dispatch_no")
+  supplierId String   @map("supplier_id") @db.Uuid
+  sentAt     DateTime @map("sent_at") @db.Timestamptz(6)
+  sentBy     String   @map("sent_by") @db.Uuid
+  note       String?
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant   Tenant                   @relation(fields: [tenantId], references: [id])
+  branch   Branch                   @relation(fields: [tenantId, branchId], references: [tenantId, id])
+  supplier Supplier                 @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  items    LabPartnerDispatchItem[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, dispatchNo])
+  @@map("lab_partner_dispatch")
+}
+
+/// Một dịch vụ trong đợt gửi: CHỤP LẠI giá trả (`unitCost`) lúc gửi, hạn trả `dueAt` = giờ gửi + thời gian trả kết quả của dịch vụ.
+model LabPartnerDispatchItem {
+  id                  String                       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId            String                       @map("tenant_id") @db.Uuid
+  dispatchId          String                       @map("dispatch_id") @db.Uuid
+  clinicalOrderItemId String                       @map("clinical_order_item_id") @db.Uuid
+  specimenTubeId      String?                      @map("specimen_tube_id") @db.Uuid
+  unitCost            BigInt                       @map("unit_cost")
+  dueAt               DateTime?                    @map("due_at") @db.Timestamptz(6)
+  status              LabPartnerDispatchItemStatus @default(SENT)
+  receivedAt          DateTime?                    @map("received_at") @db.Timestamptz(6)
+  receivedBy          String?                      @map("received_by") @db.Uuid
+  rejectedAt          DateTime?                    @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy          String?                      @map("rejected_by") @db.Uuid
+  rejectReason        String?                      @map("reject_reason")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant       Tenant             @relation(fields: [tenantId], references: [id])
+  dispatch     LabPartnerDispatch @relation(fields: [tenantId, dispatchId], references: [tenantId, id])
+  orderItem    ClinicalOrderItem  @relation(fields: [tenantId, clinicalOrderItemId], references: [tenantId, id])
+  specimenTube SpecimenTube?      @relation(fields: [tenantId, specimenTubeId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("lab_partner_dispatch_item")
+}
+
 /// Giá trả ĐỐI TÁC XÉT NGHIỆM theo từng cặp (dịch vụ kỹ thuật × đối tác) — "Gửi mẫu đối tác" (docs/DECISIONS.md #291). MỘT giá hiện hành cho mỗi cặp (không ngày hiệu lực);
 /// giá được CHỤP LẠI vào dòng gửi lúc gửi mẫu nên đổi giá sau không làm lệch mẫu đã gửi. Tối đa một đối tác mặc định mỗi dịch vụ. Dữ liệu CHUNG cả công ty (không branch_id, như nhà cung cấp).
 /// Quản lý bằng bulk-replace theo dịch vụ (xoá mềm rồi tạo lại trong cùng transaction) — khuôn `technical_service_price`.
@@ -4764,13 +4842,14 @@ model ClinicalOrderItem {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant           Tenant                @relation(fields: [tenantId], references: [id])
-  order            ClinicalOrder         @relation(fields: [tenantId, clinicalOrderId], references: [tenantId, id])
-  technicalService TechnicalService?     @relation(fields: [tenantId, technicalServiceId], references: [tenantId, id])
-  package          ClinicalOrderPackage? @relation(fields: [tenantId, clinicalOrderPackageId], references: [tenantId, id])
-  specimenTube     SpecimenTube?         @relation(fields: [tenantId, specimenTubeId], references: [tenantId, id])
-  invoiceLines     InvoiceLine[]
-  results          ParaclinicalResult[]
+  tenant               Tenant                   @relation(fields: [tenantId], references: [id])
+  order                ClinicalOrder            @relation(fields: [tenantId, clinicalOrderId], references: [tenantId, id])
+  technicalService     TechnicalService?        @relation(fields: [tenantId, technicalServiceId], references: [tenantId, id])
+  package              ClinicalOrderPackage?    @relation(fields: [tenantId, clinicalOrderPackageId], references: [tenantId, id])
+  specimenTube         SpecimenTube?            @relation(fields: [tenantId, specimenTubeId], references: [tenantId, id])
+  invoiceLines         InvoiceLine[]
+  results              ParaclinicalResult[]
+  partnerDispatchItems LabPartnerDispatchItem[]
 
   @@unique([tenantId, id])
   @@map("clinical_order_item")
@@ -4826,11 +4905,12 @@ model SpecimenTube {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant     Tenant              @relation(fields: [tenantId], references: [id])
-  order      ClinicalOrder       @relation(fields: [tenantId, clinicalOrderId], references: [tenantId, id])
-  replaces   SpecimenTube?       @relation("SpecimenTubeReplaces", fields: [tenantId, replacesTubeId], references: [tenantId, id])
-  replacedBy SpecimenTube[]      @relation("SpecimenTubeReplaces")
-  items      ClinicalOrderItem[]
+  tenant               Tenant                   @relation(fields: [tenantId], references: [id])
+  order                ClinicalOrder            @relation(fields: [tenantId, clinicalOrderId], references: [tenantId, id])
+  replaces             SpecimenTube?            @relation("SpecimenTubeReplaces", fields: [tenantId, replacesTubeId], references: [tenantId, id])
+  replacedBy           SpecimenTube[]           @relation("SpecimenTubeReplaces")
+  items                ClinicalOrderItem[]
+  partnerDispatchItems LabPartnerDispatchItem[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, sid])
@@ -5017,6 +5097,7 @@ model Branch {
   examStations               ExamStation[]
   encounters                 Encounter[]
   appointments               Appointment[]
+  labPartnerDispatches       LabPartnerDispatch[]
   workShiftAssignments       WorkShiftAssignment[]
   doctorRoomSessions         DoctorRoomSession[]
   leaveRequests              LeaveRequest[]

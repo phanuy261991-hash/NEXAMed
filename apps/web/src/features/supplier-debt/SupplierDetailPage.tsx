@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardText, Eye, HandCoins, Lock, Receipt, Scales, ShoppingCart, Truck, ArrowUUpLeft, Warning } from '@phosphor-icons/react';
+import { ArrowLeft, ClipboardText, DownloadSimple, Eye, HandCoins, Lock, Receipt, Scales, ShoppingCart, TrendDown, TrendUp, Truck, ArrowUUpLeft, Warning } from '@phosphor-icons/react';
 import type { SupplierDebtAdjustment, SupplierDebtLedgerEntry, SupplierDebtPayment, SupplierDebtReceiptStatus, SupplierDebtReconciliation } from '@nexamed/shared';
 import { formatVnd } from '../../shared/format/currency';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -12,6 +12,10 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
 import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { StatCardRow } from '../../shared/ui/StatCard';
+import { ReportPrintAction } from '../../shared/print/ReportPrintAction';
+import { buildSupplierDebtLedgerPrintSpec } from '../report/report-print-builders';
+import { useExportSupplierDebtLedgerMutation } from '../report/report-exports';
+import { ENTRY_TYPE_LABEL } from './ledger-labels';
 import { TabBar } from '../../shared/ui/TabBar';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
@@ -60,17 +64,6 @@ const RECEIPT_STATUS_LABEL: Record<SupplierDebtReceiptStatus['status'], { label:
   UNPAID: { label: 'Chưa trả', tone: 'danger' },
   PARTIALLY_PAID: { label: 'Trả một phần', tone: 'warning' },
   FULLY_PAID: { label: 'Đã trả đủ', tone: 'success' },
-};
-
-const ENTRY_TYPE_LABEL: Record<SupplierDebtLedgerEntry['entryType'], string> = {
-  OPENING_BALANCE: 'Nợ đầu kỳ',
-  PURCHASE: 'Phát sinh nợ',
-  PAYMENT: 'Thanh toán',
-  RETURN: 'Trả hàng',
-  REFUND_RECEIVED: 'NCC hoàn tiền',
-  ADJUSTMENT_INCREASE: 'Điều chỉnh tăng',
-  ADJUSTMENT_DECREASE: 'Điều chỉnh giảm',
-  REVERSAL: 'Bút toán đảo',
 };
 
 type TabId = 'receipts' | 'returns' | 'ledger' | 'payments' | 'adjustments' | 'reconciliations';
@@ -244,7 +237,7 @@ export function SupplierDetailPage() {
         <div className="p-3">
           {tab === 'receipts' && <ReceiptsTab supplierId={supplierId} />}
           {tab === 'returns' && <ReturnsTab supplierId={supplierId} />}
-          {tab === 'ledger' && <LedgerTab supplierId={supplierId} />}
+          {tab === 'ledger' && <LedgerTab supplierId={supplierId} supplierCode={supplier.code} supplierName={supplier.name} />}
           {tab === 'payments' && <PaymentsTab supplierId={supplierId} />}
           {tab === 'adjustments' && <AdjustmentsTab supplierId={supplierId} />}
           {tab === 'reconciliations' && <ReconciliationsTab supplierId={supplierId} />}
@@ -397,21 +390,97 @@ function ReturnsTab({ supplierId }: { supplierId: string }) {
   );
 }
 
-function LedgerTab({ supplierId }: { supplierId: string }) {
+/**
+ * Tab "Sổ công nợ": lọc theo khoảng NGÀY CHỨNG TỪ, dải tổng hợp biến động kỳ (đầu kỳ, tăng nợ, giảm nợ, cuối kỳ), Xuất Excel và In (docs/DECISIONS.md #292; mọi báo cáo đều có Excel và In, #287).
+ * Chỉ lọc dòng hiển thị: "Số dư sau" của từng dòng luôn tính theo toàn bộ lịch sử lúc ghi sổ.
+ */
+function LedgerTab({ supplierId, supplierCode, supplierName }: { supplierId: string; supplierCode: string; supplierName: string }) {
   const showBranch = useShowBranchInfo();
-  const query = useSupplierDebtLedgerQuery(supplierId, {});
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const rangeError = from !== '' && to !== '' && from > to ? 'Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.' : null;
+  const filtered = from !== '' || to !== '';
+  const query = useSupplierDebtLedgerQuery(supplierId, { ...(from ? { from } : {}), ...(to ? { to } : {}) }, rangeError === null);
+  const exportMutation = useExportSupplierDebtLedgerMutation();
+  const printSpec = useMemo(
+    () => (query.data && rangeError === null ? buildSupplierDebtLedgerPrintSpec(query.data.items, query.data.summary, { supplierCode, supplierName, from, to }) : null),
+    [query.data, rangeError, supplierCode, supplierName, from, to],
+  );
+  const actionsDisabled = rangeError !== null || query.isLoading || query.isError || !query.data;
+
+  const toolbar = (
+    <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="ledger-from" className="text-sm font-semibold text-slate-800">
+            Từ ngày
+          </label>
+          <div className="w-40">
+            <DateInput id="ledger-from" value={from} onChange={setFrom} dense />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="ledger-to" className="text-sm font-semibold text-slate-800">
+            Đến ngày
+          </label>
+          <div className="w-40">
+            <DateInput id="ledger-to" value={to} onChange={setTo} dense />
+          </div>
+        </div>
+        {filtered && (
+          <Button type="button" variant="secondary" onClick={() => { setFrom(''); setTo(''); }}>
+            Xoá lọc
+          </Button>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="secondary" disabled={actionsDisabled} loading={exportMutation.isPending} onClick={() => exportMutation.mutate({ supplierId, ...(from ? { from } : {}), ...(to ? { to } : {}) })}>
+          <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+          Xuất Excel
+        </Button>
+        <ReportPrintAction spec={printSpec} disabled={actionsDisabled} />
+      </div>
+    </div>
+  );
 
   if (query.isError) {
-    return <ErrorBanner message="Không tải được Sổ công nợ." onRetry={() => query.refetch()} />;
-  }
-  if (query.isLoading) {
-    return <Skeleton className="h-40 w-full" />;
+    return (
+      <>
+        {toolbar}
+        <ErrorBanner message="Không tải được Sổ công nợ." onRetry={() => query.refetch()} />
+      </>
+    );
   }
   const items = query.data?.items ?? [];
-  if (items.length === 0) {
-    return <EmptyState icon={Scales} title="Sổ công nợ trống" description="Chưa có bút toán nào." />;
-  }
+  const summary = query.data?.summary;
 
+  return (
+    <div>
+      {toolbar}
+      {rangeError && <ErrorBanner message={rangeError} />}
+      {exportMutation.isError && <ErrorBanner message="Không xuất được Excel. Thử lại sau." />}
+      {query.isLoading && !rangeError && <Skeleton className="h-40 w-full" />}
+      {summary && !rangeError && (
+        <div className="mb-3 flex flex-wrap items-stretch">
+          <StatCardRow
+            items={[
+              { icon: Scales, tone: 'slate', label: 'Số dư đầu kỳ', value: formatVnd(summary.openingBalance) },
+              { icon: TrendUp, tone: 'amber', label: 'Tăng nợ', value: formatVnd(summary.totalIncrease) },
+              { icon: TrendDown, tone: 'emerald', label: 'Giảm nợ', value: formatVnd(summary.totalDecrease) },
+              { icon: Scales, tone: summary.closingBalance < 0 ? 'blue' : 'rose', label: summary.closingBalance < 0 ? 'NCC nợ lại cuối kỳ' : 'Số dư cuối kỳ', value: formatVnd(Math.abs(summary.closingBalance)), emphasis: true },
+            ]}
+          />
+        </div>
+      )}
+      {items.length === 0 && query.isSuccess && !rangeError && (
+        <EmptyState icon={Scales} title={filtered ? 'Không có bút toán trong kỳ' : 'Sổ công nợ trống'} description={filtered ? 'Thử đổi khoảng ngày hoặc xoá lọc.' : 'Chưa có bút toán nào.'} />
+      )}
+      {items.length > 0 && !rangeError && <LedgerTable items={items} showBranch={showBranch} />}
+    </div>
+  );
+}
+
+function LedgerTable({ items, showBranch }: { items: SupplierDebtLedgerEntry[]; showBranch: boolean }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">

@@ -8,6 +8,8 @@ import type {
   StockBalanceStatus,
   StockExpiryWarningItem,
   StockTransferShrinkageCause,
+  SupplierDebtLedgerEntry,
+  SupplierDebtLedgerSummary,
   WalletListItem,
 } from '@nexamed/shared';
 import { formatDobDisplay } from '../../shared/format/date';
@@ -15,6 +17,7 @@ import { formatVndPlain } from '../../shared/format/currency';
 import { formatDateTimeVn } from '../../shared/format/time';
 import type { ReportPrintSpec } from '../../shared/print/report-print-spec';
 import type { StockLedgerDisplayRow } from '../inventory/stock-ledger-rows';
+import { ENTRY_TYPE_LABEL } from '../supplier-debt/ledger-labels';
 
 /**
  * Hàm THUẦN đổi dữ liệu đang xem của từng báo cáo ĐÃ CÓ thành bản in (docs/DECISIONS.md #287: mọi báo cáo phải in được). Không gọi API, không biết gì về giao diện —
@@ -282,6 +285,49 @@ export function buildSupplierDebtPrintSpec(rows: readonly SupplierDebtPrintRow[]
           r.pendingApprovalAmount > 0 ? money(r.pendingApprovalAmount) : '—',
         ]),
         emptyText: 'Không có nhà cung cấp nào có công nợ.',
+      },
+    ],
+  };
+}
+
+/**
+ * Sổ công nợ của MỘT nhà cung cấp/đối tác theo khoảng ngày (docs/DECISIONS.md #292). `from`/`to` rỗng = không giới hạn. Tăng nợ và giảm nợ ở hai cột riêng; dòng đã bị đảo ghi chú "đã bị đảo".
+ * Số dư dương = còn nợ nhà cung cấp, âm = nhà cung cấp nợ lại.
+ */
+export function buildSupplierDebtLedgerPrintSpec(
+  entries: readonly SupplierDebtLedgerEntry[],
+  summary: SupplierDebtLedgerSummary,
+  ctx: { supplierCode: string; supplierName: string; from: string; to: string },
+): ReportPrintSpec {
+  const dateOf = (iso: string): string => formatDateTimeVn(iso).slice(0, 10);
+  const balance = (v: number): string => (v < 0 ? `${money(-v)} (NCC nợ lại)` : money(v));
+  const periodLine = ctx.from || ctx.to ? `Từ ${ctx.from ? formatDobDisplay(ctx.from) : 'đầu'} đến ${ctx.to ? formatDobDisplay(ctx.to) : 'nay'}` : 'Toàn bộ lịch sử';
+  return {
+    title: 'Sổ công nợ nhà cung cấp',
+    subtitleLines: [`${ctx.supplierCode} · ${ctx.supplierName}`, periodLine],
+    infoLines: [`Số dư đầu kỳ: ${balance(summary.openingBalance)} · Tăng nợ: ${money(summary.totalIncrease)} · Giảm nợ: ${money(summary.totalDecrease)} · Số dư cuối kỳ: ${balance(summary.closingBalance)}`],
+    sections: [
+      {
+        columns: [
+          { header: 'Ngày chứng từ', width: '84px' },
+          { header: 'Loại', width: '96px' },
+          { header: 'Chứng từ', width: '112px' },
+          { header: 'Ghi chú' },
+          { header: 'Tăng nợ', align: 'right', width: '92px' },
+          { header: 'Giảm nợ', align: 'right', width: '92px' },
+          { header: 'Số dư sau', align: 'right', width: '100px' },
+        ],
+        rows: entries.map((e) => [
+          dateOf(e.occurredAt),
+          ENTRY_TYPE_LABEL[e.entryType],
+          e.stockReceiptNo ?? e.stockIssueNo ?? e.cashVoucherNo ?? '—',
+          [e.reversed ? 'đã bị đảo' : '', e.note ?? ''].filter(Boolean).join(' · ') || '—',
+          e.amountChange > 0 ? money(e.amountChange) : '—',
+          e.amountChange < 0 ? money(-e.amountChange) : '—',
+          money(e.balanceAfter),
+        ]),
+        totalRows: entries.length > 0 ? [['Cộng trong kỳ', '', '', '', money(summary.totalIncrease), money(summary.totalDecrease), balance(summary.closingBalance)]] : undefined,
+        emptyText: 'Không có bút toán nào trong kỳ.',
       },
     ],
   };

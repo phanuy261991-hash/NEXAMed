@@ -14,6 +14,11 @@ export async function exportSupplierDebtExcel(filters: { q?: string; showAll: bo
   await downloadFile(`/api/v1/supplier-debt/summaries/export?${toQueryString({ q: filters.q, showAll: String(filters.showAll) })}`, 'cong-no-nha-cung-cap.xlsx');
 }
 
+/** Xuất Excel Sổ công nợ của MỘT nhà cung cấp theo khoảng ngày đang xem (docs/DECISIONS.md #292). */
+export async function exportSupplierDebtLedgerExcel(filters: { supplierId: string; from?: string; to?: string }): Promise<void> {
+  await downloadFile(`/api/v1/supplier-debt/${filters.supplierId}/ledger/export?${toQueryString({ from: filters.from, to: filters.to })}`, 'so-cong-no-nha-cung-cap.xlsx');
+}
+
 export async function exportStockBalancesExcel(filters: { warehouseId?: string; q?: string; belowMinOnly: boolean }): Promise<void> {
   await downloadFile(
     `/api/v1/inventory/balances/export?${toQueryString({ warehouseId: filters.warehouseId, q: filters.q, belowMinOnly: String(filters.belowMinOnly) })}`,
@@ -30,6 +35,9 @@ export function useExportWalletsMutation() {
 }
 export function useExportSupplierDebtMutation() {
   return useMutation({ mutationFn: exportSupplierDebtExcel });
+}
+export function useExportSupplierDebtLedgerMutation() {
+  return useMutation({ mutationFn: exportSupplierDebtLedgerExcel });
 }
 export function useExportStockBalancesMutation() {
   return useMutation({ mutationFn: exportStockBalancesExcel });

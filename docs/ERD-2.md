@@ -311,3 +311,14 @@ Migration `20261106130000_lab_partner_foundation`. **Dữ liệu CHUNG cả côn
 | `lab_partner_service_price` | Giá trả đối tác theo cặp | Đủ 8 cột bắt buộc + RLS (`FORCE`). `technical_service_id`, `supplier_id` (composite FK cùng tenant), `amount BIGINT CHECK (>= 0)`, `is_default`. Partial unique `(tenant_id, technical_service_id, supplier_id) WHERE deleted_at IS NULL` (MỘT giá hiện hành mỗi cặp, không ngày hiệu lực) và `(tenant_id, technical_service_id) WHERE is_default AND deleted_at IS NULL` (tối đa một đối tác mặc định). Quản lý bằng bulk-replace theo dịch vụ (xoá mềm rồi tạo lại). Giá được CHỤP LẠI vào dòng gửi lúc gửi mẫu (giai đoạn 2) |
 
 Công tắc "Dùng đối tác xét nghiệm": `tenant_setting` key `lab_partner_enabled` (mặc định tắt), chung cả công ty.
+
+### 3.21 Gửi mẫu đối tác — đợt gửi và dòng gửi (v1.93, `docs/DECISIONS.md` #291 bổ sung 3, giai đoạn 2)
+
+Migration `20261106150000_lab_partner_dispatch`. Cả hai bảng đủ 8 cột bắt buộc + RLS (`FORCE`). Chưa có bảng file PDF kết quả và chưa có cột nguồn ở `supplier_debt_entry` (giai đoạn sau).
+
+| Bảng | Vai trò | Chi tiết |
+|---|---|---|
+| `lab_partner_dispatch` | MỘT đợt gửi mẫu cho MỘT đối tác, THEO CHI NHÁNH | `branch_id` (composite FK `(tenant_id, branch_id)`), `dispatch_no` (mã `GM…` qua `BusinessCodeService` loại `LAB_PARTNER_DISPATCH`, `UNIQUE (tenant_id, dispatch_no)`), `supplier_id` (composite FK → `supplier`, nhà cung cấp có cờ `is_lab_partner`), `sent_at`, `sent_by`, `note` (≤ 1000 ký tự). Index theo chi nhánh/đối tác + `sent_at DESC` |
+| `lab_partner_dispatch_item` | Một dịch vụ trong đợt gửi | `dispatch_id`, `clinical_order_item_id`, `specimen_tube_id` (composite FK, ống mẫu nullable), `unit_cost BIGINT CHECK (>= 0)` = giá trả CHỤP LẠI lúc gửi, `due_at` = `sent_at` + `turnaround_minutes` của dịch vụ (null nếu chưa đặt), `status` enum `SENT`/`RECEIVED`/`REJECTED` (mặc định `SENT`), `received_at/by` (CHECK: RECEIVED phải đủ), `rejected_at/by/reject_reason` (CHECK: REJECTED phải đủ, lý do 1–500 ký tự). **Partial unique `(tenant_id, clinical_order_item_id) WHERE status IN ('SENT','RECEIVED') AND deleted_at IS NULL`**: mỗi dòng chỉ định tối đa MỘT lần gửi hiệu lực; lần `REJECTED` là lịch sử, mẫu quay về "Chờ gửi" để chọn đối tác khác |
+
+"Chờ gửi" không lưu trạng thái: dẫn xuất từ dòng chỉ định xét nghiệm `IN_PROGRESS` + ống `COLLECTED` + dịch vụ `sent_to_partner` + chưa có dòng gửi SENT/RECEIVED. Thêm quyền `lab_partner.read/send/receive` và loại mã `LAB_PARTNER_DISPATCH`.
