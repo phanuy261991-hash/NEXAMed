@@ -131,6 +131,7 @@ model Tenant {
   printTemplates              PrintTemplate[]
   technicalServices           TechnicalService[]
   technicalServicePrices      TechnicalServicePrice[]
+  labPartnerServicePrices     LabPartnerServicePrice[]
   labIndicators               LabIndicator[]
   labIndicatorReferences      LabIndicatorReference[]
   technicalServiceIndicators  TechnicalServiceIndicator[]
@@ -2147,6 +2148,8 @@ model Supplier {
   address     String?
   contactName String? @map("contact_name")
   isActive    Boolean @default(true) @map("is_active")
+  // "Gửi mẫu đối tác" (docs/DECISIONS.md #291): nhà cung cấp này là ĐỐI TÁC XÉT NGHIỆM (chip "Đối tác XN", dùng chung sổ công nợ NCC).
+  isLabPartner Boolean @default(false) @map("is_lab_partner")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2158,6 +2161,8 @@ model Supplier {
   updatedBy     String    @map("updated_by") @db.Uuid
 
   tenant              Tenant                       @relation(fields: [tenantId], references: [id])
+  // "Gửi mẫu đối tác" (#291) — giá trả đối tác theo từng dịch vụ kỹ thuật.
+  labPartnerPrices    LabPartnerServicePrice[]
   // Kho Thuốc GĐ2 — phiếu nhập từ nhà cung cấp này (receiptType=PURCHASE).
   stockReceipts       StockReceipt[]
   // "Công nợ nhà cung cấp" Phần A — 1 NCC có nhiều nhất 1 sổ công nợ (find-or-create lúc phát sinh
@@ -4251,6 +4256,8 @@ model TechnicalService {
   /// `reference_catalog` category SPECIMEN_TYPE — chỉ có ý nghĩa với LAB.
   specimenTypeCode   String?                    @map("specimen_type_code")
   isPerformedInHouse Boolean                    @default(true) @map("is_performed_in_house")
+  // "Gửi mẫu đối tác" (#291): phòng khám LẤY MẪU rồi gửi đối tác (khác "chỉ định ra ngoài" = isPerformedInHouse=false). Chỉ có nghĩa khi isPerformedInHouse=true (CHECK ở DB).
+  sentToPartner      Boolean                    @default(false) @map("sent_to_partner")
   departmentId       String?                    @map("department_id") @db.Uuid
   turnaroundMinutes  Int?                       @map("turnaround_minutes")
   resultType         TechnicalServiceResultType @default(INDICATORS) @map("result_type")
@@ -4269,6 +4276,7 @@ model TechnicalService {
   tenant         Tenant                      @relation(fields: [tenantId], references: [id])
   department     Department?                 @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   prices         TechnicalServicePrice[]
+  partnerPrices  LabPartnerServicePrice[]
   indicators     TechnicalServiceIndicator[]
   templates      ResultTemplate[]
   packageItems   ServicePackageItem[]
@@ -4305,6 +4313,34 @@ model TechnicalServicePrice {
 
   @@unique([tenantId, id])
   @@map("technical_service_price")
+}
+
+/// Giá trả ĐỐI TÁC XÉT NGHIỆM theo từng cặp (dịch vụ kỹ thuật × đối tác) — "Gửi mẫu đối tác" (docs/DECISIONS.md #291). MỘT giá hiện hành cho mỗi cặp (không ngày hiệu lực);
+/// giá được CHỤP LẠI vào dòng gửi lúc gửi mẫu nên đổi giá sau không làm lệch mẫu đã gửi. Tối đa một đối tác mặc định mỗi dịch vụ. Dữ liệu CHUNG cả công ty (không branch_id, như nhà cung cấp).
+/// Quản lý bằng bulk-replace theo dịch vụ (xoá mềm rồi tạo lại trong cùng transaction) — khuôn `technical_service_price`.
+model LabPartnerServicePrice {
+  id                 String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String  @map("tenant_id") @db.Uuid
+  technicalServiceId String  @map("technical_service_id") @db.Uuid
+  supplierId         String  @map("supplier_id") @db.Uuid
+  amount             BigInt
+  isDefault          Boolean @default(false) @map("is_default")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id])
+  service  TechnicalService @relation(fields: [tenantId, technicalServiceId], references: [tenantId, id])
+  supplier Supplier         @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("lab_partner_service_price")
 }
 
 /// Chỉ số xét nghiệm (HGB, WBC, Glucose...) — dùng chung cho nhiều dịch vụ qua `technical_service_indicator`.

@@ -80,6 +80,12 @@ export const CLINICAL_CATALOG_PILL_PERMISSIONS: ReadonlyArray<readonly [string, 
   ['advice_template', 'read'],
 ];
 
+/** Thêm/sửa nhà cung cấp + đối tác xét nghiệm (#291) — quyền RIÊNG, tách khỏi `drug.*`; xem danh sách cần `supplier.read`. */
+export const SUPPLIER_MANAGE_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
+  ['supplier', 'create'],
+  ['supplier', 'update'],
+];
+
 /** "Danh mục Thuốc và Vật Tư"/"Quản lý nhà cung cấp"/"Kho" — trước gộp `drug.manage`, tách thành
  * `create`/`update` (docs/DECISIONS.md #156). Dùng chung cho route guard (`router.tsx`) và ẩn/hiện
  * menu (`Sidebar.tsx`), tránh lặp mảng ở 2 nơi như comment đầu file đã nêu. */

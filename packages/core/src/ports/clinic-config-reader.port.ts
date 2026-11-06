@@ -232,6 +232,12 @@ export interface ClinicConfigReaderPort {
   getDoctorDashboardMoneyEnabled(tenantId: string): Promise<boolean>;
 
   /**
+   * "Dùng đối tác xét nghiệm" (#291) — công tắc chung cả công ty, TẮT (mặc định) (`tenant_setting` key `lab_partner_enabled`). Tắt thì máy chủ từ chối các API gửi mẫu/đối tác (409 `LAB_PARTNER_DISABLED`).
+   * KHÔNG gọi hàm này bên TRONG một transaction đang mở (port mở transaction riêng) — đọc trước.
+   */
+  getLabPartnerEnabled(tenantId: string): Promise<boolean>;
+
+  /**
    * Bảng ánh xạ "loại thuốc → loại đơn Bộ Y tế" (#242, giai đoạn 2) — `tenant_setting` key `prescription_kind_mapping`, vắng thì mặc định (`DEFAULT_PRESCRIPTION_KIND_MAPPING`).
    * Module `encounter` đọc qua port này (TRƯỚC transaction chính) để gắn loại đơn cho từng dòng thuốc và tách đơn khi ký.
    */

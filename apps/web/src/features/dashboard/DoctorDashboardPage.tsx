@@ -36,7 +36,9 @@ function vietnamHourOf(iso: string): number {
 
 function ClosingNotice() {
   const user = useAuthStore((s) => s.user);
-  const closingState = useMyClosingStateQuery();
+  // Trạng thái đóng ca cần quyền ghi tạm nghỉ/đóng ca (`doctor_availability.update`); vai trò không có quyền đó (vai trò tuỳ biến) không gọi để khỏi bị 403 thừa.
+  const canClose = useHasPermission('doctor_availability', 'update');
+  const closingState = useMyClosingStateQuery(canClose);
   const [dialogOpen, setDialogOpen] = useState(false);
   const days = closingState.data?.pendingDays ?? [];
 

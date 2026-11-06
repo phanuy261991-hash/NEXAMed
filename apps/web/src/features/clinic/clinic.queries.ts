@@ -35,6 +35,7 @@ import {
   getIcd10SuggestionStatus,
   getInsuranceStatus,
   getFollowUpFeatureStatus,
+  getLabPartnerFeatureStatus,
   getAllowStaffSelfScheduleStatus,
   getBackupConfig,
   getBackupStatus,
@@ -297,6 +298,19 @@ export function useFollowUpFeatureEnabledQuery() {
   });
 }
 
+/**
+ * "Dùng đối tác xét nghiệm" (#291) — menu "Gửi mẫu đối tác", danh mục đối tác và phần "Gửi đối tác" ở form dịch vụ đọc qua hook tự-phục vụ này (KHÔNG dùng `useClinicSettingsQuery()`, cần `clinic_config.read`).
+ * Máy chủ vẫn là nơi chặn thật (409 LAB_PARTNER_DISABLED); web chỉ ẩn cho gọn.
+ */
+export function useLabPartnerEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'lab-partner-enabled'),
+    queryFn: getLabPartnerFeatureStatus,
+    staleTime: STALE_REFERENCE_MS,
+  });
+}
+
 export function useUpdateClinicSettingsMutation() {
   const { tenantId } = useAppConfig();
   const queryClient = useQueryClient();
@@ -322,6 +336,8 @@ export function useUpdateClinicSettingsMutation() {
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'insurance-enabled') });
       // "Dùng Hẹn tái khám" (#285) — menu/trang/Tổng quan đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'follow-up-enabled') });
+      // "Dùng đối tác xét nghiệm" (#291) — menu/danh mục/form dịch vụ đọc qua hook tự-phục vụ riêng, làm mới luôn.
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'lab-partner-enabled') });
       // "Tự động thu gọn menu khi chuyển trang" — Sidebar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.
       void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'clinic', 'sidebar-auto-collapse-enabled') });
       // "Chế độ phòng khám 1 người" — TopBar.tsx đọc qua hook tự-phục vụ riêng, làm mới luôn.

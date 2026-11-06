@@ -61,6 +61,8 @@ describe('syncRolePermissionsForTenant / ForAllTenants', () => {
     await privileged.referenceCatalog.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.userBranch.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.branch.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
+    // Đồng bộ quyền nay đánh dấu `supplier_permission_split_done` vào cấu hình công ty (#291).
+    await privileged.tenantSetting.deleteMany({ where: { tenantId: { in: [tenantAId, tenantBId] } } });
     await privileged.tenant.deleteMany({ where: { id: { in: [tenantAId, tenantBId] } } });
     await privileged.$disconnect();
     await appPrisma.$disconnect();
@@ -172,6 +174,33 @@ describe('syncRolePermissionsForTenant / ForAllTenants', () => {
     await unitOfWork.runInTenantScope(tenantAId, (tx) => syncRolePermissionsForTenant(tx, tenantAId, SYSTEM_ACTOR));
     const again = await privileged.rolePermission.count({ where: { tenantId: tenantAId, roleId: custom.id, deletedAt: null } });
     expect(again).toBe(4);
+  });
+
+  it('tách quyền nhà cung cấp (#291): vai trò tuỳ biến có drug.<hành động> được cấp supplier.<hành động> cùng phạm vi MỘT LẦN; bỏ đi rồi đồng bộ lại không cấp lại', async () => {
+    // Mô phỏng tenant cũ chưa từng chạy bước tách quyền: gỡ dấu đã làm.
+    await privileged.tenantSetting.deleteMany({ where: { tenantId: tenantAId, key: 'supplier_permission_split_done' } });
+    const drugRead = await privileged.permission.findFirstOrThrow({ where: { module: 'drug', action: 'read' } });
+    const drugUpdate = await privileged.permission.findFirstOrThrow({ where: { module: 'drug', action: 'update' } });
+    const custom = await privileged.role.create({ data: { tenantId: tenantAId, name: `kho-cu-${randomUUID().slice(0, 6)}`, isSystemDefault: false, createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR } });
+    await privileged.rolePermission.createMany({
+      data: [
+        { tenantId: tenantAId, roleId: custom.id, permissionId: drugRead.id, dataScope: 'department', createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR },
+        { tenantId: tenantAId, roleId: custom.id, permissionId: drugUpdate.id, dataScope: 'global', createdBy: SYSTEM_ACTOR, updatedBy: SYSTEM_ACTOR },
+      ],
+    });
+    const liveOf = async () => {
+      const rows = await privileged.rolePermission.findMany({ where: { tenantId: tenantAId, roleId: custom.id, deletedAt: null }, include: { permission: true } });
+      return Object.fromEntries(rows.map((r) => [`${r.permission.module}.${r.permission.action}`, r.dataScope]));
+    };
+
+    const first = await unitOfWork.runInTenantScope(tenantAId, (tx) => syncRolePermissionsForTenant(tx, tenantAId, SYSTEM_ACTOR));
+    expect(await liveOf()).toEqual({ 'drug.read': 'department', 'drug.update': 'global', 'supplier.read': 'department', 'supplier.update': 'global' });
+    expect(first.filter((k) => k.includes('/supplier.')).length).toBe(2);
+
+    // Quản trị viên bỏ quyền xem nhà cung cấp khỏi vai trò — lần đồng bộ sau KHÔNG cấp lại (dấu đã đặt).
+    await privileged.rolePermission.deleteMany({ where: { tenantId: tenantAId, roleId: custom.id, permission: { module: 'supplier', action: 'read' } } });
+    await unitOfWork.runInTenantScope(tenantAId, (tx) => syncRolePermissionsForTenant(tx, tenantAId, SYSTEM_ACTOR));
+    expect(await liveOf()).toEqual({ 'drug.read': 'department', 'drug.update': 'global', 'supplier.update': 'global' });
   });
 
   it('ForAllTenants chỉ vá đúng tenant thiếu, cách ly tenant khác', async () => {

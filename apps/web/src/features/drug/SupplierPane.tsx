@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
-import { ArrowCounterClockwise, Eye, MagnifyingGlass, PencilSimple, Plus, Prohibit, Truck } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Eye, Flask, MagnifyingGlass, PencilSimple, Plus, Prohibit, Truck } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import type { SupplierSummary } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
-import { DRUG_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
+import { SUPPLIER_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
 import { Button } from '../../shared/ui/Button';
 import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
@@ -23,6 +23,7 @@ import { useEditedRecordGuard } from '../../shared/hooks/useStaleRecordWatch';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { formatVnd } from '../../shared/format/currency';
 import { useSupplierDebtSummariesQuery } from '../supplier-debt/supplier-debt.queries';
+import { useLabPartnerSummaryQuery } from '../paraclinical/paraclinical.queries';
 import { useCreateSupplierMutation, useSuppliersQuery, useUpdateSupplierMutation } from './supplier.queries';
 import { getSupplier } from './supplier.api';
 
@@ -37,8 +38,10 @@ interface ModalState {
 /** Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — nay được dùng ở trang riêng
  * `SupplierManagementPage.tsx` (nhóm sidebar "Quản lý nhà cung cấp", tách khỏi "Danh mục Thuốc và
  * Vật Tư"). Mã tự sinh (tiền tố NCC) — không có ô nhập mã, đúng khuôn `WorkShiftPane`. */
-export function SupplierPane() {
-  const canManage = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
+export function SupplierPane({ variant = 'supplier' }: { variant?: 'supplier' | 'labPartner' } = {}) {
+  // "Gửi mẫu đối tác" (#291): cùng bảng nhà cung cấp, biến thể `labPartner` chỉ liệt kê đối tác xét nghiệm (danh mục Cận lâm sàng); biến thể mặc định hiện cả hai, đối tác có chip "Đối tác XN".
+  const isPartnerView = variant === 'labPartner';
+  const canManage = useHasAnyPermission(SUPPLIER_MANAGE_PERMISSIONS);
   // "Công nợ nhà cung cấp" Phần A (docs/DECISIONS.md #180/#182) — cột "Tổng mua"/"Còn nợ" + nút
   // "Xem" CHỈ hiện cho ai có supplier_debt.read (mặc định chỉ clinic_admin lúc ra mắt).
   const canReadDebt = useHasPermission('supplier_debt', 'read');
@@ -50,14 +53,17 @@ export function SupplierPane() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const query = useSuppliersQuery(includeInactive);
-  const debtSummariesQuery = useSupplierDebtSummariesQuery(includeInactive);
+  // Chỉ gọi công nợ khi có quyền xem — người chỉ có `supplier.read` (#291) không bị 403 thừa.
+  const debtSummariesQuery = useSupplierDebtSummariesQuery(includeInactive, canReadDebt);
   const debtBySupplierId = new Map((debtSummariesQuery.data?.items ?? []).map((s) => [s.supplierId, s]));
+  const partnerSummaryQuery = useLabPartnerSummaryQuery(isPartnerView);
+  const serviceCountBySupplierId = new Map((partnerSummaryQuery.data?.items ?? []).map((i) => [i.supplierId, i.serviceCount]));
   const createMutation = useCreateSupplierMutation();
   const updateMutation = useUpdateSupplierMutation();
 
   // Tìm theo mã/tên/SĐT/MST — quy mô nhỏ (tải hết, không phân trang, đúng khuôn danh mục dùng chung), lọc thuần ở client.
   const q = search.trim().toLowerCase();
-  const items = (query.data?.items ?? []).filter(
+  const items = (query.data?.items ?? []).filter((s) => !isPartnerView || s.isLabPartner).filter(
     (s) => !q || s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || (s.phone ?? '').includes(q) || (s.taxCode ?? '').toLowerCase().includes(q),
   );
   const itemIds = items.map((s) => s.id);
@@ -111,13 +117,13 @@ export function SupplierPane() {
           </div>
           <label className="flex items-center gap-1.5 text-sm text-slate-600">
             <input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} />
-            Hiện cả nhà cung cấp đã ngưng
+            {isPartnerView ? 'Hiện cả đối tác đã ngưng' : 'Hiện cả nhà cung cấp đã ngưng'}
           </label>
         </div>
         {canManage && (
           <Button type="button" onClick={() => setModal({ mode: 'create' })}>
             <Plus size={16} weight="bold" aria-hidden="true" />
-            Thêm nhà cung cấp
+            {isPartnerView ? 'Thêm đối tác' : 'Thêm nhà cung cấp'}
           </Button>
         )}
       </div>
@@ -134,7 +140,11 @@ export function SupplierPane() {
       )}
 
       {query.isSuccess && items.length === 0 && (
-        <EmptyState icon={Truck} title="Chưa có nhà cung cấp nào" description="Thêm nhà cung cấp để dùng khi lập Phiếu nhập kho." />
+        <EmptyState
+          icon={isPartnerView ? Flask : Truck}
+          title={isPartnerView ? 'Chưa có đối tác xét nghiệm nào' : 'Chưa có nhà cung cấp nào'}
+          description={isPartnerView ? 'Thêm đối tác để gửi mẫu xét nghiệm và theo dõi công nợ với họ.' : 'Thêm nhà cung cấp để dùng khi lập Phiếu nhập kho.'}
+        />
       )}
 
       {query.isSuccess && items.length > 0 && (
@@ -152,11 +162,12 @@ export function SupplierPane() {
                     />
                   </th>
                   <th className="w-28 px-4 py-2.5 text-center">Mã</th>
-                  <th className="px-4 py-2.5 text-left">Tên nhà cung cấp</th>
-                  <th className="w-32 px-4 py-2.5 text-center">Mã số thuế</th>
+                  <th className="px-4 py-2.5 text-left">{isPartnerView ? 'Tên đối tác' : 'Tên nhà cung cấp'}</th>
+                  {!isPartnerView && <th className="w-32 px-4 py-2.5 text-center">Mã số thuế</th>}
                   <th className="w-36 px-4 py-2.5 text-center">Điện thoại</th>
                   <th className="w-40 px-4 py-2.5 text-left">Người liên hệ</th>
-                  {canReadDebt && <th className="w-32 px-4 py-2.5 text-center">Tổng mua</th>}
+                  {isPartnerView && <th className="w-24 px-4 py-2.5 text-center">Dịch vụ</th>}
+                  {canReadDebt && !isPartnerView && <th className="w-32 px-4 py-2.5 text-center">Tổng mua</th>}
                   {canReadDebt && <th className="w-32 px-4 py-2.5 text-center">Còn nợ</th>}
                   <th className="w-32 px-4 py-2.5 text-center">Trạng thái</th>
                   {(canManage || canReadDebt) && <th className="w-24 px-4 py-2.5 text-center">Thao tác</th>}
@@ -171,11 +182,15 @@ export function SupplierPane() {
                       <SelectionCheckbox checked={rowSelection.isSelected(supplier.id)} onChange={() => rowSelection.toggle(supplier.id)} ariaLabel={`Chọn ${supplier.name}`} />
                     </td>
                     <td className="px-4 py-2 text-center font-semibold text-slate-800">{supplier.code}</td>
-                    <td className="px-4 py-2 text-left font-medium text-slate-900">{supplier.name}</td>
-                    <td className="px-4 py-2 text-center text-slate-600">{supplier.taxCode ?? '—'}</td>
+                    <td className="px-4 py-2 text-left font-medium text-slate-900">
+                      {supplier.name}
+                      {!isPartnerView && supplier.isLabPartner && <span className="ml-2 rounded bg-brand-teal-tint px-1.5 py-0.5 align-middle text-[11px] font-semibold text-brand-teal">Đối tác XN</span>}
+                    </td>
+                    {!isPartnerView && <td className="px-4 py-2 text-center text-slate-600">{supplier.taxCode ?? '—'}</td>}
                     <td className="px-4 py-2 text-center text-slate-600">{supplier.phone ?? '—'}</td>
                     <td className="px-4 py-2 text-left text-slate-600">{supplier.contactName ?? '—'}</td>
-                    {canReadDebt && <td className="px-4 py-2 text-center font-medium text-slate-900">{debt && debt.totalPurchase > 0 ? formatVnd(debt.totalPurchase) : '—'}</td>}
+                    {isPartnerView && <td className="px-4 py-2 text-center text-slate-900">{partnerSummaryQuery.isSuccess ? (serviceCountBySupplierId.get(supplier.id) ?? 0) : '—'}</td>}
+                    {canReadDebt && !isPartnerView && <td className="px-4 py-2 text-center font-medium text-slate-900">{debt && debt.totalPurchase > 0 ? formatVnd(debt.totalPurchase) : '—'}</td>}
                     {canReadDebt && (
                       <td className="px-4 py-2 text-center">
                         {!debt || debt.balance === 0 ? (
@@ -224,11 +239,12 @@ export function SupplierPane() {
           onReload={guard.reload}
           mode={modal.mode}
           item={modal.item}
+          isPartnerView={isPartnerView}
           submitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => setModal(null)}
           onSubmit={async (dto) => {
             if (modal.mode === 'create') {
-              await createMutation.mutateAsync(dto);
+              await createMutation.mutateAsync(isPartnerView ? { ...dto, isLabPartner: true } : dto);
             } else if (modal.item) {
               await updateMutation.mutateAsync({ id: modal.item.id, body: { ...dto, isActive: modal.item.isActive, version: modal.item.version } });
             }
@@ -240,8 +256,8 @@ export function SupplierPane() {
         <ConfirmDialog
           icon={Prohibit}
           tone="danger"
-          title="Ngưng sử dụng nhà cung cấp"
-          rows={[{ label: 'Nhà cung cấp', value: deactivateTarget.name }]}
+          title={isPartnerView ? 'Ngưng sử dụng đối tác' : 'Ngưng sử dụng nhà cung cấp'}
+          rows={[{ label: isPartnerView ? 'Đối tác' : 'Nhà cung cấp', value: deactivateTarget.name }]}
           note="Có thể kích hoạt lại sau"
           onClose={() => setDeactivateTarget(null)}
           actions={
@@ -263,6 +279,7 @@ export function SupplierPane() {
 function SupplierFormModal({
   mode,
   item,
+  isPartnerView,
   submitting,
   stale,
   onReload,
@@ -271,6 +288,8 @@ function SupplierFormModal({
 }: {
   mode: 'create' | 'edit';
   item?: SupplierSummary;
+  /** Thêm/Sửa từ danh mục "Đối tác xét nghiệm" (#291) — đổi chữ tiêu đề và nhãn. */
+  isPartnerView: boolean;
   submitting: boolean;
   /** Người khác vừa lưu bản mới của nhà cung cấp này (phát hiện lúc form đang mở) — khoá nút Lưu tới khi tải lại. */
   stale: boolean;
@@ -319,14 +338,14 @@ function SupplierFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
       <form className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl" onSubmit={handleSubmit}>
-        <ModalHeader icon={Truck} title={mode === 'create' ? 'Thêm nhà cung cấp' : 'Sửa nhà cung cấp'} onClose={onCancel} />
+        <ModalHeader icon={isPartnerView ? Flask : Truck} title={mode === 'create' ? (isPartnerView ? 'Thêm đối tác xét nghiệm' : 'Thêm nhà cung cấp') : isPartnerView ? 'Sửa đối tác xét nghiệm' : 'Sửa nhà cung cấp'} onClose={onCancel} />
 
         <SaveFlashBanner visible={flashVisible} />
 
         <div className="mb-4 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <label htmlFor="supplier-name" className="text-sm font-semibold text-slate-800">
-              Tên nhà cung cấp
+              {isPartnerView ? 'Tên đối tác' : 'Tên nhà cung cấp'}
             </label>
             <input id="supplier-name" ref={nameInputRef} value={name} onChange={(e) => setName(e.target.value)} className={inputClassName} />
           </div>

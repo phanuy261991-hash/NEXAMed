@@ -1,6 +1,7 @@
 import type {
   InsuranceStatus,
   FollowUpFeatureStatus,
+  LabPartnerFeatureStatus,
   AllowFreeTextPrescriptionStatus,
   PrescriptionSplitBlockStatus,
   AllowStaffSelfScheduleStatus,
@@ -121,6 +122,11 @@ export async function getInsuranceStatus(): Promise<InsuranceStatus> {
 /** "Dùng Hẹn tái khám" (#285) — tự-phục vụ, mọi nhân viên đọc được để web ẩn/hiện mục menu, trang và khối ở Tổng quan lễ tân. */
 export async function getFollowUpFeatureStatus(): Promise<FollowUpFeatureStatus> {
   return unwrap(await getApiClient().GET('/api/v1/clinic-settings/follow-up-enabled')) as FollowUpFeatureStatus;
+}
+
+/** "Dùng đối tác xét nghiệm" (#291) — tự-phục vụ, mọi nhân viên đọc được để web ẩn/hiện menu và phần đối tác ở form dịch vụ. */
+export async function getLabPartnerFeatureStatus(): Promise<LabPartnerFeatureStatus> {
+  return unwrap(await getApiClient().GET('/api/v1/clinic-settings/lab-partner-enabled')) as LabPartnerFeatureStatus;
 }
 
 /** S6-01 (ADM-04) — chỉ `clinic_admin` gọi được (`clinic_config.read`), dùng cho banner cảnh báo toàn cục. */

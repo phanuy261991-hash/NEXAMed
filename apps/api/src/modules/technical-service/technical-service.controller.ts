@@ -26,7 +26,7 @@ export class TechnicalServiceController {
   @Get(':id')
   @RequirePermission('technical_service', 'read')
   async getById(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-    return this.service.getById(req.user!.tenantId, id);
+    return this.service.getById(req.user!.tenantId, id, req.user!.userId);
   }
 
   @Post()

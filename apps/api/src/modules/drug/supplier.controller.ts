@@ -7,16 +7,15 @@ import { RequirePermission } from '../../common/require-permission.decorator';
 import { extractRequestMeta } from '../../common/request-meta';
 import { SupplierService } from './supplier.service';
 
-/** Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — dùng chung `drug.read`/
- * `drug.create`/`drug.update` (tách từ `drug.manage` gộp cũ, #156; cùng trang "Danh mục Thuốc &
- * Vật tư" ở web). */
+/** Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) kèm Đối tác xét nghiệm (#291) — quyền RIÊNG `supplier.read`/`supplier.create`/`supplier.update`
+ * (trước dùng chung `drug.*`; xem nhà cung cấp không nhất thiết phải gắn với kho). */
 @Controller('suppliers')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class SupplierController {
   constructor(private readonly supplierService: SupplierService) {}
 
   @Get()
-  @RequirePermission('drug', 'read')
+  @RequirePermission('supplier', 'read')
   async list(@Query('includeInactive') includeInactive: string | undefined, @Req() req: Request) {
     const { tenantId } = req.user!;
     return this.supplierService.list(tenantId, includeInactive === 'true');
@@ -24,14 +23,14 @@ export class SupplierController {
 
   /** Một bản ghi theo id — nhẹ hơn tải cả danh sách; web dùng để phát hiện bản ghi bị người khác sửa lúc form Sửa đang mở (`useEditedRecordGuard`). 404 nếu không có/khác tenant. */
   @Get(':id')
-  @RequirePermission('drug', 'read')
+  @RequirePermission('supplier', 'read')
   async getById(@Param('id') id: string, @Req() req: Request) {
     const { tenantId } = req.user!;
     return this.supplierService.getById(tenantId, id);
   }
 
   @Post()
-  @RequirePermission('drug', 'create')
+  @RequirePermission('supplier', 'create')
   @HttpCode(200)
   async create(@Body() body: unknown, @Req() req: Request) {
     const dto = createSupplierRequestSchema.parse(body);
@@ -40,7 +39,7 @@ export class SupplierController {
   }
 
   @Patch(':id')
-  @RequirePermission('drug', 'update')
+  @RequirePermission('supplier', 'update')
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     const dto = updateSupplierRequestSchema.parse(body);
     const { userId, tenantId } = req.user!;

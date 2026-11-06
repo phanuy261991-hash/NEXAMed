@@ -115,6 +115,7 @@ const LOGIN_ONLY_ROUTES = new Set<string>([
   // "Áp dụng BHYT" (S2-04, #243): chỉ công tắc tổng, để web ẩn/hiện khung thẻ, nhãn và ô tích in (không lộ dữ liệu thẻ nào).
   'GET /api/v1/clinic-settings/insurance-enabled',
   'GET /api/v1/clinic-settings/follow-up-enabled',
+  'GET /api/v1/clinic-settings/lab-partner-enabled',
   'GET /api/v1/clinic-settings/cashier-shift-blind-close-enabled',
   'GET /api/v1/clinic-profile/print-header',
   // Chiếu tối thiểu phục vụ màn đăng ký ca/điều phối của MỌI nhân viên (giờ làm việc chung, trạng thái khoá tháng, chính sách đóng ca).

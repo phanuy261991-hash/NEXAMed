@@ -109,6 +109,9 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   INSURANCE_DISABLED: HttpStatus.CONFLICT,
   // "Dùng Hẹn tái khám" tắt (#285) — xung đột trạng thái cấu hình (409), cùng khuôn INSURANCE_DISABLED.
   FOLLOW_UP_DISABLED: HttpStatus.CONFLICT,
+  // "Gửi mẫu đối tác" (#291) — công tắc tắt / đối tác còn giá trả là xung đột trạng thái (409).
+  LAB_PARTNER_DISABLED: HttpStatus.CONFLICT,
+  LAB_PARTNER_IN_USE: HttpStatus.CONFLICT,
   INTEROP_SUBMISSION_NOT_SENDABLE: HttpStatus.CONFLICT,
   INTEROP_GUARDIAN_EDIT_FORBIDDEN: HttpStatus.FORBIDDEN,
   DRUG_DUPLICATE_CODE: HttpStatus.CONFLICT,

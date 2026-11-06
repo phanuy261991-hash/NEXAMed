@@ -182,6 +182,16 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /**
+   * "Dùng đối tác xét nghiệm" (#291) — tự-phục vụ, KHÔNG gắn `@RequirePermission` (đúng khuôn `getFollowUpEnabled`): kỹ thuật viên/bác sĩ cần biết công tắc để web ẩn/hiện menu "Gửi mẫu đối tác" và phần đối tác ở form dịch vụ.
+   */
+  @Get('lab-partner-enabled')
+  async getLabPartnerEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getLabPartnerEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

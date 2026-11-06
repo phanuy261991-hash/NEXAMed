@@ -5,6 +5,7 @@ import type {
   LabIndicatorDetail,
   ListLabIndicatorsResponse,
   ListResultTemplatesResponse,
+  LabPartnerSummaryResponse,
   ListTechnicalServicesResponse,
   ResultTemplateItem,
   TechnicalServiceDetail,
@@ -63,6 +64,11 @@ export async function listTechnicalServices(params: TechnicalServiceListParams):
       },
     }),
   ) as ListTechnicalServicesResponse;
+}
+
+/** "Gửi mẫu đối tác" (#291) — số dịch vụ có giá trả của từng đối tác (cột "Dịch vụ" ở danh mục đối tác). */
+export async function getLabPartnerSummary(): Promise<LabPartnerSummaryResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/lab-partners/summary')) as LabPartnerSummaryResponse;
 }
 
 export async function getTechnicalService(id: string): Promise<TechnicalServiceDetail> {

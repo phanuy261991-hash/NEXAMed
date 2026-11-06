@@ -54,6 +54,8 @@ const technicalServiceFieldsSchema = z.object({
   specimenTypeCode: z.string().min(1).optional(),
   /** `false` = phòng khám không tự làm, chỉ dùng để chỉ định cho bệnh nhân ra ngoài. */
   isPerformedInHouse: z.boolean().default(true),
+  /** "Gửi đối tác" (#291): phòng khám lấy mẫu rồi gửi đối tác. Chỉ xét nghiệm tự làm (isPerformedInHouse) mới bật được; cần ít nhất một đối tác có giá trả. */
+  sentToPartner: z.boolean().default(false),
   departmentId: z.string().uuid().optional(),
   turnaroundMinutes: z.number().int().positive().max(60 * 24 * 30).optional(),
   resultType: technicalServiceResultTypeSchema.optional(),
@@ -61,8 +63,18 @@ const technicalServiceFieldsSchema = z.object({
   sortOrder: z.number().int().min(0).default(0),
 });
 
+/** Giá trả MỘT đối tác cho dịch vụ (#291) — một giá hiện hành mỗi cặp (dịch vụ, đối tác). Không có đối tác mặc định thì dòng đầu được đặt mặc định. */
+export const labPartnerPriceInputSchema = z.object({
+  supplierId: z.string().uuid(),
+  amount: z.number().int().min(0).max(2_000_000_000),
+  isDefault: z.boolean().default(false),
+});
+export type LabPartnerPriceInput = z.infer<typeof labPartnerPriceInputSchema>;
+
 export const createTechnicalServiceRequestSchema = technicalServiceFieldsSchema.extend({
   serviceKind: technicalServiceKindSchema,
+  /** Bulk-replace giá trả đối tác (#291) — bỏ trống = không có. */
+  partnerPrices: z.array(labPartnerPriceInputSchema).optional(),
   /** Bulk-replace đơn giá — bỏ trống = chưa có đơn giá. */
   prices: z.array(examTypePriceInputSchema).optional(),
   indicators: z.array(technicalServiceIndicatorInputSchema).optional(),
@@ -82,6 +94,9 @@ export const updateTechnicalServiceRequestSchema = z.object({
   categoryCode: technicalServiceFieldsSchema.shape.categoryCode.nullable().optional(),
   specimenTypeCode: technicalServiceFieldsSchema.shape.specimenTypeCode.nullable().optional(),
   isPerformedInHouse: z.boolean().optional(),
+  sentToPartner: z.boolean().optional(),
+  /** `undefined` = không đụng, mảng = thay TOÀN BỘ giá trả đối tác (#291). */
+  partnerPrices: z.array(labPartnerPriceInputSchema).optional(),
   departmentId: z.string().uuid().nullable().optional(),
   turnaroundMinutes: technicalServiceFieldsSchema.shape.turnaroundMinutes.nullable().optional(),
   resultType: technicalServiceResultTypeSchema.optional(),
@@ -126,6 +141,7 @@ export const technicalServiceItemSchema = z.object({
   categoryCode: z.string().nullable(),
   specimenTypeCode: z.string().nullable(),
   isPerformedInHouse: z.boolean(),
+  sentToPartner: z.boolean(),
   departmentId: z.string().uuid().nullable(),
   departmentName: z.string().nullable(),
   turnaroundMinutes: z.number().int().nullable(),
@@ -150,8 +166,26 @@ export const technicalServiceIndicatorItemSchema = z.object({
 });
 export type TechnicalServiceIndicatorItem = z.infer<typeof technicalServiceIndicatorItemSchema>;
 
+/** Giá trả một đối tác cho dịch vụ (#291) — kèm mã/tên đối tác để hiện trong form. */
+export const labPartnerPriceItemSchema = z.object({
+  id: z.string().uuid(),
+  supplierId: z.string().uuid(),
+  supplierCode: z.string(),
+  supplierName: z.string(),
+  amount: z.number().int().nonnegative(),
+  isDefault: z.boolean(),
+});
+export type LabPartnerPriceItem = z.infer<typeof labPartnerPriceItemSchema>;
+
+/** Số dịch vụ có giá trả của từng đối tác (#291) — cột "Dịch vụ" ở danh mục đối tác. */
+export const labPartnerSummaryResponseSchema = z.object({
+  items: z.array(z.object({ supplierId: z.string().uuid(), serviceCount: z.number().int().nonnegative() })),
+});
+export type LabPartnerSummaryResponse = z.infer<typeof labPartnerSummaryResponseSchema>;
+
 export const technicalServiceDetailSchema = technicalServiceItemSchema.extend({
   prices: z.array(technicalServicePriceItemSchema),
+  partnerPrices: z.array(labPartnerPriceItemSchema),
   indicators: z.array(technicalServiceIndicatorItemSchema),
 });
 export type TechnicalServiceDetail = z.infer<typeof technicalServiceDetailSchema>;

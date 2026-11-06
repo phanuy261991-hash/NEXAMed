@@ -15,6 +15,7 @@ import {
   createResultTemplate,
   createTechnicalService,
   getLabIndicator,
+  getLabPartnerSummary,
   getTechnicalService,
   listLabIndicators,
   listResultTemplates,
@@ -33,6 +34,16 @@ export function useTechnicalServicesQuery(params: TechnicalServiceListParams) {
   return useQuery({
     queryKey: queryKey(tenantId, 'technical-service', 'list', JSON.stringify(params)),
     queryFn: () => listTechnicalServices(params),
+  });
+}
+
+/** Số dịch vụ có giá trả của từng đối tác (#291). Đổi giá trả ở form dịch vụ làm mới khoá `technical-service` nên đếm này cũng được mời tải lại (cùng nhóm khoá). */
+export function useLabPartnerSummaryQuery(enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'technical-service', 'lab-partner-summary'),
+    queryFn: getLabPartnerSummary,
+    enabled,
   });
 }
 

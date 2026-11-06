@@ -406,6 +406,8 @@ export const createSupplierRequestSchema = z.object({
   phone: z.string().min(1).optional(),
   address: z.string().min(1).optional(),
   contactName: z.string().min(1).optional(),
+  /** Đánh dấu là ĐỐI TÁC XÉT NGHIỆM (#291) — mặc định không. */
+  isLabPartner: z.boolean().optional(),
 });
 export type CreateSupplierRequest = z.infer<typeof createSupplierRequestSchema>;
 
@@ -416,6 +418,7 @@ export const updateSupplierRequestSchema = z.object({
   address: z.string().min(1).nullable().optional(),
   contactName: z.string().min(1).nullable().optional(),
   isActive: z.boolean().optional(),
+  isLabPartner: z.boolean().optional(),
   version: z.number().int().positive(),
 });
 export type UpdateSupplierRequest = z.infer<typeof updateSupplierRequestSchema>;
@@ -429,6 +432,7 @@ export const supplierSummarySchema = z.object({
   address: z.string().nullable(),
   contactName: z.string().nullable(),
   isActive: z.boolean(),
+  isLabPartner: z.boolean(),
   version: z.number().int(),
 });
 export type SupplierSummary = z.infer<typeof supplierSummarySchema>;

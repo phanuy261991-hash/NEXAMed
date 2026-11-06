@@ -14,6 +14,14 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-06
 
+### Quyền nhà cung cấp riêng, che giá trả đối tác, thời gian trả theo giờ, quyền đi kèm mới (`docs/DECISIONS.md` #291 bổ sung 2)
+
+Xem nhà cung cấp không còn gắn với kho thuốc: quyền mới **Nhà cung cấp & Đối tác xét nghiệm** (xem/thêm/sửa), vai trò đang có quyền kho thuốc được cấp tương ứng một lần khi nâng cấp. Giá trả đối tác không hiện cho bác sĩ/lễ tân/khách, chỉ người cấu hình dịch vụ hoặc xem công nợ thấy; cột giá ở form dịch vụ đổi tên "Giá niêm yết". "Thời gian trả kết quả" nhập được theo **phút hoặc giờ** (ô chọn đơn vị cạnh ô nhập). Bảng gợi ý quyền đi kèm ở Vai trò & Phân quyền bổ sung cho báo cáo Bác sĩ, báo cáo Khám bệnh và vận hành, Tổng quan thu ngân, "Hẹn tái khám" ghi nhắc, "Khách không làm dịch vụ" và nhà cung cấp. Môi trường khác cần `db:seed`.
+
+### Gửi mẫu xét nghiệm cho đối tác — giai đoạn 1 "nền" (`docs/DECISIONS.md` #291)
+
+Công tắc **"Dùng đối tác xét nghiệm"** ở Cấu hình chung (mặc định tắt). Bật: Danh mục Cận lâm sàng có mục **"Đối tác xét nghiệm"** (đối tác là nhà cung cấp có chip "Đối tác XN", mã `DT…`, cột "Dịch vụ" và "Còn nợ"), form dịch vụ kỹ thuật có **"Nơi thực hiện"** (Tại phòng khám / Gửi đối tác) và bảng **giá trả bên thứ ba theo từng đối tác** (một giá hiện hành mỗi cặp, đối tác mặc định, hiện lãi gộp mỗi mẫu). Chỉ xét nghiệm tự làm mới gửi đối tác được. Chưa có hàng đợi gửi mẫu, công nợ đối tác và bảng kê (các giai đoạn sau). Môi trường khác cần `db:deploy` (migration `20261106130000_lab_partner_foundation`); không quyền mới.
+
 ### Báo cáo: trang "Chất lượng và tuân thủ" (3 tab) (`docs/DECISIONS.md` #290)
 
 Menu mới **Chất lượng và tuân thủ** (nhóm Báo cáo, quyền mới `quality_report.read`, mặc định chỉ quản lý phòng khám): **Lượt khám chưa hoàn tất** (ảnh chụp đến hôm nay, không theo kỳ: lượt chờ khám/đang khám từ ngày trước, ca thu ngân chưa đóng, số phiếu chưa thu kèm liên kết sang Doanh thu → Phiếu chưa thu), **Liên thông đơn thuốc** (đơn đã ký trong kỳ: đã gửi / chờ gửi / cổng từ chối, theo bác sĩ, danh sách đơn tồn cũ nhất trước kèm lỗi của cổng) và **Nhật ký kiểm toán** (bấm tab mở trang nhật ký hoạt động đã có). Hai tab đầu có Xuất Excel và In, chọn Phạm vi nhiều chi nhánh như các báo cáo khác. Môi trường khác cần `db:seed` (quyền mới). Không migration.

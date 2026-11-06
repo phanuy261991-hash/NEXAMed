@@ -113,8 +113,13 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // trang Vai trò & Phân quyền luôn trống) — dùng chung cho cả `drug`/`supplier`/`warehouse` (cùng
   // module `drug`, #146/#148), hiện chỉ `clinic_admin` có cả hai (`global`).
   { module: 'drug', action: 'read', description: 'Xem danh mục thuốc' },
-  { module: 'drug', action: 'create', description: 'Thêm thuốc/vật tư/nhà cung cấp/kho mới' },
-  { module: 'drug', action: 'update', description: 'Sửa/ẩn thuốc/vật tư/nhà cung cấp/kho' },
+  { module: 'drug', action: 'create', description: 'Thêm thuốc/vật tư/kho mới' },
+  { module: 'drug', action: 'update', description: 'Sửa/ẩn thuốc/vật tư/kho' },
+  // Nhà cung cấp + Đối tác xét nghiệm (#291) — TÁCH khỏi `drug.*` (trước dùng chung quyền kho thuốc): xem nhà cung cấp không nhất thiết phải gắn với kho. `read` mở cho mọi vai trò đang có `drug.read`;
+  // `create`/`update` chỉ clinic_admin. Vai trò tuỳ biến đang có `drug.*` được cấp tương ứng MỘT LẦN lúc API khởi động (`migrateSupplierPermissions`).
+  { module: 'supplier', action: 'read', description: 'Xem nhà cung cấp và đối tác xét nghiệm' },
+  { module: 'supplier', action: 'create', description: 'Thêm nhà cung cấp/đối tác xét nghiệm' },
+  { module: 'supplier', action: 'update', description: 'Sửa/ngưng nhà cung cấp/đối tác xét nghiệm' },
   // Kho Thuốc GĐ5 (trải nghiệm kê đơn) — "Đơn thuốc mẫu" dùng CHUNG toàn tenant. `read` mở cho mọi
   // vai trò lâm sàng (chọn mẫu lúc kê đơn); `manage` (thêm/sửa/xoá mẫu) chỉ bác sĩ/clinic_admin —
   // điều dưỡng không tự quyết định phác đồ/liều dùng mẫu.
@@ -339,6 +344,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.read': 'global',
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
+    'supplier.read': 'global',
     'technical_service.read': 'global',
     'service_package.read': 'global',
     'price_list.read': 'global',
@@ -412,6 +418,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.read': 'global',
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
+    'supplier.read': 'global',
     'technical_service.read': 'global',
     'service_package.read': 'global',
     'price_list.read': 'global',
@@ -478,6 +485,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.read': 'global',
     'allergen_catalog.create': 'global',
     'drug.read': 'global',
+    'supplier.read': 'global',
     'technical_service.read': 'global',
     'service_package.read': 'global',
     'price_list.read': 'global',
@@ -563,6 +571,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'allergen_catalog.create': 'global',
     'allergen_catalog.manage': 'global',
     'drug.read': 'global',
+    'supplier.read': 'global',
     'technical_service.read': 'global',
     'service_package.read': 'global',
     'price_list.read': 'global',
@@ -587,6 +596,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'result_template.manage': 'global',
     'drug.create': 'global',
     'drug.update': 'global',
+    'supplier.create': 'global',
+    'supplier.update': 'global',
     // Kho Thuốc GĐ5 — clinic_admin quản lý được đơn thuốc mẫu như bác sĩ.
     'prescription_template.read': 'global',
     'prescription_template.manage': 'global',

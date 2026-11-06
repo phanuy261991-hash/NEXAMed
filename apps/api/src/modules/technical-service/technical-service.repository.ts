@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { LabIndicator, LabIndicatorReference, Prisma, TechnicalService, TechnicalServiceIndicator, TechnicalServicePrice } from '@prisma/client';
+import type { LabIndicator, LabIndicatorReference, LabPartnerServicePrice, Prisma, TechnicalService, TechnicalServiceIndicator, TechnicalServicePrice } from '@prisma/client';
 
 export interface CreateTechnicalServiceData {
   code: string;
@@ -10,6 +10,7 @@ export interface CreateTechnicalServiceData {
   categoryCode: string | null;
   specimenTypeCode: string | null;
   isPerformedInHouse: boolean;
+  sentToPartner: boolean;
   departmentId: string | null;
   turnaroundMinutes: number | null;
   resultType: 'INDICATORS' | 'NARRATIVE' | 'BOTH';
@@ -39,6 +40,17 @@ export interface CreatePriceData {
   amount: bigint;
   effectiveFrom: Date;
   effectiveTo: Date | null;
+}
+
+/** Giá trả đối tác kèm mã/tên đối tác (#291). */
+export interface LabPartnerPriceRow extends LabPartnerServicePrice {
+  supplier: { code: string; name: string };
+}
+
+export interface LabPartnerPriceData {
+  supplierId: string;
+  amount: bigint;
+  isDefault: boolean;
 }
 
 export interface IndicatorLinkData {
@@ -160,6 +172,43 @@ export class TechnicalServiceRepository {
         data: items.map((item) => ({ tenantId, technicalServiceId: serviceId, ...item, createdBy: actorId, updatedBy: actorId })),
       });
     }
+  }
+
+  // ---- giá trả đối tác (#291) ----
+
+  listPartnerPrices(tx: Prisma.TransactionClient, tenantId: string, serviceIds: string[]): Promise<LabPartnerPriceRow[]> {
+    if (serviceIds.length === 0) return Promise.resolve([]);
+    return tx.labPartnerServicePrice.findMany({
+      where: { tenantId, technicalServiceId: { in: serviceIds }, deletedAt: null },
+      include: { supplier: { select: { code: true, name: true } } },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+    });
+  }
+
+  /** Thay TOÀN BỘ giá trả đối tác của dịch vụ — xoá mềm rồi tạo lại (khuôn `replacePrices`); xoá mềm TRƯỚC để ràng buộc duy nhất không cản chính lần sửa này. */
+  async replacePartnerPrices(tx: Prisma.TransactionClient, tenantId: string, serviceId: string, actorId: string, items: LabPartnerPriceData[]): Promise<void> {
+    await tx.labPartnerServicePrice.updateMany({
+      where: { tenantId, technicalServiceId: serviceId, deletedAt: null },
+      data: { deletedAt: new Date(), deletedReason: 'replaced', updatedBy: actorId },
+    });
+    if (items.length > 0) {
+      await tx.labPartnerServicePrice.createMany({
+        data: items.map((item) => ({ tenantId, technicalServiceId: serviceId, ...item, createdBy: actorId, updatedBy: actorId })),
+      });
+    }
+  }
+
+  /** Nhà cung cấp là đối tác xét nghiệm còn dùng (id) — kiểm trước khi gán giá trả. Chỉ đọc bảng của module `drug`. */
+  async findActivePartnerIds(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<string[]> {
+    if (ids.length === 0) return [];
+    const rows = await tx.supplier.findMany({ where: { tenantId, id: { in: ids }, deletedAt: null, isActive: true, isLabPartner: true }, select: { id: true } });
+    return rows.map((r) => r.id);
+  }
+
+  /** Số dịch vụ có giá trả của từng đối tác — danh mục đối tác. */
+  async countServicesBySupplier(tx: Prisma.TransactionClient, tenantId: string): Promise<{ supplierId: string; serviceCount: number }[]> {
+    const groups = await tx.labPartnerServicePrice.groupBy({ by: ['supplierId'], where: { tenantId, deletedAt: null }, _count: { _all: true } });
+    return groups.map((g) => ({ supplierId: g.supplierId, serviceCount: g._count._all }));
   }
 
   // ---- chỉ số của dịch vụ ----

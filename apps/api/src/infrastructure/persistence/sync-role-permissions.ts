@@ -48,6 +48,52 @@ export async function migrateLegacyParaclinicalPermissions(
   return added;
 }
 
+const SUPPLIER_PERMISSION_SPLIT_MARKER = 'supplier_permission_split_done';
+
+/**
+ * Tách quyền nhà cung cấp khỏi kho thuốc (#291): mọi vai trò (hệ thống lẫn tuỳ biến) đang có `drug.read`/`drug.create`/`drug.update` được cấp MỘT LẦN `supplier.read`/`supplier.create`/`supplier.update`
+ * cùng phạm vi, để không ai mất quyền xem/sửa nhà cung cấp. Khác tách cận lâm sàng (#215) ở chỗ quyền `drug.*` vẫn còn hiệu lực nên không có dòng cũ để thu hồi; thay vào đó đánh dấu `tenant_setting`
+ * `supplier_permission_split_done` để lần khởi động sau KHÔNG cấp lại (quản trị viên bỏ quyền nhà cung cấp khỏi vai trò sau đó là ý chủ đích). Chỉ đánh dấu khi cả ba quyền mới đã có trong danh mục
+ * (chưa chạy `db:seed` thì giữ nguyên, lần khởi động sau làm tiếp). Idempotent.
+ */
+export async function migrateSupplierPermissions(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  actorId: string,
+  permissionIdByKey: ReadonlyMap<string, string>,
+): Promise<string[]> {
+  const done = await tx.tenantSetting.findFirst({ where: { tenantId, key: SUPPLIER_PERMISSION_SPLIT_MARKER, deletedAt: null } });
+  if (done) return [];
+  const actions = ['read', 'create', 'update'] as const;
+  if (actions.some((action) => !permissionIdByKey.has(`supplier.${action}`))) return [];
+
+  const added: string[] = [];
+  for (const action of actions) {
+    const drugPermissionId = permissionIdByKey.get(`drug.${action}`);
+    const supplierPermissionId = permissionIdByKey.get(`supplier.${action}`) as string;
+    if (!drugPermissionId) continue;
+    const rows = await tx.rolePermission.findMany({ where: { tenantId, deletedAt: null, permissionId: drugPermissionId } });
+    if (rows.length === 0) continue;
+    // Chỉ cấp (và chỉ báo "đã thêm") cho vai trò CHƯA có quyền nhà cung cấp tương ứng — vai trò hệ thống đã có sẵn từ ma trận mặc định thì không đụng.
+    const already = new Set(
+      (await tx.rolePermission.findMany({ where: { tenantId, deletedAt: null, permissionId: supplierPermissionId, roleId: { in: rows.map((r) => r.roleId) } }, select: { roleId: true } })).map((r) => r.roleId),
+    );
+    const missing = rows.filter((row) => !already.has(row.roleId));
+    if (missing.length === 0) continue;
+    await tx.rolePermission.createMany({
+      data: missing.map((row) => ({ tenantId, roleId: row.roleId, permissionId: supplierPermissionId, dataScope: row.dataScope, createdBy: actorId, updatedBy: actorId })),
+      skipDuplicates: true,
+    });
+    for (const row of missing) added.push(`${tenantId}/${row.roleId}/supplier.${action}`);
+  }
+  await tx.tenantSetting.upsert({
+    where: { tenantId_key: { tenantId, key: SUPPLIER_PERMISSION_SPLIT_MARKER } },
+    create: { tenantId, key: SUPPLIER_PERMISSION_SPLIT_MARKER, valueJson: true, createdBy: actorId, updatedBy: actorId },
+    update: { valueJson: true, updatedBy: actorId, version: { increment: 1 } },
+  });
+  return added;
+}
+
 /** Vai trò hệ thống thêm SAU khi tenant đã tạo (vd. 2 vai trò Kỹ thuật viên, #215): tạo nếu tenant chưa có — `seedDefaultRolesForTenant` chỉ chạy lúc tạo tenant mới. */
 export async function ensureSystemRoles(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<void> {
   // Chỉ bổ sung cho tenant THẬT (đã có vai trò hệ thống) — không biến tenant trống thành tenant có vai trò.
@@ -85,6 +131,7 @@ export async function syncRolePermissionsForTenant(
   });
 
   const added: string[] = await migrateLegacyParaclinicalPermissions(tx, tenantId, actorId, permissionIdByKey);
+  added.push(...(await migrateSupplierPermissions(tx, tenantId, actorId, permissionIdByKey)));
 
   for (const role of roles) {
     if (!(USER_ROLES as readonly string[]).includes(role.name)) continue;

@@ -252,6 +252,8 @@ export function Sidebar() {
   // "Danh mục Cận lâm sàng" (#212) — gate theo ĐÚNG quyền của route guard (`PARACLINICAL_CATALOG_PERMISSIONS`).
   const canSeeCatalogParaclinical = useHasAnyPermission(PARACLINICAL_CATALOG_PERMISSIONS);
   const canSeeCatalogPharmacy = useHasAnyPermission(DRUG_MANAGE_PERMISSIONS);
+  // Danh sách nhà cung cấp/đối tác (#291): quyền riêng `supplier.read`, không còn dùng chung quyền kho thuốc.
+  const canSeeSupplierList = useHasPermission('supplier', 'read');
   // "Bảng giá" (#212 GĐ2) — gate theo ĐÚNG quyền của route guard (`PRICE_LIST_ADMIN_PERMISSIONS`); `price_list.read` một mình không đủ.
   const canSeePriceLists = useHasAnyPermission(PRICE_LIST_ADMIN_PERMISSIONS);
   // "Cận lâm sàng" (GĐ4, tách 2 menu #215) — mỗi mục con gate theo ĐÚNG quyền của route của nó; không có quyền nhóm nào thì cả nhóm ẩn.
@@ -702,7 +704,7 @@ export function Sidebar() {
               Phần B (#180/#182) thêm "Công nợ nhà cung cấp"/"Phiếu thanh toán NCC" — nhóm hiện được
               nếu có MỘT TRONG HAI quyền (drug.* HOẶC supplier_debt.read), từng mục con tự ẩn/hiện
               riêng theo đúng quyền của nó. */}
-          {(canSeeCatalogPharmacy || canSeeSupplierDebt) && (
+          {(canSeeSupplierList || canSeeSupplierDebt) && (
             <li>
               <button
                 type="button"
@@ -735,7 +737,7 @@ export function Sidebar() {
               </button>
               {supplierGroupExpanded && (
                 <ul className="mt-0.5 flex flex-col gap-0.5 border-l border-slate-800 pl-3.5">
-                  {canSeeCatalogPharmacy && <NavItem to="/suppliers" label="Nhà cung cấp" icon={Truck} collapsed={false} indent end />}
+                  {canSeeSupplierList && <NavItem to="/suppliers" label="Nhà cung cấp" icon={Truck} collapsed={false} indent end />}
                   {canSeeSupplierDebt && (
                     <NavItem to="/suppliers/debts" label="Công nợ nhà cung cấp" icon={Scales} collapsed={false} indent badge={supplierDebtPendingCount} />
                   )}

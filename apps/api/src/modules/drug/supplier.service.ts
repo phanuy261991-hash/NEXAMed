@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ConcurrentModificationError, formatShortSequentialCode } from '@nexamed/core';
+import { ConcurrentModificationError, formatShortSequentialCode, LabPartnerInUseError } from '@nexamed/core';
 import type { CreateSupplierRequest, ListSuppliersResponse, SupplierSummary, UpdateSupplierRequest } from '@nexamed/shared';
 import type { Prisma, Supplier } from '@prisma/client';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
@@ -10,6 +10,8 @@ import { SupplierRepository, type UpdateSupplierData } from './supplier.reposito
 
 /** Mã ngắn tuần tự (docs/DECISIONS.md #113/#146) — RIÊNG theo tenant, đúng khuôn `WorkShiftService`. */
 const SUPPLIER_CODE_PREFIX = 'NCC';
+/** Đối tác xét nghiệm (#291) dùng tiền tố riêng cho dễ nhận ra; vẫn là một dòng `supplier` (dùng chung sổ công nợ). */
+const LAB_PARTNER_CODE_PREFIX = 'DT';
 
 /** Nhà cung cấp (Kho Thuốc & Vật tư y tế GĐ1, docs/DECISIONS.md #146) — module `drug`, gate bằng
  * `drug.read`/`drug.create`/`drug.update` (tách từ `drug.manage` gộp cũ, #156). */
@@ -23,8 +25,9 @@ export class SupplierService {
 
   async create(tenantId: string, actorId: string, dto: CreateSupplierRequest, meta: RequestMeta): Promise<SupplierSummary> {
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const seq = await this.codeSequenceRepository.next(tx, tenantId, SUPPLIER_CODE_PREFIX, actorId);
-      const code = formatShortSequentialCode(SUPPLIER_CODE_PREFIX, seq);
+      const codePrefix = dto.isLabPartner ? LAB_PARTNER_CODE_PREFIX : SUPPLIER_CODE_PREFIX;
+      const seq = await this.codeSequenceRepository.next(tx, tenantId, codePrefix, actorId);
+      const code = formatShortSequentialCode(codePrefix, seq);
       const created = await this.supplierRepository.create(tx, tenantId, actorId, {
         code,
         name: dto.name,
@@ -32,6 +35,7 @@ export class SupplierService {
         phone: dto.phone ?? null,
         address: dto.address ?? null,
         contactName: dto.contactName ?? null,
+        isLabPartner: dto.isLabPartner ?? false,
       });
 
       await writeAuditLog(tx, tenantId, {
@@ -79,6 +83,11 @@ export class SupplierService {
       if (dto.address !== undefined) patch.address = dto.address;
       if (dto.contactName !== undefined) patch.contactName = dto.contactName;
       if (dto.isActive !== undefined) patch.isActive = dto.isActive;
+      if (dto.isLabPartner !== undefined) patch.isLabPartner = dto.isLabPartner;
+      // Đối tác còn giá trả theo dịch vụ thì không bỏ đánh dấu được (#291).
+      if (patch.isLabPartner === false && existing.isLabPartner && (await this.supplierRepository.countActiveLabPartnerPrices(tx, tenantId, id)) > 0) {
+        throw new LabPartnerInUseError();
+      }
 
       // Chỉ ghi GIÁ TRỊ trước/sau của trường định danh doanh nghiệp (tên, mã số thuế, trạng thái); điện thoại/địa chỉ/người liên hệ
       // (có thể là dữ liệu cá nhân) chỉ ghi TÊN trường đã đổi, không ghi giá trị.
@@ -88,6 +97,7 @@ export class SupplierService {
       if (patch.name !== undefined && patch.name !== existing.name) { beforeJson.name = existing.name; afterJson.name = patch.name; }
       if (patch.taxCode !== undefined && patch.taxCode !== existing.taxCode) { beforeJson.taxCode = existing.taxCode; afterJson.taxCode = patch.taxCode; }
       if (patch.isActive !== undefined && patch.isActive !== existing.isActive) { beforeJson.isActive = existing.isActive; afterJson.isActive = patch.isActive; }
+      if (patch.isLabPartner !== undefined && patch.isLabPartner !== existing.isLabPartner) { beforeJson.isLabPartner = existing.isLabPartner; afterJson.isLabPartner = patch.isLabPartner; }
       if (patch.phone !== undefined && patch.phone !== existing.phone) changedContactFields.push('phone');
       if (patch.address !== undefined && patch.address !== existing.address) changedContactFields.push('address');
       if (patch.contactName !== undefined && patch.contactName !== existing.contactName) changedContactFields.push('contactName');
@@ -127,6 +137,7 @@ export class SupplierService {
       address: supplier.address,
       contactName: supplier.contactName,
       isActive: supplier.isActive,
+      isLabPartner: supplier.isLabPartner,
       version: supplier.version,
     };
   }

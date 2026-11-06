@@ -299,3 +299,15 @@ Enum `drug_dose_mode` = `SCHEDULED` (theo buổi Sáng/Trưa/Chiều/Tối × s�
 | Index `follow_up_reminder_encounter_idx` | `(tenant_id, encounter_id, reminded_at DESC) WHERE deleted_at IS NULL` | Lịch sử nhắc của một lượt khám + "lần nhắc gần nhất" của danh sách. |
 | `tenant_setting` khoá `follow_up_enabled` | Công tắc "Dùng danh sách Hẹn tái khám" | Boolean, mặc định BẬT khi chưa có dòng; chung cả công ty; không migration. |
 | `tenant_setting` khoá `doctor_dashboard_money_enabled` | Công tắc "Hiện doanh thu sinh ra trên Tổng quan bác sĩ" (#286) | Boolean, mặc định TẮT khi chưa có dòng; chung cả công ty; không migration. |
+
+### 3.20 Gửi mẫu đối tác — nền (v1.92, `docs/DECISIONS.md` #291, giai đoạn 1)
+
+Migration `20261106130000_lab_partner_foundation`. **Dữ liệu CHUNG cả công ty** (đối tác, giá trả — như nhà cung cấp, #231); đợt gửi/hàng đợi (giai đoạn sau) theo chi nhánh.
+
+| Bảng / cột | Vai trò | Chi tiết |
+|---|---|---|
+| `supplier.is_lab_partner` | Cờ "Đối tác XN" | `BOOLEAN NOT NULL DEFAULT false`. Đối tác là MỘT nhà cung cấp (dùng chung sổ công nợ `supplier_debt_*`, Phiếu thanh toán, Đối chiếu). Mã tiền tố `DT` (khuôn `<2 ký tự><seq5>`). Không bỏ cờ được khi còn giá trả (API trả 409 `LAB_PARTNER_IN_USE`) |
+| `technical_service.sent_to_partner` | "Gửi đối tác" | `BOOLEAN NOT NULL DEFAULT false`. CHECK `technical_service_sent_to_partner_check`: `NOT sent_to_partner OR is_performed_in_house` (phòng khám LẤY MẪU rồi gửi; khác "chỉ định ra ngoài" = `is_performed_in_house=false`). API chỉ cho bật với xét nghiệm (`service_kind=LAB`) |
+| `lab_partner_service_price` | Giá trả đối tác theo cặp | Đủ 8 cột bắt buộc + RLS (`FORCE`). `technical_service_id`, `supplier_id` (composite FK cùng tenant), `amount BIGINT CHECK (>= 0)`, `is_default`. Partial unique `(tenant_id, technical_service_id, supplier_id) WHERE deleted_at IS NULL` (MỘT giá hiện hành mỗi cặp, không ngày hiệu lực) và `(tenant_id, technical_service_id) WHERE is_default AND deleted_at IS NULL` (tối đa một đối tác mặc định). Quản lý bằng bulk-replace theo dịch vụ (xoá mềm rồi tạo lại). Giá được CHỤP LẠI vào dòng gửi lúc gửi mẫu (giai đoạn 2) |
+
+Công tắc "Dùng đối tác xét nghiệm": `tenant_setting` key `lab_partner_enabled` (mặc định tắt), chung cả công ty.

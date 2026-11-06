@@ -68,6 +68,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         insuranceEnabled,
         followUpEnabled,
         doctorDashboardMoneyEnabled,
+        labPartnerEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -105,6 +106,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getInsuranceEnabled(tx, tenantId),
         this.clinicSettingsRepository.getFollowUpEnabled(tx, tenantId),
         this.clinicSettingsRepository.getDoctorDashboardMoneyEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getLabPartnerEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -143,6 +145,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         insuranceEnabled,
         followUpEnabled,
         doctorDashboardMoneyEnabled,
+        labPartnerEnabled,
       };
     });
   }
@@ -404,6 +407,9 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
       if (dto.doctorDashboardMoneyEnabled !== undefined) {
         await this.clinicSettingsRepository.upsertDoctorDashboardMoneyEnabled(tx, tenantId, actorId, dto.doctorDashboardMoneyEnabled);
       }
+      if (dto.labPartnerEnabled !== undefined) {
+        await this.clinicSettingsRepository.upsertLabPartnerEnabled(tx, tenantId, actorId, dto.labPartnerEnabled);
+      }
 
       const hasChanges =
         dto.businessHours !== undefined ||
@@ -441,7 +447,8 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         dto.icd10SuggestionLearningEnabled !== undefined ||
         dto.insuranceEnabled !== undefined ||
         dto.followUpEnabled !== undefined ||
-        dto.doctorDashboardMoneyEnabled !== undefined;
+        dto.doctorDashboardMoneyEnabled !== undefined ||
+        dto.labPartnerEnabled !== undefined;
       if (hasChanges) {
         await writeAuditLog(tx, tenantId, {
           actorId,
@@ -491,6 +498,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         insuranceEnabled,
         followUpEnabled,
         doctorDashboardMoneyEnabled,
+        labPartnerEnabled,
       ] = await Promise.all([
         this.clinicSettingsRepository.getBusinessHours(tx, tenantId),
         this.clinicSettingsRepository.getSlotDurationMinutes(tx, tenantId),
@@ -528,6 +536,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         this.clinicSettingsRepository.getInsuranceEnabled(tx, tenantId),
         this.clinicSettingsRepository.getFollowUpEnabled(tx, tenantId),
         this.clinicSettingsRepository.getDoctorDashboardMoneyEnabled(tx, tenantId),
+        this.clinicSettingsRepository.getLabPartnerEnabled(tx, tenantId),
       ]);
       return {
         businessHours,
@@ -566,6 +575,7 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
         insuranceEnabled,
         followUpEnabled,
         doctorDashboardMoneyEnabled,
+        labPartnerEnabled,
       };
     });
   }
@@ -662,5 +672,10 @@ export class ClinicSettingsService implements ClinicConfigReaderPort {
   /** `ClinicConfigReaderPort` — công tắc "Hiện doanh thu sinh ra trên Tổng quan bác sĩ" (#286). */
   getDoctorDashboardMoneyEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getDoctorDashboardMoneyEnabled']> {
     return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getDoctorDashboardMoneyEnabled(tx, tenantId));
+  }
+
+  /** `ClinicConfigReaderPort` — công tắc "Dùng đối tác xét nghiệm" (#291). */
+  getLabPartnerEnabled(tenantId: string): ReturnType<ClinicConfigReaderPort['getLabPartnerEnabled']> {
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.clinicSettingsRepository.getLabPartnerEnabled(tx, tenantId));
   }
 }

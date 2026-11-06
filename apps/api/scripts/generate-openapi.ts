@@ -200,6 +200,7 @@ import {
   encounterInsuranceSchema,
   insuranceStatusSchema,
   followUpFeatureStatusSchema,
+  labPartnerFeatureStatusSchema,
   listInsuranceCardsResponseSchema,
   saveInsuranceCardResponseSchema,
   updateInsuranceCardRequestSchema,
@@ -453,6 +454,7 @@ import {
   listResultTemplatesQuerySchema,
   listResultTemplatesResponseSchema,
   listTechnicalServicesQuerySchema,
+  labPartnerSummaryResponseSchema,
   listTechnicalServicesResponseSchema,
   resultTemplateItemSchema,
   technicalServiceDetailSchema,
@@ -3344,6 +3346,18 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   responses: {
     200: jsonResponse('Thành công', envelope(followUpFeatureStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/lab-partner-enabled',
+  tags: ['clinic'],
+  summary: '"Dùng đối tác xét nghiệm" (#291) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(labPartnerFeatureStatusSchema)),
     401: errorResponse('Thiếu hoặc sai access token'),
   },
 });
@@ -6406,6 +6420,19 @@ registry.registerPath({
 // ===== Cận lâm sàng GĐ1 — Danh mục (docs/DECISIONS.md #212) =====
 
 const technicalServiceIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-partners/summary',
+  tags: ['technical-service'],
+  summary: 'Gửi mẫu đối tác (#291) — số dịch vụ có giá trả của từng đối tác xét nghiệm (cột "Dịch vụ" ở danh mục đối tác)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(labPartnerSummaryResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền technical_service.read'),
+  },
+});
 
 registry.registerPath({
   method: 'get',

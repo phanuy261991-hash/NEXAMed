@@ -370,6 +370,11 @@ export const clinicSettingsSchema = z.object({
    * TẮT: máy chủ không gửi số tiền, bác sĩ không thấy.
    */
   doctorDashboardMoneyEnabled: z.boolean(),
+  /**
+   * "Dùng đối tác xét nghiệm" (docs/DECISIONS.md #291) — công tắc chung cả công ty, TẮT (mặc định). BẬT: dịch vụ kỹ thuật có "Nơi thực hiện" (Tại phòng khám / Gửi đối tác), có danh mục đối tác,
+   * giá trả theo từng đối tác, hàng đợi "Gửi mẫu đối tác" và công nợ đối tác. TẮT: ẩn hết và máy chủ từ chối các API đối tác (409); dữ liệu đã nhập giữ nguyên.
+   */
+  labPartnerEnabled: z.boolean(),
 });
 export type ClinicSettings = z.infer<typeof clinicSettingsSchema>;
 
@@ -416,6 +421,7 @@ export const updateClinicSettingsRequestSchema = z.object({
   insuranceEnabled: z.boolean().optional(),
   followUpEnabled: z.boolean().optional(),
   doctorDashboardMoneyEnabled: z.boolean().optional(),
+  labPartnerEnabled: z.boolean().optional(),
 });
 export type UpdateClinicSettingsRequest = z.infer<typeof updateClinicSettingsRequestSchema>;
 
@@ -488,9 +494,14 @@ export const DEFAULT_INSURANCE_ENABLED = false;
 export const DEFAULT_FOLLOW_UP_ENABLED = true;
 /** Tắt theo mặc định ("Hiện doanh thu sinh ra trên Tổng quan bác sĩ", #286) — bác sĩ không thấy tiền tới khi chủ phòng khám chủ động bật. */
 export const DEFAULT_DOCTOR_DASHBOARD_MONEY_ENABLED = false;
+/** Tắt theo mặc định ("Dùng đối tác xét nghiệm", #291) — phòng khám không gửi mẫu cho đối tác không thấy gì thay đổi. */
+export const DEFAULT_LAB_PARTNER_ENABLED = false;
 /** `GET /clinic-settings/follow-up-enabled` — chiếu tối thiểu tự-phục vụ (lễ tân/bác sĩ không có `clinic_config.read`), khuôn `insuranceStatusSchema`. */
 export const followUpFeatureStatusSchema = z.object({ enabled: z.boolean() });
 export type FollowUpFeatureStatus = z.infer<typeof followUpFeatureStatusSchema>;
+/** "Dùng đối tác xét nghiệm" (#291) — chiếu tối thiểu tự-phục vụ để web ẩn/hiện phần đối tác. */
+export const labPartnerFeatureStatusSchema = z.object({ enabled: z.boolean() });
+export type LabPartnerFeatureStatus = z.infer<typeof labPartnerFeatureStatusSchema>;
 
 /**
  * `GET /clinic-settings/cashier-shift-blind-close-enabled` — chiếu tối thiểu tự-phục vụ, cùng lý

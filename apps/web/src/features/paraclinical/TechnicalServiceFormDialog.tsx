@@ -18,10 +18,24 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { formatVnd } from '../../shared/format/currency';
 import { getVietnamTodayDateString } from '../appointment/schedule-grid.utils';
-import { useHasPermission } from '../auth/usePermission';
+import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
+import { useLabPartnerEnabledQuery } from '../clinic/clinic.queries';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
+import { useSuppliersQuery } from '../drug/supplier.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { DEFAULT_RESULT_TYPE_BY_KIND, TECHNICAL_SERVICE_KIND_LABELS } from './paraclinical-labels';
+import { convertTurnaroundText, parseTurnaround, splitTurnaround, type TurnaroundUnit } from './turnaround-model';
+import {
+  addPartnerRow,
+  buildPartnerPayload,
+  partnerMargin,
+  removePartnerRow,
+  setDefaultPartner,
+  setPartnerAmount,
+  toPartnerRows,
+  validatePartnerRows,
+  type PartnerPriceRow,
+} from './lab-partner-price-model';
 import {
   buildPriceLines,
   dayBefore,
@@ -47,6 +61,12 @@ const KIND_CARDS: { kind: TechnicalServiceKind; hint: string }[] = [
   { kind: 'LAB', hint: 'Có mẫu bệnh phẩm, kết quả theo chỉ số' },
   { kind: 'IMAGING', hint: 'Kết quả mô tả + kết luận' },
   { kind: 'FUNCTIONAL', hint: 'Mô tả, có thể kèm chỉ số' },
+];
+
+/** Đơn vị nhập "Thời gian trả kết quả" (#291) — lưu vẫn bằng phút. */
+const TURNAROUND_UNIT_OPTIONS: ComboboxOption[] = [
+  { value: 'minute', label: 'Phút' },
+  { value: 'hour', label: 'Giờ' },
 ];
 
 const RESULT_TYPE_OPTIONS: ComboboxOption[] = [
@@ -158,9 +178,15 @@ function ServiceForm({
   const [isActive, setIsActive] = useState(detail?.isActive ?? true);
   const [sortOrder, setSortOrder] = useState(detail?.sortOrder ?? 0);
   const [inHouse, setInHouse] = useState(detail?.isPerformedInHouse ?? true);
+  // "Gửi đối tác" (#291): phòng khám lấy mẫu rồi gửi đối tác; giá trả theo từng đối tác. Chỉ hiện khi công tắc "Dùng đối tác xét nghiệm" BẬT (hoặc dịch vụ đã gửi đối tác từ trước).
+  const [sentToPartner, setSentToPartner] = useState(detail?.sentToPartner ?? false);
+  const [partnerRows, setPartnerRows] = useState<PartnerPriceRow[]>(toPartnerRows(detail?.partnerPrices));
   const [departmentId, setDepartmentId] = useState(detail?.departmentId ?? '');
   const [specimenTypeCode, setSpecimenTypeCode] = useState(detail?.specimenTypeCode ?? '');
-  const [turnaround, setTurnaround] = useState(detail?.turnaroundMinutes ? String(detail.turnaroundMinutes) : '');
+  // "Thời gian trả kết quả" lưu bằng PHÚT nhưng nhập được theo giờ (#291: dịch vụ gửi đối tác trả kết quả theo giờ); giá trị tròn giờ hiện sẵn theo giờ.
+  const initialTurnaround = splitTurnaround(detail?.turnaroundMinutes);
+  const [turnaround, setTurnaround] = useState(initialTurnaround.text);
+  const [turnaroundUnit, setTurnaroundUnit] = useState<TurnaroundUnit>(initialTurnaround.unit);
   const [resultType, setResultType] = useState<TechnicalServiceResultType>(detail?.resultType ?? DEFAULT_RESULT_TYPE_BY_KIND.LAB);
   // Các ô giá NGƯỜI DÙNG đã sửa (docs/DECISIONS.md #268) — ô chưa đụng tới lấy theo dữ liệu đang có, nên danh mục Loại giá tải xong muộn vẫn ra đúng mức.
   const [priceEdits, setPriceEdits] = useState<Partial<PriceFormInput>>({});
@@ -176,6 +202,18 @@ function ServiceForm({
   const priceTypeQuery = useReferenceCatalogQuery('PRICE_TYPE', true);
   const unitQuery = useReferenceCatalogQuery('UNIT');
   const departmentQuery = useDepartmentOptionsQuery();
+  const partnerEnabledQuery = useLabPartnerEnabledQuery();
+  const partnerEnabled = partnerEnabledQuery.data?.enabled === true;
+  const suppliersQuery = useSuppliersQuery();
+  const partnerCandidates = useMemo(() => (suppliersQuery.data?.items ?? []).filter((s) => s.isLabPartner && !partnerRows.some((r) => r.supplierId === s.id)), [suppliersQuery.data, partnerRows]);
+  const partnerOptions: ComboboxOption[] = useMemo(() => partnerCandidates.map((s) => ({ value: s.id, label: `${s.name} (${s.code})` })), [partnerCandidates]);
+  const showPartnerSection = kind === 'LAB' && inHouse && (partnerEnabled || (detail?.sentToPartner ?? false));
+  const partnerEditable = !readOnly && partnerEnabled;
+  // Giá trả đối tác là giá vốn, khách không được thấy (#291): máy chủ chỉ trả cho người cấu hình dịch vụ hoặc xem công nợ nhà cung cấp; web ẩn bảng với người còn lại.
+  const canSeePartnerCost = useHasAnyPermission([
+    ['technical_service', 'update'],
+    ['supplier_debt', 'read'],
+  ]);
   const indicatorSearchQuery = useLabIndicatorsQuery({ search: indicatorSearch.trim() === '' ? undefined : indicatorSearch.trim() });
   const allIndicatorsQuery = useLabIndicatorsQuery({ includeInactive: true });
 
@@ -219,7 +257,15 @@ function ServiceForm({
   function pickKind(next: TechnicalServiceKind) {
     setKind(next);
     setResultType(DEFAULT_RESULT_TYPE_BY_KIND[next]);
-    if (next !== 'LAB') setSpecimenTypeCode('');
+    if (next !== 'LAB') {
+      setSpecimenTypeCode('');
+      setSentToPartner(false);
+    }
+  }
+
+  function changeInHouse(next: boolean) {
+    setInHouse(next);
+    if (!next) setSentToPartner(false);
   }
 
   // Mảng gửi API = giá hiện hành + giá hẹn + MỌI dòng ẩn nguyên vẹn (lưu giá là "thay sạch" — thiếu dòng ẩn là mất mức giá cũ).
@@ -235,10 +281,18 @@ function ServiceForm({
       setRowError(priceError);
       return;
     }
-    const turnaroundMinutes = turnaround.trim() === '' ? undefined : Number(turnaround);
-    if (turnaroundMinutes !== undefined && (!Number.isInteger(turnaroundMinutes) || turnaroundMinutes <= 0)) {
-      setRowError('Thời gian trả kết quả phải là số phút nguyên dương.');
+    const parsedTurnaround = parseTurnaround(turnaround, turnaroundUnit);
+    if (parsedTurnaround.error) {
+      setRowError(parsedTurnaround.error);
       return;
+    }
+    const turnaroundMinutes = parsedTurnaround.minutes;
+    if (partnerEnabled) {
+      const partnerError = validatePartnerRows(sentToPartner, partnerRows);
+      if (partnerError) {
+        setRowError(partnerError);
+        return;
+      }
     }
 
     const ok = await run(async () => {
@@ -257,6 +311,8 @@ function ServiceForm({
           ...(departmentId ? { departmentId } : {}),
           ...(turnaroundMinutes !== undefined ? { turnaroundMinutes } : {}),
           ...(inHouse ? { prices: pricesPayload() } : {}),
+          sentToPartner: partnerEnabled && sentToPartner,
+          ...(partnerEnabled ? { partnerPrices: buildPartnerPayload(partnerRows) } : {}),
           ...(showIndicators ? { indicators: indicatorsPayload() } : {}),
         };
         await createMutation.mutateAsync(body);
@@ -275,6 +331,7 @@ function ServiceForm({
           isActive,
           sortOrder,
           ...(inHouse ? { prices: pricesPayload() } : {}),
+          ...(partnerEnabled ? { sentToPartner, partnerPrices: buildPartnerPayload(partnerRows) } : {}),
           ...(showIndicators ? { indicators: indicatorsPayload() } : {}),
         };
         await updateMutation.mutateAsync({ id: detail!.id, body });
@@ -371,7 +428,7 @@ function ServiceForm({
 
         <BoxedSection badge="Nơi thực hiện & kết quả">
           <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5">
-            <input type="checkbox" checked={inHouse} onChange={(e) => setInHouse(e.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600" />
+            <input type="checkbox" checked={inHouse} onChange={(e) => changeInHouse(e.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600" />
             <span>
               <span className="block text-[13.5px] font-semibold text-emerald-900">Phòng khám tự thực hiện dịch vụ này</span>
               <span className="mt-0.5 block text-xs text-emerald-800">
@@ -379,6 +436,109 @@ function ServiceForm({
               </span>
             </span>
           </label>
+
+          {showPartnerSection && (
+            <div className="mt-3.5 flex flex-col gap-3" role="group" aria-label="Nơi thực hiện">
+              <span className={labelClassName}>Nơi thực hiện</span>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {[
+                  { value: false, label: 'Tại phòng khám', hint: 'Kỹ thuật viên nhập kết quả như hiện nay' },
+                  { value: true, label: 'Gửi đối tác', hint: 'Lấy mẫu rồi gửi đối tác, nhận kết quả dạng PDF' },
+                ].map((card) => {
+                  const selected = sentToPartner === card.value;
+                  return (
+                    <label
+                      key={String(card.value)}
+                      className={`block rounded-lg border px-3.5 py-2.5 ${partnerEditable ? 'cursor-pointer' : 'cursor-default'} ${
+                        selected ? 'border-brand-teal bg-brand-teal text-white' : `border-slate-300 ${partnerEditable ? 'hover:border-blue-400 hover:bg-brand-teal-tint' : 'opacity-60'}`
+                      }`}
+                    >
+                      <input type="radio" name="ts-place" className="sr-only" checked={selected} disabled={!partnerEditable} onChange={() => {
+                          setSentToPartner(card.value);
+                          if (card.value && turnaround.trim() === '') setTurnaroundUnit('hour');
+                        }} />
+                      <span className={`block text-[13.5px] font-semibold ${selected ? '' : 'text-slate-900'}`}>{card.label}</span>
+                      <span className={`mt-0.5 block text-[11.5px] ${selected ? 'opacity-90' : 'text-slate-500'}`}>{card.hint}</span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              {canSeePartnerCost && (sentToPartner || partnerRows.length > 0) && (
+                <div>
+                  <span className={`${labelClassName} mb-1.5 block`}>Giá trả bên thứ ba theo từng đối tác</span>
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                    <div className="min-w-[640px]">
+                      <div role="row" className="grid items-center gap-x-3 border-b-2 border-blue-600 bg-slate-100 px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-800" style={{ gridTemplateColumns: 'minmax(200px,1.6fr) 170px 150px 120px 56px' }}>
+                        <div className="text-left">Đối tác</div>
+                        <div>Giá trả (đ)</div>
+                        <div>Giá niêm yết</div>
+                        <div>Mặc định</div>
+                        <div />
+                      </div>
+                      {partnerRows.length === 0 && <p className="px-3 py-3 text-[13px] text-slate-500">Chưa có đối tác nào. Chọn đối tác bên dưới rồi nhập giá trả.</p>}
+                      {partnerRows.map((row) => {
+                        const margin = partnerMargin(priceInput.amount, row.amount);
+                        return (
+                          <div key={row.supplierId} role="row" className="grid items-center gap-x-3 border-b border-slate-100 px-3 py-2 text-sm last:border-0" style={{ gridTemplateColumns: 'minmax(200px,1.6fr) 170px 150px 120px 56px' }}>
+                            <div className="min-w-0">
+                              <div className="truncate font-semibold text-slate-900" title={row.name}>{row.name}</div>
+                              <div className="text-xs text-slate-500">{row.code}</div>
+                            </div>
+                            <div className="relative">
+                              <MoneyInput id={`ts-partner-${row.supplierId}`} value={row.amount} onChange={(v) => setPartnerRows((prev) => setPartnerAmount(prev, row.supplierId, v))} disabled={!partnerEditable} className={`${inputClassName} pr-8 text-right tabular-nums`} />
+                              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500" aria-hidden="true">đ</span>
+                            </div>
+                            <div className="text-right tabular-nums">
+                              {priceInput.amount === undefined ? <span className="text-slate-400">—</span> : formatVnd(priceInput.amount)}
+                              {margin !== null && <div className={`text-[11.5px] font-semibold ${margin < 0 ? 'text-rose-600' : 'text-slate-500'}`}>Lãi {formatVnd(margin)}</div>}
+                            </div>
+                            <div className="text-center">
+                              {row.isDefault ? (
+                                <span className="inline-block rounded bg-blue-600 px-2 py-0.5 text-[11px] font-semibold text-white">Mặc định</span>
+                              ) : partnerEditable ? (
+                                <button type="button" onClick={() => setPartnerRows((prev) => setDefaultPartner(prev, row.supplierId))} className="text-[13px] font-semibold text-blue-600 hover:text-blue-700">Đặt mặc định</button>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </div>
+                            <div className="text-center">
+                              {partnerEditable && (
+                                <button type="button" onClick={() => setPartnerRows((prev) => removePartnerRow(prev, row.supplierId))} aria-label={`Gỡ ${row.name}`} className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-rose-600">
+                                  <Trash size={16} aria-hidden="true" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {partnerEditable && (
+                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex w-72 flex-col gap-1.5">
+                        <label htmlFor="ts-partner-add" className={labelClassName}>
+                          Thêm đối tác
+                        </label>
+                        <Combobox
+                          id="ts-partner-add"
+                          value=""
+                          onChange={(id) => {
+                            const s = partnerCandidates.find((c) => c.id === id);
+                            if (s) setPartnerRows((prev) => addPartnerRow(prev, { id: s.id, code: s.code, name: s.name }));
+                          }}
+                          options={partnerOptions}
+                          placeholder={suppliersQuery.isError ? 'Không tải được danh sách đối tác' : partnerOptions.length === 0 ? 'Không còn đối tác để thêm' : '+ Thêm đối tác…'}
+                          disabled={partnerOptions.length === 0}
+                        />
+                      </div>
+                      <span className="text-[13px] text-slate-500">Khách chỉ thấy giá niêm yết. Giá trả đối tác chỉ hiện ở công nợ và đối chiếu.</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-3.5 grid grid-cols-2 gap-x-3 gap-y-3.5 sm:grid-cols-4">
             <div className="flex flex-col gap-1.5">
@@ -398,9 +558,32 @@ function ServiceForm({
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="ts-tat" className={labelClassName}>
-                Thời gian trả kết quả (phút)
+                Thời gian trả kết quả
               </label>
-              <input id="ts-tat" inputMode="numeric" value={turnaround} onChange={(e) => setTurnaround(e.target.value.replace(/\D/g, ''))} placeholder="Ví dụ: 120" className={inputClassName} />
+              <div className="flex gap-2">
+                <input
+                  id="ts-tat"
+                  inputMode={turnaroundUnit === 'hour' ? 'decimal' : 'numeric'}
+                  value={turnaround}
+                  onChange={(e) => setTurnaround(e.target.value.replace(turnaroundUnit === 'hour' ? /[^\d.,]/g : /\D/g, ''))}
+                  placeholder={turnaroundUnit === 'hour' ? 'Ví dụ: 24' : 'Ví dụ: 120'}
+                  className={`${inputClassName} min-w-0 flex-1`}
+                />
+                <div className="w-[104px] flex-none">
+                  <Combobox
+                    id="ts-tat-unit"
+                    value={turnaroundUnit}
+                    onChange={(next) => {
+                      if (next !== 'minute' && next !== 'hour') return;
+                      if (next === turnaroundUnit) return;
+                      setTurnaround((text) => convertTurnaroundText(text, turnaroundUnit, next));
+                      setTurnaroundUnit(next);
+                    }}
+                    options={TURNAROUND_UNIT_OPTIONS}
+                    disabled={readOnly}
+                  />
+                </div>
+              </div>
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="ts-rtype" className={labelClassName}>

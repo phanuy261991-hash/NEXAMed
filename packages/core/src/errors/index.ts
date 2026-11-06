@@ -28,6 +28,7 @@ export * from './leave-request-errors';
 export * from './shift-swap-errors';
 export * from './branch-errors';
 export * from './follow-up-errors';
+export * from './lab-partner-errors';
 export * from './platform-errors';
 export * from './idempotency-errors';
 export * from './encryption-key-errors';

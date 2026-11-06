@@ -313,6 +313,23 @@ export function GeneralConfigPane() {
     </div>
 
     <div className={sectionBoxClassName}>
+      <span className={sectionBadgeClassName}>Đối tác xét nghiệm</span>
+
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-[14.5px] font-semibold text-slate-900">Dùng đối tác xét nghiệm</p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">Gửi mẫu đã lấy cho đơn vị ngoài và theo dõi công nợ với họ. Tắt: ẩn toàn bộ phần đối tác.</p>
+        </div>
+        <ToggleSwitch
+          checked={settingsQuery.data.labPartnerEnabled}
+          disabled={updateMutation.isPending}
+          onChange={(checked) => updateMutation.mutate({ labPartnerEnabled: checked })}
+          ariaLabel="Dùng đối tác xét nghiệm"
+        />
+      </div>
+    </div>
+
+    <div className={sectionBoxClassName}>
       <span className={sectionBadgeClassName}>Kho</span>
 
       <div className="flex items-start justify-between gap-5">

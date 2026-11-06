@@ -30,6 +30,7 @@ import {
   DEFAULT_INSURANCE_ENABLED,
   DEFAULT_FOLLOW_UP_ENABLED,
   DEFAULT_DOCTOR_DASHBOARD_MONEY_ENABLED,
+  DEFAULT_LAB_PARTNER_ENABLED,
   DEFAULT_NO_SHOW_AUTO_ENABLED,
   DEFAULT_NO_SHOW_THRESHOLD_MINUTES,
   DEFAULT_OVERDUE_WAIT_WARNING_MINUTES,
@@ -161,6 +162,8 @@ const FOLLOW_UP_ENABLED_KEY = 'follow_up_enabled';
 const followUpEnabledSchema = z.boolean();
 const DOCTOR_DASHBOARD_MONEY_ENABLED_KEY = 'doctor_dashboard_money_enabled';
 const doctorDashboardMoneyEnabledSchema = z.boolean();
+const LAB_PARTNER_ENABLED_KEY = 'lab_partner_enabled';
+const labPartnerEnabledSchema = z.boolean();
 // "Cấu hình mẫu mã phát sinh" (docs/DECISIONS.md #114, 2026-09-03) — 1 object JSON duy nhất,
 // khoá theo loại mã (7 loại), chỉ chứa entry của loại mã ĐÃ được tenant chủ động sửa (loại chưa
 // đụng tới thì KHÔNG có key — service tự áp mặc định khớp hành vi cũ, xem `BusinessCodeService`).
@@ -625,6 +628,19 @@ export class ClinicSettingsRepository {
 
   upsertDoctorDashboardMoneyEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
     return this.upsert(tx, tenantId, actorId, DOCTOR_DASHBOARD_MONEY_ENABLED_KEY, value);
+  }
+
+  async getLabPartnerEnabled(tx: Prisma.TransactionClient, tenantId: string): Promise<boolean> {
+    const setting = await tx.tenantSetting.findFirst({ where: { tenantId, key: LAB_PARTNER_ENABLED_KEY } });
+    if (!setting) {
+      return DEFAULT_LAB_PARTNER_ENABLED;
+    }
+    const parsed = labPartnerEnabledSchema.safeParse(setting.valueJson);
+    return parsed.success ? parsed.data : DEFAULT_LAB_PARTNER_ENABLED;
+  }
+
+  upsertLabPartnerEnabled(tx: Prisma.TransactionClient, tenantId: string, actorId: string, value: boolean) {
+    return this.upsert(tx, tenantId, actorId, LAB_PARTNER_ENABLED_KEY, value);
   }
 
   /** Chỉ trả entry của loại mã tenant ĐÃ chủ động cấu hình — loại mã vắng mặt nghĩa là "dùng mặc

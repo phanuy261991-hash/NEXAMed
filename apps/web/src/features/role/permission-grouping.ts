@@ -27,7 +27,9 @@ export const MODULE_LABELS: Record<string, string> = {
   // hiện lúc xem trang Vai trò & Phân quyền — tên module thô hiện ra thay vì tiếng Việt, đúng cơ
   // chế fallback `moduleLabel()` mô tả ở trên).
   allergen_catalog: 'Danh mục Dị nguyên',
-  drug: 'Danh mục Thuốc, Vật tư & Nhà cung cấp',
+  drug: 'Danh mục Thuốc, Vật tư & Kho',
+  // Quyền nhà cung cấp tách khỏi kho thuốc (#291) — nhãn thêm NGAY lúc tạo quyền; `permission-grouping.spec.ts` chặn nếu thiếu.
+  supplier: 'Nhà cung cấp & Đối tác xét nghiệm',
   invoice: 'Phiếu thu',
   doctor_availability: 'Tạm nghỉ / Đóng ca',
   work_shift_assignment: 'Đăng ký ca làm việc',

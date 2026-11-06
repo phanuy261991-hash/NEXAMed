@@ -3736,6 +3736,7 @@ export interface paths {
                                 insuranceEnabled: boolean;
                                 followUpEnabled: boolean;
                                 doctorDashboardMoneyEnabled: boolean;
+                                labPartnerEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -17508,6 +17509,7 @@ export interface paths {
                                     address: string | null;
                                     contactName: string | null;
                                     isActive: boolean;
+                                    isLabPartner: boolean;
                                     version: number;
                                 }[];
                             };
@@ -17564,6 +17566,7 @@ export interface paths {
                         phone?: string;
                         address?: string;
                         contactName?: string;
+                        isLabPartner?: boolean;
                     };
                 };
             };
@@ -17585,6 +17588,7 @@ export interface paths {
                                 address: string | null;
                                 contactName: string | null;
                                 isActive: boolean;
+                                isLabPartner: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -17665,6 +17669,7 @@ export interface paths {
                                 address: string | null;
                                 contactName: string | null;
                                 isActive: boolean;
+                                isLabPartner: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -17742,6 +17747,7 @@ export interface paths {
                         address?: string | null;
                         contactName?: string | null;
                         isActive?: boolean;
+                        isLabPartner?: boolean;
                         version: number;
                     };
                 };
@@ -17764,6 +17770,7 @@ export interface paths {
                                 address: string | null;
                                 contactName: string | null;
                                 isActive: boolean;
+                                isLabPartner: boolean;
                                 version: number;
                             };
                             meta: Record<string, never>;
@@ -19119,6 +19126,7 @@ export interface paths {
                                 insuranceEnabled: boolean;
                                 followUpEnabled: boolean;
                                 doctorDashboardMoneyEnabled: boolean;
+                                labPartnerEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -19238,6 +19246,7 @@ export interface paths {
                         insuranceEnabled?: boolean;
                         followUpEnabled?: boolean;
                         doctorDashboardMoneyEnabled?: boolean;
+                        labPartnerEnabled?: boolean;
                     };
                 };
             };
@@ -19316,6 +19325,7 @@ export interface paths {
                                 insuranceEnabled: boolean;
                                 followUpEnabled: boolean;
                                 doctorDashboardMoneyEnabled: boolean;
+                                labPartnerEnabled: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -20460,6 +20470,62 @@ export interface paths {
             cookie?: never;
         };
         /** "Dùng Hẹn tái khám" (#285) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                enabled: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-settings/lab-partner-enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** "Dùng đối tác xét nghiệm" (#291) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read) */
         get: {
             parameters: {
                 query?: never;
@@ -46798,6 +46864,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lab-partners/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gửi mẫu đối tác (#291) — số dịch vụ có giá trả của từng đối tác xét nghiệm (cột "Dịch vụ" ở danh mục đối tác) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    supplierId: string;
+                                    serviceCount: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền technical_service.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/technical-services": {
         parameters: {
             query?: never;
@@ -46841,6 +46982,7 @@ export interface paths {
                                     categoryCode: string | null;
                                     specimenTypeCode: string | null;
                                     isPerformedInHouse: boolean;
+                                    sentToPartner: boolean;
                                     /** Format: uuid */
                                     departmentId: string | null;
                                     departmentName: string | null;
@@ -46919,6 +47061,8 @@ export interface paths {
                         specimenTypeCode?: string;
                         /** @default true */
                         isPerformedInHouse?: boolean;
+                        /** @default false */
+                        sentToPartner?: boolean;
                         /** Format: uuid */
                         departmentId?: string;
                         turnaroundMinutes?: number;
@@ -46930,6 +47074,13 @@ export interface paths {
                         sortOrder?: number;
                         /** @enum {string} */
                         serviceKind: "LAB" | "IMAGING" | "FUNCTIONAL";
+                        partnerPrices?: {
+                            /** Format: uuid */
+                            supplierId: string;
+                            amount: number;
+                            /** @default false */
+                            isDefault?: boolean;
+                        }[];
                         prices?: {
                             priceTypeCode: string;
                             amount: number;
@@ -46965,6 +47116,7 @@ export interface paths {
                                 categoryCode: string | null;
                                 specimenTypeCode: string | null;
                                 isPerformedInHouse: boolean;
+                                sentToPartner: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
                                 departmentName: string | null;
@@ -46990,6 +47142,16 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                 })[];
+                                partnerPrices: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    supplierId: string;
+                                    supplierCode: string;
+                                    supplierName: string;
+                                    amount: number;
+                                    isDefault: boolean;
+                                }[];
                                 indicators: {
                                     /** Format: uuid */
                                     id: string;
@@ -47113,6 +47275,7 @@ export interface paths {
                                 categoryCode: string | null;
                                 specimenTypeCode: string | null;
                                 isPerformedInHouse: boolean;
+                                sentToPartner: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
                                 departmentName: string | null;
@@ -47138,6 +47301,16 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                 })[];
+                                partnerPrices: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    supplierId: string;
+                                    supplierCode: string;
+                                    supplierName: string;
+                                    amount: number;
+                                    isDefault: boolean;
+                                }[];
                                 indicators: {
                                     /** Format: uuid */
                                     id: string;
@@ -47227,6 +47400,14 @@ export interface paths {
                         categoryCode?: string | null;
                         specimenTypeCode?: string | null;
                         isPerformedInHouse?: boolean;
+                        sentToPartner?: boolean;
+                        partnerPrices?: {
+                            /** Format: uuid */
+                            supplierId: string;
+                            amount: number;
+                            /** @default false */
+                            isDefault?: boolean;
+                        }[];
                         /** Format: uuid */
                         departmentId?: string | null;
                         turnaroundMinutes?: number | null;
@@ -47269,6 +47450,7 @@ export interface paths {
                                 categoryCode: string | null;
                                 specimenTypeCode: string | null;
                                 isPerformedInHouse: boolean;
+                                sentToPartner: boolean;
                                 /** Format: uuid */
                                 departmentId: string | null;
                                 departmentName: string | null;
@@ -47294,6 +47476,16 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                 })[];
+                                partnerPrices: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    supplierId: string;
+                                    supplierCode: string;
+                                    supplierName: string;
+                                    amount: number;
+                                    isDefault: boolean;
+                                }[];
                                 indicators: {
                                     /** Format: uuid */
                                     id: string;

@@ -8,6 +8,7 @@ export interface CreateSupplierData {
   phone: string | null;
   address: string | null;
   contactName: string | null;
+  isLabPartner: boolean;
 }
 
 export interface UpdateSupplierData {
@@ -17,6 +18,7 @@ export interface UpdateSupplierData {
   address?: string | null;
   contactName?: string | null;
   isActive?: boolean;
+  isLabPartner?: boolean;
 }
 
 /** Chỗ DUY NHẤT gọi Prisma cho bảng `supplier` (docs/DECISIONS.md #146, GĐ1). */
@@ -36,6 +38,11 @@ export class SupplierRepository {
       where: { tenantId, deletedAt: null, ...(includeInactive ? {} : { isActive: true }) },
       orderBy: { name: 'asc' },
     });
+  }
+
+  /** Số dòng giá trả đối tác còn hiệu lực của nhà cung cấp (#291) — chặn bỏ đánh dấu "Đối tác XN" khi còn dùng. Chỉ đọc bảng của module `technical-service`. */
+  countActiveLabPartnerPrices(tx: Prisma.TransactionClient, tenantId: string, supplierId: string): Promise<number> {
+    return tx.labPartnerServicePrice.count({ where: { tenantId, supplierId, deletedAt: null } });
   }
 
   async updateIfVersionMatches(

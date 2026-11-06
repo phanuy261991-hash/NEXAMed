@@ -331,16 +331,8 @@ export const router = createBrowserRouter([
           </RequireAnyPermissionRoute>
         ),
       },
-      // "Quản lý nhà cung cấp" — nhóm sidebar riêng, tách khỏi "Danh mục Thuốc và Vật Tư" (cùng
-      // quyền drug.create/drug.update, tách từ drug.manage gộp cũ #156, không permission mới).
-      {
-        path: 'suppliers',
-        element: (
-          <RequireAnyPermissionRoute permissions={DRUG_MANAGE_PERMISSIONS}>
-            <SupplierManagementPage />
-          </RequireAnyPermissionRoute>
-        ),
-      },
+      // "Quản lý nhà cung cấp" — nhóm sidebar riêng, tách khỏi "Danh mục Thuốc và Vật Tư"; quyền RIÊNG supplier.read (#291, trước dùng chung drug.*).
+      { path: 'suppliers', element: <RequirePermissionRoute module="supplier" action="read"><SupplierManagementPage /></RequirePermissionRoute> },
       // "Công nợ nhà cung cấp" Phần A (docs/DECISIONS.md #180/#182) — trang chi tiết NCC, gác bằng
       // đúng quyền supplier_debt.read (mặc định CHỈ clinic_admin lúc ra mắt), không dùng chung gate
       // DRUG_MANAGE_PERMISSIONS của trang danh sách vì đây là dữ liệu công nợ/tiền.

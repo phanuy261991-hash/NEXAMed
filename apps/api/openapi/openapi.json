@@ -8950,6 +8950,9 @@
                         },
                         "doctorDashboardMoneyEnabled": {
                           "type": "boolean"
+                        },
+                        "labPartnerEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -8988,7 +8991,8 @@
                         "icd10SuggestionLearningEnabled",
                         "insuranceEnabled",
                         "followUpEnabled",
-                        "doctorDashboardMoneyEnabled"
+                        "doctorDashboardMoneyEnabled",
+                        "labPartnerEnabled"
                       ]
                     },
                     "meta": {
@@ -46386,6 +46390,9 @@
                   "contactName": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "isLabPartner": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -46443,6 +46450,9 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "isLabPartner": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -46456,6 +46466,7 @@
                         "address",
                         "contactName",
                         "isActive",
+                        "isLabPartner",
                         "version"
                       ]
                     },
@@ -46613,6 +46624,9 @@
                               "isActive": {
                                 "type": "boolean"
                               },
+                              "isLabPartner": {
+                                "type": "boolean"
+                              },
                               "version": {
                                 "type": "integer"
                               }
@@ -46626,6 +46640,7 @@
                               "address",
                               "contactName",
                               "isActive",
+                              "isLabPartner",
                               "version"
                             ]
                           }
@@ -46783,6 +46798,9 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "isLabPartner": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -46796,6 +46814,7 @@
                         "address",
                         "contactName",
                         "isActive",
+                        "isLabPartner",
                         "version"
                       ]
                     },
@@ -46969,6 +46988,9 @@
                   "isActive": {
                     "type": "boolean"
                   },
+                  "isLabPartner": {
+                    "type": "boolean"
+                  },
                   "version": {
                     "type": "integer",
                     "exclusiveMinimum": 0
@@ -47029,6 +47051,9 @@
                         "isActive": {
                           "type": "boolean"
                         },
+                        "isLabPartner": {
+                          "type": "boolean"
+                        },
                         "version": {
                           "type": "integer"
                         }
@@ -47042,6 +47067,7 @@
                         "address",
                         "contactName",
                         "isActive",
+                        "isLabPartner",
                         "version"
                       ]
                     },
@@ -49830,6 +49856,9 @@
                         },
                         "doctorDashboardMoneyEnabled": {
                           "type": "boolean"
+                        },
+                        "labPartnerEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -49868,7 +49897,8 @@
                         "icd10SuggestionLearningEnabled",
                         "insuranceEnabled",
                         "followUpEnabled",
-                        "doctorDashboardMoneyEnabled"
+                        "doctorDashboardMoneyEnabled",
+                        "labPartnerEnabled"
                       ]
                     },
                     "meta": {
@@ -50239,6 +50269,9 @@
                   },
                   "doctorDashboardMoneyEnabled": {
                     "type": "boolean"
+                  },
+                  "labPartnerEnabled": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -50534,6 +50567,9 @@
                         },
                         "doctorDashboardMoneyEnabled": {
                           "type": "boolean"
+                        },
+                        "labPartnerEnabled": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -50572,7 +50608,8 @@
                         "icd10SuggestionLearningEnabled",
                         "insuranceEnabled",
                         "followUpEnabled",
-                        "doctorDashboardMoneyEnabled"
+                        "doctorDashboardMoneyEnabled",
+                        "labPartnerEnabled"
                       ]
                     },
                     "meta": {
@@ -52481,6 +52518,83 @@
           "clinic"
         ],
         "summary": "\"Dùng Hẹn tái khám\" (#285) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clinic-settings/lab-partner-enabled": {
+      "get": {
+        "tags": [
+          "clinic"
+        ],
+        "summary": "\"Dùng đối tác xét nghiệm\" (#291) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)",
         "security": [
           {
             "bearerAuth": []
@@ -119832,6 +119946,131 @@
         }
       }
     },
+    "/api/v1/lab-partners/summary": {
+      "get": {
+        "tags": [
+          "technical-service"
+        ],
+        "summary": "Gửi mẫu đối tác (#291) — số dịch vụ có giá trả của từng đối tác xét nghiệm (cột \"Dịch vụ\" ở danh mục đối tác)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "supplierId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "serviceCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "supplierId",
+                              "serviceCount"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền technical_service.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/technical-services": {
       "get": {
         "tags": [
@@ -119961,6 +120200,9 @@
                               "isPerformedInHouse": {
                                 "type": "boolean"
                               },
+                              "sentToPartner": {
+                                "type": "boolean"
+                              },
                               "departmentId": {
                                 "type": [
                                   "string",
@@ -120035,6 +120277,7 @@
                               "categoryCode",
                               "specimenTypeCode",
                               "isPerformedInHouse",
+                              "sentToPartner",
                               "departmentId",
                               "departmentName",
                               "turnaroundMinutes",
@@ -120198,6 +120441,10 @@
                     "type": "boolean",
                     "default": true
                   },
+                  "sentToPartner": {
+                    "type": "boolean",
+                    "default": false
+                  },
                   "departmentId": {
                     "type": "string",
                     "format": "uuid"
@@ -120231,6 +120478,31 @@
                       "IMAGING",
                       "FUNCTIONAL"
                     ]
+                  },
+                  "partnerPrices": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 2000000000
+                        },
+                        "isDefault": {
+                          "type": "boolean",
+                          "default": false
+                        }
+                      },
+                      "required": [
+                        "supplierId",
+                        "amount"
+                      ]
+                    }
                   },
                   "prices": {
                     "type": "array",
@@ -120350,6 +120622,9 @@
                         "isPerformedInHouse": {
                           "type": "boolean"
                         },
+                        "sentToPartner": {
+                          "type": "boolean"
+                        },
                         "departmentId": {
                           "type": [
                             "string",
@@ -120463,6 +120738,43 @@
                             ]
                           }
                         },
+                        "partnerPrices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "supplierId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "supplierCode": {
+                                "type": "string"
+                              },
+                              "supplierName": {
+                                "type": "string"
+                              },
+                              "amount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "supplierId",
+                              "supplierCode",
+                              "supplierName",
+                              "amount",
+                              "isDefault"
+                            ]
+                          }
+                        },
                         "indicators": {
                           "type": "array",
                           "items": {
@@ -120527,6 +120839,7 @@
                         "categoryCode",
                         "specimenTypeCode",
                         "isPerformedInHouse",
+                        "sentToPartner",
                         "departmentId",
                         "departmentName",
                         "turnaroundMinutes",
@@ -120537,6 +120850,7 @@
                         "currentPrices",
                         "indicatorCount",
                         "prices",
+                        "partnerPrices",
                         "indicators"
                       ]
                     },
@@ -120758,6 +121072,9 @@
                         "isPerformedInHouse": {
                           "type": "boolean"
                         },
+                        "sentToPartner": {
+                          "type": "boolean"
+                        },
                         "departmentId": {
                           "type": [
                             "string",
@@ -120871,6 +121188,43 @@
                             ]
                           }
                         },
+                        "partnerPrices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "supplierId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "supplierCode": {
+                                "type": "string"
+                              },
+                              "supplierName": {
+                                "type": "string"
+                              },
+                              "amount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "supplierId",
+                              "supplierCode",
+                              "supplierName",
+                              "amount",
+                              "isDefault"
+                            ]
+                          }
+                        },
                         "indicators": {
                           "type": "array",
                           "items": {
@@ -120935,6 +121289,7 @@
                         "categoryCode",
                         "specimenTypeCode",
                         "isPerformedInHouse",
+                        "sentToPartner",
                         "departmentId",
                         "departmentName",
                         "turnaroundMinutes",
@@ -120945,6 +121300,7 @@
                         "currentPrices",
                         "indicatorCount",
                         "prices",
+                        "partnerPrices",
                         "indicators"
                       ]
                     },
@@ -121123,6 +121479,34 @@
                   "isPerformedInHouse": {
                     "type": "boolean"
                   },
+                  "sentToPartner": {
+                    "type": "boolean"
+                  },
+                  "partnerPrices": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "supplierId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "amount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 2000000000
+                        },
+                        "isDefault": {
+                          "type": "boolean",
+                          "default": false
+                        }
+                      },
+                      "required": [
+                        "supplierId",
+                        "amount"
+                      ]
+                    }
+                  },
                   "departmentId": {
                     "type": [
                       "string",
@@ -121270,6 +121654,9 @@
                         "isPerformedInHouse": {
                           "type": "boolean"
                         },
+                        "sentToPartner": {
+                          "type": "boolean"
+                        },
                         "departmentId": {
                           "type": [
                             "string",
@@ -121383,6 +121770,43 @@
                             ]
                           }
                         },
+                        "partnerPrices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "supplierId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "supplierCode": {
+                                "type": "string"
+                              },
+                              "supplierName": {
+                                "type": "string"
+                              },
+                              "amount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "isDefault": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "supplierId",
+                              "supplierCode",
+                              "supplierName",
+                              "amount",
+                              "isDefault"
+                            ]
+                          }
+                        },
                         "indicators": {
                           "type": "array",
                           "items": {
@@ -121447,6 +121871,7 @@
                         "categoryCode",
                         "specimenTypeCode",
                         "isPerformedInHouse",
+                        "sentToPartner",
                         "departmentId",
                         "departmentName",
                         "turnaroundMinutes",
@@ -121457,6 +121882,7 @@
                         "currentPrices",
                         "indicatorCount",
                         "prices",
+                        "partnerPrices",
                         "indicators"
                       ]
                     },

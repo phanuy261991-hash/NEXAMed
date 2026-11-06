@@ -21,8 +21,22 @@ export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> 
   'user_account.manage': ['user_account.read', 'role_permission.read', 'reference_catalog.read'],
   'role_permission.manage': ['role_permission.read'],
   'cash_voucher.read': ['cash_account.read', 'reference_catalog.read'],
-  'stock_receipt.read': ['drug.read', 'cash_account.read', 'reference_catalog.read'],
-  'stock_receipt.create': ['drug.read', 'cash_account.read', 'reference_catalog.read'],
+  // Phiếu nhập kho chọn nhà cung cấp (#291: quyền nhà cung cấp đã tách khỏi `drug.*`); trang Công nợ NCC cũng đọc danh sách nhà cung cấp.
+  'stock_receipt.read': ['drug.read', 'supplier.read', 'cash_account.read', 'reference_catalog.read'],
+  'stock_receipt.create': ['drug.read', 'supplier.read', 'cash_account.read', 'reference_catalog.read'],
+  'supplier_debt.read': ['supplier.read'],
+  // Quyền thêm 28/10–06/11/2026 (#279–#291). Báo cáo: quét vai trò tuỳ biến 06/11/2026 (`role-access-sweep.cjs`, phần custom) — hai trang còn gọi API của module khác khi mở: báo cáo Bác sĩ lọc theo Khoa
+  // (`GET /departments/options` cần `reference_catalog.read`), báo cáo Khám bệnh và vận hành lọc theo bác sĩ (`GET /appointments/doctors` cần `appointment.read`); các báo cáo còn lại và "Hẹn tái khám" mở trọn.
+  'doctor_report.read': ['reference_catalog.read'],
+  'operations_report.read': ['appointment.read'],
+  // Tổng quan thu ngân đọc ca đang mở (mở/chốt ca ngay trên trang). Tổng quan bác sĩ còn đọc trạng thái đóng ca (cần quyền GHI `doctor_availability.update`, không đưa vào đây vì bảng này chỉ gợi ý quyền ĐỌC) nên trang chỉ gọi khi có quyền đó.
+  'dashboard.cashier': ['cashier_shift.read'],
+  // "Hẹn tái khám": ghi lần nhắc cần xem danh sách. "Khách không làm dịch vụ" là nút trên phiếu thu nên cần xem được phiếu.
+  'follow_up.remind': ['follow_up.read'],
+  'invoice.cancel_service': ['invoice.read'],
+  // Nhà cung cấp & đối tác xét nghiệm (#291): sửa/thêm cần xem danh sách.
+  'supplier.create': ['supplier.read'],
+  'supplier.update': ['supplier.read'],
   'stock_receipt.report': ['drug.read'],
   'stock_issue.read': ['stock_receipt.read', 'drug.read', 'reference_catalog.read'],
   'stock_issue.create': ['stock_receipt.read', 'drug.read', 'reference_catalog.read'],
