@@ -14,12 +14,12 @@ export interface ReportScopeState {
   setBranchIds: (branchIds: string[]) => void;
 }
 
-function readStored(key: string): ReportScopeSelection {
+function readStored(key: string, fallback: ReportScopeSelection): ReportScopeSelection {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? parseStoredReportScope(JSON.parse(raw)) : CURRENT_REPORT_SCOPE;
+    return raw ? parseStoredReportScope(JSON.parse(raw)) : fallback;
   } catch {
-    return CURRENT_REPORT_SCOPE;
+    return fallback;
   }
 }
 
@@ -28,14 +28,14 @@ function readStored(key: string): ReportScopeSelection {
  * dùng chung giữa các báo cáo, nên chuyển từ Báo cáo dòng tiền sang Nhập-Xuất-Tồn không phải chọn lại. KHÔNG phải nguồn sự thật về quyền — máy chủ vẫn từ chối `scope` khác `current`
  * nếu thiếu `company_report.read`.
  */
-export function useReportScope(): ReportScopeState {
+export function useReportScope(defaultScope: ReportScope = 'current'): ReportScopeState {
   const { tenantId } = useAppConfig();
   const user = useAuthStore((s) => s.user);
   const hasPermission = useHasPermission('company_report', 'read');
   const canChoose = hasPermission && user?.multiBranchCompany === true;
   const storageKey = `nexamed.reportScope.${tenantId}.${user?.id ?? 'anonymous'}`;
 
-  const [stored, setStored] = useState<ReportScopeSelection>(() => readStored(storageKey));
+  const [stored, setStored] = useState<ReportScopeSelection>(() => readStored(storageKey, defaultScope === 'all' ? { scope: 'all', branchIds: [] } : CURRENT_REPORT_SCOPE));
 
   const persist = useCallback(
     (next: ReportScopeSelection) => {

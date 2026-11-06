@@ -26120,6 +26120,938 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/system/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** So sánh chi nhánh — lượt khám, bệnh nhân mới, ghi nhận, thực thu, chờ thu, thời gian chờ, tái khám, lãi gộp thuốc từng chi nhánh; so với kỳ trước; thực thu theo ngày; cơ cấu theo nhóm; cần chú ý (quyền company_report.read, #287) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                previousFrom: string;
+                                previousTo: string;
+                                kpis: {
+                                    recognized: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
+                                    collected: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
+                                    visits: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
+                                    newPatients: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
+                                    unpaidAmount: number;
+                                    unpaidCount: number;
+                                };
+                                rows: {
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                    visits: number;
+                                    newPatients: number;
+                                    recognized: number;
+                                    collected: number;
+                                    unpaidAmount: number;
+                                    unpaidCount: number;
+                                    averageWaitMinutes: number | null;
+                                    followUpArrivalPercent: number | null;
+                                    drugMargin: number;
+                                }[];
+                                totals: {
+                                    visits: number;
+                                    newPatients: number;
+                                    recognized: number;
+                                    collected: number;
+                                    unpaidAmount: number;
+                                    unpaidCount: number;
+                                    averageWaitMinutes: number | null;
+                                    followUpArrivalPercent: number | null;
+                                    drugMargin: number;
+                                };
+                                daily: {
+                                    dates: string[];
+                                    series: {
+                                        /** Format: uuid */
+                                        branchId: string;
+                                        branchName: string;
+                                        values: number[];
+                                    }[];
+                                };
+                                groups: {
+                                    /** @enum {string} */
+                                    group: "EXAM" | "PARACLINICAL" | "DRUG" | "PACKAGE";
+                                    amount: number;
+                                    sharePercent: number | null;
+                                }[];
+                                groupTotal: number;
+                                alerts: {
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                    /** @enum {string} */
+                                    kind: "OPEN_SHIFTS" | "OVERDUE_UNPAID" | "EXPIRING_BATCHES" | "LONG_WAIT";
+                                    text: string;
+                                    count: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/system/overview/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel So sánh chi nhánh (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/system/ranking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xếp hạng dịch vụ, bác sĩ, thuốc và vật tư toàn phạm vi, kèm giá trị từng chi nhánh (quyền company_report.read, #287) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                branches: {
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                }[];
+                                services: {
+                                    key: string;
+                                    name: string;
+                                    subtitle: string;
+                                    quantity: number;
+                                    total: number;
+                                    byBranch: number[];
+                                }[];
+                                doctors: {
+                                    key: string;
+                                    name: string;
+                                    subtitle: string;
+                                    quantity: number;
+                                    total: number;
+                                    byBranch: number[];
+                                }[];
+                                drugs: {
+                                    key: string;
+                                    name: string;
+                                    subtitle: string;
+                                    quantity: number;
+                                    total: number;
+                                    byBranch: number[];
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/system/ranking/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Xếp hạng (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/system/monthly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tổng hợp một tháng toàn phạm vi so với tháng trước, theo chi nhánh, cơ cấu theo nhóm và xu hướng 6 tháng (quyền company_report.read, #287) */
+        get: {
+            parameters: {
+                query: {
+                    month: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                month: string;
+                                previousMonth: string;
+                                kpis: {
+                                    recognized: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
+                                    collected: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
+                                    visits: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
+                                    newPatients: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
+                                    drugMargin: {
+                                        value: number;
+                                        previous: number;
+                                        percent: number | null;
+                                        /** @enum {string} */
+                                        direction: "up" | "down" | "flat";
+                                    };
+                                };
+                                rows: {
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                    current: {
+                                        visits: number;
+                                        newPatients: number;
+                                        recognized: number;
+                                        collected: number;
+                                        drugMargin: number;
+                                    };
+                                    previous: {
+                                        visits: number;
+                                        newPatients: number;
+                                        recognized: number;
+                                        collected: number;
+                                        drugMargin: number;
+                                    };
+                                }[];
+                                groups: {
+                                    /** @enum {string} */
+                                    group: "EXAM" | "PARACLINICAL" | "DRUG" | "PACKAGE";
+                                    amount: number;
+                                    sharePercent: number | null;
+                                }[];
+                                groupTotal: number;
+                                trend: {
+                                    month: string;
+                                    visits: number;
+                                    newPatients: number;
+                                    recognized: number;
+                                    collected: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/system/monthly/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Tổng hợp tháng (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    month: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/system/cross": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bệnh nhân khám ở từ hai chi nhánh trong kỳ — tổng, theo cặp chi nhánh và danh sách (không hiện tiền) (quyền company_report.read, #287) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                totals: {
+                                    patientCount: number;
+                                    crossPatientCount: number;
+                                    crossPercent: number | null;
+                                    crossVisits: number;
+                                };
+                                pairs: {
+                                    /** Format: uuid */
+                                    branchAId: string;
+                                    branchAName: string;
+                                    /** Format: uuid */
+                                    branchBId: string;
+                                    branchBName: string;
+                                    patientCount: number;
+                                }[];
+                                rows: {
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientCode: string;
+                                    patientName: string;
+                                    branchCount: number;
+                                    visitCount: number;
+                                    lastVisitDate: string;
+                                    branches: {
+                                        branchName: string;
+                                        visits: number;
+                                    }[];
+                                }[];
+                                rowTotal: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/system/cross/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Khám chéo chi nhánh (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/pharmacy/dispensed": {
         parameters: {
             query?: never;

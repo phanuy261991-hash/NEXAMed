@@ -39,6 +39,12 @@ import {
   revenuePeriodQuerySchema,
   doctorReportQuerySchema,
   pharmacyReportQuerySchema,
+  systemPeriodQuerySchema,
+  systemMonthlyQuerySchema,
+  systemOverviewReportSchema,
+  systemRankingReportSchema,
+  systemMonthlyReportSchema,
+  systemCrossReportSchema,
   controlledReportQuerySchema,
   pharmacyDispensedReportSchema,
   pharmacyMarginReportSchema,
@@ -3977,6 +3983,45 @@ for (const r of doctorReports) {
       200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
       401: errorResponse('Thiếu hoặc sai access token'),
       403: errorResponse(DOCTOR_FORBIDDEN),
+    },
+  });
+}
+
+// Trang báo cáo "Toàn hệ thống" (#287): 4 báo cáo, mỗi báo cáo một route xem và một route xuất Excel.
+const SYSTEM_FORBIDDEN = 'Không có quyền company_report.read';
+const systemReports: Array<{ path: string; label: string; summary: string; query: unknown; schema: Parameters<typeof envelope>[0] }> = [
+  { path: 'overview', label: 'So sánh chi nhánh', summary: 'So sánh chi nhánh — lượt khám, bệnh nhân mới, ghi nhận, thực thu, chờ thu, thời gian chờ, tái khám, lãi gộp thuốc từng chi nhánh; so với kỳ trước; thực thu theo ngày; cơ cấu theo nhóm; cần chú ý', query: systemPeriodQuerySchema, schema: systemOverviewReportSchema },
+  { path: 'ranking', label: 'Xếp hạng', summary: 'Xếp hạng dịch vụ, bác sĩ, thuốc và vật tư toàn phạm vi, kèm giá trị từng chi nhánh', query: systemPeriodQuerySchema, schema: systemRankingReportSchema },
+  { path: 'monthly', label: 'Tổng hợp tháng', summary: 'Tổng hợp một tháng toàn phạm vi so với tháng trước, theo chi nhánh, cơ cấu theo nhóm và xu hướng 6 tháng', query: systemMonthlyQuerySchema, schema: systemMonthlyReportSchema },
+  { path: 'cross', label: 'Khám chéo chi nhánh', summary: 'Bệnh nhân khám ở từ hai chi nhánh trong kỳ — tổng, theo cặp chi nhánh và danh sách (không hiện tiền)', query: systemPeriodQuerySchema, schema: systemCrossReportSchema },
+];
+for (const r of systemReports) {
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/system/${r.path}`,
+    tags: ['report'],
+    summary: `${r.summary} (quyền company_report.read, #287)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: r.query as typeof systemPeriodQuerySchema },
+    responses: {
+      200: jsonResponse('Thành công', envelope(r.schema)),
+      400: errorResponse('Tham số không hợp lệ'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(SYSTEM_FORBIDDEN),
+      404: errorResponse('Chi nhánh không thuộc công ty'),
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/system/${r.path}/export`,
+    tags: ['report'],
+    summary: `Xuất Excel ${r.label} (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: r.query as typeof systemPeriodQuerySchema },
+    responses: {
+      200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(SYSTEM_FORBIDDEN),
     },
   });
 }

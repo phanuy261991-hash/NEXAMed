@@ -7,7 +7,7 @@ Nhật ký trạng thái đầy đủ cũ (từng đợt) ở `docs/archive/CURR
 ## Bức tranh hiện tại
 
 - Phiên bản phần mềm `0.9.0` (chốt `1.0.0` SAU pilot). Đang pilot tại phòng khám thật; môi trường dev dùng tenant test cố định `01a0cc3c-8626-746b-9d2a-5ea0268ec19f`, đăng nhập `dev.admin` / `Dev@12345` (tài khoản quét quyền `rl.<vai trò>`, mật khẩu `12345678`).
-- `master` = `8742ef0` (05/11/2026, trang Bác sĩ; chưa kiểm CI GitHub). Full API 2082, core 729, shared 127, web 634, setup 112 đều xanh khi push.
+- `master` = commit "trang Toàn hệ thống" (05/11/2026, trên `a08cbde` trang Thuốc và vật tư; chưa kiểm CI GitHub). Full API 2134+, core 773, shared 127, web 680, setup 112 đều xanh khi push.
 - Phạm vi v1 đã mở rộng nhiều so với PRD gốc (danh sách chốt đầy đủ ở `CLAUDE.md`, mục Phạm vi v1): Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn, Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư GĐ1–5, Công nợ nhà cung cấp A–E, Cận lâm sàng, Điều trị & Hẹn tái khám, Lịch làm việc/đơn nghỉ/đổi ca, Bảng giá có thời hạn, Thẻ BHYT (chỉ lưu/hiển thị), Hồ sơ bệnh án MS 15/BV-01, Khách không làm dịch vụ, hệ thống báo cáo + Tổng quan theo vai trò.
 - **Tầng chi nhánh** (#231/#233/#235): Đợt 1–3 xong; chưa bật chi nhánh thứ 2 ở khách thật. Mọi chức năng mới trả lời 4 câu hỏi chi nhánh (`CLAUDE.md`). **SaaS** (#237): nền tên miền phụ + Khu quản trị nền tảng xong; còn hạ tầng thật (chờ báo giá). **Trình cài đặt `nexamed-setup`** (#238) xong; chưa kiểm Let's Encrypt/NAS/Windows sạch.
 - **Runtime Node 26** (#253), NestJS 11, Vite 6/Vitest 4 (#249, #252). Mọi mã mới chạy được ở LAN HTTP on-prem (#257); lỗi hiện qua màn thông báo cụ thể (#255); POST có `Idempotency-Key` (#257); một request = MỘT transaction (#264).
@@ -28,9 +28,11 @@ Tổng quan **bác sĩ** (#286, 05/11/2026, `dashboard.doctor`, công tắc "hi�
 
 **Trang "Bác sĩ" (#287, 05/11/2026) — XONG, 3/3 tab** (Hiệu suất theo bác sĩ, Cơ cấu kê đơn và chỉ định, Giờ làm việc và lượt khám; quyền `doctor_report.read` chỉ quản lý phòng khám, bác sĩ không xem; lọc Khoa; Excel + In; Chrome IP LAN 51/51; môi trường khác cần `db:seed`; CHƯA commit). Đã trích `report-export-support.ts` dùng chung cho ba service báo cáo.
 
-**Trang "Thuốc và vật tư" (#287, 05/11/2026) — XONG 7/7 tab** (Đã phát, Lãi gộp, Kiểm soát đặc biệt là 3 tab mới; 4 tab kho Nhập-Xuất-Tồn, Tồn kho và hạn dùng, Hao hụt điều chuyển, Công nợ NCC bấm là chuyển sang trang cũ — chủ dự án chọn; quyền riêng `pharmacy_report.read` chỉ quản lý phòng khám; Excel + In; Chrome IP LAN 54/54; môi trường khác cần `db:seed`; CHƯA commit). **Tab Kiểm soát đặc biệt là bảng theo dõi nội bộ, CHƯA phải mẫu báo cáo gửi cơ quan quản lý**: tra văn bản cho thấy Thông tư 20/2017/TT-BYT đã được thay bằng Thông tư 18/2026/TT-BYT (hiệu lực 16/07/2026) và Nghị định 163/2025/NĐ-CP (mẫu ở Phụ lục II) nhưng không đọc được nguyên văn mẫu dành cho phòng khám — chờ chủ dự án cung cấp/đối chiếu bản gốc (DECISIONS #287).
+**Trang "Thuốc và vật tư" (#287, 05/11/2026) — XONG 7/7 tab** (Đã phát, Lãi gộp, Kiểm soát đặc biệt là 3 tab mới; 4 tab kho Nhập-Xuất-Tồn, Tồn kho và hạn dùng, Hao hụt điều chuyển, Công nợ NCC bấm là chuyển sang trang cũ — chủ dự án chọn; quyền riêng `pharmacy_report.read` chỉ quản lý phòng khám; Excel + In; Chrome IP LAN 54/54; môi trường khác cần `db:seed`; đã push `a08cbde`). **Tab Kiểm soát đặc biệt là bảng theo dõi nội bộ, CHƯA phải mẫu báo cáo gửi cơ quan quản lý**: tra văn bản cho thấy Thông tư 20/2017/TT-BYT đã được thay bằng Thông tư 18/2026/TT-BYT (hiệu lực 16/07/2026) và Nghị định 163/2025/NĐ-CP (mẫu ở Phụ lục II) nhưng không đọc được nguyên văn mẫu dành cho phòng khám — chờ chủ dự án cung cấp/đối chiếu bản gốc (DECISIONS #287).
 
-**Còn lại — chủ dự án yêu cầu làm ĐỦ MỌI TAB của mockup đã duyệt** (danh sách đủ ở `docs/TASK.md`): **Toàn hệ thống** (4 tab, làm tiếp theo), rồi các nhóm Bệnh nhân/Chuyên môn/Chất lượng (chưa có hình vẽ, hỏi chủ dự án).
+**Trang "Toàn hệ thống" (#287, 05/11/2026) — XONG 4/4 tab** (So sánh chi nhánh có mockup đúng số liệu; Xếp hạng, Tổng hợp tháng, Khám chéo chi nhánh chưa có hình vẽ nên dựng theo khuôn và liệt kê cột ở DECISIONS #287; dùng quyền `company_report.read`, không quyền mới, không cần `db:seed`; phạm vi mặc định "Tất cả chi nhánh"; Excel + In; Chrome IP LAN 68/68). Khám chéo chi nhánh KHÔNG hiện tiền theo bệnh nhân (#231).
+
+**Còn lại — chủ dự án yêu cầu làm ĐỦ MỌI TAB của mockup đã duyệt** (danh sách đủ ở `docs/TASK.md`): các nhóm Bệnh nhân/Chuyên môn/Chất lượng (chưa có hình vẽ, hỏi chủ dự án).
 
 ## Trang "Hẹn tái khám" + công tắc (#285, 04/11/2026) — XONG, đã push, CI xanh
 

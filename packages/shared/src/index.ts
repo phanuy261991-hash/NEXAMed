@@ -36,6 +36,7 @@ export * from './report-operations';
 export * from './report-revenue';
 export * from './report-doctors';
 export * from './report-pharmacy';
+export * from './report-system';
 export * from './follow-up';
 export * from './patient-wallet';
 export * from './business-code';

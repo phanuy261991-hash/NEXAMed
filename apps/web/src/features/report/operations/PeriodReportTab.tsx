@@ -41,6 +41,7 @@ export function PeriodReportTab<T extends { generatedAt: string; branchCount: nu
   exportFile,
   kinds = OPERATIONS_PERIOD_KINDS,
   controls,
+  periodControl,
   extraParams,
   useReport,
   buildPrint,
@@ -56,6 +57,8 @@ export function PeriodReportTab<T extends { generatedAt: string; branchCount: nu
   kinds?: readonly PeriodKind[];
   /** Bộ lọc riêng của báo cáo (ví dụ "Gom theo"), đặt ngay sau bộ chọn Kỳ. */
   controls?: ReactNode;
+  /** Thay bộ chọn Kỳ mặc định bằng bộ chọn riêng (ví dụ chọn theo tháng); `period` khi đó phải mang khoảng ngày tương ứng. */
+  periodControl?: ReactNode;
   /** Tham số riêng thêm vào yêu cầu (ví dụ `groupBy`); đổi giá trị là tải lại. */
   extraParams?: Omit<P, keyof OperationsPeriodParams>;
   useReport: (params: P, enabled: boolean) => UseQueryResult<T>;
@@ -79,7 +82,7 @@ export function PeriodReportTab<T extends { generatedAt: string; branchCount: nu
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
           <ReportScopeControl scope={scope} />
-          <ReportPeriodControl period={period} kinds={kinds} />
+          {periodControl ?? <ReportPeriodControl period={period} kinds={kinds} />}
           {controls}
         </div>
         <ReportActionBar
