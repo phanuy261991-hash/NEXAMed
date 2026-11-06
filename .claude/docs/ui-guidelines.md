@@ -252,7 +252,7 @@ Thay thế mô tả app shell đơn giản ở S1-08 (sidebar cố định + use
 
 - Ba vùng theo chiều dọc: **vùng logo** (đỉnh, tách biệt bằng đường viền dưới) → **menu điều hướng** (cuộn riêng nếu dài) → **nút thu gọn** (chân sidebar).
 - Menu hỗ trợ **nhóm cha/con** (accordion): mục cha có mũi tên, bấm mở/đóng danh sách con thụt lề. Nhóm chứa route đang active tự mở sẵn. Chỉ tạo nhóm cha khi đã có ít nhất một mục con thật (không dựng nhóm rỗng chờ tương lai).
-- Nút **"Thu gọn"** chuyển sidebar từ `w-60` (đầy đủ nhãn) sang dạng chỉ-icon (`w-16`, không hiện chữ, nhóm cha/con ẩn hẳn phần lồng). Trạng thái này không cần lưu lại giữa các phiên ở v1 (không có yêu cầu cụ thể).
+- Nút **"Thu gọn"** chuyển sidebar từ `w-60` (đầy đủ nhãn; chữ menu `text-sm` màu `text-slate-100` cho rõ nét trên nền tối — chủ dự án chỉnh 06/11/2026, thử 15px thấy quá to nên giữ 14px) sang dạng chỉ-icon (`w-16`, không hiện chữ, nhóm cha/con ẩn hẳn phần lồng). Trạng thái này không cần lưu lại giữa các phiên ở v1 (không có yêu cầu cụ thể).
 - **Khi sidebar đang thu gọn, bấm vào icon của một mục nhóm cha PHẢI mở lại sidebar (về `w-60`) và mở luôn nhóm đó** — không được để `onClick` im lặng không làm gì khi collapsed (lỗi thật đã xảy ra: `onClick={() => !collapsed && setOpen(...)}` khiến bấm icon lúc thu gọn không phản hồi gì, người dùng tưởng nút hỏng). Quy tắc chung: **mọi phần tử có thể bấm trong sidebar phải luôn có phản hồi ở MỌI trạng thái** (thu gọn hay không), không được có nhánh no-op.
 - **Không còn user card (tên/đăng xuất) ở chân sidebar** — chuyển lên thanh trên cùng (mục 8.2) để không vướng khi sidebar thu gọn.
 

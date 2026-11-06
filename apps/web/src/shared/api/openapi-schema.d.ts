@@ -26120,6 +26120,1048 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/patients/new-returning": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bệnh nhân mới và cũ — số bệnh nhân có khám, mới/cũ trên toàn công ty, số lượt khám mỗi bệnh nhân, khoảng cách từ lượt liền trước, theo tháng (quyền patient_report.read, #287; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                summary: {
+                                    patients: number;
+                                    newPatients: number;
+                                    returningPatients: number;
+                                    visits: number;
+                                    visitsPerPatient: number | null;
+                                    returningPercent: number | null;
+                                };
+                                frequency: {
+                                    key: string;
+                                    label: string;
+                                    patients: number;
+                                }[];
+                                gap: {
+                                    key: string;
+                                    label: string;
+                                    patients: number;
+                                }[];
+                                byMonth: {
+                                    month: string;
+                                    patients: number;
+                                    newPatients: number;
+                                    returningPatients: number;
+                                    visits: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/patients/new-returning/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Bệnh nhân mới và cũ (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/patients/demographics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Phân bố bệnh nhân có khám theo khoảng tuổi và giới, tỉnh/thành, phường/xã (quyền patient_report.read, #287; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                patients: number;
+                                genders: {
+                                    male: number;
+                                    female: number;
+                                    other: number;
+                                };
+                                ageBands: {
+                                    key: string;
+                                    label: string;
+                                    male: number;
+                                    female: number;
+                                    other: number;
+                                    total: number;
+                                }[];
+                                unknownAge: number;
+                                provinces: {
+                                    code: string;
+                                    name: string;
+                                    provinceName: string;
+                                    patients: number;
+                                }[];
+                                wards: {
+                                    code: string;
+                                    name: string;
+                                    provinceName: string;
+                                    patients: number;
+                                }[];
+                                unknownProvince: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/patients/demographics/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Tuổi, giới và địa bàn (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/patients/not-returning": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bệnh nhân đã hẹn tái khám, quá hạn mà chưa quay lại — quá hạn lâu nhất trước, kèm số lần nhắc (quyền patient_report.read, #287; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                summary: {
+                                    patients: number;
+                                    reminded: number;
+                                    markedNotReturning: number;
+                                    avgOverdueDays: number | null;
+                                };
+                                items: {
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientCode: string;
+                                    patientName: string;
+                                    phone: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    visitDate: string;
+                                    dueDate: string;
+                                    overdueDays: number;
+                                    doctorName: string | null;
+                                    branchName: string;
+                                    reminderCount: number;
+                                    lastReminderResult: string | null;
+                                }[];
+                                totalCount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/patients/not-returning/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Bệnh nhân không quay lại (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền patient_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/clinical/diagnoses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cơ cấu chẩn đoán ICD-10 — bệnh hay gặp (mã chính của lượt đã hoàn tất) và theo chương ICD-10 (quyền clinical_report.read, #287; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                summary: {
+                                    completedVisits: number;
+                                    withDiagnosis: number;
+                                    withoutDiagnosis: number;
+                                    distinctCodes: number;
+                                    topCode: string | null;
+                                    topCodeName: string;
+                                };
+                                rows: {
+                                    code: string;
+                                    name: string;
+                                    visits: number;
+                                    patients: number;
+                                    percent: number | null;
+                                }[];
+                                chapters: {
+                                    chapterCode: string;
+                                    chapterName: string;
+                                    visits: number;
+                                    percent: number | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/clinical/diagnoses/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Cơ cấu chẩn đoán ICD-10 (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/clinical/paraclinical": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cận lâm sàng — số chỉ định, thời gian trả kết quả, số quá hạn theo nhóm dịch vụ; dịch vụ nhiều nhất; chỉ định đang chờ quá hạn (quyền clinical_report.read, #287; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                summary: {
+                                    ordered: number;
+                                    inHouse: number;
+                                    external: number;
+                                    completed: number;
+                                    pending: number;
+                                    avgMinutes: number | null;
+                                    overdue: number;
+                                    overdueOpen: number;
+                                    lateCompleted: number;
+                                };
+                                byKind: {
+                                    /** @enum {string} */
+                                    kind: "LAB" | "IMAGING" | "FUNCTIONAL" | "OTHER";
+                                    ordered: number;
+                                    inHouse: number;
+                                    external: number;
+                                    completed: number;
+                                    avgMinutes: number | null;
+                                    overdue: number;
+                                }[];
+                                topServices: {
+                                    name: string;
+                                    /** @enum {string} */
+                                    kind: "LAB" | "IMAGING" | "FUNCTIONAL" | "OTHER";
+                                    ordered: number;
+                                    completed: number;
+                                    avgMinutes: number | null;
+                                    overdue: number;
+                                }[];
+                                overdueItems: {
+                                    /** Format: uuid */
+                                    orderItemId: string;
+                                    /** Format: uuid */
+                                    encounterId: string;
+                                    patientCode: string;
+                                    patientName: string;
+                                    serviceName: string;
+                                    /** @enum {string} */
+                                    kind: "LAB" | "IMAGING" | "FUNCTIONAL" | "OTHER";
+                                    branchName: string;
+                                    orderedAt: string;
+                                    turnaroundMinutes: number;
+                                    waitedMinutes: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/clinical/paraclinical/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Cận lâm sàng (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền clinical_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/system/overview": {
         parameters: {
             query?: never;

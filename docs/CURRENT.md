@@ -32,7 +32,9 @@ Tổng quan **bác sĩ** (#286, 05/11/2026, `dashboard.doctor`, công tắc "hi�
 
 **Trang "Toàn hệ thống" (#287, 05/11/2026) — XONG 4/4 tab** (So sánh chi nhánh có mockup đúng số liệu; Xếp hạng, Tổng hợp tháng, Khám chéo chi nhánh chưa có hình vẽ nên dựng theo khuôn và liệt kê cột ở DECISIONS #287; dùng quyền `company_report.read`, không quyền mới, không cần `db:seed`; phạm vi mặc định "Tất cả chi nhánh"; Excel + In; Chrome IP LAN 68/68). Khám chéo chi nhánh KHÔNG hiện tiền theo bệnh nhân (#231).
 
-**Còn lại — chủ dự án yêu cầu làm ĐỦ MỌI TAB của mockup đã duyệt** (danh sách đủ ở `docs/TASK.md`): các nhóm Bệnh nhân/Chuyên môn/Chất lượng (chưa có hình vẽ, hỏi chủ dự án).
+**Trang "Bệnh nhân" (3 tab) và "Chuyên môn" (3 tab) (#289, 06/11/2026) — XONG** (quyền `patient_report.read`/`clinical_report.read`, cần `db:seed`; Excel + In; Chrome IP LAN 58/58 và 42/42; CHƯA commit). **Còn lại: nhóm "Chất lượng và tuân thủ"** (Lượt khám chưa hoàn tất, Liên thông đơn thuốc, Nhật ký kiểm toán) — mockup `Main.dc.html` đã duyệt.
+
+**Trang "Cập nhật phần mềm" làm lại (#288, 06/11/2026) — XONG** theo mockup chủ dự án chốt; chờ thông tin bản quyền thật (`shared/version/copyright-info.ts`). **Luồng gửi mẫu xét nghiệm cho đối tác**: chủ dự án đã chốt nghiệp vụ, mockup viết dở, CHƯA code (xem handoff).
 
 ## Trang "Hẹn tái khám" + công tắc (#285, 04/11/2026) — XONG, đã push, CI xanh
 
@@ -54,7 +56,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-BaoCaoThuocVatTu-ToanHeThong-2026-11-06.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 06/11/2026 phần 5: trang Thuốc và vật tư 7 tab và Toàn hệ thống 4 tab xong; kế tiếp hỏi chủ dự án về nhóm Bệnh nhân/Chuyên môn/Chất lượng). Bản trước: `docs/handoffs/HANDOFF-BaoCaoDoanhThu-BacSi-ThuocVatTu-2026-11-05-p4.md`. Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
+**`docs/handoffs/HANDOFF-CapNhatPhanMem-BaoCaoBenhNhanChuyenMon-GuiMauDoiTac-2026-11-06-p2.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 06/11/2026 phần 6: trang Cập nhật phần mềm làm lại, báo cáo Bệnh nhân + Chuyên môn xong nhưng CHƯA COMMIT; kế tiếp "Chất lượng và tuân thủ" và luồng gửi mẫu xét nghiệm cho đối tác). Bản trước: `docs/handoffs/HANDOFF-BaoCaoThuocVatTu-ToanHeThong-2026-11-06.md`. Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 

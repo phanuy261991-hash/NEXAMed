@@ -38,6 +38,13 @@ import {
   operationsPeriodQuerySchema,
   revenuePeriodQuerySchema,
   doctorReportQuerySchema,
+  patientReportQuerySchema,
+  clinicalReportQuerySchema,
+  clinicalDiagnosisReportSchema,
+  clinicalParaclinicalReportSchema,
+  patientNewReturningReportSchema,
+  patientDemographicsReportSchema,
+  patientNotReturningReportSchema,
   pharmacyReportQuerySchema,
   systemPeriodQuerySchema,
   systemMonthlyQuerySchema,
@@ -3983,6 +3990,81 @@ for (const r of doctorReports) {
       200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
       401: errorResponse('Thiếu hoặc sai access token'),
       403: errorResponse(DOCTOR_FORBIDDEN),
+    },
+  });
+}
+
+// Trang báo cáo "Bệnh nhân" (#287): 3 báo cáo, mỗi báo cáo một route xem và một route xuất Excel.
+const PATIENT_FORBIDDEN = 'Không có quyền patient_report.read hoặc company_report.read';
+const patientReports: Array<{ path: string; label: string; summary: string; schema: Parameters<typeof envelope>[0] }> = [
+  { path: 'new-returning', label: 'Bệnh nhân mới và cũ', summary: 'Bệnh nhân mới và cũ — số bệnh nhân có khám, mới/cũ trên toàn công ty, số lượt khám mỗi bệnh nhân, khoảng cách từ lượt liền trước, theo tháng', schema: patientNewReturningReportSchema },
+  { path: 'demographics', label: 'Tuổi, giới và địa bàn', summary: 'Phân bố bệnh nhân có khám theo khoảng tuổi và giới, tỉnh/thành, phường/xã', schema: patientDemographicsReportSchema },
+  { path: 'not-returning', label: 'Bệnh nhân không quay lại', summary: 'Bệnh nhân đã hẹn tái khám, quá hạn mà chưa quay lại — quá hạn lâu nhất trước, kèm số lần nhắc', schema: patientNotReturningReportSchema },
+];
+for (const r of patientReports) {
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/patients/${r.path}`,
+    tags: ['report'],
+    summary: `${r.summary} (quyền patient_report.read, #287; scope=all|pick cần thêm company_report.read)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: patientReportQuerySchema },
+    responses: {
+      200: jsonResponse('Thành công', envelope(r.schema)),
+      400: errorResponse('Tham số không hợp lệ'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(PATIENT_FORBIDDEN),
+      404: errorResponse('Chi nhánh không thuộc công ty'),
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/patients/${r.path}/export`,
+    tags: ['report'],
+    summary: `Xuất Excel ${r.label} (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: patientReportQuerySchema },
+    responses: {
+      200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(PATIENT_FORBIDDEN),
+    },
+  });
+}
+
+// Trang báo cáo "Chuyên môn" (#287): 2 báo cáo (tab "Dịch vụ đã dùng" dẫn sang báo cáo Doanh thu), mỗi báo cáo một route xem và một route xuất Excel.
+const CLINICAL_FORBIDDEN = 'Không có quyền clinical_report.read hoặc company_report.read';
+const clinicalReports: Array<{ path: string; label: string; summary: string; schema: Parameters<typeof envelope>[0] }> = [
+  { path: 'diagnoses', label: 'Cơ cấu chẩn đoán ICD-10', summary: 'Cơ cấu chẩn đoán ICD-10 — bệnh hay gặp (mã chính của lượt đã hoàn tất) và theo chương ICD-10', schema: clinicalDiagnosisReportSchema },
+  { path: 'paraclinical', label: 'Cận lâm sàng', summary: 'Cận lâm sàng — số chỉ định, thời gian trả kết quả, số quá hạn theo nhóm dịch vụ; dịch vụ nhiều nhất; chỉ định đang chờ quá hạn', schema: clinicalParaclinicalReportSchema },
+];
+for (const r of clinicalReports) {
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/clinical/${r.path}`,
+    tags: ['report'],
+    summary: `${r.summary} (quyền clinical_report.read, #287; scope=all|pick cần thêm company_report.read)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: clinicalReportQuerySchema },
+    responses: {
+      200: jsonResponse('Thành công', envelope(r.schema)),
+      400: errorResponse('Tham số không hợp lệ'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(CLINICAL_FORBIDDEN),
+      404: errorResponse('Chi nhánh không thuộc công ty'),
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/clinical/${r.path}/export`,
+    tags: ['report'],
+    summary: `Xuất Excel ${r.label} (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: clinicalReportQuerySchema },
+    responses: {
+      200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(CLINICAL_FORBIDDEN),
     },
   });
 }

@@ -504,7 +504,9 @@ export function StockIssueFormPage() {
       {/* ============ Bảng dòng hàng ============ */}
       <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         {lines.length === 0 ? (
-          <EmptyState icon={MagnifyingGlass} title="Chưa có dòng hàng nào" description={readOnly ? 'Phiếu này không có dòng hàng.' : 'Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng.'} />
+          <div className="scroll-hover h-full overflow-y-auto">
+            <EmptyState icon={MagnifyingGlass} title="Chưa có dòng hàng nào" description={readOnly ? 'Phiếu này không có dòng hàng.' : 'Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng.'} />
+          </div>
         ) : (
           <div role="table" aria-label="Dòng hàng xuất kho" className="scroll-hover h-full overflow-x-auto">
             <div className="flex h-full flex-col">

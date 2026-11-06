@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Info } from '@phosphor-icons/react';
 import type { ReleaseNotes } from '@nexamed/shared';
-import { copyText } from '../../shared/format/clipboard';
 import { BoxedSection } from '../../shared/ui/BoxedSection';
 import { Button } from '../../shared/ui/Button';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { StatusBadge } from '../../shared/ui/StatusBadge';
 import { DEPLOYMENT_MODE_LABELS, RELEASE_CHANNEL_LABELS, WEB_BUILD_ID, WEB_VERSION, formatDisplayVersion } from '../../shared/version/app-version';
-import { buildSupportInfo, formatReleaseDate } from './support-info';
+import { formatReleaseDate } from './support-info';
 import { useSystemVersionQuery } from './system.queries';
+import { useCopySupportInfo } from './use-copy-support-info';
 
 const CHANNEL_TONE = { stable: 'info', beta: 'warning', dev: 'neutral' } as const;
 
@@ -25,8 +25,8 @@ const NOTE_GROUPS: { key: keyof Pick<ReleaseNotes, 'features' | 'improvements' |
  */
 export function AboutDialog({ onClose }: { onClose: () => void }) {
   const query = useSystemVersionQuery();
-  const [copied, setCopied] = useState<'idle' | 'ok' | 'failed'>('idle');
   const server = query.data ?? null;
+  const { status: copied, copy: handleCopy } = useCopySupportInfo(server);
   const web = { version: WEB_VERSION, build: WEB_BUILD_ID };
 
   useEffect(() => {
@@ -36,11 +36,6 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
-
-  async function handleCopy() {
-    const ok = await copyText(buildSupportInfo(server, web, navigator.userAgent));
-    setCopied(ok ? 'ok' : 'failed');
-  }
 
   const notes = server?.notes ?? null;
   const hasNotes = notes !== null && notes.features.length + notes.improvements.length + notes.fixes.length > 0;

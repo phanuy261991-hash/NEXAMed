@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ClinicModule } from '../clinic/clinic.module';
 import { IamModule } from '../iam/iam.module';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
+import { ClinicalReportController } from './clinical-report.controller';
+import { ClinicalReportRepository } from './clinical-report.repository';
+import { ClinicalReportService } from './clinical-report.service';
 import { DailyReportController } from './daily-report.controller';
 import { DailyReportRepository } from './daily-report.repository';
 import { DailyReportService } from './daily-report.service';
@@ -14,6 +17,9 @@ import { DoctorReportService } from './doctor-report.service';
 import { OperationsReportController } from './operations-report.controller';
 import { OperationsReportRepository } from './operations-report.repository';
 import { OperationsReportService } from './operations-report.service';
+import { PatientReportController } from './patient-report.controller';
+import { PatientReportRepository } from './patient-report.repository';
+import { PatientReportService } from './patient-report.service';
 import { PharmacyReportController } from './pharmacy-report.controller';
 import { PharmacyReportRepository } from './pharmacy-report.repository';
 import { PharmacyReportService } from './pharmacy-report.service';
@@ -32,7 +38,7 @@ import { RevenueReportService } from './revenue-report.service';
  */
 @Module({
   imports: [ReferenceCatalogModule, ClinicModule, IamModule],
-  controllers: [DashboardController, DailyReportController, OperationsReportController, RevenueReportController, DoctorReportController, PharmacyReportController, SystemReportController],
-  providers: [DashboardService, DashboardRepository, DailyReportService, DailyReportRepository, OperationsReportService, OperationsReportRepository, RevenueReportService, RevenueReportRepository, DoctorReportService, DoctorReportRepository, PharmacyReportService, PharmacyReportRepository, SystemReportService, SystemReportRepository],
+  controllers: [DashboardController, DailyReportController, OperationsReportController, RevenueReportController, DoctorReportController, PharmacyReportController, SystemReportController, PatientReportController, ClinicalReportController],
+  providers: [DashboardService, DashboardRepository, DailyReportService, DailyReportRepository, OperationsReportService, OperationsReportRepository, RevenueReportService, RevenueReportRepository, DoctorReportService, DoctorReportRepository, PharmacyReportService, PharmacyReportRepository, SystemReportService, SystemReportRepository, PatientReportService, PatientReportRepository, ClinicalReportService, ClinicalReportRepository],
 })
 export class ReportModule {}

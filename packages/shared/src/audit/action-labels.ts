@@ -305,6 +305,8 @@ const ACTION_LABELS: Record<string, string> = {
   'operations_report.exported': 'Xuất Excel báo cáo Khám bệnh và vận hành',
   'revenue_report.exported': 'Xuất Excel báo cáo Doanh thu',
   'doctor_report.exported': 'Xuất Excel báo cáo Bác sĩ',
+  'clinical_report.exported': 'Xuất Excel báo cáo Chuyên môn',
+  'patient_report.exported': 'Xuất Excel báo cáo Bệnh nhân',
   'pharmacy_report.exported': 'Xuất Excel báo cáo Thuốc và vật tư',
   'system_report.exported': 'Xuất Excel báo cáo Toàn hệ thống',
   'wallet_list.exported': 'Xuất Excel danh sách ví tạm ứng',

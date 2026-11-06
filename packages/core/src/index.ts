@@ -94,3 +94,5 @@ export * from './idempotency/idempotency';
 export * from './iam/login-throttle';
 export * from './doctor-shift/pending-closure';
 export * from './technical-service-import/parse-cells';
+export * from './report/patient-report-math';
+export * from './report/clinical-report-math';

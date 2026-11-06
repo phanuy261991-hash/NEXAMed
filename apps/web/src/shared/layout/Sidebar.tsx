@@ -172,7 +172,7 @@ function NavItem({ to, label, icon: IconComponent, end, collapsed, indent, badge
         className={({ isActive }) =>
           `flex items-center gap-3 rounded-md py-2 text-sm font-medium transition-colors ${
             collapsed ? 'justify-center px-2' : indent ? 'px-2.5' : 'px-3'
-          } ${isActive ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`
+          } ${isActive ? 'bg-blue-600 text-white' : 'text-slate-100 hover:bg-slate-800/60 hover:text-white'}`
       }
       >
         {({ isActive }) => (
@@ -322,6 +322,8 @@ export function Sidebar() {
   const canSeeOperationsReport = useHasPermission('operations_report', 'read');
   const canSeeRevenueReport = useHasPermission('revenue_report', 'read');
   const canSeeDoctorReport = useHasPermission('doctor_report', 'read');
+  const canSeePatientReport = useHasPermission('patient_report', 'read');
+  const canSeeClinicalReport = useHasPermission('clinical_report', 'read');
   const canSeePharmacyReport = useHasPermission('pharmacy_report', 'read');
   const canSeeSystemReport = useHasPermission('company_report', 'read');
   // "Báo cáo dòng tiền" (Sổ quỹ & Thu chi GĐ2) — báo cáo quản trị tổng hợp toàn phòng khám, CHỈ
@@ -387,7 +389,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={receptionGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -431,7 +433,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={examinationGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -472,7 +474,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={paraclinicalGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -519,7 +521,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={patientRecordsGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -560,7 +562,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={billingGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -603,7 +605,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={cashBookGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -653,7 +655,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={warehouseGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -712,7 +714,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={supplierGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -757,7 +759,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={workScheduleGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -800,7 +802,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={reportGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -818,6 +820,8 @@ export function Sidebar() {
                   {canSeeDailyReport && <NavItem to="/reports/daily" label="Báo cáo ngày" icon={FileText} collapsed={false} indent />}
                   {canSeeRevenueReport && <NavItem to="/reports/revenue" label="Doanh thu" icon={ChartBar} collapsed={false} indent />}
                   {canSeeDoctorReport && <NavItem to="/reports/doctors" label="Bác sĩ" icon={Stethoscope} collapsed={false} indent />}
+                  {canSeePatientReport && <NavItem to="/reports/patients" label="Bệnh nhân" icon={Users} collapsed={false} indent />}
+                  {canSeeClinicalReport && <NavItem to="/reports/clinical" label="Chuyên môn" icon={Flask} collapsed={false} indent />}
                   {canSeePharmacyReport && <NavItem to="/reports/pharmacy" label="Thuốc và vật tư" icon={Pill} collapsed={false} indent />}
                   {canSeeSystemReport && <NavItem to="/reports/system" label="Toàn hệ thống" icon={Buildings} collapsed={false} indent />}
                   {canSeeOperationsReport && <NavItem to="/reports/operations" label="Khám bệnh và vận hành" icon={ChartLine} collapsed={false} indent />}
@@ -846,7 +850,7 @@ export function Sidebar() {
                   }
                 }}
                 aria-expanded={adminGroupExpanded}
-                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/60 hover:text-white ${
+                className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-800/60 hover:text-white ${
                   collapsed ? 'justify-center px-2' : 'px-3'
                 }`}
               >
@@ -891,7 +895,7 @@ export function Sidebar() {
       <button
         type="button"
         onClick={() => setCollapsed((v) => !v)}
-        className="flex flex-shrink-0 items-center justify-center gap-2 border-t border-slate-800 py-3 text-xs font-medium text-slate-400 hover:bg-slate-800/60 hover:text-white"
+        className="flex flex-shrink-0 items-center justify-center gap-2 border-t border-slate-800 py-3 text-xs font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white"
       >
         <SidebarSimple size={15} weight="regular" aria-hidden="true" className={collapsed ? '' : 'rotate-180'} />
         {!collapsed && 'Thu gọn'}

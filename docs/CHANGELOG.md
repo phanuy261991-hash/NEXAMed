@@ -12,6 +12,22 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-11-06
+
+### Trang "Cập nhật phần mềm" thiết kế lại (`docs/DECISIONS.md` #288, mockup chủ dự án chốt 06/11/2026)
+
+Thẻ thương hiệu bên trái (logo NEXA Med canh giữa, dòng "Phần Mềm Quản Lý Phòng Khám Chuyên Nghiệp", phiên bản, ngày phát hành, chế độ triển khai, số bản dựng, khối "Bản quyền" và nút "Sao chép thông tin gửi hỗ trợ"); bên phải là khung kiểm tra cập nhật, "Có gì mới" với ba nhóm Tính năng mới / Cải tiến / Sửa lỗi **mặc định thu gọn** (bấm "Xem chi tiết" mới xổ ra) và lịch sử kiểm tra. Thông tin bản quyền/hỗ trợ khai báo ở một nơi (`shared/version/copyright-info.ts`), dòng chưa có thông tin tự ẩn. Khung có đầu khung dùng chung mới `shared/ui/SectionCard.tsx`. Không migration, không quyền mới.
+
+### Báo cáo: trang "Bệnh nhân" (3 tab) và "Chuyên môn" (3 tab) (`docs/DECISIONS.md` #289)
+
+**Bệnh nhân** (`/reports/patients`, quyền mới `patient_report.read`): Bệnh nhân mới và cũ (mới = lượt khám đầu tiên ở bất kỳ chi nhánh nào của công ty), Tuổi giới và địa bàn, Bệnh nhân không quay lại (hẹn tái khám đã ký, quá hạn, chưa có lượt khám sau). **Chuyên môn** (`/reports/clinical`, quyền mới `clinical_report.read`): Cơ cấu chẩn đoán ICD-10 (mã chính hiện hành + theo chương), Dịch vụ đã dùng (dẫn sang Doanh thu → Theo nhóm và dịch vụ), Cận lâm sàng (thời gian trả kết quả đến lần duyệt đầu tiên, quá hạn theo "Thời gian trả kết quả" của dịch vụ). Mỗi tab có Xuất Excel và In. Môi trường khác cần `db:seed`.
+
+### Giao diện
+
+Menu: chữ sáng hơn (`slate-100`), giữ cỡ 14px. Hộp xác nhận đổi chi nhánh và hộp "Ngừng bảng giá" chuyển sang `ConfirmDialog` chuẩn.
+
+Sửa lỗi: trang "Trung tâm báo cáo" không cuộn được, dòng cuối bị cắt (khung bảng có `overflow-hidden` bị cột flex bóp lại; thêm `flex-shrink-0`). Quét toàn bộ 61 trang không tham số ở hai cỡ màn hình (`scripts/ui-audit/clipped-content-audit.cjs`) chỉ thấy thêm một chỗ cùng kiểu: trạng thái trống "Chưa có dòng hàng nào" ở phiếu Điều chuyển kho/Xuất kho bị cắt 16px ở màn 1280×720 (đã cho cuộn). Trang có tham số (chi tiết lượt khám, bảng giá...) chưa quét.
+
 ## 2026-11-05
 
 ### Trang báo cáo "Toàn hệ thống" — 4 tab (`docs/DECISIONS.md` #287)

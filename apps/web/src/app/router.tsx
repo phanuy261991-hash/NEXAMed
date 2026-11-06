@@ -92,6 +92,8 @@ const DailyReportPage = lazy(() => import('../features/report/DailyReportPage').
 const DoctorReportPage = lazy(() => import('../features/report/doctors/DoctorReportPage').then((m) => ({ default: m.DoctorReportPage })));
 const RevenueReportPage = lazy(() => import('../features/report/revenue/RevenueReportPage').then((m) => ({ default: m.RevenueReportPage })));
 const SystemReportPage = lazy(() => import('../features/report/system/SystemReportPage').then((m) => ({ default: m.SystemReportPage })));
+const ClinicalReportPage = lazy(() => import('../features/report/clinical/ClinicalReportPage').then((m) => ({ default: m.ClinicalReportPage })));
+const PatientReportPage = lazy(() => import('../features/report/patients/PatientReportPage').then((m) => ({ default: m.PatientReportPage })));
 const PharmacyReportPage = lazy(() => import('../features/report/pharmacy/PharmacyReportPage').then((m) => ({ default: m.PharmacyReportPage })));
 const OperationsReportPage = lazy(() => import('../features/report/operations/OperationsReportPage').then((m) => ({ default: m.OperationsReportPage })));
 const WalletListPage = lazy(() => import('../features/patient-wallet/WalletListPage').then((m) => ({ default: m.WalletListPage })));
@@ -221,6 +223,10 @@ export const router = createBrowserRouter([
       { path: 'reports/revenue', element: <RequirePermissionRoute module="revenue_report" action="read"><RevenueReportPage /></RequirePermissionRoute> },
       // Trang báo cáo "Bác sĩ" (#287): 3 tab (Hiệu suất theo bác sĩ, Cơ cấu kê đơn và chỉ định, Giờ làm việc và lượt khám), quyền doctor_report.read.
       { path: 'reports/doctors', element: <RequirePermissionRoute module="doctor_report" action="read"><DoctorReportPage /></RequirePermissionRoute> },
+      // Trang báo cáo "Chuyên môn" (#287): 3 tab (Cơ cấu chẩn đoán ICD-10, Dịch vụ đã dùng dẫn sang Doanh thu, Cận lâm sàng), quyền clinical_report.read.
+      { path: 'reports/clinical', element: <RequirePermissionRoute module="clinical_report" action="read"><ClinicalReportPage /></RequirePermissionRoute> },
+      // Trang báo cáo "Bệnh nhân" (#287): 3 tab (Bệnh nhân mới và cũ, Tuổi giới và địa bàn, Bệnh nhân không quay lại), quyền patient_report.read.
+      { path: 'reports/patients', element: <RequirePermissionRoute module="patient_report" action="read"><PatientReportPage /></RequirePermissionRoute> },
       // Trang báo cáo "Thuốc và vật tư" (#287): 3 tab (Đã phát, Lãi gộp, Kiểm soát đặc biệt) + 4 tab dẫn sang báo cáo kho cũ, quyền pharmacy_report.read.
       { path: 'reports/pharmacy', element: <RequirePermissionRoute module="pharmacy_report" action="read"><PharmacyReportPage /></RequirePermissionRoute> },
       // Trang báo cáo "Toàn hệ thống" (#287): 4 tab (So sánh chi nhánh, Xếp hạng, Tổng hợp tháng, Khám chéo chi nhánh), quyền company_report.read.

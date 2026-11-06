@@ -467,7 +467,9 @@ export function StockTransferFormPage() {
       {(isDraftEditable || isViewOnly) && (
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           {isDraftEditable && lines.length === 0 ? (
-            <EmptyState icon={MagnifyingGlass} title="Chưa có dòng hàng nào" description="Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng." />
+            <div className="scroll-hover h-full overflow-y-auto">
+              <EmptyState icon={MagnifyingGlass} title="Chưa có dòng hàng nào" description="Gõ tên thuốc/vật tư ở ô trên để thêm dòng hàng." />
+            </div>
           ) : isDraftEditable ? (
             <div role="table" aria-label="Dòng hàng điều chuyển" className="scroll-hover h-full overflow-x-auto">
               <div className="flex h-full flex-col" style={{ minWidth: 820 }}>

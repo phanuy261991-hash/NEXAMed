@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { CaretDown, Check, MapPin, WarningCircle } from '@phosphor-icons/react';
+import { ArrowsLeftRight, CaretDown, Check, MapPin } from '@phosphor-icons/react';
 import { useMatch, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../api/client';
 import { Button } from '../ui/Button';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { switchBranch } from '../../features/auth/auth.api';
 import { useAuthStore } from '../../features/auth/auth.store';
 import { useHasPermission } from '../../features/auth/usePermission';
@@ -133,39 +134,31 @@ export function BranchSwitcher() {
       )}
 
       {confirmTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-          <div role="alertdialog" aria-modal="true" aria-labelledby="branch-switch-confirm-title" className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
-            <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3">
-              <WarningCircle size={20} weight="fill" className="mt-0.5 flex-shrink-0 text-amber-600" aria-hidden="true" />
-              <div>
-                <p id="branch-switch-confirm-title" className="break-words text-sm font-semibold text-slate-900">
-                  {isOnEncounterPage ? <>Đổi sang &quot;{confirmTarget.name}&quot; khi đang ở màn khám?</> : <>Tiếp tục đổi sang &quot;{confirmTarget.name}&quot;?</>}
-                </p>
-                {isOnEncounterPage && (
-                  <p className="mt-1 text-xs text-slate-700">Hàng đợi và phiếu thu sẽ chuyển sang nơi khác. Dữ liệu đã lưu vẫn giữ nguyên; thông tin đang nhập dở chưa lưu sẽ mất.</p>
-                )}
-                {openShift && (
-                  <p className="mt-1 break-words text-xs text-slate-700">
-                    Bạn đang có ca <strong>{openShift.shiftNo}</strong> đang mở ở <strong>{current.name}</strong>. Ca này vẫn tiếp tục cho đến khi bạn chốt ca; hệ thống không tự đóng ca khi đổi chi nhánh.
-                  </p>
-                )}
-              </div>
-            </div>
-            {error && (
-              <p role="alert" className="mt-3 text-sm font-semibold text-rose-600">
-                {error}
-              </p>
-            )}
-            <div className="mt-4 flex justify-end gap-2">
+        // Hộp xác nhận chuẩn (ui-guidelines mục 15b): tiêu đề là hành động, đối tượng ở dòng thông tin, MỘT dòng hậu quả ngắn.
+        <ConfirmDialog
+          icon={ArrowsLeftRight}
+          title="Đổi chi nhánh"
+          rows={[
+            { label: 'Chuyển sang', value: confirmTarget.name },
+            ...(openShift ? [{ label: 'Ca thu ngân đang mở', value: openShift.shiftNo, sub: `Tại ${current.name}` }] : []),
+            ...(isOnEncounterPage ? [{ label: 'Đang ở', value: 'Màn khám' }] : []),
+          ]}
+          note={[isOnEncounterPage ? 'Thông tin nhập dở sẽ mất.' : null, openShift ? 'Ca không tự đóng.' : null].filter(Boolean).join(' ')}
+          error={error}
+          onClose={() => {
+            if (!switching) setConfirmId(null);
+          }}
+          actions={
+            <>
               <Button type="button" variant="secondary" disabled={switching} onClick={() => setConfirmId(null)}>
                 Huỷ
               </Button>
-              <Button type="button" variant="amberSolid" loading={switching} onClick={() => void doSwitch(confirmTarget.id)}>
-                Vẫn chuyển
+              <Button type="button" loading={switching} onClick={() => void doSwitch(confirmTarget.id)}>
+                Đổi chi nhánh
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );

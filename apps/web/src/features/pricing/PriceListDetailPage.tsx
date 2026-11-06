@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FileXls, MagnifyingGlass, Trash, Warning } from '@phosphor-icons/react';
+import { FileXls, MagnifyingGlass, Prohibit, Trash, Warning } from '@phosphor-icons/react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type {
   CreatePriceListRequest,
@@ -14,6 +14,7 @@ import type {
 } from '@nexamed/shared';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
 import { Button } from '../../shared/ui/Button';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { Combobox, type ComboboxOption } from '../../shared/ui/Combobox';
 import { DateInput } from '../../shared/ui/DateInput';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
@@ -678,24 +679,30 @@ function PriceListForm({ detail, copySource, onReload }: { detail: PriceListDeta
 
 
       {confirmStop && detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4" role="alertdialog" aria-modal="true" aria-labelledby="pl-stop-title">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-            <h2 id="pl-stop-title" className="text-[17px] font-semibold text-slate-900">
-              Ngừng bảng giá "{detail.name}"?
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Bảng giá sẽ không còn được áp dụng dù còn trong khoảng ngày; mặt hàng quay về bảng có ưu tiên thấp hơn hoặc Bảng giá chung. Hoá đơn đã lập không bị đổi giá. Có thể áp dụng lại sau.
-            </p>
-            <div className="mt-5 flex justify-end gap-2.5">
-              <Button type="button" variant="secondary" onClick={() => setConfirmStop(false)}>
+        // Hộp xác nhận chuẩn (ui-guidelines mục 15b): tiêu đề là hành động, đối tượng ở dòng thông tin, MỘT dòng hậu quả ngắn.
+        <ConfirmDialog
+          icon={Prohibit}
+          tone="danger"
+          title="Ngừng bảng giá"
+          rows={[
+            { label: 'Bảng giá', value: detail.name },
+            { label: 'Sau khi ngừng', value: 'Về bảng ưu tiên thấp hơn' },
+          ]}
+          note="Hoá đơn đã lập không đổi giá. Áp dụng lại được."
+          onClose={() => {
+            if (!updateMutation.isPending) setConfirmStop(false);
+          }}
+          actions={
+            <>
+              <Button type="button" variant="secondary" disabled={updateMutation.isPending} onClick={() => setConfirmStop(false)}>
                 Giữ nguyên
               </Button>
               <Button type="button" variant="danger" loading={updateMutation.isPending} onClick={() => void toggleActive()}>
                 Ngừng bảng giá
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </form>
 

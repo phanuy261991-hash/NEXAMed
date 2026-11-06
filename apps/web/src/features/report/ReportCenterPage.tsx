@@ -35,7 +35,7 @@ export function ReportCenterPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="flex-shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="grid items-center gap-x-4 border-b border-slate-200 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600" style={{ gridTemplateColumns: COLUMNS }}>
           <div>Báo cáo</div>
           <div>Xem theo</div>

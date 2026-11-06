@@ -66206,6 +66206,2420 @@
         }
       }
     },
+    "/api/v1/reports/patients/new-returning": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Bệnh nhân mới và cũ — số bệnh nhân có khám, mới/cũ trên toàn công ty, số lượt khám mỗi bệnh nhân, khoảng cách từ lượt liền trước, theo tháng (quyền patient_report.read, #287; scope=all|pick cần thêm company_report.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "branchCount": {
+                          "type": "integer"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "patients": {
+                              "type": "integer"
+                            },
+                            "newPatients": {
+                              "type": "integer"
+                            },
+                            "returningPatients": {
+                              "type": "integer"
+                            },
+                            "visits": {
+                              "type": "integer"
+                            },
+                            "visitsPerPatient": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "returningPercent": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "patients",
+                            "newPatients",
+                            "returningPatients",
+                            "visits",
+                            "visitsPerPatient",
+                            "returningPercent"
+                          ]
+                        },
+                        "frequency": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "patients": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "label",
+                              "patients"
+                            ]
+                          }
+                        },
+                        "gap": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "patients": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "label",
+                              "patients"
+                            ]
+                          }
+                        },
+                        "byMonth": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "month": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}$"
+                              },
+                              "patients": {
+                                "type": "integer"
+                              },
+                              "newPatients": {
+                                "type": "integer"
+                              },
+                              "returningPatients": {
+                                "type": "integer"
+                              },
+                              "visits": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "month",
+                              "patients",
+                              "newPatients",
+                              "returningPatients",
+                              "visits"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "from",
+                        "to",
+                        "branchCount",
+                        "summary",
+                        "frequency",
+                        "gap",
+                        "byMonth"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chi nhánh không thuộc công ty",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/patients/new-returning/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Bệnh nhân mới và cũ (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/patients/demographics": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Phân bố bệnh nhân có khám theo khoảng tuổi và giới, tỉnh/thành, phường/xã (quyền patient_report.read, #287; scope=all|pick cần thêm company_report.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "branchCount": {
+                          "type": "integer"
+                        },
+                        "patients": {
+                          "type": "integer"
+                        },
+                        "genders": {
+                          "type": "object",
+                          "properties": {
+                            "male": {
+                              "type": "integer"
+                            },
+                            "female": {
+                              "type": "integer"
+                            },
+                            "other": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "male",
+                            "female",
+                            "other"
+                          ]
+                        },
+                        "ageBands": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "male": {
+                                "type": "integer"
+                              },
+                              "female": {
+                                "type": "integer"
+                              },
+                              "other": {
+                                "type": "integer"
+                              },
+                              "total": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "label",
+                              "male",
+                              "female",
+                              "other",
+                              "total"
+                            ]
+                          }
+                        },
+                        "unknownAge": {
+                          "type": "integer"
+                        },
+                        "provinces": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "provinceName": {
+                                "type": "string"
+                              },
+                              "patients": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "name",
+                              "provinceName",
+                              "patients"
+                            ]
+                          }
+                        },
+                        "wards": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "provinceName": {
+                                "type": "string"
+                              },
+                              "patients": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "name",
+                              "provinceName",
+                              "patients"
+                            ]
+                          }
+                        },
+                        "unknownProvince": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "from",
+                        "to",
+                        "branchCount",
+                        "patients",
+                        "genders",
+                        "ageBands",
+                        "unknownAge",
+                        "provinces",
+                        "wards",
+                        "unknownProvince"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chi nhánh không thuộc công ty",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/patients/demographics/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Tuổi, giới và địa bàn (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/patients/not-returning": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Bệnh nhân đã hẹn tái khám, quá hạn mà chưa quay lại — quá hạn lâu nhất trước, kèm số lần nhắc (quyền patient_report.read, #287; scope=all|pick cần thêm company_report.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "branchCount": {
+                          "type": "integer"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "patients": {
+                              "type": "integer"
+                            },
+                            "reminded": {
+                              "type": "integer"
+                            },
+                            "markedNotReturning": {
+                              "type": "integer"
+                            },
+                            "avgOverdueDays": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "patients",
+                            "reminded",
+                            "markedNotReturning",
+                            "avgOverdueDays"
+                          ]
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "patientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "patientCode": {
+                                "type": "string"
+                              },
+                              "patientName": {
+                                "type": "string"
+                              },
+                              "phone": {
+                                "type": "string"
+                              },
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "visitDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "dueDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "overdueDays": {
+                                "type": "integer"
+                              },
+                              "doctorName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "branchName": {
+                                "type": "string"
+                              },
+                              "reminderCount": {
+                                "type": "integer"
+                              },
+                              "lastReminderResult": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "patientId",
+                              "patientCode",
+                              "patientName",
+                              "phone",
+                              "encounterId",
+                              "visitDate",
+                              "dueDate",
+                              "overdueDays",
+                              "doctorName",
+                              "branchName",
+                              "reminderCount",
+                              "lastReminderResult"
+                            ]
+                          }
+                        },
+                        "totalCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "from",
+                        "to",
+                        "branchCount",
+                        "summary",
+                        "items",
+                        "totalCount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chi nhánh không thuộc công ty",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/patients/not-returning/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Bệnh nhân không quay lại (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền patient_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/clinical/diagnoses": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Cơ cấu chẩn đoán ICD-10 — bệnh hay gặp (mã chính của lượt đã hoàn tất) và theo chương ICD-10 (quyền clinical_report.read, #287; scope=all|pick cần thêm company_report.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "branchCount": {
+                          "type": "integer"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "completedVisits": {
+                              "type": "integer"
+                            },
+                            "withDiagnosis": {
+                              "type": "integer"
+                            },
+                            "withoutDiagnosis": {
+                              "type": "integer"
+                            },
+                            "distinctCodes": {
+                              "type": "integer"
+                            },
+                            "topCode": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "topCodeName": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "completedVisits",
+                            "withDiagnosis",
+                            "withoutDiagnosis",
+                            "distinctCodes",
+                            "topCode",
+                            "topCodeName"
+                          ]
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "visits": {
+                                "type": "integer"
+                              },
+                              "patients": {
+                                "type": "integer"
+                              },
+                              "percent": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "name",
+                              "visits",
+                              "patients",
+                              "percent"
+                            ]
+                          }
+                        },
+                        "chapters": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "chapterCode": {
+                                "type": "string"
+                              },
+                              "chapterName": {
+                                "type": "string"
+                              },
+                              "visits": {
+                                "type": "integer"
+                              },
+                              "percent": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "chapterCode",
+                              "chapterName",
+                              "visits",
+                              "percent"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "from",
+                        "to",
+                        "branchCount",
+                        "summary",
+                        "rows",
+                        "chapters"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinical_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chi nhánh không thuộc công ty",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/clinical/diagnoses/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Cơ cấu chẩn đoán ICD-10 (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinical_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/clinical/paraclinical": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Cận lâm sàng — số chỉ định, thời gian trả kết quả, số quá hạn theo nhóm dịch vụ; dịch vụ nhiều nhất; chỉ định đang chờ quá hạn (quyền clinical_report.read, #287; scope=all|pick cần thêm company_report.read)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "branchCount": {
+                          "type": "integer"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "ordered": {
+                              "type": "integer"
+                            },
+                            "inHouse": {
+                              "type": "integer"
+                            },
+                            "external": {
+                              "type": "integer"
+                            },
+                            "completed": {
+                              "type": "integer"
+                            },
+                            "pending": {
+                              "type": "integer"
+                            },
+                            "avgMinutes": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "overdue": {
+                              "type": "integer"
+                            },
+                            "overdueOpen": {
+                              "type": "integer"
+                            },
+                            "lateCompleted": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "ordered",
+                            "inHouse",
+                            "external",
+                            "completed",
+                            "pending",
+                            "avgMinutes",
+                            "overdue",
+                            "overdueOpen",
+                            "lateCompleted"
+                          ]
+                        },
+                        "byKind": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "LAB",
+                                  "IMAGING",
+                                  "FUNCTIONAL",
+                                  "OTHER"
+                                ]
+                              },
+                              "ordered": {
+                                "type": "integer"
+                              },
+                              "inHouse": {
+                                "type": "integer"
+                              },
+                              "external": {
+                                "type": "integer"
+                              },
+                              "completed": {
+                                "type": "integer"
+                              },
+                              "avgMinutes": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "overdue": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "ordered",
+                              "inHouse",
+                              "external",
+                              "completed",
+                              "avgMinutes",
+                              "overdue"
+                            ]
+                          }
+                        },
+                        "topServices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "LAB",
+                                  "IMAGING",
+                                  "FUNCTIONAL",
+                                  "OTHER"
+                                ]
+                              },
+                              "ordered": {
+                                "type": "integer"
+                              },
+                              "completed": {
+                                "type": "integer"
+                              },
+                              "avgMinutes": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ]
+                              },
+                              "overdue": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "kind",
+                              "ordered",
+                              "completed",
+                              "avgMinutes",
+                              "overdue"
+                            ]
+                          }
+                        },
+                        "overdueItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "orderItemId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "encounterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "patientCode": {
+                                "type": "string"
+                              },
+                              "patientName": {
+                                "type": "string"
+                              },
+                              "serviceName": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "LAB",
+                                  "IMAGING",
+                                  "FUNCTIONAL",
+                                  "OTHER"
+                                ]
+                              },
+                              "branchName": {
+                                "type": "string"
+                              },
+                              "orderedAt": {
+                                "type": "string"
+                              },
+                              "turnaroundMinutes": {
+                                "type": "integer"
+                              },
+                              "waitedMinutes": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "orderItemId",
+                              "encounterId",
+                              "patientCode",
+                              "patientName",
+                              "serviceName",
+                              "kind",
+                              "branchName",
+                              "orderedAt",
+                              "turnaroundMinutes",
+                              "waitedMinutes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "from",
+                        "to",
+                        "branchCount",
+                        "summary",
+                        "byKind",
+                        "topServices",
+                        "overdueItems"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinical_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chi nhánh không thuộc công ty",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/clinical/paraclinical/export": {
+      "get": {
+        "tags": [
+          "report"
+        ],
+        "summary": "Xuất Excel Cận lâm sàng (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all",
+                "pick"
+              ],
+              "default": "current"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "branchIds",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền clinical_report.read hoặc company_report.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/reports/system/overview": {
       "get": {
         "tags": [

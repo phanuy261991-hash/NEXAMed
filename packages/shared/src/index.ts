@@ -65,3 +65,5 @@ export * from './system-version';
 export * from './software-update';
 export * from './platform';
 export * from './medicine-label';
+export * from './report-patients';
+export * from './report-clinical';
