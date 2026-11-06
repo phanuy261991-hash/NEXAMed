@@ -54,7 +54,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-BaoCaoDoanhThu-BacSi-ThuocVatTu-2026-11-05-p4.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 05/11/2026 phần 4: trang Doanh thu 5 tab và Bác sĩ 3 tab xong; kế tiếp trang Thuốc và vật tư, rồi Toàn hệ thống). Bản trước: `docs/handoffs/HANDOFF-BaoCaoKhamBenhVanHanh-CacTrangConLai-2026-11-05-p3.md`. Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
+**`docs/handoffs/HANDOFF-BaoCaoThuocVatTu-ToanHeThong-2026-11-06.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 06/11/2026 phần 5: trang Thuốc và vật tư 7 tab và Toàn hệ thống 4 tab xong; kế tiếp hỏi chủ dự án về nhóm Bệnh nhân/Chuyên môn/Chất lượng). Bản trước: `docs/handoffs/HANDOFF-BaoCaoDoanhThu-BacSi-ThuocVatTu-2026-11-05-p4.md`. Các bản bàn giao cũ hơn nằm cùng thư mục `docs/handoffs/` (đặt tên theo ngày) — chỉ mở khi cần tra.
 
 ## Cách đọc các tài liệu dài (chốt 20/10/2026)
 
