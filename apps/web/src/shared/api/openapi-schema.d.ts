@@ -46956,6 +46956,393 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lab-partner-dispatch/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gửi mẫu đối tác — mẫu "Chờ gửi" của chi nhánh đang làm việc kèm đối tác + giá trả từng cặp (giá chỉ có số khi người xem thấy giá vốn) */
+        get: {
+            parameters: {
+                query?: {
+                    supplierId?: string;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    itemId: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientName: string;
+                                    patientCode: string;
+                                    serviceCode: string;
+                                    serviceName: string;
+                                    specimenName: string | null;
+                                    tubeSid: string | null;
+                                    collectedAt: string | null;
+                                    collectedByName: string | null;
+                                    options: {
+                                        /** Format: uuid */
+                                        supplierId: string;
+                                        supplierCode: string;
+                                        supplierName: string;
+                                        isDefault: boolean;
+                                        amount: number | null;
+                                    }[];
+                                }[];
+                                counts: {
+                                    pending: number;
+                                    sent: number;
+                                    done: number;
+                                };
+                                costVisible: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_partner.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab-partner-dispatch/sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gửi mẫu đối tác — mẫu "Đã gửi, chờ kết quả" (lọc theo đối tác/từ khoá), kèm hạn trả và cờ quá hạn */
+        get: {
+            parameters: {
+                query?: {
+                    supplierId?: string;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: {
+                                    /** Format: uuid */
+                                    itemId: string;
+                                    /** Format: uuid */
+                                    dispatchId: string;
+                                    dispatchNo: string;
+                                    /** Format: uuid */
+                                    supplierId: string;
+                                    supplierName: string;
+                                    orderNo: string;
+                                    /** Format: uuid */
+                                    patientId: string;
+                                    patientName: string;
+                                    patientCode: string;
+                                    serviceName: string;
+                                    tubeSid: string | null;
+                                    sentAt: string;
+                                    sentByName: string | null;
+                                    dueAt: string | null;
+                                    overdue: boolean;
+                                    unitCost: number | null;
+                                }[];
+                                counts: {
+                                    pending: number;
+                                    sent: number;
+                                    done: number;
+                                };
+                                costVisible: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_partner.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab-partner-dispatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gửi mẫu đối tác — gửi một đợt cho MỘT đối tác; áp đúng giá của cặp dịch vụ × đối tác và chụp lại; đối tác chưa có giá → 422 */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        supplierId: string;
+                        itemIds: string[];
+                        /** Format: date-time */
+                        sentAt?: string;
+                        note?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Gửi thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                dispatchId: string;
+                                dispatchNo: string;
+                                /** Format: uuid */
+                                supplierId: string;
+                                supplierName: string;
+                                sentAt: string;
+                                items: {
+                                    /** Format: uuid */
+                                    itemId: string;
+                                    unitCost: number | null;
+                                    dueAt: string | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu không hợp lệ (mẫu trùng, danh sách rỗng) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền lab_partner.send */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Mẫu không tồn tại hoặc thuộc chi nhánh/công ty khác */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Mẫu đã được gửi, hoặc công tắc đang tắt */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Đối tác không hợp lệ/chưa có giá trả, giờ gửi sai, hoặc mẫu chưa lấy */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lab-partners/summary": {
         parameters: {
             query?: never;

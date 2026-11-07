@@ -455,6 +455,11 @@ import {
   listResultTemplatesResponseSchema,
   listTechnicalServicesQuerySchema,
   labPartnerSummaryResponseSchema,
+  listLabPartnerPendingResponseSchema,
+  listLabPartnerQueueQuerySchema,
+  listLabPartnerSentResponseSchema,
+  sendLabPartnerSamplesRequestSchema,
+  sendLabPartnerSamplesResponseSchema,
   listTechnicalServicesResponseSchema,
   resultTemplateItemSchema,
   technicalServiceDetailSchema,
@@ -6435,6 +6440,56 @@ registry.registerPath({
 // ===== Cận lâm sàng GĐ1 — Danh mục (docs/DECISIONS.md #212) =====
 
 const technicalServiceIdParams = z.object({ id: z.string().uuid() });
+
+// ===== Gửi mẫu đối tác — hàng đợi gửi mẫu (docs/DECISIONS.md #291) =====
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-partner-dispatch/pending',
+  tags: ['lab-partner'],
+  summary: 'Gửi mẫu đối tác — mẫu "Chờ gửi" của chi nhánh đang làm việc kèm đối tác + giá trả từng cặp (giá chỉ có số khi người xem thấy giá vốn)',
+  security: [{ bearerAuth: [] }],
+  request: { query: listLabPartnerQueueQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listLabPartnerPendingResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_partner.read'),
+    409: errorResponse('Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-partner-dispatch/sent',
+  tags: ['lab-partner'],
+  summary: 'Gửi mẫu đối tác — mẫu "Đã gửi, chờ kết quả" (lọc theo đối tác/từ khoá), kèm hạn trả và cờ quá hạn',
+  security: [{ bearerAuth: [] }],
+  request: { query: listLabPartnerQueueQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listLabPartnerSentResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_partner.read'),
+    409: errorResponse('Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/lab-partner-dispatch',
+  tags: ['lab-partner'],
+  summary: 'Gửi mẫu đối tác — gửi một đợt cho MỘT đối tác; áp đúng giá của cặp dịch vụ × đối tác và chụp lại; đối tác chưa có giá → 422',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: sendLabPartnerSamplesRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Gửi thành công', envelope(sendLabPartnerSamplesResponseSchema)),
+    400: errorResponse('Dữ liệu không hợp lệ (mẫu trùng, danh sách rỗng)'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_partner.send'),
+    404: errorResponse('Mẫu không tồn tại hoặc thuộc chi nhánh/công ty khác'),
+    409: errorResponse('Mẫu đã được gửi, hoặc công tắc đang tắt'),
+    422: errorResponse('Đối tác không hợp lệ/chưa có giá trả, giờ gửi sai, hoặc mẫu chưa lấy'),
+  },
+});
 
 registry.registerPath({
   method: 'get',
