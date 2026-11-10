@@ -124,6 +124,7 @@ function ParaclinicalCard({ result, canView, onView }: { result: ParaclinicalRes
           </p>
         )}
         {result.imageCount > 0 && <p className="mt-1.5 text-xs text-slate-500">{result.imageCount} ảnh đính kèm — xem trong phiếu kết quả.</p>}
+        {(result.pdfCount ?? 0) > 0 && <p className="mt-1.5 text-xs text-slate-500">{result.pdfCount} tệp PDF kết quả của đối tác — xem trong phiếu kết quả.</p>}
       </div>
     </div>
   );

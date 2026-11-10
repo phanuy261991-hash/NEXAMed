@@ -915,7 +915,10 @@ export const medicalRecordParaclinicalResultSchema = z.object({
   indicators: z.array(medicalRecordParaclinicalIndicatorSchema),
   descriptionText: z.string().nullable(),
   conclusionText: z.string().nullable(),
+  /** Số ảnh đính kèm (không tính tệp PDF). */
   imageCount: z.number().int(),
+  /** Số tệp PDF kết quả của đối tác (#291). */
+  pdfCount: z.number().int().optional(),
 });
 /** Dịch vụ bác sĩ đã chỉ định nhưng khách bỏ ở quầy thu ngân (#280) — hiện ở bệnh án trên màn hình, cùng nội dung bản in. */
 export const medicalRecordDeclinedItemSchema = z.object({

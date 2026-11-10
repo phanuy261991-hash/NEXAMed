@@ -30,6 +30,8 @@ import {
   PARACLINICAL_PROGRESS_READER_PORT,
   PARACLINICAL_RESULTS_READER_PORT,
   PDF_RENDERER_PORT,
+  STORAGE_PORT,
+  type StoragePort,
   PrescriptionAlreadySignedError,
   PrescriptionEmptyError,
   PrescriptionFreeTextDisabledError,
@@ -123,6 +125,7 @@ import { DiagnosisRepository, type DiagnosisWithIcd10Name } from './diagnosis.re
 import { ClinicalNoteRepository } from './clinical-note.repository';
 import { TreatmentPlanRepository, dbDateToDateString } from './treatment-plan.repository';
 import { PrescriptionRepository, type DrugDoseConfig, type PrescriptionWithItems } from './prescription.repository';
+import { appendPdfDocuments, loadPdfDocuments } from '../../common/pdf-merge';
 import { toEncounterSummary } from './encounter.mapper';
 import { PatientAllergenRepository } from '../patient/patient-allergen.repository';
 import { PatientConditionRepository } from '../patient/patient-condition.repository';
@@ -210,6 +213,7 @@ export class EncounterService {
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
     @Inject(BRANCH_DIRECTORY_PORT) private readonly branchDirectory: BranchDirectoryPort,
     @Inject(PDF_RENDERER_PORT) private readonly pdfRenderer: PdfRendererPort,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     @Inject(STOCK_AVAILABILITY_PORT) private readonly stockAvailability: StockAvailabilityPort,
     @Inject(PARACLINICAL_RESULTS_READER_PORT) private readonly paraclinicalResultsReader: ParaclinicalResultsReaderPort,
     @Inject(REFERENCE_CATALOG_READER_PORT) private readonly referenceCatalogReader: ReferenceCatalogReaderPort,
@@ -1040,6 +1044,18 @@ export class EncounterService {
       this.paraclinicalResultsReader.listSignedForEncounters(tenantId, [encounterId]),
       this.paraclinicalResultsReader.listDeclinedForEncounters(tenantId, [encounterId]),
     ]);
+    // Tệp PDF kết quả của đối tác (#291): đọc + mở TRƯỚC khi dựng bản in để bản in ghi đúng số tệp sẽ được ghép vào cuối bộ hồ sơ. Tệp hỏng/có mật khẩu bị bỏ qua, không làm hỏng lần xuất.
+    const pdfRefs = (await this.paraclinicalResultsReader.listSignedPdfFilesForEncounters(tenantId, [encounterId]))[encounterId] ?? [];
+    const loadedPdfs = await loadPdfDocuments(
+      pdfRefs.map((r) => r.storageKey),
+      (key) => this.storage.read(tenantId, key),
+    );
+    const loadedKeys = new Set(loadedPdfs.map((l) => l.key));
+    const attachedCountByItem = new Map<string, number>();
+    for (const ref of pdfRefs) {
+      if (!loadedKeys.has(ref.storageKey)) continue;
+      for (const itemId of ref.itemIds) attachedCountByItem.set(itemId, (attachedCountByItem.get(itemId) ?? 0) + 1);
+    }
     const [doctorNames, departmentNames, branchNames, multiBranch] = await Promise.all([
       head.doctorId ? this.doctorDirectory.getUserFullNames(tenantId, [head.doctorId]) : Promise.resolve(new Map<string, string>()),
       this.doctorDirectory.getDepartmentNames(tenantId),
@@ -1121,7 +1137,7 @@ export class EncounterService {
         advice: text(noteResponse.doctorAdvice),
       },
       treatment: this.toMedicalRecordTreatment(noteResponse),
-      paraclinicalResults: paraclinicalByEncounter[encounterId] ?? [],
+      paraclinicalResults: (paraclinicalByEncounter[encounterId] ?? []).map((r) => ({ ...r, pdfAttachedCount: r.itemId ? (attachedCountByItem.get(r.itemId) ?? 0) : 0 })),
       declinedOrderItems: declinedByEncounter[encounterId] ?? [],
       prescriptionItems: this.toMedicalRecordRxItems(signedPrescription, unitNames),
       prescriptionDocuments: (signedPrescription?.documents ?? []).map((d) => ({ kind: d.kind, nationalCode: d.nationalCode })),
@@ -1132,7 +1148,12 @@ export class EncounterService {
     const { printOptions, margins } = this.toMedicalRecordPrintOptions(template, insuranceEnabled);
     if (template.config.header.showLogo) document.clinic.logoDataUri = await this.clinicProfileService.getPrintLogoDataUri(tenantId);
     const html = renderEncounterMedicalRecordHtml(document, printOptions);
-    const pdf = await this.pdfRenderer.renderHtmlToPdf(html, { marginsMm: { top: margins.topMm, right: margins.rightMm, bottom: margins.bottomMm, left: margins.leftMm } });
+    const rendered = await this.pdfRenderer.renderHtmlToPdf(html, { marginsMm: { top: margins.topMm, right: margins.rightMm, bottom: margins.bottomMm, left: margins.leftMm } });
+    // Ghép nguyên các trang PDF của đối tác vào cuối bộ hồ sơ (theo thứ tự chỉ định).
+    const pdf = await appendPdfDocuments(
+      rendered,
+      loadedPdfs.map((l) => l.document),
+    );
     return { pdf, patientId: head.patientId, fileLabel: head.archiveNo ?? head.encounterNo };
   }
 

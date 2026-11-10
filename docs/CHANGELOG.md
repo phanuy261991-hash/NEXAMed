@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-10
 
+### Bộ hồ sơ bệnh án một lượt khám ghép nguyên PDF kết quả của đối tác (`docs/DECISIONS.md` #291 bổ sung 10)
+
+File PDF "In bộ hồ sơ" nay nối nguyên các trang PDF của đối tác (kết quả đã duyệt) vào cuối bộ hồ sơ; tệp hỏng được bỏ qua và bản in ghi "xem trong hệ thống". Số ảnh đính kèm không còn đếm lẫn PDF. Thêm thư viện `pdf-lib`. Không migration, không cần `db:seed`; cần `pnpm install`.
+
 ### Nhập/Xuất Excel giá trả đối tác (`docs/DECISIONS.md` #291 bổ sung 9)
 
 Menu "Giá trả (Excel)" ở Danh mục Cận lâm sàng › Đối tác xét nghiệm: tải file mẫu, xuất giá hiện có, nhập từ Excel (xem trước, báo lỗi từng dòng, ghi trong một lần). Mỗi dòng một dịch vụ gửi đối tác, mỗi đối tác đang dùng một cột giá, có cột "Đối tác mặc định"; ô trống giữ nguyên giá. Cần quyền sửa dịch vụ kỹ thuật. Không migration, không cần `db:seed`.

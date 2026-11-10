@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { evaluateLabValue, formatLabReferenceText, type MedicalRecordDeclinedItem, type MedicalRecordParaclinicalResult, type ParaclinicalResultsReaderPort } from '@nexamed/core';
+import { evaluateLabValue, formatLabReferenceText, type MedicalRecordDeclinedItem, type MedicalRecordParaclinicalResult, type MedicalRecordPdfFileRef, type ParaclinicalResultsReaderPort } from '@nexamed/core';
 import type { ParaclinicalReference } from '@nexamed/shared';
 import { UnitOfWorkService } from '../persistence/unit-of-work.service';
 import { ClinicalOrderRepository } from '../../modules/clinical-order/clinical-order.repository';
@@ -7,6 +7,7 @@ import { ParaclinicalResultRepository } from '../../modules/paraclinical-result/
 import { toReferenceRow } from '../../modules/paraclinical-result/paraclinical-result.service';
 
 const blank = (v: string | null | undefined): boolean => v === null || v === undefined || v.trim() === '';
+const isPdf = (contentType: string): boolean => contentType.toLowerCase() === 'application/pdf';
 
 /**
  * Adapter thật cho `ParaclinicalResultsReaderPort` — đọc kết quả ĐÃ KÝ qua `ParaclinicalResultRepository` (module `paraclinical-result`), tự mở transaction riêng qua
@@ -48,6 +49,23 @@ export class ParaclinicalResultsReaderAdapter implements ParaclinicalResultsRead
     });
   }
 
+  async listSignedPdfFilesForEncounters(tenantId: string, encounterIds: string[]): Promise<Record<string, MedicalRecordPdfFileRef[]>> {
+    const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.resultRepository.listSignedByEncounterIds(tx, tenantId, encounterIds));
+    const ordered = [...rows].sort((a, b) => a.orderItem.sortOrder - b.orderItem.sortOrder || a.orderItem.createdAt.getTime() - b.orderItem.createdAt.getTime());
+    const byEncounter: Record<string, MedicalRecordPdfFileRef[]> = {};
+    for (const r of ordered) {
+      if (!r.signedAt) continue;
+      const list = (byEncounter[r.orderItem.order.encounterId] ??= []);
+      for (const image of r.images.filter((i) => isPdf(i.contentType))) {
+        // Một tệp PDF có thể gắn cho nhiều dịch vụ (một lần nhận kết quả): ghép MỘT lần, nhớ các dịch vụ dùng chung.
+        const existing = list.find((f) => f.storageKey === image.storageKey);
+        if (existing) existing.itemIds.push(r.orderItem.id);
+        else list.push({ storageKey: image.storageKey, fileName: image.fileName, itemIds: [r.orderItem.id] });
+      }
+    }
+    return byEncounter;
+  }
+
   async listSignedForEncounters(tenantId: string, encounterIds: string[]): Promise<Record<string, MedicalRecordParaclinicalResult[]>> {
     const rows = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.resultRepository.listSignedByEncounterIds(tx, tenantId, encounterIds));
     const ordered = [...rows].sort((a, b) => a.orderItem.sortOrder - b.orderItem.sortOrder || a.orderItem.createdAt.getTime() - b.orderItem.createdAt.getTime());
@@ -74,7 +92,8 @@ export class ParaclinicalResultsReaderAdapter implements ParaclinicalResultsRead
         }),
         descriptionText: blank(r.descriptionText) ? null : (r.descriptionText as string).trim(),
         conclusionText: blank(r.conclusionText) ? null : (r.conclusionText as string).trim(),
-        imageCount: r._count.images,
+        imageCount: r.images.filter((i) => !isPdf(i.contentType)).length,
+        pdfCount: r.images.filter((i) => isPdf(i.contentType)).length,
       };
       (byEncounter[r.orderItem.order.encounterId] ??= []).push(entry);
     }

@@ -53,6 +53,7 @@ export class ParaclinicalResultRepository {
           select: { id: true, name: true, sortOrder: true, createdAt: true, order: { select: { encounterId: true } }, technicalService: { select: { serviceKind: true } } },
         },
         _count: { select: { images: { where: { deletedAt: null } } } },
+        images: { where: { deletedAt: null }, select: { contentType: true, storageKey: true, fileName: true, sortOrder: true }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
       },
     });
   }

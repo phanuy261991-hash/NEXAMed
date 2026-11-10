@@ -58,6 +58,31 @@ const cls = (name: string, abnormal = false) => ({
 const rx = [{ drugName: 'Paracetamol 500 mg', doseSummary: 'Sáng 1 - Chiều 1', durationDays: 5, quantity: 10, unitCode: 'VIEN', instruction: 'Uống sau ăn' }];
 const pageBreaks = (html: string): number => (html.match(/class="page-break"/g) ?? []).length;
 
+describe('renderEncounterMedicalRecordHtml — tệp PDF kết quả của đối tác (#291)', () => {
+  const render = (extra: { imageCount?: number; pdfCount?: number; pdfAttachedCount?: number }) =>
+    renderEncounterMedicalRecordHtml(base({ paraclinicalResults: [{ ...cls('Công thức máu'), ...extra }] }), defaultOptions());
+
+  it('PDF đã ghép vào cuối bộ hồ sơ: ghi chú chỉ đường tới các trang cuối', () => {
+    const html = render({ pdfCount: 2, pdfAttachedCount: 2 });
+    expect(html).toContain('Kèm 2 tệp PDF kết quả của đối tác — xem ở các trang cuối bộ hồ sơ.');
+    expect(html).not.toContain('xem trong hệ thống');
+  });
+
+  it('PDF chưa ghép được (hỏng/có mật khẩu) hoặc chưa ghép: báo xem trong hệ thống, không hứa trang cuối', () => {
+    expect(render({ pdfCount: 1, pdfAttachedCount: 0 })).toContain('Có 1 tệp PDF kết quả của đối tác — xem trong hệ thống.');
+    expect(render({ pdfCount: 2, pdfAttachedCount: 1 })).toContain('Có 2 tệp PDF kết quả của đối tác — xem trong hệ thống.');
+    expect(render({ pdfCount: 1 })).toContain('Có 1 tệp PDF kết quả của đối tác — xem trong hệ thống.');
+  });
+
+  it('không có PDF thì không có ghi chú PDF; ảnh đính kèm đếm riêng, không lẫn PDF', () => {
+    const none = render({ imageCount: 0 });
+    expect(none).not.toContain('tệp PDF');
+    const both = render({ imageCount: 2, pdfCount: 1, pdfAttachedCount: 1 });
+    expect(both).toContain('Có 2 hình ảnh đính kèm — xem trong hệ thống.');
+    expect(both).toContain('Kèm 1 tệp PDF kết quả của đối tác');
+  });
+});
+
 describe('renderEncounterMedicalRecordHtml — tờ khám theo mẫu MS 15/BV-01', () => {
   it('tờ 1 có mục I–IV đúng thứ tự mẫu, rồi trang "Tổng kết bệnh án" có 6 mục', () => {
     const html = renderEncounterMedicalRecordHtml(base());

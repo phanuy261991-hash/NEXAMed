@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import ExcelJS from 'exceljs';
-import { getVietnamDateString } from '@nexamed/core';
+import { PDFDocument } from 'pdf-lib';
+import { getVietnamDateString, PDF_RENDERER_PORT, type PdfRendererPort } from '@nexamed/core';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
@@ -102,7 +103,7 @@ describe('HTTP e2e — /api/v1/lab-partner-dispatch (Gửi mẫu đối tác)', 
 
   type OrderItem = { id: string; technicalServiceId: string };
   /** Tiếp nhận → khám → chỉ định → thu tiền → lấy mẫu (xác nhận mọi ống) → mẫu sẵn sàng gửi. */
-  async function collectedOrder(serviceIds: string[]): Promise<{ orderId: string; orderNo: string; items: OrderItem[]; sidByItem: Map<string, string> }> {
+  async function collectedOrder(serviceIds: string[]): Promise<{ encounterId: string; orderId: string; orderNo: string; items: OrderItem[]; sidByItem: Map<string, string> }> {
     const { encounterId } = await prepareEncounter();
     const res = await http()
       .put(`/api/v1/encounters/${encounterId}/clinical-orders`)
@@ -123,7 +124,7 @@ describe('HTTP e2e — /api/v1/lab-partner-dispatch (Gửi mẫu đối tác)', 
     expect(collected.status, JSON.stringify(collected.body)).toBe(200);
     const sidByItem = new Map<string, string>();
     for (const t of tubes) for (const i of t.items) sidByItem.set(i.itemId, t.sid);
-    return { orderId: placed.id, orderNo: placed.orderNo, items: placed.items, sidByItem };
+    return { encounterId, orderId: placed.id, orderNo: placed.orderNo, items: placed.items, sidByItem };
   }
 
   const itemOf = (placed: { items: OrderItem[] }, serviceId: string) => placed.items.find((i) => i.technicalServiceId === serviceId)!;
@@ -610,6 +611,75 @@ describe('HTTP e2e — /api/v1/lab-partner-dispatch (Gửi mẫu đối tác)', 
     expect(idsOf(await awaiting(doctorToken, `?encounterId=${encounterId}`))).toEqual([]);
     expect(idsOf(await awaiting(doctorToken, '?mine=true'))).not.toContain(onlyA);
   });
+
+  // ---- Bộ hồ sơ bệnh án một lượt khám ghép PDF của đối tác (docs/DECISIONS.md #291 bổ sung 9) ----
+  it('bộ hồ sơ một lượt khám ghép NGUYÊN PDF của đối tác vào cuối; tệp hỏng bị bỏ qua và ghi chú không hứa trang cuối; kết quả của màn khám đếm PDF riêng với ảnh', async () => {
+    await app.get<PdfRendererPort>(PDF_RENDERER_PORT).renderHtmlToPdf('<html><body>warm-up</body></html>');
+    const makePdf = async (pages: number, size: [number, number]): Promise<Buffer> => {
+      const doc = await PDFDocument.create();
+      for (let i = 0; i < pages; i++) doc.addPage(size);
+      return Buffer.from(await doc.save());
+    };
+    /** Gửi, nhận PDF, bác sĩ duyệt, hoàn tất lượt khám → trả id lượt khám. */
+    async function finishWithPartnerPdf(file: Buffer, services: string[] = [svcOnlyA]): Promise<string> {
+      const placed = await collectedOrder(services);
+      const itemIds = services.map((s) => itemOf(placed, s).id);
+      expect((await send(adminToken, { supplierId: partnerA.id, itemIds })).status).toBe(200);
+      expect((await receive(nurseToken, itemIds, {}, file)).status).toBe(200); // MỘT tệp cho mọi dịch vụ
+      for (const item of itemIds) expect((await http().post(`${QUEUE}/items/${item}/approve`).set(authed(doctorToken)).send({})).status).toBe(200);
+      const dx = await http().put(`/api/v1/encounters/${placed.encounterId}/diagnoses`).set(authed(doctorToken)).send({ diagnoses: [{ icd10Code: 'A00.0', type: 'PRIMARY' }] });
+      expect(dx.status, JSON.stringify(dx.body)).toBe(200);
+      const detail = await http().get(`/api/v1/encounters/${placed.encounterId}/consultation`).set(authed(doctorToken));
+      const done = await http().post(`/api/v1/encounters/${placed.encounterId}/complete`).set(authed(doctorToken)).send({ version: detail.body.data.encounter.version });
+      expect(done.status, JSON.stringify(done.body)).toBe(200);
+      return placed.encounterId;
+    }
+    const exportBundle = async (encounterId: string): Promise<{ doc: PDFDocument; html: string }> => {
+      const spy = vi.spyOn(app.get<PdfRendererPort>(PDF_RENDERER_PORT), 'renderHtmlToPdf');
+      try {
+        const res = await http().post(`/api/v1/encounters/${encounterId}/medical-record/export`).set(authed(doctorToken)).send({ reason: 'Giao hồ sơ cho bệnh nhân' });
+        expect(res.status, JSON.stringify(res.body)).toBe(200);
+        return { doc: await PDFDocument.load(Buffer.from(res.body)), html: String(spy.mock.calls.at(-1)?.[0] ?? '') };
+      } finally {
+        spy.mockRestore();
+      }
+    };
+    const sizeOf = (doc: PDFDocument, index: number): [number, number] => {
+      const page = doc.getPage(index);
+      return [Math.round(page.getWidth()), Math.round(page.getHeight())];
+    };
+
+    // Tệp PDF thật 2 trang khổ 300×400: phải nằm nguyên ở hai trang cuối, sau các trang A4 của bộ hồ sơ.
+    const valid = await finishWithPartnerPdf(await makePdf(2, [300, 400]));
+    const merged = await exportBundle(valid);
+    const count = merged.doc.getPageCount();
+    expect(count).toBeGreaterThanOrEqual(3);
+    expect(sizeOf(merged.doc, count - 1)).toEqual([300, 400]);
+    expect(sizeOf(merged.doc, count - 2)).toEqual([300, 400]);
+    expect(sizeOf(merged.doc, 0)).not.toEqual([300, 400]);
+    expect(merged.html).toContain('Kèm 1 tệp PDF kết quả của đối tác — xem ở các trang cuối bộ hồ sơ.');
+
+    // MỘT tệp PDF gắn cho HAI dịch vụ của cùng lượt khám: chỉ ghép MỘT lần (đúng 2 trang đối tác, không phải 4), mỗi kết quả đều ghi chú đã ghép.
+    const shared = await finishWithPartnerPdf(await makePdf(2, [300, 400]), [svcOnlyA, svcBoth]);
+    const sharedExport = await exportBundle(shared);
+    const partnerPages = Array.from({ length: sharedExport.doc.getPageCount() }, (_, i) => sizeOf(sharedExport.doc, i)).filter(([w, h]) => w === 300 && h === 400);
+    expect(partnerPages).toHaveLength(2);
+    expect((sharedExport.html.match(/Kèm 1 tệp PDF kết quả của đối tác — xem ở các trang cuối bộ hồ sơ\./g) ?? []).length).toBe(2);
+
+    // Tệp hỏng (qua kiểm đầu "%PDF-" lúc nhận nhưng không mở được): bộ hồ sơ vẫn xuất, KHÔNG có trang đối tác, ghi chú không hứa trang cuối.
+    const broken = await finishWithPartnerPdf(PDF);
+    const skipped = await exportBundle(broken);
+    for (let i = 0; i < skipped.doc.getPageCount(); i++) expect(sizeOf(skipped.doc, i)).not.toEqual([300, 400]);
+    expect(skipped.html).toContain('Có 1 tệp PDF kết quả của đối tác — xem trong hệ thống.');
+    expect(skipped.html).not.toContain('xem ở các trang cuối bộ hồ sơ');
+
+    // Tab "Hồ sơ bệnh án" trên màn hình: PDF đếm riêng, không lẫn vào số ảnh.
+    const tab = await http().get(`/api/v1/encounters/${valid}/medical-record/paraclinical`).set(authed(doctorToken));
+    expect(tab.status, JSON.stringify(tab.body)).toBe(200);
+    const results = tab.body.data.results as { imageCount: number; pdfCount?: number }[];
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ imageCount: 0, pdfCount: 1 });
+  }, 180_000);
 
   // ---- Bảng kê mẫu gửi đối tác (docs/DECISIONS.md #291 GĐ4) ----
   it('bảng kê: đủ dòng (đã có kết quả/chờ kết quả quá hạn/không nhận), cộng đúng, số dư khớp sổ công nợ, lọc kỳ + trạng thái, Excel + nhật ký, quyền, cô lập, công tắc', async () => {

@@ -18,6 +18,19 @@ export interface ParaclinicalResultsReaderPort {
    * thêm module nào. Tự mở transaction đọc riêng nên PHẢI gọi TRƯỚC khi mở transaction chính.
    */
   listDeclinedForEncounters(tenantId: string, encounterIds: string[]): Promise<Record<string, MedicalRecordDeclinedItem[]>>;
+
+  /**
+   * `Record<encounterId, tệp PDF>` (docs/DECISIONS.md #291) — các tệp PDF kết quả do đối tác xét nghiệm gửi về của kết quả ĐÃ DUYỆT, mỗi tệp một lần dù gắn cho nhiều dịch vụ, theo thứ tự chỉ định. Chỉ để
+   * máy chủ GHÉP vào cuối bộ hồ sơ khi xuất PDF — `storageKey` KHÔNG được trả ra ngoài (không đưa vào dữ liệu gửi giao diện). Tự mở transaction đọc riêng nên PHẢI gọi TRƯỚC khi mở transaction chính.
+   */
+  listSignedPdfFilesForEncounters(tenantId: string, encounterIds: string[]): Promise<Record<string, MedicalRecordPdfFileRef[]>>;
+}
+
+export interface MedicalRecordPdfFileRef {
+  storageKey: string;
+  fileName: string;
+  /** Dòng chỉ định có kết quả là tệp này — để đếm số tệp đã ghép cho từng kết quả. */
+  itemIds: string[];
 }
 
 export const PARACLINICAL_RESULTS_READER_PORT = Symbol('PARACLINICAL_RESULTS_READER_PORT');

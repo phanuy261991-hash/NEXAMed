@@ -80,7 +80,12 @@ export interface MedicalRecordParaclinicalResult {
   indicators: MedicalRecordParaclinicalIndicator[];
   descriptionText: string | null;
   conclusionText: string | null;
+  /** Số ẢNH đính kèm (không tính tệp PDF). */
   imageCount: number;
+  /** Số tệp PDF kết quả do đối tác xét nghiệm gửi về (#291) — không phải ảnh nên tách khỏi `imageCount`. Bỏ trống = 0. */
+  pdfCount?: number;
+  /** Số tệp PDF đã được ghép vào các trang cuối bộ hồ sơ (chỉ "In bộ hồ sơ" một lượt khám; đọc/ghép lỗi thì thấp hơn `pdfCount`). Bỏ trống = 0. */
+  pdfAttachedCount?: number;
 }
 
 /**
@@ -272,6 +277,15 @@ function renderTreatment(t: MedicalRecordTreatment | undefined): string {
   return lines ? `<h3>Điều trị</h3>${lines}` : '';
 }
 
+/** Dòng ghi chú tệp PDF kết quả của đối tác: đã ghép vào cuối bộ hồ sơ thì chỉ đường tới đó, chưa thì báo xem trong hệ thống. */
+export function partnerPdfNote(r: Pick<MedicalRecordParaclinicalResult, 'pdfCount' | 'pdfAttachedCount'>): string {
+  const total = r.pdfCount ?? 0;
+  if (total <= 0) return '';
+  const attached = r.pdfAttachedCount ?? 0;
+  if (attached >= total) return `<p class="meta">Kèm ${total} tệp PDF kết quả của đối tác — xem ở các trang cuối bộ hồ sơ.</p>`;
+  return `<p class="meta">Có ${total} tệp PDF kết quả của đối tác — xem trong hệ thống.</p>`;
+}
+
 function renderParaclinicalResult(r: MedicalRecordParaclinicalResult): string {
   const indicators =
     r.indicators.length > 0
@@ -286,6 +300,7 @@ function renderParaclinicalResult(r: MedicalRecordParaclinicalResult): string {
     r.descriptionText ? `<p class="note-section"><strong>${r.indicators.length > 0 ? 'Mô tả' : 'Mô tả hình ảnh'}:</strong> ${escapeHtml(r.descriptionText)}</p>` : '',
     r.conclusionText ? `<p class="note-section"><strong>${r.indicators.length > 0 ? 'Nhận xét' : 'Kết luận'}:</strong> ${escapeHtml(r.conclusionText)}</p>` : '',
     r.imageCount > 0 ? `<p class="meta">Có ${r.imageCount} hình ảnh đính kèm — xem trong hệ thống.</p>` : '',
+    partnerPdfNote(r),
   ].join('');
   return `<div class="paraclinical-result"><p class="meta"><strong>${escapeHtml(r.serviceName)}</strong> (${PARACLINICAL_KIND_LABEL[r.serviceKind]}) · Duyệt lúc ${formatDateTime(r.signedAt)}</p>${indicators}${narrative}</div>`;
 }
