@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowsClockwise, CheckCircle, Plus, Trash, Warning } from '@phosphor-icons/react';
+import { ArrowsClockwise, CheckCircle, FilePdf, Plus, Trash, Warning } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ParaclinicalResultForm, ParaclinicalResultSection, SaveParaclinicalResultRequest } from '@nexamed/shared';
 import { ApiError, resolveApiUrl } from '../../shared/api/client';
@@ -20,6 +20,7 @@ import { formatDateTimeVn, genderShort, previewFlag, RESULT_STATUS_META, SERVICE
 import { PARACLINICAL_GROUP_META, type ParaclinicalGroup } from './paraclinical-group';
 import { AmendResultDialog, CancelAmendmentDialog } from './ParaclinicalAmendDialogs';
 import { ParaclinicalResultPrintView } from './ParaclinicalResultPrintView';
+import { splitAttachments } from './result-attachments';
 import { useAmendParaclinicalMutations, useApproveParaclinicalResultMutation, useParaclinicalImageMutations, useParaclinicalResultQuery, usePrintParaclinicalResultMutation, useSaveParaclinicalResultMutation } from './paraclinical-result.queries';
 
 interface SectionDraft {
@@ -360,6 +361,25 @@ function ResultForm({ group, itemId, form }: { group: ParaclinicalGroup; itemId:
   );
 }
 
+/** Tệp PDF kết quả do đối tác xét nghiệm gửi về (#291): không vẽ bằng thẻ ảnh được, chỉ mở ở tab mới. */
+function PdfAttachmentsPanel({ pdfs }: { pdfs: ParaclinicalResultSection['images'] }) {
+  return (
+    <aside aria-label="Tệp PDF kết quả" className="w-full flex-shrink-0 lg:w-[300px]">
+      <div className="mb-1.5 text-sm font-semibold text-slate-800">Tệp PDF kết quả</div>
+      <ul className="divide-y divide-slate-200 rounded-md border border-slate-200">
+        {pdfs.map((pdf) => (
+          <li key={pdf.id}>
+            <a href={resolveApiUrl(pdf.url)} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
+              <FilePdf size={20} weight="fill" className="flex-none text-rose-600" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate">Xem tệp PDF kết quả</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
+
 /**
  * Khối "Hình ảnh đính kèm" của kết quả chẩn đoán hình ảnh / thăm dò chức năng (mockup `NhapKetQuaCDHA`): lưới 2 cột ảnh nhỏ (bấm để xem cỡ đầy đủ ở tab mới), "+ Thêm ảnh" chọn nhiều
  * file JPG/PNG từ máy, nút xoá trên từng ảnh khi còn sửa được. Chưa kết nối PACS — ảnh do người dùng chọn từ máy hoặc chụp màn hình máy siêu âm.
@@ -606,7 +626,8 @@ function SectionCard({
           onChange={(e) => onPatch(section.itemId, { conclusion: e.target.value })}
         />
         </div>
-        {section.serviceKind !== 'LAB' && <ImagesPanel images={section.images} editable={editable} busy={imageBusy} onUpload={onUploadImages} onRemove={onRemoveImage} />}
+        {section.serviceKind !== 'LAB' && <ImagesPanel images={splitAttachments(section.images).images} editable={editable} busy={imageBusy} onUpload={onUploadImages} onRemove={onRemoveImage} />}
+        {splitAttachments(section.images).pdfs.length > 0 && <PdfAttachmentsPanel pdfs={splitAttachments(section.images).pdfs} />}
       </div>
     </section>
   );

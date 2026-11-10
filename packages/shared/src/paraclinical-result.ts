@@ -128,6 +128,8 @@ export const paraclinicalResultImageSchema = z.object({
   fileName: z.string(),
   /** Đường dẫn ký có hạn (`/api/v1/files/<token>`) — dùng thẳng làm `src` của thẻ ảnh. */
   url: z.string(),
+  /** Loại tệp (`image/jpeg`, `image/png`, `application/pdf` — PDF là kết quả đối tác gửi về, #291). */
+  contentType: z.string(),
 });
 export type ParaclinicalResultImage = z.infer<typeof paraclinicalResultImageSchema>;
 

@@ -429,6 +429,12 @@ describe('HTTP e2e — /api/v1/lab-partner-dispatch (Gửi mẫu đối tác)', 
     const file = await http().get(row.fileUrl);
     expect(file.status).toBe(200);
     expect(file.headers['content-type']).toContain('application/pdf');
+    // Màn kết quả (Tra cứu/hồ sơ/in) phải biết tệp đính kèm là PDF để không vẽ bằng thẻ ảnh.
+    const form = await http().get(resultPath(both)).set(authed(adminToken));
+    expect(form.status, JSON.stringify(form.body)).toBe(200);
+    const formImages = (form.body.data.form.sections as { itemId: string; images: { contentType: string; url: string }[] }[]).find((s) => s.itemId === both)!.images;
+    expect(formImages).toHaveLength(1);
+    expect(formImages[0]!.contentType).toBe('application/pdf');
     const queue = await http().get(`${lab}/queue`).set(authed(nurseToken));
     const queueIds = (queue.body.data.items as { orderNo: string; itemIds: string[] }[]).filter((r) => r.orderNo === placed.orderNo).flatMap((r) => r.itemIds);
     expect(queueIds).not.toContain(both);

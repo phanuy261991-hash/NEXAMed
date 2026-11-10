@@ -4,6 +4,7 @@ import { formatDobDisplay } from '../../shared/format/date';
 import { formatPrintDate } from '../../shared/format/print-date';
 import { PrintDocument } from '../../shared/print/PrintDocument';
 import { formatDateTimeVn, genderShort } from './paraclinical-result-labels';
+import { splitAttachments } from './result-attachments';
 
 function documentTitle(sections: ParaclinicalResultSection[]): string {
   if (sections.every((s) => s.serviceKind === 'LAB')) return 'Kết quả xét nghiệm';
@@ -183,12 +184,19 @@ function SectionRows({ section, categoryHeader }: { section: ParaclinicalResultS
               </td>
             </tr>
           )}
-          {section.images.length > 0 && (
+          {splitAttachments(section.images).pdfs.length > 0 && (
+            <tr className="break-inside-avoid">
+              <td colSpan={4} className="px-2 pb-2 pt-2 italic">
+                Kèm tệp PDF kết quả của đối tác xét nghiệm (xem trên hệ thống).
+              </td>
+            </tr>
+          )}
+          {splitAttachments(section.images).images.length > 0 && (
             <tr className="break-inside-avoid">
               <td colSpan={4} className="px-2 pb-2 pt-2">
                 <div className="mb-1 font-bold">Hình ảnh</div>
                 <div className="grid grid-cols-2 gap-2">
-                  {section.images.map((img) => (
+                  {splitAttachments(section.images).images.map((img) => (
                     <div key={img.id} className="break-inside-avoid overflow-hidden rounded border border-slate-300">
                       <img src={resolveApiUrl(img.url)} alt={img.fileName} className="h-44 w-full object-contain" />
                     </div>

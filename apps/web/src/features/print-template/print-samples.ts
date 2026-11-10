@@ -537,9 +537,9 @@ export const SAMPLE_LAB_RESULT: ParaclinicalResultForm = {
 };
 
 /** Ảnh minh hoạ (khung xám có chữ) cho bản xem trước mẫu in CĐHA — ảnh thật do kỹ thuật viên tải lên ở màn nhập kết quả. */
-function sampleImage(id: string, label: string): { id: string; fileName: string; url: string } {
+function sampleImage(id: string, label: string): { id: string; fileName: string; url: string; contentType: string } {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320"><rect width="480" height="320" fill="#1e293b"/><text x="240" y="165" font-family="sans-serif" font-size="22" fill="#94a3b8" text-anchor="middle">${label}</text></svg>`;
-  return { id, fileName: `${label}.svg`, url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` };
+  return { id, fileName: `${label}.svg`, contentType: 'image/svg+xml', url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` };
 }
 
 /** Kết quả siêu âm mẫu — bản xem trước của mẫu in "Kết quả CĐHA & Thăm dò chức năng" (bố cục dạng khối: mô tả → kết luận → hình ảnh, khác bảng chỉ số của xét nghiệm). */

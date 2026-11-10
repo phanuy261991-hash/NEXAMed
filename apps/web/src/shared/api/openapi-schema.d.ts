@@ -52290,6 +52290,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -52766,6 +52767,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -52968,6 +52970,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -53216,6 +53219,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -53445,6 +53449,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -53653,6 +53658,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -54377,6 +54383,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -54768,6 +54775,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -54970,6 +54978,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -55218,6 +55227,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -55447,6 +55457,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -55655,6 +55666,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -55951,6 +55963,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */
@@ -56160,6 +56173,7 @@ export interface paths {
                                             id: string;
                                             fileName: string;
                                             url: string;
+                                            contentType: string;
                                         }[];
                                     }[];
                                     /** Format: uuid */

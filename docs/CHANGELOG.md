@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-11-10
+
+### Kết quả PDF của đối tác hiện đúng ở màn kết quả và bản in (`docs/DECISIONS.md` #291 bổ sung 7)
+
+Tệp PDF nhận từ đối tác không còn bị vẽ thành ảnh hỏng: màn kết quả có khối "Tệp PDF kết quả" với liên kết xem tệp, bản in ghi một dòng "Kèm tệp PDF kết quả của đối tác xét nghiệm". Phiếu kết quả của API trả thêm `contentType` cho tệp đính kèm. Không migration, không cần `db:seed`.
+
 ## 2026-11-09
 
 ### Kết quả đối tác chờ duyệt hiện trong màn khám và Tổng quan bác sĩ (`docs/DECISIONS.md` #291 bổ sung 6)

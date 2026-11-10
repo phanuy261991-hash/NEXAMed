@@ -615,7 +615,7 @@ export class ParaclinicalResultService {
         indicators: this.buildIndicatorViews(linksByService.get(service.id) ?? [], result, ctx),
         descriptionText: result?.descriptionText ?? null,
         conclusionText: result?.conclusionText ?? null,
-        images: result ? images.filter((img) => img.resultId === result.id).map((img) => ({ id: img.id, fileName: img.fileName, url: this.signImageUrl(tenantId, img.storageKey, encryptionKey) })) : [],
+        images: result ? images.filter((img) => img.resultId === result.id).map((img) => ({ id: img.id, fileName: img.fileName, contentType: img.contentType, url: this.signImageUrl(tenantId, img.storageKey, encryptionKey) })) : [],
       });
     }
 

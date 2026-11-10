@@ -134134,12 +134134,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -135379,12 +135383,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -136115,12 +136123,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -136915,12 +136927,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -137643,12 +137659,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -138321,12 +138341,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -140408,12 +140432,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -141411,12 +141439,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -142147,12 +142179,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -142947,12 +142983,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -143675,12 +143715,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -144353,12 +144397,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -145181,12 +145229,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
@@ -145859,12 +145911,16 @@
                                         },
                                         "url": {
                                           "type": "string"
+                                        },
+                                        "contentType": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
                                         "id",
                                         "fileName",
-                                        "url"
+                                        "url",
+                                        "contentType"
                                       ]
                                     }
                                   }
