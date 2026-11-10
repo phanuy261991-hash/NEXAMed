@@ -12,6 +12,9 @@ import type { Env } from '../../config/env.schema';
  * (không nằm trong danh sách này). */
 const FALLBACK_EXECUTABLE_PATHS = ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'];
 
+/** Hạn chờ Chromium khởi động (puppeteer mặc định 30 giây là quá ngắn khi máy bận). */
+export const BROWSER_LAUNCH_TIMEOUT_MS = 120_000;
+
 /**
  * Adapter thật của `PdfRendererPort` (S6-06, ADM-05) — dùng `puppeteer-core` (không tự tải
  * Chromium bundled, tránh phụ thuộc mạng lúc `pnpm install` — xem docs/DECISIONS.md) trỏ tới
@@ -49,7 +52,13 @@ export class PuppeteerPdfRendererAdapter implements PdfRendererPort, OnModuleDes
 
   private getBrowser(): Promise<Browser> {
     if (!this.browserPromise) {
-      this.browserPromise = this.launchBrowser();
+      const attempt = this.launchBrowser();
+      this.browserPromise = attempt;
+      // Lần khởi động thất bại KHÔNG được nhớ lại: nếu không, một lần Chromium khởi động chậm/lỗi sẽ làm hỏng mọi lần xuất PDF
+      // sau đó cho tới khi khởi động lại API. Quên lời hứa lỗi để lần sau thử khởi động lại.
+      attempt.catch(() => {
+        if (this.browserPromise === attempt) this.browserPromise = null;
+      });
     }
     return this.browserPromise;
   }
@@ -58,7 +67,9 @@ export class PuppeteerPdfRendererAdapter implements PdfRendererPort, OnModuleDes
     const { launch } = await import('puppeteer-core');
     const executablePath = this.resolveExecutablePath();
     this.logger.log(`Khởi động Chromium cho xuất PDF (${executablePath}).`);
-    return launch({ executablePath, headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    // `timeout` mặc định của puppeteer chỉ 30 giây — khởi động nguội trên máy chủ/CI đang bận đo được 10–30 giây+; hạn này
+    // phải LỚN HƠN hạn làm nóng của test (120 giây) nếu không bước làm nóng vẫn chết ở 30 giây (CI đỏ 10/11/2026).
+    return launch({ executablePath, headless: true, timeout: BROWSER_LAUNCH_TIMEOUT_MS, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   }
 
   /** Báo lỗi rõ ràng ngay lúc khởi động trình duyệt nếu không tìm thấy Chromium — không để lỗi mơ hồ

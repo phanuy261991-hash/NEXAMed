@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TRANSACTION_MAX_WAIT_MS = 10_000;
+const UUID_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Mở một transaction, set `app.current_tenant_id` cho phiên Postgres trong transaction đó
@@ -35,7 +36,10 @@ export class UnitOfWorkService {
         await tx.$executeRawUnsafe(`SET LOCAL app.current_tenant_id = '${tenantId}'`);
         return work(tx);
       },
-      options?.timeoutMs ? { timeout: options.timeoutMs } : undefined,
+      // `maxWait` = thời gian CHỜ LẤY KẾT NỐI từ bể trước khi báo "Unable to start a transaction in the given time" (500). Mặc
+      // định của Prisma chỉ 2 giây — khi máy bận (đợt kiểm cả bộ 15:54 10/11/2026, CI lúc nhiều file chạy song song) việc chờ
+      // vượt 2 giây dù không có gì sai về logic. Nâng lên 10 giây (bằng `pool_timeout` mặc định của bể) để xếp hàng thay vì lỗi.
+      { maxWait: TRANSACTION_MAX_WAIT_MS, ...(options?.timeoutMs ? { timeout: options.timeoutMs } : {}) },
     );
   }
 }

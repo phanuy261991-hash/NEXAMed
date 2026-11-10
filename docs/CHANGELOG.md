@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-10
 
+### Sửa lỗi CI đỏ ở bước Test: Chromium khởi động và giao dịch chờ kết nối (`docs/DECISIONS.md` #294)
+
+Xuất PDF: hạn khởi động trình duyệt nâng từ 30 lên 120 giây, và một lần khởi động lỗi không còn làm hỏng mọi lần xuất PDF sau đó cho tới khi khởi động lại. Giao dịch cơ sở dữ liệu chờ lấy kết nối tối đa 10 giây thay vì 2 giây, để lúc máy bận xếp hàng chứ không báo lỗi hệ thống. Không migration, không cần `db:seed`.
+
 ### Nâng zod 3 → 4, zod-to-openapi 9, puppeteer-core 25.16 (`docs/DECISIONS.md` #293)
 
 Hết cảnh báo bảo mật `zod <4.6.6` (`pnpm audit --prod` không còn lỗ hổng). Cấu hình lưu thưa đọc bằng `z.partialRecord` (zod 4 bắt `z.record(enum)` đủ khoá), có luật ESLint chặn tái phạm; UUID kiểm nghiêm hơn; sinh lại OpenAPI và kiểu web. Bundle web tăng khoảng 12 kB gzip. Không migration, không cần `db:seed`; cần `pnpm install`.
