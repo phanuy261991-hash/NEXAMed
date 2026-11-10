@@ -61,6 +61,8 @@ export const supplierDebtSummarySchema = z.object({
   /** Tổng PURCHASE đã duyệt (không tính phiếu đã huỷ — REVERSAL tự trừ ra vì tính trực tiếp từ SUM
    * amountChange theo entryType, không phải allocate). */
   totalPurchase: z.number().int(),
+  /** Tổng tiền dịch vụ xét nghiệm đối tác đã GHI NỢ (bút toán LAB_PARTNER, đã trừ phần đảo) — chỉ khác 0 với đối tác xét nghiệm (#291). */
+  totalLabPartner: z.number().int(),
   /** Tổng |PAYMENT| đã ghi sổ (chỉ phiếu chi ĐÃ POSTED — Chờ duyệt chưa ghi sổ, xem `pendingApprovalAmount`). */
   totalPaid: z.number().int(),
   /** Tổng |RETURN| + |ADJUSTMENT_DECREASE| − ADJUSTMENT_INCREASE (Phần A luôn 0 — chưa có đường ghi). */

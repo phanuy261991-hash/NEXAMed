@@ -4,6 +4,8 @@ import { ClinicalOrderModule } from '../clinical-order/clinical-order.module';
 import { ParaclinicalResultModule } from '../paraclinical-result/paraclinical-result.module';
 import { SupplierDebtModule } from '../supplier-debt/supplier-debt.module';
 import { LabPartnerDispatchController } from './lab-partner-dispatch.controller';
+import { LabPartnerStatementController } from './lab-partner-statement.controller';
+import { LabPartnerStatementService } from './lab-partner-statement.service';
 import { LabPartnerDispatchRepository } from './lab-partner-dispatch.repository';
 import { LabPartnerDispatchService } from './lab-partner-dispatch.service';
 import { LabPartnerResultService } from './lab-partner-result.service';
@@ -14,7 +16,7 @@ import { LabPartnerResultService } from './lab-partner-result.service';
  */
 @Module({
   imports: [ClinicModule, ClinicalOrderModule, ParaclinicalResultModule, SupplierDebtModule],
-  controllers: [LabPartnerDispatchController],
-  providers: [LabPartnerDispatchService, LabPartnerResultService, LabPartnerDispatchRepository],
+  controllers: [LabPartnerDispatchController, LabPartnerStatementController],
+  providers: [LabPartnerDispatchService, LabPartnerResultService, LabPartnerStatementService, LabPartnerDispatchRepository],
 })
 export class LabPartnerModule {}

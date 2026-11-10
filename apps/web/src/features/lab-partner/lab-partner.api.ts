@@ -1,6 +1,9 @@
 import type {
   ApproveLabPartnerResultRequest,
+  LabPartnerPendingSummary,
   LabPartnerQueueCounts,
+  LabPartnerStatementQuery,
+  LabPartnerStatementResponse,
   ListLabPartnerAwaitingResponse,
   ListLabPartnerDoneResponse,
   ReceiveLabPartnerResultRequest,
@@ -23,6 +26,15 @@ export async function listLabPartnerPending(query: ListLabPartnerQueueQuery): Pr
 
 export async function listLabPartnerSent(query: ListLabPartnerQueueQuery): Promise<ListLabPartnerSentResponse> {
   return unwrap(await getApiClient().GET('/api/v1/lab-partner-dispatch/sent', { params: { query } })) as ListLabPartnerSentResponse;
+}
+
+/** Bảng kê mẫu gửi của MỘT đối tác (chung cả công ty), kèm số dư theo sổ công nợ trong cùng kỳ (#291 GĐ4). */
+export async function getLabPartnerStatement(supplierId: string, query: LabPartnerStatementQuery): Promise<LabPartnerStatementResponse> {
+  return unwrap(await getApiClient().GET('/api/v1/lab-partner-statement/{supplierId}', { params: { path: { supplierId }, query } })) as LabPartnerStatementResponse;
+}
+
+export async function getLabPartnerPendingSummary(supplierId: string): Promise<LabPartnerPendingSummary> {
+  return unwrap(await getApiClient().GET('/api/v1/lab-partner-statement/{supplierId}/pending-summary', { params: { path: { supplierId } } })) as LabPartnerPendingSummary;
 }
 
 export async function sendLabPartnerSamples(body: SendLabPartnerSamplesRequest): Promise<SendLabPartnerSamplesResponse> {

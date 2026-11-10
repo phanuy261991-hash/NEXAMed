@@ -19,6 +19,11 @@ export async function exportSupplierDebtLedgerExcel(filters: { supplierId: strin
   await downloadFile(`/api/v1/supplier-debt/${filters.supplierId}/ledger/export?${toQueryString({ from: filters.from, to: filters.to })}`, 'so-cong-no-nha-cung-cap.xlsx');
 }
 
+/** Xuất Excel bảng kê mẫu gửi đối tác theo bộ lọc đang xem (#291 GĐ4). */
+export async function exportLabPartnerStatementExcel(filters: { supplierId: string; basis: string; status: string; from?: string; to?: string }): Promise<void> {
+  await downloadFile(`/api/v1/lab-partner-statement/${filters.supplierId}/export?${toQueryString({ basis: filters.basis, status: filters.status, from: filters.from, to: filters.to })}`, 'bang-ke-mau-gui-doi-tac.xlsx');
+}
+
 export async function exportStockBalancesExcel(filters: { warehouseId?: string; q?: string; belowMinOnly: boolean }): Promise<void> {
   await downloadFile(
     `/api/v1/inventory/balances/export?${toQueryString({ warehouseId: filters.warehouseId, q: filters.q, belowMinOnly: String(filters.belowMinOnly) })}`,
@@ -38,6 +43,9 @@ export function useExportSupplierDebtMutation() {
 }
 export function useExportSupplierDebtLedgerMutation() {
   return useMutation({ mutationFn: exportSupplierDebtLedgerExcel });
+}
+export function useExportLabPartnerStatementMutation() {
+  return useMutation({ mutationFn: exportLabPartnerStatementExcel });
 }
 export function useExportStockBalancesMutation() {
   return useMutation({ mutationFn: exportStockBalancesExcel });

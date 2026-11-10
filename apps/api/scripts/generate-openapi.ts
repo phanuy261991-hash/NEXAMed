@@ -465,6 +465,9 @@ import {
   approveLabPartnerResultRequestSchema,
   returnLabPartnerResultRequestSchema,
   listLabPartnerQueueQuerySchema,
+  labPartnerStatementQuerySchema,
+  labPartnerStatementResponseSchema,
+  labPartnerPendingSummarySchema,
   listLabPartnerSentResponseSchema,
   sendLabPartnerSamplesRequestSchema,
   sendLabPartnerSamplesResponseSchema,
@@ -6491,6 +6494,58 @@ registry.registerPath({
     200: jsonResponse('Thành công', envelope(z.object({ counts: labPartnerQueueCountsSchema }))),
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền lab_partner.read'),
+    409: errorResponse('Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED)'),
+  },
+});
+
+const labPartnerStatementParams = z.object({ supplierId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-partner-statement/{supplierId}',
+  tags: ['lab-partner'],
+  summary: 'Bảng kê mẫu xét nghiệm gửi đối tác — theo MỘT đối tác, chung cả công ty; kỳ theo ngày nhận kết quả hoặc ngày gửi; kèm số dư đầu/cuối kỳ theo sổ công nợ',
+  security: [{ bearerAuth: [] }],
+  request: { params: labPartnerStatementParams, query: labPartnerStatementQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(labPartnerStatementResponseSchema)),
+    400: errorResponse('Khoảng ngày hoặc bộ lọc không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+    404: errorResponse('Không tìm thấy nhà cung cấp/đối tác'),
+    409: errorResponse('Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-partner-statement/{supplierId}/pending-summary',
+  tags: ['lab-partner'],
+  summary: 'Mẫu đã gửi đang chờ kết quả của một đối tác (số mẫu + tổng giá trả dự kiến, chưa ghi nợ)',
+  security: [{ bearerAuth: [] }],
+  request: { params: labPartnerStatementParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(labPartnerPendingSummarySchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+    404: errorResponse('Không tìm thấy nhà cung cấp/đối tác'),
+    409: errorResponse('Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-partner-statement/{supplierId}/export',
+  tags: ['lab-partner'],
+  summary: 'Xuất Excel bảng kê mẫu gửi đối tác theo bộ lọc đang xem (quyền supplier_debt.read, ghi nhật ký kiểm toán)',
+  security: [{ bearerAuth: [] }],
+  request: { params: labPartnerStatementParams, query: labPartnerStatementQuerySchema },
+  responses: {
+    200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+    400: errorResponse('Khoảng ngày hoặc bộ lọc không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền supplier_debt.read'),
+    404: errorResponse('Không tìm thấy nhà cung cấp/đối tác'),
     409: errorResponse('Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED)'),
   },
 });

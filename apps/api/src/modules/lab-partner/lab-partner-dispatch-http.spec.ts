@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import ExcelJS from 'exceljs';
+import { getVietnamDateString } from '@nexamed/core';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
@@ -607,5 +609,147 @@ describe('HTTP e2e — /api/v1/lab-partner-dispatch (Gửi mẫu đối tác)', 
     expect((await http().post(`${QUEUE}/items/${onlyA}/approve`).set(authed(doctorToken)).send({})).status).toBe(200);
     expect(idsOf(await awaiting(doctorToken, `?encounterId=${encounterId}`))).toEqual([]);
     expect(idsOf(await awaiting(doctorToken, '?mine=true'))).not.toContain(onlyA);
+  });
+
+  // ---- Bảng kê mẫu gửi đối tác (docs/DECISIONS.md #291 GĐ4) ----
+  it('bảng kê: đủ dòng (đã có kết quả/chờ kết quả quá hạn/không nhận), cộng đúng, số dư khớp sổ công nợ, lọc kỳ + trạng thái, Excel + nhật ký, quyền, cô lập, công tắc', async () => {
+    const partnerC = await createPartner(adminToken, 'Đối tác bảng kê');
+    const svcFast = await createService({ name: 'XN bảng kê hạn 60 phút (e2e)', turnaroundMinutes: 60, sentToPartner: true, partnerPrices: [{ supplierId: partnerC.id, amount: 100_000, isDefault: true }] });
+    const svcPlain = await createService({ name: 'XN bảng kê không hạn (e2e)', sentToPartner: true, partnerPrices: [{ supplierId: partnerC.id, amount: 50_000, isDefault: true }] });
+    const STATEMENT = `/api/v1/lab-partner-statement/${partnerC.id}`;
+    const statement = (token: string, qs = '') => http().get(`${STATEMENT}${qs}`).set(authed(token));
+
+    const order1 = await collectedOrder([svcFast, svcPlain]);
+    const order2 = await collectedOrder([svcFast]);
+    const order3 = await collectedOrder([svcFast]);
+    const a1 = itemOf(order1, svcFast).id;
+    const b1 = itemOf(order1, svcPlain).id;
+    const a2 = itemOf(order2, svcFast).id;
+    const a3 = itemOf(order3, svcFast).id;
+    expect((await send(adminToken, { supplierId: partnerC.id, itemIds: [a1, b1, a2, a3] })).status).toBe(200);
+    // Dòng bảng kê mang id của DÒNG GỬI (không phải dòng chỉ định).
+    const dispatchItems = await privileged.labPartnerDispatchItem.findMany({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: { in: [a1, b1, a2, a3] } } });
+    const dispatchIdOf = new Map(dispatchItems.map((r) => [r.clinicalOrderItemId, r.id]));
+    const D = (orderItemId: string): string => dispatchIdOf.get(orderItemId)!;
+
+    // a1 + b1 nhận kết quả (ghi nợ 150.000); a2 không nhận; a3 còn chờ và đã quá hạn.
+    expect((await receive(nurseToken, [a1, b1])).status).toBe(200);
+    expect((await http().post(`${QUEUE}/items/${a2}/reject`).set(authed(nurseToken)).send({ reason: 'Mẫu tán huyết' })).status).toBe(200);
+    await privileged.labPartnerDispatchItem.updateMany({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: a3 }, data: { dueAt: new Date(Date.now() - 3 * 3_600_000) } });
+
+    // Toàn bộ: 4 dòng, đúng trạng thái và tiền.
+    const all = await statement(adminToken);
+    expect(all.status, JSON.stringify(all.body)).toBe(200);
+    const rows = all.body.data.items as { itemId: string; state: string; late: boolean; amount: number; tubeSid: string | null; patientName: string; patientCode: string; serviceName: string; branchName: string | null; turnaroundMinutes: number | null; receivedAt: string | null; rejectReason: string | null }[];
+    expect(rows.map((r) => r.itemId).sort()).toEqual([a1, b1, a2, a3].map(D).sort());
+    const byId = new Map(rows.map((r) => [r.itemId, r]));
+    expect(byId.get(D(a1))).toMatchObject({ state: 'DONE', late: false, amount: 100_000, patientName: 'Bệnh nhân e2e gửi đối tác', serviceName: 'XN bảng kê hạn 60 phút (e2e)' });
+    expect(byId.get(D(a1))!.tubeSid).toBe(order1.sidByItem.get(a1));
+    expect(byId.get(D(a1))!.turnaroundMinutes).not.toBeNull();
+    expect(byId.get(D(b1))).toMatchObject({ state: 'DONE', late: false, amount: 50_000 });
+    expect(byId.get(D(a2))).toMatchObject({ state: 'REJECTED', late: false, amount: 0, receivedAt: null, rejectReason: 'Mẫu tán huyết' });
+    expect(byId.get(D(a3))).toMatchObject({ state: 'WAITING', late: true, amount: 100_000, receivedAt: null, turnaroundMinutes: null });
+    expect(typeof byId.get(D(a1))!.branchName).toBe('string');
+
+    // Cộng: chỉ mẫu đã có kết quả = số phát sinh; số dư theo sổ công nợ trong cùng kỳ.
+    expect(all.body.data.summary).toEqual({
+      doneCount: 2,
+      doneAmount: 150_000,
+      waitingCount: 1,
+      waitingAmount: 100_000,
+      rejectedCount: 1,
+      lateCount: 1,
+      openingBalance: 0,
+      periodAccrued: 150_000,
+      periodPaid: 0,
+      closingBalance: 150_000,
+    });
+    expect(all.body.data.supplier).toMatchObject({ name: 'Đối tác bảng kê' });
+    expect(all.body.data.truncated).toBe(false);
+    expect(await debtBalance(partnerC.id)).toBe(150_000);
+
+    // Lọc trạng thái (tổng hợp vẫn tính cả kỳ).
+    const idsOfRows = (res: { body: { data: { items: { itemId: string }[] } } }) => res.body.data.items.map((r) => r.itemId).sort();
+    expect(idsOfRows(await statement(adminToken, '?status=DONE'))).toEqual([a1, b1].map(D).sort());
+    expect(idsOfRows(await statement(adminToken, '?status=WAITING'))).toEqual([D(a3)]);
+    expect(idsOfRows(await statement(adminToken, '?status=REJECTED'))).toEqual([D(a2)]);
+    expect(idsOfRows(await statement(adminToken, '?status=LATE'))).toEqual([D(a3)]);
+    const onlyDone = await statement(adminToken, '?status=DONE');
+    expect(onlyDone.body.data.summary.waitingCount).toBe(1);
+
+    // Kỳ: hôm nay gồm cả bốn (dòng chưa nhận rơi theo ngày gửi); kỳ quá khứ/tương lai rỗng; đảo ngày → 400.
+    const today = getVietnamDateString(new Date());
+    expect(idsOfRows(await statement(adminToken, `?from=${today}&to=${today}`))).toEqual([a1, b1, a2, a3].map(D).sort());
+    expect(idsOfRows(await statement(adminToken, `?from=${today}&to=${today}&basis=SENT`))).toEqual([a1, b1, a2, a3].map(D).sort());
+    const past = await statement(adminToken, '?from=2000-01-01&to=2000-12-31');
+    expect(past.body.data.items).toEqual([]);
+    expect(past.body.data.summary).toMatchObject({ doneCount: 0, doneAmount: 0, openingBalance: 0, periodAccrued: 0, periodPaid: 0, closingBalance: 0 });
+    const future = await statement(adminToken, '?from=2999-01-01');
+    expect(future.body.data.items).toEqual([]);
+    expect(future.body.data.summary).toMatchObject({ doneCount: 0, openingBalance: 150_000, closingBalance: 150_000 });
+    expect((await statement(adminToken, '?from=2026-11-10&to=2026-11-01')).status).toBe(400);
+    expect((await statement(adminToken, '?status=SAI')).status).toBe(400);
+
+    // Thanh toán một phần: "Đã thanh toán" chỉ tính phiếu chi thật; phát sinh giữ nguyên; đầu kỳ + phát sinh − đã trả = cuối kỳ.
+    const accounts = await http().get('/api/v1/cash-accounts').set(authed(adminToken));
+    const cashAccountId = accounts.body.data.items.find((a: { type: string }) => a.type === 'CASH').id as string;
+    const pay = await http().post(`/api/v1/supplier-debt/${partnerC.id}/payment`).set(authed(adminToken)).send({ amount: 40_000, paymentMethodCode: 'CASH', cashAccountId });
+    expect(pay.status, JSON.stringify(pay.body)).toBe(200);
+    const afterPay = await statement(adminToken);
+    expect(afterPay.body.data.summary).toMatchObject({ doneAmount: 150_000, openingBalance: 0, periodAccrued: 150_000, periodPaid: 40_000, closingBalance: 110_000 });
+
+    // Dải "đang chờ" ở trang đối tác.
+    const pendingSummary = await http().get(`${STATEMENT}/pending-summary`).set(authed(adminToken));
+    expect(pendingSummary.status, JSON.stringify(pendingSummary.body)).toBe(200);
+    expect(pendingSummary.body.data).toEqual({ waitingCount: 1, waitingAmount: 100_000 });
+
+    // Excel: cùng dòng và cùng tổng; ghi nhật ký xuất.
+    const exp = await http().get(`${STATEMENT}/export`).set(authed(adminToken)).buffer(true).parse((res, cb) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (c: Buffer) => chunks.push(c));
+      res.on('end', () => cb(null, Buffer.concat(chunks)));
+    });
+    expect(exp.status).toBe(200);
+    expect(exp.headers['content-type']).toContain('spreadsheetml');
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(exp.body as unknown as ArrayBuffer);
+    const lines: string[] = [];
+    wb.worksheets[0]!.eachRow((row) => lines.push((row.values as ExcelJS.CellValue[]).filter((v) => v !== null && v !== undefined).join(' | ')));
+    const sheetText = lines.join('\n');
+    expect(wb.worksheets[0]!.name).toBe('Bảng kê mẫu gửi đối tác');
+    expect(sheetText).toContain('Đối tác: ');
+    expect(sheetText).toContain('Đối tác bảng kê');
+    expect(sheetText).toContain('Số dư đầu kỳ: 0 · Phát sinh: 150.000 · Đã thanh toán: 40.000 · Số dư cuối kỳ: 110.000');
+    expect(sheetText).toContain('Đã có kết quả: 2 mẫu = 150.000 đ');
+    expect(sheetText).toContain('Đối tác không nhận');
+    expect(sheetText).toContain('Không nhận');
+    expect(sheetText).toContain('Chờ kết quả');
+    expect(lines.filter((l) => l.includes('Bệnh nhân e2e gửi đối tác')).length).toBe(4);
+    const audit = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, action: 'supplier_debt.lab_partner_statement_exported', entityId: partnerC.id } });
+    expect(audit).not.toBeNull();
+
+    // Quyền: cần supplier_debt.read (điều dưỡng/lễ tân/bác sĩ không có); không token → 401.
+    for (const token of [nurseToken, receptionistToken, doctorToken]) {
+      expect((await statement(token)).status).toBe(403);
+      expect((await http().get(`${STATEMENT}/export`).set(authed(token))).status).toBe(403);
+      expect((await http().get(`${STATEMENT}/pending-summary`).set(authed(token))).status).toBe(403);
+    }
+    expect((await http().get(STATEMENT)).status).toBe(401);
+
+    // Cô lập công ty: công ty B không xem được đối tác của A; id lạ/sai định dạng → 404.
+    await setToggle(tenantBAdminToken, true); // công tắc là của từng công ty: bật cho B để kiểm đúng lớp cô lập
+    expect((await statement(tenantBAdminToken)).status).toBe(404);
+    expect((await http().get(`${STATEMENT}/export`).set(authed(tenantBAdminToken))).status).toBe(404);
+    expect((await http().get(`${STATEMENT}/pending-summary`).set(authed(tenantBAdminToken))).status).toBe(404);
+    expect((await http().get(`/api/v1/lab-partner-statement/${randomUUID()}`).set(authed(adminToken))).status).toBe(404);
+    expect((await http().get('/api/v1/lab-partner-statement/khong-phai-uuid').set(authed(adminToken))).status).toBe(404);
+
+    // Công tắc tắt → 409 cho cả ba API; bật lại thì như cũ.
+    await setToggle(adminToken, false);
+    expect((await statement(adminToken)).status).toBe(409);
+    expect((await http().get(`${STATEMENT}/export`).set(authed(adminToken))).status).toBe(409);
+    expect((await http().get(`${STATEMENT}/pending-summary`).set(authed(adminToken))).status).toBe(409);
+    await setToggle(adminToken, true);
+    expect((await statement(adminToken)).status).toBe(200);
   });
 });

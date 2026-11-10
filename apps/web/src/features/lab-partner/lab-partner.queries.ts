@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ApproveLabPartnerResultRequest, ListLabPartnerQueueQuery, ReceiveLabPartnerResultRequest, RejectLabPartnerItemRequest, ReturnLabPartnerResultRequest, SendLabPartnerSamplesRequest } from '@nexamed/shared';
+import type { ApproveLabPartnerResultRequest, LabPartnerStatementQuery, ListLabPartnerQueueQuery, ReceiveLabPartnerResultRequest, RejectLabPartnerItemRequest, ReturnLabPartnerResultRequest, SendLabPartnerSamplesRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { listLabPartnerAwaiting, approveLabPartnerResult, getLabPartnerCounts, listLabPartnerDone, listLabPartnerPending, listLabPartnerSent, receiveLabPartnerResult, rejectLabPartnerItem, returnLabPartnerResult, sendLabPartnerSamples } from './lab-partner.api';
+import { getLabPartnerPendingSummary, getLabPartnerStatement, listLabPartnerAwaiting, approveLabPartnerResult, getLabPartnerCounts, listLabPartnerDone, listLabPartnerPending, listLabPartnerSent, receiveLabPartnerResult, rejectLabPartnerItem, returnLabPartnerResult, sendLabPartnerSamples } from './lab-partner.api';
 
 /** Hàng đợi gửi mẫu là màn "treo" ở quầy kỹ thuật — tự làm mới 30 giây để thấy mẫu vừa lấy, như hàng đợi Xét nghiệm. */
 const QUEUE_REFRESH_MS = 30_000;
@@ -23,6 +23,26 @@ export function useLabPartnerSentQuery(params: ListLabPartnerQueueQuery, enabled
     queryFn: () => listLabPartnerSent(params),
     enabled,
     refetchInterval: QUEUE_REFRESH_MS,
+  });
+}
+
+/** Bảng kê mẫu gửi của một đối tác — tải khi mở tab "Mẫu đã gửi" và khi đổi bộ lọc; không tự làm mới (như sổ công nợ). */
+export function useLabPartnerStatementQuery(supplierId: string, query: LabPartnerStatementQuery, enabled = true) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'lab-partner', 'statement', supplierId, JSON.stringify(query)),
+    queryFn: () => getLabPartnerStatement(supplierId, query),
+    enabled,
+  });
+}
+
+/** Mẫu đang chờ kết quả của đối tác (dải số trên trang chi tiết đối tác). */
+export function useLabPartnerPendingSummaryQuery(supplierId: string, enabled: boolean) {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'lab-partner', 'pending-summary', supplierId),
+    queryFn: () => getLabPartnerPendingSummary(supplierId),
+    enabled,
   });
 }
 

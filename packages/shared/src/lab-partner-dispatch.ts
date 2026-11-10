@@ -213,3 +213,83 @@ export const listLabPartnerAwaitingResponseSchema = z.object({
   costVisible: z.boolean(),
 });
 export type ListLabPartnerAwaitingResponse = z.infer<typeof listLabPartnerAwaitingResponseSchema>;
+
+/**
+ * Bảng kê mẫu xét nghiệm gửi đối tác (docs/DECISIONS.md #291 GĐ4) — theo MỘT đối tác (= nhà cung cấp), CHUNG cả công ty (như công nợ NCC: hiện đủ dòng của mọi chi nhánh).
+ * `basis`: tính kỳ theo ngày NHẬN kết quả (mặc định, khớp ngày ghi nợ) hoặc ngày GỬI; dòng chưa có ngày nhận luôn rơi theo ngày gửi.
+ */
+export const labPartnerStatementBasisSchema = z.enum(['RECEIVED', 'SENT']);
+export type LabPartnerStatementBasisValue = z.infer<typeof labPartnerStatementBasisSchema>;
+
+export const labPartnerStatementStatusFilterSchema = z.enum(['ALL', 'DONE', 'WAITING', 'LATE', 'REJECTED']);
+
+const statementDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const labPartnerStatementQuerySchema = z.object({
+  basis: labPartnerStatementBasisSchema.default('RECEIVED'),
+  from: statementDateSchema.optional(),
+  to: statementDateSchema.optional(),
+  status: labPartnerStatementStatusFilterSchema.default('ALL'),
+});
+export type LabPartnerStatementQuery = z.infer<typeof labPartnerStatementQuerySchema>;
+
+export const labPartnerStatementRowSchema = z.object({
+  itemId: z.string().uuid(),
+  dispatchNo: z.string(),
+  tubeSid: z.string().nullable(),
+  patientName: z.string(),
+  patientCode: z.string(),
+  serviceName: z.string(),
+  sentAt: z.string(),
+  receivedAt: z.string().nullable(),
+  /** Thời gian trả thực tế (phút) — chỉ có khi đã nhận kết quả. */
+  turnaroundMinutes: z.number().int().nonnegative().nullable(),
+  state: z.enum(['DONE', 'WAITING', 'REJECTED']),
+  /** Nhận sau hạn trả, hoặc còn chờ mà quá hạn. */
+  late: z.boolean(),
+  /** Giá trả đã chụp lúc gửi. Dòng "Không nhận" hiện 0 vì lần đó không tính tiền. */
+  amount: z.number().int().nonnegative(),
+  /** Chi nhánh gửi mẫu — chỉ để hiện khi công ty có từ 2 chi nhánh. */
+  branchName: z.string().nullable(),
+  rejectReason: z.string().nullable(),
+});
+export type LabPartnerStatementRow = z.infer<typeof labPartnerStatementRowSchema>;
+
+export const labPartnerStatementSummarySchema = z.object({
+  doneCount: z.number().int().nonnegative(),
+  /** Cộng giá trả các mẫu đã có kết quả = số phát sinh công nợ của kỳ. */
+  doneAmount: z.number().int().nonnegative(),
+  waitingCount: z.number().int().nonnegative(),
+  /** Dự kiến — chưa ghi nợ. */
+  waitingAmount: z.number().int().nonnegative(),
+  rejectedCount: z.number().int().nonnegative(),
+  lateCount: z.number().int().nonnegative(),
+  /**
+   * Số dư công nợ theo sổ trong cùng khoảng ngày (theo ngày chứng từ). Dương = còn nợ đối tác. Luôn có: đầu kỳ + phát sinh − đã thanh toán = cuối kỳ.
+   * `periodPaid` = tiền đã thanh toán thật (phiếu chi); `periodAccrued` = mọi biến động còn lại (ghi nợ xét nghiệm, đảo nợ, điều chỉnh) nên có thể âm.
+   */
+  openingBalance: z.number().int(),
+  periodAccrued: z.number().int(),
+  periodPaid: z.number().int().nonnegative(),
+  closingBalance: z.number().int(),
+});
+export type LabPartnerStatementSummary = z.infer<typeof labPartnerStatementSummarySchema>;
+
+export const labPartnerStatementResponseSchema = z.object({
+  supplier: z.object({ code: z.string(), name: z.string() }),
+  items: z.array(labPartnerStatementRowSchema),
+  summary: labPartnerStatementSummarySchema,
+  /** `true` khi kỳ có nhiều hơn số dòng tối đa trả về — bảng chỉ có phần đầu. */
+  truncated: z.boolean(),
+});
+export type LabPartnerStatementResponse = z.infer<typeof labPartnerStatementResponseSchema>;
+
+/** Số dòng tối đa của một bảng kê (màn hình, Excel, in). */
+export const LAB_PARTNER_STATEMENT_MAX_ROWS = 5000;
+
+/** Mẫu đang chờ kết quả của MỘT đối tác (mọi thời điểm) — hiện ở dải số trên trang chi tiết đối tác. */
+export const labPartnerPendingSummarySchema = z.object({
+  waitingCount: z.number().int().nonnegative(),
+  waitingAmount: z.number().int().nonnegative(),
+});
+export type LabPartnerPendingSummary = z.infer<typeof labPartnerPendingSummarySchema>;

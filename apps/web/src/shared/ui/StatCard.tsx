@@ -69,7 +69,7 @@ export interface StatCardItem {
   trend?: { values: readonly number[]; label: string };
 }
 
-const DELTA_TONE_CLASS = { good: 'text-emerald-700', bad: 'text-rose-700', neutral: 'text-slate-500' } as const;
+const DELTA_TONE_CLASS = { good: 'text-emerald-700', bad: 'text-rose-700', neutral: 'text-slate-600' } as const;
 
 const TONE_SPARKLINE_COLOR: Record<StatCardTone, string> = {
   emerald: '#10b981',
@@ -87,16 +87,16 @@ export function StatCardRow({ items }: { items: StatCardItem[] }) {
         <Fragment key={index}>
           {index > 0 && <span aria-hidden="true" className="h-10 w-px flex-none self-center bg-slate-200" />}
           <div className="flex min-w-[190px] flex-1 flex-col items-center justify-center gap-1.5 px-5 py-4 text-center">
-            <div className="flex items-center gap-1.5">
-              <item.icon size={15} weight="bold" className={TONE_ICON_CLASS[item.tone]} aria-hidden="true" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</span>
+            <div className="text-balance text-center text-[15px] font-semibold leading-snug text-slate-800">
+              <item.icon size={16} weight="bold" className={`mr-1.5 inline-block align-[-3px] ${TONE_ICON_CLASS[item.tone]}`} aria-hidden="true" />
+              {item.label}
             </div>
             <span className={`tabular-nums font-semibold leading-tight ${item.emphasis ? 'text-[26px]' : 'text-2xl'} ${TONE_VALUE_CLASS[item.tone]}`}>
               {item.value}
             </span>
-            {item.hint && <span className="max-w-full truncate text-xs font-medium text-slate-500" title={item.hint}>{item.hint}</span>}
+            {item.hint && <span className="max-w-full truncate text-[12.5px] font-medium text-slate-600" title={item.hint}>{item.hint}</span>}
             {item.delta && (
-              <span className={`flex items-center gap-1 text-xs font-medium ${DELTA_TONE_CLASS[item.delta.tone]}`}>
+              <span className={`flex items-center gap-1 text-[12.5px] font-medium ${DELTA_TONE_CLASS[item.delta.tone]}`}>
                 {item.delta.direction === 'up' && <ArrowUp size={11} weight="bold" aria-hidden="true" />}
                 {item.delta.direction === 'down' && <ArrowDown size={11} weight="bold" aria-hidden="true" />}
                 {item.delta.text}

@@ -8,6 +8,8 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { ModalHeader } from '../../shared/ui/ModalHeader';
 import { MoneyInput } from '../../shared/ui/MoneyInput';
 import { formatVnd } from '../../shared/format/currency';
+import { LabPartnerStatementAppendix } from '../lab-partner/LabPartnerStatementAppendix';
+import { nextDateString } from '../lab-partner/lab-partner-statement-model';
 import { useCreateSupplierDebtReconciliationMutation, usePreviewSupplierDebtReconciliationQuery } from './supplier-debt.queries';
 
 function todayDateString(): string {
@@ -24,7 +26,18 @@ function todayDateString(): string {
  *   dẫn đi duyệt phiếu điều chỉnh rồi quay lại tab "Đối chiếu & Chốt kỳ" bấm "Chốt" riêng (không có
  *   hạ tầng toast trong dự án nên dùng banner tại chỗ thay vì đóng dialog im lặng).
  */
-export function SupplierDebtReconciliationDialog({ supplierId, supplierName, onClose }: { supplierId: string; supplierName: string; onClose: () => void }) {
+export function SupplierDebtReconciliationDialog({
+  supplierId,
+  supplierName,
+  onClose,
+  labPartner,
+}: {
+  supplierId: string;
+  supplierName: string;
+  onClose: () => void;
+  /** Đối tác xét nghiệm (#291 GĐ4): hiện phụ lục bảng kê mẫu gửi của kỳ đối chiếu. `lockedAsOfDate` = mốc chốt gần nhất (kỳ bắt đầu từ ngày kế tiếp). */
+  labPartner?: { code: string; lockedAsOfDate: string | null };
+}) {
   const [asOfDate, setAsOfDate] = useState(todayDateString());
   const [confirmedBalance, setConfirmedBalance] = useState<number | undefined>(undefined);
   const [note, setNote] = useState('');
@@ -117,6 +130,16 @@ export function SupplierDebtReconciliationDialog({ supplierId, supplierName, onC
             </BoxedSection>
 
             {confirmedBalance !== undefined && previewQuery.isFetching && <p className="text-sm font-medium text-slate-500">Đang tính số hệ thống...</p>}
+
+            {labPartner && asOfDate && (
+              <LabPartnerStatementAppendix
+                supplierId={supplierId}
+                supplierCode={labPartner.code}
+                supplierName={supplierName}
+                from={labPartner.lockedAsOfDate ? nextDateString(labPartner.lockedAsOfDate.slice(0, 10)) : ''}
+                to={asOfDate}
+              />
+            )}
 
             {preview && (
               <div className={`rounded-md border px-4 py-3 text-sm ${preview.differenceAmount === 0 ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>

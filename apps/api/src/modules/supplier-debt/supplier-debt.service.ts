@@ -692,6 +692,7 @@ export class SupplierDebtService {
       supplierId,
       openingBalanceAmount: Number(sum('OPENING_BALANCE')),
       totalPurchase: Number(sum('PURCHASE')),
+      totalLabPartner: Number(sum('LAB_PARTNER')),
       totalPaid: Number(-sum('PAYMENT')),
       totalReturnAndAdjustment: Number(-sum('RETURN') - sum('ADJUSTMENT_DECREASE') + sum('ADJUSTMENT_INCREASE')),
       balance: Number(account?.balance ?? 0n),

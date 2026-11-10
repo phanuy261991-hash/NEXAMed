@@ -25,6 +25,14 @@ export type SentItemRow = Prisma.LabPartnerDispatchItemGetPayload<{ include: typ
 const DONE_INCLUDE = { ...SENT_INCLUDE, resultFile: { select: { id: true, storageKey: true, fileName: true, receivedAt: true, receivedBy: true, sizeBytes: true } } } as const;
 export type DoneItemRow = Prisma.LabPartnerDispatchItemGetPayload<{ include: typeof DONE_INCLUDE }>;
 
+const STATEMENT_INCLUDE = {
+  dispatch: { select: { id: true, dispatchNo: true, sentAt: true, branchId: true, branch: { select: { name: true } } } },
+  orderItem: { select: { name: true, order: { select: { encounter: { select: { patient: { select: { fullName: true, patientCode: true } } } } } }, technicalService: { select: { name: true } } } },
+  specimenTube: { select: { sid: true } },
+} as const;
+
+export type StatementItemRow = Prisma.LabPartnerDispatchItemGetPayload<{ include: typeof STATEMENT_INCLUDE }>;
+
 export interface PartnerPriceOptionRow {
   technicalServiceId: string;
   supplierId: string;
@@ -212,6 +220,47 @@ export class LabPartnerDispatchRepository {
       data: { status: 'SENT', receivedAt: null, receivedBy: null, resultFileId: null, updatedBy: actorId, version: { increment: 1 } },
     });
     return r.count;
+  }
+
+  /** Nhà cung cấp (đối tác) theo id — chỉ để kiểm tồn tại và lấy mã/tên cho đầu bảng kê. */
+  findSupplierRef(tx: Prisma.TransactionClient, tenantId: string, supplierId: string): Promise<{ id: string; code: string; name: string } | null> {
+    return tx.supplier.findFirst({ where: { tenantId, id: supplierId, deletedAt: null }, select: { id: true, code: true, name: true } });
+  }
+
+  /**
+   * Bảng kê mẫu gửi của MỘT đối tác: MỌI chi nhánh (công nợ đối tác dùng chung cả công ty, như công nợ NCC), mọi trạng thái kể cả "Không nhận". Kỳ lọc ở CSDL: theo ngày gửi, hoặc theo ngày nhận
+   * (dòng chưa có ngày nhận rơi theo ngày gửi). Lấy tối đa `take` dòng, sắp theo ngày gửi rồi mã ống.
+   */
+  listStatementItems(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    supplierId: string,
+    period: { basis: 'RECEIVED' | 'SENT'; from: Date | null; to: Date | null },
+    take: number,
+  ): Promise<StatementItemRow[]> {
+    const range: { gte?: Date; lte?: Date } = { ...(period.from ? { gte: period.from } : {}), ...(period.to ? { lte: period.to } : {}) };
+    const hasRange = period.from !== null || period.to !== null;
+    const periodFilter: Prisma.LabPartnerDispatchItemWhereInput[] = !hasRange
+      ? []
+      : period.basis === 'SENT'
+        ? [{ dispatch: { sentAt: range } }]
+        : [{ OR: [{ receivedAt: range }, { receivedAt: null, dispatch: { sentAt: range } }] }];
+    return tx.labPartnerDispatchItem.findMany({
+      where: { tenantId, deletedAt: null, dispatch: { supplierId, deletedAt: null }, AND: periodFilter },
+      include: STATEMENT_INCLUDE,
+      orderBy: [{ dispatch: { sentAt: 'asc' } }, { createdAt: 'asc' }],
+      take,
+    });
+  }
+
+  /** Mẫu đang chờ kết quả của một đối tác (mọi chi nhánh, mọi thời điểm): số mẫu và tổng giá trả dự kiến. */
+  async sumWaitingForSupplier(tx: Prisma.TransactionClient, tenantId: string, supplierId: string): Promise<{ count: number; amount: bigint }> {
+    const agg = await tx.labPartnerDispatchItem.aggregate({
+      where: { tenantId, deletedAt: null, status: 'SENT', dispatch: { supplierId, deletedAt: null } },
+      _count: { _all: true },
+      _sum: { unitCost: true },
+    });
+    return { count: agg._count._all, amount: agg._sum.unitCost ?? 0n };
   }
 
   /** Dòng chỉ định theo id, KÈM ống mẫu/dịch vụ/bệnh nhân — chỉ trong chi nhánh đang làm việc (id chi nhánh khác coi như không tồn tại). */

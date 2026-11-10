@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-10
 
+### Bảng kê mẫu gửi đối tác + phụ lục đối chiếu (`docs/DECISIONS.md` #291 bổ sung 8)
+
+Trang chi tiết đối tác xét nghiệm có tab **Mẫu đã gửi**: mỗi dòng một dịch vụ, kỳ theo ngày nhận kết quả hoặc ngày gửi, lọc trạng thái, Xuất Excel, In bảng kê (số dư đầu/cuối kỳ, hai ô ký). Dải số thêm "Tổng tiền dịch vụ đã ghi nợ" và "Đang chờ kết quả". Hộp "Lập biên bản đối chiếu" có phụ lục bảng kê. Thẻ số (`StatCardRow`) dùng chung đổi sang nhãn 15px đậm, chữ tối. Không migration, không cần `db:seed`.
+
 ### Kết quả PDF của đối tác hiện đúng ở màn kết quả và bản in (`docs/DECISIONS.md` #291 bổ sung 7)
 
 Tệp PDF nhận từ đối tác không còn bị vẽ thành ảnh hỏng: màn kết quả có khối "Tệp PDF kết quả" với liên kết xem tệp, bản in ghi một dòng "Kèm tệp PDF kết quả của đối tác xét nghiệm". Phiếu kết quả của API trả thêm `contentType` cho tệp đính kèm. Không migration, không cần `db:seed`.

@@ -45156,6 +45156,7 @@ export interface paths {
                                     supplierId: string;
                                     openingBalanceAmount: number;
                                     totalPurchase: number;
+                                    totalLabPartner: number;
                                     totalPaid: number;
                                     totalReturnAndAdjustment: number;
                                     balance: number;
@@ -45241,6 +45242,7 @@ export interface paths {
                                 supplierId: string;
                                 openingBalanceAmount: number;
                                 totalPurchase: number;
+                                totalLabPartner: number;
                                 totalPaid: number;
                                 totalReturnAndAdjustment: number;
                                 balance: number;
@@ -45577,6 +45579,7 @@ export interface paths {
                                 supplierId: string;
                                 openingBalanceAmount: number;
                                 totalPurchase: number;
+                                totalLabPartner: number;
                                 totalPaid: number;
                                 totalReturnAndAdjustment: number;
                                 balance: number;
@@ -45702,6 +45705,7 @@ export interface paths {
                                 supplierId: string;
                                 openingBalanceAmount: number;
                                 totalPurchase: number;
+                                totalLabPartner: number;
                                 totalPaid: number;
                                 totalReturnAndAdjustment: number;
                                 balance: number;
@@ -45927,6 +45931,7 @@ export interface paths {
                                 supplierId: string;
                                 openingBalanceAmount: number;
                                 totalPurchase: number;
+                                totalLabPartner: number;
                                 totalPaid: number;
                                 totalReturnAndAdjustment: number;
                                 balance: number;
@@ -47244,6 +47249,385 @@ export interface paths {
                 };
                 /** @description Không có quyền lab_partner.read */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab-partner-statement/{supplierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bảng kê mẫu xét nghiệm gửi đối tác — theo MỘT đối tác, chung cả công ty; kỳ theo ngày nhận kết quả hoặc ngày gửi; kèm số dư đầu/cuối kỳ theo sổ công nợ */
+        get: {
+            parameters: {
+                query?: {
+                    basis?: "RECEIVED" | "SENT";
+                    from?: string;
+                    to?: string;
+                    status?: "ALL" | "DONE" | "WAITING" | "LATE" | "REJECTED";
+                };
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                supplier: {
+                                    code: string;
+                                    name: string;
+                                };
+                                items: {
+                                    /** Format: uuid */
+                                    itemId: string;
+                                    dispatchNo: string;
+                                    tubeSid: string | null;
+                                    patientName: string;
+                                    patientCode: string;
+                                    serviceName: string;
+                                    sentAt: string;
+                                    receivedAt: string | null;
+                                    turnaroundMinutes: number | null;
+                                    /** @enum {string} */
+                                    state: "DONE" | "WAITING" | "REJECTED";
+                                    late: boolean;
+                                    amount: number;
+                                    branchName: string | null;
+                                    rejectReason: string | null;
+                                }[];
+                                summary: {
+                                    doneCount: number;
+                                    doneAmount: number;
+                                    waitingCount: number;
+                                    waitingAmount: number;
+                                    rejectedCount: number;
+                                    lateCount: number;
+                                    openingBalance: number;
+                                    periodAccrued: number;
+                                    periodPaid: number;
+                                    closingBalance: number;
+                                };
+                                truncated: boolean;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Khoảng ngày hoặc bộ lọc không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp/đối tác */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab-partner-statement/{supplierId}/pending-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mẫu đã gửi đang chờ kết quả của một đối tác (số mẫu + tổng giá trả dự kiến, chưa ghi nợ) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                waitingCount: number;
+                                waitingAmount: number;
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp/đối tác */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab-partner-statement/{supplierId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel bảng kê mẫu gửi đối tác theo bộ lọc đang xem (quyền supplier_debt.read, ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query?: {
+                    basis?: "RECEIVED" | "SENT";
+                    from?: string;
+                    to?: string;
+                    status?: "ALL" | "DONE" | "WAITING" | "LATE" | "REJECTED";
+                };
+                header?: never;
+                path: {
+                    supplierId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Khoảng ngày hoặc bộ lọc không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền supplier_debt.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không tìm thấy nhà cung cấp/đối tác */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };

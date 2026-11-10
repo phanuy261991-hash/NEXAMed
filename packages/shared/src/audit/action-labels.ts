@@ -321,6 +321,7 @@ const ACTION_LABELS: Record<string, string> = {
   'wallet_list.exported': 'Xuất Excel danh sách ví tạm ứng',
   'supplier_debt.exported': 'Xuất Excel công nợ nhà cung cấp',
   'supplier_debt.ledger_exported': 'Xuất Excel sổ công nợ nhà cung cấp',
+  'supplier_debt.lab_partner_statement_exported': 'Xuất Excel bảng kê mẫu gửi đối tác',
   'stock_balance.exported': 'Xuất Excel tồn kho và hạn dùng',
   'audit_log.exported': 'Xuất Excel nhật ký kiểm toán',
 

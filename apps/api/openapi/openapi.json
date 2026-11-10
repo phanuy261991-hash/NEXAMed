@@ -115975,6 +115975,9 @@
                               "totalPurchase": {
                                 "type": "integer"
                               },
+                              "totalLabPartner": {
+                                "type": "integer"
+                              },
                               "totalPaid": {
                                 "type": "integer"
                               },
@@ -116007,6 +116010,7 @@
                               "supplierId",
                               "openingBalanceAmount",
                               "totalPurchase",
+                              "totalLabPartner",
                               "totalPaid",
                               "totalReturnAndAdjustment",
                               "balance",
@@ -116144,6 +116148,9 @@
                         "totalPurchase": {
                           "type": "integer"
                         },
+                        "totalLabPartner": {
+                          "type": "integer"
+                        },
                         "totalPaid": {
                           "type": "integer"
                         },
@@ -116176,6 +116183,7 @@
                         "supplierId",
                         "openingBalanceAmount",
                         "totalPurchase",
+                        "totalLabPartner",
                         "totalPaid",
                         "totalReturnAndAdjustment",
                         "balance",
@@ -116910,6 +116918,9 @@
                         "totalPurchase": {
                           "type": "integer"
                         },
+                        "totalLabPartner": {
+                          "type": "integer"
+                        },
                         "totalPaid": {
                           "type": "integer"
                         },
@@ -116942,6 +116953,7 @@
                         "supplierId",
                         "openingBalanceAmount",
                         "totalPurchase",
+                        "totalLabPartner",
                         "totalPaid",
                         "totalReturnAndAdjustment",
                         "balance",
@@ -117172,6 +117184,9 @@
                         "totalPurchase": {
                           "type": "integer"
                         },
+                        "totalLabPartner": {
+                          "type": "integer"
+                        },
                         "totalPaid": {
                           "type": "integer"
                         },
@@ -117204,6 +117219,7 @@
                         "supplierId",
                         "openingBalanceAmount",
                         "totalPurchase",
+                        "totalLabPartner",
                         "totalPaid",
                         "totalReturnAndAdjustment",
                         "balance",
@@ -117685,6 +117701,9 @@
                         "totalPurchase": {
                           "type": "integer"
                         },
+                        "totalLabPartner": {
+                          "type": "integer"
+                        },
                         "totalPaid": {
                           "type": "integer"
                         },
@@ -117717,6 +117736,7 @@
                         "supplierId",
                         "openingBalanceAmount",
                         "totalPurchase",
+                        "totalLabPartner",
                         "totalPaid",
                         "totalReturnAndAdjustment",
                         "balance",
@@ -120797,6 +120817,852 @@
           },
           "403": {
             "description": "Không có quyền lab_partner.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Công tắc \"Dùng đối tác xét nghiệm\" đang tắt (LAB_PARTNER_DISABLED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lab-partner-statement/{supplierId}": {
+      "get": {
+        "tags": [
+          "lab-partner"
+        ],
+        "summary": "Bảng kê mẫu xét nghiệm gửi đối tác — theo MỘT đối tác, chung cả công ty; kỳ theo ngày nhận kết quả hoặc ngày gửi; kèm số dư đầu/cuối kỳ theo sổ công nợ",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RECEIVED",
+                "SENT"
+              ],
+              "default": "RECEIVED"
+            },
+            "required": false,
+            "name": "basis",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "DONE",
+                "WAITING",
+                "LATE",
+                "REJECTED"
+              ],
+              "default": "ALL"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "supplier": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "name"
+                          ]
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "itemId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "dispatchNo": {
+                                "type": "string"
+                              },
+                              "tubeSid": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "patientName": {
+                                "type": "string"
+                              },
+                              "patientCode": {
+                                "type": "string"
+                              },
+                              "serviceName": {
+                                "type": "string"
+                              },
+                              "sentAt": {
+                                "type": "string"
+                              },
+                              "receivedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "turnaroundMinutes": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ],
+                                "minimum": 0
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "DONE",
+                                  "WAITING",
+                                  "REJECTED"
+                                ]
+                              },
+                              "late": {
+                                "type": "boolean"
+                              },
+                              "amount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "branchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "rejectReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "itemId",
+                              "dispatchNo",
+                              "tubeSid",
+                              "patientName",
+                              "patientCode",
+                              "serviceName",
+                              "sentAt",
+                              "receivedAt",
+                              "turnaroundMinutes",
+                              "state",
+                              "late",
+                              "amount",
+                              "branchName",
+                              "rejectReason"
+                            ]
+                          }
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "doneCount": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "doneAmount": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "waitingCount": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "waitingAmount": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "rejectedCount": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "lateCount": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "openingBalance": {
+                              "type": "integer"
+                            },
+                            "periodAccrued": {
+                              "type": "integer"
+                            },
+                            "periodPaid": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "closingBalance": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "doneCount",
+                            "doneAmount",
+                            "waitingCount",
+                            "waitingAmount",
+                            "rejectedCount",
+                            "lateCount",
+                            "openingBalance",
+                            "periodAccrued",
+                            "periodPaid",
+                            "closingBalance"
+                          ]
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "supplier",
+                        "items",
+                        "summary",
+                        "truncated"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Khoảng ngày hoặc bộ lọc không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp/đối tác",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Công tắc \"Dùng đối tác xét nghiệm\" đang tắt (LAB_PARTNER_DISABLED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lab-partner-statement/{supplierId}/pending-summary": {
+      "get": {
+        "tags": [
+          "lab-partner"
+        ],
+        "summary": "Mẫu đã gửi đang chờ kết quả của một đối tác (số mẫu + tổng giá trả dự kiến, chưa ghi nợ)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "waitingCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "waitingAmount": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "waitingCount",
+                        "waitingAmount"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp/đối tác",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Công tắc \"Dùng đối tác xét nghiệm\" đang tắt (LAB_PARTNER_DISABLED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lab-partner-statement/{supplierId}/export": {
+      "get": {
+        "tags": [
+          "lab-partner"
+        ],
+        "summary": "Xuất Excel bảng kê mẫu gửi đối tác theo bộ lọc đang xem (quyền supplier_debt.read, ghi nhật ký kiểm toán)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "supplierId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RECEIVED",
+                "SENT"
+              ],
+              "default": "RECEIVED"
+            },
+            "required": false,
+            "name": "basis",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "DONE",
+                "WAITING",
+                "LATE",
+                "REJECTED"
+              ],
+              "default": "ALL"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tệp .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Khoảng ngày hoặc bộ lọc không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền supplier_debt.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhà cung cấp/đối tác",
             "content": {
               "application/json": {
                 "schema": {

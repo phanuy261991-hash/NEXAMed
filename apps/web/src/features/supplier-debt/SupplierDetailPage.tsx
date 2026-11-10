@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardText, DownloadSimple, Eye, HandCoins, Lock, Receipt, Scales, ShoppingCart, TrendDown, TrendUp, Truck, ArrowUUpLeft, Warning } from '@phosphor-icons/react';
+import { ArrowLeft, ClipboardText, DownloadSimple, Eye, HandCoins, Hourglass, Lock, Receipt, Scales, ShoppingCart, TrendDown, TrendUp, Truck, ArrowUUpLeft, Warning } from '@phosphor-icons/react';
 import type { SupplierDebtAdjustment, SupplierDebtLedgerEntry, SupplierDebtPayment, SupplierDebtReceiptStatus, SupplierDebtReconciliation } from '@nexamed/shared';
 import { formatVnd } from '../../shared/format/currency';
 import { useBreadcrumb } from '../../shared/layout/breadcrumb.context';
@@ -27,6 +27,9 @@ import { useHasPermission } from '../auth/usePermission';
 import { BranchChip, useIsOtherBranch, useShowBranchInfo } from '../branch/BranchChip';
 import { CashVoucherDetailDialog } from '../cash-book/CashVoucherDetailDialog';
 import { useSuppliersQuery } from '../drug/supplier.queries';
+import { useLabPartnerEnabledQuery } from '../clinic/clinic.queries';
+import { LabPartnerStatementTab } from '../lab-partner/LabPartnerStatementTab';
+import { useLabPartnerPendingSummaryQuery } from '../lab-partner/lab-partner.queries';
 import { StockIssueDetailDialog } from '../inventory/StockIssueDetailDialog';
 import { useStockIssuesQuery, useStockReceiptsQuery } from '../inventory/inventory.queries';
 import { useCashAccountsQuery } from '../cash-book/cash-account.queries';
@@ -66,7 +69,7 @@ const RECEIPT_STATUS_LABEL: Record<SupplierDebtReceiptStatus['status'], { label:
   FULLY_PAID: { label: 'Đã trả đủ', tone: 'success' },
 };
 
-type TabId = 'receipts' | 'returns' | 'ledger' | 'payments' | 'adjustments' | 'reconciliations';
+type TabId = 'samples' | 'receipts' | 'returns' | 'ledger' | 'payments' | 'adjustments' | 'reconciliations';
 
 /** Trang chi tiết NCC — "Công nợ nhà cung cấp" Phần A + Phần B + Phần C + Phần D (docs/DECISIONS.md
  * #180/#182/#187). 5 tab "Phiếu nhập"/"Phiếu trả hàng" (Phần C)/"Sổ công nợ" (Phần A)/"Thanh toán"
@@ -75,7 +78,7 @@ type TabId = 'receipts' | 'returns' | 'ledger' | 'payments' | 'adjustments' | 'r
 export function SupplierDetailPage() {
   const { id } = useParams<{ id: string }>();
   const supplierId = id!;
-  const [tab, setTab] = useState<TabId>('receipts');
+  const [chosenTab, setTab] = useState<TabId | null>(null);
   const [openingBalanceOpen, setOpeningBalanceOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
@@ -87,6 +90,11 @@ export function SupplierDetailPage() {
   const suppliersQuery = useSuppliersQuery(true);
   const summaryQuery = useSupplierDebtSummaryQuery(supplierId);
   const supplier = suppliersQuery.data?.items.find((s) => s.id === supplierId);
+  // Đối tác xét nghiệm (#291 GĐ4): có tab "Mẫu đã gửi" thay cho "Phiếu nhập"/"Phiếu trả hàng"; công tắc "Dùng đối tác xét nghiệm" tắt thì trang như nhà cung cấp thường.
+  const labPartnerEnabled = useLabPartnerEnabledQuery();
+  const isPartner = supplier?.isLabPartner === true && labPartnerEnabled.data?.enabled === true;
+  const pendingSamples = useLabPartnerPendingSummaryQuery(supplierId, isPartner);
+  const tab: TabId = chosenTab ?? (isPartner ? 'samples' : 'receipts');
 
   // Nhà cung cấp không tồn tại/tải hỏng thì đường dẫn KHÔNG kẹt ở "Đang tải..." (cùng lỗi đã sửa ở `PatientDetailPage`, 21/10/2026).
   const breadcrumbName = suppliersQuery.isError ? 'Không tìm thấy' : suppliersQuery.isSuccess ? (supplier?.name ?? 'Không tìm thấy') : 'Đang tải...';
@@ -137,6 +145,7 @@ export function SupplierDetailPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="truncate text-xl font-semibold text-slate-900">{supplier.name}</h1>
                 <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">{supplier.code}</span>
+                {supplier.isLabPartner && <span className="shrink-0 rounded-full bg-brand-teal-tint px-2.5 py-0.5 text-xs font-semibold text-brand-teal">Đối tác XN</span>}
                 <StatusBadge tone={supplier.isActive ? 'success' : 'neutral'}>{supplier.isActive ? 'Đang dùng' : 'Ngưng'}</StatusBadge>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm font-medium text-slate-600">
@@ -185,7 +194,9 @@ export function SupplierDetailPage() {
       <div className="flex flex-shrink-0 flex-wrap items-stretch gap-3">
         <StatCardRow
           items={[
-            { icon: ShoppingCart, tone: 'slate', label: 'Tổng tiền hàng đã mua', value: formatVnd(summary.totalPurchase) },
+            isPartner
+              ? { icon: ShoppingCart, tone: 'slate', label: 'Tổng tiền dịch vụ đã ghi nợ', value: formatVnd(summary.totalLabPartner) }
+              : { icon: ShoppingCart, tone: 'slate', label: 'Tổng tiền hàng đã mua', value: formatVnd(summary.totalPurchase) },
             { icon: HandCoins, tone: 'emerald', label: 'Đã thanh toán', value: formatVnd(summary.totalPaid) },
             {
               icon: Scales,
@@ -194,6 +205,9 @@ export function SupplierDetailPage() {
               value: formatVnd(Math.abs(summary.balance)),
               emphasis: true,
             },
+            ...(isPartner && pendingSamples.data
+              ? [{ icon: Hourglass, tone: 'amber' as const, label: 'Đang chờ kết quả', value: formatVnd(pendingSamples.data.waitingAmount), hint: `${pendingSamples.data.waitingCount} mẫu · chưa ghi nợ` }]
+              : []),
           ]}
         />
       </div>
@@ -223,8 +237,12 @@ export function SupplierDetailPage() {
       <div className="min-h-0 flex-1 rounded-lg border border-slate-200 bg-white">
         <TabBar
           tabs={[
-            { id: 'receipts', label: 'Phiếu nhập' },
-            { id: 'returns', label: 'Phiếu trả hàng' },
+            ...(isPartner
+              ? [{ id: 'samples' as const, label: 'Mẫu đã gửi' }]
+              : [
+                  { id: 'receipts' as const, label: 'Phiếu nhập' },
+                  { id: 'returns' as const, label: 'Phiếu trả hàng' },
+                ]),
             { id: 'ledger', label: 'Sổ công nợ' },
             { id: 'payments', label: 'Thanh toán' },
             { id: 'adjustments', label: 'Nhật ký điều chỉnh' },
@@ -235,6 +253,7 @@ export function SupplierDetailPage() {
           className="border-b border-slate-200 px-3 py-2"
         />
         <div className="p-3">
+          {tab === 'samples' && <LabPartnerStatementTab supplierId={supplierId} supplierCode={supplier.code} supplierName={supplier.name} />}
           {tab === 'receipts' && <ReceiptsTab supplierId={supplierId} />}
           {tab === 'returns' && <ReturnsTab supplierId={supplierId} />}
           {tab === 'ledger' && <LedgerTab supplierId={supplierId} supplierCode={supplier.code} supplierName={supplier.name} />}
@@ -248,7 +267,12 @@ export function SupplierDetailPage() {
       {paymentOpen && <PaymentDialog supplierId={supplierId} supplierName={supplier.name} balance={summary.balance} onClose={() => setPaymentOpen(false)} />}
       {refundOpen && <RefundDialog supplierId={supplierId} supplierName={supplier.name} balance={summary.balance} onClose={() => setRefundOpen(false)} />}
       {adjustmentOpen && <SupplierDebtAdjustmentDialog supplierId={supplierId} supplierName={supplier.name} onClose={() => setAdjustmentOpen(false)} />}
-      {reconciliationOpen && <SupplierDebtReconciliationDialog supplierId={supplierId} supplierName={supplier.name} onClose={() => setReconciliationOpen(false)} />}
+      {reconciliationOpen && <SupplierDebtReconciliationDialog
+          supplierId={supplierId}
+          supplierName={supplier.name}
+          labPartner={isPartner ? { code: supplier.code, lockedAsOfDate: summary.lockedAsOfDate } : undefined}
+          onClose={() => setReconciliationOpen(false)}
+        />}
     </div>
   );
 }
