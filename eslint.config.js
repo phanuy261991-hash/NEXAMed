@@ -30,7 +30,7 @@ const WEB_SHARED_VALUE_IMPORT_MESSAGE =
 export default tseslint.config(
   {
     // scripts/ui-audit: công cụ kiểm giao diện chạy tay bằng Node + Playwright (không phải mã sản phẩm).
-    ignores: ['**/dist/**', '**/.scripts-dist/**', '**/build/**', '**/node_modules/**', '**/coverage/**', 'scripts/ui-audit/**'],
+    ignores: ['**/dist/**', '**/.scripts-dist/**', '**/build/**', '**/node_modules/**', '**/coverage/**', 'scripts/ui-audit/**', 'docs/handoffs/assets/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
