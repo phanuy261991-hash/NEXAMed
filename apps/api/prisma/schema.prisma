@@ -133,6 +133,7 @@ model Tenant {
   technicalServicePrices      TechnicalServicePrice[]
   labPartnerServicePrices     LabPartnerServicePrice[]
   labPartnerDispatches        LabPartnerDispatch[]
+  labPartnerResultFiles       LabPartnerResultFile[]
   labPartnerDispatchItems     LabPartnerDispatchItem[]
   labIndicators               LabIndicator[]
   labIndicatorReferences      LabIndicatorReference[]
@@ -2162,23 +2163,24 @@ model Supplier {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant               Tenant                       @relation(fields: [tenantId], references: [id])
+  tenant                Tenant                       @relation(fields: [tenantId], references: [id])
   // "Gửi mẫu đối tác" (#291) — giá trả đối tác theo từng dịch vụ kỹ thuật.
-  labPartnerPrices     LabPartnerServicePrice[]
-  labPartnerDispatches LabPartnerDispatch[]
+  labPartnerPrices      LabPartnerServicePrice[]
+  labPartnerDispatches  LabPartnerDispatch[]
+  labPartnerResultFiles LabPartnerResultFile[]
   // Kho Thuốc GĐ2 — phiếu nhập từ nhà cung cấp này (receiptType=PURCHASE).
-  stockReceipts        StockReceipt[]
+  stockReceipts         StockReceipt[]
   // "Công nợ nhà cung cấp" Phần A — 1 NCC có nhiều nhất 1 sổ công nợ (find-or-create lúc phát sinh
   // bút toán đầu tiên, chưa chắc đã tồn tại với NCC chưa từng mua/khai nợ).
-  debtAccount          SupplierDebtAccount?
+  debtAccount           SupplierDebtAccount?
   // "Công nợ nhà cung cấp" — cash_voucher gắn NCC (Trả ngay lúc nhập/Thanh toán công nợ/NCC hoàn tiền).
-  cashVouchers         CashVoucher[]
+  cashVouchers          CashVoucher[]
   // "Công nợ nhà cung cấp" Phần C — phiếu xuất trả NCC (issueType=RETURN_TO_SUPPLIER) gắn NCC này.
-  stockIssues          StockIssue[]
+  stockIssues           StockIssue[]
   // "Công nợ nhà cung cấp" Phần D — Phiếu điều chỉnh công nợ/Đề nghị huỷ gắn NCC này.
-  debtAdjustments      SupplierDebtAdjustment[]
+  debtAdjustments       SupplierDebtAdjustment[]
   // "Công nợ nhà cung cấp" Phần E — Biên bản đối chiếu công nợ gắn NCC này.
-  debtReconciliations  SupplierDebtReconciliation[]
+  debtReconciliations   SupplierDebtReconciliation[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -3796,6 +3798,8 @@ enum SupplierDebtEntryType {
   ADJUSTMENT_INCREASE
   ADJUSTMENT_DECREASE
   REVERSAL
+  /// Xét nghiệm gửi đối tác — ghi nợ lúc NHẬN kết quả (#291).
+  LAB_PARTNER
 
   @@map("supplier_debt_entry_type")
 }
@@ -3809,27 +3813,29 @@ enum SupplierDebtEntryType {
 // `adjustmentId` (trỏ `SupplierDebtAdjustment`) để dành Phần D — CHƯA thêm cột ở Phần A (bảng đó
 // chưa tồn tại), thêm bằng migration riêng khi Phần D code.
 model SupplierDebtEntry {
-  id             String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  tenantId       String                @map("tenant_id") @db.Uuid
-  accountId      String                @map("account_id") @db.Uuid
-  entryType      SupplierDebtEntryType @map("entry_type")
-  amountChange   BigInt                @map("amount_change")
-  balanceAfter   BigInt                @map("balance_after")
-  occurredAt     DateTime              @map("occurred_at") @db.Timestamptz(6)
-  stockReceiptId String?               @map("stock_receipt_id") @db.Uuid
+  id                       String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId                 String                @map("tenant_id") @db.Uuid
+  accountId                String                @map("account_id") @db.Uuid
+  entryType                SupplierDebtEntryType @map("entry_type")
+  amountChange             BigInt                @map("amount_change")
+  balanceAfter             BigInt                @map("balance_after")
+  occurredAt               DateTime              @map("occurred_at") @db.Timestamptz(6)
+  stockReceiptId           String?               @map("stock_receipt_id") @db.Uuid
   // "Công nợ nhà cung cấp" Phần C — nguồn bút toán RETURN (phiếu xuất trả NCC vừa Duyệt). REVERSAL
   // đảo 1 bút toán RETURN kế thừa cột này từ bút toán gốc (đúng cashVoucherId ở REVERSAL đảo PAYMENT).
-  stockIssueId   String?               @map("stock_issue_id") @db.Uuid
-  cashVoucherId  String?               @map("cash_voucher_id") @db.Uuid
+  stockIssueId             String?               @map("stock_issue_id") @db.Uuid
+  cashVoucherId            String?               @map("cash_voucher_id") @db.Uuid
   // Tự tham chiếu — entry ĐÃ bị đảo (dùng bởi dòng REVERSAL để biết đảo bút toán nào). UNIQUE
   // partial ở migration: 1 bút toán chỉ đảo được 1 lần.
-  reversalOfId   String?               @map("reversal_of_id") @db.Uuid
+  reversalOfId             String?               @map("reversal_of_id") @db.Uuid
   // "Công nợ nhà cung cấp" Phần D — nguồn bút toán ADJUSTMENT_INCREASE/ADJUSTMENT_DECREASE (bắt buộc
   // cho 2 loại này, CHECK ở migration). REVERSAL sinh từ "Huỷ chứng từ"/"Đề nghị huỷ" KHÔNG dùng cột
   // này — tự tương quan qua `stockReceiptId`/`stockIssueId` trùng với `targetReceiptId`/`targetIssueId`
   // của adjustment `VOID_REQUEST` tương ứng, không cần FK riêng.
-  adjustmentId   String?               @map("adjustment_id") @db.Uuid
-  note           String?
+  adjustmentId             String?               @map("adjustment_id") @db.Uuid
+  /// Nguồn bút toán LAB_PARTNER (dòng gửi mẫu đã nhận kết quả). REVERSAL của nó kế thừa cột này.
+  labPartnerDispatchItemId String?               @map("lab_partner_dispatch_item_id") @db.Uuid
+  note                     String?
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -3840,20 +3846,21 @@ model SupplierDebtEntry {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant       Tenant                  @relation(fields: [tenantId], references: [id])
+  tenant                 Tenant                  @relation(fields: [tenantId], references: [id])
   // Composite FK (tenant_id, account_id) -> supplier_debt_account(tenant_id, id).
-  account      SupplierDebtAccount     @relation(fields: [tenantId, accountId], references: [tenantId, id])
+  account                SupplierDebtAccount     @relation(fields: [tenantId, accountId], references: [tenantId, id])
   // Composite FK (tenant_id, stock_receipt_id) -> stock_receipt(tenant_id, id), NULLABLE.
-  stockReceipt StockReceipt?           @relation(fields: [tenantId, stockReceiptId], references: [tenantId, id])
+  stockReceipt           StockReceipt?           @relation(fields: [tenantId, stockReceiptId], references: [tenantId, id])
   // Composite FK (tenant_id, stock_issue_id) -> stock_issue(tenant_id, id), NULLABLE.
-  stockIssue   StockIssue?             @relation(fields: [tenantId, stockIssueId], references: [tenantId, id])
+  stockIssue             StockIssue?             @relation(fields: [tenantId, stockIssueId], references: [tenantId, id])
   // Composite FK (tenant_id, cash_voucher_id) -> cash_voucher(tenant_id, id), NULLABLE.
-  cashVoucher  CashVoucher?            @relation(fields: [tenantId, cashVoucherId], references: [tenantId, id])
+  cashVoucher            CashVoucher?            @relation(fields: [tenantId, cashVoucherId], references: [tenantId, id])
   // Composite FK tự tham chiếu (tenant_id, reversal_of_id) -> supplier_debt_entry(tenant_id, id), NULLABLE.
-  reversalOf   SupplierDebtEntry?      @relation("SupplierDebtEntryReversal", fields: [tenantId, reversalOfId], references: [tenantId, id])
-  reversedBy   SupplierDebtEntry[]     @relation("SupplierDebtEntryReversal")
+  reversalOf             SupplierDebtEntry?      @relation("SupplierDebtEntryReversal", fields: [tenantId, reversalOfId], references: [tenantId, id])
+  reversedBy             SupplierDebtEntry[]     @relation("SupplierDebtEntryReversal")
   // Composite FK (tenant_id, adjustment_id) -> supplier_debt_adjustment(tenant_id, id), NULLABLE.
-  adjustment   SupplierDebtAdjustment? @relation(fields: [tenantId, adjustmentId], references: [tenantId, id])
+  adjustment             SupplierDebtAdjustment? @relation(fields: [tenantId, adjustmentId], references: [tenantId, id])
+  labPartnerDispatchItem LabPartnerDispatchItem? @relation(fields: [tenantId, labPartnerDispatchItemId], references: [tenantId, id])
 
   @@unique([tenantId, id])
   @@map("supplier_debt_entry")
@@ -4374,6 +4381,7 @@ model LabPartnerDispatchItem {
   rejectedAt          DateTime?                    @map("rejected_at") @db.Timestamptz(6)
   rejectedBy          String?                      @map("rejected_by") @db.Uuid
   rejectReason        String?                      @map("reject_reason")
+  resultFileId        String?                      @map("result_file_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -4384,13 +4392,47 @@ model LabPartnerDispatchItem {
   createdBy     String    @map("created_by") @db.Uuid
   updatedBy     String    @map("updated_by") @db.Uuid
 
-  tenant       Tenant             @relation(fields: [tenantId], references: [id])
-  dispatch     LabPartnerDispatch @relation(fields: [tenantId, dispatchId], references: [tenantId, id])
-  orderItem    ClinicalOrderItem  @relation(fields: [tenantId, clinicalOrderItemId], references: [tenantId, id])
-  specimenTube SpecimenTube?      @relation(fields: [tenantId, specimenTubeId], references: [tenantId, id])
+  tenant       Tenant                @relation(fields: [tenantId], references: [id])
+  dispatch     LabPartnerDispatch    @relation(fields: [tenantId, dispatchId], references: [tenantId, id])
+  orderItem    ClinicalOrderItem     @relation(fields: [tenantId, clinicalOrderItemId], references: [tenantId, id])
+  specimenTube SpecimenTube?         @relation(fields: [tenantId, specimenTubeId], references: [tenantId, id])
+  resultFile   LabPartnerResultFile? @relation(fields: [tenantId, resultFileId], references: [tenantId, id])
+  debtEntries  SupplierDebtEntry[]
 
   @@unique([tenantId, id])
   @@map("lab_partner_dispatch_item")
+}
+
+/// File PDF kết quả NHẬN từ đối tác (#291): một file gắn được cho nhiều dòng gửi của cùng đối tác. THEO CHI NHÁNH nơi nhận.
+model LabPartnerResultFile {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  branchId    String   @map("branch_id") @db.Uuid
+  supplierId  String   @map("supplier_id") @db.Uuid
+  storageKey  String   @map("storage_key")
+  fileName    String   @map("file_name")
+  contentType String   @map("content_type")
+  sizeBytes   Int      @map("size_bytes")
+  receivedAt  DateTime @map("received_at") @db.Timestamptz(6)
+  receivedBy  String   @map("received_by") @db.Uuid
+  note        String?
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant   Tenant                   @relation(fields: [tenantId], references: [id])
+  branch   Branch                   @relation(fields: [tenantId, branchId], references: [tenantId, id])
+  supplier Supplier                 @relation(fields: [tenantId, supplierId], references: [tenantId, id])
+  items    LabPartnerDispatchItem[]
+
+  @@unique([tenantId, id])
+  @@map("lab_partner_result_file")
 }
 
 /// Giá trả ĐỐI TÁC XÉT NGHIỆM theo từng cặp (dịch vụ kỹ thuật × đối tác) — "Gửi mẫu đối tác" (docs/DECISIONS.md #291). MỘT giá hiện hành cho mỗi cặp (không ngày hiệu lực);
@@ -5098,6 +5140,7 @@ model Branch {
   encounters                 Encounter[]
   appointments               Appointment[]
   labPartnerDispatches       LabPartnerDispatch[]
+  labPartnerResultFiles      LabPartnerResultFile[]
   workShiftAssignments       WorkShiftAssignment[]
   doctorRoomSessions         DoctorRoomSession[]
   leaveRequests              LeaveRequest[]

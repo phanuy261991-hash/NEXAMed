@@ -138,6 +138,7 @@ export class SupplierDebtService {
       cashVoucherId: string | null;
       reversalOfId: string | null;
       adjustmentId: string | null;
+      labPartnerDispatchItemId?: string | null;
       note: string | null;
     },
   ): Promise<{ entry: SupplierDebtEntry; account: SupplierDebtAccount }> {
@@ -155,6 +156,7 @@ export class SupplierDebtService {
       cashVoucherId: params.cashVoucherId,
       reversalOfId: params.reversalOfId,
       adjustmentId: params.adjustmentId,
+      labPartnerDispatchItemId: params.labPartnerDispatchItemId ?? null,
       note: params.note,
     });
     return { entry, account: { ...account, balance: newBalance, version: account.version + 1 } };
@@ -285,6 +287,73 @@ export class SupplierDebtService {
       afterJson: { supplierId: params.supplierId, stockIssueId: params.stockIssueId, entryId: entry.id, amount: params.totalAmount.toString() },
       ip: params.meta.ip,
       userAgent: params.meta.userAgent,
+    });
+  }
+
+  /**
+   * "Gửi mẫu đối tác" (docs/DECISIONS.md #291) — GHI NỢ lúc NHẬN kết quả PDF từ đối tác, TRONG CÙNG transaction với việc nhận: +`amount` (đúng giá trả đã CHỤP lúc gửi mẫu).
+   * Mẫu chưa có kết quả hoặc bị từ chối KHÔNG ghi nợ. Không sinh `cash_voucher`. `note` mang mã đợt gửi + mã ống để Sổ công nợ truy được nguồn (không ghi tên bệnh nhân).
+   * Khoá kỳ (Phần E): kỳ đã chốt thì không ghi thêm — `assertSupplierDebtWritable` ném lỗi, cả giao dịch nhận bị huỷ.
+   */
+  async recordLabPartnerReceipt(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: { supplierId: string; dispatchItemId: string; amount: bigint; occurredAt: Date; note: string; meta: RequestMeta },
+  ): Promise<void> {
+    if (params.amount <= 0n) return;
+    const account0 = await this.getOrCreateAccount(tx, tenantId, actorId, params.supplierId);
+    await assertSupplierDebtWritable(tx, tenantId, actorId, account0.lockedAsOfDate, params.occurredAt);
+    const { entry } = await this.applyEntry(tx, tenantId, actorId, account0, {
+      entryType: 'LAB_PARTNER',
+      amountChange: params.amount,
+      occurredAt: params.occurredAt,
+      stockReceiptId: null,
+      stockIssueId: null,
+      cashVoucherId: null,
+      reversalOfId: null,
+      adjustmentId: null,
+      labPartnerDispatchItemId: params.dispatchItemId,
+      note: params.note,
+    });
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'supplier_debt.lab_partner_recorded',
+      entityType: 'supplier_debt_account',
+      entityId: account0.id,
+      afterJson: { supplierId: params.supplierId, dispatchItemId: params.dispatchItemId, entryId: entry.id, amount: params.amount.toString() },
+      ip: params.meta.ip,
+      userAgent: params.meta.userAgent,
+    });
+  }
+
+  /** Đảo bút toán LAB_PARTNER (trả kết quả lại cho kỹ thuật viên sau khi đã nhận). Không có bút toán gốc thì không làm gì (mẫu 0 đ). */
+  async reverseLabPartnerReceipt(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dispatchItemId: string, reason: string, meta: RequestMeta): Promise<void> {
+    const original = await this.entryRepository.findActiveByLabPartnerItemId(tx, tenantId, dispatchItemId);
+    if (!original) return;
+    const account = await this.accountRepository.findById(tx, tenantId, original.accountId);
+    if (!account) return;
+    await assertSupplierDebtWritable(tx, tenantId, actorId, account.lockedAsOfDate, original.occurredAt);
+    const { entry } = await this.applyEntry(tx, tenantId, actorId, account, {
+      entryType: 'REVERSAL',
+      amountChange: -original.amountChange,
+      occurredAt: new Date(),
+      stockReceiptId: null,
+      stockIssueId: null,
+      cashVoucherId: null,
+      reversalOfId: original.id,
+      adjustmentId: null,
+      labPartnerDispatchItemId: dispatchItemId,
+      note: reason,
+    });
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'supplier_debt.lab_partner_reversed',
+      entityType: 'supplier_debt_account',
+      entityId: account.id,
+      afterJson: { dispatchItemId, reversalEntryId: entry.id, reversedEntryId: original.id, reason },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
     });
   }
 

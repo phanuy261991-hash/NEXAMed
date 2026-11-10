@@ -267,6 +267,19 @@ export class ParaclinicalResultRepository {
     return tx.paraclinicalResultImage.create({ data: { tenantId, ...data, createdBy: actorId, updatedBy: actorId } });
   }
 
+  /** Gỡ NHÁP kết quả (chưa ký) kèm ảnh/tệp đính kèm — dùng khi trả kết quả đối tác lại cho kỹ thuật viên; `WHERE signed_at IS NULL`, trả số dòng đã gỡ. */
+  async softDeleteDraftWithImages(tx: Prisma.TransactionClient, tenantId: string, id: string, actorId: string, reason: string): Promise<number> {
+    const now = new Date();
+    const r = await tx.paraclinicalResult.updateMany({
+      where: { tenantId, id, deletedAt: null, signedAt: null },
+      data: { deletedAt: now, deletedReason: reason, updatedBy: actorId, version: { increment: 1 } },
+    });
+    if (r.count > 0) {
+      await tx.paraclinicalResultImage.updateMany({ where: { tenantId, resultId: id, deletedAt: null }, data: { deletedAt: now, deletedReason: reason, updatedBy: actorId, version: { increment: 1 } } });
+    }
+    return r.count;
+  }
+
   async softDeleteImage(tx: Prisma.TransactionClient, tenantId: string, id: string, actorId: string, reason: string): Promise<void> {
     await tx.paraclinicalResultImage.updateMany({
       where: { tenantId, id, deletedAt: null },

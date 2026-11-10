@@ -40,12 +40,13 @@ export class LabPartnerDispatchService {
   }
 
   private async counts(tx: Prisma.TransactionClient, tenantId: string, branchId: string): Promise<LabPartnerQueueCounts> {
-    const [pending, sent, done] = await Promise.all([
+    const [pending, sent, done, awaitingApproval] = await Promise.all([
       this.repository.countPending(tx, tenantId, branchId),
       this.repository.countByStatus(tx, tenantId, branchId, 'SENT'),
       this.repository.countByStatus(tx, tenantId, branchId, 'RECEIVED'),
+      this.repository.countAwaitingApproval(tx, tenantId, branchId),
     ]);
-    return { pending, sent, done };
+    return { pending, sent, done, awaitingApproval };
   }
 
   async listPending(tenantId: string, actorId: string, branchId: string, query: ListLabPartnerQueueQuery): Promise<ListLabPartnerPendingResponse> {

@@ -349,7 +349,7 @@ describe('HTTP e2e — /api/v1/lab-partner-dispatch (Gửi mẫu đối tác)', 
     const sentB = await sent(nurseB);
     expect(sentB.status).toBe(200);
     expect(sentB.body.data.items.some((r: { itemId: string }) => r.itemId === itemId)).toBe(false);
-    expect(sentB.body.data.counts).toEqual({ pending: 0, sent: 0, done: 0 });
+    expect(sentB.body.data.counts).toEqual({ pending: 0, sent: 0, done: 0, awaitingApproval: 0 });
   });
 
   it('cô lập công ty + phân quyền: công ty B không thấy/gửi được mẫu của A; lễ tân không có quyền; không token → 401; bác sĩ xem được', async () => {
@@ -370,5 +370,236 @@ describe('HTTP e2e — /api/v1/lab-partner-dispatch (Gửi mẫu đối tác)', 
     expect((await send(receptionistToken, { supplierId: partnerA.id, itemIds: [itemId] })).status).toBe(403);
     expect((await http().get(`${QUEUE}/pending`)).status).toBe(401);
     expect((await pending(doctorToken)).status).toBe(200);
+  });
+
+  // ---- Nhận kết quả PDF, không nhận, duyệt, trả lại, ghi nợ (docs/DECISIONS.md #291 bổ sung 5) ----
+  const PDF = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n');
+  const receive = (token: string, itemIds: string[], extra: Record<string, unknown> = {}, file: Buffer | null = PDF, fileName = 'kq-doi-tac.pdf') => {
+    const req = http().post(`${QUEUE}/results`).set(authed(token)).field('data', JSON.stringify({ itemIds, ...extra }));
+    return file ? req.attach('file', file, fileName) : req;
+  };
+  const debtBalance = async (supplierId: string): Promise<number> => {
+    const res = await http().get(`/api/v1/supplier-debt/${supplierId}/summary`).set(authed(adminToken));
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    return res.body.data.balance as number;
+  };
+  const done = (token: string) => http().get(`${QUEUE}/done`).set(authed(token));
+  const resultPath = (itemId: string) => `${lab}/items/${itemId}/result`;
+
+  it('nhận kết quả PDF: một tệp gắn nhiều dịch vụ, ghi nợ ĐÚNG giá đã chụp lúc nhận, kết quả nháp chờ duyệt, rời hàng đợi gửi mẫu', async () => {
+    const placed = await collectedOrder([svcBoth, svcOnlyA]);
+    const both = itemOf(placed, svcBoth).id;
+    const onlyA = itemOf(placed, svcOnlyA).id;
+    const before = await debtBalance(partnerA.id);
+    expect((await send(adminToken, { supplierId: partnerA.id, itemIds: [both, onlyA] })).status).toBe(200);
+    expect(await debtBalance(partnerA.id)).toBe(before); // gửi mẫu CHƯA ghi nợ
+
+    // Đổi giá sau khi gửi không làm đổi số nợ (đã chụp 150.000 + 90.000).
+    const detail = await http().get(`/api/v1/technical-services/${svcBoth}`).set(authed(adminToken));
+    await http()
+      .patch(`/api/v1/technical-services/${svcBoth}`)
+      .set(authed(adminToken))
+      .send({ version: detail.body.data.version, partnerPrices: [{ supplierId: partnerA.id, amount: 999_000, isDefault: true }, { supplierId: partnerB.id, amount: 135_000 }] });
+
+    const res = await receive(nurseToken, [both, onlyA], { note: 'Giao tận nơi' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.data).toMatchObject({ receivedCount: 2, supplierName: partnerA.name, fileName: 'kq-doi-tac.pdf' });
+
+    expect(await debtBalance(partnerA.id)).toBe(before + 240_000);
+    const stored = await privileged.labPartnerDispatchItem.findMany({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: { in: [both, onlyA] } }, include: { resultFile: true } });
+    const entries = await privileged.supplierDebtEntry.findMany({ where: { tenantId: fixture.tenantA.id, entryType: 'LAB_PARTNER', labPartnerDispatchItemId: { in: stored.map((r) => r.id) } } });
+    expect(entries.map((e) => Number(e.amountChange)).sort((a, b) => a - b)).toEqual([90_000, 150_000]);
+    expect(entries.every((e) => (e.note ?? '').startsWith('GM'))).toBe(true);
+
+    expect(stored.every((r) => r.status === 'RECEIVED' && r.receivedAt !== null && r.resultFile?.contentType === 'application/pdf')).toBe(true);
+    expect(new Set(stored.map((r) => r.resultFileId)).size).toBe(1); // MỘT tệp cho cả hai dịch vụ
+    const items = await privileged.clinicalOrderItem.findMany({ where: { tenantId: fixture.tenantA.id, id: { in: [both, onlyA] } } });
+    expect(items.every((i) => i.status === 'RESULTED')).toBe(true);
+    const results = await privileged.paraclinicalResult.findMany({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: { in: [both, onlyA] }, deletedAt: null }, include: { images: true } });
+    expect(results).toHaveLength(2);
+    expect(results.every((r) => r.signedAt === null && r.images.length === 1 && r.images[0]!.contentType === 'application/pdf' && r.images[0]!.storageKey === stored[0]!.resultFile!.storageKey)).toBe(true);
+
+    // Rời "Đã gửi", vào "Đã có kết quả" (chờ duyệt) kèm đường dẫn PDF mở được; không còn ở hàng đợi xét nghiệm thường.
+    const sentRes = await sent(adminToken);
+    expect((sentRes.body.data.items as { itemId: string }[]).some((r) => [both, onlyA].includes(r.itemId))).toBe(false);
+    const doneRes = await done(adminToken);
+    expect(doneRes.status, JSON.stringify(doneRes.body)).toBe(200);
+    const row = (doneRes.body.data.items as { itemId: string; approval: string; unitCost: number | null; fileUrl: string; supplierId: string; late: boolean }[]).find((r) => r.itemId === both)!;
+    expect(row).toMatchObject({ approval: 'PENDING', unitCost: 150_000, supplierId: partnerA.id, late: false });
+    const file = await http().get(row.fileUrl);
+    expect(file.status).toBe(200);
+    expect(file.headers['content-type']).toContain('application/pdf');
+    const queue = await http().get(`${lab}/queue`).set(authed(nurseToken));
+    const queueIds = (queue.body.data.items as { orderNo: string; itemIds: string[] }[]).filter((r) => r.orderNo === placed.orderNo).flatMap((r) => r.itemIds);
+    expect(queueIds).not.toContain(both);
+
+    // Kỹ thuật viên/điều dưỡng không thấy giá vốn ở danh sách "Đã có kết quả".
+    const asNurse = await done(nurseToken);
+    expect((asNurse.body.data.items as { itemId: string; unitCost: number | null }[]).find((r) => r.itemId === both)!.unitCost).toBeNull();
+
+    // Dịch vụ gửi đối tác không nhập/duyệt ở màn kết quả thường.
+    const normalSave = await http().put(resultPath(both)).set(authed(nurseToken)).send({ sections: [{ itemId: both, values: [], descriptionText: 'Nhập tay' }], submit: false });
+    expect(normalSave.status, JSON.stringify(normalSave.body)).toBe(409);
+  });
+
+  it('nhận kết quả: kiểm tra đầu vào — không tệp/không phải PDF/quá lớn/khác đối tác/giờ sai/nhận hai lần', async () => {
+    const placed = await collectedOrder([svcBoth, svcOnlyA]);
+    const both = itemOf(placed, svcBoth).id;
+    const onlyA = itemOf(placed, svcOnlyA).id;
+    expect((await send(adminToken, { supplierId: partnerB.id, itemIds: [both] })).status).toBe(200);
+    expect((await send(adminToken, { supplierId: partnerA.id, itemIds: [onlyA] })).status).toBe(200);
+
+    expect((await receive(nurseToken, [both], {}, null)).status).toBe(400);
+    expect((await receive(nurseToken, [both], {}, Buffer.from('không phải pdf'), 'gia-mao.pdf')).status).toBe(400);
+    expect((await receive(nurseToken, [both], {}, Buffer.alloc(10 * 1024 * 1024 + 10, 0x20))).status).toBe(413);
+    // Hai đối tác khác nhau trong một tệp → 422, KHÔNG nhận gì.
+    const mixed = await receive(nurseToken, [both, onlyA]);
+    expect(mixed.status, JSON.stringify(mixed.body)).toBe(422);
+    expect(await privileged.labPartnerDispatchItem.count({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: { in: [both, onlyA] }, status: 'RECEIVED' } })).toBe(0);
+    // Giờ nhận tương lai/trước giờ gửi → 422.
+    expect((await receive(nurseToken, [both], { receivedAt: new Date(Date.now() + 3_600_000).toISOString() })).status).toBe(422);
+    expect((await receive(nurseToken, [both], { receivedAt: new Date(Date.now() - 86_400_000).toISOString() })).status).toBe(422);
+    // Mẫu lạ → 409 (không còn "Đã gửi"); dữ liệu JSON hỏng → 400.
+    expect((await receive(nurseToken, [randomUUID()])).status).toBe(409);
+    expect((await http().post(`${QUEUE}/results`).set(authed(nurseToken)).field('data', '{hỏng').attach('file', PDF, 'a.pdf')).status).toBe(400);
+
+    const ok = await receive(nurseToken, [both]);
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+    expect((await receive(nurseToken, [both])).status).toBe(409); // nhận lần hai
+  });
+
+  it('đối tác không nhận mẫu: lý do bắt buộc, mẫu về "Chờ gửi" để gửi đối tác khác, giữ lịch sử, KHÔNG ghi nợ', async () => {
+    const placed = await collectedOrder([svcBoth]);
+    const both = itemOf(placed, svcBoth).id;
+    const before = await debtBalance(partnerA.id);
+    expect((await send(adminToken, { supplierId: partnerA.id, itemIds: [both] })).status).toBe(200);
+
+    const reject = (token: string, body: Record<string, unknown>) => http().post(`${QUEUE}/items/${both}/reject`).set(authed(token)).send(body);
+    expect((await reject(nurseToken, {})).status).toBe(400);
+    expect((await reject(receptionistToken, { reason: 'Mẫu tán huyết' })).status).toBe(403);
+    expect((await http().post(`${QUEUE}/items/${randomUUID()}/reject`).set(authed(nurseToken)).send({ reason: 'Mẫu tán huyết' })).status).toBe(404);
+    expect((await reject(nurseToken, { reason: 'Mẫu tán huyết, đối tác yêu cầu lấy lại' })).status).toBe(200);
+    expect((await reject(nurseToken, { reason: 'Lần hai' })).status).toBe(404); // không còn "Đã gửi"
+
+    expect(await debtBalance(partnerA.id)).toBe(before);
+    const stored = await privileged.labPartnerDispatchItem.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: both } });
+    expect(stored).toMatchObject({ status: 'REJECTED', rejectReason: 'Mẫu tán huyết, đối tác yêu cầu lấy lại' });
+    const pend = await pending(adminToken);
+    expect((pend.body.data.items as { itemId: string }[]).some((r) => r.itemId === both)).toBe(true);
+    expect((await sent(adminToken)).body.data.items.some((r: { itemId: string }) => r.itemId === both)).toBe(false);
+    // Gửi lại cho đối tác B (lịch sử lần bị từ chối vẫn giữ).
+    expect((await send(adminToken, { supplierId: partnerB.id, itemIds: [both] })).status).toBe(200);
+    expect(await privileged.labPartnerDispatchItem.count({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: both } })).toBe(2);
+  });
+
+  it('bác sĩ duyệt: kết quả thành bản ký, dịch vụ COMPLETED; điều dưỡng không duyệt được; duyệt hai lần / trả lại sau duyệt → 409', async () => {
+    const placed = await collectedOrder([svcOnlyA]);
+    const onlyA = itemOf(placed, svcOnlyA).id;
+    expect((await send(adminToken, { supplierId: partnerA.id, itemIds: [onlyA] })).status).toBe(200);
+    expect((await receive(nurseToken, [onlyA])).status).toBe(200);
+
+    const approve = (token: string, body: Record<string, unknown> = {}) => http().post(`${QUEUE}/items/${onlyA}/approve`).set(authed(token)).send(body);
+    expect((await approve(nurseToken)).status).toBe(403);
+    expect((await approve(receptionistToken)).status).toBe(403);
+    const ok = await approve(doctorToken, { conclusionText: 'Không có bất thường' });
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+
+    const result = await privileged.paraclinicalResult.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: onlyA, deletedAt: null } });
+    expect(result.signedAt).not.toBeNull();
+    expect(result.signedBy).toBe(doctorUserId);
+    expect(result.conclusionText).toBe('Không có bất thường');
+    expect((await privileged.clinicalOrderItem.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, id: onlyA } })).status).toBe('COMPLETED');
+    const row = (await done(adminToken)).body.data.items.find((r: { itemId: string }) => r.itemId === onlyA);
+    expect(row).toMatchObject({ approval: 'APPROVED', approvedByName: 'User doctor', conclusionText: 'Không có bất thường' });
+
+    expect((await approve(doctorToken)).status).toBe(409);
+    expect((await http().post(`${QUEUE}/items/${onlyA}/return`).set(authed(nurseToken)).send({ reason: 'Sai tệp' })).status).toBe(409);
+  });
+
+  it('trả lại kỹ thuật viên (chưa duyệt): bỏ kết quả nháp, ĐẢO bút toán nợ, mẫu về "Đã gửi"; nhận lại được', async () => {
+    const placed = await collectedOrder([svcOnlyA]);
+    const onlyA = itemOf(placed, svcOnlyA).id;
+    const before = await debtBalance(partnerA.id);
+    expect((await send(adminToken, { supplierId: partnerA.id, itemIds: [onlyA] })).status).toBe(200);
+    expect((await receive(nurseToken, [onlyA])).status).toBe(200);
+    expect(await debtBalance(partnerA.id)).toBe(before + 90_000);
+
+    const giveBack = (body: Record<string, unknown>) => http().post(`${QUEUE}/items/${onlyA}/return`).set(authed(nurseToken)).send(body);
+    expect((await giveBack({})).status).toBe(400);
+    expect((await giveBack({ reason: 'Tệp thiếu trang cuối' })).status).toBe(200);
+
+    expect(await debtBalance(partnerA.id)).toBe(before); // bút toán đảo triệt tiêu
+    const reversal = await privileged.supplierDebtEntry.findFirst({ where: { tenantId: fixture.tenantA.id, entryType: 'REVERSAL', labPartnerDispatchItemId: { not: null }, note: 'Tệp thiếu trang cuối' } });
+    expect(reversal?.reversalOfId).not.toBeNull();
+    expect((await privileged.clinicalOrderItem.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, id: onlyA } })).status).toBe('IN_PROGRESS');
+    expect(await privileged.paraclinicalResult.count({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: onlyA, deletedAt: null } })).toBe(0);
+    const sentRows = (await sent(adminToken)).body.data.items as { itemId: string }[];
+    expect(sentRows.some((r) => r.itemId === onlyA)).toBe(true);
+    expect(((await done(adminToken)).body.data.items as { itemId: string }[]).some((r) => r.itemId === onlyA)).toBe(false);
+
+    // Nhận lại tệp đúng: ghi nợ lần nữa.
+    expect((await receive(nurseToken, [onlyA])).status).toBe(200);
+    expect(await debtBalance(partnerA.id)).toBe(before + 90_000);
+  });
+
+  it('nhận kết quả: công tắc tắt → 409; công ty khác không nhận/duyệt được; lễ tân không có quyền nhận', async () => {
+    const placed = await collectedOrder([svcOnlyA]);
+    const onlyA = itemOf(placed, svcOnlyA).id;
+    expect((await send(adminToken, { supplierId: partnerA.id, itemIds: [onlyA] })).status).toBe(200);
+    expect((await receive(receptionistToken, [onlyA])).status).toBe(403);
+    expect((await receive(tenantBAdminToken, [onlyA])).status).toBe(409);
+    expect((await http().post(`${QUEUE}/items/${onlyA}/approve`).set(authed(tenantBAdminToken)).send({})).status).toBe(404);
+    expect((await http().get(`${QUEUE}/done`)).status).toBe(401);
+    expect((await done(receptionistToken)).status).toBe(403);
+
+    await setToggle(adminToken, false);
+    expect((await receive(adminToken, [onlyA])).status).toBe(409);
+    expect((await done(adminToken)).status).toBe(409);
+    await setToggle(adminToken, true);
+    expect((await receive(adminToken, [onlyA])).status).toBe(200);
+  });
+
+  it('chờ duyệt (màn khám + Tổng quan bác sĩ): lọc theo lượt khám và "của tôi"; rỗng khi đã duyệt hoặc công tắc tắt; lễ tân 403', async () => {
+    const placed = await collectedOrder([svcOnlyA]);
+    const onlyA = itemOf(placed, svcOnlyA).id;
+    const encounterId = (await privileged.clinicalOrder.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, id: placed.orderId } })).encounterId;
+    const awaiting = (token: string, query = '') => http().get(`${QUEUE}/awaiting${query}`).set(authed(token));
+    const idsOf = (res: { body: { data: { items: { itemId: string }[] } } }) => res.body.data.items.map((r) => r.itemId);
+
+    expect(idsOf(await awaiting(doctorToken, `?encounterId=${encounterId}`))).toEqual([]); // chưa nhận kết quả
+    expect((await send(adminToken, { supplierId: partnerA.id, itemIds: [onlyA] })).status).toBe(200);
+    expect(idsOf(await awaiting(doctorToken, `?encounterId=${encounterId}`))).toEqual([]); // mới gửi, chưa nhận
+    expect((await receive(nurseToken, [onlyA])).status).toBe(200);
+
+    const byEncounter = await awaiting(doctorToken, `?encounterId=${encounterId}`);
+    expect(byEncounter.status, JSON.stringify(byEncounter.body)).toBe(200);
+    expect(idsOf(byEncounter)).toEqual([onlyA]);
+    expect(byEncounter.body.data.items[0]).toMatchObject({ approval: 'PENDING', supplierId: partnerA.id, unitCost: null });
+    expect((await http().get(byEncounter.body.data.items[0].fileUrl)).status).toBe(200);
+    expect(idsOf(await awaiting(doctorToken, `?encounterId=${randomUUID()}`))).toEqual([]); // lượt khám khác
+    // "Của tôi": lượt khám do bác sĩ này khám thấy, người khác (điều dưỡng, không phải bác sĩ của lượt) không thấy.
+    expect(idsOf(await awaiting(doctorToken, '?mine=true'))).toContain(onlyA);
+    expect(idsOf(await awaiting(nurseToken, '?mine=true'))).not.toContain(onlyA);
+    expect(idsOf(await awaiting(adminToken))).toContain(onlyA); // không lọc: mọi kết quả chờ duyệt của chi nhánh
+    expect((await awaiting(adminToken)).body.data.costVisible).toBe(true);
+    expect((await awaiting(adminToken, '?mine=abc')).status).toBe(400);
+
+    // Công ty khác không thấy; lễ tân không có quyền xem.
+    expect(idsOf(await awaiting(tenantBAdminToken))).not.toContain(onlyA);
+    expect((await awaiting(receptionistToken)).status).toBe(403);
+    expect((await http().get(`${QUEUE}/awaiting`)).status).toBe(401);
+
+    // Công tắc tắt → rỗng (không lỗi), bật lại thấy lại.
+    await setToggle(adminToken, false);
+    const off = await awaiting(doctorToken, `?encounterId=${encounterId}`);
+    expect(off.status).toBe(200);
+    expect(idsOf(off)).toEqual([]);
+    await setToggle(adminToken, true);
+    expect(idsOf(await awaiting(doctorToken, `?encounterId=${encounterId}`))).toEqual([onlyA]);
+
+    // Duyệt xong thì rời danh sách chờ duyệt.
+    expect((await http().post(`${QUEUE}/items/${onlyA}/approve`).set(authed(doctorToken)).send({})).status).toBe(200);
+    expect(idsOf(await awaiting(doctorToken, `?encounterId=${encounterId}`))).toEqual([]);
+    expect(idsOf(await awaiting(doctorToken, '?mine=true'))).not.toContain(onlyA);
   });
 });

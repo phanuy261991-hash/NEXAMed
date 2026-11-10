@@ -456,6 +456,14 @@ import {
   listTechnicalServicesQuerySchema,
   labPartnerSummaryResponseSchema,
   listLabPartnerPendingResponseSchema,
+  listLabPartnerDoneResponseSchema,
+  listLabPartnerAwaitingQuerySchema,
+  listLabPartnerAwaitingResponseSchema,
+  labPartnerQueueCountsSchema,
+  receiveLabPartnerResultResponseSchema,
+  rejectLabPartnerItemRequestSchema,
+  approveLabPartnerResultRequestSchema,
+  returnLabPartnerResultRequestSchema,
   listLabPartnerQueueQuerySchema,
   listLabPartnerSentResponseSchema,
   sendLabPartnerSamplesRequestSchema,
@@ -6470,6 +6478,123 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền lab_partner.read'),
     409: errorResponse('Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-partner-dispatch/counts',
+  tags: ['lab-partner'],
+  summary: 'Gửi mẫu đối tác — chỉ các số đếm (chờ gửi, đã gửi, đã có kết quả, chờ duyệt) cho chấm số ở menu',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(z.object({ counts: labPartnerQueueCountsSchema }))),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_partner.read'),
+    409: errorResponse('Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-partner-dispatch/awaiting',
+  tags: ['lab-partner'],
+  summary: 'Gửi mẫu đối tác — kết quả đối tác CHỜ bác sĩ duyệt (lọc theo lượt khám hoặc chỉ lượt của người gọi); công tắc tắt thì trả rỗng',
+  security: [{ bearerAuth: [] }],
+  request: { query: listLabPartnerAwaitingQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listLabPartnerAwaitingResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_partner.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/lab-partner-dispatch/done',
+  tags: ['lab-partner'],
+  summary: 'Gửi mẫu đối tác — mẫu "Đã có kết quả" (đã nhận PDF; chờ duyệt hoặc đã duyệt), kèm đường dẫn PDF ký có hạn',
+  security: [{ bearerAuth: [] }],
+  request: { query: listLabPartnerQueueQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listLabPartnerDoneResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_partner.read'),
+    409: errorResponse('Công tắc "Dùng đối tác xét nghiệm" đang tắt (LAB_PARTNER_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/lab-partner-dispatch/results',
+  tags: ['lab-partner'],
+  summary: 'Gửi mẫu đối tác — NHẬN kết quả: một tệp PDF (trường file) gắn cho nhiều dịch vụ của cùng đối tác (trường data = JSON); ghi nợ đối tác đúng giá đã chụp',
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'multipart/form-data': {
+          schema: z.object({ file: z.string().openapi({ format: 'binary', description: 'Tệp PDF kết quả (tối đa 10 MB)' }), data: z.string().openapi({ description: 'JSON của ReceiveLabPartnerResultRequest: { itemIds, receivedAt?, note? }' }) }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse('Nhận thành công', envelope(receiveLabPartnerResultResponseSchema)),
+    400: errorResponse('Không có tệp, không phải PDF, quá 10 MB hoặc dữ liệu kèm theo hỏng'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_partner.receive'),
+    409: errorResponse('Mẫu không còn ở trạng thái "Đã gửi", hoặc công tắc đang tắt'),
+    422: errorResponse('Khác đối tác, giờ nhận sai'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/lab-partner-dispatch/items/{itemId}/reject',
+  tags: ['lab-partner'],
+  summary: 'Gửi mẫu đối tác — đối tác KHÔNG nhận mẫu (lý do bắt buộc): mẫu về "Chờ gửi", lần gửi này không tính tiền',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ itemId: z.string().uuid() }), body: { content: { 'application/json': { schema: rejectLabPartnerItemRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(z.object({ ok: z.boolean() }))),
+    400: errorResponse('Thiếu lý do'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_partner.receive'),
+    404: errorResponse('Mẫu không ở trạng thái "Đã gửi" hoặc thuộc chi nhánh khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/lab-partner-dispatch/items/{itemId}/approve',
+  tags: ['lab-partner'],
+  summary: 'Gửi mẫu đối tác — bác sĩ DUYỆT kết quả đối tác (ký); quyền lab_result.approve',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ itemId: z.string().uuid() }), body: { content: { 'application/json': { schema: approveLabPartnerResultRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(z.object({ ok: z.boolean() }))),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_result.approve'),
+    404: errorResponse('Không có kết quả đã nhận cho dịch vụ này'),
+    409: errorResponse('Kết quả đã được duyệt hoặc vừa được người khác xử lý'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/lab-partner-dispatch/items/{itemId}/return',
+  tags: ['lab-partner'],
+  summary: 'Gửi mẫu đối tác — TRẢ LẠI kỹ thuật viên (chưa duyệt): bỏ kết quả nháp, đảo bút toán nợ, mẫu về "Đã gửi chờ kết quả"',
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ itemId: z.string().uuid() }), body: { content: { 'application/json': { schema: returnLabPartnerResultRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(z.object({ ok: z.boolean() }))),
+    400: errorResponse('Thiếu lý do'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền lab_partner.receive'),
+    404: errorResponse('Không có kết quả đã nhận cho dịch vụ này'),
+    409: errorResponse('Kết quả đã được duyệt'),
   },
 });
 

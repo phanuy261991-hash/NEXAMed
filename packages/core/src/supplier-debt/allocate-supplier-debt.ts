@@ -30,7 +30,8 @@ export type SupplierDebtEntryType =
   | 'REFUND_RECEIVED'
   | 'ADJUSTMENT_INCREASE'
   | 'ADJUSTMENT_DECREASE'
-  | 'REVERSAL';
+  | 'REVERSAL'
+  | 'LAB_PARTNER';
 
 export interface SupplierDebtEntryInput {
   id: string;

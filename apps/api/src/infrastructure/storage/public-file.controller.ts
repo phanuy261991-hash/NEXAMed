@@ -8,6 +8,8 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
+  // Kết quả xét nghiệm đối tác nhận về dạng PDF (docs/DECISIONS.md #291).
+  pdf: 'application/pdf',
 };
 
 /**

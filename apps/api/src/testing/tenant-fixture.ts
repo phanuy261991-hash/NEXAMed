@@ -162,6 +162,7 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // "Gửi mẫu đối tác" (#291): dòng gửi trỏ dòng chỉ định/ống mẫu, đợt gửi trỏ nhà cung cấp + chi nhánh — xoá trước.
       await prisma.labPartnerDispatchItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.labPartnerDispatch.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.labPartnerResultFile.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.paraclinicalResult.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.clinicalOrderItem.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // Ống mẫu xét nghiệm (#220): trỏ vào phiếu chỉ định, và tự tham chiếu `replaces_tube_id` (RESTRICT tức thì) → gỡ liên kết thay thế trước khi xoá.

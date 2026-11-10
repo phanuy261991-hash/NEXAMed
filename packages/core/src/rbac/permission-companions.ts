@@ -37,6 +37,9 @@ export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> 
   // Nhà cung cấp & đối tác xét nghiệm (#291): sửa/thêm cần xem danh sách.
   'supplier.create': ['supplier.read'],
   'supplier.update': ['supplier.read'],
+  // Hàng đợi "Gửi mẫu đối tác" (#291): nút Gửi/Nhận chỉ có ích khi xem được danh sách; trang chỉ gọi API `lab_partner` và cờ tự-phục vụ nên không cần quyền module khác.
+  'lab_partner.send': ['lab_partner.read'],
+  'lab_partner.receive': ['lab_partner.read'],
   'stock_receipt.report': ['drug.read'],
   'stock_issue.read': ['stock_receipt.read', 'drug.read', 'reference_catalog.read'],
   'stock_issue.create': ['stock_receipt.read', 'drug.read', 'reference_catalog.read'],

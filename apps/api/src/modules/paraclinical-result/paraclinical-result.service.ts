@@ -133,7 +133,7 @@ export class ParaclinicalResultService {
         (i) =>
           scope.kinds.includes(i.serviceKind) &&
           // Lọc TỪNG DÒNG trước khi gộp nhóm (các dịch vụ cùng phiếu + cùng trạng thái gộp một nhóm; bỏ cả nhóm sẽ làm mất dịch vụ tại phòng khám đi chung).
-          !(partnerEnabled && i.row.technicalService?.sentToPartner && i.status === 'IN_PROGRESS') &&
+          !(partnerEnabled && i.row.technicalService?.sentToPartner && (i.status === 'IN_PROGRESS' || i.status === 'RESULTED')) &&
           (scopeDepartmentId === undefined || (scopeDepartmentId !== null && i.row.technicalService?.departmentId === scopeDepartmentId)),
       );
       const groups = groupQueueItems(items);
@@ -299,8 +299,10 @@ export class ParaclinicalResultService {
 
   /** Lưu nháp, hoặc gửi duyệt khi `dto.submit`. Người có quyền `enter` (không cần quyền duyệt). */
   async save(tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string, dto: SaveParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+    const partnerEnabled = await this.clinicConfigReader.getLabPartnerEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
+      this.assertNotPartnerService(partnerEnabled, group);
       await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
       this.assertEditable(group);
 
@@ -325,8 +327,10 @@ export class ParaclinicalResultService {
 
   /** "Duyệt & trả kết quả" (ký): lưu nội dung gửi kèm, kiểm đủ rồi ký mọi kết quả của nhóm trong CÙNG transaction. Người có quyền `approve`. */
   async approve(tenantId: string, actorId: string, scope: ResultAccessScope, itemId: string, dto: SaveParaclinicalResultRequest, meta: RequestMeta): Promise<ParaclinicalResultForm> {
+    const partnerEnabled = await this.clinicConfigReader.getLabPartnerEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const group = await this.resolveGroup(tx, tenantId, itemId, actorId, scope);
+      this.assertNotPartnerService(partnerEnabled, group);
       await this.lockOrder(tx, tenantId, group[0]!.clinicalOrderId);
       this.assertEditable(group);
 
@@ -514,6 +518,13 @@ export class ParaclinicalResultService {
    * Phòng thực hiện actor được thấy: `undefined` = không giới hạn (scope global); `null` = scope `department` nhưng chưa gán Khoa/Phòng (không thấy gì);
    * chuỗi = chỉ thấy dịch vụ do ĐÚNG Khoa/Phòng đó thực hiện (`technical_service.department_id`) — phòng xét nghiệm và phòng chẩn đoán hình ảnh không thấy việc của nhau.
    */
+  /** "Gửi mẫu đối tác" (#291): công tắc bật thì dịch vụ "Gửi đối tác" KHÔNG nhập/duyệt ở màn kết quả thường — kết quả là file PDF của đối tác, nhận và duyệt ở "Gửi mẫu đối tác". */
+  private assertNotPartnerService(partnerEnabled: boolean, group: EnrichedItem[]): void {
+    if (partnerEnabled && group.some((g) => g.row.technicalService?.sentToPartner)) {
+      throw new ParaclinicalItemInvalidStateError('Dịch vụ này gửi đối tác — nhận và duyệt kết quả ở "Gửi mẫu đối tác".');
+    }
+  }
+
   private async resolveScopeDepartment(tx: Prisma.TransactionClient, tenantId: string, actorId: string, dataScope: DataScope): Promise<string | null | undefined> {
     if (dataScope !== 'department') return undefined;
     return this.userRepository.findDepartmentId(tx, tenantId, actorId);

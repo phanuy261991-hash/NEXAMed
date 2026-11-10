@@ -22,6 +22,7 @@ export const supplierDebtEntryTypeSchema = z.enum([
   'ADJUSTMENT_INCREASE',
   'ADJUSTMENT_DECREASE',
   'REVERSAL',
+  'LAB_PARTNER',
 ]);
 export type SupplierDebtEntryType = z.infer<typeof supplierDebtEntryTypeSchema>;
 
@@ -35,6 +36,7 @@ export const SUPPLIER_DEBT_ENTRY_TYPE_LABELS: Record<SupplierDebtEntryType, stri
   ADJUSTMENT_INCREASE: 'Điều chỉnh tăng',
   ADJUSTMENT_DECREASE: 'Điều chỉnh giảm',
   REVERSAL: 'Bút toán đảo',
+  LAB_PARTNER: 'Xét nghiệm đối tác',
 };
 
 export const supplierDebtItemStatusSchema = z.enum(['UNPAID', 'PARTIALLY_PAID', 'FULLY_PAID']);

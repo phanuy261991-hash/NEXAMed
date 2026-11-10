@@ -22,6 +22,9 @@ const SENT_INCLUDE = {
 
 export type SentItemRow = Prisma.LabPartnerDispatchItemGetPayload<{ include: typeof SENT_INCLUDE }>;
 
+const DONE_INCLUDE = { ...SENT_INCLUDE, resultFile: { select: { id: true, storageKey: true, fileName: true, receivedAt: true, receivedBy: true, sizeBytes: true } } } as const;
+export type DoneItemRow = Prisma.LabPartnerDispatchItemGetPayload<{ include: typeof DONE_INCLUDE }>;
+
 export interface PartnerPriceOptionRow {
   technicalServiceId: string;
   supplierId: string;
@@ -85,6 +88,11 @@ export class LabPartnerDispatchRepository {
     return tx.labPartnerDispatchItem.count({ where: { tenantId, deletedAt: null, status, dispatch: { branchId, deletedAt: null } } });
   }
 
+  /** Mẫu đã nhận kết quả PDF mà bác sĩ chưa duyệt (dịch vụ còn ở trạng thái chờ duyệt). */
+  countAwaitingApproval(tx: Prisma.TransactionClient, tenantId: string, branchId: string): Promise<number> {
+    return tx.labPartnerDispatchItem.count({ where: { tenantId, deletedAt: null, status: 'RECEIVED', orderItem: { status: 'RESULTED', deletedAt: null }, dispatch: { branchId, deletedAt: null } } });
+  }
+
   listSentItems(tx: Prisma.TransactionClient, tenantId: string, branchId: string, filter: { supplierId?: string; q?: string }): Promise<SentItemRow[]> {
     const q = filter.q;
     const search: Prisma.LabPartnerDispatchItemWhereInput[] = q
@@ -109,6 +117,101 @@ export class LabPartnerDispatchRepository {
       orderBy: [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
       take: 500,
     });
+  }
+
+  /** "Đã có kết quả": dòng gửi đã nhận kết quả PDF (đã duyệt hoặc chưa), mới nhận trước. */
+  listDoneItems(tx: Prisma.TransactionClient, tenantId: string, branchId: string, filter: { supplierId?: string; q?: string }): Promise<DoneItemRow[]> {
+    const q = filter.q;
+    const search: Prisma.LabPartnerDispatchItemWhereInput[] = q
+      ? [
+          { dispatch: { dispatchNo: { contains: q, mode: 'insensitive' } } },
+          { orderItem: { name: { contains: q, mode: 'insensitive' } } },
+          { orderItem: { order: { orderNo: { contains: q, mode: 'insensitive' } } } },
+          { orderItem: { order: { encounter: { patient: { fullName: { contains: q, mode: 'insensitive' } } } } } },
+          { orderItem: { order: { encounter: { patient: { patientCode: { contains: q, mode: 'insensitive' } } } } } },
+          { specimenTube: { sid: { contains: q, mode: 'insensitive' } } },
+        ]
+      : [];
+    return tx.labPartnerDispatchItem.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        status: 'RECEIVED',
+        dispatch: { branchId, deletedAt: null, ...(filter.supplierId ? { supplierId: filter.supplierId } : {}) },
+        ...(search.length > 0 ? { OR: search } : {}),
+      },
+      include: DONE_INCLUDE,
+      orderBy: [{ receivedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 500,
+    });
+  }
+
+  /**
+   * Kết quả đối tác chờ bác sĩ duyệt: dòng gửi đã nhận PDF mà dịch vụ còn `RESULTED`. Lọc theo lượt khám (màn khám) và/hoặc bác sĩ của lượt khám (Tổng quan bác sĩ: lượt của chính họ);
+   * nhận trước xếp trước (việc tồn lâu nhất lên đầu).
+   */
+  listAwaitingItems(tx: Prisma.TransactionClient, tenantId: string, branchId: string, filter: { encounterId?: string; doctorId?: string }): Promise<DoneItemRow[]> {
+    return tx.labPartnerDispatchItem.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        status: 'RECEIVED',
+        dispatch: { branchId, deletedAt: null },
+        orderItem: {
+          status: 'RESULTED',
+          deletedAt: null,
+          order: { deletedAt: null, encounter: { ...(filter.encounterId ? { id: filter.encounterId } : {}), ...(filter.doctorId ? { doctorId: filter.doctorId } : {}) } },
+        },
+      },
+      include: DONE_INCLUDE,
+      orderBy: [{ receivedAt: 'asc' }, { createdAt: 'asc' }],
+      take: 200,
+    });
+  }
+
+  /** Dòng gửi đang hiệu lực của các dòng chỉ định (theo `clinicalOrderItemId`) ở trạng thái đã cho, trong chi nhánh đang làm việc — kèm đợt gửi, tệp kết quả và dòng chỉ định. */
+  findActiveDispatchItems(tx: Prisma.TransactionClient, tenantId: string, branchId: string, orderItemIds: string[], status: 'SENT' | 'RECEIVED'): Promise<DoneItemRow[]> {
+    if (orderItemIds.length === 0) return Promise.resolve([]);
+    return tx.labPartnerDispatchItem.findMany({
+      where: { tenantId, clinicalOrderItemId: { in: orderItemIds }, status, deletedAt: null, dispatch: { branchId, deletedAt: null } },
+      include: DONE_INCLUDE,
+    });
+  }
+
+  createResultFile(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    data: { branchId: string; supplierId: string; storageKey: string; fileName: string; contentType: string; sizeBytes: number; receivedAt: Date; note: string | null },
+  ) {
+    return tx.labPartnerResultFile.create({ data: { tenantId, ...data, receivedBy: actorId, createdBy: actorId, updatedBy: actorId } });
+  }
+
+  /** SENT → RECEIVED (chống ghi chồng: chỉ khi còn SENT). Trả số dòng đã chuyển. */
+  async markReceived(tx: Prisma.TransactionClient, tenantId: string, actorId: string, id: string, data: { receivedAt: Date; resultFileId: string }): Promise<number> {
+    const r = await tx.labPartnerDispatchItem.updateMany({
+      where: { tenantId, id, status: 'SENT', deletedAt: null },
+      data: { status: 'RECEIVED', receivedAt: data.receivedAt, receivedBy: actorId, resultFileId: data.resultFileId, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return r.count;
+  }
+
+  /** SENT → REJECTED (đối tác không nhận): giữ lịch sử, mẫu tự về "Chờ gửi". */
+  async markRejected(tx: Prisma.TransactionClient, tenantId: string, actorId: string, id: string, reason: string): Promise<number> {
+    const r = await tx.labPartnerDispatchItem.updateMany({
+      where: { tenantId, id, status: 'SENT', deletedAt: null },
+      data: { status: 'REJECTED', rejectedAt: new Date(), rejectedBy: actorId, rejectReason: reason, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return r.count;
+  }
+
+  /** RECEIVED → SENT (trả lại kỹ thuật viên): bỏ thông tin nhận và tệp kết quả. */
+  async markReturnedToSent(tx: Prisma.TransactionClient, tenantId: string, actorId: string, id: string): Promise<number> {
+    const r = await tx.labPartnerDispatchItem.updateMany({
+      where: { tenantId, id, status: 'RECEIVED', deletedAt: null },
+      data: { status: 'SENT', receivedAt: null, receivedBy: null, resultFileId: null, updatedBy: actorId, version: { increment: 1 } },
+    });
+    return r.count;
   }
 
   /** Dòng chỉ định theo id, KÈM ống mẫu/dịch vụ/bệnh nhân — chỉ trong chi nhánh đang làm việc (id chi nhánh khác coi như không tồn tại). */

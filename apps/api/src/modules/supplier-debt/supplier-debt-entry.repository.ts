@@ -14,6 +14,8 @@ export interface CreateSupplierDebtEntryData {
   reversalOfId: string | null;
   /** Phần D — nguồn ADJUSTMENT_INCREASE/ADJUSTMENT_DECREASE. */
   adjustmentId: string | null;
+  /** Nguồn LAB_PARTNER (dòng gửi mẫu đã nhận kết quả, #291). */
+  labPartnerDispatchItemId?: string | null;
   note: string | null;
 }
 
@@ -35,6 +37,7 @@ export class SupplierDebtEntryRepository {
         cashVoucherId: data.cashVoucherId,
         reversalOfId: data.reversalOfId,
         adjustmentId: data.adjustmentId,
+        labPartnerDispatchItemId: data.labPartnerDispatchItemId ?? null,
         note: data.note,
         createdBy: actorId,
         updatedBy: actorId,
@@ -63,6 +66,11 @@ export class SupplierDebtEntryRepository {
    * phải riêng PURCHASE. */
   findActiveByStockReceiptId(tx: Prisma.TransactionClient, tenantId: string, stockReceiptId: string): Promise<SupplierDebtEntry | null> {
     return tx.supplierDebtEntry.findFirst({ where: { tenantId, stockReceiptId, entryType: 'PURCHASE' } });
+  }
+
+  /** "Gửi mẫu đối tác" (#291) — bút toán LAB_PARTNER của một dòng gửi mẫu CHƯA bị đảo (để đảo khi trả lại kỹ thuật viên). */
+  findActiveByLabPartnerItemId(tx: Prisma.TransactionClient, tenantId: string, itemId: string): Promise<SupplierDebtEntry | null> {
+    return tx.supplierDebtEntry.findFirst({ where: { tenantId, labPartnerDispatchItemId: itemId, entryType: 'LAB_PARTNER', reversedBy: { none: {} } } });
   }
 
   /** Phần D — bút toán RETURN GỐC của 1 phiếu xuất trả NCC (để đảo lúc Huỷ/Đề nghị huỷ được duyệt). */
