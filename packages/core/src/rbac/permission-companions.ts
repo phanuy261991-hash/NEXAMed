@@ -42,7 +42,8 @@ export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> 
   'lab_partner.receive': ['lab_partner.read'],
   'stock_receipt.report': ['drug.read'],
   'stock_issue.read': ['stock_receipt.read', 'drug.read', 'reference_catalog.read'],
-  'stock_issue.create': ['stock_receipt.read', 'drug.read', 'reference_catalog.read'],
+  // Phiếu xuất mở rộng có loại "Xuất trả nhà cung cấp" chọn nhà cung cấp → `GET /suppliers` cần `supplier.read` (quét vai trò tuỳ biến 10/11/2026; #291 đã tách quyền này khỏi `drug.*`).
+  'stock_issue.create': ['stock_receipt.read', 'drug.read', 'supplier.read', 'reference_catalog.read'],
   'stock_count.read': ['stock_receipt.read', 'drug.read', 'reference_catalog.read'],
   'stock_count.create': ['stock_receipt.read', 'drug.read', 'reference_catalog.read'],
   'stock_transfer.read': ['stock_receipt.read', 'drug.read'],
