@@ -1,0 +1,25 @@
+{
+  "version": "0.9.5",
+  "releasedAt": "2026-11-10",
+  "features": [
+    "Trang Tổng quan riêng cho từng vai trò: chủ phòng khám, bác sĩ, thu ngân, lễ tân. Bác sĩ thấy kết quả chờ duyệt và số chỉ số ngoài khoảng; thu ngân và lễ tân thấy việc cần làm ngay.",
+    "Nhóm menu \"Báo cáo\" và Trung tâm báo cáo: Báo cáo ngày, Doanh thu, Khám bệnh và vận hành, Bác sĩ, Thuốc và vật tư (kể cả lãi gộp), Bệnh nhân, Chuyên môn, Chất lượng và tuân thủ, Toàn hệ thống. Mọi báo cáo xuất được Excel và in trực tiếp.",
+    "Gửi mẫu xét nghiệm cho đối tác: cấu hình đối tác và giá trả theo từng dịch vụ, gửi mẫu đi, nhận kết quả PDF, bác sĩ duyệt ngay trong màn khám, ghi nợ đối tác, phiếu giao mẫu, bảng kê mẫu đã gửi, biên bản đối chiếu và nhập/xuất Excel giá trả.",
+    "Trang \"Hẹn tái khám\" cho lễ tân: danh sách người cần tái khám, ghi lần nhắc, xuất Excel (có công tắc tắt nếu phòng khám không dùng).",
+    "\"Khách không làm dịch vụ\" ở quầy thu ngân: huỷ dịch vụ đã chỉ định trước hoặc sau khi thu tiền, ghi rõ lý do; bác sĩ và bệnh án in đều thấy phần đã chỉ định nhưng không thực hiện.",
+    "Logo và biểu tượng thương hiệu mới ở menu, thẻ trình duyệt và bệnh án PDF.",
+    "Sổ công nợ nhà cung cấp có lọc theo khoảng ngày, tổng hợp kỳ, xuất Excel và in."
+  ],
+  "improvements": [
+    "Bộ hồ sơ bệnh án một lượt khám tự ghép thêm các tệp PDF kết quả của đối tác xét nghiệm vào cuối.",
+    "Trang Cập nhật phần mềm được thiết kế lại, hiện thông tin bản quyền và danh sách thay đổi theo nhóm.",
+    "Thẻ số tổng hợp ở nhiều trang đổi sang chữ lớn, đậm và dễ đọc hơn.",
+    "Bản in kết quả hiển thị rõ khi kết quả là tệp PDF của đối tác.",
+    "Nhập kho: kiểm tra chặt hơn việc quy đổi đơn vị khi nhập Hộp, Vỉ rồi kê, phát theo Viên.",
+    "Nâng cấp thư viện nền và vá các cảnh báo bảo mật; tốc độ xử lý giữ nguyên."
+  ],
+  "fixes": [
+    "Gạt \"Có liên thông\" ở đơn thuốc khi chưa Lưu nay hiện hướng dẫn \"Bấm Lưu trước\" thay vì để trống.",
+    "Bản in và màn kết quả không còn hiện ô ảnh hỏng khi kết quả đính kèm là tệp PDF."
+  ]
+}
