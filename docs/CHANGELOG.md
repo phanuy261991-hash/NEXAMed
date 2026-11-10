@@ -12,6 +12,22 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-11-09
+
+### Kết quả đối tác chờ duyệt hiện trong màn khám và Tổng quan bác sĩ (`docs/DECISIONS.md` #291 bổ sung 6)
+
+Màn khám có khối "Đã có kết quả đối tác, chờ duyệt" kèm nút **Xem và duyệt** (tab Chỉ định và tab Kết quả cận lâm sàng); Tổng quan bác sĩ có khối "Kết quả đối tác chờ duyệt" (chỉ lượt khám của chính bác sĩ). Duyệt tại chỗ, không phải mở "Gửi mẫu đối tác". Không migration, không cần `db:seed`.
+
+## 2026-11-07
+
+### Gửi mẫu đối tác — giai đoạn 3, giao diện "Gửi mẫu đi" (`docs/DECISIONS.md` #291 bổ sung 4)
+
+Menu mới **Gửi mẫu đối tác** (Cận lâm sàng; chỉ hiện khi bật "Dùng đối tác xét nghiệm" và có quyền `lab_partner.read`): hàng đợi 3 tab Chờ gửi / Đã gửi chờ kết quả / Đã có kết quả. Tick các mẫu rồi "Gửi mẫu đi": chọn một đối tác, mỗi mẫu hiện đúng giá trả của đối tác đó (đổi đối tác thì giá đổi, mẫu chưa có giá bị khoá), ngày giờ gửi mặc định là bây giờ. Cột giá trả chỉ hiện cho người thấy giá vốn. Không migration, không cần `db:seed`.
+
+### Gửi mẫu đối tác — nhận kết quả PDF, duyệt, trả lại, ghi nợ, phiếu giao mẫu (`docs/DECISIONS.md` #291 bổ sung 5)
+
+Tab "Đã gửi chờ kết quả" có nút **Nhận kết quả**: một tệp PDF gắn cho nhiều dịch vụ của cùng đối tác, ghi nợ đối tác ngay lúc nhận (đúng giá đã chụp lúc gửi). **Đối tác không nhận mẫu** đưa mẫu về "Chờ gửi". Tab "Đã có kết quả" lọc mặc định "Chờ duyệt"; bác sĩ xem PDF (phóng to được), duyệt và sang ca kế tiếp, hoặc trả lại kỹ thuật viên (đảo nợ). Menu "Gửi mẫu đối tác" có chấm số kết quả chờ duyệt cho người có quyền duyệt. Hộp "Gửi mẫu đi" có ô Người gửi và nút In phiếu giao mẫu. Môi trường khác cần `db:deploy` (migration `20261107100000_lab_partner_result`).
+
 ## 2026-11-06
 
 ### Sổ công nợ nhà cung cấp: lọc khoảng ngày, tổng hợp kỳ, Xuất Excel, In (`docs/DECISIONS.md` #292)
