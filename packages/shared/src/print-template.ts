@@ -366,6 +366,7 @@ export type PrintDocumentTypeInfo = z.infer<typeof printDocumentTypeInfoSchema>;
 export const printTemplateCatalogSchema = z.object({
   documentTypes: z.array(printDocumentTypeInfoSchema),
   papers: z.array(printPaperInfoSchema),
+  // eslint-disable-next-line no-restricted-syntax -- máy chủ luôn trả ĐỦ mọi khổ giấy
   defaultConfigs: z.record(printPaperSizeSchema, printTemplateConfigSchema),
 });
 export type PrintTemplateCatalog = z.infer<typeof printTemplateCatalogSchema>;

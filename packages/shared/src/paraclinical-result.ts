@@ -67,6 +67,7 @@ export type ParaclinicalQueueRow = z.infer<typeof paraclinicalQueueRowSchema>;
 export const listParaclinicalQueueResponseSchema = z.object({
   items: z.array(paraclinicalQueueRowSchema),
   /** Số dòng theo từng tab của NGÀY đang xem (không phụ thuộc bộ lọc tab). */
+  // eslint-disable-next-line no-restricted-syntax -- máy chủ luôn trả ĐỦ mọi nhóm hàng đợi
   counts: z.record(paraclinicalQueueBucketSchema, z.number().int().nonnegative()),
   /** Công tắc "cho thực hiện trước khi thu tiền" của phòng khám. */
   allowBeforePayment: z.boolean(),

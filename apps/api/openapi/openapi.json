@@ -11910,7 +11910,8 @@
                                   "UNPAID",
                                   "PAID",
                                   "CANCELLED",
-                                  "REFUNDED"
+                                  "REFUNDED",
+                                  null
                                 ]
                               },
                               "checkedInAt": {
@@ -12960,7 +12961,8 @@
                                       "NO_CARD",
                                       "EXPIRED",
                                       "NOT_STARTED",
-                                      "DECLINED"
+                                      "DECLINED",
+                                      null
                                     ]
                                   },
                                   "cardNo": {
@@ -12980,7 +12982,8 @@
                                     "enum": [
                                       "NEW_12",
                                       "OLD_15",
-                                      "UNKNOWN"
+                                      "UNKNOWN",
+                                      null
                                     ]
                                   },
                                   "validFrom": {
@@ -14813,7 +14816,8 @@
                                 "NO_CARD",
                                 "EXPIRED",
                                 "NOT_STARTED",
-                                "DECLINED"
+                                "DECLINED",
+                                null
                               ]
                             },
                             "cardNo": {
@@ -14833,7 +14837,8 @@
                               "enum": [
                                 "NEW_12",
                                 "OLD_15",
-                                "UNKNOWN"
+                                "UNKNOWN",
+                                null
                               ]
                             },
                             "validFrom": {
@@ -15676,7 +15681,8 @@
                                       "C",
                                       "N",
                                       "H",
-                                      "Y"
+                                      "Y",
+                                      null
                                     ]
                                   },
                                   "documentId": {
@@ -16104,6 +16110,9 @@
                               },
                               "imageCount": {
                                 "type": "integer"
+                              },
+                              "pdfCount": {
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -16397,7 +16406,8 @@
                                 "NO_CARD",
                                 "EXPIRED",
                                 "NOT_STARTED",
-                                "DECLINED"
+                                "DECLINED",
+                                null
                               ]
                             },
                             "cardNo": {
@@ -16417,7 +16427,8 @@
                               "enum": [
                                 "NEW_12",
                                 "OLD_15",
-                                "UNKNOWN"
+                                "UNKNOWN",
+                                null
                               ]
                             },
                             "validFrom": {
@@ -19812,7 +19823,8 @@
                                   "C",
                                   "N",
                                   "H",
-                                  "Y"
+                                  "Y",
+                                  null
                                 ]
                               },
                               "documentId": {
@@ -20412,7 +20424,8 @@
                                   "C",
                                   "N",
                                   "H",
-                                  "Y"
+                                  "Y",
+                                  null
                                 ]
                               },
                               "documentId": {
@@ -20921,7 +20934,8 @@
                                   "C",
                                   "N",
                                   "H",
-                                  "Y"
+                                  "Y",
+                                  null
                                 ]
                               },
                               "documentId": {
@@ -21232,7 +21246,8 @@
                                   "C",
                                   "N",
                                   "H",
-                                  "Y"
+                                  "Y",
+                                  null
                                 ]
                               },
                               "documentId": {
@@ -21749,7 +21764,8 @@
                                   "C",
                                   "N",
                                   "H",
-                                  "Y"
+                                  "Y",
+                                  null
                                 ]
                               },
                               "documentId": {
@@ -22296,7 +22312,8 @@
                                   "C",
                                   "N",
                                   "H",
-                                  "Y"
+                                  "Y",
+                                  null
                                 ]
                               },
                               "documentId": {
@@ -23111,7 +23128,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -23189,7 +23207,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -23664,7 +23683,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -23742,7 +23762,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -24279,7 +24300,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -24357,7 +24379,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -24925,7 +24948,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -25003,7 +25027,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -25598,7 +25623,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -25676,7 +25702,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -26216,7 +26243,8 @@
                           ],
                           "enum": [
                             "REMOVE_LINE",
-                            "REFUND"
+                            "REFUND",
+                            null
                           ]
                         },
                         "items": {
@@ -26277,7 +26305,8 @@
                                   "ALREADY_REFUNDED",
                                   "PACKAGE_ITEM_BLOCKED",
                                   "PACKAGE_REPRICE_PAID",
-                                  "NOT_BILLED_HERE"
+                                  "NOT_BILLED_HERE",
+                                  null
                                 ]
                               },
                               "blockedLabel": {
@@ -26570,7 +26599,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -26648,7 +26678,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -27540,7 +27571,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -27618,7 +27650,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -28145,7 +28178,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -28223,7 +28257,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -28705,7 +28740,8 @@
                                       ],
                                       "enum": [
                                         "PERCENT",
-                                        "AMOUNT"
+                                        "AMOUNT",
+                                        null
                                       ]
                                     },
                                     "discountValue": {
@@ -28783,7 +28819,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -29326,7 +29363,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -29404,7 +29442,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -29985,7 +30024,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -30063,7 +30103,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -30618,7 +30659,8 @@
                               ],
                               "enum": [
                                 "PERCENT",
-                                "AMOUNT"
+                                "AMOUNT",
+                                null
                               ]
                             },
                             "discountValue": {
@@ -30745,7 +30787,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -30823,7 +30866,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -31431,7 +31475,8 @@
                           ],
                           "enum": [
                             "male",
-                            "female"
+                            "female",
+                            null
                           ]
                         },
                         "licenseNo": {
@@ -31808,7 +31853,8 @@
                                 ],
                                 "enum": [
                                   "male",
-                                  "female"
+                                  "female",
+                                  null
                                 ]
                               },
                               "licenseNo": {
@@ -32111,7 +32157,8 @@
                           ],
                           "enum": [
                             "male",
-                            "female"
+                            "female",
+                            null
                           ]
                         },
                         "licenseNo": {
@@ -32343,7 +32390,8 @@
                     ],
                     "enum": [
                       "male",
-                      "female"
+                      "female",
+                      null
                     ]
                   },
                   "version": {
@@ -32416,7 +32464,8 @@
                           ],
                           "enum": [
                             "male",
-                            "female"
+                            "female",
+                            null
                           ]
                         },
                         "licenseNo": {
@@ -32717,7 +32766,8 @@
                           ],
                           "enum": [
                             "male",
-                            "female"
+                            "female",
+                            null
                           ]
                         },
                         "licenseNo": {
@@ -33030,7 +33080,8 @@
                     ],
                     "enum": [
                       "male",
-                      "female"
+                      "female",
+                      null
                     ]
                   },
                   "licenseNo": {
@@ -33182,7 +33233,8 @@
                           ],
                           "enum": [
                             "male",
-                            "female"
+                            "female",
+                            null
                           ]
                         },
                         "licenseNo": {
@@ -33594,7 +33646,8 @@
                           ],
                           "enum": [
                             "male",
-                            "female"
+                            "female",
+                            null
                           ]
                         },
                         "licenseNo": {
@@ -33983,7 +34036,8 @@
                           ],
                           "enum": [
                             "male",
-                            "female"
+                            "female",
+                            null
                           ]
                         },
                         "licenseNo": {
@@ -50754,7 +50808,8 @@
                           "enum": [
                             "NEVER_RUN",
                             "LAST_RUN_FAILED",
-                            "STALE"
+                            "STALE",
+                            null
                           ]
                         }
                       },
@@ -51051,7 +51106,8 @@
                               "enum": [
                                 "NEVER_RUN",
                                 "LAST_RUN_FAILED",
-                                "STALE"
+                                "STALE",
+                                null
                               ]
                             }
                           },
@@ -51285,7 +51341,8 @@
                               "enum": [
                                 "NEVER_RUN",
                                 "LAST_RUN_FAILED",
-                                "STALE"
+                                "STALE",
+                                null
                               ]
                             }
                           },
@@ -52715,7 +52772,8 @@
                             "NO_CARD",
                             "EXPIRED",
                             "NOT_STARTED",
-                            "DECLINED"
+                            "DECLINED",
+                            null
                           ]
                         },
                         "cardNo": {
@@ -52735,7 +52793,8 @@
                           "enum": [
                             "NEW_12",
                             "OLD_15",
-                            "UNKNOWN"
+                            "UNKNOWN",
+                            null
                           ]
                         },
                         "validFrom": {
@@ -75316,7 +75375,8 @@
                                 ],
                                 "enum": [
                                   "EXPENSE",
-                                  "INCOME"
+                                  "INCOME",
+                                  null
                                 ]
                               },
                               "bytCode": {
@@ -75344,7 +75404,8 @@
                                   "GREEN",
                                   "GRAY",
                                   "BLACK",
-                                  "URINE"
+                                  "URINE",
+                                  null
                                 ]
                               },
                               "abbreviation": {
@@ -75807,7 +75868,8 @@
                           ],
                           "enum": [
                             "EXPENSE",
-                            "INCOME"
+                            "INCOME",
+                            null
                           ]
                         },
                         "bytCode": {
@@ -75835,7 +75897,8 @@
                             "GREEN",
                             "GRAY",
                             "BLACK",
-                            "URINE"
+                            "URINE",
+                            null
                           ]
                         },
                         "abbreviation": {
@@ -76064,7 +76127,8 @@
                       "GREEN",
                       "GRAY",
                       "BLACK",
-                      "URINE"
+                      "URINE",
+                      null
                     ]
                   },
                   "abbreviation": {
@@ -76275,7 +76339,8 @@
                           ],
                           "enum": [
                             "EXPENSE",
-                            "INCOME"
+                            "INCOME",
+                            null
                           ]
                         },
                         "bytCode": {
@@ -76303,7 +76368,8 @@
                             "GREEN",
                             "GRAY",
                             "BLACK",
-                            "URINE"
+                            "URINE",
+                            null
                           ]
                         },
                         "abbreviation": {
@@ -76655,7 +76721,8 @@
                           ],
                           "enum": [
                             "EXPENSE",
-                            "INCOME"
+                            "INCOME",
+                            null
                           ]
                         },
                         "bytCode": {
@@ -76683,7 +76750,8 @@
                             "GREEN",
                             "GRAY",
                             "BLACK",
-                            "URINE"
+                            "URINE",
+                            null
                           ]
                         },
                         "abbreviation": {
@@ -77037,7 +77105,8 @@
                           ],
                           "enum": [
                             "EXPENSE",
-                            "INCOME"
+                            "INCOME",
+                            null
                           ]
                         },
                         "bytCode": {
@@ -77065,7 +77134,8 @@
                             "GREEN",
                             "GRAY",
                             "BLACK",
-                            "URINE"
+                            "URINE",
+                            null
                           ]
                         },
                         "abbreviation": {
@@ -79640,7 +79710,8 @@
                                 ],
                                 "enum": [
                                   "male",
-                                  "female"
+                                  "female",
+                                  null
                                 ]
                               },
                               "usageRestriction": {
@@ -79650,7 +79721,8 @@
                                 ],
                                 "enum": [
                                   "limited_primary",
-                                  "not_primary"
+                                  "not_primary",
+                                  null
                                 ]
                               },
                               "whoNote": {
@@ -79869,7 +79941,8 @@
                                 ],
                                 "enum": [
                                   "male",
-                                  "female"
+                                  "female",
+                                  null
                                 ]
                               },
                               "usageRestriction": {
@@ -79879,7 +79952,8 @@
                                 ],
                                 "enum": [
                                   "limited_primary",
-                                  "not_primary"
+                                  "not_primary",
+                                  null
                                 ]
                               },
                               "whoNote": {
@@ -80966,7 +81040,8 @@
                           "enum": [
                             "SHIFT",
                             "LEAVE",
-                            "DISABLED"
+                            "DISABLED",
+                            null
                           ]
                         }
                       },
@@ -89680,7 +89755,8 @@
                               "enum": [
                                 "DEDUCT",
                                 "INCOME",
-                                "WAIVE"
+                                "WAIVE",
+                                null
                               ]
                             },
                             "resolutionNote": {
@@ -90075,7 +90151,8 @@
                           "enum": [
                             "DEDUCT",
                             "INCOME",
-                            "WAIVE"
+                            "WAIVE",
+                            null
                           ]
                         },
                         "resolutionNote": {
@@ -91131,7 +91208,8 @@
                           "enum": [
                             "DEDUCT",
                             "INCOME",
-                            "WAIVE"
+                            "WAIVE",
+                            null
                           ]
                         },
                         "resolutionNote": {
@@ -91537,7 +91615,8 @@
                           "enum": [
                             "DEDUCT",
                             "INCOME",
-                            "WAIVE"
+                            "WAIVE",
+                            null
                           ]
                         },
                         "resolutionNote": {
@@ -92202,7 +92281,8 @@
                           "enum": [
                             "DEDUCT",
                             "INCOME",
-                            "WAIVE"
+                            "WAIVE",
+                            null
                           ]
                         },
                         "resolutionNote": {
@@ -92623,7 +92703,8 @@
                           "enum": [
                             "DEDUCT",
                             "INCOME",
-                            "WAIVE"
+                            "WAIVE",
+                            null
                           ]
                         },
                         "resolutionNote": {
@@ -93066,7 +93147,8 @@
                           "enum": [
                             "DEDUCT",
                             "INCOME",
-                            "WAIVE"
+                            "WAIVE",
+                            null
                           ]
                         },
                         "resolutionNote": {
@@ -98674,7 +98756,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -98934,7 +99017,8 @@
                     ],
                     "enum": [
                       "PERCENT",
-                      "AMOUNT"
+                      "AMOUNT",
+                      null
                     ]
                   },
                   "discountValue": {
@@ -99017,7 +99101,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -99129,7 +99214,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -99274,7 +99360,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -99584,7 +99671,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -99729,7 +99817,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -99971,7 +100060,8 @@
                     ],
                     "enum": [
                       "PERCENT",
-                      "AMOUNT"
+                      "AMOUNT",
+                      null
                     ]
                   },
                   "discountValue": {
@@ -100054,7 +100144,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -100170,7 +100261,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -100315,7 +100407,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -100642,7 +100735,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -100787,7 +100881,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -101119,7 +101214,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -101264,7 +101360,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -101596,7 +101693,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -101741,7 +101839,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -102600,7 +102699,8 @@
                                 ],
                                 "enum": [
                                   "EXPIRING_SOON",
-                                  "EXPIRED"
+                                  "EXPIRED",
+                                  null
                                 ]
                               },
                               "daysUntilExpiry": {
@@ -110166,7 +110266,8 @@
                                   "WRONG_ITEM",
                                   "DAMAGED",
                                   "EXPIRED",
-                                  "OTHER"
+                                  "OTHER",
+                                  null
                                 ]
                               },
                               "receiveRejectNote": {
@@ -110527,7 +110628,8 @@
                             "WRONG_ITEM",
                             "DAMAGED",
                             "EXPIRED",
-                            "OTHER"
+                            "OTHER",
+                            null
                           ]
                         },
                         "receiveRejectNote": {
@@ -110629,7 +110731,8 @@
                                 ],
                                 "enum": [
                                   "EXPIRED",
-                                  "EXPIRING_SOON"
+                                  "EXPIRING_SOON",
+                                  null
                                 ]
                               },
                               "daysUntilExpiry": {
@@ -110663,7 +110766,8 @@
                                   "DAMAGED",
                                   "EXPIRED",
                                   "WRONG_ITEM",
-                                  "OTHER"
+                                  "OTHER",
+                                  null
                                 ]
                               },
                               "varianceResolution": {
@@ -110673,7 +110777,8 @@
                                 ],
                                 "enum": [
                                   "RETURN_TO_SOURCE",
-                                  "WRITE_OFF"
+                                  "WRITE_OFF",
+                                  null
                                 ]
                               },
                               "quantityReturnedBack": {
@@ -111057,7 +111162,8 @@
                             "WRONG_ITEM",
                             "DAMAGED",
                             "EXPIRED",
-                            "OTHER"
+                            "OTHER",
+                            null
                           ]
                         },
                         "receiveRejectNote": {
@@ -111159,7 +111265,8 @@
                                 ],
                                 "enum": [
                                   "EXPIRED",
-                                  "EXPIRING_SOON"
+                                  "EXPIRING_SOON",
+                                  null
                                 ]
                               },
                               "daysUntilExpiry": {
@@ -111193,7 +111300,8 @@
                                   "DAMAGED",
                                   "EXPIRED",
                                   "WRONG_ITEM",
-                                  "OTHER"
+                                  "OTHER",
+                                  null
                                 ]
                               },
                               "varianceResolution": {
@@ -111203,7 +111311,8 @@
                                 ],
                                 "enum": [
                                   "RETURN_TO_SOURCE",
-                                  "WRITE_OFF"
+                                  "WRITE_OFF",
+                                  null
                                 ]
                               },
                               "quantityReturnedBack": {
@@ -111588,7 +111697,8 @@
                             "WRONG_ITEM",
                             "DAMAGED",
                             "EXPIRED",
-                            "OTHER"
+                            "OTHER",
+                            null
                           ]
                         },
                         "receiveRejectNote": {
@@ -111690,7 +111800,8 @@
                                 ],
                                 "enum": [
                                   "EXPIRED",
-                                  "EXPIRING_SOON"
+                                  "EXPIRING_SOON",
+                                  null
                                 ]
                               },
                               "daysUntilExpiry": {
@@ -111724,7 +111835,8 @@
                                   "DAMAGED",
                                   "EXPIRED",
                                   "WRONG_ITEM",
-                                  "OTHER"
+                                  "OTHER",
+                                  null
                                 ]
                               },
                               "varianceResolution": {
@@ -111734,7 +111846,8 @@
                                 ],
                                 "enum": [
                                   "RETURN_TO_SOURCE",
-                                  "WRITE_OFF"
+                                  "WRITE_OFF",
+                                  null
                                 ]
                               },
                               "quantityReturnedBack": {
@@ -112135,7 +112248,8 @@
                             "WRONG_ITEM",
                             "DAMAGED",
                             "EXPIRED",
-                            "OTHER"
+                            "OTHER",
+                            null
                           ]
                         },
                         "receiveRejectNote": {
@@ -112237,7 +112351,8 @@
                                 ],
                                 "enum": [
                                   "EXPIRED",
-                                  "EXPIRING_SOON"
+                                  "EXPIRING_SOON",
+                                  null
                                 ]
                               },
                               "daysUntilExpiry": {
@@ -112271,7 +112386,8 @@
                                   "DAMAGED",
                                   "EXPIRED",
                                   "WRONG_ITEM",
-                                  "OTHER"
+                                  "OTHER",
+                                  null
                                 ]
                               },
                               "varianceResolution": {
@@ -112281,7 +112397,8 @@
                                 ],
                                 "enum": [
                                   "RETURN_TO_SOURCE",
-                                  "WRITE_OFF"
+                                  "WRITE_OFF",
+                                  null
                                 ]
                               },
                               "quantityReturnedBack": {
@@ -112687,7 +112804,8 @@
                             "WRONG_ITEM",
                             "DAMAGED",
                             "EXPIRED",
-                            "OTHER"
+                            "OTHER",
+                            null
                           ]
                         },
                         "receiveRejectNote": {
@@ -112789,7 +112907,8 @@
                                 ],
                                 "enum": [
                                   "EXPIRED",
-                                  "EXPIRING_SOON"
+                                  "EXPIRING_SOON",
+                                  null
                                 ]
                               },
                               "daysUntilExpiry": {
@@ -112823,7 +112942,8 @@
                                   "DAMAGED",
                                   "EXPIRED",
                                   "WRONG_ITEM",
-                                  "OTHER"
+                                  "OTHER",
+                                  null
                                 ]
                               },
                               "varianceResolution": {
@@ -112833,7 +112953,8 @@
                                 ],
                                 "enum": [
                                   "RETURN_TO_SOURCE",
-                                  "WRITE_OFF"
+                                  "WRITE_OFF",
+                                  null
                                 ]
                               },
                               "quantityReturnedBack": {
@@ -113106,7 +113227,8 @@
                             "DAMAGED",
                             "EXPIRED",
                             "WRONG_ITEM",
-                            "OTHER"
+                            "OTHER",
+                            null
                           ]
                         },
                         "varianceNote": {
@@ -113245,7 +113367,8 @@
                             "WRONG_ITEM",
                             "DAMAGED",
                             "EXPIRED",
-                            "OTHER"
+                            "OTHER",
+                            null
                           ]
                         },
                         "receiveRejectNote": {
@@ -113347,7 +113470,8 @@
                                 ],
                                 "enum": [
                                   "EXPIRED",
-                                  "EXPIRING_SOON"
+                                  "EXPIRING_SOON",
+                                  null
                                 ]
                               },
                               "daysUntilExpiry": {
@@ -113381,7 +113505,8 @@
                                   "DAMAGED",
                                   "EXPIRED",
                                   "WRONG_ITEM",
-                                  "OTHER"
+                                  "OTHER",
+                                  null
                                 ]
                               },
                               "varianceResolution": {
@@ -113391,7 +113516,8 @@
                                 ],
                                 "enum": [
                                   "RETURN_TO_SOURCE",
-                                  "WRITE_OFF"
+                                  "WRITE_OFF",
+                                  null
                                 ]
                               },
                               "quantityReturnedBack": {
@@ -114157,7 +114283,8 @@
                             "WRONG_ITEM",
                             "DAMAGED",
                             "EXPIRED",
-                            "OTHER"
+                            "OTHER",
+                            null
                           ]
                         },
                         "receiveRejectNote": {
@@ -114259,7 +114386,8 @@
                                 ],
                                 "enum": [
                                   "EXPIRED",
-                                  "EXPIRING_SOON"
+                                  "EXPIRING_SOON",
+                                  null
                                 ]
                               },
                               "daysUntilExpiry": {
@@ -114293,7 +114421,8 @@
                                   "DAMAGED",
                                   "EXPIRED",
                                   "WRONG_ITEM",
-                                  "OTHER"
+                                  "OTHER",
+                                  null
                                 ]
                               },
                               "varianceResolution": {
@@ -114303,7 +114432,8 @@
                                 ],
                                 "enum": [
                                   "RETURN_TO_SOURCE",
-                                  "WRITE_OFF"
+                                  "WRITE_OFF",
+                                  null
                                 ]
                               },
                               "quantityReturnedBack": {
@@ -114702,7 +114832,8 @@
                             "WRONG_ITEM",
                             "DAMAGED",
                             "EXPIRED",
-                            "OTHER"
+                            "OTHER",
+                            null
                           ]
                         },
                         "receiveRejectNote": {
@@ -114804,7 +114935,8 @@
                                 ],
                                 "enum": [
                                   "EXPIRED",
-                                  "EXPIRING_SOON"
+                                  "EXPIRING_SOON",
+                                  null
                                 ]
                               },
                               "daysUntilExpiry": {
@@ -114838,7 +114970,8 @@
                                   "DAMAGED",
                                   "EXPIRED",
                                   "WRONG_ITEM",
-                                  "OTHER"
+                                  "OTHER",
+                                  null
                                 ]
                               },
                               "varianceResolution": {
@@ -114848,7 +114981,8 @@
                                 ],
                                 "enum": [
                                   "RETURN_TO_SOURCE",
-                                  "WRITE_OFF"
+                                  "WRITE_OFF",
+                                  null
                                 ]
                               },
                               "quantityReturnedBack": {
@@ -115281,7 +115415,8 @@
                             "WRONG_ITEM",
                             "DAMAGED",
                             "EXPIRED",
-                            "OTHER"
+                            "OTHER",
+                            null
                           ]
                         },
                         "receiveRejectNote": {
@@ -115383,7 +115518,8 @@
                                 ],
                                 "enum": [
                                   "EXPIRED",
-                                  "EXPIRING_SOON"
+                                  "EXPIRING_SOON",
+                                  null
                                 ]
                               },
                               "daysUntilExpiry": {
@@ -115417,7 +115553,8 @@
                                   "DAMAGED",
                                   "EXPIRED",
                                   "WRONG_ITEM",
-                                  "OTHER"
+                                  "OTHER",
+                                  null
                                 ]
                               },
                               "varianceResolution": {
@@ -115427,7 +115564,8 @@
                                 ],
                                 "enum": [
                                   "RETURN_TO_SOURCE",
-                                  "WRITE_OFF"
+                                  "WRITE_OFF",
+                                  null
                                 ]
                               },
                               "quantityReturnedBack": {
@@ -119406,7 +119544,8 @@
                           "enum": [
                             "PENDING_APPROVAL",
                             "APPROVED",
-                            "REJECTED"
+                            "REJECTED",
+                            null
                           ]
                         },
                         "status": {
@@ -119678,7 +119817,8 @@
                                 "enum": [
                                   "PENDING_APPROVAL",
                                   "APPROVED",
-                                  "REJECTED"
+                                  "REJECTED",
+                                  null
                                 ]
                               },
                               "status": {
@@ -119949,7 +120089,8 @@
                           "enum": [
                             "PENDING_APPROVAL",
                             "APPROVED",
-                            "REJECTED"
+                            "REJECTED",
+                            null
                           ]
                         },
                         "status": {
@@ -127716,7 +127857,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT",
-                                  "AMOUNT"
+                                  "AMOUNT",
+                                  null
                                 ]
                               },
                               "discountValue": {
@@ -128032,7 +128174,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -128357,7 +128500,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -128674,7 +128818,8 @@
                     ],
                     "enum": [
                       "PERCENT",
-                      "AMOUNT"
+                      "AMOUNT",
+                      null
                     ]
                   },
                   "discountValue": {
@@ -128786,7 +128931,8 @@
                           ],
                           "enum": [
                             "PERCENT",
-                            "AMOUNT"
+                            "AMOUNT",
+                            null
                           ]
                         },
                         "discountValue": {
@@ -130212,7 +130358,8 @@
                                 ],
                                 "enum": [
                                   "PERCENT_OFF",
-                                  "NEW_PRICE"
+                                  "NEW_PRICE",
+                                  null
                                 ]
                               },
                               "value": {
@@ -131662,7 +131809,8 @@
                                     "enum": [
                                       "LAB",
                                       "IMAGING",
-                                      "FUNCTIONAL"
+                                      "FUNCTIONAL",
+                                      null
                                     ]
                                   },
                                   "note": {
@@ -132172,7 +132320,8 @@
                                     "enum": [
                                       "LAB",
                                       "IMAGING",
-                                      "FUNCTIONAL"
+                                      "FUNCTIONAL",
+                                      null
                                     ]
                                   },
                                   "note": {
@@ -133491,7 +133640,8 @@
                                 "enum": [
                                   "male",
                                   "female",
-                                  "other"
+                                  "other",
+                                  null
                                 ]
                               },
                               "serviceKind": {
@@ -133598,7 +133748,8 @@
                                         "GREEN",
                                         "GRAY",
                                         "BLACK",
-                                        "URINE"
+                                        "URINE",
+                                        null
                                       ]
                                     },
                                     "capLabel": {
@@ -133951,7 +134102,8 @@
                                 "enum": [
                                   "male",
                                   "female",
-                                  "other"
+                                  "other",
+                                  null
                                 ]
                               },
                               "serviceNames": {
@@ -134700,7 +134852,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -134952,7 +135105,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -135494,7 +135648,8 @@
                                   "LOW",
                                   "HIGH",
                                   "NORMAL",
-                                  "ABNORMAL"
+                                  "ABNORMAL",
+                                  null
                                 ]
                               },
                               "latestSignedAt": {
@@ -135691,7 +135846,8 @@
                                   "LOW",
                                   "HIGH",
                                   "NORMAL",
-                                  "ABNORMAL"
+                                  "ABNORMAL",
+                                  null
                                 ]
                               },
                               "referenceText": {
@@ -135949,7 +136105,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -136201,7 +136358,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -136689,7 +136847,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -136941,7 +137100,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -137493,7 +137653,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -137745,7 +137906,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -138225,7 +138387,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -138477,7 +138640,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -138907,7 +139071,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -139159,7 +139324,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -139789,7 +139955,8 @@
                                 "enum": [
                                   "male",
                                   "female",
-                                  "other"
+                                  "other",
+                                  null
                                 ]
                               },
                               "serviceKind": {
@@ -139896,7 +140063,8 @@
                                         "GREEN",
                                         "GRAY",
                                         "BLACK",
-                                        "URINE"
+                                        "URINE",
+                                        null
                                       ]
                                     },
                                     "capLabel": {
@@ -140249,7 +140417,8 @@
                                 "enum": [
                                   "male",
                                   "female",
-                                  "other"
+                                  "other",
+                                  null
                                 ]
                               },
                               "serviceNames": {
@@ -140998,7 +141167,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -141250,7 +141420,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -142005,7 +142176,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -142257,7 +142429,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -142745,7 +142918,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -142997,7 +143171,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -143549,7 +143724,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -143801,7 +143977,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -144281,7 +144458,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -144533,7 +144711,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -144963,7 +145142,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -145215,7 +145395,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -145795,7 +145976,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -146047,7 +146229,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -146477,7 +146660,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientDob": {
@@ -146729,7 +146913,8 @@
                                             "LOW",
                                             "HIGH",
                                             "NORMAL",
-                                            "ABNORMAL"
+                                            "ABNORMAL",
+                                            null
                                           ]
                                         }
                                       },
@@ -147144,7 +147329,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientPhone": {
@@ -147207,7 +147393,8 @@
                                       "GREEN",
                                       "GRAY",
                                       "BLACK",
-                                      "URINE"
+                                      "URINE",
+                                      null
                                     ]
                                   },
                                   "capLabel": {
@@ -147251,7 +147438,8 @@
                                     ],
                                     "enum": [
                                       "SCAN",
-                                      "MANUAL"
+                                      "MANUAL",
+                                      null
                                     ]
                                   },
                                   "cancelReason": {
@@ -147598,7 +147786,8 @@
                             "WAITING",
                             "IN_PROGRESS",
                             "PENDING_APPROVAL",
-                            "COMPLETED"
+                            "COMPLETED",
+                            null
                           ]
                         },
                         "itemId": {
@@ -147863,7 +148052,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientPhone": {
@@ -147926,7 +148116,8 @@
                                       "GREEN",
                                       "GRAY",
                                       "BLACK",
-                                      "URINE"
+                                      "URINE",
+                                      null
                                     ]
                                   },
                                   "capLabel": {
@@ -147970,7 +148161,8 @@
                                     ],
                                     "enum": [
                                       "SCAN",
-                                      "MANUAL"
+                                      "MANUAL",
+                                      null
                                     ]
                                   },
                                   "cancelReason": {
@@ -148352,7 +148544,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientPhone": {
@@ -148415,7 +148608,8 @@
                                       "GREEN",
                                       "GRAY",
                                       "BLACK",
-                                      "URINE"
+                                      "URINE",
+                                      null
                                     ]
                                   },
                                   "capLabel": {
@@ -148459,7 +148653,8 @@
                                     ],
                                     "enum": [
                                       "SCAN",
-                                      "MANUAL"
+                                      "MANUAL",
+                                      null
                                     ]
                                   },
                                   "cancelReason": {
@@ -148831,7 +149026,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientPhone": {
@@ -148894,7 +149090,8 @@
                                       "GREEN",
                                       "GRAY",
                                       "BLACK",
-                                      "URINE"
+                                      "URINE",
+                                      null
                                     ]
                                   },
                                   "capLabel": {
@@ -148938,7 +149135,8 @@
                                     ],
                                     "enum": [
                                       "SCAN",
-                                      "MANUAL"
+                                      "MANUAL",
+                                      null
                                     ]
                                   },
                                   "cancelReason": {
@@ -149310,7 +149508,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientPhone": {
@@ -149373,7 +149572,8 @@
                                       "GREEN",
                                       "GRAY",
                                       "BLACK",
-                                      "URINE"
+                                      "URINE",
+                                      null
                                     ]
                                   },
                                   "capLabel": {
@@ -149417,7 +149617,8 @@
                                     ],
                                     "enum": [
                                       "SCAN",
-                                      "MANUAL"
+                                      "MANUAL",
+                                      null
                                     ]
                                   },
                                   "cancelReason": {
@@ -149790,7 +149991,8 @@
                               "enum": [
                                 "male",
                                 "female",
-                                "other"
+                                "other",
+                                null
                               ]
                             },
                             "patientPhone": {
@@ -149853,7 +150055,8 @@
                                       "GREEN",
                                       "GRAY",
                                       "BLACK",
-                                      "URINE"
+                                      "URINE",
+                                      null
                                     ]
                                   },
                                   "capLabel": {
@@ -149897,7 +150100,8 @@
                                     ],
                                     "enum": [
                                       "SCAN",
-                                      "MANUAL"
+                                      "MANUAL",
+                                      null
                                     ]
                                   },
                                   "cancelReason": {

@@ -45,6 +45,7 @@ Transaction mở ở service, truyền client transaction xuống repository đ�
 
 - `strict: true`. Cấm `any` (dùng `unknown` rồi thu hẹp). Cấm `as` để ép kiểu qua mặt compiler, trừ khi có comment giải thích lý do.
 - Type dữ liệu vào từ ngoài (request body, response bên thứ ba) luôn qua Zod parse, không `as SomeType`.
+- **Zod 4 (từ 10/11/2026, `docs/DECISIONS.md` #293)**: `z.record(<enum>, v)` bắt buộc ĐỦ mọi khoá và không báo lỗi biên dịch — dữ liệu lưu thưa (cấu hình, mẫu mã) đọc bằng `z.record` sẽ rơi về mặc định một cách im lặng. Schema đọc dữ liệu có thể thiếu khoá dùng `z.partialRecord(enum, v)`; ESLint chặn `z.record(<Identifier>, …)` (chỗ luôn đủ khoá thì `eslint-disable-next-line` kèm lý do). `z.string().uuid()` kiểm bit phiên bản/biến thể: UUID giả trong test phải là UUID hợp lệ.
 - Enum trạng thái khai báo trong `packages/shared` và dùng chung cả DB (Prisma enum), api và web.
 - Hàm public trong `packages/core` khai báo rõ kiểu trả về, không dựa hoàn toàn vào suy luận.
 

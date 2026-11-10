@@ -187,7 +187,7 @@ const businessCodeTemplateEntrySchema = z.object({
   mode: z.literal('STANDARD').optional(),
   implicitPeriod: z.literal(true).optional(),
 });
-const businessCodeTemplatesConfigSchema = z.record(businessCodeTypeSchema, businessCodeTemplateEntrySchema);
+const businessCodeTemplatesConfigSchema = z.partialRecord(businessCodeTypeSchema, businessCodeTemplateEntrySchema);
 type BusinessCodeTemplatesConfig = Partial<Record<BusinessCodeType, BusinessCodeTemplateEntry>>;
 
 /**

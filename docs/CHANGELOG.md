@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-10
 
+### Nâng zod 3 → 4, zod-to-openapi 9, puppeteer-core 25.16 (`docs/DECISIONS.md` #293)
+
+Hết cảnh báo bảo mật `zod <4.6.6` (`pnpm audit --prod` không còn lỗ hổng). Cấu hình lưu thưa đọc bằng `z.partialRecord` (zod 4 bắt `z.record(enum)` đủ khoá), có luật ESLint chặn tái phạm; UUID kiểm nghiêm hơn; sinh lại OpenAPI và kiểu web. Bundle web tăng khoảng 12 kB gzip. Không migration, không cần `db:seed`; cần `pnpm install`.
+
 ### Bộ hồ sơ bệnh án một lượt khám ghép nguyên PDF kết quả của đối tác (`docs/DECISIONS.md` #291 bổ sung 10)
 
 File PDF "In bộ hồ sơ" nay nối nguyên các trang PDF của đối tác (kết quả đã duyệt) vào cuối bộ hồ sơ; tệp hỏng được bỏ qua và bản in ghi "xem trong hệ thống". Số ảnh đính kèm không còn đếm lẫn PDF. Thêm thư viện `pdf-lib`. Không migration, không cần `db:seed`; cần `pnpm install`.

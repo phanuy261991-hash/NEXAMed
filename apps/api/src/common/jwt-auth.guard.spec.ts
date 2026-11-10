@@ -6,8 +6,9 @@ import type { Request } from 'express';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 const SECRET = 'test-secret-at-least-16-chars';
-const USER_ID = '11111111-1111-1111-1111-111111111111';
-const TENANT_ID = '22222222-2222-2222-2222-222222222222';
+// UUID hợp lệ theo RFC 4122 (zod 4 kiểm nghiêm bit phiên bản/biến thể; `1111…` không còn được chấp nhận).
+const USER_ID = '11111111-1111-4111-8111-111111111111';
+const TENANT_ID = '22222222-2222-4222-8222-222222222222';
 
 function fakeConfigService(): ConfigService {
   return { getOrThrow: () => SECRET } as unknown as ConfigService;

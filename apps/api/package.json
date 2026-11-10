@@ -46,13 +46,13 @@
     "cookie-parser": "^1.4.7",
     "exceljs": "^4.4.0",
     "pdf-lib": "1.17.1",
-    "puppeteer-core": "^25.11.0",
+    "puppeteer-core": "^25.16.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "zod": "^3.23.8"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@asteasolutions/zod-to-openapi": "^7.3.0",
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@nestjs/cli": "^11.0.24",
     "@nestjs/testing": "^11.2.7",
     "@swc/core": "^1.15.47",

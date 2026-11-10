@@ -157,5 +157,20 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // zod 4 đổi ngữ nghĩa: `z.record(<enum>, v)` BẮT BUỘC đủ MỌI khoá của enum (zod 3 cho thiếu). Cấu hình lưu thưa (chỉ các loại đã chỉnh) mà đọc bằng `z.record` sẽ không qua kiểm tra và đọc ra
+    // GIÁ TRỊ MẶC ĐỊNH một cách im lặng (đã xảy ra khi nâng zod 10/11/2026: mẫu mã phát sinh). Dùng `z.partialRecord`; chỉ dùng `z.record` khoá enum khi thật sự cần đủ khoá, kèm eslint-disable giải thích.
+    files: ['packages/shared/src/**/*.ts', 'packages/core/src/**/*.ts', 'apps/api/src/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.object.name='z'][callee.property.name='record'][arguments.0.type='Identifier']",
+          message: 'z.record với khoá là enum bắt buộc đủ mọi khoá (zod 4) — dữ liệu thưa sẽ bị coi là sai. Dùng z.partialRecord, hoặc eslint-disable kèm lý do nếu thật sự cần đủ khoá.',
+        },
+      ],
+    },
+  },
   eslintConfigPrettier,
 );

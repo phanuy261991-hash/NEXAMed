@@ -6390,6 +6390,7 @@ export interface paths {
                                     descriptionText: string | null;
                                     conclusionText: string | null;
                                     imageCount: number;
+                                    pdfCount?: number;
                                 }[];
                                 declined: {
                                     /** Format: uuid */
