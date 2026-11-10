@@ -7,7 +7,7 @@
  * Việc script làm (theo thứ tự, dừng ngay khi một bước không đạt):
  *   1. Tính số phiên bản kế tiếp từ `package.json` gốc (nguồn sự thật DUY NHẤT của số phiên bản) bằng hàm SemVer dùng chung ở `packages/core`.
  *   2. Kiểm cây làm việc git sạch, chưa có tag `v<phiên bản>`, và đã có ghi chú phát hành hợp lệ `apps/api/release-notes/<phiên bản>.json`.
- *   3. Ghi số phiên bản vào `package.json` gốc và 4 gói con, tạo commit `chore(release): v<phiên bản>` và tag `v<phiên bản>`.
+ *   3. Ghi số phiên bản vào `package.json` gốc và 5 gói con (api, web, core, shared, setup), tạo commit `chore(release): v<phiên bản>` và tag `v<phiên bản>`.
  * KHÔNG tự push và KHÔNG tự dựng ảnh — in ra lệnh kế tiếp để bạn kiểm tra rồi chạy. Cần `packages/core` và `packages/shared` đã build (`pnpm --filter @nexamed/core --filter @nexamed/shared build`).
  */
 import { execFileSync } from 'node:child_process';
@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
-const PACKAGE_FILES = ['package.json', 'apps/api/package.json', 'apps/web/package.json', 'packages/core/package.json', 'packages/shared/package.json'];
+const PACKAGE_FILES = ['package.json', 'apps/api/package.json', 'apps/web/package.json', 'packages/core/package.json', 'packages/shared/package.json', 'apps/setup/package.json'];
 
 function fail(message) {
   console.error(`Lỗi: ${message}`);

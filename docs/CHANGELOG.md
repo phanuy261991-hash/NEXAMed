@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-10
 
+### Vá cảnh báo bảo mật công cụ dev; đồng bộ số phiên bản `apps/setup` (`docs/DECISIONS.md` #293)
+
+Nâng `undici`, `glob`, `minimatch` (công cụ dev) bằng override; `pnpm audit` chỉ còn 1 cảnh báo mức thấp chưa có bản vá. Gói `apps/setup` đã vào danh sách mà script phát hành nâng số (trước đó kẹt ở `0.9.0`). Không đổi mã chạy thật.
+
 ### Sửa lỗi CI đỏ ở bước Test: Chromium khởi động và giao dịch chờ kết nối (`docs/DECISIONS.md` #294)
 
 Xuất PDF: hạn khởi động trình duyệt nâng từ 30 lên 120 giây, và một lần khởi động lỗi không còn làm hỏng mọi lần xuất PDF sau đó cho tới khi khởi động lại. Giao dịch cơ sở dữ liệu chờ lấy kết nối tối đa 10 giây thay vì 2 giây, để lúc máy bận xếp hàng chứ không báo lỗi hệ thống. Không migration, không cần `db:seed`.
