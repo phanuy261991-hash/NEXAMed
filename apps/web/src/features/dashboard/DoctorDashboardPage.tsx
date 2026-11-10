@@ -20,6 +20,7 @@ import { useHasPermission } from '../auth/usePermission';
 import { useFollowUpFeatureEnabledQuery, useMyClosingStateQuery } from '../clinic/clinic.queries';
 import { formatDayMonth, formatWait, formatWeekdayDate } from './dashboard-model';
 import { abnormalIndicatorText, averagePerDayText, buildDoctorHourlyChart, doneText, inProgressText, longestWaitText, patientSubtitle, peakText } from './doctor-dashboard-model';
+import { LabPartnerAwaitingBlock } from '../lab-partner/LabPartnerAwaitingBlock';
 import { useDoctorDashboardQuery } from './dashboard.queries';
 
 /** Màn "Hàng đợi khám" của bác sĩ — nơi thật sự bắt đầu khám/nhận ca (đóng ca, chọn phòng, nhận bệnh nhân đều xử lý ở đó). */
@@ -304,6 +305,9 @@ export function DoctorDashboardPage() {
           <div className="flex flex-wrap gap-4">
             <WaitingPanel data={data} />
             <UnseenResultsPanel data={data} />
+          </div>
+          <div className="flex flex-wrap gap-4 empty:hidden">
+            <LabPartnerAwaitingBlock variant="dashboard" mine />
           </div>
           <div className="flex flex-wrap gap-4">
             <HourlyPanel data={data} />

@@ -13,4 +13,5 @@ export const ENTRY_TYPE_LABEL: Record<SupplierDebtLedgerEntry['entryType'], stri
   ADJUSTMENT_INCREASE: 'Điều chỉnh tăng',
   ADJUSTMENT_DECREASE: 'Điều chỉnh giảm',
   REVERSAL: 'Bút toán đảo',
+  LAB_PARTNER: 'Xét nghiệm đối tác',
 };

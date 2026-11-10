@@ -76,6 +76,8 @@ const ParaclinicalQueuePage = lazy(() => import('../features/paraclinical-result
 const ClinicalOrderBookPage = lazy(() => import('../features/clinical-order/ClinicalOrderBookPage').then((m) => ({ default: m.ClinicalOrderBookPage })));
 const ParaclinicalResultLookupPage = lazy(() => import('../features/paraclinical-result/ParaclinicalResultLookupPage').then((m) => ({ default: m.ParaclinicalResultLookupPage })));
 const ParaclinicalResultPage = lazy(() => import('../features/paraclinical-result/ParaclinicalResultPage').then((m) => ({ default: m.ParaclinicalResultPage })));
+// Gửi mẫu xét nghiệm cho đối tác (docs/DECISIONS.md #291) — hàng đợi "Gửi mẫu đối tác".
+const LabPartnerQueuePage = lazy(() => import('../features/lab-partner/LabPartnerQueuePage').then((m) => ({ default: m.LabPartnerQueuePage })));
 // Thu ngân cơ bản (Sprint 5/6, BIL-01→04).
 const InvoiceListPage = lazy(() => import('../features/billing/InvoiceListPage').then((m) => ({ default: m.InvoiceListPage })));
 const InvoiceDetailPage = lazy(() => import('../features/billing/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })));
@@ -202,6 +204,7 @@ export const router = createBrowserRouter([
       { path: 'paraclinical/lab', element: <RequirePermissionRoute module="lab_result" action="read"><ParaclinicalQueuePage key="lab" group="lab" /></RequirePermissionRoute> },
       { path: 'paraclinical/lab/items/:itemId', element: <RequirePermissionRoute module="lab_result" action="read"><ParaclinicalResultPage key="lab" group="lab" /></RequirePermissionRoute> },
       { path: 'paraclinical/imaging', element: <RequirePermissionRoute module="imaging_result" action="read"><ParaclinicalQueuePage key="imaging" group="imaging" /></RequirePermissionRoute> },
+      { path: 'paraclinical/partner', element: <RequirePermissionRoute module="lab_partner" action="read"><LabPartnerQueuePage /></RequirePermissionRoute> },
       { path: 'paraclinical/orders', element: <RequirePermissionRoute module="clinical_order" action="read"><ClinicalOrderBookPage /></RequirePermissionRoute> },
       { path: 'paraclinical/results', element: <RequireAnyPermissionRoute permissions={PARACLINICAL_LOOKUP_PERMISSIONS}><ParaclinicalResultLookupPage /></RequireAnyPermissionRoute> },
       { path: 'paraclinical/imaging/items/:itemId', element: <RequirePermissionRoute module="imaging_result" action="read"><ParaclinicalResultPage key="imaging" group="imaging" /></RequirePermissionRoute> },

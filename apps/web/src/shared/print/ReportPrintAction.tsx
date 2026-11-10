@@ -10,7 +10,7 @@ import type { ReportPrintSpec } from './report-print-spec';
  *  - `loadSpec`: dữ liệu theo trang (cuộn tải thêm) → bấm "In" mới tải đủ các trang rồi in; lỗi tải đi qua hộp báo lỗi chung của mutation (giữ nguyên màn hình hiện tại).
  * Nút luôn tắt khi chưa có dữ liệu để in.
  */
-export function ReportPrintAction({ spec, loadSpec, disabled }: { spec?: ReportPrintSpec | null; loadSpec?: () => Promise<ReportPrintSpec>; disabled?: boolean }) {
+export function ReportPrintAction({ spec, loadSpec, disabled, label = 'In' }: { spec?: ReportPrintSpec | null; loadSpec?: () => Promise<ReportPrintSpec>; disabled?: boolean; /** Chữ trên nút (mặc định "In"); đặt tên rõ khi trang có nhiều bản in. */ label?: string }) {
   const [loaded, setLoaded] = useState<ReportPrintSpec | null>(null);
   const load = useMutation({
     mutationFn: async () => {
@@ -33,7 +33,7 @@ export function ReportPrintAction({ spec, loadSpec, disabled }: { spec?: ReportP
         loading={load.isPending}
         onPrint={() => (loadSpec ? load.mutate() : window.print())}
       >
-        In
+        {label}
       </PrintButton>
       {printable && <ReportTablePrintView spec={printable} />}
     </>

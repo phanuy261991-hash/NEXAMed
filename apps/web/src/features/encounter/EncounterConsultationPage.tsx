@@ -56,6 +56,7 @@ import type { PatientFormValues } from '../patient/PatientFormFields';
 import { formatDobDisplay } from '../../shared/format/date';
 import { ClinicalOrderPanel } from '../clinical-order/ClinicalOrderPanel';
 import { ClinicalOrderResultsTab } from '../clinical-order/ClinicalOrderResultsBlock';
+import { LabPartnerAwaitingBlock } from '../lab-partner/LabPartnerAwaitingBlock';
 import { useClinicalOrderQuery, useMarkResultsSeenMutation } from '../clinical-order/clinical-order.queries';
 import { useHasPermission } from '../auth/usePermission';
 import { useAuthStore } from '../auth/auth.store';
@@ -1388,6 +1389,7 @@ export function EncounterConsultationPage() {
             )}
 
             {/* Tab "Chỉ định cận lâm sàng" (Cận lâm sàng GĐ3, #212) — chỉ định 2 đường + gói, tiền cộng vào hoá đơn khi lưu. */}
+            {activeTabId === 'section-chidinh' && canSeeClinicalOrders && <LabPartnerAwaitingBlock variant="encounter" encounterId={encounterId} />}
             {activeTabId === 'section-chidinh' && canSeeClinicalOrders && (
               <ClinicalOrderPanel
                 encounterId={encounterId}
@@ -1404,7 +1406,12 @@ export function EncounterConsultationPage() {
             )}
 
             {/* Tab "Kết quả cận lâm sàng" (#221) — tách khỏi tab Chỉ định: danh sách dịch vụ làm tại phòng khám + trạng thái + nút Xem. */}
-            {activeTabId === 'section-ketqua' && canSeeClinicalOrders && <ClinicalOrderResultsTab encounterId={encounterId} />}
+            {activeTabId === 'section-ketqua' && canSeeClinicalOrders && (
+              <>
+                <LabPartnerAwaitingBlock variant="encounter" encounterId={encounterId} />
+                <ClinicalOrderResultsTab encounterId={encounterId} />
+              </>
+            )}
           </div>
         </main>
       </div>

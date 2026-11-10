@@ -13,6 +13,7 @@ import {
   FileText,
   Flask,
   ListMagnifyingGlass,
+  PaperPlaneTiltIcon,
   Scan,
   FolderSimple,
   GearSix,
@@ -56,7 +57,8 @@ import {
   PRICE_LIST_ADMIN_PERMISSIONS,
 } from '../../features/auth/admin-permissions';
 import { DOCTOR_QUEUE_ROLES } from '../../features/auth/workflow-roles';
-import { useAllowStaffSelfScheduleEnabledQuery, useFollowUpFeatureEnabledQuery, useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
+import { useLabPartnerCountsQuery } from '../../features/lab-partner/lab-partner.queries';
+import { useAllowStaffSelfScheduleEnabledQuery, useFollowUpFeatureEnabledQuery, useLabPartnerEnabledQuery, useSidebarAutoCollapseEnabledQuery } from '../../features/clinic/clinic.queries';
 import { useLeaveRequestPendingCountQuery } from '../../features/leave-request/leave-request.queries';
 import { useShiftSwapUnseenCountQuery } from '../../features/shift-swap/shift-swap.queries';
 import { useScheduleSubmissionPendingCountQuery } from '../../features/work-shift-assignment/schedule-submission.queries';
@@ -262,7 +264,15 @@ export function Sidebar() {
   // "Phiếu chỉ định" (#232) — gate theo `clinical_order.read` (kỹ thuật viên không có, họ dùng hàng đợi); "Tra cứu kết quả" — có quyền xem kết quả của ít nhất một nhóm.
   const canSeeClinicalOrderBook = useHasPermission('clinical_order', 'read');
   const canSeeResultLookup = canSeeLabQueue || canSeeImagingQueue;
-  const canSeeParaclinical = canSeeLabQueue || canSeeImagingQueue || canSeeClinicalOrderBook;
+  // "Gửi mẫu đối tác" (#291) — cần BẬT công tắc "Dùng đối tác xét nghiệm" VÀ quyền `lab_partner.read`; người chỉ có quyền này vẫn thấy nhóm "Cận lâm sàng".
+  const labPartnerEnabled = useLabPartnerEnabledQuery().data?.enabled === true;
+  const hasLabPartnerRead = useHasPermission('lab_partner', 'read');
+  const canSeeLabPartner = labPartnerEnabled && hasLabPartnerRead;
+  // Chấm số "chờ duyệt" cho bác sĩ: chỉ người có quyền duyệt kết quả xét nghiệm mới thấy (người khác không duyệt được nên số vô nghĩa).
+  const hasLabApprove = useHasPermission('lab_result', 'approve');
+  const labPartnerCounts = useLabPartnerCountsQuery(canSeeLabPartner && hasLabApprove);
+  const labPartnerAwaitingApproval = hasLabApprove ? (labPartnerCounts.data?.counts.awaitingApproval ?? 0) : 0;
+  const canSeeParaclinical = canSeeLabQueue || canSeeImagingQueue || canSeeClinicalOrderBook || canSeeLabPartner;
   // "Công nợ nhà cung cấp" Phần B (docs/DECISIONS.md #180/#182) — 2 mục "Công nợ nhà cung cấp"/
   // "Phiếu thanh toán NCC" trong nhóm "Quản lý nhà cung cấp", gate RIÊNG khỏi `canSeeCatalogPharmacy`
   // (mặc định CHỈ clinic_admin có `supplier_debt.read`, khác `drug.create`/`drug.update`).
@@ -501,6 +511,7 @@ export function Sidebar() {
                   {canSeeImagingQueue && <NavItem to="/paraclinical/imaging" label="CĐHA & Thăm dò CN" icon={Scan} collapsed={false} indent />}
                   {canSeeClinicalOrderBook && <NavItem to="/paraclinical/orders" label="Phiếu chỉ định" icon={ClipboardText} collapsed={false} indent />}
                   {canSeeResultLookup && <NavItem to="/paraclinical/results" label="Tra cứu kết quả" icon={ListMagnifyingGlass} collapsed={false} indent />}
+                  {canSeeLabPartner && <NavItem to="/paraclinical/partner" label="Gửi mẫu đối tác" icon={PaperPlaneTiltIcon} collapsed={false} indent badge={labPartnerAwaitingApproval} badgeTone="emerald" />}
                 </ul>
               )}
             </li>
