@@ -3,6 +3,8 @@ import { ClinicModule } from '../clinic/clinic.module';
 import { ReferenceCatalogModule } from '../reference-catalog/reference-catalog.module';
 import { LabIndicatorController } from './lab-indicator.controller';
 import { LabPartnerController } from './lab-partner.controller';
+import { LabPartnerPriceImportController } from './lab-partner-price-import.controller';
+import { LabPartnerPriceImportService } from './lab-partner-price-import.service';
 import { LabIndicatorRepository } from './lab-indicator.repository';
 import { LabIndicatorService } from './lab-indicator.service';
 import { ResultTemplateController } from './result-template.controller';
@@ -23,10 +25,11 @@ import { TechnicalServiceService } from './technical-service.service';
 @Module({
   imports: [ClinicModule, ReferenceCatalogModule],
   // `TechnicalServiceImportController` PHẢI đứng trước `TechnicalServiceController` (`GET technical-services/export|import-template` không bị `:id` nuốt).
-  controllers: [TechnicalServiceImportController, TechnicalServiceController, LabIndicatorController, ResultTemplateController, LabPartnerController],
+  controllers: [TechnicalServiceImportController, TechnicalServiceController, LabIndicatorController, ResultTemplateController, LabPartnerController, LabPartnerPriceImportController],
   providers: [
     TechnicalServiceService,
     TechnicalServiceImportService,
+    LabPartnerPriceImportService,
     TechnicalServiceRepository,
     LabIndicatorService,
     LabIndicatorRepository,

@@ -698,10 +698,28 @@ describe('HTTP e2e — /api/v1/lab-partner-dispatch (Gửi mẫu đối tác)', 
     const afterPay = await statement(adminToken);
     expect(afterPay.body.data.summary).toMatchObject({ doneAmount: 150_000, openingBalance: 0, periodAccrued: 150_000, periodPaid: 40_000, closingBalance: 110_000 });
 
+    // Một mẫu nhận rồi trả lại kỹ thuật viên sinh bút toán ĐẢO (số âm): KHÔNG được tính là "đã thanh toán"; mẫu quay về chờ kết quả.
+    const order4 = await collectedOrder([svcFast]);
+    const a4 = itemOf(order4, svcFast).id;
+    expect((await send(adminToken, { supplierId: partnerC.id, itemIds: [a4] })).status).toBe(200);
+    expect((await receive(nurseToken, [a4])).status).toBe(200);
+    expect((await http().post(`${QUEUE}/items/${a4}/return`).set(authed(nurseToken)).send({ reason: 'Sai tệp kết quả' })).status).toBe(200);
+    const afterReversal = await statement(adminToken);
+    expect(afterReversal.body.data.summary).toMatchObject({ doneCount: 2, doneAmount: 150_000, waitingCount: 2, waitingAmount: 200_000, periodAccrued: 150_000, periodPaid: 40_000, closingBalance: 110_000 });
+
+    // Mẫu của đối tác KHÁC trong cùng công ty không lẫn vào bảng kê này.
+    const orderOther = await collectedOrder([svcOnlyA]);
+    const other = itemOf(orderOther, svcOnlyA).id;
+    expect((await send(adminToken, { supplierId: partnerA.id, itemIds: [other] })).status).toBe(200);
+    const otherDispatchItem = await privileged.labPartnerDispatchItem.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: other } });
+    const withOther = await statement(adminToken);
+    expect(withOther.body.data.items.some((r: { itemId: string }) => r.itemId === otherDispatchItem.id)).toBe(false);
+    expect(withOther.body.data.items).toHaveLength(5);
+
     // Dải "đang chờ" ở trang đối tác.
     const pendingSummary = await http().get(`${STATEMENT}/pending-summary`).set(authed(adminToken));
     expect(pendingSummary.status, JSON.stringify(pendingSummary.body)).toBe(200);
-    expect(pendingSummary.body.data).toEqual({ waitingCount: 1, waitingAmount: 100_000 });
+    expect(pendingSummary.body.data).toEqual({ waitingCount: 2, waitingAmount: 200_000 }); // a3 + a4 (đã trả lại); mẫu của đối tác khác không tính
 
     // Excel: cùng dòng và cùng tổng; ghi nhật ký xuất.
     const exp = await http().get(`${STATEMENT}/export`).set(authed(adminToken)).buffer(true).parse((res, cb) => {
@@ -724,7 +742,7 @@ describe('HTTP e2e — /api/v1/lab-partner-dispatch (Gửi mẫu đối tác)', 
     expect(sheetText).toContain('Đối tác không nhận');
     expect(sheetText).toContain('Không nhận');
     expect(sheetText).toContain('Chờ kết quả');
-    expect(lines.filter((l) => l.includes('Bệnh nhân e2e gửi đối tác')).length).toBe(4);
+    expect(lines.filter((l) => l.includes('Bệnh nhân e2e gửi đối tác')).length).toBe(5);
     const audit = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, action: 'supplier_debt.lab_partner_statement_exported', entityId: partnerC.id } });
     expect(audit).not.toBeNull();
 

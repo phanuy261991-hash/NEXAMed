@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApproveLabPartnerResultRequest, LabPartnerStatementQuery, ListLabPartnerQueueQuery, ReceiveLabPartnerResultRequest, RejectLabPartnerItemRequest, ReturnLabPartnerResultRequest, SendLabPartnerSamplesRequest } from '@nexamed/shared';
 import { useAppConfig } from '../../app/AppConfigProvider';
 import { queryKey } from '../../shared/api/query-keys';
-import { getLabPartnerPendingSummary, getLabPartnerStatement, listLabPartnerAwaiting, approveLabPartnerResult, getLabPartnerCounts, listLabPartnerDone, listLabPartnerPending, listLabPartnerSent, receiveLabPartnerResult, rejectLabPartnerItem, returnLabPartnerResult, sendLabPartnerSamples } from './lab-partner.api';
+import { commitLabPartnerPriceImport, downloadLabPartnerPriceTemplate, exportLabPartnerPrices, getLabPartnerPendingSummary, getLabPartnerStatement, listLabPartnerAwaiting, approveLabPartnerResult, getLabPartnerCounts, listLabPartnerDone, listLabPartnerPending, listLabPartnerSent, receiveLabPartnerResult, rejectLabPartnerItem, returnLabPartnerResult, sendLabPartnerSamples } from './lab-partner.api';
 
 /** Hàng đợi gửi mẫu là màn "treo" ở quầy kỹ thuật — tự làm mới 30 giây để thấy mẫu vừa lấy, như hàng đợi Xét nghiệm. */
 const QUEUE_REFRESH_MS = 30_000;
@@ -44,6 +44,28 @@ export function useLabPartnerPendingSummaryQuery(supplierId: string, enabled: bo
     queryFn: () => getLabPartnerPendingSummary(supplierId),
     enabled,
   });
+}
+
+/** Ghi giá trả từ Excel: làm mới danh mục đối tác (cột "Dịch vụ"), dịch vụ kỹ thuật (form hiện giá trả) và hàng đợi gửi mẫu (giá theo cặp). */
+export function useCommitLabPartnerPriceImportMutation() {
+  const { tenantId } = useAppConfig();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => commitLabPartnerPriceImport(file),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'lab-partner') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'technical-service') });
+      void queryClient.invalidateQueries({ queryKey: queryKey(tenantId, 'supplier') });
+    },
+  });
+}
+
+export function useDownloadLabPartnerPriceTemplateMutation() {
+  return useMutation({ mutationFn: downloadLabPartnerPriceTemplate });
+}
+
+export function useExportLabPartnerPricesMutation() {
+  return useMutation({ mutationFn: exportLabPartnerPrices });
 }
 
 /** Sau khi gửi, mẫu rời "Chờ gửi" sang "Đã gửi" và rời hàng đợi Xét nghiệm → làm mới cả hai. */

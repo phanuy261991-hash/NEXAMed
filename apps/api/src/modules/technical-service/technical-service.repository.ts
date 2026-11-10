@@ -198,6 +198,11 @@ export class TechnicalServiceRepository {
     }
   }
 
+  /** Đối tác xét nghiệm đang dùng (mã, tên) — cột của file Excel giá trả (#291 GĐ4). Mã tăng dần để thứ tự cột ổn định giữa các lần xuất. */
+  async listActivePartners(tx: Prisma.TransactionClient, tenantId: string): Promise<{ id: string; code: string; name: string }[]> {
+    return tx.supplier.findMany({ where: { tenantId, deletedAt: null, isActive: true, isLabPartner: true }, select: { id: true, code: true, name: true }, orderBy: { code: 'asc' } });
+  }
+
   /** Nhà cung cấp là đối tác xét nghiệm còn dùng (id) — kiểm trước khi gán giá trả. Chỉ đọc bảng của module `drug`. */
   async findActivePartnerIds(tx: Prisma.TransactionClient, tenantId: string, ids: string[]): Promise<string[]> {
     if (ids.length === 0) return [];

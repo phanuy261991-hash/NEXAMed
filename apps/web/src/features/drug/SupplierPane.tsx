@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react';
-import { ArrowCounterClockwise, Eye, Flask, MagnifyingGlass, PencilSimple, Plus, Prohibit, Truck } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, DownloadSimple, Eye, FileXls, Flask, MagnifyingGlass, PencilSimple, Plus, Prohibit, Truck, UploadSimple } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import type { SupplierSummary } from '@nexamed/shared';
 import { ACTION_CONFLICT_MESSAGE, describeSaveError, isConflictError } from '../../shared/api/save-error';
 import { useHasAnyPermission, useHasPermission } from '../auth/usePermission';
 import { SUPPLIER_MANAGE_PERMISSIONS } from '../auth/admin-permissions';
+import { ActionMenu } from '../../shared/ui/ActionMenu';
 import { Button } from '../../shared/ui/Button';
+import { LabPartnerPriceImportDialog } from '../lab-partner/LabPartnerPriceImportDialog';
+import { useDownloadLabPartnerPriceTemplateMutation, useExportLabPartnerPricesMutation } from '../lab-partner/lab-partner.queries';
 import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner';
 import { RowActionButton } from '../../shared/ui/RowActionButton';
@@ -45,6 +48,11 @@ export function SupplierPane({ variant = 'supplier' }: { variant?: 'supplier' | 
   // "Công nợ nhà cung cấp" Phần A (docs/DECISIONS.md #180/#182) — cột "Tổng mua"/"Còn nợ" + nút
   // "Xem" CHỈ hiện cho ai có supplier_debt.read (mặc định chỉ clinic_admin lúc ra mắt).
   const canReadDebt = useHasPermission('supplier_debt', 'read');
+  // "Giá trả (Excel)" (#291 GĐ4): cùng quyền với việc sửa giá trả ở form dịch vụ kỹ thuật.
+  const canEditPartnerPrices = useHasPermission('technical_service', 'update') && isPartnerView;
+  const [priceImportOpen, setPriceImportOpen] = useState(false);
+  const priceTemplateMutation = useDownloadLabPartnerPriceTemplateMutation();
+  const priceExportMutation = useExportLabPartnerPricesMutation();
   const navigate = useNavigate();
   const [includeInactive, setIncludeInactive] = useState(false);
   const [search, setSearch] = useState('');
@@ -120,13 +128,27 @@ export function SupplierPane({ variant = 'supplier' }: { variant?: 'supplier' | 
             {isPartnerView ? 'Hiện cả đối tác đã ngưng' : 'Hiện cả nhà cung cấp đã ngưng'}
           </label>
         </div>
-        {canManage && (
-          <Button type="button" onClick={() => setModal({ mode: 'create' })}>
-            <Plus size={16} weight="bold" aria-hidden="true" />
-            {isPartnerView ? 'Thêm đối tác' : 'Thêm nhà cung cấp'}
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canEditPartnerPrices && (
+            <ActionMenu
+              label="Giá trả (Excel)"
+              items={[
+                { key: 'template', label: 'Tải file mẫu', icon: <FileXls size={16} aria-hidden="true" />, onClick: () => priceTemplateMutation.mutate() },
+                { key: 'export', label: 'Xuất giá trả hiện có', icon: <DownloadSimple size={16} aria-hidden="true" />, onClick: () => priceExportMutation.mutate() },
+                { key: 'import', label: 'Nhập giá trả từ Excel…', icon: <UploadSimple size={16} aria-hidden="true" />, onClick: () => setPriceImportOpen(true) },
+              ]}
+            />
+          )}
+          {canManage && (
+            <Button type="button" onClick={() => setModal({ mode: 'create' })}>
+              <Plus size={16} weight="bold" aria-hidden="true" />
+              {isPartnerView ? 'Thêm đối tác' : 'Thêm nhà cung cấp'}
+            </Button>
+          )}
+        </div>
       </div>
+      {(priceTemplateMutation.isError || priceExportMutation.isError) && <ErrorBanner message="Không tải được file Excel. Thử lại sau." />}
+      {priceImportOpen && <LabPartnerPriceImportDialog onClose={() => setPriceImportOpen(false)} />}
 
       {actionError && <ErrorBanner message={actionError} />}
       {query.isError && <ErrorBanner message="Không tải được danh sách nhà cung cấp." onRetry={() => query.refetch()} />}

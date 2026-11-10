@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-10
 
+### Nhập/Xuất Excel giá trả đối tác (`docs/DECISIONS.md` #291 bổ sung 9)
+
+Menu "Giá trả (Excel)" ở Danh mục Cận lâm sàng › Đối tác xét nghiệm: tải file mẫu, xuất giá hiện có, nhập từ Excel (xem trước, báo lỗi từng dòng, ghi trong một lần). Mỗi dòng một dịch vụ gửi đối tác, mỗi đối tác đang dùng một cột giá, có cột "Đối tác mặc định"; ô trống giữ nguyên giá. Cần quyền sửa dịch vụ kỹ thuật. Không migration, không cần `db:seed`.
+
 ### Bảng kê mẫu gửi đối tác + phụ lục đối chiếu (`docs/DECISIONS.md` #291 bổ sung 8)
 
 Trang chi tiết đối tác xét nghiệm có tab **Mẫu đã gửi**: mỗi dòng một dịch vụ, kỳ theo ngày nhận kết quả hoặc ngày gửi, lọc trạng thái, Xuất Excel, In bảng kê (số dư đầu/cuối kỳ, hai ô ký). Dải số thêm "Tổng tiền dịch vụ đã ghi nợ" và "Đang chờ kết quả". Hộp "Lập biên bản đối chiếu" có phụ lục bảng kê. Thẻ số (`StatCardRow`) dùng chung đổi sang nhãn 15px đậm, chữ tối. Không migration, không cần `db:seed`.

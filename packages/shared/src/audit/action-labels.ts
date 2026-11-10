@@ -156,6 +156,8 @@ const ACTION_LABELS: Record<string, string> = {
   'technical_service.updated': 'Sửa dịch vụ kỹ thuật',
   'technical_service.imported': 'Nhập dịch vụ kỹ thuật từ Excel',
   'technical_service.exported': 'Xuất dịch vụ kỹ thuật ra Excel',
+  'technical_service.partner_prices_imported': 'Nhập giá trả đối tác từ Excel',
+  'technical_service.partner_prices_exported': 'Xuất giá trả đối tác ra Excel',
   'lab_indicator.created': 'Thêm chỉ số xét nghiệm',
   'lab_indicator.updated': 'Sửa chỉ số xét nghiệm',
   'result_template.created': 'Thêm mẫu kết quả',

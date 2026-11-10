@@ -108,6 +108,7 @@ describe('buildLabPartnerStatementPrintSpec', () => {
     expect(spec.note).toContain('Chờ kết quả (chưa tính vào nợ): 1 mẫu, dự kiến 90.000 đ.');
     expect(spec.note).toContain('Đối tác không nhận: 1 mẫu, không tính tiền.');
     expect(section.totalRows?.[0]?.[0]).toBe('Cộng 1 mẫu đã có kết quả');
+    expect(section.totalRows?.[0]?.at(-1)).toBe('60.000'); // chỉ mẫu đã có kết quả, không cộng mẫu chờ (90.000)
   });
 
   it('kỳ rỗng: không có dòng cộng, ghi chú cắt bớt khi bị giới hạn', () => {

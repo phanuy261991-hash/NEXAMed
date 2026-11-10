@@ -1,6 +1,8 @@
 import type {
   ApproveLabPartnerResultRequest,
   LabPartnerPendingSummary,
+  LabPartnerPriceImportCommitResponse,
+  LabPartnerPriceImportPreviewResponse,
   LabPartnerQueueCounts,
   LabPartnerStatementQuery,
   LabPartnerStatementResponse,
@@ -16,7 +18,7 @@ import type {
   SendLabPartnerSamplesRequest,
   SendLabPartnerSamplesResponse,
 } from '@nexamed/shared';
-import { getApiClient, unwrap, uploadFile } from '../../shared/api/client';
+import { downloadFile, getApiClient, unwrap, uploadFile } from '../../shared/api/client';
 
 /** Gửi mẫu xét nghiệm cho đối tác (docs/DECISIONS.md #291): hàng đợi "Chờ gửi" / "Đã gửi, chờ kết quả" và thao tác gửi một đợt cho MỘT đối tác. */
 
@@ -35,6 +37,27 @@ export async function getLabPartnerStatement(supplierId: string, query: LabPartn
 
 export async function getLabPartnerPendingSummary(supplierId: string): Promise<LabPartnerPendingSummary> {
   return unwrap(await getApiClient().GET('/api/v1/lab-partner-statement/{supplierId}/pending-summary', { params: { path: { supplierId } } })) as LabPartnerPendingSummary;
+}
+
+/** Nhập/Xuất Excel "Giá trả đối tác" (#291 GĐ4) — file nhị phân/multipart nên gọi `downloadFile`/`uploadFile`, không qua client sinh từ OpenAPI. */
+export async function downloadLabPartnerPriceTemplate(): Promise<void> {
+  await downloadFile('/api/v1/lab-partners/price-import/template', 'mau-gia-tra-doi-tac.xlsx');
+}
+
+export async function exportLabPartnerPrices(): Promise<void> {
+  await downloadFile('/api/v1/lab-partners/price-import/export', 'gia-tra-doi-tac.xlsx');
+}
+
+export async function previewLabPartnerPriceImport(file: File): Promise<LabPartnerPriceImportPreviewResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return uploadFile<LabPartnerPriceImportPreviewResponse>('/api/v1/lab-partners/price-import/preview', formData);
+}
+
+export async function commitLabPartnerPriceImport(file: File): Promise<LabPartnerPriceImportCommitResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return uploadFile<LabPartnerPriceImportCommitResponse>('/api/v1/lab-partners/price-import/commit', formData);
 }
 
 export async function sendLabPartnerSamples(body: SendLabPartnerSamplesRequest): Promise<SendLabPartnerSamplesResponse> {
