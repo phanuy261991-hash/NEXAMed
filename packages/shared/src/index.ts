@@ -49,6 +49,7 @@ export * from './backup-status';
 export * from './encryption-key';
 export * from './backup-config';
 export * from './inventory';
+export * from './service-consumption';
 export * from './supplier-debt';
 export * from './print-template';
 export * from './technical-service';

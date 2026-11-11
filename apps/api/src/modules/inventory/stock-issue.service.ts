@@ -790,6 +790,38 @@ export class StockIssueService {
     });
   }
 
+  /**
+   * "Chi phí vật tư theo dịch vụ" (#297 GĐ4) — `ServiceConsumptionService.record()` gọi hàm này TRONG CÙNG transaction để sinh phiếu xuất `SERVICE_CONSUMPTION` (POSTED ngay, trừ tồn +
+   * ghi thẻ kho, không gắn hoá đơn, giá bán 0). Các dòng đã được phân bổ lô (FEFO) ở caller.
+   */
+  async createServiceConsumptionIssue(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    params: {
+      warehouseId: string;
+      encounterId: string;
+      clinicalOrderItemId: string | null;
+      encounterServiceItemId: string | null;
+      performedBy: string;
+      occurredAt: Date;
+      note: string;
+      lines: { drugId: string; batchId: string | null; quantity: number; unitCost: bigint }[];
+    },
+  ): Promise<StockIssueWithContext> {
+    return this.createSystemGeneratedIssue(tx, tenantId, actorId, {
+      warehouseId: params.warehouseId,
+      issueType: 'SERVICE_CONSUMPTION',
+      countId: null,
+      transferId: null,
+      occurredAt: params.occurredAt,
+      note: params.note,
+      ledgerReason: 'ISSUE_SERVICE_CONSUMPTION',
+      lines: params.lines,
+      consumption: { encounterId: params.encounterId, clinicalOrderItemId: params.clinicalOrderItemId, encounterServiceItemId: params.encounterServiceItemId, performedBy: params.performedBy },
+    });
+  }
+
   /** Khuôn dùng chung cho MỌI phiếu xuất TỰ SINH bởi hệ thống (không gắn đơn thuốc/hoá đơn nào,
    * `sellPrice`/`lineAmount` luôn 0) — `POSTED` NGAY, trừ tồn + ghi thẻ kho. Dùng bởi
    * `createCountShortageIssue()`/`createTransferOutIssue()` ở trên. */
@@ -799,13 +831,15 @@ export class StockIssueService {
     actorId: string,
     params: {
       warehouseId: string;
-      issueType: 'COUNT_SHORTAGE' | 'TRANSFER_OUT';
+      issueType: 'COUNT_SHORTAGE' | 'TRANSFER_OUT' | 'SERVICE_CONSUMPTION';
       countId: string | null;
       transferId: string | null;
       occurredAt: Date;
       note: string;
-      ledgerReason: 'ISSUE_COUNT_SHORTAGE' | 'ISSUE_TRANSFER_OUT';
+      ledgerReason: 'ISSUE_COUNT_SHORTAGE' | 'ISSUE_TRANSFER_OUT' | 'ISSUE_SERVICE_CONSUMPTION';
       lines: { drugId: string; batchId: string | null; quantity: number; unitCost: bigint }[];
+      /** Chỉ cho `SERVICE_CONSUMPTION` (#297 GĐ4). */
+      consumption?: { encounterId: string; clinicalOrderItemId: string | null; encounterServiceItemId: string | null; performedBy: string };
     },
   ): Promise<StockIssueWithContext> {
     const lineData: StockIssueLineData[] = params.lines.map((l) => ({
@@ -831,6 +865,10 @@ export class StockIssueService {
       departmentId: null,
       supplierId: null,
       sourceReceiptId: null,
+      encounterId: params.consumption?.encounterId ?? null,
+      clinicalOrderItemId: params.consumption?.clinicalOrderItemId ?? null,
+      encounterServiceItemId: params.consumption?.encounterServiceItemId ?? null,
+      performedBy: params.consumption?.performedBy ?? null,
       occurredAt: params.occurredAt,
       note: params.note,
       totalAmount: 0n,

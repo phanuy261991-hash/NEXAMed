@@ -72,7 +72,9 @@ export async function migrateSupplierPermissions(
     const drugPermissionId = permissionIdByKey.get(`drug.${action}`);
     const supplierPermissionId = permissionIdByKey.get(`supplier.${action}`) as string;
     if (!drugPermissionId) continue;
-    const rows = await tx.rolePermission.findMany({ where: { tenantId, deletedAt: null, permissionId: drugPermissionId } });
+    // Chỉ vai trò TUỲ BIẾN: vai trò hệ thống theo ma trận mặc định (nơi quyền nhà cung cấp được cấp đúng chỗ cần). Nếu không loại, vai trò hệ thống mới được cấp `drug.read`
+    // sau này (vd. kỹ thuật viên chọn vật tư tiêu hao, #297) sẽ bị cấp kèm quyền nhà cung cấp ngoài ý muốn ở tenant chưa có dấu.
+    const rows = await tx.rolePermission.findMany({ where: { tenantId, deletedAt: null, permissionId: drugPermissionId, role: { isSystemDefault: false } } });
     if (rows.length === 0) continue;
     // Chỉ cấp (và chỉ báo "đã thêm") cho vai trò CHƯA có quyền nhà cung cấp tương ứng — vai trò hệ thống đã có sẵn từ ma trận mặc định thì không đụng.
     const already = new Set(

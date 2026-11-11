@@ -30,6 +30,11 @@ export interface CreateStockIssueData {
   /** "Công nợ nhà cung cấp" Phần C — CHỈ có ý nghĩa với `RETURN_TO_SUPPLIER`. */
   supplierId: string | null;
   sourceReceiptId: string | null;
+  /** "Chi phí vật tư theo dịch vụ" (#297 GĐ4) — CHỈ cho `issueType='SERVICE_CONSUMPTION'`: lượt khám, ĐÚNG MỘT dòng dịch vụ, người thực hiện (CHECK ở CSDL). */
+  encounterId?: string | null;
+  clinicalOrderItemId?: string | null;
+  encounterServiceItemId?: string | null;
+  performedBy?: string | null;
   occurredAt: Date;
   note: string | null;
   totalAmount: bigint;
@@ -123,6 +128,10 @@ export class StockIssueRepository {
         departmentId: data.departmentId,
         supplierId: data.supplierId,
         sourceReceiptId: data.sourceReceiptId,
+        encounterId: data.encounterId ?? null,
+        clinicalOrderItemId: data.clinicalOrderItemId ?? null,
+        encounterServiceItemId: data.encounterServiceItemId ?? null,
+        performedBy: data.performedBy ?? null,
         occurredAt: data.occurredAt,
         note: data.note,
         totalAmount: data.totalAmount,

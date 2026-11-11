@@ -29,6 +29,9 @@ import { StockLedgerReportController } from './stock-ledger-report.controller';
 import { StockLedgerReportService } from './stock-ledger-report.service';
 import { StockLedgerReportExportService } from './stock-ledger-report-export.service';
 import { StockBalanceExportService } from './stock-balance-export.service';
+import { ServiceConsumptionController } from './service-consumption.controller';
+import { ServiceConsumptionService } from './service-consumption.service';
+import { ServiceConsumptionRepository } from './service-consumption.repository';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146). Module
@@ -95,6 +98,7 @@ import { StockBalanceExportService } from './stock-balance-export.service';
     StockCountController,
     StockTransferController,
     StockLedgerReportController,
+    ServiceConsumptionController,
   ],
   providers: [
     StockReceiptService,
@@ -113,6 +117,8 @@ import { StockBalanceExportService } from './stock-balance-export.service';
     StockTransferRepository,
     StockLedgerReportService,
     StockLedgerReportExportService,
+    ServiceConsumptionService,
+    ServiceConsumptionRepository,
   ],
   // "Công nợ nhà cung cấp" Phần D (docs/DECISIONS.md #180/#182) — `SupplierDebtService.approveAdjustment()`
   // gọi `StockReceiptService.voidPostedForAdjustment()`/`StockIssueService.voidPostedForAdjustment()`

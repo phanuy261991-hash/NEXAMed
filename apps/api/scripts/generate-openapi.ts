@@ -73,6 +73,12 @@ import {
   waitingReportSchema,
   cancellationReportSchema,
   followUpReportSchema,
+  serviceNormQuerySchema,
+  serviceNormResponseSchema,
+  putServiceNormRequestSchema,
+  encounterConsumptionResponseSchema,
+  recordConsumptionRequestSchema,
+  reverseConsumptionRequestSchema,
   bookingSourceReportSchema,
   cashierDashboardSchema,
   listFollowUpsQuerySchema,
@@ -7899,6 +7905,93 @@ registry.registerPath({
     401: errorResponse('Thiếu hoặc sai access token'),
     403: errorResponse('Không có quyền shift_swap.create'),
     409: errorResponse('Sai trạng thái / khoá lạc quan / quy tắc nghiệp vụ'),
+  },
+});
+
+
+// ---- Chi phí vật tư theo dịch vụ (#297 GĐ4) ----
+const consumptionEncounterParams = z.object({ encounterId: z.string().uuid() });
+const consumptionIssueParams = z.object({ issueId: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/service-consumption/norms',
+  tags: ['service-consumption'],
+  summary: 'Định mức vật tư/thuốc tiêu hao của một dịch vụ (quyền service_consumption.read; dữ liệu chung cả công ty)',
+  security: [{ bearerAuth: [] }],
+  request: { query: serviceNormQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(serviceNormResponseSchema)),
+    400: errorResponse('Tham số không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_consumption.read'),
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/service-consumption/norms',
+  tags: ['service-consumption'],
+  summary: 'Thay nguyên định mức tiêu hao của một dịch vụ (quyền service_consumption.norm; danh sách rỗng = xoá hết)',
+  security: [{ bearerAuth: [] }],
+  request: { query: serviceNormQuerySchema, body: { content: { 'application/json': { schema: putServiceNormRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(serviceNormResponseSchema)),
+    400: errorResponse('Dữ liệu không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_consumption.norm'),
+    404: errorResponse('Dịch vụ không tồn tại'),
+    422: errorResponse('Có vật tư hoặc thuốc không còn trong danh mục'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/service-consumption/encounters/{encounterId}',
+  tags: ['service-consumption'],
+  summary: 'Dịch vụ của lượt khám kèm định mức và phiếu tiêu hao đã ghi (quyền service_consumption.read; giá vốn chỉ với service_consumption.report; ghi nhật ký xem)',
+  security: [{ bearerAuth: [] }],
+  request: { params: consumptionEncounterParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(encounterConsumptionResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_consumption.read'),
+    404: errorResponse('Lượt khám không tồn tại hoặc thuộc chi nhánh khác'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/service-consumption/records',
+  tags: ['service-consumption'],
+  summary: 'Ghi vật tư/thuốc tiêu hao cho MỘT dịch vụ đã thực hiện (quyền service_consumption.record): tự chọn lô theo hạn dùng, trừ kho mặc định của chi nhánh, không thu thêm tiền',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: recordConsumptionRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(encounterConsumptionResponseSchema)),
+    400: errorResponse('Dữ liệu không hợp lệ'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_consumption.record'),
+    404: errorResponse('Lượt khám hoặc dịch vụ không tồn tại'),
+    409: errorResponse('Dịch vụ đã ghi tiêu hao (đảo phiếu cũ trước)'),
+    422: errorResponse('Lượt khám chưa tiếp nhận / không đủ tồn kho'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/service-consumption/records/{issueId}/reverse',
+  tags: ['service-consumption'],
+  summary: 'Đảo phiếu tiêu hao và hoàn kho, bắt buộc lý do (quyền service_consumption.reverse)',
+  security: [{ bearerAuth: [] }],
+  request: { params: consumptionIssueParams, body: { content: { 'application/json': { schema: reverseConsumptionRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(encounterConsumptionResponseSchema)),
+    400: errorResponse('Thiếu lý do'),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền service_consumption.reverse'),
+    404: errorResponse('Phiếu không tồn tại'),
+    409: errorResponse('Phiếu đã được đảo'),
   },
 });
 

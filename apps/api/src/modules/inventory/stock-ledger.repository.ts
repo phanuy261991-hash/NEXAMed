@@ -124,7 +124,7 @@ export class StockLedgerRepository {
    * qua endpoint này. */
   listForSourceIssue(tx: Prisma.TransactionClient, tenantId: string, sourceIssueId: string): Promise<SourceIssueLedgerRow[]> {
     return tx.stockLedger.findMany({
-      where: { tenantId, sourceIssueId, reason: { in: ['ISSUE_RETAIL_SALE', 'ISSUE_INTERNAL_ALLOCATION', 'ISSUE_RETURN_TO_SUPPLIER', 'ISSUE_WRITE_OFF'] } },
+      where: { tenantId, sourceIssueId, reason: { in: ['ISSUE_RETAIL_SALE', 'ISSUE_INTERNAL_ALLOCATION', 'ISSUE_RETURN_TO_SUPPLIER', 'ISSUE_WRITE_OFF', 'ISSUE_SERVICE_CONSUMPTION'] } },
       select: { drugId: true, warehouseId: true, batchId: true, quantityChange: true, unitCost: true },
     });
   }

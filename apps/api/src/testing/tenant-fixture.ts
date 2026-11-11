@@ -232,6 +232,8 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       await prisma.resultTemplate.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.technicalServiceIndicator.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.labPartnerServicePrice.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Định mức tiêu hao theo dịch vụ (#297 GĐ4) trỏ tới dịch vụ kỹ thuật + thuốc/vật tư — xoá TRƯỚC cả hai.
+      await prisma.serviceConsumptionNorm.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.technicalServicePrice.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.labIndicatorReference.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.labIndicator.deleteMany({ where: { tenantId: { in: tenantIds } } });

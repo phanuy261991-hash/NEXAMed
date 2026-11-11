@@ -86,6 +86,12 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   // Trang "Hẹn tái khám" (#285): `read` xem danh sách (lễ tân/quản trị toàn bộ, bác sĩ chỉ hẹn của lượt khám do mình khám — vì `encounter.read` của bác sĩ là global nên cần quyền riêng); `remind` ghi lần nhắc.
   { module: 'follow_up', action: 'read', description: 'Xem danh sách Hẹn tái khám' },
   { module: 'follow_up', action: 'remind', description: 'Ghi lần nhắc hẹn tái khám (đã gọi, không nghe máy...)' },
+  // Chi phí vật tư theo dịch vụ (#297 GĐ4): `read` xem vật tư/thuốc đã ghi (tên + số lượng, KHÔNG giá vốn); `record` người thực hiện dịch vụ ghi tiêu hao; `reverse` đảo phiếu + hoàn kho; `norm` khai định mức trong form dịch vụ; `report` xem giá vốn + báo cáo (chỉ quản lý).
+  { module: 'service_consumption', action: 'read', description: 'Xem vật tư và thuốc đã ghi tiêu hao theo dịch vụ (không kèm giá vốn)' },
+  { module: 'service_consumption', action: 'record', description: 'Ghi vật tư và thuốc tiêu hao cho dịch vụ đã thực hiện' },
+  { module: 'service_consumption', action: 'reverse', description: 'Đảo phiếu tiêu hao và hoàn kho' },
+  { module: 'service_consumption', action: 'norm', description: 'Khai định mức vật tư tiêu hao của dịch vụ' },
+  { module: 'service_consumption', action: 'report', description: 'Xem giá vốn tiêu hao và báo cáo Chi phí vật tư theo dịch vụ' },
   { module: 'clinic_config', action: 'read', description: 'Xem cấu hình phòng khám' },
   { module: 'clinic_config', action: 'update', description: 'Sửa cấu hình phòng khám' },
   { module: 'user_account', action: 'read', description: 'Xem tài khoản người dùng' },
@@ -397,6 +403,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
   },
   // Kỹ thuật viên (#215): chỉ làm việc ở đúng menu của mình, KHÔNG duyệt/ký kết quả. `result_template.read` để chèn mẫu lời nhận xét/kết luận.
   lab_technician: {
+    'service_consumption.read': 'global',
+    'service_consumption.record': 'global',
+    'drug.read': 'global',
+    'reference_catalog.read': 'global',
     'lab_result.read': 'global',
     'lab_result.enter': 'global',
     'lab_partner.read': 'global',
@@ -405,11 +415,17 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'result_template.read': 'global',
   },
   imaging_technician: {
+    'service_consumption.read': 'global',
+    'service_consumption.record': 'global',
+    'drug.read': 'global',
+    'reference_catalog.read': 'global',
     'imaging_result.read': 'global',
     'imaging_result.enter': 'global',
     'result_template.read': 'global',
   },
   nurse: {
+    'service_consumption.read': 'global',
+    'service_consumption.record': 'global',
     'patient.read': 'global',
     // Đổi personal→global (Sprint 3, Tiếp nhận): "personal" theo .claude/docs/security-audit.md
     // nghĩa là chủ = encounter.doctor_id — điều dưỡng không phải bác sĩ nên scope này chưa từng
@@ -459,6 +475,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift.read': 'global',
   },
   doctor: {
+    'service_consumption.read': 'global',
+    'service_consumption.record': 'global',
     'patient.read': 'global',
     // Đổi từ chỉ đọc sang có sửa (global, cùng mức receptionist/clinic_admin — hệ thống chưa có
     // quyền theo từng trường riêng) — bác sĩ cập nhật "Tiền sử dị ứng" ngay trong màn khám cần ghi
@@ -539,6 +557,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'work_shift.read': 'global',
   },
   clinic_admin: {
+    'service_consumption.read': 'global',
+    'service_consumption.record': 'global',
+    'service_consumption.reverse': 'global',
+    'service_consumption.norm': 'global',
+    'service_consumption.report': 'global',
     'patient.read': 'global',
     'patient.create': 'global',
     'patient.update': 'global',

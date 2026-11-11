@@ -46,6 +46,8 @@ export const MODULE_LABELS: Record<string, string> = {
   dashboard: 'Trang Tổng quan',
   // Trang "Hẹn tái khám" (#285) — nhãn thêm NGAY lúc tạo quyền.
   follow_up: 'Hẹn tái khám',
+  // Chi phí vật tư theo dịch vụ (#297 GĐ4) — nhãn thêm NGAY lúc tạo quyền.
+  service_consumption: 'Chi phí vật tư theo dịch vụ',
   daily_report: 'Báo cáo ngày',
   operations_report: 'Báo cáo Khám bệnh và vận hành',
   revenue_report: 'Báo cáo Doanh thu',

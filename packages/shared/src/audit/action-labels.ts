@@ -210,6 +210,11 @@ const ACTION_LABELS: Record<string, string> = {
   'stock_issue.approved': 'Duyệt phiếu xuất kho',
   'stock_issue.rejected': 'Từ chối phiếu xuất kho',
   'stock_issue.voided': 'Huỷ phiếu xuất kho',
+  // Chi phí vật tư theo dịch vụ (#297 GĐ4)
+  'service_consumption.recorded': 'Ghi vật tư tiêu hao theo dịch vụ',
+  'service_consumption.reversed': 'Đảo phiếu tiêu hao vật tư và hoàn kho',
+  'service_consumption.exported': 'Xuất báo cáo Chi phí vật tư theo dịch vụ ra Excel',
+  'service_consumption_norm.updated': 'Sửa định mức vật tư tiêu hao của dịch vụ',
   'stock_count.viewed': 'Xem phiếu kiểm kê',
   'stock_count.created': 'Lập phiếu kiểm kê',
   'stock_count.updated': 'Sửa phiếu kiểm kê',

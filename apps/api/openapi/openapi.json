@@ -156705,6 +156705,1834 @@
           }
         }
       }
+    },
+    "/api/v1/service-consumption/norms": {
+      "get": {
+        "tags": [
+          "service-consumption"
+        ],
+        "summary": "Định mức vật tư/thuốc tiêu hao của một dịch vụ (quyền service_consumption.read; dữ liệu chung cả công ty)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EXAM_TYPE",
+                "TECHNICAL_SERVICE"
+              ]
+            },
+            "required": true,
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "ref",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "EXAM_TYPE",
+                            "TECHNICAL_SERVICE"
+                          ]
+                        },
+                        "ref": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "itemType": {
+                                "type": "string",
+                                "enum": [
+                                  "MEDICINE",
+                                  "SUPPLY"
+                                ]
+                              },
+                              "baseUnitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "itemType",
+                              "baseUnitCode",
+                              "quantity"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "ref",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tham số không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền service_consumption.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "service-consumption"
+        ],
+        "summary": "Thay nguyên định mức tiêu hao của một dịch vụ (quyền service_consumption.norm; danh sách rỗng = xoá hết)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EXAM_TYPE",
+                "TECHNICAL_SERVICE"
+              ]
+            },
+            "required": true,
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "ref",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "drugId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000000
+                        }
+                      },
+                      "required": [
+                        "drugId",
+                        "quantity"
+                      ]
+                    },
+                    "maxItems": 50
+                  }
+                },
+                "required": [
+                  "lines"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "EXAM_TYPE",
+                            "TECHNICAL_SERVICE"
+                          ]
+                        },
+                        "ref": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "drugId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "drugCode": {
+                                "type": "string"
+                              },
+                              "drugName": {
+                                "type": "string"
+                              },
+                              "itemType": {
+                                "type": "string",
+                                "enum": [
+                                  "MEDICINE",
+                                  "SUPPLY"
+                                ]
+                              },
+                              "baseUnitCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "drugId",
+                              "drugCode",
+                              "drugName",
+                              "itemType",
+                              "baseUnitCode",
+                              "quantity"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "ref",
+                        "lines"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền service_consumption.norm",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dịch vụ không tồn tại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Có vật tư hoặc thuốc không còn trong danh mục",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/service-consumption/encounters/{encounterId}": {
+      "get": {
+        "tags": [
+          "service-consumption"
+        ],
+        "summary": "Dịch vụ của lượt khám kèm định mức và phiếu tiêu hao đã ghi (quyền service_consumption.read; giá vốn chỉ với service_consumption.report; ghi nhật ký xem)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "encounterId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "canSeeCost": {
+                          "type": "boolean"
+                        },
+                        "services": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "target": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "CLINICAL_ORDER_ITEM",
+                                      "ENCOUNTER_SERVICE_ITEM"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "id"
+                                ]
+                              },
+                              "serviceKind": {
+                                "type": "string",
+                                "enum": [
+                                  "EXAM_TYPE",
+                                  "TECHNICAL_SERVICE"
+                                ]
+                              },
+                              "serviceCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "serviceName": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "norm": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "drugId": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "drugCode": {
+                                      "type": "string"
+                                    },
+                                    "drugName": {
+                                      "type": "string"
+                                    },
+                                    "itemType": {
+                                      "type": "string",
+                                      "enum": [
+                                        "MEDICINE",
+                                        "SUPPLY"
+                                      ]
+                                    },
+                                    "baseUnitCode": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "quantity": {
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "required": [
+                                    "drugId",
+                                    "drugCode",
+                                    "drugName",
+                                    "itemType",
+                                    "baseUnitCode",
+                                    "quantity"
+                                  ]
+                                }
+                              },
+                              "record": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "issueNo": {
+                                    "type": "string"
+                                  },
+                                  "occurredAt": {
+                                    "type": "string"
+                                  },
+                                  "performedBy": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "performedByName": {
+                                    "type": "string"
+                                  },
+                                  "lines": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "drugId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "drugCode": {
+                                          "type": "string"
+                                        },
+                                        "drugName": {
+                                          "type": "string"
+                                        },
+                                        "itemType": {
+                                          "type": "string",
+                                          "enum": [
+                                            "MEDICINE",
+                                            "SUPPLY"
+                                          ]
+                                        },
+                                        "baseUnitCode": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "quantity": {
+                                          "type": "integer"
+                                        },
+                                        "batchNo": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "expiryDate": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "unitCost": {
+                                          "type": [
+                                            "integer",
+                                            "null"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "drugId",
+                                        "drugCode",
+                                        "drugName",
+                                        "itemType",
+                                        "baseUnitCode",
+                                        "quantity",
+                                        "batchNo",
+                                        "expiryDate",
+                                        "unitCost"
+                                      ]
+                                    }
+                                  },
+                                  "totalCost": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "issueNo",
+                                  "occurredAt",
+                                  "performedBy",
+                                  "performedByName",
+                                  "lines",
+                                  "totalCost"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "target",
+                              "serviceKind",
+                              "serviceCode",
+                              "serviceName",
+                              "status",
+                              "norm",
+                              "record"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "encounterId",
+                        "canSeeCost",
+                        "services"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền service_consumption.read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lượt khám không tồn tại hoặc thuộc chi nhánh khác",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/service-consumption/records": {
+      "post": {
+        "tags": [
+          "service-consumption"
+        ],
+        "summary": "Ghi vật tư/thuốc tiêu hao cho MỘT dịch vụ đã thực hiện (quyền service_consumption.record): tự chọn lô theo hạn dùng, trừ kho mặc định của chi nhánh, không thu thêm tiền",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "encounterId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "target": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "CLINICAL_ORDER_ITEM",
+                          "ENCOUNTER_SERVICE_ITEM"
+                        ]
+                      },
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "id"
+                    ]
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "drugId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000000
+                        }
+                      },
+                      "required": [
+                        "drugId",
+                        "quantity"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 50
+                  }
+                },
+                "required": [
+                  "encounterId",
+                  "target",
+                  "lines"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "canSeeCost": {
+                          "type": "boolean"
+                        },
+                        "services": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "target": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "CLINICAL_ORDER_ITEM",
+                                      "ENCOUNTER_SERVICE_ITEM"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "id"
+                                ]
+                              },
+                              "serviceKind": {
+                                "type": "string",
+                                "enum": [
+                                  "EXAM_TYPE",
+                                  "TECHNICAL_SERVICE"
+                                ]
+                              },
+                              "serviceCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "serviceName": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "norm": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "drugId": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "drugCode": {
+                                      "type": "string"
+                                    },
+                                    "drugName": {
+                                      "type": "string"
+                                    },
+                                    "itemType": {
+                                      "type": "string",
+                                      "enum": [
+                                        "MEDICINE",
+                                        "SUPPLY"
+                                      ]
+                                    },
+                                    "baseUnitCode": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "quantity": {
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "required": [
+                                    "drugId",
+                                    "drugCode",
+                                    "drugName",
+                                    "itemType",
+                                    "baseUnitCode",
+                                    "quantity"
+                                  ]
+                                }
+                              },
+                              "record": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "issueNo": {
+                                    "type": "string"
+                                  },
+                                  "occurredAt": {
+                                    "type": "string"
+                                  },
+                                  "performedBy": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "performedByName": {
+                                    "type": "string"
+                                  },
+                                  "lines": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "drugId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "drugCode": {
+                                          "type": "string"
+                                        },
+                                        "drugName": {
+                                          "type": "string"
+                                        },
+                                        "itemType": {
+                                          "type": "string",
+                                          "enum": [
+                                            "MEDICINE",
+                                            "SUPPLY"
+                                          ]
+                                        },
+                                        "baseUnitCode": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "quantity": {
+                                          "type": "integer"
+                                        },
+                                        "batchNo": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "expiryDate": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "unitCost": {
+                                          "type": [
+                                            "integer",
+                                            "null"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "drugId",
+                                        "drugCode",
+                                        "drugName",
+                                        "itemType",
+                                        "baseUnitCode",
+                                        "quantity",
+                                        "batchNo",
+                                        "expiryDate",
+                                        "unitCost"
+                                      ]
+                                    }
+                                  },
+                                  "totalCost": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "issueNo",
+                                  "occurredAt",
+                                  "performedBy",
+                                  "performedByName",
+                                  "lines",
+                                  "totalCost"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "target",
+                              "serviceKind",
+                              "serviceCode",
+                              "serviceName",
+                              "status",
+                              "norm",
+                              "record"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "encounterId",
+                        "canSeeCost",
+                        "services"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền service_consumption.record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lượt khám hoặc dịch vụ không tồn tại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Dịch vụ đã ghi tiêu hao (đảo phiếu cũ trước)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Lượt khám chưa tiếp nhận / không đủ tồn kho",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/service-consumption/records/{issueId}/reverse": {
+      "post": {
+        "tags": [
+          "service-consumption"
+        ],
+        "summary": "Đảo phiếu tiêu hao và hoàn kho, bắt buộc lý do (quyền service_consumption.reverse)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "issueId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "encounterId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "canSeeCost": {
+                          "type": "boolean"
+                        },
+                        "services": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "target": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "CLINICAL_ORDER_ITEM",
+                                      "ENCOUNTER_SERVICE_ITEM"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "id"
+                                ]
+                              },
+                              "serviceKind": {
+                                "type": "string",
+                                "enum": [
+                                  "EXAM_TYPE",
+                                  "TECHNICAL_SERVICE"
+                                ]
+                              },
+                              "serviceCode": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "serviceName": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "norm": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "drugId": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "drugCode": {
+                                      "type": "string"
+                                    },
+                                    "drugName": {
+                                      "type": "string"
+                                    },
+                                    "itemType": {
+                                      "type": "string",
+                                      "enum": [
+                                        "MEDICINE",
+                                        "SUPPLY"
+                                      ]
+                                    },
+                                    "baseUnitCode": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "quantity": {
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "required": [
+                                    "drugId",
+                                    "drugCode",
+                                    "drugName",
+                                    "itemType",
+                                    "baseUnitCode",
+                                    "quantity"
+                                  ]
+                                }
+                              },
+                              "record": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "issueNo": {
+                                    "type": "string"
+                                  },
+                                  "occurredAt": {
+                                    "type": "string"
+                                  },
+                                  "performedBy": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "performedByName": {
+                                    "type": "string"
+                                  },
+                                  "lines": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "drugId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "drugCode": {
+                                          "type": "string"
+                                        },
+                                        "drugName": {
+                                          "type": "string"
+                                        },
+                                        "itemType": {
+                                          "type": "string",
+                                          "enum": [
+                                            "MEDICINE",
+                                            "SUPPLY"
+                                          ]
+                                        },
+                                        "baseUnitCode": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "quantity": {
+                                          "type": "integer"
+                                        },
+                                        "batchNo": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "expiryDate": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        },
+                                        "unitCost": {
+                                          "type": [
+                                            "integer",
+                                            "null"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "drugId",
+                                        "drugCode",
+                                        "drugName",
+                                        "itemType",
+                                        "baseUnitCode",
+                                        "quantity",
+                                        "batchNo",
+                                        "expiryDate",
+                                        "unitCost"
+                                      ]
+                                    }
+                                  },
+                                  "totalCost": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "issueNo",
+                                  "occurredAt",
+                                  "performedBy",
+                                  "performedByName",
+                                  "lines",
+                                  "totalCost"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "target",
+                              "serviceKind",
+                              "serviceCode",
+                              "serviceName",
+                              "status",
+                              "norm",
+                              "record"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "encounterId",
+                        "canSeeCost",
+                        "services"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu lý do",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền service_consumption.reverse",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Phiếu không tồn tại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Phiếu đã được đảo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "webhooks": {}

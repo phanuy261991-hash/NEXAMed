@@ -60642,6 +60642,737 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/service-consumption/norms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Định mức vật tư/thuốc tiêu hao của một dịch vụ (quyền service_consumption.read; dữ liệu chung cả công ty) */
+        get: {
+            parameters: {
+                query: {
+                    kind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                    ref: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                kind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                                ref: string;
+                                lines: {
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** @enum {string} */
+                                    itemType: "MEDICINE" | "SUPPLY";
+                                    baseUnitCode: string | null;
+                                    quantity: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        /** Thay nguyên định mức tiêu hao của một dịch vụ (quyền service_consumption.norm; danh sách rỗng = xoá hết) */
+        put: {
+            parameters: {
+                query: {
+                    kind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                    ref: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            quantity: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {string} */
+                                kind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                                ref: string;
+                                lines: {
+                                    /** Format: uuid */
+                                    drugId: string;
+                                    drugCode: string;
+                                    drugName: string;
+                                    /** @enum {string} */
+                                    itemType: "MEDICINE" | "SUPPLY";
+                                    baseUnitCode: string | null;
+                                    quantity: number;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.norm */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Dịch vụ không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Có vật tư hoặc thuốc không còn trong danh mục */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/service-consumption/encounters/{encounterId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dịch vụ của lượt khám kèm định mức và phiếu tiêu hao đã ghi (quyền service_consumption.read; giá vốn chỉ với service_consumption.report; ghi nhật ký xem) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    encounterId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                encounterId: string;
+                                canSeeCost: boolean;
+                                services: {
+                                    target: {
+                                        /** @enum {string} */
+                                        kind: "CLINICAL_ORDER_ITEM" | "ENCOUNTER_SERVICE_ITEM";
+                                        /** Format: uuid */
+                                        id: string;
+                                    };
+                                    /** @enum {string} */
+                                    serviceKind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                                    serviceCode: string | null;
+                                    serviceName: string;
+                                    status: string | null;
+                                    norm: {
+                                        /** Format: uuid */
+                                        drugId: string;
+                                        drugCode: string;
+                                        drugName: string;
+                                        /** @enum {string} */
+                                        itemType: "MEDICINE" | "SUPPLY";
+                                        baseUnitCode: string | null;
+                                        quantity: number;
+                                    }[];
+                                    record: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        issueNo: string;
+                                        occurredAt: string;
+                                        /** Format: uuid */
+                                        performedBy: string;
+                                        performedByName: string;
+                                        lines: {
+                                            /** Format: uuid */
+                                            drugId: string;
+                                            drugCode: string;
+                                            drugName: string;
+                                            /** @enum {string} */
+                                            itemType: "MEDICINE" | "SUPPLY";
+                                            baseUnitCode: string | null;
+                                            quantity: number;
+                                            batchNo: string | null;
+                                            expiryDate: string | null;
+                                            unitCost: number | null;
+                                        }[];
+                                        totalCost: number | null;
+                                    } | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám không tồn tại hoặc thuộc chi nhánh khác */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/service-consumption/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ghi vật tư/thuốc tiêu hao cho MỘT dịch vụ đã thực hiện (quyền service_consumption.record): tự chọn lô theo hạn dùng, trừ kho mặc định của chi nhánh, không thu thêm tiền */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        encounterId: string;
+                        target: {
+                            /** @enum {string} */
+                            kind: "CLINICAL_ORDER_ITEM" | "ENCOUNTER_SERVICE_ITEM";
+                            /** Format: uuid */
+                            id: string;
+                        };
+                        lines: {
+                            /** Format: uuid */
+                            drugId: string;
+                            quantity: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                encounterId: string;
+                                canSeeCost: boolean;
+                                services: {
+                                    target: {
+                                        /** @enum {string} */
+                                        kind: "CLINICAL_ORDER_ITEM" | "ENCOUNTER_SERVICE_ITEM";
+                                        /** Format: uuid */
+                                        id: string;
+                                    };
+                                    /** @enum {string} */
+                                    serviceKind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                                    serviceCode: string | null;
+                                    serviceName: string;
+                                    status: string | null;
+                                    norm: {
+                                        /** Format: uuid */
+                                        drugId: string;
+                                        drugCode: string;
+                                        drugName: string;
+                                        /** @enum {string} */
+                                        itemType: "MEDICINE" | "SUPPLY";
+                                        baseUnitCode: string | null;
+                                        quantity: number;
+                                    }[];
+                                    record: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        issueNo: string;
+                                        occurredAt: string;
+                                        /** Format: uuid */
+                                        performedBy: string;
+                                        performedByName: string;
+                                        lines: {
+                                            /** Format: uuid */
+                                            drugId: string;
+                                            drugCode: string;
+                                            drugName: string;
+                                            /** @enum {string} */
+                                            itemType: "MEDICINE" | "SUPPLY";
+                                            baseUnitCode: string | null;
+                                            quantity: number;
+                                            batchNo: string | null;
+                                            expiryDate: string | null;
+                                            unitCost: number | null;
+                                        }[];
+                                        totalCost: number | null;
+                                    } | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Dữ liệu không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.record */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám hoặc dịch vụ không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Dịch vụ đã ghi tiêu hao (đảo phiếu cũ trước) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Lượt khám chưa tiếp nhận / không đủ tồn kho */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/service-consumption/records/{issueId}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đảo phiếu tiêu hao và hoàn kho, bắt buộc lý do (quyền service_consumption.reverse) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    issueId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                encounterId: string;
+                                canSeeCost: boolean;
+                                services: {
+                                    target: {
+                                        /** @enum {string} */
+                                        kind: "CLINICAL_ORDER_ITEM" | "ENCOUNTER_SERVICE_ITEM";
+                                        /** Format: uuid */
+                                        id: string;
+                                    };
+                                    /** @enum {string} */
+                                    serviceKind: "EXAM_TYPE" | "TECHNICAL_SERVICE";
+                                    serviceCode: string | null;
+                                    serviceName: string;
+                                    status: string | null;
+                                    norm: {
+                                        /** Format: uuid */
+                                        drugId: string;
+                                        drugCode: string;
+                                        drugName: string;
+                                        /** @enum {string} */
+                                        itemType: "MEDICINE" | "SUPPLY";
+                                        baseUnitCode: string | null;
+                                        quantity: number;
+                                    }[];
+                                    record: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        issueNo: string;
+                                        occurredAt: string;
+                                        /** Format: uuid */
+                                        performedBy: string;
+                                        performedByName: string;
+                                        lines: {
+                                            /** Format: uuid */
+                                            drugId: string;
+                                            drugCode: string;
+                                            drugName: string;
+                                            /** @enum {string} */
+                                            itemType: "MEDICINE" | "SUPPLY";
+                                            baseUnitCode: string | null;
+                                            quantity: number;
+                                            batchNo: string | null;
+                                            expiryDate: string | null;
+                                            unitCost: number | null;
+                                        }[];
+                                        totalCost: number | null;
+                                    } | null;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Thiếu lý do */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.reverse */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu không tồn tại */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Phiếu đã được đảo */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {

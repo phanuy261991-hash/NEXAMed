@@ -156,6 +156,7 @@ model Tenant {
   patientConditions           PatientCondition[]
   insuranceCards              InsuranceCard[]
   followUpReminders           FollowUpReminder[]
+  serviceConsumptionNorms     ServiceConsumptionNorm[]
   patientFamilyHistories      PatientFamilyHistory[]
   examTypePrices              ExamTypePrice[]
   invoices                    Invoice[]
@@ -2626,6 +2627,12 @@ model StockIssue {
   // Phiếu nhập gốc TUỲ CHỌN (Q3, kế hoạch kỹ thuật) — chọn thì `SupplierDebtService.recordReturnApproval()`
   // trừ đúng phiếu đó trước (allocateSupplierDebt() FIFO), không chọn thì trừ theo FIFO thường.
   sourceReceiptId String?          @map("source_receipt_id") @db.Uuid
+  // "Chi phí vật tư theo dịch vụ" (docs/DECISIONS.md #297 GĐ4) — CHỈ có giá trị khi issueType='SERVICE_CONSUMPTION' (CHECK ở migration): lượt khám, ĐÚNG MỘT dòng dịch vụ
+  // (chỉ định cận lâm sàng HOẶC dịch vụ khám) và người thực hiện. Khai báo scalar, khoá ngoại composite nằm ở migration (không cần quan hệ ngược ở Encounter/ClinicalOrderItem).
+  encounterId          String?          @map("encounter_id") @db.Uuid
+  clinicalOrderItemId  String?          @map("clinical_order_item_id") @db.Uuid
+  encounterServiceItemId String?        @map("encounter_service_item_id") @db.Uuid
+  performedBy          String?          @map("performed_by") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -5478,4 +5485,31 @@ model FollowUpReminder {
 
   @@unique([tenantId, id])
   @@map("follow_up_reminder")
+}
+
+// "Chi phí vật tư theo dịch vụ" — ĐỊNH MỨC vật tư/thuốc tiêu hao của một dịch vụ (docs/DECISIONS.md #297 GĐ4). Dữ liệu CHUNG cả công ty (không branch_id, #231 câu 1).
+// `serviceKind`: EXAM_TYPE (mã danh mục dịch vụ khám) hoặc TECHNICAL_SERVICE (dịch vụ kỹ thuật) — CHECK ở migration. `quantity` theo đơn vị CƠ SỞ của mặt hàng. Chỉ để ĐIỀN SẴN
+// khi ghi tiêu hao, người thực hiện sửa theo số thực dùng. Khoá ngoại composite (drug, technical_service) nằm ở migration.
+model ServiceConsumptionNorm {
+  id                 String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId           String  @map("tenant_id") @db.Uuid
+  serviceKind        String  @map("service_kind")
+  examTypeCode       String? @map("exam_type_code")
+  technicalServiceId String? @map("technical_service_id") @db.Uuid
+  drugId             String  @map("drug_id") @db.Uuid
+  quantity           Int
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@map("service_consumption_norm")
 }
