@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { NestedTransactionError, nestedTransactionGuardMode } from './transaction-scope';
+import { NestedTransactionError, nestedTransactionGuardMode, reportNestedTransaction } from './transaction-scope';
 import { PrismaService } from './prisma.service';
 import { UnitOfWorkService } from './unit-of-work.service';
 
@@ -95,21 +95,25 @@ describe('transaction-scope — phát hiện giao dịch lồng nhau', () => {
     await expect(later).resolves.toBeUndefined();
   });
 
-  it('chế độ warn không ném lỗi và vẫn chạy được (production)', async () => {
-    process.env.NESTED_TRANSACTION_GUARD = 'warn';
-    await expect(
-      uow.runInTenantScope(tenantId, async () => {
-        await prisma.$queryRaw`SELECT 1`;
-      }),
-    ).resolves.toBeUndefined();
+  // Hai ca dưới gọi thẳng hàm báo lỗi thay vì thật sự lồng giao dịch: ở chế độ warn/off việc lồng KHÔNG bị chặn nên request chiếm
+  // 2 kết nối thật — với bể 1 kết nối (job CI `pool-stress`, TEST_DB_CONNECTION_LIMIT=1) nó tự khoá, đúng lỗi mà bộ phát hiện sinh ra
+  // để chặn. Hành vi thật của hai chế độ chỉ là "có ném hay không", kiểm trực tiếp được.
+  const outer = { active: true, openedAt: 'src/giả-lập.ts:1' };
+
+  it('chế độ throw ném NestedTransactionError khi gọi trực tiếp', () => {
+    delete process.env.NESTED_TRANSACTION_GUARD;
+    expect(() => reportNestedTransaction('runInTenantScope', outer)).toThrow(NestedTransactionError);
+    expect(() => reportNestedTransaction('prisma-client-query', outer, 'Drug.findMany')).toThrow(/Drug\.findMany/);
   });
 
-  it('chế độ off tắt hẳn việc kiểm tra', async () => {
+  it('chế độ warn không ném lỗi (production chỉ ghi log)', () => {
+    process.env.NESTED_TRANSACTION_GUARD = 'warn';
+    expect(() => reportNestedTransaction('runInTenantScope', outer)).not.toThrow();
+    expect(() => reportNestedTransaction('prisma-client-query', outer, 'Drug.findMany')).not.toThrow();
+  });
+
+  it('chế độ off tắt hẳn việc kiểm tra', () => {
     process.env.NESTED_TRANSACTION_GUARD = 'off';
-    await expect(
-      uow.runInTenantScope(tenantId, async () => {
-        await prisma.$queryRaw`SELECT 1`;
-      }),
-    ).resolves.toBeUndefined();
+    expect(() => reportNestedTransaction('runInTenantScope', outer)).not.toThrow();
   });
 });
