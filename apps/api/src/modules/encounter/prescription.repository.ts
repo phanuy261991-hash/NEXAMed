@@ -174,6 +174,10 @@ export interface CreatePrescriptionItemData {
 
 /** Cấu hình "Cách kê liều" của một thuốc (#267) — nguồn để máy chủ quyết kiểu kê, chụp đơn vị liều và tính số lượng lúc lưu dòng đơn. */
 export interface DrugDoseConfig {
+  /** "Chỉ dùng nội bộ, không bán" (#297) — mặt hàng này không được kê đơn. */
+  internalUseOnly: boolean;
+  /** Tên mặt hàng, chỉ để báo lỗi rõ ràng khi bị từ chối kê. */
+  name: string;
   doseMode: DoseMode;
   doseUnitName: string | null;
   dosePerBaseUnit: number | null;
@@ -187,7 +191,7 @@ export class PrescriptionRepository {
     if (drugIds.length === 0) return new Map();
     const rows = await tx.drug.findMany({
       where: { tenantId, id: { in: drugIds }, deletedAt: null },
-      select: { id: true, doseMode: true, doseUnitCode: true, dosePerBaseUnit: true },
+      select: { id: true, name: true, internalUseOnly: true, doseMode: true, doseUnitCode: true, dosePerBaseUnit: true },
     });
     // Đơn vị liều của thuốc lưu bằng MÃ danh mục "Đơn vị tính" — chụp vào dòng đơn bằng TÊN hiển thị (mã không còn nghĩa khi in). Không tìm thấy tên thì giữ mã.
     const unitCodes = [...new Set(rows.map((r) => r.doseUnitCode).filter((c): c is string => c !== null))];
@@ -196,7 +200,7 @@ export class PrescriptionRepository {
     return new Map(
       rows.map((r) => [
         r.id,
-        { doseMode: r.doseMode, doseUnitName: r.doseUnitCode === null ? null : (nameByCode.get(r.doseUnitCode) ?? r.doseUnitCode), dosePerBaseUnit: r.dosePerBaseUnit === null ? null : Number(r.dosePerBaseUnit) },
+        { internalUseOnly: r.internalUseOnly, name: r.name, doseMode: r.doseMode, doseUnitName: r.doseUnitCode === null ? null : (nameByCode.get(r.doseUnitCode) ?? r.doseUnitCode), dosePerBaseUnit: r.dosePerBaseUnit === null ? null : Number(r.dosePerBaseUnit) },
       ]),
     );
   }

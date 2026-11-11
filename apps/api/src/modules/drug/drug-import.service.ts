@@ -10,7 +10,9 @@ import {
   parseImportInteger,
   parseImportItemType,
   parseImportStrength,
+  parseImportSupplyUsageNature,
   parseImportYesNo,
+  IMPORT_SUPPLY_USAGE_NATURE_LABELS,
 } from '@nexamed/core';
 import {
   createDrugRequestSchema,
@@ -137,7 +139,10 @@ export class DrugImportService {
           price: d.defaultSellPrice === null ? '' : Number(d.defaultSellPrice),
           manufacturer: nameOf('MANUFACTURER', d.manufacturerCode),
           isBatchManaged: yesNo(d.isBatchManaged),
-          drugGroup: nameOf('DRUG_GROUP', d.drugGroupCode),
+          internalUseOnly: yesNo(d.internalUseOnly),
+          drugGroup: medicine ? nameOf('DRUG_GROUP', d.drugGroupCode) : '',
+          supplyGroup: medicine ? '' : nameOf('SUPPLY_GROUP', d.drugGroupCode),
+          supplyUsageNature: !medicine && d.supplyUsageNature ? IMPORT_SUPPLY_USAGE_NATURE_LABELS[d.supplyUsageNature] : '',
           route: nameOf('DRUG_ROUTE', d.routeCode),
           registrationNumber: d.registrationNumber ?? '',
           dosageForm: nameOf('DOSAGE_FORM', d.dosageForm),
@@ -383,9 +388,13 @@ export class DrugImportService {
       draft.baseUnitCode = baseUnit;
       const manufacturer = requiredCatalog(draft, 'MANUFACTURER', c.manufacturer, 'Hãng sản xuất', SHEET_ITEMS, r.rowNumber);
 
+      const internal = parseImportYesNo(c.internalUseOnly);
+      if (!internal.ok) itemErr('"Chỉ dùng nội bộ" phải là Có hoặc Không.');
+      const internalUseOnly = internal.ok ? (internal.value ?? false) : false;
+
       const price = parseImportInteger(c.price);
       if (!price.ok) itemErr('Giá bán phải là số nguyên không âm (đồng).');
-      else if (price.value === null) itemErr('Thiếu Giá bán.');
+      else if (price.value === null && !internalUseOnly) itemErr('Thiếu Giá bán (hoặc đặt "Chỉ dùng nội bộ" = Có).');
 
       const batch = parseImportYesNo(c.isBatchManaged);
       if (!batch.ok) itemErr('"Quản lý theo lô" phải là Có hoặc Không.');
@@ -403,6 +412,7 @@ export class DrugImportService {
         name: draft.name,
         itemType: draft.itemType,
         isBatchManaged: batch.ok ? (batch.value ?? true) : true,
+        internalUseOnly,
         baseUnitCode: baseUnit,
         defaultSellPrice: price.ok ? (price.value ?? undefined) : undefined,
         manufacturerCode: manufacturer,
@@ -411,7 +421,25 @@ export class DrugImportService {
         shortcutCode: shortcut,
         minStockAlert: minAlert.ok ? (minAlert.value ?? undefined) : undefined,
         maxStockAlert: maxAlert.ok ? (maxAlert.value ?? undefined) : undefined,
+        registrationNumber: optionalText(c.registrationNumber),
+        barcode: optionalText(c.barcode),
       };
+      const optionalCatalog = (category: DrugImportCategory, v: Cell | undefined): string | undefined => (text(v) === '' ? undefined : resolve(draft, category, v, SHEET_ITEMS, r.rowNumber));
+      // Cột dùng chung cả Thuốc lẫn Vật tư (tuỳ chọn): nước sản xuất, bảo quản, vị trí (#297).
+      Object.assign(fields, {
+        countryOfOrigin: optionalCatalog('COUNTRY_OF_ORIGIN', c.country),
+        storageConditions: optionalCatalog('STORAGE_CONDITION', c.storageCondition),
+        storageLocation: optionalCatalog('STORAGE_LOCATION', c.storageLocation),
+      });
+
+      if (!medicine) {
+        const nature = parseImportSupplyUsageNature(c.supplyUsageNature);
+        if (!nature.ok) itemErr('"Tính chất sử dụng" phải là Dùng 1 lần hoặc Tái sử dụng.');
+        Object.assign(fields, {
+          drugGroupCode: requiredCatalog(draft, 'SUPPLY_GROUP', c.supplyGroup, 'Phân nhóm VTYT', SHEET_ITEMS, r.rowNumber),
+          supplyUsageNature: nature.ok ? nature.value : null,
+        });
+      }
 
       if (medicine) {
         const control = parseImportControlType(c.controlType);
@@ -420,19 +448,13 @@ export class DrugImportService {
         if (!rx.ok) itemErr('"Chỉ bán theo đơn" phải là Có hoặc Không.');
         const traditional = parseImportYesNo(c.isTraditional);
         if (!traditional.ok) itemErr('"Đông y" phải là Có hoặc Không.');
-        const optionalCatalog = (category: DrugImportCategory, v: Cell | undefined): string | undefined => (text(v) === '' ? undefined : resolve(draft, category, v, SHEET_ITEMS, r.rowNumber));
         Object.assign(fields, {
           controlType: control.ok ? (control.value ?? 'NORMAL') : 'NORMAL',
           isPrescriptionOnly: rx.ok ? (rx.value ?? true) : true,
           isTraditional: traditional.ok ? (traditional.value ?? false) : false,
           drugGroupCode: optionalCatalog('DRUG_GROUP', c.drugGroup),
           routeCode: optionalCatalog('DRUG_ROUTE', c.route),
-          registrationNumber: optionalText(c.registrationNumber),
           dosageForm: optionalCatalog('DOSAGE_FORM', c.dosageForm),
-          countryOfOrigin: optionalCatalog('COUNTRY_OF_ORIGIN', c.country),
-          storageConditions: optionalCatalog('STORAGE_CONDITION', c.storageCondition),
-          storageLocation: optionalCatalog('STORAGE_LOCATION', c.storageLocation),
-          barcode: optionalText(c.barcode),
           defaultDosage: optionalText(c.defaultDosage),
           usageInstruction: optionalText(c.usageInstruction),
           contraindications: optionalText(c.contraindications),

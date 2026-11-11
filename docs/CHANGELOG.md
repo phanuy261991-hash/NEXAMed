@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-11
 
+### Hoàn thiện Vật tư y tế + cờ "Chỉ dùng nội bộ" — giai đoạn 1 (`docs/DECISIONS.md` #297)
+
+Vật tư y tế có thêm Phân nhóm VTYT (danh mục mở, thêm nhanh), Tính chất sử dụng (Dùng 1 lần / Tái sử dụng), Số đăng ký / GPNK (bắt buộc khi thêm mới), Mã vạch, Nước sản xuất và bảo quản. Công tắc "Chỉ dùng nội bộ, không bán" dùng chung cho Thuốc và Vật tư: không cần giá bán, ẩn khỏi bán/phát/kê đơn, máy chủ từ chối kê (409). Nhập/Xuất Excel Thuốc & Vật tư thêm 3 cột mới — **file mẫu cũ phải tải lại**. Bảng giá nhóm vật tư theo Phân nhóm VTYT. Cần `db:deploy` (2 migration) + `db:seed`.
+
 ### Sửa 10 điểm giữ hai kết nối cơ sở dữ liệu cùng lúc + ba lớp chặn tái phạm (`docs/DECISIONS.md` #296)
 
 Nạp ví tạm ứng, tất toán ví, trả bằng ví, tổng kết/chốt ca thu ngân, duyệt phiếu nhập có "Trả ngay", xoá ca và Nhập Excel lịch làm việc từng mở thêm một giao dịch trong lúc đang giữ giao dịch khác; khi nhiều người thao tác đồng thời trên máy chủ nhỏ có thể báo lỗi hệ thống. Đã sửa; thêm bộ phát hiện lúc chạy, phân tích tĩnh theo đồ thị lời gọi và job CI căng bể kết nối. Không migration, không cần `db:seed`.

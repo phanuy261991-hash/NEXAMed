@@ -14444,6 +14444,7 @@ export interface paths {
                     itemType?: "MEDICINE" | "SUPPLY";
                     includeInactive?: boolean | ("true" | "false");
                     prescriptionOnly?: boolean | ("true" | "false");
+                    sellableOnly?: boolean | ("true" | "false");
                 };
                 header?: never;
                 path?: never;
@@ -14470,6 +14471,9 @@ export interface paths {
                                     baseUnitCode: string | null;
                                     defaultSellPrice: number | null;
                                     unitPricingEnabled: boolean;
+                                    internalUseOnly: boolean;
+                                    /** @enum {string|null} */
+                                    supplyUsageNature: "SINGLE_USE" | "REUSABLE" | null;
                                     drugGroupCode: string | null;
                                     routeCode: string | null;
                                     nationalCode: string | null;
@@ -14588,7 +14592,11 @@ export interface paths {
                         /** @default true */
                         isBatchManaged?: boolean;
                         baseUnitCode: string;
-                        defaultSellPrice: number;
+                        defaultSellPrice?: number;
+                        /** @default false */
+                        internalUseOnly?: boolean;
+                        /** @enum {string|null} */
+                        supplyUsageNature?: "SINGLE_USE" | "REUSABLE" | null;
                         /** @default false */
                         unitPricingEnabled?: boolean;
                         drugGroupCode?: string;
@@ -14673,6 +14681,9 @@ export interface paths {
                                 baseUnitCode: string | null;
                                 defaultSellPrice: number | null;
                                 unitPricingEnabled: boolean;
+                                internalUseOnly: boolean;
+                                /** @enum {string|null} */
+                                supplyUsageNature: "SINGLE_USE" | "REUSABLE" | null;
                                 drugGroupCode: string | null;
                                 routeCode: string | null;
                                 nationalCode: string | null;
@@ -14829,6 +14840,9 @@ export interface paths {
                                 baseUnitCode: string | null;
                                 defaultSellPrice: number | null;
                                 unitPricingEnabled: boolean;
+                                internalUseOnly: boolean;
+                                /** @enum {string|null} */
+                                supplyUsageNature: "SINGLE_USE" | "REUSABLE" | null;
                                 drugGroupCode: string | null;
                                 routeCode: string | null;
                                 nationalCode: string | null;
@@ -14968,6 +14982,9 @@ export interface paths {
                         baseUnitCode?: string | null;
                         defaultSellPrice?: number | null;
                         unitPricingEnabled?: boolean;
+                        internalUseOnly?: boolean;
+                        /** @enum {string|null} */
+                        supplyUsageNature?: "SINGLE_USE" | "REUSABLE" | null;
                         drugGroupCode?: string | null;
                         routeCode?: string | null;
                         nationalCode?: string | null;
@@ -15040,6 +15057,9 @@ export interface paths {
                                 baseUnitCode: string | null;
                                 defaultSellPrice: number | null;
                                 unitPricingEnabled: boolean;
+                                internalUseOnly: boolean;
+                                /** @enum {string|null} */
+                                supplyUsageNature: "SINGLE_USE" | "REUSABLE" | null;
                                 drugGroupCode: string | null;
                                 routeCode: string | null;
                                 nationalCode: string | null;
@@ -29864,7 +29884,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
+                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON" | "SUPPLY_GROUP";
                 };
                 cookie?: never;
             };
@@ -29882,7 +29902,7 @@ export interface paths {
                                     /** Format: uuid */
                                     id: string;
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON" | "SUPPLY_GROUP";
                                     code: string;
                                     name: string;
                                     sortOrder: number;
@@ -29993,7 +30013,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
+                        category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON" | "SUPPLY_GROUP";
                         code?: string;
                         name: string;
                         /** @default 0 */
@@ -30034,7 +30054,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON" | "SUPPLY_GROUP";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -30156,7 +30176,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON" | "SUPPLY_GROUP";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -30307,7 +30327,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON" | "SUPPLY_GROUP";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -30439,7 +30459,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** @enum {string} */
-                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
+                                category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON" | "SUPPLY_GROUP";
                                 code: string;
                                 name: string;
                                 sortOrder: number;
@@ -35064,7 +35084,7 @@ export interface paths {
                                 }[];
                                 newCatalogItems: {
                                     /** @enum {string} */
-                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON";
+                                    category: "ETHNICITY" | "NATIONALITY" | "PATIENT_SOURCE" | "EXAM_TYPE" | "RECEPTION_TYPE" | "EXAM_FORM" | "PRIORITY_REASON" | "PRICE_TYPE" | "OCCUPATION" | "ACADEMIC_TITLE" | "STAFF_POSITION" | "EMPLOYMENT_STATUS" | "EMPLOYMENT_TYPE" | "UNIT" | "PAYMENT_METHOD" | "INCOME_EXPENSE_TYPE" | "ACTIVE_INGREDIENT" | "DRUG_GROUP" | "DRUG_ROUTE" | "DOSAGE_FORM" | "STORAGE_CONDITION" | "MANUFACTURER" | "COUNTRY_OF_ORIGIN" | "STORAGE_LOCATION" | "DRUG_USAGE_TIMING" | "ICD10_ABBREVIATION" | "TECH_SERVICE_CATEGORY" | "SPECIMEN_TYPE" | "LAB_RESULT_UNIT" | "TREATMENT_FORM" | "SERVICE_DECLINE_REASON" | "SUPPLY_GROUP";
                                     name: string;
                                 }[];
                                 exampleRowCount: number;

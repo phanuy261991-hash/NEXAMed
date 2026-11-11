@@ -944,6 +944,8 @@ enum ReferenceCatalogCategory {
   // "Khách không làm dịch vụ" (docs/DECISIONS.md #280) — lý do thu ngân chọn khi bỏ một dịch vụ kỹ thuật bác sĩ đã chỉ định. Lý do được lưu lên
   // dòng chỉ định và IN ra bệnh án ("Đã chỉ định nhưng không thực hiện"), nên dòng đã dùng chỉ ẩn chứ không xoá. Seed sẵn 5 lý do, mã tự sinh như UNIT.
   SERVICE_DECLINE_REASON
+  // "Phân nhóm VTYT" (docs/DECISIONS.md #297) — danh mục MỞ cho vật tư y tế, dùng lại cột drug.drug_group_code. Seed sẵn 3 giá trị.
+  SUPPLY_GROUP
 
   @@map("reference_catalog_category")
 }
@@ -1902,6 +1904,13 @@ enum DrugItemType {
 // Phân loại kiểm soát đặc biệt theo Thông tư 20/2017/TT-BYT (docs/DECISIONS.md #151) — enum CỐ
 // ĐỊNH theo pháp luật, KHÔNG dùng reference_catalog (danh mục mở, tenant tự thêm) vì tenant không
 // được tự thêm/sửa 5 giá trị này, cùng hồ sơ với DrugItemType ở trên.
+enum DrugSupplyUsageNature {
+  SINGLE_USE // Dùng 1 lần
+  REUSABLE // Tái sử dụng (dụng cụ vô trùng lại)
+
+  @@map("drug_supply_usage_nature")
+}
+
 enum DrugControlType {
   NORMAL
   TOXIC
@@ -2012,6 +2021,10 @@ model Drug {
   // dù DB không NULL trên thực tế (name NOT NULL) — Prisma không có khái niệm "generated column
   // chỉ đọc", khai `String` thường sẽ bắt buộc phải truyền field này lúc `create()`.
   searchKey            String?         @map("search_key")
+  // "Tính chất sử dụng" của vật tư (docs/DECISIONS.md #297) — CHỈ là nhãn phân loại (dùng 1 lần / tái sử dụng), không đổi cách tính giá. NULL = chưa ghi (vật tư cũ, mọi thuốc).
+  supplyUsageNature    DrugSupplyUsageNature? @map("supply_usage_nature")
+  // "Chỉ dùng nội bộ, không bán" (#297, CẢ Thuốc lẫn Vật tư) — bật thì không bắt nhập giá bán, ẩn khỏi danh sách bán/phát/kê đơn và máy chủ từ chối kê; vẫn nhập kho, xuất dùng nội bộ, tiêu hao cho dịch vụ.
+  internalUseOnly      Boolean         @default(false) @map("internal_use_only")
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

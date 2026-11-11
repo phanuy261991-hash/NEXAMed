@@ -8,6 +8,7 @@ const PILLS: ConfigScreenPill[] = [
   { key: 'warehouse', label: 'Kho' },
   { key: 'active-ingredient', label: 'Hoạt chất' },
   { key: 'drug-group', label: 'Nhóm thuốc' },
+  { key: 'supply-group', label: 'Phân nhóm VTYT' },
   { key: 'drug-route', label: 'Đường dùng' },
   { key: 'dosage-form', label: 'Dạng bào chế' },
   { key: 'storage-condition', label: 'Điều kiện bảo quản' },
@@ -37,6 +38,7 @@ export function WarehouseCatalogPage() {
       {activePillKey === 'warehouse' && <WarehousePane />}
       {activePillKey === 'active-ingredient' && <ReferenceCatalogPane category="ACTIVE_INGREDIENT" categoryLabel="Hoạt chất" />}
       {activePillKey === 'drug-group' && <ReferenceCatalogPane category="DRUG_GROUP" categoryLabel="Nhóm thuốc" />}
+      {activePillKey === 'supply-group' && <ReferenceCatalogPane category="SUPPLY_GROUP" categoryLabel="Phân nhóm VTYT" />}
       {activePillKey === 'drug-route' && <ReferenceCatalogPane category="DRUG_ROUTE" categoryLabel="Đường dùng" />}
       {activePillKey === 'dosage-form' && <ReferenceCatalogPane category="DOSAGE_FORM" categoryLabel="Dạng bào chế" />}
       {activePillKey === 'storage-condition' && <ReferenceCatalogPane category="STORAGE_CONDITION" categoryLabel="Điều kiện bảo quản" />}

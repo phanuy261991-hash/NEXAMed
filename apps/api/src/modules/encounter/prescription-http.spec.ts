@@ -935,4 +935,58 @@ describe('HTTP e2e — Kê đơn (/api/v1/encounters/:id/prescription*)', () => 
       expect((await request(app.getHttpServer()).get('/api/v1/clinic-settings/prescription-split-block-enabled')).status).toBe(401);
     });
   });
+
+  describe('Mặt hàng "Chỉ dùng nội bộ" không kê được (#297)', () => {
+    function putItems(encounterId: string, body: Record<string, unknown>) {
+      return request(app.getHttpServer()).put(`/api/v1/encounters/${encounterId}/prescription-items`).set(authed(doctorAToken)).send(body);
+    }
+    const line = (drugId: string) => ({ drugId, doseMorning: 1, doseNoon: 0, doseAfternoon: 0, doseEvening: 1, durationDays: 5 });
+    async function markInternal(drugId: string, internalUseOnly: boolean) {
+      await privileged.drug.update({ where: { id: drugId }, data: { internalUseOnly } });
+    }
+
+    it('lưu đơn có mặt hàng nội bộ (thuốc hoặc vật tư) → 409 DRUG_INTERNAL_USE_ONLY kèm tên; đơn không có mặt hàng đó vẫn lưu được; bỏ cờ thì kê lại được', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(8);
+      const normal = await createDrug(fixture.tenantA.id, 'Thuốc bán thường (nội bộ test)', 'Hoạt chất NB1');
+      const internalMed = await createDrug(fixture.tenantA.id, 'Thuốc dùng nội bộ (test)', 'Hoạt chất NB2');
+      const internalSupply = await createDrug(fixture.tenantA.id, 'Vật tư dùng nội bộ (test)', 'Hoạt chất NB3');
+      for (const id of [normal, internalMed, internalSupply]) await seedSufficientStock(fixture.tenantA.id, id);
+      await markInternal(internalMed, true);
+      await markInternal(internalSupply, true);
+
+      const blocked = await putItems(encounterId, { items: [line(normal), line(internalMed), line(internalSupply)] });
+      expect(blocked.status).toBe(409);
+      expect(blocked.body.error.code).toBe('DRUG_INTERNAL_USE_ONLY');
+      expect(blocked.body.error.message).toContain('Thuốc dùng nội bộ (test)');
+      expect(blocked.body.error.message).toContain('Vật tư dùng nội bộ (test)');
+      expect(blocked.body.error.message).not.toContain('Thuốc bán thường');
+      // Giao dịch bị huỷ: không dòng nào được lưu.
+      expect(await privileged.prescriptionItem.count({ where: { tenantId: fixture.tenantA.id, drugId: { in: [normal, internalMed, internalSupply] } } })).toBe(0);
+
+      expect((await putItems(encounterId, { items: [line(normal)] })).status).toBe(200);
+
+      await markInternal(internalMed, false);
+      expect((await putItems(encounterId, { items: [line(normal), line(internalMed)] })).status).toBe(200);
+    });
+
+    it('ĐÍNH CHÍNH đơn đã ký cũng bị chặn khi thêm mặt hàng nội bộ; đơn gốc vẫn là đơn hiệu lực', async () => {
+      const { encounterId } = await prepareEncounterInConsultation(9);
+      const normal = await createDrug(fixture.tenantA.id, 'Thuốc bán thường (đính chính nội bộ)', 'Hoạt chất NB4');
+      const internal = await createDrug(fixture.tenantA.id, 'Thuốc nội bộ (đính chính)', 'Hoạt chất NB5');
+      await seedSufficientStock(fixture.tenantA.id, normal);
+      await seedSufficientStock(fixture.tenantA.id, internal);
+      const saved = await putItems(encounterId, { items: [line(normal)] });
+      const signed = await request(app.getHttpServer()).post(`/api/v1/encounters/${encounterId}/prescription/sign`).set(authed(doctorAToken)).send({ version: saved.body.data.version });
+      expect(signed.status).toBe(200);
+
+      await markInternal(internal, true);
+      const amend = await request(app.getHttpServer())
+        .post(`/api/v1/encounters/${encounterId}/prescription/amend`)
+        .set(authed(doctorAToken))
+        .send({ items: [line(normal), line(internal)], amendmentReason: 'thêm thuốc nội bộ', version: signed.body.data.version });
+      expect(amend.status).toBe(409);
+      expect(amend.body.error.code).toBe('DRUG_INTERNAL_USE_ONLY');
+      expect(await privileged.prescription.findFirst({ where: { id: signed.body.data.id, deletedAt: null } })).not.toBeNull();
+    });
+  });
 });

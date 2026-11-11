@@ -75,6 +75,7 @@ import {
   BRANCH_DIRECTORY_PORT,
   type BranchDirectoryPort,
   maxDataScope,
+  DrugInternalUseOnlyError,
 } from '@nexamed/core';
 import { FAMILY_RELATION_LABELS, TREATMENT_DIRECTION_LABELS, type PrescriptionKind, calculateAgeMonths, calculateAgeYears, formatPrescriptionDose, hasFractionalPrescriptionDose, isPrescriptionDoseComplete, resolvePrescriptionItemDose } from '@nexamed/shared';
 import type {
@@ -1626,6 +1627,7 @@ export class EncounterService {
       }
 
       const doseConfigs = await this.prescriptionRepository.findDrugDoseConfigs(tx, tenantId, realDrugIds);
+      this.assertDrugsPrescribable(doseConfigs);
       await this.prescriptionRepository.replaceItems(tx, tenantId, active.id, actorId, dto.items.map((item) => this.toCreateItemData(item, doseConfigs)));
       // "Lời dặn của bác sĩ" riêng của đơn (#241) — không gửi = giữ nguyên, '' = xoá.
       // Chỉ ghi khi nội dung ĐỔI THẬT — lưu nháp lặp lại không làm nhảy `version` của đơn (ký/bỏ qua cảnh báo đang dùng version đã đọc).
@@ -1969,6 +1971,7 @@ export class EncounterService {
         doctorAdvice: dto.doctorAdvice === undefined ? active.doctorAdvice : dto.doctorAdvice.trim() || null,
       });
       const amendDoseConfigs = await this.prescriptionRepository.findDrugDoseConfigs(tx, tenantId, [...new Set(dto.items.map((i) => i.drugId).filter((v): v is string => v !== undefined))]);
+      this.assertDrugsPrescribable(amendDoseConfigs);
       await this.prescriptionRepository.createItems(tx, tenantId, created.id, actorId, dto.items.map((item) => this.toCreateItemData(item, amendDoseConfigs)));
       // Đơn gốc đã có mã chuẩn (ký lúc chế độ chuẩn bật): đơn pháp lý cùng loại GIỮ mã cũ, loại mới nhận mã mới, loại bị bỏ hết thì mã đó không dùng lại (#242).
       // Đơn gốc ký TRƯỚC ngày bật chế độ chuẩn (không có mã chuẩn) thì đính chính cũng không cấp mã chuẩn (không hồi tố).
@@ -2030,6 +2033,12 @@ export class EncounterService {
       if (!previous) return null;
       return { items: previous.items.map((item) => this.toPrescriptionItem(item)) };
     });
+  }
+
+  /** Mặt hàng "Chỉ dùng nội bộ, không bán" (#297, cả Thuốc lẫn Vật tư) không được kê đơn — danh sách kê đã ẩn, đây là chốt chặn ở máy chủ cho client cũ/gọi trực tiếp. */
+  private assertDrugsPrescribable(configs: Map<string, DrugDoseConfig>): void {
+    const internalOnly = [...configs.values()].filter((c) => c.internalUseOnly).map((c) => c.name);
+    if (internalOnly.length > 0) throw new DrugInternalUseOnlyError(internalOnly);
   }
 
   /**

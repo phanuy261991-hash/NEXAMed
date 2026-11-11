@@ -131,7 +131,7 @@ export function DispensePrescriptionDialog({ prescriptionId, onClose, onDispense
   const [success, setSuccess] = useState<SuccessInfo | null>(null);
   const [otcQuery, setOtcQuery] = useState('');
   const debouncedOtcQuery = useDebouncedValue(otcQuery, 300);
-  const otcSearch = useDrugsQuery({ q: debouncedOtcQuery.trim() || undefined, prescriptionOnly: false });
+  const otcSearch = useDrugsQuery({ q: debouncedOtcQuery.trim() || undefined, prescriptionOnly: false, sellableOnly: true });
 
   // Dòng đã phát ĐỦ — chỉ đọc, tính thẳng từ query, không đưa vào draft (không bao giờ sửa được).
   const fullyDispensedLines = statusQuery.data?.lines.filter((l) => l.remainingQuantity === 0) ?? [];

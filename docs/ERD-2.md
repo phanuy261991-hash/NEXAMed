@@ -324,3 +324,16 @@ Migration `20261106150000_lab_partner_dispatch`. Cả hai bảng đủ 8 cột b
 "Chờ gửi" không lưu trạng thái: dẫn xuất từ dòng chỉ định xét nghiệm `IN_PROGRESS` + ống `COLLECTED` + dịch vụ `sent_to_partner` + chưa có dòng gửi SENT/RECEIVED. Thêm quyền `lab_partner.read/send/receive` và loại mã `LAB_PARTNER_DISPATCH`.
 
 **Bổ sung #291 (07/11/2026) — nhận kết quả đối tác**: bảng `lab_partner_result_file` (THEO CHI NHÁNH: `branch_id` NOT NULL composite FK; `supplier_id`, `storage_key`, `file_name`, `content_type`, `size_bytes`, `received_at/by`, `note`; RLS; 8 cột bắt buộc). `lab_partner_dispatch_item.result_file_id` (FK composite NULL, CHECK `status<>'RECEIVED' OR result_file_id IS NOT NULL`). `supplier_debt_entry.lab_partner_dispatch_item_id` (FK composite NULL) + enum `supplier_debt_entry_type` thêm `LAB_PARTNER`; CHECK nguồn thêm nhánh `entry_type::text='LAB_PARTNER' AND lab_partner_dispatch_item_id IS NOT NULL`. Kết quả nhận về dùng lại `paraclinical_result` + `paraclinical_result_image` (`content_type='application/pdf'`, cùng `storage_key` với tệp).
+
+### 3.22 Vật tư y tế — Phân nhóm, Tính chất, cờ "Chỉ dùng nội bộ" (v1.94, `docs/DECISIONS.md` #297, giai đoạn 1)
+
+Migration `20261111100000_reference_catalog_supply_group` + `20261111100100_drug_supply_fields`. **Dữ liệu CHUNG cả công ty** như thuốc (mặt hàng, danh mục); lô/tồn/phiếu vẫn theo chi nhánh. Không bảng mới.
+
+| Bảng / cột | Vai trò | Chi tiết |
+|---|---|---|
+| `reference_catalog_category` = `SUPPLY_GROUP` | Danh mục "Phân nhóm VTYT" | Danh mục MỞ (thêm nhanh ở ô chọn), mã tự sinh dài (không có tiền tố ngắn). Nạp sẵn 3 mục qua `db:seed`: `CONSUMABLE` Vật tư tiêu hao, `REPLACEMENT` Vật tư thay thế, `SURGICAL_INSTRUMENT` Dụng cụ phẫu thuật (bản nạp đầy đủ, không nằm ở bản "hệ thống nhẹ") |
+| `drug.drug_group_code` | Nhóm thuốc HOẶC Phân nhóm VTYT | Cùng một cột, danh mục khác nhau theo `item_type` (`DRUG_GROUP` cho thuốc, `SUPPLY_GROUP` cho vật tư). Không FK cứng (như trước). Bắt buộc khi TẠO MỚI vật tư (kiểm ở Zod, không ở DB) |
+| `drug.supply_usage_nature` | "Tính chất sử dụng" | Enum `drug_supply_usage_nature` (`SINGLE_USE` Dùng 1 lần / `REUSABLE` Tái sử dụng), NULL = chưa phân loại. CHỈ là nhãn, không đổi cách tính giá |
+| `drug.internal_use_only` | "Chỉ dùng nội bộ, không bán" | `BOOLEAN NOT NULL DEFAULT false`, dùng chung Thuốc và Vật tư. Bật: không bắt `default_sell_price`, `unit_pricing_enabled` bị tắt, ẩn khỏi danh sách bán/phát/kê đơn (`sellableOnly`), máy chủ từ chối kê (409 `DRUG_INTERNAL_USE_ONLY`). Mặt hàng cũ mặc định false nên không đổi hành vi |
+
+`drug.registration_number`, `country_of_origin`, `storage_conditions`, `storage_location`, `barcode`, `national_code` đã có từ trước — nay dùng được cho cả vật tư (Số đăng ký bắt buộc khi tạo mới vật tư).

@@ -165,3 +165,12 @@ export class PrescriptionItemMissingDoseError extends DomainError {
     this.details = drugs;
   }
 }
+
+/** Mặt hàng đánh dấu "Chỉ dùng nội bộ, không bán" (docs/DECISIONS.md #297, cả Thuốc lẫn Vật tư) KHÔNG được kê đơn — chỉ nhập kho, xuất dùng nội bộ và tiêu hao cho dịch vụ. */
+export class DrugInternalUseOnlyError extends DomainError {
+  readonly code = 'DRUG_INTERNAL_USE_ONLY';
+
+  constructor(readonly drugNames: string[]) {
+    super(`Không kê đơn được mặt hàng chỉ dùng nội bộ: ${drugNames.join(', ')}.`);
+  }
+}

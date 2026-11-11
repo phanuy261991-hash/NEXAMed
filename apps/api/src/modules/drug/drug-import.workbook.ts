@@ -23,6 +23,7 @@ export const DRUG_IMPORT_CATEGORIES = [
   'UNIT',
   'MANUFACTURER',
   'DRUG_GROUP',
+  'SUPPLY_GROUP',
   'DRUG_ROUTE',
   'DOSAGE_FORM',
   'COUNTRY_OF_ORIGIN',
@@ -36,6 +37,7 @@ export const DRUG_IMPORT_CATEGORY_LABELS: Record<DrugImportCategory, string> = {
   UNIT: 'Đơn vị tính',
   MANUFACTURER: 'Hãng sản xuất',
   DRUG_GROUP: 'Nhóm thuốc',
+  SUPPLY_GROUP: 'Phân nhóm VTYT',
   DRUG_ROUTE: 'Đường dùng',
   DOSAGE_FORM: 'Dạng bào chế',
   COUNTRY_OF_ORIGIN: 'Nước sản xuất',
@@ -49,6 +51,8 @@ function addListValidations(sheet: ExcelJS.Worksheet): void {
   const lists: Record<string, string> = {
     itemType: '"Thuốc,Vật tư"',
     isBatchManaged: '"Có,Không"',
+    internalUseOnly: '"Có,Không"',
+    supplyUsageNature: '"Dùng 1 lần,Tái sử dụng"',
     isPrescriptionOnly: '"Có,Không"',
     isTraditional: '"Có,Không"',
     controlType: '"Thường,Độc,Gây nghiện,Hướng thần,Tiền chất"',
@@ -61,8 +65,11 @@ function addListValidations(sheet: ExcelJS.Worksheet): void {
 
 const REQUIREMENT_TEXT = {
   required: 'Bắt buộc',
+  priceRequired: 'Bắt buộc (trừ hàng chỉ dùng nội bộ)',
   medicineRequired: 'Bắt buộc với Thuốc',
+  supplyRequired: 'Bắt buộc với Vật tư',
   medicineOnly: 'Tuỳ chọn (chỉ Thuốc)',
+  supplyOnly: 'Tuỳ chọn (chỉ Vật tư)',
   optional: 'Tuỳ chọn',
 } as const;
 
@@ -74,7 +81,7 @@ function addGuideSheet(workbook: ExcelJS.Workbook): void {
   sheet.addRow([]);
   const general = [
     'Cách làm:',
-    `1) Sheet "${SHEET_ITEMS}": mỗi dòng là 1 mặt hàng (thuốc hoặc vật tư). Điền các cột có dấu * (cột có "(thuốc)" chỉ bắt buộc khi Loại = Thuốc).`,
+    `1) Sheet "${SHEET_ITEMS}": mỗi dòng là 1 mặt hàng (thuốc hoặc vật tư). Điền các cột có dấu * (cột có "(thuốc)"/"(vật tư)" chỉ bắt buộc khi Loại tương ứng; "(trừ nội bộ)" nghĩa là bắt buộc trừ mặt hàng Chỉ dùng nội bộ).`,
     `2) Sheet "${SHEET_INGREDIENTS}": mỗi thuốc cần ÍT NHẤT 1 hoạt chất kèm hàm lượng — ghi mã thuốc ở cột đầu, nhiều hoạt chất thì ghi nhiều dòng cùng mã. Vật tư không cần.`,
     `3) Sheet "${SHEET_UNITS}" (tuỳ chọn): nếu mặt hàng bán/nhập theo nhiều đơn vị (Hộp > Vỉ > Viên) thì khai các bậc quy đổi, xếp từ nhỏ đến lớn.`,
     '4) Các dòng ví dụ (mã bắt đầu bằng VD-, chữ nghiêng xám) hệ thống TỰ BỎ QUA — có thể giữ hoặc xoá, nhưng đừng đặt mã thật bắt đầu bằng VD-.',

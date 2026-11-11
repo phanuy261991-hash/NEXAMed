@@ -51,6 +51,8 @@ const AUTO_CODE_CATEGORIES: ReferenceCatalogCategory[] = [
   'ACTIVE_INGREDIENT',
   'DRUG_GROUP',
   'DRUG_ROUTE',
+  // "Phân nhóm VTYT" (#297) — danh mục mở của vật tư y tế, mã tự sinh.
+  'SUPPLY_GROUP',
   // Mở rộng #151 — Dạng bào chế/Điều kiện bảo quản/Hãng sản xuất/Nước sản xuất/Vị trí lưu kho,
   // cùng lý do không có nguồn dữ liệu chính thức. Có thêm "thêm nhanh" ngay tại ô chọn trong form
   // Thêm/Sửa thuốc (`Combobox allowCreate`) — không chỉ quản lý qua trang danh mục riêng.

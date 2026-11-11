@@ -20,6 +20,9 @@ export const IMPORT_CONTROL_TYPE_LABELS: Record<ImportControlType, string> = {
   PSYCHOTROPIC: 'Hướng thần',
   PRECURSOR: 'Tiền chất',
 };
+export type ImportSupplyUsageNature = 'SINGLE_USE' | 'REUSABLE';
+/** "Tính chất sử dụng" của vật tư (#297) — chỉ là nhãn, đúng chữ hiện ở form Thêm/Sửa vật tư. */
+export const IMPORT_SUPPLY_USAGE_NATURE_LABELS: Record<ImportSupplyUsageNature, string> = { SINGLE_USE: 'Dùng 1 lần', REUSABLE: 'Tái sử dụng' };
 export const IMPORT_YES_LABEL = 'Có';
 export const IMPORT_NO_LABEL = 'Không';
 
@@ -73,6 +76,19 @@ const YES_NO_TABLE: Record<string, boolean> = {
   false: false,
   '0': false,
 };
+
+const SUPPLY_USAGE_NATURE_TABLE: Record<string, ImportSupplyUsageNature> = {
+  'dung 1 lan': 'SINGLE_USE',
+  'dung mot lan': 'SINGLE_USE',
+  'mot lan': 'SINGLE_USE',
+  single_use: 'SINGLE_USE',
+  'tai su dung': 'REUSABLE',
+  reusable: 'REUSABLE',
+};
+
+export function parseImportSupplyUsageNature(raw: string | number | null | undefined): ImportParseResult<ImportSupplyUsageNature> {
+  return lookup(raw, SUPPLY_USAGE_NATURE_TABLE);
+}
 
 export function parseImportItemType(raw: string | number | null | undefined): ImportParseResult<ImportItemType> {
   return lookup(raw, ITEM_TYPE_TABLE);

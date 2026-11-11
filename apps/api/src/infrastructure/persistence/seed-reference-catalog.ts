@@ -120,6 +120,11 @@ export async function seedReferenceCatalogForTenant(client: SeedClient, tenantId
     ...fromSource(tenantId, actorId, 'DOSAGE_FORM', DOSAGE_FORM_ITEMS),
     ...fromSource(tenantId, actorId, 'STORAGE_CONDITION', STORAGE_CONDITION_ITEMS),
     ...fromSource(tenantId, actorId, 'DRUG_USAGE_TIMING', DRUG_USAGE_TIMING_ITEMS),
+    // "Phân nhóm VTYT" (docs/DECISIONS.md #297) — 3 giá trị khởi tạo lấy từ tài liệu quy chuẩn vật tư y tế; danh mục MỞ, phòng khám thêm nhanh được ở ô chọn.
+    // Không thuộc bản "hệ thống nhẹ" vì không có mã nghiệp vụ nào tra theo các mã này.
+    { tenantId, createdBy: actorId, updatedBy: actorId, category: 'SUPPLY_GROUP', code: 'CONSUMABLE', name: 'Vật tư tiêu hao', sortOrder: 0 },
+    { tenantId, createdBy: actorId, updatedBy: actorId, category: 'SUPPLY_GROUP', code: 'REPLACEMENT', name: 'Vật tư thay thế', sortOrder: 1 },
+    { tenantId, createdBy: actorId, updatedBy: actorId, category: 'SUPPLY_GROUP', code: 'SURGICAL_INSTRUMENT', name: 'Dụng cụ phẫu thuật', sortOrder: 2 },
   ]);
 
   await seedDefaultPriceType(client, tenantId, actorId);

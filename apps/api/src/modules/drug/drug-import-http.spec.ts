@@ -14,7 +14,10 @@ import { createTwoTenantFixture, SYSTEM_TEST_ACTOR, type TwoTenantFixture } from
 import { seedPermissionCatalog } from '../../infrastructure/persistence/seed-permissions';
 import { seedDefaultRolesForTenant } from '../../infrastructure/persistence/seed-tenant-roles';
 import { buildDrugExportWorkbook } from './drug-import.workbook';
-import type { ImportRecord } from './drug-import.columns';
+import { ITEM_COLUMNS, type ImportRecord } from './drug-import.columns';
+
+/** Số cột (1-based) của một khoá trong sheet "Thuốc & Vật tư" — không cứng số để thêm cột không làm vỡ test. */
+const col = (key: string): number => ITEM_COLUMNS.findIndex((c) => c.key === key) + 1;
 
 /**
  * HTTP e2e "Nhập/Xuất Excel Thuốc & Vật tư" (docs/DECISIONS.md #210) — file Excel dựng THẬT bằng exceljs (cùng
@@ -103,6 +106,8 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
     baseUnit: `Cái-${tag}`,
     price: 1200,
     manufacturer: `Hãng-${tag}`,
+    supplyGroup: `Phân nhóm-${tag}`,
+    registrationNumber: 'VTYT-1',
     ...overrides,
   });
   const ingredient = (code: string, name = `Hoạt chất-${tag}`, strength: string | number = 500, unit = `mg-${tag}`): ImportRecord => ({
@@ -423,7 +428,7 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
       expect(res.headers['content-disposition']).toContain('danh-muc-thuoc-vat-tu.xlsx');
       const wb = await loadWorkbook(res.body as Buffer);
       const sheet = wb.getWorksheet('Thuốc & Vật tư')!;
-      expect(String(sheet.getCell(1, 27).value)).toBe('Trạng thái');
+      expect(String(sheet.getCell(1, ITEM_COLUMNS.length + 1).value)).toBe('Trạng thái');
       let medRow = 0;
       sheet.eachRow((row, n) => {
         if (String(row.getCell(1).value) === `${baseCode}-M`) medRow = n;
@@ -431,8 +436,8 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
       expect(medRow).toBeGreaterThan(1);
       expect(String(sheet.getCell(medRow, 4).value)).toBe(`Viên-${tag}`); // Đơn vị cơ sở = TÊN
       expect(String(sheet.getCell(medRow, 3).value)).toBe('Thuốc');
-      expect(String(sheet.getCell(medRow, 13).value)).toBe('Gây nghiện');
-      expect(String(sheet.getCell(medRow, 27).value)).toBe('Đang dùng');
+      expect(String(sheet.getCell(medRow, col('controlType')).value)).toBe('Gây nghiện');
+      expect(String(sheet.getCell(medRow, ITEM_COLUMNS.length + 1).value)).toBe('Đang dùng');
       const ing: number[] = [];
       wb.getWorksheet('Hoạt chất')!.eachRow((row) => {
         if (String(row.getCell(1).value) === `${baseCode}-M`) ing.push(Number(row.getCell(3).value));
@@ -506,6 +511,100 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
     it('lễ tân (có drug.read) xuất được; không token → 401', async () => {
       expect((await download('/api/v1/drugs/export', receptionistToken)).status).toBe(200);
       expect((await request(app.getHttpServer()).get('/api/v1/drugs/export')).status).toBe(401);
+    });
+  });
+
+  describe('#297 — Vật tư y tế: Phân nhóm, Tính chất, Số đăng ký, Chỉ dùng nội bộ', () => {
+    const reasonsOf = (body: { errorRows: { code: string; reason: string }[] }, code: string): string[] => body.errorRows.filter((e) => e.code === code).map((e) => e.reason);
+
+    it('vật tư thiếu Phân nhóm VTYT hoặc Số đăng ký → lỗi từng dòng, không vào nhóm hợp lệ', async () => {
+      const noGroup = `SG1${tag}`;
+      const noReg = `SG2${tag}`;
+      const res = await upload('preview', clinicAdminToken, await xlsx([supply(noGroup, { supplyGroup: '' }), supply(noReg, { registrationNumber: '' })]));
+      expect(res.status).toBe(200);
+      expect(res.body.data.validRows).toEqual([]);
+      expect(reasonsOf(res.body.data, noGroup)).toContain('Thiếu Phân nhóm VTYT.');
+      expect(reasonsOf(res.body.data, noReg).some((r) => r.includes('số đăng ký'))).toBe(true);
+    });
+
+    it('thuốc thiếu Số đăng ký vẫn báo lỗi như trước (Số đăng ký bắt buộc cả hai loại)', async () => {
+      const code = `SG3${tag}`;
+      const res = await upload('preview', clinicAdminToken, await xlsx([medicine(code, { registrationNumber: '' })], [ingredient(code)]));
+      expect(res.body.data.validRows).toEqual([]);
+      expect(reasonsOf(res.body.data, code).some((r) => r.includes('Số đăng ký'))).toBe(true);
+    });
+
+    it('"Tính chất sử dụng" sai chữ và "Chỉ dùng nội bộ" sai chữ → lỗi dòng', async () => {
+      const a = `SG4${tag}`;
+      const b = `SG5${tag}`;
+      const res = await upload('preview', clinicAdminToken, await xlsx([supply(a, { supplyUsageNature: 'Dùng 2 lần' }), supply(b, { internalUseOnly: 'có lẽ' })]));
+      expect(reasonsOf(res.body.data, a)).toContain('"Tính chất sử dụng" phải là Dùng 1 lần hoặc Tái sử dụng.');
+      expect(reasonsOf(res.body.data, b)).toContain('"Chỉ dùng nội bộ" phải là Có hoặc Không.');
+    });
+
+    it('thiếu Giá bán: lỗi khi bán bình thường, được phép khi "Chỉ dùng nội bộ" = Có (cả thuốc lẫn vật tư)', async () => {
+      const sell = `NB1${tag}`;
+      const internalSupply = `NB2${tag}`;
+      const internalMed = `NB3${tag}`;
+      const res = await upload(
+        'preview',
+        clinicAdminToken,
+        await xlsx([supply(sell, { price: '' }), supply(internalSupply, { price: '', internalUseOnly: 'Có' }), medicine(internalMed, { price: '', internalUseOnly: 'Có' })], [ingredient(internalMed)]),
+      );
+      expect(reasonsOf(res.body.data, sell).some((r) => r.startsWith('Thiếu Giá bán'))).toBe(true);
+      expect(res.body.data.validRows.map((r: { code: string }) => r.code).sort()).toEqual([internalSupply, internalMed].sort());
+    });
+
+    it('commit vật tư đầy đủ: lưu Phân nhóm (danh mục SUPPLY_GROUP), Tính chất, nước SX, bảo quản, vị trí, mã vạch, số ĐK, cờ nội bộ; giá để trống', async () => {
+      const full = `FV${tag}`;
+      const internal = `FI${tag}`;
+      const file = await xlsx([
+        supply(full, { supplyGroup: `Nhóm mới-${tag}`, supplyUsageNature: 'Tái sử dụng', country: `Đức-${tag}`, storageCondition: `Khô ráo-${tag}`, storageLocation: `Tủ C-${tag}`, barcode: '8936001234567', nationalCode: 'N01.01.010' }),
+        supply(internal, { supplyGroup: `Nhóm mới-${tag}`, price: '', internalUseOnly: 'Có', supplyUsageNature: 'Dùng 1 lần' }),
+      ]);
+      const preview = await upload('preview', clinicAdminToken, file);
+      expect(preview.body.data.errorRows).toEqual([]);
+      expect((preview.body.data.newCatalogItems as { category: string }[]).some((n) => n.category === 'SUPPLY_GROUP')).toBe(true);
+
+      const res = await upload('commit', clinicAdminToken, file);
+      expect(res.body.data).toMatchObject({ createdCount: 2, errorCount: 0 });
+      const f = await privileged.drug.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, code: full } });
+      const i = await privileged.drug.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, code: internal } });
+      expect(f).toMatchObject({ itemType: 'SUPPLY', supplyUsageNature: 'REUSABLE', internalUseOnly: false, registrationNumber: 'VTYT-1', barcode: '8936001234567', nationalCode: 'N01.01.010' });
+      expect(Number(f.defaultSellPrice)).toBe(1200);
+      expect(i).toMatchObject({ supplyUsageNature: 'SINGLE_USE', internalUseOnly: true });
+      expect(i.defaultSellPrice).toBeNull();
+      const group = await privileged.referenceCatalog.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, category: 'SUPPLY_GROUP', code: f.drugGroupCode! } });
+      expect(group.name).toBe(`Nhóm mới-${tag}`);
+      for (const [category, code, name] of [
+        ['COUNTRY_OF_ORIGIN', f.countryOfOrigin, `Đức-${tag}`],
+        ['STORAGE_CONDITION', f.storageConditions, `Khô ráo-${tag}`],
+        ['STORAGE_LOCATION', f.storageLocation, `Tủ C-${tag}`],
+      ] as const) {
+        const row = await privileged.referenceCatalog.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, category, code: code! } });
+        expect(row.name).toBe(name);
+      }
+    });
+
+    it('xuất Excel ghi Phân nhóm VTYT (tên) / Tính chất / Chỉ dùng nội bộ đúng cột, thuốc để trống cột vật tư; nhập file xuất sang công ty B giữ nguyên các trường', async () => {
+      const exported = await download('/api/v1/drugs/export', clinicAdminToken);
+      const sheet = (await loadWorkbook(exported.body as Buffer)).getWorksheet('Thuốc & Vật tư')!;
+      let row = 0;
+      sheet.eachRow((r, n) => {
+        if (String(r.getCell(1).value) === `FI${tag}`) row = n;
+      });
+      expect(row).toBeGreaterThan(1);
+      expect(String(sheet.getCell(row, col('supplyGroup')).value)).toBe(`Nhóm mới-${tag}`);
+      expect(String(sheet.getCell(row, col('supplyUsageNature')).value)).toBe('Dùng 1 lần');
+      expect(String(sheet.getCell(row, col('internalUseOnly')).value)).toBe('Có');
+      expect(String(sheet.getCell(row, col('drugGroup')).value ?? '')).toBe('');
+
+      const commitB = await upload('commit', tenantBAdminToken, exported.body as Buffer);
+      expect(commitB.status).toBe(200);
+      const inB = await privileged.drug.findFirstOrThrow({ where: { tenantId: fixture.tenantB.id, code: `FI${tag}` } });
+      expect(inB).toMatchObject({ itemType: 'SUPPLY', internalUseOnly: true, supplyUsageNature: 'SINGLE_USE' });
+      const groupB = await privileged.referenceCatalog.findFirstOrThrow({ where: { tenantId: fixture.tenantB.id, category: 'SUPPLY_GROUP', code: inB.drugGroupCode! } });
+      expect(groupB.name).toBe(`Nhóm mới-${tag}`);
     });
   });
 });

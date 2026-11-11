@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Drug, DrugControlType, DrugDoseMode, DrugItemType, Prisma } from '@prisma/client';
+import type { Drug, DrugControlType, DrugDoseMode, DrugItemType, DrugSupplyUsageNature, Prisma } from '@prisma/client';
 import { stripVietnameseDiacritics } from '@nexamed/core';
 
 export interface CreateDrugData {
@@ -10,6 +10,9 @@ export interface CreateDrugData {
   baseUnitCode: string | null;
   defaultSellPrice: bigint | null;
   unitPricingEnabled: boolean;
+  /** "Chỉ dùng nội bộ, không bán" (#297, cả Thuốc lẫn Vật tư) và "Tính chất sử dụng" của vật tư (#297). */
+  internalUseOnly?: boolean;
+  supplyUsageNature?: DrugSupplyUsageNature | null;
   drugGroupCode: string | null;
   routeCode: string | null;
   nationalCode: string | null;
@@ -49,6 +52,8 @@ export interface UpdateDrugData {
   baseUnitCode?: string | null;
   defaultSellPrice?: bigint | null;
   unitPricingEnabled?: boolean;
+  internalUseOnly?: boolean;
+  supplyUsageNature?: DrugSupplyUsageNature | null;
   drugGroupCode?: string | null;
   routeCode?: string | null;
   nationalCode?: string | null;
@@ -148,7 +153,7 @@ export class DrugRepository {
   list(
     tx: Prisma.TransactionClient,
     tenantId: string,
-    params: { q?: string; itemType?: DrugItemType; includeInactive: boolean; prescriptionOnly?: boolean },
+    params: { q?: string; itemType?: DrugItemType; includeInactive: boolean; prescriptionOnly?: boolean; sellableOnly?: boolean },
   ): Promise<DrugWithDetails[]> {
     const where: Prisma.DrugWhereInput = {
       tenantId,
@@ -156,6 +161,8 @@ export class DrugRepository {
       ...(params.itemType ? { itemType: params.itemType } : {}),
       ...(params.includeInactive ? {} : { isActive: true }),
       ...(params.prescriptionOnly !== undefined ? { isPrescriptionOnly: params.prescriptionOnly } : {}),
+      // `sellableOnly` (#297): loại hàng "Chỉ dùng nội bộ" khỏi màn kê đơn/bán/phát; không đặt = trả cả hàng nội bộ.
+      ...(params.sellableOnly ? { internalUseOnly: false } : {}),
     };
     if (params.q) {
       const normalized = stripVietnameseDiacritics(params.q);

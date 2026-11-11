@@ -18,6 +18,7 @@ export async function listDrugs(query: ListDrugsQuery): Promise<ListDrugsRespons
           itemType: query.itemType,
           includeInactive: query.includeInactive ? 'true' : undefined,
           prescriptionOnly: query.prescriptionOnly === undefined ? undefined : query.prescriptionOnly ? 'true' : 'false',
+          sellableOnly: query.sellableOnly ? 'true' : undefined,
         },
       },
     }),

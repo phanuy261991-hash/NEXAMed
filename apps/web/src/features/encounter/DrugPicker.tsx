@@ -46,7 +46,8 @@ export const DrugPicker = forwardRef<DrugPickerHandle, {
   useImperativeHandle(ref, () => ({ focus: () => inputRef.current?.focus() }), []);
   const debounced = useDebouncedValue(query, 300);
   const isSearching = debounced.trim() !== '';
-  const searchQuery = useDrugsQuery({ q: debounced.trim() || undefined });
+  // Kê đơn chỉ thấy hàng CÓ THỂ BÁN/KÊ — loại "Chỉ dùng nội bộ" (#297, cả Thuốc lẫn Vật tư); máy chủ cũng từ chối nếu client cũ cố kê.
+  const searchQuery = useDrugsQuery({ q: debounced.trim() || undefined, sellableOnly: true });
 
   const results = (searchQuery.data?.items ?? []).filter((item) => !excludeDrugIds.includes(item.id));
 

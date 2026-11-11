@@ -21,6 +21,10 @@ export type DrugItemType = z.infer<typeof drugItemTypeSchema>;
 export const drugControlTypeSchema = z.enum(['NORMAL', 'TOXIC', 'NARCOTIC', 'PSYCHOTROPIC', 'PRECURSOR']);
 export type DrugControlType = z.infer<typeof drugControlTypeSchema>;
 
+/** "Tính chất sử dụng" của vật tư (docs/DECISIONS.md #297) — CHỈ là nhãn phân loại, không đổi cách tính giá. */
+export const drugSupplyUsageNatureSchema = z.enum(['SINGLE_USE', 'REUSABLE']);
+export type DrugSupplyUsageNature = z.infer<typeof drugSupplyUsageNatureSchema>;
+
 /** 1 dòng "Hoạt chất & hàm lượng" — `activeIngredientCode` tham chiếu `reference_catalog` category
  * `ACTIVE_INGREDIENT` (không FK thật, cùng cách mọi cột khác tham chiếu bảng đa-category này).
  * `strengthValue` là số nguyên ×1000 (đúng tiền lệ `vital_sign` — cấm decimal cho số liệu y tế). */
@@ -113,6 +117,32 @@ function checkUnitPricingRequired(
   });
 }
 
+/** Giá bán bắt buộc TRỪ khi mặt hàng "Chỉ dùng nội bộ, không bán" (#297, cả Thuốc lẫn Vật tư); mặt hàng nội bộ không dùng bảng giá theo đơn vị. Create: bắt buộc khi không phải nội bộ. */
+function checkSellPriceRequired(data: { internalUseOnly?: boolean; defaultSellPrice?: number | null }, ctx: z.RefinementCtx): void {
+  if (data.internalUseOnly) return;
+  if (data.defaultSellPrice === undefined || data.defaultSellPrice === null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Bắt buộc nhập giá bán (hoặc bật "Chỉ dùng nội bộ, không bán").', path: ['defaultSellPrice'] });
+  }
+}
+
+/** Mặt hàng "Chỉ dùng nội bộ" không bán nên không có giá riêng từng đơn vị (#297). */
+function checkInternalUseOnlyPricing(data: { internalUseOnly?: boolean; unitPricingEnabled?: boolean }, ctx: z.RefinementCtx): void {
+  if (data.internalUseOnly && data.unitPricingEnabled) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Mặt hàng chỉ dùng nội bộ không có giá bán riêng từng đơn vị.', path: ['unitPricingEnabled'] });
+  }
+}
+
+/** Vật tư y tế TẠO MỚI bắt buộc Số đăng ký + Phân nhóm VTYT (#297, chủ dự án chốt); Mã VTYT BYT tuỳ chọn. Vật tư cũ thiếu các trường này vẫn mở/sửa bình thường nên KHÔNG kiểm ở update. */
+function checkSupplyRequiredFields(data: { itemType?: DrugItemType; drugGroupCode?: string | null; registrationNumber?: string | null }, ctx: z.RefinementCtx): void {
+  if (data.itemType !== 'SUPPLY') return;
+  if (!data.drugGroupCode) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Chọn phân nhóm của vật tư.', path: ['drugGroupCode'] });
+  }
+  if (!data.registrationNumber) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Nhập số đăng ký lưu hành hoặc số giấy phép nhập khẩu.', path: ['registrationNumber'] });
+  }
+}
+
 /** Trần của tổng hệ số quy đổi ra đơn vị nhỏ nhất (1 bậc cao nhất = tối đa chừng này đơn vị nhỏ nhất). Đủ cho mọi quy cách thực tế (thùng/hộp/vỉ) và giữ số lượng quy đổi trong giới hạn số nguyên an toàn + cột tồn kho. */
 export const MAX_UNIT_CONVERSION_FACTOR = 1_000_000;
 
@@ -192,9 +222,12 @@ export const createDrugRequestSchema = z
     // Bắt buộc ở tầng Zod cho mặt hàng TẠO MỚI (dù cột DB nullable — dữ liệu trước GĐ1 không có) —
     // cùng cách "bắt buộc ở ứng dụng, nullable ở DB" đã áp dụng cho reception_type_code/exam_form_code.
     baseUnitCode: z.string().min(1),
-    // Bắt buộc (rà soát #151 đối chiếu tài liệu quy chuẩn — "Giá bán theo ĐVT cơ sở" Bắt buộc cho
-    // cả Thuốc lẫn Vật tư y tế).
-    defaultSellPrice: z.number().int().nonnegative(),
+    // Bắt buộc (rà soát #151) cho cả Thuốc lẫn Vật tư TRỪ khi bật "Chỉ dùng nội bộ, không bán" (#297) — xem hàm kiểm `checkSellPriceRequired`.
+    defaultSellPrice: z.number().int().nonnegative().optional(),
+    // "Chỉ dùng nội bộ, không bán" (#297) — dùng chung Thuốc và Vật tư.
+    internalUseOnly: z.boolean().default(false),
+    // "Tính chất sử dụng" (#297) — chỉ có ý nghĩa với vật tư, chỉ là nhãn.
+    supplyUsageNature: drugSupplyUsageNatureSchema.nullable().optional(),
     // Mặc định TẮT — xem `checkUnitPricingRequired`.
     unitPricingEnabled: z.boolean().default(false),
     // Bắt buộc khi itemType==='MEDICINE' — xem `checkMedicineRequiredFields`.
@@ -252,9 +285,12 @@ export const createDrugRequestSchema = z
     unit: z.string().min(1).optional(),
     concentration: z.string().min(1).optional(),
   })
+  .superRefine(checkSellPriceRequired)
+  .superRefine(checkInternalUseOnlyPricing)
   .superRefine(checkUnitPricingRequired)
   .superRefine(checkUnitChain)
   .superRefine(checkMedicineRequiredFields)
+  .superRefine(checkSupplyRequiredFields)
   .superRefine(checkDoseConfig);
 export type CreateDrugRequest = z.infer<typeof createDrugRequestSchema>;
 
@@ -267,6 +303,8 @@ export const updateDrugRequestSchema = z
     baseUnitCode: z.string().min(1).nullable().optional(),
     defaultSellPrice: z.number().int().nonnegative().nullable().optional(),
     unitPricingEnabled: z.boolean().optional(),
+    internalUseOnly: z.boolean().optional(),
+    supplyUsageNature: drugSupplyUsageNatureSchema.nullable().optional(),
     drugGroupCode: z.string().min(1).nullable().optional(),
     routeCode: z.string().min(1).nullable().optional(),
     nationalCode: z.string().min(1).nullable().optional(),
@@ -301,6 +339,7 @@ export const updateDrugRequestSchema = z
     isActive: z.boolean().optional(),
     version: z.number().int().positive(),
   })
+  .superRefine(checkInternalUseOnlyPricing)
   .superRefine(checkUnitPricingRequired)
   .superRefine(checkUnitChain)
   .superRefine(checkMedicineRequiredFields)
@@ -333,6 +372,9 @@ export const drugSummarySchema = z.object({
   baseUnitCode: z.string().nullable(),
   defaultSellPrice: z.number().int().nullable(),
   unitPricingEnabled: z.boolean(),
+  /** "Chỉ dùng nội bộ, không bán" (#297) và "Tính chất sử dụng" của vật tư (#297). */
+  internalUseOnly: z.boolean(),
+  supplyUsageNature: drugSupplyUsageNatureSchema.nullable(),
   drugGroupCode: z.string().nullable(),
   routeCode: z.string().nullable(),
   nationalCode: z.string().nullable(),
@@ -389,6 +431,14 @@ export const listDrugsQuerySchema = z.object({
    * nơi dùng khác giữ nguyên hành vi cũ).
    */
   prescriptionOnly: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .optional()
+    .transform((v) => (typeof v === 'string' ? v === 'true' : v)),
+  /**
+   * Chỉ trả hàng CÓ THỂ BÁN/KÊ ĐƠN (loại hàng "Chỉ dùng nội bộ", #297) — màn kê đơn, đơn mẫu và phát thuốc đặt `true`. Không đặt = trả cả hàng nội bộ
+   * (danh mục, nhập kho, xuất dùng nội bộ, kiểm kê, định mức tiêu hao cần thấy chúng).
+   */
+  sellableOnly: z
     .union([z.boolean(), z.enum(['true', 'false'])])
     .optional()
     .transform((v) => (typeof v === 'string' ? v === 'true' : v)),

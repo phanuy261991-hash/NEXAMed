@@ -38275,6 +38275,21 @@
                     "type": "integer",
                     "minimum": 0
                   },
+                  "internalUseOnly": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "supplyUsageNature": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "SINGLE_USE",
+                      "REUSABLE",
+                      null
+                    ]
+                  },
                   "unitPricingEnabled": {
                     "type": "boolean",
                     "default": false
@@ -38517,7 +38532,6 @@
                   "name",
                   "itemType",
                   "baseUnitCode",
-                  "defaultSellPrice",
                   "manufacturerCode"
                 ]
               }
@@ -38569,6 +38583,20 @@
                         },
                         "unitPricingEnabled": {
                           "type": "boolean"
+                        },
+                        "internalUseOnly": {
+                          "type": "boolean"
+                        },
+                        "supplyUsageNature": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "SINGLE_USE",
+                            "REUSABLE",
+                            null
+                          ]
                         },
                         "drugGroupCode": {
                           "type": [
@@ -38890,6 +38918,8 @@
                         "baseUnitCode",
                         "defaultSellPrice",
                         "unitPricingEnabled",
+                        "internalUseOnly",
+                        "supplyUsageNature",
                         "drugGroupCode",
                         "routeCode",
                         "nationalCode",
@@ -39106,6 +39136,25 @@
             "required": false,
             "name": "prescriptionOnly",
             "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              ]
+            },
+            "required": false,
+            "name": "sellableOnly",
+            "in": "query"
           }
         ],
         "responses": {
@@ -39158,6 +39207,20 @@
                               },
                               "unitPricingEnabled": {
                                 "type": "boolean"
+                              },
+                              "internalUseOnly": {
+                                "type": "boolean"
+                              },
+                              "supplyUsageNature": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "SINGLE_USE",
+                                  "REUSABLE",
+                                  null
+                                ]
                               },
                               "drugGroupCode": {
                                 "type": [
@@ -39479,6 +39542,8 @@
                               "baseUnitCode",
                               "defaultSellPrice",
                               "unitPricingEnabled",
+                              "internalUseOnly",
+                              "supplyUsageNature",
                               "drugGroupCode",
                               "routeCode",
                               "nationalCode",
@@ -39667,6 +39732,20 @@
                         },
                         "unitPricingEnabled": {
                           "type": "boolean"
+                        },
+                        "internalUseOnly": {
+                          "type": "boolean"
+                        },
+                        "supplyUsageNature": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "SINGLE_USE",
+                            "REUSABLE",
+                            null
+                          ]
                         },
                         "drugGroupCode": {
                           "type": [
@@ -39988,6 +40067,8 @@
                         "baseUnitCode",
                         "defaultSellPrice",
                         "unitPricingEnabled",
+                        "internalUseOnly",
+                        "supplyUsageNature",
                         "drugGroupCode",
                         "routeCode",
                         "nationalCode",
@@ -40194,6 +40275,20 @@
                   },
                   "unitPricingEnabled": {
                     "type": "boolean"
+                  },
+                  "internalUseOnly": {
+                    "type": "boolean"
+                  },
+                  "supplyUsageNature": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "SINGLE_USE",
+                      "REUSABLE",
+                      null
+                    ]
                   },
                   "drugGroupCode": {
                     "type": [
@@ -40543,6 +40638,20 @@
                         "unitPricingEnabled": {
                           "type": "boolean"
                         },
+                        "internalUseOnly": {
+                          "type": "boolean"
+                        },
+                        "supplyUsageNature": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "SINGLE_USE",
+                            "REUSABLE",
+                            null
+                          ]
+                        },
                         "drugGroupCode": {
                           "type": [
                             "string",
@@ -40863,6 +40972,8 @@
                         "baseUnitCode",
                         "defaultSellPrice",
                         "unitPricingEnabled",
+                        "internalUseOnly",
+                        "supplyUsageNature",
                         "drugGroupCode",
                         "routeCode",
                         "nationalCode",
@@ -75205,7 +75316,8 @@
                 "SPECIMEN_TYPE",
                 "LAB_RESULT_UNIT",
                 "TREATMENT_FORM",
-                "SERVICE_DECLINE_REASON"
+                "SERVICE_DECLINE_REASON",
+                "SUPPLY_GROUP"
               ]
             },
             "required": true,
@@ -75278,7 +75390,8 @@
                                   "SPECIMEN_TYPE",
                                   "LAB_RESULT_UNIT",
                                   "TREATMENT_FORM",
-                                  "SERVICE_DECLINE_REASON"
+                                  "SERVICE_DECLINE_REASON",
+                                  "SUPPLY_GROUP"
                                 ]
                               },
                               "code": {
@@ -75608,7 +75721,8 @@
                       "SPECIMEN_TYPE",
                       "LAB_RESULT_UNIT",
                       "TREATMENT_FORM",
-                      "SERVICE_DECLINE_REASON"
+                      "SERVICE_DECLINE_REASON",
+                      "SUPPLY_GROUP"
                     ]
                   },
                   "code": {
@@ -75771,7 +75885,8 @@
                             "SPECIMEN_TYPE",
                             "LAB_RESULT_UNIT",
                             "TREATMENT_FORM",
-                            "SERVICE_DECLINE_REASON"
+                            "SERVICE_DECLINE_REASON",
+                            "SUPPLY_GROUP"
                           ]
                         },
                         "code": {
@@ -76242,7 +76357,8 @@
                             "SPECIMEN_TYPE",
                             "LAB_RESULT_UNIT",
                             "TREATMENT_FORM",
-                            "SERVICE_DECLINE_REASON"
+                            "SERVICE_DECLINE_REASON",
+                            "SUPPLY_GROUP"
                           ]
                         },
                         "code": {
@@ -76624,7 +76740,8 @@
                             "SPECIMEN_TYPE",
                             "LAB_RESULT_UNIT",
                             "TREATMENT_FORM",
-                            "SERVICE_DECLINE_REASON"
+                            "SERVICE_DECLINE_REASON",
+                            "SUPPLY_GROUP"
                           ]
                         },
                         "code": {
@@ -77008,7 +77125,8 @@
                             "SPECIMEN_TYPE",
                             "LAB_RESULT_UNIT",
                             "TREATMENT_FORM",
-                            "SERVICE_DECLINE_REASON"
+                            "SERVICE_DECLINE_REASON",
+                            "SUPPLY_GROUP"
                           ]
                         },
                         "code": {
@@ -88877,7 +88995,8 @@
                                   "SPECIMEN_TYPE",
                                   "LAB_RESULT_UNIT",
                                   "TREATMENT_FORM",
-                                  "SERVICE_DECLINE_REASON"
+                                  "SERVICE_DECLINE_REASON",
+                                  "SUPPLY_GROUP"
                                 ]
                               },
                               "name": {

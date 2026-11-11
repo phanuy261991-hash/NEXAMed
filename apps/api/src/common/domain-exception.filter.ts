@@ -115,6 +115,8 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   INTEROP_SUBMISSION_NOT_SENDABLE: HttpStatus.CONFLICT,
   INTEROP_GUARDIAN_EDIT_FORBIDDEN: HttpStatus.FORBIDDEN,
   DRUG_DUPLICATE_CODE: HttpStatus.CONFLICT,
+  // Mặt hàng "Chỉ dùng nội bộ" (#297) không kê đơn được — xung đột với cấu hình mặt hàng (409).
+  DRUG_INTERNAL_USE_ONLY: HttpStatus.CONFLICT,
   // "Quản lý mẫu in" (#211) — trùng khổ giấy / xoá bản mặc định là xung đột trạng thái hiện có (409); khổ giấy không được mở rơi về mặc định 422.
   PRINT_TEMPLATE_DUPLICATE_PAPER: HttpStatus.CONFLICT,
   PRINT_TEMPLATE_DEFAULT_CANNOT_DELETE: HttpStatus.CONFLICT,

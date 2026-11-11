@@ -5,8 +5,19 @@ import {
   parseImportInteger,
   parseImportItemType,
   parseImportStrength,
+  parseImportSupplyUsageNature,
   parseImportYesNo,
 } from './parse-cells';
+
+describe('parseImportSupplyUsageNature', () => {
+  it('nhận "Dùng 1 lần"/"Tái sử dụng" (có/không dấu), trống → null, lạ → lỗi', () => {
+    expect(parseImportSupplyUsageNature('Dùng 1 lần')).toEqual({ ok: true, value: 'SINGLE_USE' });
+    expect(parseImportSupplyUsageNature(' dung mot lan ')).toEqual({ ok: true, value: 'SINGLE_USE' });
+    expect(parseImportSupplyUsageNature('Tái sử dụng')).toEqual({ ok: true, value: 'REUSABLE' });
+    expect(parseImportSupplyUsageNature('')).toEqual({ ok: true, value: null });
+    expect(parseImportSupplyUsageNature('Dùng 2 lần')).toEqual({ ok: false });
+  });
+});
 
 describe('normalizeImportName', () => {
   it('bỏ dấu, viết thường, gộp khoảng trắng', () => {

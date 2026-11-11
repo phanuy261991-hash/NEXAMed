@@ -67,6 +67,11 @@ describe('HTTP e2e — /api/v1/drugs', () => {
       doseUnitCode: string;
       dosePerBaseUnit: number;
       dosePresets: unknown[];
+      // #297 — cờ nội bộ, tính chất vật tư, bỏ trống giá bán.
+      internalUseOnly: boolean;
+      supplyUsageNature: 'SINGLE_USE' | 'REUSABLE' | null;
+      omitPrice: boolean;
+      omitSupplyRequired: boolean;
     }> = {},
   ) {
     const itemType = overrides.itemType ?? 'MEDICINE';
@@ -86,7 +91,9 @@ describe('HTTP e2e — /api/v1/drugs', () => {
         unit: 'Viên',
         concentration: '500mg',
         manufacturerCode: overrides.manufacturer ?? 'TEST_MANUFACTURER',
-        defaultSellPrice: overrides.defaultSellPrice ?? 10000,
+        ...(overrides.omitPrice ? {} : { defaultSellPrice: overrides.defaultSellPrice ?? 10000 }),
+        ...(overrides.internalUseOnly !== undefined ? { internalUseOnly: overrides.internalUseOnly } : {}),
+        ...(overrides.supplyUsageNature !== undefined ? { supplyUsageNature: overrides.supplyUsageNature } : {}),
         ...(itemType === 'MEDICINE'
           ? {
               drugGroupCode: overrides.drugGroupCode ?? 'TEST_GROUP',
@@ -95,7 +102,13 @@ describe('HTTP e2e — /api/v1/drugs', () => {
               dosageForm: overrides.dosageForm ?? 'Viên nén',
               countryOfOrigin: overrides.countryOfOrigin ?? 'Việt Nam',
             }
-          : {}),
+          : overrides.omitSupplyRequired
+            ? {}
+            : {
+                // Vật tư TẠO MỚI bắt buộc Phân nhóm VTYT + Số đăng ký (#297).
+                drugGroupCode: overrides.drugGroupCode ?? 'TEST_SUPPLY_GROUP',
+                registrationNumber: overrides.registrationNumber ?? 'GPNK-TEST-0001',
+              }),
         ingredients: overrides.ingredients ?? defaultIngredients,
         units: overrides.units ?? [],
         ...(overrides.unitPricingEnabled !== undefined ? { unitPricingEnabled: overrides.unitPricingEnabled } : {}),
@@ -484,6 +497,8 @@ describe('HTTP e2e — /api/v1/drugs', () => {
         baseUnitCode: 'VIEN',
         manufacturerCode: 'MFR_DUOC_HAU_GIANG',
         defaultSellPrice: 5000,
+        drugGroupCode: 'TEST_SUPPLY_GROUP',
+        registrationNumber: 'GPNK-TEST-0002',
         packagingSpec: 'Hộp 5 gói x 10 miếng',
         ingredients: [],
         units: [],
@@ -507,6 +522,8 @@ describe('HTTP e2e — /api/v1/drugs', () => {
         itemType: 'SUPPLY',
         baseUnitCode: 'VIEN',
         manufacturer: 'Test Manufacturer',
+        drugGroupCode: 'TEST_SUPPLY_GROUP',
+        registrationNumber: 'GPNK-TEST-0003',
         ingredients: [],
         units: [],
       });
@@ -702,6 +719,121 @@ describe('HTTP e2e — /api/v1/drugs', () => {
       const res = await createDrug(clinicAdminToken, { name: 'Liều mẫu cách ly', dosePresets: syrupPresets });
       const peek = await request(app.getHttpServer()).get(`/api/v1/drugs/${res.body.data.id}`).set(authed(tenantBAdminToken));
       expect(peek.status).toBe(404);
+    });
+  });
+
+  // ===== Hoàn thiện quản lý Vật tư y tế (docs/DECISIONS.md #297) =====
+  describe('#297 — Vật tư y tế: trường mới + cờ "Chỉ dùng nội bộ"', () => {
+    it('Vật tư TẠO MỚI thiếu Phân nhóm hoặc Số đăng ký → 400; đủ thì lưu và trả đủ trường (Mã VTYT BYT, Nước SX, bảo quản, vị trí, mã vạch, tính chất)', async () => {
+      const missingGroup = await createDrug(clinicAdminToken, { name: 'VT thiếu nhóm', itemType: 'SUPPLY', omitSupplyRequired: true, registrationNumber: 'GPNK-1' });
+      expect(missingGroup.status).toBe(400);
+      const missingReg = await createDrug(clinicAdminToken, { name: 'VT thiếu số ĐK', itemType: 'SUPPLY', omitSupplyRequired: true, drugGroupCode: 'TEST_SUPPLY_GROUP' });
+      expect(missingReg.status).toBe(400);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/drugs')
+        .set(authed(clinicAdminToken))
+        .send({
+          code: `VT-${randomUUID().slice(0, 8)}`,
+          name: 'Găng tay y tế không bột',
+          itemType: 'SUPPLY',
+          baseUnitCode: 'CHIEC',
+          manufacturerCode: 'TEST_MANUFACTURER',
+          defaultSellPrice: 1200,
+          drugGroupCode: 'TEST_SUPPLY_GROUP',
+          registrationNumber: '2300456ĐKLH/BYT-HTTB',
+          nationalCode: 'N05.01.040',
+          countryOfOrigin: 'MY',
+          storageConditions: 'ROOM_TEMP',
+          storageLocation: 'KE_B2',
+          barcode: '8935001234567',
+          supplyUsageNature: 'SINGLE_USE',
+          ingredients: [],
+          units: [],
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({
+        drugGroupCode: 'TEST_SUPPLY_GROUP',
+        registrationNumber: '2300456ĐKLH/BYT-HTTB',
+        nationalCode: 'N05.01.040',
+        countryOfOrigin: 'MY',
+        storageConditions: 'ROOM_TEMP',
+        storageLocation: 'KE_B2',
+        barcode: '8935001234567',
+        supplyUsageNature: 'SINGLE_USE',
+        internalUseOnly: false,
+      });
+    });
+
+    it('Vật tư CŨ thiếu các trường mới vẫn sửa được (không bị chặn ở update)', async () => {
+      const created = await createDrug(clinicAdminToken, { name: 'VT cũ', itemType: 'SUPPLY' });
+      await privileged.drug.update({ where: { id: created.body.data.id }, data: { drugGroupCode: null, registrationNumber: null } });
+      const fresh = await request(app.getHttpServer()).get(`/api/v1/drugs/${created.body.data.id}`).set(authed(clinicAdminToken));
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/drugs/${created.body.data.id}`)
+        .set(authed(clinicAdminToken))
+        .send({ name: 'VT cũ đổi tên', version: fresh.body.data.version });
+      expect(res.status).toBe(200);
+      expect(res.body.data.name).toBe('VT cũ đổi tên');
+    });
+
+    it('Thuốc không có "Tính chất sử dụng" (chỉ vật tư): gửi lên cũng được lưu null', async () => {
+      const res = await createDrug(clinicAdminToken, { name: 'Thuốc có tính chất', supplyUsageNature: 'SINGLE_USE' });
+      expect(res.status).toBe(200);
+      expect(res.body.data.supplyUsageNature).toBeNull();
+    });
+
+    it('"Chỉ dùng nội bộ": tạo KHÔNG cần giá bán (cả Thuốc lẫn Vật tư); không bật mà thiếu giá → 400', async () => {
+      const med = await createDrug(clinicAdminToken, { name: 'Lidocain 2% nội bộ', internalUseOnly: true, omitPrice: true });
+      expect(med.status).toBe(200);
+      expect(med.body.data).toMatchObject({ internalUseOnly: true, defaultSellPrice: null });
+      const sup = await createDrug(clinicAdminToken, { name: 'Sát khuẩn tay nội bộ', itemType: 'SUPPLY', internalUseOnly: true, omitPrice: true });
+      expect(sup.status).toBe(200);
+      expect(sup.body.data.internalUseOnly).toBe(true);
+      const noPrice = await createDrug(clinicAdminToken, { name: 'Thiếu giá và không nội bộ', omitPrice: true });
+      expect(noPrice.status).toBe(400);
+    });
+
+    it('"Chỉ dùng nội bộ" + giá theo từng đơn vị → 400; bật cờ lúc Sửa thì tự tắt giá theo đơn vị', async () => {
+      const bad = await createDrug(clinicAdminToken, { name: 'Nội bộ giá đơn vị', internalUseOnly: true, unitPricingEnabled: true });
+      expect(bad.status).toBe(400);
+
+      const withTiers = await createDrug(clinicAdminToken, {
+        name: 'Có giá theo đơn vị',
+        unitPricingEnabled: true,
+        units: [{ unitCode: 'HOP', sortOrder: 0, factorToUnitBelow: 10, sellPrice: 90000 }],
+      });
+      expect(withTiers.status).toBe(200);
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/drugs/${withTiers.body.data.id}`)
+        .set(authed(clinicAdminToken))
+        .send({ internalUseOnly: true, version: withTiers.body.data.version });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ internalUseOnly: true, unitPricingEnabled: false });
+    });
+
+    it('Tắt "Chỉ dùng nội bộ" mà mặt hàng chưa có giá bán → 400; có giá thì tắt được', async () => {
+      const created = await createDrug(clinicAdminToken, { name: 'Nội bộ rồi mở bán', internalUseOnly: true, omitPrice: true });
+      const noPrice = await request(app.getHttpServer())
+        .patch(`/api/v1/drugs/${created.body.data.id}`)
+        .set(authed(clinicAdminToken))
+        .send({ internalUseOnly: false, version: created.body.data.version });
+      expect(noPrice.status).toBe(400);
+      const withPrice = await request(app.getHttpServer())
+        .patch(`/api/v1/drugs/${created.body.data.id}`)
+        .set(authed(clinicAdminToken))
+        .send({ internalUseOnly: false, defaultSellPrice: 15000, version: created.body.data.version });
+      expect(withPrice.status).toBe(200);
+      expect(withPrice.body.data).toMatchObject({ internalUseOnly: false, defaultSellPrice: 15000 });
+    });
+
+    it('sellableOnly=true loại hàng "Chỉ dùng nội bộ" khỏi danh sách; không đặt thì vẫn thấy (nhập kho, xuất nội bộ, kiểm kê cần thấy)', async () => {
+      const name = `Hàng nội bộ ${randomUUID().slice(0, 6)}`;
+      await createDrug(clinicAdminToken, { name, internalUseOnly: true, omitPrice: true });
+      const all = await request(app.getHttpServer()).get('/api/v1/drugs').query({ q: name }).set(authed(doctorToken));
+      expect(all.body.data.items.map((d: { name: string }) => d.name)).toContain(name);
+      const sellable = await request(app.getHttpServer()).get('/api/v1/drugs').query({ q: name, sellableOnly: 'true' }).set(authed(doctorToken));
+      expect(sellable.body.data.items).toHaveLength(0);
     });
   });
 });

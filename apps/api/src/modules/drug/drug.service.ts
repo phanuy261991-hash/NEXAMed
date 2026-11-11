@@ -81,6 +81,9 @@ export class DrugService {
         baseUnitCode: dto.baseUnitCode,
         defaultSellPrice: dto.defaultSellPrice !== undefined ? BigInt(dto.defaultSellPrice) : null,
         unitPricingEnabled: dto.unitPricingEnabled,
+        // "Chỉ dùng nội bộ" (#297) dùng chung Thuốc và Vật tư; "Tính chất sử dụng" chỉ có ý nghĩa với vật tư.
+        internalUseOnly: dto.internalUseOnly,
+        supplyUsageNature: dto.itemType === 'SUPPLY' ? (dto.supplyUsageNature ?? null) : null,
         drugGroupCode: dto.drugGroupCode ?? null,
         routeCode: dto.routeCode ?? null,
         nationalCode: dto.nationalCode ?? null,
@@ -103,15 +106,16 @@ export class DrugService {
         doseMode: dto.itemType === 'MEDICINE' ? dto.doseMode : 'SCHEDULED',
         doseUnitCode: dto.itemType === 'MEDICINE' ? (dto.doseUnitCode ?? null) : null,
         dosePerBaseUnit: dto.itemType === 'MEDICINE' ? (dto.dosePerBaseUnit ?? null) : null,
-        registrationNumber: dto.itemType === 'MEDICINE' ? (dto.registrationNumber ?? null) : null,
+        // Số đăng ký, Nước SX, Điều kiện bảo quản, Vị trí lưu kho, Mã vạch: mở cho CẢ Vật tư (#297, hoàn thiện quản lý Vật tư y tế).
+        registrationNumber: dto.registrationNumber ?? null,
         dosageForm: dto.itemType === 'MEDICINE' ? (dto.dosageForm ?? null) : null,
-        countryOfOrigin: dto.itemType === 'MEDICINE' ? (dto.countryOfOrigin ?? null) : null,
+        countryOfOrigin: dto.countryOfOrigin ?? null,
         defaultDosage: dto.itemType === 'MEDICINE' ? (dto.defaultDosage ?? null) : null,
         usageInstruction: dto.itemType === 'MEDICINE' ? (dto.usageInstruction ?? null) : null,
         contraindications: dto.itemType === 'MEDICINE' ? (dto.contraindications ?? null) : null,
-        storageConditions: dto.itemType === 'MEDICINE' ? (dto.storageConditions ?? null) : null,
-        storageLocation: dto.itemType === 'MEDICINE' ? (dto.storageLocation ?? null) : null,
-        barcode: dto.itemType === 'MEDICINE' ? (dto.barcode ?? null) : null,
+        storageConditions: dto.storageConditions ?? null,
+        storageLocation: dto.storageLocation ?? null,
+        barcode: dto.barcode ?? null,
         // "Quy cách đóng gói" — KHÔNG giới hạn MEDICINE như nhóm trường trên (đảo ngược hoãn #151):
         // vật tư y tế cũng đóng gói theo hộp/gói/thùng như thuốc, cùng phạm vi với Bảng quy đổi
         // đơn vị (`units`) vốn cũng không giới hạn itemType.
@@ -151,6 +155,7 @@ export class DrugService {
         itemType: query.itemType,
         includeInactive: query.includeInactive,
         prescriptionOnly: query.prescriptionOnly,
+        sellableOnly: query.sellableOnly,
       });
       return { items: rows.map((r) => this.toSummary(r)) };
     });
@@ -206,6 +211,16 @@ export class DrugService {
         throw new BadRequestException('Bảng quy đổi có đơn vị trùng với đơn vị nhỏ nhất — chọn đơn vị khác.');
       }
 
+      // Tắt "Chỉ dùng nội bộ" (hoặc xoá giá) mà mặt hàng chưa có giá bán thì bắt buộc nhập giá (#297). Chỉ kiểm khi người dùng CHỦ ĐỘNG đổi hai thứ này,
+      // để mặt hàng cũ chưa có giá (GĐ1) vẫn sửa các trường khác được.
+      const nextSellPrice = dto.defaultSellPrice === undefined ? existing.defaultSellPrice : dto.defaultSellPrice === null ? null : BigInt(dto.defaultSellPrice);
+      const nextInternalUseOnly = dto.internalUseOnly ?? existing.internalUseOnly;
+      if (!nextInternalUseOnly && nextSellPrice === null && (dto.internalUseOnly === false || dto.defaultSellPrice === null)) {
+        throw new BadRequestException('Bắt buộc nhập giá bán (hoặc bật "Chỉ dùng nội bộ, không bán").');
+      }
+      // Mặt hàng nội bộ không có giá riêng từng đơn vị: bật cờ thì tự tắt công tắc giá theo đơn vị (dữ liệu giá bậc cũ được giữ nguyên, không dùng).
+      const forceUnitPricingOff = dto.internalUseOnly === true && existing.unitPricingEnabled && dto.unitPricingEnabled === undefined;
+
       const nextShortcutCode = dto.shortcutCode === undefined ? undefined : normalizeShortcutCode(dto.shortcutCode);
       if (nextShortcutCode !== undefined) {
         await this.assertShortcutCodeAvailable(tx, tenantId, nextShortcutCode, id);
@@ -220,7 +235,9 @@ export class DrugService {
           isBatchManaged: dto.isBatchManaged,
           baseUnitCode: dto.baseUnitCode,
           defaultSellPrice: dto.defaultSellPrice === undefined ? undefined : dto.defaultSellPrice === null ? null : BigInt(dto.defaultSellPrice),
-          unitPricingEnabled: dto.unitPricingEnabled,
+          unitPricingEnabled: forceUnitPricingOff ? false : dto.unitPricingEnabled,
+          internalUseOnly: dto.internalUseOnly,
+          supplyUsageNature: dto.supplyUsageNature,
           drugGroupCode: dto.drugGroupCode,
           routeCode: dto.routeCode,
           nationalCode: dto.nationalCode,
@@ -309,6 +326,8 @@ export class DrugService {
       baseUnitCode: drug.baseUnitCode,
       defaultSellPrice: drug.defaultSellPrice === null ? null : Number(drug.defaultSellPrice),
       unitPricingEnabled: drug.unitPricingEnabled,
+      internalUseOnly: drug.internalUseOnly,
+      supplyUsageNature: drug.supplyUsageNature,
       drugGroupCode: drug.drugGroupCode,
       routeCode: drug.routeCode,
       nationalCode: drug.nationalCode,

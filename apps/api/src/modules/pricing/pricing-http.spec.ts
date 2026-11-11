@@ -83,7 +83,7 @@ describe('HTTP e2e — Gói dịch vụ + Bảng giá có thời hạn', () => {
               countryOfOrigin: 'Việt Nam',
               ingredients: [{ activeIngredientCode: 'TEST_INGREDIENT', strengthValue: 500000, strengthUnitCode: 'MG' }],
             }
-          : { ingredients: [] }),
+          : { drugGroupCode: 'TEST_SUPPLY_GROUP', registrationNumber: 'VTYT-TEST-0001', ingredients: [] }),
         units,
       });
     expect(res.status).toBe(200);
@@ -146,6 +146,9 @@ describe('HTTP e2e — Gói dịch vụ + Bảng giá có thời hạn', () => {
       { unitCode: 'VI', sortOrder: 0, factorToUnitBelow: 10 },
       { unitCode: 'HOP', sortOrder: 1, factorToUnitBelow: 10 },
     ]);
+    await privileged.referenceCatalog.create({
+      data: { tenantId: fixture.tenantA.id, category: 'SUPPLY_GROUP', code: 'TEST_SUPPLY_GROUP', name: 'Nhóm vật tư (bảng giá)', createdBy: SYSTEM_TEST_ACTOR, updatedBy: SYSTEM_TEST_ACTOR },
+    });
     supplyId = await createDrug('SUPPLY', 'Bơm tiêm 5ml bảng giá', 3_500);
   });
 
@@ -568,7 +571,8 @@ describe('HTTP e2e — Gói dịch vụ + Bảng giá có thời hạn', () => {
       expect(groups.find((g) => g.kind === 'EXAM_TYPE')!.itemCount).toBeGreaterThanOrEqual(1);
       const drugGroup = groups.find((g) => g.kind === 'DRUG' && g.code === 'TEST_GROUP');
       expect(drugGroup!.itemCount).toBeGreaterThanOrEqual(1);
-      expect(groups.some((g) => g.kind === 'MEDICAL_SUPPLY')).toBe(true);
+      // Vật tư gom theo "Phân nhóm VTYT" (danh mục riêng, #297): tên nhóm tra từ SUPPLY_GROUP, không phải "Nhóm thuốc".
+      expect(groups.find((g) => g.kind === 'MEDICAL_SUPPLY' && g.code === 'TEST_SUPPLY_GROUP')).toMatchObject({ name: 'Nhóm vật tư (bảng giá)' });
       // Nhóm trống bị ẩn.
       expect(groups.every((g) => g.itemCount > 0)).toBe(true);
     });
@@ -577,7 +581,7 @@ describe('HTTP e2e — Gói dịch vụ + Bảng giá có thời hạn', () => {
       const res = await http()
         .post(`${LISTS}/items/by-groups`)
         .set(authed(adminToken))
-        .send({ groups: [{ kind: 'DRUG', code: 'TEST_GROUP' }, { kind: 'DRUG', code: 'TEST_GROUP' }, { kind: 'MEDICAL_SUPPLY', code: null }] });
+        .send({ groups: [{ kind: 'DRUG', code: 'TEST_GROUP' }, { kind: 'DRUG', code: 'TEST_GROUP' }, { kind: 'MEDICAL_SUPPLY', code: 'TEST_SUPPLY_GROUP' }] });
       expect(res.status, JSON.stringify(res.body)).toBe(200);
       const items = res.body.data.items as { itemKind: string; ref: string; scopes: { amount: number | null }[] }[];
       const medicine = items.find((i) => i.ref === medicineId)!;

@@ -84,6 +84,8 @@ export const referenceCatalogCategorySchema = z.enum([
   // khám sửa/thêm/ẩn được). Lý do được lưu lên dòng chỉ định và IN ra bệnh án, nên sửa tên ở đây là
   // đổi chữ trên bệnh án in về sau — dòng đã dùng chỉ ẩn, không xoá cứng (đúng khuôn mọi danh mục).
   'SERVICE_DECLINE_REASON',
+  // "Phân nhóm VTYT" (docs/DECISIONS.md #297) — danh mục MỞ cho vật tư y tế (dùng lại cột drug.drug_group_code), thêm nhanh ở ô chọn; seed sẵn 3 giá trị khởi tạo.
+  'SUPPLY_GROUP',
 ]);
 export type ReferenceCatalogCategory = z.infer<typeof referenceCatalogCategorySchema>;
 

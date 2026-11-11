@@ -277,8 +277,10 @@ export class PriceableCatalogService {
     const drugGroupNames = new Map((await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'DRUG_GROUP', true)).map((c) => [c.code, c.name]));
     const medicines = await this.drugRepository.list(tx, tenantId, { itemType: 'MEDICINE', includeInactive: false });
     groups.push(...countGroups('DRUG', medicines.map((d) => d.drugGroupCode), drugGroupNames));
+    // Vật tư dùng danh mục RIÊNG "Phân nhóm VTYT" (SUPPLY_GROUP, #297) cho cùng cột `drug_group_code`, không phải "Nhóm thuốc".
+    const supplyGroupNames = new Map((await this.referenceCatalogRepository.listByCategory(tx, tenantId, 'SUPPLY_GROUP', true)).map((c) => [c.code, c.name]));
     const supplies = await this.drugRepository.list(tx, tenantId, { itemType: 'SUPPLY', includeInactive: false });
-    groups.push(...countGroups('MEDICAL_SUPPLY', supplies.map((d) => d.drugGroupCode), drugGroupNames));
+    groups.push(...countGroups('MEDICAL_SUPPLY', supplies.map((d) => d.drugGroupCode), supplyGroupNames));
 
     return groups.filter((g) => g.itemCount > 0);
   }

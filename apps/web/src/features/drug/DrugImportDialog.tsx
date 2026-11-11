@@ -7,6 +7,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   UNIT: 'Đơn vị tính',
   MANUFACTURER: 'Hãng sản xuất',
   DRUG_GROUP: 'Nhóm thuốc',
+  SUPPLY_GROUP: 'Phân nhóm VTYT',
   DRUG_ROUTE: 'Đường dùng',
   DOSAGE_FORM: 'Dạng bào chế',
   COUNTRY_OF_ORIGIN: 'Nước sản xuất',
