@@ -1084,7 +1084,7 @@ function DrugFormModal({
   // "Chỉ dùng nội bộ, không bán" (#297, cả Thuốc lẫn Vật tư): bật thì không bắt nhập giá bán, ẩn khỏi bán/phát/kê đơn.
   const [internalUseOnly, setInternalUseOnly] = useState(item?.internalUseOnly ?? false);
   // "Tính chất sử dụng" của vật tư (#297) — chỉ là nhãn; null = chưa chọn.
-  const [supplyUsageNature, setSupplyUsageNature] = useState<DrugSupplyUsageNature | null>(item?.supplyUsageNature ?? null);
+  const [supplyUsageNature, setSupplyUsageNature] = useState<DrugSupplyUsageNature | null>(item ? (item.supplyUsageNature ?? null) : 'SINGLE_USE');
   const [drugGroupCode, setDrugGroupCode] = useState(item?.drugGroupCode ?? '');
   const [routeCode, setRouteCode] = useState(item?.routeCode ?? '');
   const [nationalCode, setNationalCode] = useState(item?.nationalCode ?? '');
@@ -1351,7 +1351,6 @@ function DrugFormModal({
                     allowCreate
                     onCreateOption={supplyGroupCatalog.onCreateOption}
                   />
-                  <p className="mt-1 text-xs text-slate-500">Danh mục mở, gõ tên mới để thêm nhanh</p>
                 </div>
               )}
               {!isMedicine && (
@@ -1367,7 +1366,6 @@ function DrugFormModal({
                     value={supplyUsageNature}
                     onChange={setSupplyUsageNature}
                   />
-                  <p className="mt-1 text-xs text-slate-500">Tái sử dụng: dụng cụ được vô trùng lại để dùng tiếp</p>
                 </div>
               )}
               {isMedicine && (
@@ -1545,9 +1543,7 @@ function DrugFormModal({
             <div className="mb-4 flex items-center justify-between gap-4 rounded-lg bg-slate-50 px-4 py-3">
               <div>
                 <p id="drug-internal-label" className="text-sm font-semibold text-slate-800">Chỉ dùng nội bộ, không bán</p>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Bật khi mặt hàng chỉ dùng trong phòng khám: không phải nhập giá bán và không hiện ở danh sách bán, phát, kê đơn. Để tắt nếu vừa bán vừa dùng.
-                </p>
+                <p className="mt-0.5 text-xs text-slate-500">Chỉ dùng trong phòng khám: không nhập giá bán, không hiện ở danh sách bán, phát, kê đơn.</p>
               </div>
               <label className="relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center">
                 <input type="checkbox" role="switch" aria-labelledby="drug-internal-label" className="peer sr-only" checked={internalUseOnly} onChange={(e) => setInternalUseOnly(e.target.checked)} />
@@ -1661,9 +1657,11 @@ function DrugFormModal({
                     <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">đ</span>
                   </div>
                 )}
-                <p className="mt-1 text-xs text-slate-500">
-                  {internalUseOnly ? 'Mặt hàng chỉ dùng nội bộ nên không có giá bán.' : unitPricingEnabled ? 'Giá riêng của đúng đơn vị này, không suy ra từ đâu khác — bắt buộc.' : 'Theo đơn vị nhỏ nhất.'}
-                </p>
+                {!internalUseOnly && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    {unitPricingEnabled ? 'Giá riêng của đúng đơn vị này, không suy ra từ đâu khác — bắt buộc.' : 'Theo đơn vị nhỏ nhất.'}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="drug-min-stock" className="mb-1.5 block text-sm font-semibold text-slate-800">
