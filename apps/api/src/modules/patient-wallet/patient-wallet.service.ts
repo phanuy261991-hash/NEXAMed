@@ -204,6 +204,8 @@ export class PatientWalletService {
     meta: RequestMeta,
     /** Danh mục `PAYMENT_METHOD` do caller lấy TRƯỚC transaction (docs/DECISIONS.md #264). */
     paymentMethods: Array<{ code: string; countsAsCash: boolean }>,
+    /** Ca thu ngân đang mở + két riêng của người thu — caller lấy qua `CASHIER_SHIFT_READER_PORT` TRƯỚC transaction (port tự mở transaction, #296). */
+    shift: { cashierShiftId: string | null; drawerAccountId: string | null },
   ): Promise<{ balance: bigint; voucherNo: string; occurredAt: Date }> {
     const wallet = await this.getOrCreate(tx, tenantId, actorId, patientId);
     if (wallet.status !== 'ACTIVE') {
@@ -213,10 +215,7 @@ export class PatientWalletService {
     if (!patient) {
       throw new NotFoundException();
     }
-    const [cashierShiftId, drawerAccountId] = await Promise.all([
-      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
-      this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
-    ]);
+    const { cashierShiftId, drawerAccountId } = shift;
     // Quỹ chọn tay phải thuộc chi nhánh đang làm (Đợt 2, #233): tiền nạp ví vào quỹ của nơi thu.
     if (cashAccountIdInput && !(await this.cashAccountRepository.findById(tx, tenantId, branchId, cashAccountIdInput))) {
       throw new NotFoundException();
@@ -267,10 +266,14 @@ export class PatientWalletService {
 
   /** `POST /wallet/topup` — endpoint riêng, tự mở transaction. */
   async topUp(tenantId: string, branchId: string, actorId: string, dto: TopUpWalletRequest, meta: RequestMeta): Promise<TopUpWalletResponse> {
-    // Danh mục `PAYMENT_METHOD` lấy TRƯỚC transaction (docs/DECISIONS.md #264).
-    const paymentMethods = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
+    // Danh mục `PAYMENT_METHOD` + ca thu ngân/két riêng lấy TRƯỚC transaction (docs/DECISIONS.md #264, #296).
+    const [paymentMethods, cashierShiftId, drawerAccountId] = await Promise.all([
+      this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD'),
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
+    ]);
     const result = await this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.credit(tx, tenantId, branchId, actorId, dto.patientId, BigInt(dto.amount), dto.paymentMethodCode, dto.cashAccountId, dto.note, meta, paymentMethods),
+      this.credit(tx, tenantId, branchId, actorId, dto.patientId, BigInt(dto.amount), dto.paymentMethodCode, dto.cashAccountId, dto.note, meta, paymentMethods, { cashierShiftId, drawerAccountId }),
     );
     const wallet = await this.getWallet(tenantId, dto.patientId);
     return { wallet: wallet!, voucherNo: result.voucherNo, occurredAt: result.occurredAt.toISOString() };
@@ -278,8 +281,13 @@ export class PatientWalletService {
 
   /** `POST /wallet/settle` — hoàn số dư còn lại (nếu >0, tạo phiếu chi) rồi khoá ví. */
   async settle(tenantId: string, branchId: string, actorId: string, dto: SettleWalletRequest, meta: RequestMeta): Promise<SettleWalletResponse> {
-    // Danh mục `PAYMENT_METHOD` lấy TRƯỚC transaction (docs/DECISIONS.md #264).
-    const paymentMethods = await this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD');
+    // Danh mục `PAYMENT_METHOD` + ca thu ngân/két riêng lấy TRƯỚC transaction (docs/DECISIONS.md #264, #296) — lấy cả khi
+    // ví hết tiền (không dùng tới) vì chỉ biết số dư sau khi mở transaction; hai lần đọc nhẹ.
+    const [paymentMethods, cashierShiftId, drawerAccountId] = await Promise.all([
+      this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD'),
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
+      this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
+    ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const wallet = await this.walletRepository.findByPatientId(tx, tenantId, dto.patientId);
       if (!wallet) {
@@ -298,11 +306,7 @@ export class PatientWalletService {
         if (!patient) {
           throw new NotFoundException();
         }
-        const [cashierShiftId, drawerAccountId] = await Promise.all([
-          this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
-          this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
-        ]);
-        if (dto.cashAccountId && !(await this.cashAccountRepository.findById(tx, tenantId, branchId, dto.cashAccountId))) {
+        if (dto.cashAccountId &&!(await this.cashAccountRepository.findById(tx, tenantId, branchId, dto.cashAccountId))) {
           throw new NotFoundException();
         }
         const cashAccountId = dto.cashAccountId ?? (await this.resolveVoucherCashAccountId(tx, tenantId, branchId, dto.paymentMethodCode, drawerAccountId, paymentMethods));

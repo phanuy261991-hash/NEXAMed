@@ -269,6 +269,9 @@ export class StockReceiptService {
 
   async approve(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: ApproveStockReceiptRequest, meta: RequestMeta): Promise<StockReceiptDetail> {
     const actorDepartmentId = await resolveActorDepartmentId(this.doctorDirectory, tenantId, actorId, dataScope);
+    // Công tắc duyệt phiếu chi + ca thu ngân cho "Trả ngay": đi qua port tự mở transaction nên lấy TRƯỚC khi mở transaction
+    // (docs/DECISIONS.md #296) — hai lần đọc nhẹ, cả với phiếu không có "Trả ngay".
+    const purchaseContext = await this.supplierDebtService.loadPurchaseApprovalContext(tenantId, branchId, actorId);
 
     await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.stockReceiptRepository.findByIdAnyWithLines(tx, tenantId, branchId, id);
@@ -301,6 +304,7 @@ export class StockReceiptService {
           prepaidAmount: existing.prepaidAmount,
           prepaidPaymentMethodCode: existing.prepaidPaymentMethodCode,
           prepaidCashAccountId: existing.prepaidCashAccountId,
+          context: purchaseContext,
           meta,
         });
         prepaidVoucherId = voucherId ?? undefined;

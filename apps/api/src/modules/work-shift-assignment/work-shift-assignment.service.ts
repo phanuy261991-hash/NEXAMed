@@ -329,6 +329,9 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
 
   async remove(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, version: number, meta: RequestMeta): Promise<void> {
     await this.assertSelfScheduleAllowed(tenantId, dataScope);
+    // Ân hạn khoá bảng ca lấy TRƯỚC transaction (port cấu hình tự mở transaction, docs/DECISIONS.md #296); tháng cần kiểm
+    // thì chỉ biết SAU khi đọc `existing` (workDate) nên việc so sánh vẫn nằm trong transaction.
+    const graceDays = await this.clinicConfigReader.getWorkShiftAssignmentLockGraceDays(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const existing = await this.repository.findById(tx, tenantId, branchId, id);
       if (!existing || (dataScope === 'personal' && existing.userId !== actorId)) {
@@ -352,8 +355,8 @@ export class WorkShiftAssignmentService implements WorkShiftAssignmentReaderPort
 
       // "Khoá bảng ca" theo tháng — áp dụng cho MỌI dataScope kể cả `global`, khác khối self-lock
       // (theo NGÀY đăng ký, chỉ `personal`) ở trên. Chỉ biết tháng cần kiểm SAU khi đọc `existing`
-      // (workDate), nên không fetch `graceDays` trước `runInTenantScope` như create/bulkCreate/copy.
-      await assertMonthWritable(tx, this.clinicConfigReader, tenantId, actorId, dateToDateString(existing.workDate).slice(0, 7));
+      // (workDate); `graceDays` đã lấy trước `runInTenantScope` ở đầu hàm.
+      await assertMonthWritable(tx, graceDays, tenantId, actorId, dateToDateString(existing.workDate).slice(0, 7));
 
       const count = await this.repository.softDelete(
         tx,

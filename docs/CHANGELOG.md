@@ -12,6 +12,12 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-11-11
+
+### Sửa 10 điểm giữ hai kết nối cơ sở dữ liệu cùng lúc + ba lớp chặn tái phạm (`docs/DECISIONS.md` #296)
+
+Nạp ví tạm ứng, tất toán ví, trả bằng ví, tổng kết/chốt ca thu ngân, duyệt phiếu nhập có "Trả ngay", xoá ca và Nhập Excel lịch làm việc từng mở thêm một giao dịch trong lúc đang giữ giao dịch khác; khi nhiều người thao tác đồng thời trên máy chủ nhỏ có thể báo lỗi hệ thống. Đã sửa; thêm bộ phát hiện lúc chạy, phân tích tĩnh theo đồ thị lời gọi và job CI căng bể kết nối. Không migration, không cần `db:seed`.
+
 ## 2026-11-10
 
 ### Vá cảnh báo bảo mật công cụ dev; đồng bộ số phiên bản `apps/setup` (`docs/DECISIONS.md` #293)

@@ -154,10 +154,12 @@ export class WorkShiftAssignmentImportService {
   }
 
   async commit(tenantId: string, branchId: string, actorId: string, month: string, fileBuffer: Buffer): Promise<ImportWorkShiftAssignmentsCommitResponse> {
+    // Ân hạn khoá bảng ca lấy TRƯỚC transaction (port cấu hình tự mở transaction, docs/DECISIONS.md #296).
+    const graceDays = await this.clinicConfigReader.getWorkShiftAssignmentLockGraceDays(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       // "Khoá bảng ca" theo tháng — Nhập Excel luôn ghi theo ĐÚNG 1 tháng (không cần lọc từng ô),
       // chặn TOÀN BỘ commit nếu tháng đó đã khoá và actor không có quyền mở khoá.
-      await assertMonthWritable(tx, this.clinicConfigReader, tenantId, actorId, month);
+      await assertMonthWritable(tx, graceDays, tenantId, actorId, month);
 
       const parsed = await this.parseAndResolve(tx, tenantId, branchId, month, fileBuffer);
       const { duplicateCells, errorCells } = parsed;
@@ -218,7 +220,7 @@ export class WorkShiftAssignmentImportService {
     const inBranch = await filterUserIdsInBranch(tx, tenantId, branchId, users.map((u) => u.id));
     const userByCode = new Map(users.filter((u) => inBranch.has(u.id)).map((u) => [u.employeeCode!, u]));
 
-    const { items: workShifts } = await this.workShiftService.list(tenantId);
+    const { items: workShifts } = await this.workShiftService.listInTransaction(tx, tenantId);
     const shiftByCode = new Map(workShifts.filter((s) => s.isActive).map((s) => [s.code, s]));
 
     const from = `${month}-01`;

@@ -4,9 +4,14 @@ on:
   push:
     branches: [master]
   pull_request:
+  # Mỗi đêm chạy thêm job `pool-stress` (xem bên dưới) để bắt lỗi cạn bể kết nối kể cả khi không có commit mới.
+  schedule:
+    - cron: '0 20 * * *'
 
 jobs:
   build:
+    # Lịch hằng đêm chỉ chạy job `pool-stress`; các lần push/PR chạy cả hai job song song.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -72,3 +77,32 @@ jobs:
 
       - name: Test
         run: pnpm test
+  # Chống cạn bể kết nối (docs/DECISIONS.md #264, #296): chạy TOÀN BỘ test API với bể Prisma chỉ còn 1 kết nối. Chỗ nào giữ một
+  # kết nối rồi xin thêm kết nối khác (giao dịch lồng nhau) sẽ tự khoá và lộ ra ngay thay vì chỉ chập chờn lúc máy bận. Bổ sung cho
+  # bộ phát hiện lúc chạy (`transaction-scope.ts`, đã bật sẵn trong `pnpm test` của job `build`) và phép phân tích tĩnh AST. Job riêng
+  # chạy song song nên không kéo dài job `build`.
+  pool-stress:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      # Test API tự dựng Postgres bằng testcontainers (src/testing/global-setup.ts) nên không cần service Postgres; hai biến dưới chỉ để API/Prisma nạp được.
+      DATABASE_URL: postgresql://nexamed_app:nexamed_app@localhost:5432/nexamed?schema=public
+      MIGRATE_DATABASE_URL: postgresql://nexamed:nexamed@localhost:5432/nexamed?schema=public
+      JWT_SECRET: ci-only-jwt-secret-not-a-real-secret
+      ENCRYPTION_KEY: ci-only-encryption-key-0123456789abcdef
+      TEST_DB_CONNECTION_LIMIT: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Prisma generate
+        run: pnpm --filter @nexamed/api run db:generate
+      - name: Build packages dùng chung
+        run: pnpm --filter @nexamed/shared --filter @nexamed/core run build
+      - name: Test API với bể 1 kết nối
+        run: pnpm --filter @nexamed/api test

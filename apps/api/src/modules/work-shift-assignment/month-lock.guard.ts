@@ -4,7 +4,6 @@ import {
   getVietnamDateString,
   isMonthLocked,
   maxDataScope,
-  type ClinicConfigReaderPort,
 } from '@nexamed/core';
 import { findScopesForUserPermission } from '../../infrastructure/persistence/permission-lookup.helper';
 
@@ -20,15 +19,18 @@ export async function canBypassMonthLock(tx: Prisma.TransactionClient, tenantId:
 }
 
 /** Ném `WorkShiftAssignmentMonthLockedError` nếu tháng `month` (`YYYY-MM`) đã khoá VÀ actor không
- * có quyền `work_shift_assignment.unlock`. Áp dụng cho MỌI `dataScope` kể cả `global`. */
+ * có quyền `work_shift_assignment.unlock`. Áp dụng cho MỌI `dataScope` kể cả `global`.
+ *
+ * `graceDays` do người gọi lấy TRƯỚC khi mở transaction (`getWorkShiftAssignmentLockGraceDays` đi qua port cấu hình
+ * mà adapter tự mở transaction — gọi từ trong transaction chiếm 2 kết nối cùng lúc, docs/DECISIONS.md #264/#296);
+ * hàm này chỉ nhận con số, không nhận port. */
 export async function assertMonthWritable(
   tx: Prisma.TransactionClient,
-  clinicConfigReader: ClinicConfigReaderPort,
+  graceDays: number,
   tenantId: string,
   actorId: string,
   month: string,
 ): Promise<void> {
-  const graceDays = await clinicConfigReader.getWorkShiftAssignmentLockGraceDays(tenantId);
   if (!isMonthLocked(month, getVietnamDateString(), graceDays)) return;
   if (await canBypassMonthLock(tx, tenantId, actorId)) return;
   throw new WorkShiftAssignmentMonthLockedError();

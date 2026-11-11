@@ -42,13 +42,32 @@ function balancedArgs(src: string, openParenIdx: number): string {
   return src.slice(openParenIdx);
 }
 
+/**
+ * Dấu `{` mở THÂN hàm, bắt đầu tìm ngay sau danh sách tham số. Bỏ qua dấu `{` nằm trong kiểu trả về như
+ * `Promise<{ balance: bigint }>` (đang ở trong cặp `<...>`) — bản cũ lấy nhầm dấu đó nên coi như hàm không có thân
+ * và bỏ sót mọi lời gọi port trong hàm (ví dụ `PatientWalletService.credit`, #296).
+ */
+function findBodyBrace(src: string, from: number): number {
+  let angle = 0;
+  for (let i = from; i < src.length; i += 1) {
+    const c = src[i];
+    if (c === '<') angle += 1;
+    else if (c === '>' && src[i - 1] !== '=') angle = Math.max(0, angle - 1);
+    else if (c === '{' && angle === 0) return i;
+  }
+  return -1;
+}
+
 describe('không gọi port tự-mở-transaction từ bên trong transaction (docs/DECISIONS.md #264)', () => {
   const files = listTsFiles(SRC);
 
-  /** Adapter nào tự mở transaction → port nào "đắt" (mỗi lời gọi tốn thêm một kết nối). */
+  /**
+   * Lớp nào tự mở transaction → port nào "đắt" (mỗi lời gọi tốn thêm một kết nối). KHÔNG chỉ adapter ở `infrastructure`:
+   * nhiều port do chính một service ở `modules/` thực thi (`useExisting: CashierShiftService`...) — bản cũ chỉ nhìn
+   * `infrastructure` + `useClass` nên BỎ SÓT các port này (lộ ra 11/11/2026 khi ép bể 1 kết nối, #296).
+   */
   const txAdapters = new Set<string>();
   for (const f of files) {
-    if (!f.includes('infrastructure')) continue;
     const src = readFileSync(f, 'utf8');
     if (!src.includes('runInTenantScope')) continue;
     for (const m of src.matchAll(/export class (\w+)/g)) txAdapters.add(m[1]!);
@@ -57,7 +76,7 @@ describe('không gọi port tự-mở-transaction từ bên trong transaction (d
   const txTokens = new Set<string>();
   for (const f of files) {
     const src = readFileSync(f, 'utf8');
-    for (const m of src.matchAll(/provide:\s*([A-Z0-9_]+_PORT)\s*,[\s\S]{0,200}?useClass:\s*(\w+)/g)) {
+    for (const m of src.matchAll(/provide:\s*([A-Z0-9_]+_PORT)\s*,[\s\S]{0,200}?use(?:Class|Existing):\s*(\w+)/g)) {
       if (txAdapters.has(m[2]!)) txTokens.add(m[1]!);
     }
   }
@@ -98,7 +117,7 @@ describe('không gọi port tự-mở-transaction từ bên trong transaction (d
           // Bỏ qua danh sách tham số (cân bằng ngoặc tròn) rồi lấy thân hàm (cân bằng ngoặc nhọn).
           const sigOpen = m.index! + m[0].length - 1;
           const sigEnd = sigOpen + balancedArgs(src, sigOpen).length;
-          const braceIdx = src.indexOf('{', sigEnd);
+          const braceIdx = findBodyBrace(src, sigEnd + 1);
           if (braceIdx < 0) continue;
           let depth = 0;
           let end = src.length;
@@ -119,6 +138,13 @@ describe('không gọi port tự-mở-transaction từ bên trong transaction (d
           for (const call of scope.body.matchAll(callRe)) {
             const line = src.slice(0, scope.at + call.index!).split('\n').length;
             violations.push(`${relative(SRC, f).replace(/\\/g, '/')}:${line} — this.${field}.${call[1]}() [${token}]`);
+          }
+          // Truyền CẢ port vào hàm phụ (`assertMonthWritable(tx, this.clinicConfigReader, …)`) — hàm phụ gọi port ở trong
+          // giao dịch mà tên trường không còn xuất hiện ở đó (lộ ra 11/11/2026, #296). Chỉ chấp nhận gọi trực tiếp.
+          const passedRe = new RegExp(`this\\.${field}\\b(?!\\s*\\.)`, 'g');
+          for (const ref of scope.body.matchAll(passedRe)) {
+            const line = src.slice(0, scope.at + ref.index!).split('\n').length;
+            violations.push(`${relative(SRC, f).replace(/\\/g, '/')}:${line} — this.${field} bị truyền đi làm đối số [${token}]`);
           }
         }
       }

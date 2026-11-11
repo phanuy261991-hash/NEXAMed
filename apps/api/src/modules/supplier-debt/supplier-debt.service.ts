@@ -67,6 +67,12 @@ import { SupplierDebtAdjustmentRepository } from './supplier-debt-adjustment.rep
 import { SupplierDebtReconciliationRepository } from './supplier-debt-reconciliation.repository';
 import { assertSupplierDebtWritable } from './supplier-debt-lock.guard';
 
+/** Công tắc + ca thu ngân cần cho "Trả ngay" lúc duyệt phiếu nhập, lấy TRƯỚC transaction (docs/DECISIONS.md #296). */
+export interface PurchaseApprovalContext {
+  approvalEnabled: boolean;
+  cashierShiftId: string | null;
+}
+
 /**
  * "Công nợ nhà cung cấp" — Phần A "Nền sổ công nợ" (docs/DECISIONS.md #180/#182, kế hoạch kỹ thuật
  * C:\Users\Administrator\.claude\plans\supplier-debt-cong-no-ncc.md). Chỉ ghi PURCHASE (lúc Duyệt
@@ -163,6 +169,19 @@ export class SupplierDebtService {
   }
 
   /**
+   * Công tắc duyệt phiếu chi + ca thu ngân đang mở cho "Trả ngay" của `recordPurchaseApproval()`. Hai việc này đi qua port
+   * (`CLINIC_CONFIG_READER_PORT`, `CASHIER_SHIFT_READER_PORT`) mà adapter tự mở transaction — KHÔNG được gọi từ trong
+   * transaction của `StockReceiptService.approve()` (cạn bể kết nối, #264/#296), nên người gọi lấy bằng hàm này TRƯỚC khi mở transaction.
+   */
+  async loadPurchaseApprovalContext(tenantId: string, branchId: string, actorId: string): Promise<PurchaseApprovalContext> {
+    const [approvalEnabled, cashierShiftId] = await Promise.all([
+      this.clinicConfigReader.getCashVoucherApprovalEnabled(tenantId),
+      this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
+    ]);
+    return { approvalEnabled, cashierShiftId };
+  }
+
+  /**
    * `StockReceiptService.approve()` (receiptType='PURCHASE') gọi TRONG CÙNG transaction ngay sau
    * khi phiếu chuyển POSTED — ghi PURCHASE luôn ĐÚNG `netAmount` (tiền sau chiết khấu, không phải
    * `totalAmount` gross). Nếu có "Trả ngay" > 0: tạo `cash_voucher` (mã CASH_PAYMENT, đúng dữ liệu
@@ -183,6 +202,8 @@ export class SupplierDebtService {
       prepaidAmount: bigint;
       prepaidPaymentMethodCode: string | null;
       prepaidCashAccountId: string | null;
+      /** Lấy bằng `loadPurchaseApprovalContext()` TRƯỚC khi mở transaction (docs/DECISIONS.md #296). */
+      context: PurchaseApprovalContext;
       meta: RequestMeta;
     },
   ): Promise<{ prepaidVoucherId: string | null }> {
@@ -216,8 +237,7 @@ export class SupplierDebtService {
     const cashAccount = await this.cashAccountRepository.findById(tx, tenantId, branchId, params.prepaidCashAccountId!);
     if (!cashAccount) throw new NotFoundException();
 
-    const approvalEnabled = await this.clinicConfigReader.getCashVoucherApprovalEnabled(tenantId);
-    const cashierShiftId = await this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId);
+    const { approvalEnabled, cashierShiftId } = params.context;
     const status: 'POSTED' | 'PENDING_APPROVAL' = approvalEnabled ? 'PENDING_APPROVAL' : 'POSTED';
     const voucherNo = await this.businessCodeService.generate(tx, tenantId, actorId, 'CASH_PAYMENT', params.occurredAt);
 

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { WorkShift } from '@prisma/client';
+import type { Prisma, WorkShift } from '@prisma/client';
 import { ConcurrentModificationError, formatShortSequentialCode, WorkShiftInvalidTimeRangeError } from '@nexamed/core';
 import type { CreateWorkShiftRequest, ListWorkShiftsResponse, UpdateWorkShiftRequest, WorkShiftItem } from '@nexamed/shared';
 import { UnitOfWorkService } from '../../infrastructure/persistence/unit-of-work.service';
@@ -90,10 +90,16 @@ export class WorkShiftService {
   }
 
   async list(tenantId: string): Promise<ListWorkShiftsResponse> {
-    return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const rows = await this.workShiftRepository.list(tx, tenantId);
-      return { items: rows.map((r) => this.toItem(r)) };
-    });
+    return this.unitOfWork.runInTenantScope(tenantId, (tx) => this.listInTransaction(tx, tenantId));
+  }
+
+  /**
+   * Cùng dữ liệu với `list()` nhưng dùng transaction CỦA NGƯỜI GỌI — bắt buộc khi gọi từ bên trong một `runInTenantScope`
+   * (ví dụ Nhập Excel lịch làm việc): gọi `list()` ở đó mở giao dịch thứ hai, chiếm 2 kết nối cùng lúc (docs/DECISIONS.md #296).
+   */
+  async listInTransaction(tx: Prisma.TransactionClient, tenantId: string): Promise<ListWorkShiftsResponse> {
+    const rows = await this.workShiftRepository.list(tx, tenantId);
+    return { items: rows.map((r) => this.toItem(r)) };
   }
 
   async update(tenantId: string, actorId: string, id: string, dto: UpdateWorkShiftRequest, meta: RequestMeta): Promise<WorkShiftItem> {

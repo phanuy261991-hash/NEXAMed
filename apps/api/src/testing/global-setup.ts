@@ -27,7 +27,12 @@ export async function setup(): Promise<void> {
   const migrateUrl = `${container.getConnectionUri()}?schema=public`;
   // nexamed_app do chính migration tạo, mật khẩu hard-code 'nexamed_app' — chỉ dùng cho
   // local dev/CI/test (xem prisma/migrations/20260807170922_tenant_context, docs/DECISIONS.md #010).
-  const appUrl = migrateUrl.replace('nexamed:nexamed@', 'nexamed_app:nexamed_app@');
+  // Tuỳ chọn dò lỗi cạn bể kết nối (docs/DECISIONS.md #264, #296): `TEST_DB_CONNECTION_LIMIT=1 pnpm test` ép mỗi bể Prisma chỉ
+  // còn N kết nối — chỗ nào giữ một kết nối rồi xin thêm kết nối khác (giao dịch lồng nhau) sẽ tự khoá và lộ ra ngay thay vì
+  // chỉ chập chờn lúc máy bận. Không đặt biến này thì giữ mặc định của Prisma (2 × số CPU + 1).
+  const poolLimit = process.env.TEST_DB_CONNECTION_LIMIT;
+  const poolParams = poolLimit && /^[1-9]\d{0,2}$/.test(poolLimit) ? `&connection_limit=${poolLimit}&pool_timeout=30` : '';
+  const appUrl = migrateUrl.replace('nexamed:nexamed@', 'nexamed_app:nexamed_app@') + poolParams;
 
   process.env.MIGRATE_DATABASE_URL = migrateUrl;
   process.env.DATABASE_URL = appUrl;

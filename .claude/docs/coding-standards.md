@@ -98,8 +98,12 @@ Quy tắc khi viết service mới:
 - **KHÔNG gọi port từ bên trong `runInTenantScope()`** nếu adapter của port tự mở transaction (hầu hết port đọc: `PRICING_PORT`, `DOCTOR_DIRECTORY_PORT`, `REFERENCE_CATALOG_READER_PORT`, `PATIENT_READER_PORT`, `ENCOUNTER_READER_PORT`...). Gọi **TRƯỚC** khi mở transaction (dữ liệu đầu vào) hoặc **SAU** khi transaction đóng (bù tên người dùng, map DTO), rồi truyền kết quả vào qua tham số.
 - Tính cả lời gọi **gián tiếp**: hàm phụ nhận `tx: Prisma.TransactionClient` cũng đang chạy trong transaction — gọi port trong đó là cùng một lỗi (đây chính là cách #264 lọt qua rà soát).
 - Việc nặng/không phải SQL (băm mật khẩu, gọi HTTP ra ngoài, render PDF) cũng để ngoài transaction.
-- Chốt chặn tự động: `apps/api/src/common/nested-transaction-coverage.spec.ts` quét toàn bộ `apps/api/src` và làm CI đỏ nếu tái phạm. **Không thêm ngoại lệ vào test này** — sửa code.
-- Mẫu tham khảo: `StockIssueService.create()` (lấy giá trước), `CashierShiftService.openShift()` (lấy tên chủ két trước), `SupplierDebtService.listLedger()` / `toAdjustmentDtos()` (map DTO sau khi transaction đóng).
+- **Không truyền cả port vào hàm phụ** rồi để hàm đó gọi port trong transaction (ca `assertMonthWritable(tx, this.clinicConfigReader, …)`, #296) — lấy giá trị cần (vd `graceDays`) trước rồi truyền con số. Cũng KHÔNG dùng client gốc `PrismaService` (thay vì `tx`) trong thân transaction. Khi cần dữ liệu của service/danh mục khác trong transaction, thêm phương thức nhận `tx` (mẫu `WorkShiftService.listInTransaction`).
+- **Ba lớp chốt chặn tự động** (#296, CI đỏ nếu tái phạm; **không thêm ngoại lệ**, sửa code):
+  1. Lúc chạy — `infrastructure/persistence/transaction-scope.ts`: `AsyncLocalStorage` ghi nhớ giao dịch đang mở; mở giao dịch thứ hai hoặc truy vấn bằng client gốc trong đó thì NÉM `NestedTransactionError` kèm stack (mặc định ở test và phát triển; `production` chỉ ghi log cảnh báo; công tắc `NESTED_TRANSACTION_GUARD=throw|warn|off`). Có sẵn trong mọi `pnpm test` nên mọi đường test chạy tới đều được kiểm.
+  2. Tĩnh — `common/nested-transaction-ast.spec.ts` (đi theo đồ thị lời gọi bằng trình biên dịch TypeScript, phủ cả mã test chưa gọi tới) và `nested-transaction-coverage.spec.ts` (biểu thức chính quy, bắt nhanh).
+  3. Căng bể — `TEST_DB_CONNECTION_LIMIT=1 pnpm --filter @nexamed/api test` (job `pool-stress` của CI chạy song song và theo lịch hằng đêm) ép mỗi bể Prisma còn 1 kết nối.
+- Mẫu tham khảo: `StockIssueService.create()` (lấy giá trước), `CashierShiftService.openShift()` (lấy tên chủ két trước), `SupplierDebtService.listLedger()` / `toAdjustmentDtos()` (map DTO sau khi transaction đóng), `PatientWalletService.topUp()` + `credit()` (ca thu ngân/két lấy trước, truyền vào), `StockReceiptService.approve()` + `SupplierDebtService.loadPurchaseApprovalContext()`.
 
 ## Git
 

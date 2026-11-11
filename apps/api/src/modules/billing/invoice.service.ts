@@ -418,6 +418,8 @@ export class InvoiceService {
     drawerAccountId: string | null,
     /** Danh mục `PAYMENT_METHOD` lấy TRƯỚC transaction (docs/DECISIONS.md #264). */
     paymentMethods: PaymentMethodMeta[],
+    /** Công tắc "trả hỗn hợp" — caller lấy TRƯỚC transaction (port cấu hình tự mở transaction, docs/DECISIONS.md #296). */
+    mixedEnabled: boolean,
     meta: RequestMeta,
   ): Promise<InvoiceDto> {
     const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, invoiceId);
@@ -440,7 +442,6 @@ export class InvoiceService {
     const remainder = due - covered;
 
     if (remainder > 0n) {
-      const mixedEnabled = await this.clinicConfigReader.getWalletMixedPaymentEnabled(tenantId);
       if (!mixedEnabled) {
         throw new WalletInsufficientBalanceError(Number(balance), Number(due), Number(remainder));
       }
@@ -489,13 +490,14 @@ export class InvoiceService {
 
   /** `POST /billing/invoices/:encounterId/pay-with-wallet` — dùng số dư ví HIỆN CÓ, không nạp thêm. */
   async payWithWallet(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: PayInvoiceWithWalletRequest, meta: RequestMeta): Promise<InvoiceDto> {
-    const [cashierShiftId, drawerAccountId, paymentMethods] = await Promise.all([
+    const [cashierShiftId, drawerAccountId, paymentMethods, mixedEnabled] = await Promise.all([
       this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
       this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD'),
+      this.clinicConfigReader.getWalletMixedPaymentEnabled(tenantId),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, (tx) =>
-      this.payWithWalletCore(tx, tenantId, branchId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, paymentMethods, meta),
+      this.payWithWalletCore(tx, tenantId, branchId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, paymentMethods, mixedEnabled, meta),
     );
   }
 
@@ -505,10 +507,11 @@ export class InvoiceService {
    * CÙNG transaction. Quyền riêng `patient_wallet.topup` (có hành động nạp tiền thật).
    */
   async topUpAndPayWithWallet(tenantId: string, branchId: string, actorId: string, encounterId: string, dto: TopUpAndPayInvoiceWithWalletRequest, meta: RequestMeta): Promise<InvoiceDto> {
-    const [cashierShiftId, drawerAccountId, paymentMethods] = await Promise.all([
+    const [cashierShiftId, drawerAccountId, paymentMethods, mixedEnabled] = await Promise.all([
       this.cashierShiftReader.getRelevantOpenShiftId(tenantId, branchId, actorId),
       this.cashierShiftReader.getCashAccountIdForActor(tenantId, branchId, actorId),
       this.referenceCatalogReader.listByCategory(tenantId, 'PAYMENT_METHOD'),
+      this.clinicConfigReader.getWalletMixedPaymentEnabled(tenantId),
     ]);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const invoice = await this.resolveTargetInvoice(tx, tenantId, branchId, encounterId, dto.invoiceId);
@@ -516,8 +519,8 @@ export class InvoiceService {
         throw new NotFoundException();
       }
       const patientId = invoice.encounter.patient.id;
-      await this.walletService.credit(tx, tenantId, branchId, actorId, patientId, BigInt(dto.topUpAmount), dto.topUpPaymentMethodCode, dto.cashAccountId, undefined, meta, paymentMethods);
-      return this.payWithWalletCore(tx, tenantId, branchId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, paymentMethods, meta);
+      await this.walletService.credit(tx, tenantId, branchId, actorId, patientId, BigInt(dto.topUpAmount), dto.topUpPaymentMethodCode, dto.cashAccountId, undefined, meta, paymentMethods, { cashierShiftId, drawerAccountId });
+      return this.payWithWalletCore(tx, tenantId, branchId, actorId, encounterId, dto.invoiceId, dto.version, dto.remainderPaymentMethodCode, cashierShiftId, drawerAccountId, paymentMethods, mixedEnabled, meta);
     });
   }
 

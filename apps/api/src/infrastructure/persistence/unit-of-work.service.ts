@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from './prisma.service';
+import { projectCallSite, reportNestedTransaction, transactionScopeStorage, type TransactionScope } from './transaction-scope';
 
 const TRANSACTION_MAX_WAIT_MS = 10_000;
-const UUID_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Mở một transaction, set `app.current_tenant_id` cho phiên Postgres trong transaction đó
@@ -31,6 +32,34 @@ export class UnitOfWorkService {
       throw new Error(`tenantId không hợp lệ: "${tenantId}"`);
     }
 
+    // Bộ phát hiện giao dịch lồng nhau (docs/DECISIONS.md #296): mở giao dịch thứ hai khi giao dịch ngoài còn chạy = request
+    // chiếm 2 kết nối cùng lúc. Kiểm TRƯỚC khi xin kết nối để chế độ `throw` không tự khoá bể.
+    const outer = transactionScopeStorage.getStore();
+    if (outer?.active) reportNestedTransaction('runInTenantScope', outer);
+    const scope: TransactionScope = { active: true, openedAt: projectCallSite() };
+
+    return transactionScopeStorage.run(scope, () => this.runTransaction(tenantId, work, options, scope));
+  }
+
+  private async runTransaction<T>(
+    tenantId: string,
+    work: (tx: Prisma.TransactionClient) => Promise<T>,
+    options: { timeoutMs?: number } | undefined,
+    scope: TransactionScope,
+  ): Promise<T> {
+    try {
+      return await this.openTransaction(tenantId, work, options);
+    } finally {
+      // Lời gọi nền còn sót lại sau khi giao dịch đóng không còn bị coi là "lồng".
+      scope.active = false;
+    }
+  }
+
+  private openTransaction<T>(
+    tenantId: string,
+    work: (tx: Prisma.TransactionClient) => Promise<T>,
+    options: { timeoutMs?: number } | undefined,
+  ): Promise<T> {
     return this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe(`SET LOCAL app.current_tenant_id = '${tenantId}'`);

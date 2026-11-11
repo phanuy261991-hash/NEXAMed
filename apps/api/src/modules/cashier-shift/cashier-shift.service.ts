@@ -201,18 +201,21 @@ export class CashierShiftService implements CashierShiftReaderPort {
   /** Dùng chung cho `GET .../summary` (preview SỐNG lúc đang mở ca) lẫn `GET .../resync-preview` (đã chốt). */
   async getSummary(tenantId: string, branchId: string, id: string): Promise<CashierShiftSummary> {
     const methodMap = await this.loadPaymentMethodMap(tenantId);
+    // Công tắc "Đa thu ngân" lấy TRƯỚC transaction (port cấu hình tự mở transaction, docs/DECISIONS.md #296).
+    const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const row = await this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
       if (!row) {
         throw new NotFoundException();
       }
-      const totals = await this.computeTotals(tx, tenantId, row, methodMap);
+      const totals = await this.computeTotals(tx, tenantId, row, methodMap, multiCashierEnabled);
       return this.toSummaryDto(totals);
     });
   }
 
   async close(tenantId: string, branchId: string, actorId: string, dataScope: DataScope, id: string, dto: CloseCashierShiftRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
     const methodMap = await this.loadPaymentMethodMap(tenantId);
+    const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     const closed = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const row = await this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
       if (!row) {
@@ -228,7 +231,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
       }
 
       const closedAt = new Date();
-      const totals = await this.computeTotals(tx, tenantId, row, methodMap, closedAt);
+      const totals = await this.computeTotals(tx, tenantId, row, methodMap, multiCashierEnabled, closedAt);
       const diff = dto.countedCashAmount - totals.expectedCashAmount;
       if (diff !== 0 && !dto.cashDiscrepancyReason) {
         throw new CashierShiftDiscrepancyReasonRequiredError();
@@ -469,6 +472,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
   /** "Mở khoá để sửa" — CHỈ áp dụng cho ca đã CLOSED/APPROVED, `reason` bắt buộc (ghi audit before/after). */
   async edit(tenantId: string, branchId: string, actorId: string, id: string, dto: EditCashierShiftRequest, meta: RequestMeta): Promise<CashierShiftDetail> {
     const methodMap = dto.resyncSystemTotals ? await this.loadPaymentMethodMap(tenantId) : null;
+    const multiCashierEnabled = dto.resyncSystemTotals ? await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId) : false;
 
     const updated = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const before = await this.cashierShiftRepository.findById(tx, tenantId, branchId, id);
@@ -490,7 +494,7 @@ export class CashierShiftService implements CashierShiftReaderPort {
         editData.submittedAmount = Math.max(nextCounted - nextKeep, 0);
       }
       if (dto.resyncSystemTotals && methodMap) {
-        const totals = await this.computeTotals(tx, tenantId, before, methodMap);
+        const totals = await this.computeTotals(tx, tenantId, before, methodMap, multiCashierEnabled);
         editData.cashInAmount = totals.cashInAmount;
         editData.cashOutAmount = totals.cashOutAmount;
         editData.nonCashBreakdownJson = totals.nonCashBreakdown;
@@ -600,9 +604,10 @@ export class CashierShiftService implements CashierShiftReaderPort {
     tenantId: string,
     row: CashierShiftRow,
     methodMap: PaymentMethodMap,
+    /** Công tắc "Đa thu ngân" — caller lấy TRƯỚC transaction (docs/DECISIONS.md #296). */
+    multiCashierEnabled: boolean,
     endAtOverride?: Date,
   ): Promise<CashierShiftTotals> {
-    const multiCashierEnabled = await this.clinicConfigReader.getCashierShiftMultiCashierEnabled(tenantId);
     const endAt = endAtOverride ?? row.closedAt ?? new Date();
     const [paymentRows, voucherRows] = await Promise.all([
       multiCashierEnabled ? this.paymentRepository.listForShift(tx, tenantId, row.id) : this.paymentRepository.listForWindow(tx, tenantId, row.branchId, row.openedAt, endAt),
