@@ -586,6 +586,17 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
       }
     });
 
+    it('vật tư để trống "Tính chất sử dụng" → nhập vào là "Dùng 1 lần" (đồng bộ mặc định của form, #297 GĐ3); thuốc không có tính chất', async () => {
+      const blank = `TC1${tag}`;
+      const med = `TC2${tag}`;
+      const res = await upload('commit', clinicAdminToken, await xlsx([supply(blank), medicine(med)], [ingredient(med)]));
+      expect(res.body.data).toMatchObject({ createdCount: 2, errorCount: 0 });
+      const s = await privileged.drug.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, code: blank } });
+      const m = await privileged.drug.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, code: med } });
+      expect(s.supplyUsageNature).toBe('SINGLE_USE');
+      expect(m.supplyUsageNature).toBeNull();
+    });
+
     it('xuất Excel ghi Phân nhóm VTYT (tên) / Tính chất / Chỉ dùng nội bộ đúng cột, thuốc để trống cột vật tư; nhập file xuất sang công ty B giữ nguyên các trường', async () => {
       const exported = await download('/api/v1/drugs/export', clinicAdminToken);
       const sheet = (await loadWorkbook(exported.body as Buffer)).getWorksheet('Thuốc & Vật tư')!;

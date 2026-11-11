@@ -49,7 +49,7 @@ export const ITEM_COLUMNS: ImportColumn[] = [
   { key: 'internalUseOnly', label: 'Chỉ dùng nội bộ', requirement: 'optional', width: 14, guide: 'Có = chỉ dùng nội bộ, không bán: không cần Giá bán, không hiện ở màn bán/phát/kê đơn. Không hoặc để trống = bán bình thường.' },
   { key: 'drugGroup', label: 'Nhóm thuốc', requirement: 'medicineRequired', width: 22, guide: 'Nhóm thuốc/nhóm tác dụng dược lý (Kháng sinh, Giảm đau - hạ sốt...). Gõ TÊN; chưa có thì tự tạo mới.' },
   { key: 'supplyGroup', label: 'Phân nhóm VTYT', requirement: 'supplyRequired', width: 20, guide: 'Phân nhóm vật tư y tế (Vật tư tiêu hao, Vật tư thay thế, Dụng cụ phẫu thuật...). Gõ TÊN; chưa có thì tự tạo mới.' },
-  { key: 'supplyUsageNature', label: 'Tính chất sử dụng', requirement: 'supplyOnly', width: 16, guide: 'Dùng 1 lần hoặc Tái sử dụng. Chỉ là nhãn, không đổi cách tính giá.' },
+  { key: 'supplyUsageNature', label: 'Tính chất sử dụng', requirement: 'supplyOnly', width: 16, guide: 'Dùng 1 lần (mặc định khi để trống) hoặc Tái sử dụng. Chỉ là nhãn, không đổi cách tính giá.' },
   { key: 'route', label: 'Đường dùng', requirement: 'medicineRequired', width: 14, guide: 'Đường dùng (Uống, Tiêm, Bôi ngoài da...). Gõ TÊN; chưa có thì tự tạo mới.' },
   { key: 'registrationNumber', label: 'Số đăng ký', requirement: 'required', width: 16, text: true, guide: 'Số đăng ký lưu hành ghi trên bao bì thuốc; với vật tư là số đăng ký lưu hành hoặc số giấy phép nhập khẩu.' },
   { key: 'dosageForm', label: 'Dạng bào chế', requirement: 'medicineRequired', width: 18, guide: 'Dạng bào chế (Viên nén, Viên nang, Dung dịch tiêm...). Gõ TÊN; chưa có thì tự tạo mới.' },
