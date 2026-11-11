@@ -99213,6 +99213,13 @@
                           ],
                           "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                         },
+                        "manufactureDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
                         "discountType": {
                           "type": [
                             "string",
@@ -99469,6 +99476,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "lineAmount": {
                                 "type": "integer"
                               },
@@ -99503,6 +99516,7 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "lineAmount",
                               "discountType",
                               "discountValue",
@@ -99926,6 +99940,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "lineAmount": {
                                 "type": "integer"
                               },
@@ -99960,6 +99980,7 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "lineAmount",
                               "discountType",
                               "discountValue",
@@ -100256,6 +100277,13 @@
                           ],
                           "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                         },
+                        "manufactureDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
                         "discountType": {
                           "type": [
                             "string",
@@ -100516,6 +100544,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "lineAmount": {
                                 "type": "integer"
                               },
@@ -100550,6 +100584,7 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "lineAmount",
                               "discountType",
                               "discountValue",
@@ -100990,6 +101025,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "lineAmount": {
                                 "type": "integer"
                               },
@@ -101024,6 +101065,7 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "lineAmount",
                               "discountType",
                               "discountValue",
@@ -101469,6 +101511,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "lineAmount": {
                                 "type": "integer"
                               },
@@ -101503,6 +101551,7 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "lineAmount",
                               "discountType",
                               "discountValue",
@@ -101948,6 +101997,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "lineAmount": {
                                 "type": "integer"
                               },
@@ -101982,6 +102037,7 @@
                               "unitCost",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "lineAmount",
                               "discountType",
                               "discountValue",
@@ -102805,6 +102861,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "quantityOnHand": {
                                 "type": "integer"
                               },
@@ -102835,6 +102897,7 @@
                               "warehouseId",
                               "warehouseName",
                               "expiryDate",
+                              "manufactureDate",
                               "quantityOnHand",
                               "unitCost",
                               "expiryStatus",
@@ -102988,6 +103051,12 @@
                               "warehouseName": {
                                 "type": "string"
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "expiryDate": {
                                 "type": "string"
                               },
@@ -103012,6 +103081,7 @@
                               "drugName",
                               "warehouseId",
                               "warehouseName",
+                              "manufactureDate",
                               "expiryDate",
                               "daysUntilExpiry",
                               "quantityOnHand",
@@ -108439,6 +108509,13 @@
                           ],
                           "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                         },
+                        "newBatchManufactureDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
                         "systemQuantitySnapshot": {
                           "type": "integer",
                           "minimum": 0
@@ -108581,6 +108658,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "isNewBatch": {
                                 "type": "boolean"
                               },
@@ -108606,6 +108689,7 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "isNewBatch",
                               "systemQuantitySnapshot",
                               "countedQuantity",
@@ -108910,6 +108994,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "isNewBatch": {
                                 "type": "boolean"
                               },
@@ -108935,6 +109025,7 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "isNewBatch",
                               "systemQuantitySnapshot",
                               "countedQuantity",
@@ -109139,6 +109230,13 @@
                           ],
                           "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                         },
+                        "newBatchManufactureDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
                         "systemQuantitySnapshot": {
                           "type": "integer",
                           "minimum": 0
@@ -109285,6 +109383,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "isNewBatch": {
                                 "type": "boolean"
                               },
@@ -109310,6 +109414,7 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "isNewBatch",
                               "systemQuantitySnapshot",
                               "countedQuantity",
@@ -109635,6 +109740,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "isNewBatch": {
                                 "type": "boolean"
                               },
@@ -109660,6 +109771,7 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "isNewBatch",
                               "systemQuantitySnapshot",
                               "countedQuantity",
@@ -109986,6 +110098,12 @@
                                   "null"
                                 ]
                               },
+                              "manufactureDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
                               "isNewBatch": {
                                 "type": "boolean"
                               },
@@ -110011,6 +110129,7 @@
                               "batchId",
                               "batchNo",
                               "expiryDate",
+                              "manufactureDate",
                               "isNewBatch",
                               "systemQuantitySnapshot",
                               "countedQuantity",

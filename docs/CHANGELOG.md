@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-11
 
+### Ngày sản xuất của lô (`docs/DECISIONS.md` #297 bổ sung 1, giai đoạn 2) + chỉnh form Vật tư
+
+Dòng phiếu nhập, lô tồn và dòng đếm lô mới có thêm Ngày sản xuất (tuỳ chọn, cả Thuốc lẫn Vật tư): hiện ngay trước Hạn dùng ở phiếu nhập, Tồn theo lô, Cảnh báo hạn dùng (kể cả bản in và Excel) và bản in phiếu. Không được sau hôm nay, phải trước hạn dùng; nhập lại cùng số lô mà khác Ngày SX thì chặn lúc Duyệt, lô chưa có ngày thì được điền. Điều chuyển kho, trả hàng từ phiếu xuất và kiểm kê kế thừa/nhận Ngày SX. Form Vật tư: "Tính chất sử dụng" mặc định "Dùng 1 lần", bỏ các dòng chú thích chép từ mockup (giữ một câu cho công tắc "Chỉ dùng nội bộ"). Cần `db:deploy` (1 migration mới).
+
 ### Hoàn thiện Vật tư y tế + cờ "Chỉ dùng nội bộ" — giai đoạn 1 (`docs/DECISIONS.md` #297)
 
 Vật tư y tế có thêm Phân nhóm VTYT (danh mục mở, thêm nhanh), Tính chất sử dụng (Dùng 1 lần / Tái sử dụng), Số đăng ký / GPNK (bắt buộc khi thêm mới), Mã vạch, Nước sản xuất và bảo quản. Công tắc "Chỉ dùng nội bộ, không bán" dùng chung cho Thuốc và Vật tư: không cần giá bán, ẩn khỏi bán/phát/kê đơn, máy chủ từ chối kê (409). Nhập/Xuất Excel Thuốc & Vật tư thêm 3 cột mới — **file mẫu cũ phải tải lại**. Bảng giá nhóm vật tư theo Phân nhóm VTYT. Cần `db:deploy` (2 migration) + `db:seed`.

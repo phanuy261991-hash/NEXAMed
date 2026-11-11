@@ -1,10 +1,13 @@
 import { Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
+  checkManufactureDate,
   classifyStockCountDifference,
   ConcurrentModificationError,
   DOCTOR_DIRECTORY_PORT,
   StockCountApprovalReasonRequiredError,
   StockCountNotDraftError,
+  getVietnamDateString,
+  MANUFACTURE_DATE_ISSUE_MESSAGES,
   type DoctorDirectoryPort,
 } from '@nexamed/core';
 import type {
@@ -266,6 +269,7 @@ export class StockCountService {
             unitCost,
             batchNo: line.batchId ? (line.batch?.batchNo ?? null) : line.newBatchNo,
             expiryDate: line.batchId ? (line.batch?.expiryDate ?? null) : line.newBatchExpiryDate,
+            manufactureDate: line.batchId ? (line.batch?.manufactureDate ?? null) : line.newBatchManufactureDate,
             lineAmount: unitCost * BigInt(difference),
             // Phiếu tự sinh — không có khái niệm chiết khấu (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", #170).
             discountType: null,
@@ -350,11 +354,15 @@ export class StockCountService {
       if (drug.isBatchManaged && !line.batchId && !line.newBatchNo) {
         throw new UnprocessableEntityException(`Thuốc/vật tư "${drug.name}" quản lý theo lô — phải chọn lô có sẵn hoặc nhập lô mới.`);
       }
+      // Ngày sản xuất của lô MỚI (#297 GĐ2): không sau hôm nay, phải trước hạn dùng.
+      const manufactureIssue = line.batchId ? null : checkManufactureDate(line.newBatchManufactureDate, line.newBatchExpiryDate, getVietnamDateString());
+      if (manufactureIssue) throw new UnprocessableEntityException(`"${drug.name}": ${MANUFACTURE_DATE_ISSUE_MESSAGES[manufactureIssue]}`);
       result.push({
         drugId: line.drugId,
         batchId: line.batchId ?? null,
         newBatchNo: line.newBatchNo ?? null,
         newBatchExpiryDate: line.newBatchExpiryDate ? new Date(`${line.newBatchExpiryDate}T00:00:00Z`) : null,
+        newBatchManufactureDate: line.newBatchManufactureDate ? new Date(`${line.newBatchManufactureDate}T00:00:00Z`) : null,
         systemQuantitySnapshot: line.systemQuantitySnapshot,
         countedQuantity: line.countedQuantity,
       });
@@ -396,6 +404,11 @@ export class StockCountService {
           ? (line.batch?.expiryDate ? line.batch.expiryDate.toISOString().slice(0, 10) : null)
           : line.newBatchExpiryDate
             ? line.newBatchExpiryDate.toISOString().slice(0, 10)
+            : null,
+        manufactureDate: line.batchId
+          ? (line.batch?.manufactureDate ? line.batch.manufactureDate.toISOString().slice(0, 10) : null)
+          : line.newBatchManufactureDate
+            ? line.newBatchManufactureDate.toISOString().slice(0, 10)
             : null,
         isNewBatch: line.batchId === null && line.newBatchNo !== null,
         systemQuantitySnapshot: line.systemQuantitySnapshot,

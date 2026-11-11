@@ -353,6 +353,30 @@ describe('HTTP e2e — /api/v1/inventory/counts (Kiểm kê kho GĐ4)', () => {
     expect(batchesRes.body.data.items[0].quantityOnHand).toBe(12);
   });
 
+  it('Lô MỚI phát hiện lúc kiểm kê có Ngày SX → lưu, hiện ở dòng đếm, Duyệt tạo lô mang Ngày SX; Ngày SX sai → 422 (#297 GĐ2)', async () => {
+    const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc kiểm kê có ngày sản xuất', isBatchManaged: true });
+    const newBatchNo = `MFC-${randomUUID().slice(0, 6)}`;
+    const bad = await createCount(clinicAdminToken, warehouseId, {
+      lines: [{ drugId, newBatchNo, newBatchExpiryDate: '2026-06-01', newBatchManufactureDate: '2026-06-01', systemQuantitySnapshot: 0, countedQuantity: 5 }],
+    });
+    expect(bad.status).toBe(422);
+    expect(bad.body.error.message).toContain('phải trước hạn dùng');
+
+    const created = await createCount(clinicAdminToken, warehouseId, {
+      lines: [{ drugId, newBatchNo, newBatchExpiryDate: '2028-06-01', newBatchManufactureDate: '2026-06-01', systemQuantitySnapshot: 0, countedQuantity: 8 }],
+    });
+    expect(created.status).toBe(200);
+    expect(created.body.data.lines[0].manufactureDate).toBe('2026-06-01');
+
+    const approved = await request(app.getHttpServer())
+      .post(`/api/v1/inventory/counts/${created.body.data.id}/approve`)
+      .set(authed(clinicAdminToken))
+      .send({ version: created.body.data.version, reason: 'Lô mới phát hiện lúc kiểm kê' });
+    expect(approved.status).toBe(200);
+    const batches = await request(app.getHttpServer()).get(`/api/v1/inventory/drugs/${drugId}/balances`).set(authed(clinicAdminToken)).query({ warehouseId });
+    expect(batches.body.data.items[0]).toMatchObject({ batchNo: newBatchNo, manufactureDate: '2026-06-01', expiryDate: '2028-06-01', quantityOnHand: 8 });
+  });
+
   it('cách ly tenant — tenant B không thấy phiếu kiểm kê của tenant A', async () => {
     const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc tenant A kiểm kê', isBatchManaged: false });
     const created = await createCount(clinicAdminToken, warehouseId, { lines: [{ drugId, systemQuantitySnapshot: 0, countedQuantity: 5 }] });

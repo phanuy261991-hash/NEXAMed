@@ -59,7 +59,7 @@ export function StockCountPrintView({ count }: { count: StockCountDetail }) {
               <td className="py-1.5 font-semibold">
                 {line.drugName} <span className="font-normal text-slate-500">({line.drugCode})</span>
               </td>
-              <td className="py-1.5">{line.batchNo ? `${line.batchNo}${line.expiryDate ? ` · HSD ${line.expiryDate}` : ''}` : '—'}</td>
+              <td className="py-1.5">{line.batchNo ? `${line.batchNo}${line.manufactureDate ? ` · NSX ${line.manufactureDate}` : ''}${line.expiryDate ? ` · HSD ${line.expiryDate}` : ''}` : '—'}</td>
               <td className="py-1.5 text-right">{line.systemQuantitySnapshot}</td>
               <td className="py-1.5 text-right">{line.countedQuantity}</td>
               <td className="py-1.5 text-right font-semibold">{diffLabel(line.difference)}</td>

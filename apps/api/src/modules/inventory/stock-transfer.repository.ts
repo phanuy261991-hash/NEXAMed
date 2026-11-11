@@ -31,7 +31,7 @@ const LINE_INCLUDE = {
     // `baseUnitCode` cần cho `unitCode` của dòng Phiếu nhập TRANSFER_IN tự sinh lúc Xác nhận nhận
     // hàng (luôn ở đơn vị CƠ SỞ, không quy đổi) — tránh phải tra riêng `DrugRepository.findByIds()`.
     drug: { select: { code: true, name: true, isBatchManaged: true, baseUnitCode: true } },
-    batch: { select: { batchNo: true, expiryDate: true } },
+    batch: { select: { batchNo: true, expiryDate: true, manufactureDate: true } },
   },
 } satisfies Prisma.StockTransfer$linesArgs;
 
@@ -39,7 +39,7 @@ export type StockTransferWithLines = StockTransfer & {
   lines: (Prisma.StockTransferLineGetPayload<{
     include: {
       drug: { select: { code: true; name: true; isBatchManaged: true; baseUnitCode: true } };
-      batch: { select: { batchNo: true; expiryDate: true } };
+      batch: { select: { batchNo: true; expiryDate: true; manufactureDate: true } };
     };
   }>)[];
 };

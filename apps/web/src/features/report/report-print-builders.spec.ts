@@ -122,13 +122,15 @@ describe('buildStockBalancePrintSpec', () => {
         { drugId: 'd1', drugCode: 'T01', drugName: 'Paracetamol', itemType: 'MEDICINE', warehouseId: 'w', warehouseName: 'Kho chính', unitCode: 'VIEN', quantityOnHand: 0, minStockAlert: 10, maxStockAlert: null, status: 'OUT' },
         { drugId: 'd2', drugCode: 'V01', drugName: 'Găng tay', itemType: 'SUPPLY', warehouseId: 'w', warehouseName: 'Kho chính', unitCode: null, quantityOnHand: 50, minStockAlert: null, maxStockAlert: null, status: 'NORMAL' },
       ],
-      [{ batchId: 'b', batchNo: 'L1', drugId: 'd1', drugName: 'Paracetamol', warehouseId: 'w', warehouseName: 'Kho chính', expiryDate: '2026-11-01', daysUntilExpiry: -4, quantityOnHand: 5, status: 'EXPIRED' }] as never,
+      [{ batchId: 'b', batchNo: 'L1', drugId: 'd1', drugName: 'Paracetamol', warehouseId: 'w', warehouseName: 'Kho chính', manufactureDate: '2026-02-01', expiryDate: '2026-11-01', daysUntilExpiry: -4, quantityOnHand: 5, status: 'EXPIRED' }] as never,
       { warehouseLabel: 'Kho chính', belowMinOnly: false, keyword: null, unitName: (c) => (c === 'VIEN' ? 'Viên' : c) },
     );
     expect(spec.sections.map((s) => s.title)).toEqual(['Tồn kho theo mặt hàng', 'Cảnh báo hạn dùng']);
     expect(spec.sections[0]!.rows[0]).toEqual(['T01', 'Paracetamol', 'Thuốc', 'Kho chính', 'Viên', '0', '10 – ∞', 'Hết hàng']);
     expect(spec.sections[0]!.rows[1]![4]).toBe('—');
-    expect(spec.sections[1]!.rows[0]![3]).toBe('01/11/2026 · đã quá 4 ngày');
+    // Cột 3 = Ngày SX (#297 GĐ2, trống khi lô không có), cột 4 = Hạn dùng.
+    expect(spec.sections[1]!.rows[0]![3]).toBe('01/02/2026');
+    expect(spec.sections[1]!.rows[0]![4]).toBe('01/11/2026 · đã quá 4 ngày');
     expectRectangular(spec);
   });
 });

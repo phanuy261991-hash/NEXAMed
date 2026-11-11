@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
+import ExcelJS from 'exceljs';
 import { AppModule } from '../../app.module';
 import { ResponseInterceptor } from '../../common/response.interceptor';
 import { DomainExceptionFilter } from '../../common/domain-exception.filter';
@@ -791,6 +792,134 @@ describe('HTTP e2e — /api/v1/inventory (Phiếu nhập kho GĐ2)', () => {
         lines: [{ drugId, unitCode: 'VIEN', quantity: 5, unitCost: 100 }],
       });
       expect(res.status).toBe(422);
+    });
+  });
+
+  describe('#297 GĐ2 — Ngày sản xuất của lô', () => {
+    const approve = (id: string, version: number) =>
+      request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${id}/approve`).set(authed(clinicAdminToken)).send({ version });
+    const batchesOf = async (drugId: string) =>
+      (await request(app.getHttpServer()).get(`/api/v1/inventory/drugs/${drugId}/balances`).set(authed(clinicAdminToken))).body.data as {
+        totalQuantityOnHand: number;
+        items: { batchNo: string; manufactureDate: string | null; expiryDate: string | null; quantityOnHand: number }[];
+      };
+    const line = (drugId: string, batchNo: string, extra: Record<string, unknown> = {}) => ({ drugId, unitCode: 'VIEN', quantity: 10, unitCost: 100, batchNo, ...extra });
+
+    it('lập phiếu có Ngày SX → phiếu trả đúng, Duyệt xong lô lưu Ngày SX, hiện ở Tồn theo lô và Cảnh báo hạn dùng', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc có ngày sản xuất' });
+      const batchNo = `MF-${randomUUID().slice(0, 6)}`;
+      const created = await createReceipt(clinicAdminToken, { lines: [line(drugId, batchNo, { manufactureDate: '2019-01-01', expiryDate: '2020-01-01' })] });
+      expect(created.status).toBe(200);
+      expect(created.body.data.lines[0].manufactureDate).toBe('2019-01-01');
+
+      expect((await approve(created.body.data.id, created.body.data.version)).status).toBe(200);
+      const batches = await batchesOf(drugId);
+      expect(batches.items[0]).toMatchObject({ batchNo, manufactureDate: '2019-01-01', expiryDate: '2020-01-01' });
+
+      const warnings = await request(app.getHttpServer()).get('/api/v1/inventory/expiry-warnings').set(authed(clinicAdminToken)).query({ warehouseId });
+      expect(warnings.body.data.items.find((i: { drugId: string }) => i.drugId === drugId)).toMatchObject({ manufactureDate: '2019-01-01', expiryDate: '2020-01-01' });
+    });
+
+    it('không nhập Ngày SX → null ở mọi nơi (hành vi cũ không đổi)', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc không ngày sản xuất' });
+      const created = await createReceipt(clinicAdminToken, { lines: [line(drugId, `NM-${randomUUID().slice(0, 6)}`, { expiryDate: '2027-01-01' })] });
+      expect(created.body.data.lines[0].manufactureDate).toBeNull();
+      await approve(created.body.data.id, created.body.data.version);
+      expect((await batchesOf(drugId)).items[0]!.manufactureDate).toBeNull();
+    });
+
+    it('Ngày SX sau hôm nay, bằng hoặc sau hạn dùng → 422 từ lúc lập Nháp, kèm tên mặt hàng; trước hạn dùng hoặc không có hạn dùng thì lưu được', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc kiểm ngày sản xuất' });
+      const tomorrow = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const tryLine = (extra: Record<string, unknown>) => createReceipt(clinicAdminToken, { lines: [line(drugId, 'KT1', extra)] });
+
+      const future = await tryLine({ manufactureDate: tomorrow, expiryDate: '2099-01-01' });
+      expect(future.status).toBe(422);
+      expect(future.body.error.message).toContain('Thuốc kiểm ngày sản xuất');
+      expect(future.body.error.message).toContain('không được sau hôm nay');
+
+      const equal = await tryLine({ manufactureDate: '2026-05-01', expiryDate: '2026-05-01' });
+      expect(equal.status).toBe(422);
+      expect(equal.body.error.message).toContain('phải trước hạn dùng');
+      expect((await tryLine({ manufactureDate: '2026-05-02', expiryDate: '2026-05-01' })).status).toBe(422);
+
+      expect((await tryLine({ manufactureDate: '2026-05-01', expiryDate: '2029-05-01' })).status).toBe(200);
+      expect((await tryLine({ manufactureDate: '2026-05-01' })).status).toBe(200);
+      // Sai định dạng ngày → 400 (Zod).
+      expect((await tryLine({ manufactureDate: '01/05/2026' })).status).toBe(400);
+    });
+
+    it('nhập lại cùng số lô: cùng Ngày SX thì cộng tồn; khác Ngày SX thì CHẶN lúc Duyệt, báo rõ cả hai ngày, tồn không đổi', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc lô lệch ngày sản xuất' });
+      const batchNo = `LD-${randomUUID().slice(0, 6)}`;
+      const first = await createReceipt(clinicAdminToken, { lines: [line(drugId, batchNo, { manufactureDate: '2026-03-01', expiryDate: '2029-03-01' })] });
+      await approve(first.body.data.id, first.body.data.version);
+
+      const same = await createReceipt(clinicAdminToken, { lines: [line(drugId, batchNo, { manufactureDate: '2026-03-01', expiryDate: '2029-03-01' })] });
+      expect((await approve(same.body.data.id, same.body.data.version)).status).toBe(200);
+      expect((await batchesOf(drugId)).totalQuantityOnHand).toBe(20);
+
+      const other = await createReceipt(clinicAdminToken, { lines: [line(drugId, batchNo, { manufactureDate: '2026-03-15', expiryDate: '2029-03-01' })] });
+      expect(other.status).toBe(200); // lập Nháp được — chỉ chặn khi Duyệt (lúc đó mới biết lô đã có)
+      const blocked = await approve(other.body.data.id, other.body.data.version);
+      expect(blocked.status).toBe(422);
+      expect(blocked.body.error.message).toContain(batchNo);
+      expect(blocked.body.error.message).toContain('01/03/2026');
+      expect(blocked.body.error.message).toContain('15/03/2026');
+      const after = await batchesOf(drugId);
+      expect(after.totalQuantityOnHand).toBe(20);
+      expect(after.items[0]!.manufactureDate).toBe('2026-03-01');
+      expect((await request(app.getHttpServer()).get(`/api/v1/inventory/receipts/${other.body.data.id}`).set(authed(clinicAdminToken))).body.data.status).toBe('DRAFT');
+    });
+
+    it('lô cũ CHƯA có Ngày SX mà dòng nhập có → điền vào; dòng nhập không có Ngày SX thì giữ nguyên ngày đã có', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc điền ngày sản xuất' });
+      const batchNo = `FL-${randomUUID().slice(0, 6)}`;
+      const first = await createReceipt(clinicAdminToken, { lines: [line(drugId, batchNo, { expiryDate: '2029-03-01' })] });
+      await approve(first.body.data.id, first.body.data.version);
+      expect((await batchesOf(drugId)).items[0]!.manufactureDate).toBeNull();
+
+      const fill = await createReceipt(clinicAdminToken, { lines: [line(drugId, batchNo, { manufactureDate: '2026-04-01', expiryDate: '2029-03-01' })] });
+      expect((await approve(fill.body.data.id, fill.body.data.version)).status).toBe(200);
+      expect((await batchesOf(drugId)).items[0]!.manufactureDate).toBe('2026-04-01');
+
+      const keep = await createReceipt(clinicAdminToken, { lines: [line(drugId, batchNo, { expiryDate: '2029-03-01' })] });
+      expect((await approve(keep.body.data.id, keep.body.data.version)).status).toBe(200);
+      const batches = await batchesOf(drugId);
+      expect(batches.items[0]!.manufactureDate).toBe('2026-04-01');
+      expect(batches.totalQuantityOnHand).toBe(30);
+    });
+
+    it('CSDL chặn cứng Ngày SX không trước hạn dùng (kể cả khi ghi thẳng, không qua máy chủ)', async () => {
+      const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc chốt chặn CSDL' });
+      const created = await createReceipt(clinicAdminToken, { lines: [line(drugId, 'DB1', { expiryDate: '2029-03-01' })] });
+      await expect(
+        privileged.$executeRawUnsafe(`UPDATE stock_receipt_line SET manufacture_date = '2030-01-01' WHERE receipt_id = '${created.body.data.id}'`),
+      ).rejects.toThrow();
+    });
+
+    it('xuất Excel Cảnh báo hạn dùng có cột "Ngày SX"', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/inventory/balances/export')
+        .set(authed(clinicAdminToken))
+        .query({ warehouseId })
+        .buffer(true)
+        .parse((r, cb) => {
+          const chunks: Buffer[] = [];
+          r.on('data', (c: Buffer) => chunks.push(c));
+          r.on('end', () => cb(null, Buffer.concat(chunks)));
+        });
+      expect(res.status).toBe(200);
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(res.body as unknown as ExcelJS.Buffer);
+      const sheet = wb.getWorksheet('Cảnh báo hạn dùng')!;
+      let headerRow: string[] = [];
+      sheet.eachRow((row) => {
+        const values = (row.values as unknown[]).slice(1).map((v) => String(v ?? ''));
+        if (values.includes('Số lô') && values.includes('Hạn dùng')) headerRow = values;
+      });
+      expect(headerRow.indexOf('Ngày SX')).toBe(headerRow.indexOf('Kho') + 1);
+      expect(headerRow.indexOf('Hạn dùng')).toBe(headerRow.indexOf('Ngày SX') + 1);
     });
   });
 });

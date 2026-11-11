@@ -277,21 +277,23 @@ function ExpiryWarningTable({
   return (
     <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div role="table" aria-label="Cảnh báo hạn dùng" className="scroll-hover h-full overflow-x-auto">
-        <div className="flex h-full flex-col" style={{ minWidth: 900 }}>
-          <div role="row" style={{ gridTemplateColumns: '130px 1.6fr 130px 1fr 100px 140px' }} className="grid flex-shrink-0 gap-x-3 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
+        <div className="flex h-full flex-col" style={{ minWidth: 1010 }}>
+          <div role="row" style={{ gridTemplateColumns: '130px 1.6fr 130px 110px 1fr 100px 140px' }} className="grid flex-shrink-0 gap-x-3 border-b-2 border-blue-600 bg-slate-100 px-4 text-xs font-semibold uppercase tracking-wide text-slate-800">
             <div role="columnheader" className="py-2.5 text-center">Số lô</div>
             <div role="columnheader" className="py-2.5 text-left">Thuốc / vật tư</div>
             <div role="columnheader" className="py-2.5 text-center">Kho</div>
+            <div role="columnheader" className="py-2.5 text-center">NSX</div>
             <div role="columnheader" className="py-2.5 text-center">Hạn dùng</div>
             <div role="columnheader" className="py-2.5 text-center">Tồn</div>
             <div role="columnheader" className="py-2.5 text-center">Trạng thái</div>
           </div>
           <div className="scroll-hover flex-1 overflow-y-auto overflow-x-hidden">
             {items.map((item) => (
-              <div key={item.batchId} role="row" style={{ gridTemplateColumns: '130px 1.6fr 130px 1fr 100px 140px', minHeight: 56 }} className="grid items-center gap-x-3 border-b border-slate-100 px-4 text-sm hover:bg-slate-50">
+              <div key={item.batchId} role="row" style={{ gridTemplateColumns: '130px 1.6fr 130px 110px 1fr 100px 140px', minHeight: 56 }} className="grid items-center gap-x-3 border-b border-slate-100 px-4 text-sm hover:bg-slate-50">
                 <div role="cell" className="min-w-0 truncate text-center font-semibold text-slate-800" title={item.batchNo}>{item.batchNo}</div>
                 <div role="cell" className="min-w-0 truncate text-left font-medium text-slate-900" title={item.drugName}>{item.drugName}</div>
                 <div role="cell" className="truncate text-center font-medium text-slate-700">{item.warehouseName}</div>
+                <div role="cell" className="text-center font-medium text-slate-700">{item.manufactureDate ? formatDateShort(item.manufactureDate) : '—'}</div>
                 <div role="cell" className={`text-center font-semibold ${item.status === 'EXPIRED' ? 'text-rose-600' : 'text-amber-600'}`}>{expiryLabel(item)}</div>
                 <div role="cell" className="text-center font-semibold tabular-nums text-slate-900">{item.quantityOnHand.toLocaleString('vi-VN')}</div>
                 <div role="cell" className="text-center">

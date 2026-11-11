@@ -254,6 +254,29 @@ describe('HTTP e2e — /api/v1/inventory/transfers (Điều chuyển kho GĐ4)',
     expect(destBatchesRes.body.data.items[0]).toMatchObject({ batchNo, unitCost: 500, quantityOnHand: 50 });
   });
 
+  it('Xác nhận nhận hàng — lô tại kho đích kế thừa cả Ngày SX của lô gốc (#297 GĐ2)', async () => {
+    const drugId = await createDrug(clinicAdminToken, { name: 'Thuốc điều chuyển có ngày sản xuất', isBatchManaged: true });
+    const batchNo = `MFG-${randomUUID().slice(0, 6)}`;
+    const opening = await request(app.getHttpServer())
+      .post('/api/v1/inventory/receipts')
+      .set(authed(clinicAdminToken))
+      .send({ warehouseId: fromWarehouseId, receiptType: 'OPENING_BALANCE', lines: [{ drugId, unitCode: 'VIEN', quantity: 100, unitCost: 500, batchNo, manufactureDate: '2026-02-01', expiryDate: '2029-01-01' }] });
+    expect(opening.status).toBe(200);
+    await request(app.getHttpServer()).post(`/api/v1/inventory/receipts/${opening.body.data.id}/approve`).set(authed(clinicAdminToken)).send({ version: opening.body.data.version });
+    const batchId = await getWarehouseBatchId(clinicAdminToken, drugId, fromWarehouseId);
+
+    const created = await createTransfer(clinicAdminToken, fromWarehouseId, toWarehouseId, { lines: [{ drugId, batchId, quantityShipped: 30 }] });
+    const shipped = await request(app.getHttpServer()).post(`/api/v1/inventory/transfers/${created.body.data.id}/ship`).set(authed(clinicAdminToken)).send({ version: created.body.data.version });
+    const received = await request(app.getHttpServer())
+      .post(`/api/v1/inventory/transfers/${created.body.data.id}/receive`)
+      .set(authed(clinicAdminToken))
+      .send({ version: shipped.body.data.version, lines: [{ lineId: shipped.body.data.lines[0].id, quantityReceived: 30 }] });
+    expect(received.status).toBe(200);
+
+    const dest = await request(app.getHttpServer()).get(`/api/v1/inventory/drugs/${drugId}/balances`).set(authed(clinicAdminToken)).query({ warehouseId: toWarehouseId });
+    expect(dest.body.data.items[0]).toMatchObject({ batchNo, manufactureDate: '2026-02-01', expiryDate: '2029-01-01', quantityOnHand: 30 });
+  });
+
   it('dòng phiếu mang trạng thái hạn dùng: lô còn ≤ ngưỡng cảnh báo (mặc định 30 ngày) báo EXPIRING_SOON kèm số ngày còn lại; lô còn xa thì null (huy hiệu "Cận hạn" ở Kiểm nhận)', async () => {
     const soon = new Date(Date.now() + 7 * 3_600_000 + 10 * 86_400_000).toISOString().slice(0, 10);
     const nearDrug = await createDrug(clinicAdminToken, { name: 'Lo can han', isBatchManaged: true });

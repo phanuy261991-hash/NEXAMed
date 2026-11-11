@@ -70,6 +70,7 @@ export * from './work-shift-assignment/month-lock';
 export * from './work-shift-assignment/self-registration';
 export * from './cashier-shift/shift-label';
 export * from './cashier-shift/compute-shift-totals';
+export * from './inventory/check-manufacture-date';
 export * from './inventory/classify-stock-count-difference';
 export * from './inventory/compute-expiry-status';
 export * from './inventory/compute-unit-conversion';

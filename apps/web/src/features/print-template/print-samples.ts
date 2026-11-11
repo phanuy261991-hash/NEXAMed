@@ -355,8 +355,8 @@ export const SAMPLE_STOCK_RECEIPT: StockReceiptDetail = {
   discountAmount: 0,
   netAmount: 6150000,
   lines: [
-    { id: ID(610), drugId: ID(101), drugCode: 'THUOC-0012', drugName: 'Paracetamol 500mg', unitCode: 'HOP', quantity: 30, unitCost: 45000, batchNo: 'L2610A', expiryDate: '2028-09-30', lineAmount: 1350000, discountType: null, discountValue: null, discountAmount: 0 },
-    { id: ID(611), drugId: ID(102), drugCode: 'THUOC-0031', drugName: 'Amoxicillin + Acid clavulanic 625mg', unitCode: 'HOP', quantity: 40, unitCost: 120000, batchNo: 'L2610B', expiryDate: '2028-06-30', lineAmount: 4800000, discountType: null, discountValue: null, discountAmount: 0 },
+    { id: ID(610), drugId: ID(101), drugCode: 'THUOC-0012', drugName: 'Paracetamol 500mg', unitCode: 'HOP', quantity: 30, unitCost: 45000, batchNo: 'L2610A', manufactureDate: '2026-09-02', expiryDate: '2028-09-30', lineAmount: 1350000, discountType: null, discountValue: null, discountAmount: 0 },
+    { id: ID(611), drugId: ID(102), drugCode: 'THUOC-0031', drugName: 'Amoxicillin + Acid clavulanic 625mg', unitCode: 'HOP', quantity: 40, unitCost: 120000, batchNo: 'L2610B', manufactureDate: null, expiryDate: '2028-06-30', lineAmount: 4800000, discountType: null, discountValue: null, discountAmount: 0 },
   ],
 };
 
@@ -410,8 +410,8 @@ export const SAMPLE_STOCK_COUNT: StockCountDetail = {
   rejectionReason: null,
   version: 1,
   lines: [
-    { id: ID(810), drugId: ID(101), drugCode: 'THUOC-0012', drugName: 'Paracetamol 500mg', isBatchManaged: true, batchId: ID(811), batchNo: 'L2610A', expiryDate: '2028-09-30', isNewBatch: false, systemQuantitySnapshot: 300, countedQuantity: 298, difference: -2 },
-    { id: ID(812), drugId: ID(102), drugCode: 'THUOC-0031', drugName: 'Amoxicillin + Acid clavulanic 625mg', isBatchManaged: true, batchId: ID(813), batchNo: 'L2610B', expiryDate: '2028-06-30', isNewBatch: false, systemQuantitySnapshot: 120, countedQuantity: 120, difference: 0 },
+    { id: ID(810), drugId: ID(101), drugCode: 'THUOC-0012', drugName: 'Paracetamol 500mg', isBatchManaged: true, batchId: ID(811), batchNo: 'L2610A', expiryDate: '2028-09-30', manufactureDate: '2026-09-02', isNewBatch: false, systemQuantitySnapshot: 300, countedQuantity: 298, difference: -2 },
+    { id: ID(812), drugId: ID(102), drugCode: 'THUOC-0031', drugName: 'Amoxicillin + Acid clavulanic 625mg', isBatchManaged: true, batchId: ID(813), batchNo: 'L2610B', expiryDate: '2028-06-30', manufactureDate: null, isNewBatch: false, systemQuantitySnapshot: 120, countedQuantity: 120, difference: 0 },
   ],
 };
 

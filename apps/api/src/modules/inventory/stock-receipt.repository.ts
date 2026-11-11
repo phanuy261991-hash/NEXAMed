@@ -9,6 +9,8 @@ export interface StockReceiptLineData {
   unitCost: bigint;
   batchNo: string | null;
   expiryDate: Date | null;
+  /** Ngày sản xuất (#297 GĐ2), tuỳ chọn. */
+  manufactureDate: Date | null;
   lineAmount: bigint;
   /** Chiết khấu "Từng dòng" (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170). */
   discountType: DiscountType | null;
@@ -158,6 +160,7 @@ export class StockReceiptRepository {
           unitCost: line.unitCost,
           batchNo: line.batchNo,
           expiryDate: line.expiryDate,
+          manufactureDate: line.manufactureDate,
           lineAmount: line.lineAmount,
           discountType: line.discountType,
           discountValue: line.discountValue,
@@ -214,6 +217,7 @@ export class StockReceiptRepository {
           unitCost: line.unitCost,
           batchNo: line.batchNo,
           expiryDate: line.expiryDate,
+          manufactureDate: line.manufactureDate,
           lineAmount: line.lineAmount,
           discountType: line.discountType,
           discountValue: line.discountValue,

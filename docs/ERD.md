@@ -1,6 +1,6 @@
 # ERD: NEXAMed v1
 
-**Version**: v1.94 — 11/11/2026 (xem mục 9 để biết 5 phiên bản mới nhất; lịch sử đầy đủ ở `docs/archive/ERD-lich-su-phien-ban-v1.0-v1.77.md`)
+**Version**: v1.95 — 11/11/2026 (xem mục 9 để biết 5 phiên bản mới nhất; lịch sử đầy đủ ở `docs/archive/ERD-lich-su-phien-ban-v1.0-v1.77.md`)
 **Cách đọc (chốt 20/10/2026)**: file này giữ sơ đồ tổng thể, nhóm bảng nền (3.1–3.5), ràng buộc, index, thứ tự tạo bảng. Nhóm bảng 3.6 trở đi (Thu ngân, Kho Thuốc & Vật tư, Công nợ NCC, và MỌI nhóm bảng mới) ở **`docs/ERD-2.md`** — mở khi làm việc với các bảng đó.
 **Phạm vi**: các bảng thuộc v1 (Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn) cộng các mở rộng phạm vi đã chốt (Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư y tế GĐ1→4, Công nợ nhà cung cấp Phần A→D — xem `CLAUDE.md`). Bảng của v2+ (viện phí đầy đủ, BHYT), Kho Thuốc GĐ5, và Công nợ NCC Phần E (chưa có mockup, chưa code) **không** tạo ở giai đoạn này.
 **Căn cứ**: `docs/product/prd.md` v1.0, `docs/product/plan.md` v1.0, `.claude/docs/data-model.md`
@@ -798,6 +798,7 @@ Khi thêm, các bảng này vẫn phải đủ 8 cột bắt buộc và tuân th
 
 | Version | Ngày | Thay đổi |
 |---|---|---|
+| v1.95 | 11/11/2026 | Ngày sản xuất của lô (`docs/DECISIONS.md` #297 bổ sung 1, giai đoạn 2). Migration `20261111120000_batch_manufacture_date`: `stock_receipt_line.manufacture_date`, `inventory_batch.manufacture_date`, `stock_count_line.new_batch_manufacture_date` (DATE NULL) + 3 CHECK ngày SX < hạn dùng; chi tiết ở `docs/ERD-2.md` mục 3.22. |
 | v1.94 | 11/11/2026 | Hoàn thiện Vật tư y tế (`docs/DECISIONS.md` #297, giai đoạn 1). Migration `20261111100000_reference_catalog_supply_group` (enum `reference_catalog_category` thêm `SUPPLY_GROUP`) và `20261111100100_drug_supply_fields` (enum `drug_supply_usage_nature`; `drug.supply_usage_nature` NULL, `drug.internal_use_only` BOOLEAN NOT NULL DEFAULT false); chi tiết ở `docs/ERD-2.md` mục 3.22. |
 | v1.93 | 06/11/2026 | "Gửi mẫu đối tác" giai đoạn 2, lát cắt "Gửi mẫu đi" (`docs/DECISIONS.md` #291 bổ sung 3). Migration `20261106150000_lab_partner_dispatch`: enum `lab_partner_dispatch_item_status` + bảng `lab_partner_dispatch` (đợt gửi theo chi nhánh) + `lab_partner_dispatch_item` (dòng gửi, chụp giá trả); chi tiết ở `docs/ERD-2.md` mục 3.21. |
 | v1.93 | 07/11/2026 | "Gửi mẫu đối tác" nhận kết quả (`docs/DECISIONS.md` #291 bổ sung 5). Migration `20261107100000_lab_partner_result`: bảng mới `lab_partner_result_file`; `lab_partner_dispatch_item.result_file_id`; `supplier_debt_entry.lab_partner_dispatch_item_id` + enum `LAB_PARTNER` + CHECK nguồn mới (chi tiết cuối `docs/ERD-2.md`). |

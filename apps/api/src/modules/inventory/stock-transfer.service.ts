@@ -449,6 +449,7 @@ export class StockTransferService {
             unitCost,
             batchNo: line.batchId ? (line.batch?.batchNo ?? null) : null,
             expiryDate: line.batchId ? (line.batch?.expiryDate ?? null) : null,
+            manufactureDate: line.batchId ? (line.batch?.manufactureDate ?? null) : null,
             lineAmount: unitCost * BigInt(input.quantityReceived),
             // Phiếu tự sinh — không có khái niệm chiết khấu (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", #170).
             discountType: null,
@@ -564,6 +565,7 @@ export class StockTransferService {
             unitCost,
             batchNo: line.batchId ? (line.batch?.batchNo ?? null) : null,
             expiryDate: line.batchId ? (line.batch?.expiryDate ?? null) : null,
+            manufactureDate: line.batchId ? (line.batch?.manufactureDate ?? null) : null,
             lineAmount: unitCost * BigInt(input.quantityReturnedBack),
             discountType: null,
             discountValue: null,
@@ -642,6 +644,7 @@ export class StockTransferService {
             unitCost,
             batchNo: line.batchId ? (line.batch?.batchNo ?? null) : null,
             expiryDate: line.batchId ? (line.batch?.expiryDate ?? null) : null,
+            manufactureDate: line.batchId ? (line.batch?.manufactureDate ?? null) : null,
             lineAmount: unitCost * BigInt(quantity),
             discountType: null,
             discountValue: null,

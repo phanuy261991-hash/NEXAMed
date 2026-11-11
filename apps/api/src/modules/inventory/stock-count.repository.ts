@@ -6,6 +6,7 @@ export interface StockCountLineData {
   batchId: string | null;
   newBatchNo: string | null;
   newBatchExpiryDate: Date | null;
+  newBatchManufactureDate: Date | null;
   systemQuantitySnapshot: number;
   countedQuantity: number;
 }
@@ -30,13 +31,13 @@ const LINE_INCLUDE = {
   orderBy: { createdAt: 'asc' as const },
   include: {
     drug: { select: { code: true, name: true, isBatchManaged: true } },
-    batch: { select: { batchNo: true, expiryDate: true } },
+    batch: { select: { batchNo: true, expiryDate: true, manufactureDate: true } },
   },
 } satisfies Prisma.StockCount$linesArgs;
 
 export type StockCountWithLines = StockCount & {
   lines: (Prisma.StockCountLineGetPayload<{
-    include: { drug: { select: { code: true; name: true; isBatchManaged: true } }; batch: { select: { batchNo: true; expiryDate: true } } };
+    include: { drug: { select: { code: true; name: true; isBatchManaged: true } }; batch: { select: { batchNo: true; expiryDate: true; manufactureDate: true } } };
   }>)[];
 };
 
@@ -85,6 +86,7 @@ export class StockCountRepository {
           batchId: line.batchId,
           newBatchNo: line.newBatchNo,
           newBatchExpiryDate: line.newBatchExpiryDate,
+          newBatchManufactureDate: line.newBatchManufactureDate,
           systemQuantitySnapshot: line.systemQuantitySnapshot,
           countedQuantity: line.countedQuantity,
           createdBy: actorId,
@@ -124,6 +126,7 @@ export class StockCountRepository {
           batchId: line.batchId,
           newBatchNo: line.newBatchNo,
           newBatchExpiryDate: line.newBatchExpiryDate,
+          newBatchManufactureDate: line.newBatchManufactureDate,
           systemQuantitySnapshot: line.systemQuantitySnapshot,
           countedQuantity: line.countedQuantity,
           createdBy: actorId,

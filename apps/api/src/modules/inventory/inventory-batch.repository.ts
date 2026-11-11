@@ -6,6 +6,8 @@ export interface CreateInventoryBatchData {
   warehouseId: string;
   batchNo: string;
   expiryDate: Date | null;
+  /** Ngày sản xuất (#297 GĐ2), tuỳ chọn. */
+  manufactureDate: Date | null;
   unitCost: bigint;
 }
 
@@ -15,6 +17,7 @@ export interface DrugBatchBalanceRow {
   warehouseId: string;
   warehouseName: string;
   expiryDate: Date | null;
+  manufactureDate: Date | null;
   unitCost: bigint;
   quantityOnHand: number;
 }
@@ -26,6 +29,7 @@ export interface ExpiryWarningRow {
   drugName: string;
   warehouseId: string;
   warehouseName: string;
+  manufactureDate: Date | null;
   expiryDate: Date;
   quantityOnHand: number;
 }
@@ -52,6 +56,7 @@ export class InventoryBatchRepository {
         warehouseId: data.warehouseId,
         batchNo: data.batchNo,
         expiryDate: data.expiryDate,
+        manufactureDate: data.manufactureDate,
         unitCost: data.unitCost,
         createdBy: actorId,
         updatedBy: actorId,
@@ -63,6 +68,11 @@ export class InventoryBatchRepository {
    * phạm vi lô đó (`newUnitCost` đã tính sẵn ở Service theo `computeWeightedAverage()`). */
   async updateCost(tx: Prisma.TransactionClient, tenantId: string, id: string, actorId: string, newUnitCost: bigint): Promise<void> {
     await tx.inventoryBatch.updateMany({ where: { tenantId, id, deletedAt: null }, data: { unitCost: newUnitCost, updatedBy: actorId, version: { increment: 1 } } });
+  }
+
+  /** Lô cũ chưa có Ngày sản xuất, lần nhập sau có → điền vào (#297 GĐ2). Chỉ ghi khi đang trống, không bao giờ đè giá trị đã có. */
+  async fillManufactureDate(tx: Prisma.TransactionClient, tenantId: string, id: string, actorId: string, manufactureDate: Date): Promise<void> {
+    await tx.inventoryBatch.updateMany({ where: { tenantId, id, deletedAt: null, manufactureDate: null }, data: { manufactureDate, updatedBy: actorId, version: { increment: 1 } } });
   }
 
   /** "Tồn kho theo lô" (panel chi tiết thuốc) — mọi lô CÒN TỒN (`quantityOnHand > 0`) của 1 thuốc. */
@@ -84,6 +94,7 @@ export class InventoryBatchRepository {
       warehouseId: b.warehouseId,
       warehouseName: b.warehouse.name,
       expiryDate: b.expiryDate,
+      manufactureDate: b.manufactureDate,
       unitCost: b.unitCost,
       quantityOnHand: qtyByBatch.get(b.id) ?? 0,
     }));
@@ -109,6 +120,7 @@ export class InventoryBatchRepository {
       drugName: b.drug.name,
       warehouseId: b.warehouseId,
       warehouseName: b.warehouse.name,
+      manufactureDate: b.manufactureDate,
       expiryDate: b.expiryDate!,
       quantityOnHand: qtyByBatch.get(b.id) ?? 0,
     }));

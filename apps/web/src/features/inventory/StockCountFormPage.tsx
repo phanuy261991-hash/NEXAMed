@@ -38,6 +38,8 @@ interface DraftLine {
   isNewBatch: boolean;
   /** Số lô hiển thị/nhập — của lô đã có (chỉ đọc) hoặc lô mới (gõ tự do), tuỳ `isNewBatch`. */
   batchNo: string;
+  /** Ngày sản xuất của lô (#297 GĐ2) — gõ được khi là lô MỚI, còn lại chỉ đọc. */
+  manufactureDate: string;
   expiryDate: string;
   systemQuantitySnapshot: number;
   countedQuantity: string;
@@ -142,6 +144,7 @@ export function StockCountFormPage() {
         batchId: l.batchId,
         isNewBatch: l.isNewBatch,
         batchNo: l.batchNo ?? '',
+        manufactureDate: l.manufactureDate ?? '',
         expiryDate: l.expiryDate ?? '',
         systemQuantitySnapshot: l.systemQuantitySnapshot,
         countedQuantity: String(l.countedQuantity),
@@ -180,6 +183,7 @@ export function StockCountFormPage() {
       batchId: null,
       isNewBatch: false,
       batchNo: '',
+      manufactureDate: '',
       expiryDate: '',
       systemQuantitySnapshot: systemQty,
       countedQuantity: String(systemQty),
@@ -196,6 +200,7 @@ export function StockCountFormPage() {
       batchId: null,
       isNewBatch: true,
       batchNo: '',
+      manufactureDate: '',
       expiryDate: '',
       systemQuantitySnapshot: 0,
       countedQuantity: '0',
@@ -215,6 +220,7 @@ export function StockCountFormPage() {
       batchId: b.batchId,
       isNewBatch: false,
       batchNo: b.batchNo,
+      manufactureDate: b.manufactureDate ?? '',
       expiryDate: b.expiryDate ?? '',
       systemQuantitySnapshot: b.quantityOnHand,
       countedQuantity: String(b.quantityOnHand),
@@ -361,6 +367,7 @@ export function StockCountFormPage() {
         batchId: l.isNewBatch ? undefined : (l.batchId ?? undefined),
         newBatchNo: l.isNewBatch ? l.batchNo : undefined,
         newBatchExpiryDate: l.isNewBatch ? l.expiryDate || undefined : undefined,
+        newBatchManufactureDate: l.isNewBatch ? l.manufactureDate || undefined : undefined,
         systemQuantitySnapshot: l.systemQuantitySnapshot,
         countedQuantity: Number(l.countedQuantity),
       })),
@@ -655,11 +662,11 @@ export function StockCountFormPage() {
                               {!l.isBatchManaged && '— (không quản lý lô)'}
                               {l.isBatchManaged && !l.isNewBatch && (
                                 <>
-                                  Lô {l.batchNo} {l.expiryDate && <>· HSD {formatDobDisplay(l.expiryDate)}</>}
+                                  Lô {l.batchNo} {l.manufactureDate && <>· NSX {formatDobDisplay(l.manufactureDate)} </>}{l.expiryDate && <>· HSD {formatDobDisplay(l.expiryDate)}</>}
                                 </>
                               )}
                               {l.isBatchManaged && l.isNewBatch && !readOnly && (
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex flex-wrap items-center gap-1.5">
                                   <input
                                     type="text"
                                     value={l.batchNo}
@@ -667,12 +674,15 @@ export function StockCountFormPage() {
                                     placeholder="Nhập số lô mới..."
                                     className="w-32 rounded-md border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-900"
                                   />
+                                  <span className="text-xs font-semibold text-slate-500">NSX</span>
+                                  <DateInput id={`count-new-manufacture-${l.key}`} value={l.manufactureDate} onChange={(v) => updateLine(l.key, { manufactureDate: v })} dense />
+                                  <span className="text-xs font-semibold text-slate-500">HSD</span>
                                   <DateInput id={`count-new-expiry-${l.key}`} value={l.expiryDate} onChange={(v) => updateLine(l.key, { expiryDate: v })} dense />
                                 </div>
                               )}
                               {l.isBatchManaged && l.isNewBatch && readOnly && (
                                 <>
-                                  Lô {l.batchNo || '—'} {l.expiryDate && <>· HSD {formatDobDisplay(l.expiryDate)}</>}
+                                  Lô {l.batchNo || '—'} {l.manufactureDate && <>· NSX {formatDobDisplay(l.manufactureDate)} </>}{l.expiryDate && <>· HSD {formatDobDisplay(l.expiryDate)}</>}
                                 </>
                               )}
                             </div>

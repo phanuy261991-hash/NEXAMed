@@ -18,6 +18,8 @@ import { StatusBadge, type StatusBadgeTone } from '../../shared/ui/StatusBadge';
 import { TwoOptionToggle } from '../../shared/ui/TwoOptionToggle';
 import { formatVnd } from '../../shared/format/currency';
 import { formatDobDisplay } from '../../shared/format/date';
+import { toVnDateAndTime } from '../../shared/format/time';
+import { checkManufactureDate, MANUFACTURE_DATE_ISSUE_MESSAGES } from './manufacture-date';
 import { RECEIPT_TYPE_OPTIONS, StockReceiptHeaderDialog, type StockReceiptHeaderValues } from './StockReceiptHeaderDialog';
 import { useCollapsedGroups } from '../../shared/hooks/useCollapsedGroups';
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue';
@@ -52,6 +54,8 @@ interface DraftLine {
   quantity: string;
   unitCost: number | undefined;
   batchNo: string;
+  /** Ngày sản xuất (#297 GĐ2), tuỳ chọn, cả Thuốc lẫn Vật tư. */
+  manufactureDate: string;
   expiryDate: string;
   /** Chiết khấu "Từng dòng" (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170) — CHỈ
    * có ý nghĩa khi `receiptType='PURCHASE'` VÀ chế độ chiết khấu đang là "Từng dòng". */
@@ -206,6 +210,7 @@ export function StockReceiptFormPage() {
         quantity: String(l.quantity),
         unitCost: l.unitCost,
         batchNo: l.batchNo ?? '',
+        manufactureDate: l.manufactureDate ?? '',
         expiryDate: l.expiryDate ?? '',
         discountValue: l.discountValue != null ? String(l.discountValue) : '',
       })),
@@ -243,6 +248,7 @@ export function StockReceiptFormPage() {
         quantity: String(l.quantity),
         unitCost: l.unitCost,
         batchNo: '',
+        manufactureDate: '',
         expiryDate: '',
         discountValue: '',
       })),
@@ -324,6 +330,7 @@ export function StockReceiptFormPage() {
         quantity: '',
         unitCost: undefined,
         batchNo: '',
+        manufactureDate: '',
         expiryDate: '',
         discountValue: '',
       },
@@ -350,11 +357,17 @@ export function StockReceiptFormPage() {
           quantity: '',
           unitCost: undefined,
           batchNo: '',
+          manufactureDate: '',
           expiryDate: '',
           discountValue: '',
         },
       ];
     });
+  }
+
+  /** Lỗi Ngày sản xuất của một dòng (không sau hôm nay, trước hạn dùng) — cùng luật với máy chủ (#297 GĐ2). */
+  function manufactureIssueOf(l: DraftLine) {
+    return checkManufactureDate(l.manufactureDate, l.expiryDate, toVnDateAndTime().date);
   }
 
   function updateLine(key: string, patch: Partial<DraftLine>) {
@@ -412,6 +425,11 @@ export function StockReceiptFormPage() {
         setFormError(`Dòng "${l.drugName}" quản lý theo lô — phải nhập Số lô.`);
         return null;
       }
+      const manufactureIssue = manufactureIssueOf(l);
+      if (manufactureIssue) {
+        setFormError(`Dòng "${l.drugName}": Ngày sản xuất ${MANUFACTURE_DATE_ISSUE_MESSAGES[manufactureIssue].toLowerCase()}.`);
+        return null;
+      }
     }
     const useTotalDiscount = receiptType === 'PURCHASE' && discountMode === 'TOTAL' && !hasLineDiscount;
     if (useTotalDiscount && totalDiscountValue) {
@@ -461,6 +479,7 @@ export function StockReceiptFormPage() {
         unitCost: l.unitCost!,
         batchNo: l.batchNo || undefined,
         expiryDate: l.expiryDate || undefined,
+        manufactureDate: l.manufactureDate || undefined,
         discountType: receiptType === 'PURCHASE' && discountMode === 'PER_LINE' && Number(l.discountValue) > 0 ? ('PERCENT' as const) : undefined,
         discountValue: receiptType === 'PURCHASE' && discountMode === 'PER_LINE' && Number(l.discountValue) > 0 ? Number(l.discountValue) : undefined,
       })),
@@ -515,9 +534,9 @@ export function StockReceiptFormPage() {
   // khi khung trái hẹp (cột phải 380px cạnh tranh không gian, #194), NHƯNG không ép cả bảng phải
   // rộng hơn mức cần thiết như `minWidth` cố định cũ (gây lệch, đẩy cột phải ra ngoài màn hình) —
   // bảng tự vừa khít khi đủ chỗ, chỉ cuộn ngang khi thật sự không đủ 180px cho cột tên.
-  const lineGridCols = ['minmax(180px, 1.8fr)', '100px', '110px', '130px', '130px', '130px', ...(showLineDiscountCol ? ['110px'] : []), '130px', ...(!readOnly ? ['50px'] : [])].join(' ');
+  const lineGridCols = ['minmax(130px, 1.8fr)', '84px', '84px', '104px', '104px', '128px', '128px', ...(showLineDiscountCol ? ['100px'] : []), '120px', ...(!readOnly ? ['44px'] : [])].join(' ');
   // Tổng bề ngang TỐI THIỂU của mọi cột + lề `px-4` — khung bảng nhỏ hơn mức này thì CUỘN NGANG cả tiêu đề lẫn thân bảng (thân có `overflow-x-hidden` nên trước đây cắt mất cột "Thành tiền" ở màn ≤1024px).
-  const lineMinWidth = 180 + 100 + 110 + 130 * 3 + (showLineDiscountCol ? 110 : 0) + 130 + (!readOnly ? 50 : 0) + 32;
+  const lineMinWidth = 130 + 84 + 84 + 104 * 2 + 128 * 2 + (showLineDiscountCol ? 100 : 0) + 120 + (!readOnly ? 44 : 0) + 32;
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
@@ -646,6 +665,7 @@ export function StockReceiptFormPage() {
                 <div role="columnheader" className="py-2.5 text-center">Số lượng</div>
                 <div role="columnheader" className="py-2.5 text-center">Giá vốn</div>
                 <div role="columnheader" className="py-2.5 text-center">Số lô</div>
+                <div role="columnheader" className="py-2.5 text-center">Ngày SX</div>
                 <div role="columnheader" className="py-2.5 text-center">Hạn dùng</div>
                 {showLineDiscountCol && <div role="columnheader" className="py-2.5 text-center">Chiết khấu</div>}
                 <div role="columnheader" className="py-2.5 text-center">Thành tiền</div>
@@ -680,7 +700,7 @@ export function StockReceiptFormPage() {
                           </span>
                           {collapsible && <span className="flex-shrink-0 text-xs font-semibold text-blue-600">· {group.length} lô</span>}
                         </div>
-                        <div role="cell" style={{ gridColumn: `span ${showLineDiscountCol ? 7 : 6}` }} />
+                        <div role="cell" style={{ gridColumn: `span ${showLineDiscountCol ? 8 : 7}` }} />
                         {!readOnly && (
                           <div role="cell" className="text-center">
                             {head.isBatchManaged && (
@@ -752,6 +772,16 @@ export function StockReceiptFormPage() {
                                 onChange={(e) => updateLine(l.key, { batchNo: e.target.value })}
                                 className="w-full rounded-md border border-slate-300 px-1.5 py-1.5 text-center text-sm font-semibold text-slate-900"
                               />
+                            )}
+                          </div>
+                          <div role="cell" className="px-1">
+                            {readOnly ? (
+                              <div className="text-center">{l.manufactureDate ? formatDobDisplay(l.manufactureDate) : '—'}</div>
+                            ) : (
+                              <>
+                                <DateInput id={`manufacture-${l.key}`} value={l.manufactureDate} onChange={(v) => updateLine(l.key, { manufactureDate: v })} dense />
+                                {manufactureIssueOf(l) && <div className="mt-0.5 text-center text-xs font-semibold text-rose-600">{MANUFACTURE_DATE_ISSUE_MESSAGES[manufactureIssueOf(l)!]}</div>}
+                              </>
                             )}
                           </div>
                           <div role="cell" className="px-1">

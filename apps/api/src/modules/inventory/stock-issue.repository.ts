@@ -180,7 +180,7 @@ export class StockIssueRepository {
   findLinesForReturn(tx: Prisma.TransactionClient, tenantId: string, ids: string[]) {
     return tx.stockIssueLine.findMany({
       where: { tenantId, id: { in: ids }, deletedAt: null },
-      include: { issue: { select: { warehouseId: true, status: true } }, batch: { select: { batchNo: true, expiryDate: true } } },
+      include: { issue: { select: { warehouseId: true, status: true } }, batch: { select: { batchNo: true, expiryDate: true, manufactureDate: true } } },
     });
   }
 
@@ -212,7 +212,7 @@ export class StockIssueRepository {
             prescriptionItemId: true,
             drugId: true,
             drug: { select: { name: true, activeIngredient: true, concentration: true, baseUnitCode: true } },
-            batch: { select: { batchNo: true, expiryDate: true } },
+            batch: { select: { batchNo: true, expiryDate: true, manufactureDate: true } },
             prescriptionItem: { select: { doseMorning: true, doseNoon: true, doseAfternoon: true, doseEvening: true, durationDays: true, doseMode: true, singleDose: true, doseUnitName: true, instruction: true } },
           },
         },

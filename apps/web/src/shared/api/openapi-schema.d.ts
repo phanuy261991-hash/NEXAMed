@@ -39213,6 +39213,7 @@ export interface paths {
                             unitCost: number;
                             batchNo?: string | null;
                             expiryDate?: string | null;
+                            manufactureDate?: string | null;
                             /** @enum {string|null} */
                             discountType?: "PERCENT" | "AMOUNT" | null;
                             discountValue?: number | null;
@@ -39282,6 +39283,7 @@ export interface paths {
                                     unitCost: number;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     lineAmount: number;
                                     /** @enum {string|null} */
                                     discountType: "PERCENT" | "AMOUNT" | null;
@@ -39441,6 +39443,7 @@ export interface paths {
                                     unitCost: number;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     lineAmount: number;
                                     /** @enum {string|null} */
                                     discountType: "PERCENT" | "AMOUNT" | null;
@@ -39544,6 +39547,7 @@ export interface paths {
                             unitCost: number;
                             batchNo?: string | null;
                             expiryDate?: string | null;
+                            manufactureDate?: string | null;
                             /** @enum {string|null} */
                             discountType?: "PERCENT" | "AMOUNT" | null;
                             discountValue?: number | null;
@@ -39614,6 +39618,7 @@ export interface paths {
                                     unitCost: number;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     lineAmount: number;
                                     /** @enum {string|null} */
                                     discountType: "PERCENT" | "AMOUNT" | null;
@@ -39777,6 +39782,7 @@ export interface paths {
                                     unitCost: number;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     lineAmount: number;
                                     /** @enum {string|null} */
                                     discountType: "PERCENT" | "AMOUNT" | null;
@@ -39945,6 +39951,7 @@ export interface paths {
                                     unitCost: number;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     lineAmount: number;
                                     /** @enum {string|null} */
                                     discountType: "PERCENT" | "AMOUNT" | null;
@@ -40113,6 +40120,7 @@ export interface paths {
                                     unitCost: number;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     lineAmount: number;
                                     /** @enum {string|null} */
                                     discountType: "PERCENT" | "AMOUNT" | null;
@@ -40490,6 +40498,7 @@ export interface paths {
                                     warehouseId: string;
                                     warehouseName: string;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     quantityOnHand: number;
                                     unitCost: number;
                                     /** @enum {string|null} */
@@ -40579,6 +40588,7 @@ export interface paths {
                                     /** Format: uuid */
                                     warehouseId: string;
                                     warehouseName: string;
+                                    manufactureDate: string | null;
                                     expiryDate: string;
                                     daysUntilExpiry: number;
                                     quantityOnHand: number;
@@ -42473,6 +42483,7 @@ export interface paths {
                             batchId?: string | null;
                             newBatchNo?: string | null;
                             newBatchExpiryDate?: string | null;
+                            newBatchManufactureDate?: string | null;
                             systemQuantitySnapshot: number;
                             countedQuantity: number;
                         }[];
@@ -42517,6 +42528,7 @@ export interface paths {
                                     batchId: string | null;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     isNewBatch: boolean;
                                     systemQuantitySnapshot: number;
                                     countedQuantity: number;
@@ -42651,6 +42663,7 @@ export interface paths {
                                     batchId: string | null;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     isNewBatch: boolean;
                                     systemQuantitySnapshot: number;
                                     countedQuantity: number;
@@ -42737,6 +42750,7 @@ export interface paths {
                             batchId?: string | null;
                             newBatchNo?: string | null;
                             newBatchExpiryDate?: string | null;
+                            newBatchManufactureDate?: string | null;
                             systemQuantitySnapshot: number;
                             countedQuantity: number;
                         }[];
@@ -42782,6 +42796,7 @@ export interface paths {
                                     batchId: string | null;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     isNewBatch: boolean;
                                     systemQuantitySnapshot: number;
                                     countedQuantity: number;
@@ -42921,6 +42936,7 @@ export interface paths {
                                     batchId: string | null;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     isNewBatch: boolean;
                                     systemQuantitySnapshot: number;
                                     countedQuantity: number;
@@ -43064,6 +43080,7 @@ export interface paths {
                                     batchId: string | null;
                                     batchNo: string | null;
                                     expiryDate: string | null;
+                                    manufactureDate: string | null;
                                     isNewBatch: boolean;
                                     systemQuantitySnapshot: number;
                                     countedQuantity: number;

@@ -1,5 +1,6 @@
 import { forwardRef, Injectable, Inject, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
+  checkManufactureDate,
   computeDiscountAmount,
   computeInvoiceDiscount,
   computeUnitConversion,
@@ -12,6 +13,8 @@ import {
   type DoctorDirectoryPort,
   vietnamDayStartUtc,
   vietnamDayEndUtc,
+  getVietnamDateString,
+  MANUFACTURE_DATE_ISSUE_MESSAGES,
 } from '@nexamed/core';
 import type {
   ApproveStockReceiptRequest,
@@ -401,7 +404,7 @@ export class StockReceiptService {
     const issueLines = await this.stockIssueRepository.findLinesForReturn(tx, tenantId, params.lines.map((l) => l.stockIssueLineId));
     const byId = new Map(issueLines.map((l) => [l.id, l]));
 
-    const groups = new Map<string, { warehouseId: string; lineIds: string[]; lines: { drugId: string; quantity: number; unitCost: bigint; batchNo: string | null; expiryDate: Date | null }[] }>();
+    const groups = new Map<string, { warehouseId: string; lineIds: string[]; lines: { drugId: string; quantity: number; unitCost: bigint; batchNo: string | null; expiryDate: Date | null; manufactureDate: Date | null }[] }>();
     for (const requested of params.lines) {
       const issueLine = byId.get(requested.stockIssueLineId);
       if (!issueLine) {
@@ -418,6 +421,7 @@ export class StockReceiptService {
         unitCost: issueLine.unitCost,
         batchNo: issueLine.batch?.batchNo ?? null,
         expiryDate: issueLine.batch?.expiryDate ?? null,
+        manufactureDate: issueLine.batch?.manufactureDate ?? null,
       });
       groups.set(issueLine.issueId, group);
     }
@@ -434,6 +438,7 @@ export class StockReceiptService {
         unitCost: l.unitCost,
         batchNo: l.batchNo,
         expiryDate: l.expiryDate,
+        manufactureDate: l.manufactureDate,
         lineAmount: l.unitCost * BigInt(l.quantity),
         discountType: null,
         discountValue: null,
@@ -579,6 +584,7 @@ export class StockReceiptService {
         if (!line.batchNo) throw new UnprocessableEntityException(`Thuốc/vật tư "${drug.name}" quản lý theo lô — phải nhập Số lô.`);
         const batch = await this.inventoryBatchRepository.findByKey(tx, tenantId, drug.id, receipt.warehouseId, line.batchNo);
         if (batch) {
+          await this.reconcileBatchManufactureDate(tx, tenantId, actorId, drug.name, batch, line.manufactureDate);
           const existingBalance = await this.stockBalanceRepository.findByKey(tx, tenantId, drug.id, receipt.warehouseId, batch.id);
           const newCost = computeWeightedAverageCost(existingBalance?.quantityOnHand ?? 0, batch.unitCost, baseQuantity, baseUnitCost);
           await this.inventoryBatchRepository.updateCost(tx, tenantId, batch.id, actorId, newCost);
@@ -589,6 +595,7 @@ export class StockReceiptService {
             warehouseId: receipt.warehouseId,
             batchNo: line.batchNo,
             expiryDate: line.expiryDate,
+            manufactureDate: line.manufactureDate,
             unitCost: baseUnitCost,
           });
           batchId = created.id;
@@ -820,6 +827,28 @@ export class StockReceiptService {
     }
   }
 
+  /** Lô đã có (#297 GĐ2): lô chưa có Ngày sản xuất mà dòng nhập có → điền vào; lô đã có mà khác ngày → chặn, báo rõ để sửa. */
+  private async reconcileBatchManufactureDate(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorId: string,
+    drugName: string,
+    batch: { id: string; batchNo: string; manufactureDate: Date | null },
+    incoming: Date | null,
+  ): Promise<void> {
+    if (!incoming) return;
+    if (!batch.manufactureDate) {
+      await this.inventoryBatchRepository.fillManufactureDate(tx, tenantId, batch.id, actorId, incoming);
+      return;
+    }
+    if (batch.manufactureDate.getTime() !== incoming.getTime()) {
+      const display = (d: Date) => d.toISOString().slice(0, 10).split('-').reverse().join('/');
+      throw new UnprocessableEntityException(
+        `Lô "${batch.batchNo}" của "${drugName}" đã có Ngày sản xuất ${display(batch.manufactureDate)}, khác ${display(incoming)} trên phiếu. Sửa lại Ngày sản xuất hoặc Số lô.`,
+      );
+    }
+  }
+
   private async buildLineData(tx: Prisma.TransactionClient, tenantId: string, lines: CreateStockReceiptRequest['lines']): Promise<StockReceiptLineData[]> {
     const result: StockReceiptLineData[] = [];
     const drugCache = new Map<string, DrugWithDetails>();
@@ -836,6 +865,9 @@ export class StockReceiptService {
       if (drug.isBatchManaged && !line.batchNo) {
         throw new UnprocessableEntityException(`Thuốc/vật tư "${drug.name}" quản lý theo lô — phải nhập Số lô.`);
       }
+      // Ngày sản xuất (#297 GĐ2): không sau hôm nay (giờ Việt Nam), phải trước hạn dùng — chặn từ lúc lập Nháp.
+      const manufactureIssue = checkManufactureDate(line.manufactureDate, line.expiryDate, getVietnamDateString());
+      if (manufactureIssue) throw new UnprocessableEntityException(`"${drug.name}": ${MANUFACTURE_DATE_ISSUE_MESSAGES[manufactureIssue]}`);
       result.push({
         drugId: line.drugId,
         unitCode: line.unitCode,
@@ -843,6 +875,7 @@ export class StockReceiptService {
         unitCost: BigInt(line.unitCost),
         batchNo: line.batchNo ?? null,
         expiryDate: line.expiryDate ? new Date(`${line.expiryDate}T00:00:00Z`) : null,
+        manufactureDate: line.manufactureDate ? new Date(`${line.manufactureDate}T00:00:00Z`) : null,
         lineAmount: BigInt(line.quantity) * BigInt(line.unitCost),
         discountType: (line.discountType ?? null) as DiscountType | null,
         discountValue: line.discountValue != null ? BigInt(line.discountValue) : null,
@@ -956,6 +989,7 @@ export class StockReceiptService {
         unitCost: Number(line.unitCost),
         batchNo: line.batchNo,
         expiryDate: line.expiryDate ? line.expiryDate.toISOString().slice(0, 10) : null,
+        manufactureDate: line.manufactureDate ? line.manufactureDate.toISOString().slice(0, 10) : null,
         lineAmount: Number(line.lineAmount),
         discountType: line.discountType,
         discountValue: line.discountValue !== null ? Number(line.discountValue) : null,

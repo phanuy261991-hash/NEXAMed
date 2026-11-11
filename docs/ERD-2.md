@@ -337,3 +337,13 @@ Migration `20261111100000_reference_catalog_supply_group` + `20261111100100_drug
 | `drug.internal_use_only` | "Chỉ dùng nội bộ, không bán" | `BOOLEAN NOT NULL DEFAULT false`, dùng chung Thuốc và Vật tư. Bật: không bắt `default_sell_price`, `unit_pricing_enabled` bị tắt, ẩn khỏi danh sách bán/phát/kê đơn (`sellableOnly`), máy chủ từ chối kê (409 `DRUG_INTERNAL_USE_ONLY`). Mặt hàng cũ mặc định false nên không đổi hành vi |
 
 `drug.registration_number`, `country_of_origin`, `storage_conditions`, `storage_location`, `barcode`, `national_code` đã có từ trước — nay dùng được cho cả vật tư (Số đăng ký bắt buộc khi tạo mới vật tư).
+
+**GĐ2 — Ngày sản xuất của lô (v1.95, `docs/DECISIONS.md` #297 bổ sung 1)**: migration `20261111120000_batch_manufacture_date`. Lô/dòng phiếu vẫn theo chi nhánh qua kho; Ngày SX là cột của lô nên không thêm `branch_id`.
+
+| Cột | Vai trò | Chi tiết |
+|---|---|---|
+| `stock_receipt_line.manufacture_date` | Ngày SX trên dòng phiếu nhập | DATE NULL, cả Thuốc lẫn Vật tư. CHECK `stock_receipt_line_manufacture_before_expiry_chk`: `manufacture_date IS NULL OR expiry_date IS NULL OR manufacture_date < expiry_date` |
+| `inventory_batch.manufacture_date` | Ngày SX của lô | DATE NULL. CHECK `inventory_batch_manufacture_before_expiry_chk` như trên. Lô tạo từ dòng phiếu đầu tiên; nhập lại cùng `batch_no` mà khác ngày → máy chủ chặn lúc Duyệt; lô chưa có ngày mà dòng nhập có → điền (chỉ khi đang trống) |
+| `stock_count_line.new_batch_manufacture_date` | Ngày SX của lô MỚI phát hiện lúc kiểm kê | DATE NULL, chỉ có ý nghĩa cùng `new_batch_no`. CHECK `stock_count_line_new_batch_manufacture_before_expiry_chk` |
+
+"Không sau hôm nay (giờ Việt Nam)" kiểm ở máy chủ (`checkManufactureDate`), không ở CSDL vì phụ thuộc ngày hiện tại. Điều chuyển kho/trả hàng từ phiếu xuất kế thừa Ngày SX từ lô gốc khi tạo phiếu nhập tự sinh.

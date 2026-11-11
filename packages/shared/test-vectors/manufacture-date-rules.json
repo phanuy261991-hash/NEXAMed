@@ -1,0 +1,14 @@
+{
+  "_doc": "Bộ ca DÙNG CHUNG cho luật kiểm Ngày sản xuất của lô (docs/DECISIONS.md #297 GĐ2): bản core (checkManufactureDate) và bản web (manufacture-date.ts) phải cho cùng kết quả. Ngày dạng yyyy-mm-dd, today = hôm nay theo giờ Việt Nam.",
+  "cases": [
+    { "name": "không nhập Ngày SX", "manufactureDate": null, "expiryDate": "2027-01-01", "today": "2026-11-11", "expected": null },
+    { "name": "Ngày SX đúng hôm nay", "manufactureDate": "2026-11-11", "expiryDate": "2029-11-10", "today": "2026-11-11", "expected": null },
+    { "name": "Ngày SX ngày mai", "manufactureDate": "2026-11-12", "expiryDate": "2029-11-10", "today": "2026-11-11", "expected": "AFTER_TODAY" },
+    { "name": "Ngày SX trước hạn dùng", "manufactureDate": "2026-09-02", "expiryDate": "2029-09-01", "today": "2026-11-11", "expected": null },
+    { "name": "Ngày SX bằng hạn dùng", "manufactureDate": "2026-09-02", "expiryDate": "2026-09-02", "today": "2026-11-11", "expected": "NOT_BEFORE_EXPIRY" },
+    { "name": "Ngày SX sau hạn dùng", "manufactureDate": "2026-09-02", "expiryDate": "2026-06-01", "today": "2026-11-11", "expected": "NOT_BEFORE_EXPIRY" },
+    { "name": "có Ngày SX, không có hạn dùng", "manufactureDate": "2026-09-02", "expiryDate": null, "today": "2026-11-11", "expected": null },
+    { "name": "vừa sau hôm nay vừa sau hạn dùng: báo sau hôm nay trước", "manufactureDate": "2027-05-01", "expiryDate": "2026-12-01", "today": "2026-11-11", "expected": "AFTER_TODAY" },
+    { "name": "không có cả hai", "manufactureDate": null, "expiryDate": null, "today": "2026-11-11", "expected": null }
+  ]
+}

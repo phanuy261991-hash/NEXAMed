@@ -85,7 +85,7 @@ export function StockReceiptPrintView({
               <td className="py-1.5 font-semibold">
                 {line.drugName} <span className="font-normal text-slate-500">({line.drugCode})</span>
               </td>
-              <td className="py-1.5">{line.batchNo ? `${line.batchNo}${line.expiryDate ? ` · HSD ${line.expiryDate}` : ''}` : '—'}</td>
+              <td className="py-1.5">{line.batchNo ? `${line.batchNo}${line.manufactureDate ? ` · NSX ${line.manufactureDate}` : ''}${line.expiryDate ? ` · HSD ${line.expiryDate}` : ''}` : '—'}</td>
               <td className="py-1.5 text-center">{unitLabel(unitNameByCode, line.unitCode)}</td>
               <td className="py-1.5 text-right">{line.quantity}</td>
               <td className="py-1.5 text-right">{formatVnd(line.unitCost)}</td>

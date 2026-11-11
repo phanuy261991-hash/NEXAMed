@@ -32,6 +32,12 @@ export const stockReceiptLineInputSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .nullable()
     .optional(),
+  /** Ngày sản xuất (#297 GĐ2), `yyyy-mm-dd`, tuỳ chọn — Service kiểm: không sau hôm nay, phải trước hạn dùng (`checkManufactureDate`). */
+  manufactureDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
   /** Chiết khấu "Từng dòng" (Kho Thuốc GĐ4, "Phiếu nhập kho mở rộng", docs/DECISIONS.md #170) — CHỈ
    * có ý nghĩa khi phiếu cha `receiptType='PURCHASE'` VÀ không dòng nào khác đồng thời dùng chiết
    * khấu cấp header (Service kiểm mutual-exclusion, đúng tinh thần `computeInvoiceDiscount()`). */
@@ -171,6 +177,7 @@ export const stockReceiptLineSchema = z.object({
   unitCost: z.number().int(),
   batchNo: z.string().nullable(),
   expiryDate: z.string().nullable(),
+  manufactureDate: z.string().nullable(),
   lineAmount: z.number().int(),
   /** Chiết khấu "Từng dòng" (Kho Thuốc GĐ4, docs/DECISIONS.md #170) — `discountType` null khi dòng
    * không chiết khấu (kể cả khi phiếu dùng chế độ "Toàn phiếu"). `discountAmount` đã tính sẵn. */
@@ -327,6 +334,7 @@ export const drugBatchBalanceItemSchema = z.object({
   warehouseId: z.string().uuid(),
   warehouseName: z.string(),
   expiryDate: z.string().nullable(),
+  manufactureDate: z.string().nullable(),
   quantityOnHand: z.number().int(),
   unitCost: z.number().int(),
   // `null` = còn hạn ngoài ngưỡng cảnh báo (không cần hiện gì) — cùng ngưỡng/logic với "Cảnh báo
@@ -415,6 +423,7 @@ export const stockExpiryWarningItemSchema = z.object({
   drugName: z.string(),
   warehouseId: z.string().uuid(),
   warehouseName: z.string(),
+  manufactureDate: z.string().nullable(),
   expiryDate: z.string(),
   daysUntilExpiry: z.number().int(),
   quantityOnHand: z.number().int(),
@@ -797,6 +806,12 @@ export const stockCountLineInputSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .nullable()
     .optional(),
+  /** Ngày sản xuất của lô mới (#297 GĐ2), chỉ có ý nghĩa cùng `newBatchNo`. */
+  newBatchManufactureDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
   systemQuantitySnapshot: z.number().int().nonnegative(),
   countedQuantity: z.number().int().nonnegative(),
 });
@@ -840,6 +855,7 @@ export const stockCountLineSchema = z.object({
   /** Số lô hiển thị — của lô ĐÃ có (`batchId`) hoặc `newBatchNo` (lô mới), tuỳ trường hợp nào áp dụng. */
   batchNo: z.string().nullable(),
   expiryDate: z.string().nullable(),
+  manufactureDate: z.string().nullable(),
   isNewBatch: z.boolean(),
   systemQuantitySnapshot: z.number().int(),
   countedQuantity: z.number().int(),

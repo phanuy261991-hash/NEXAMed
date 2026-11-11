@@ -759,6 +759,7 @@ function DrugBatchBalanceTab({ drugId }: { drugId: string }) {
             <tr className="border-b-2 border-blue-600 bg-slate-100 text-[11px] font-semibold uppercase text-slate-800">
               <th className="px-3 py-2 text-left">Số lô</th>
               <th className="px-3 py-2 text-center">Kho</th>
+              <th className="px-3 py-2 text-center">NSX</th>
               <th className="px-3 py-2 text-center">Hạn dùng</th>
               <th className="px-3 py-2 text-center">Tồn</th>
             </tr>
@@ -768,6 +769,7 @@ function DrugBatchBalanceTab({ drugId }: { drugId: string }) {
               <tr key={b.batchId}>
                 <td className="px-3 py-2 font-semibold text-slate-800">{b.batchNo}</td>
                 <td className="px-3 py-2 text-center font-medium text-slate-600">{b.warehouseName}</td>
+                <td className="px-3 py-2 text-center font-medium text-slate-600">{b.manufactureDate ? formatDobDisplay(b.manufactureDate) : '—'}</td>
                 <td className={`px-3 py-2 text-center font-semibold ${b.expiryStatus === 'EXPIRED' ? 'text-rose-600' : b.expiryStatus === 'EXPIRING_SOON' ? 'text-amber-600' : 'font-medium text-slate-600'}`}>
                   {b.expiryDate ? formatDobDisplay(b.expiryDate) : '—'}
                   {b.expiryStatus === 'EXPIRED' && ` · đã quá ${Math.abs(b.daysUntilExpiry!)} ngày`}
@@ -779,7 +781,7 @@ function DrugBatchBalanceTab({ drugId }: { drugId: string }) {
           </tbody>
           <tfoot>
             <tr className="border-t border-slate-200 bg-slate-50">
-              <td className="px-3 py-2 font-semibold text-slate-800" colSpan={3}>
+              <td className="px-3 py-2 font-semibold text-slate-800" colSpan={4}>
                 Tổng tồn
               </td>
               <td className="px-3 py-2 text-center text-base font-semibold text-slate-900">{query.data!.totalQuantityOnHand.toLocaleString('vi-VN')}</td>
