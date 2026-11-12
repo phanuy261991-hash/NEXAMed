@@ -78,6 +78,8 @@ export const MODULE_LABELS: Record<string, string> = {
   stock_count: 'Kiểm kê kho',
   // Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170) — thêm nhãn NGAY từ đầu.
   stock_transfer: 'Điều chuyển kho',
+  // Yêu cầu cấp hàng (docs/DECISIONS.md #298) — thêm nhãn NGAY từ đầu.
+  stock_request: 'Yêu cầu cấp hàng',
   // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — thêm nhãn NGAY từ đầu, tránh lặp lại lỗ
   // hổng đã ghi chú nhiều lần ở trên.
   supplier_debt: 'Công nợ nhà cung cấp',

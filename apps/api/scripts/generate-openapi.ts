@@ -212,6 +212,7 @@ import {
   insuranceStatusSchema,
   followUpFeatureStatusSchema,
   labPartnerFeatureStatusSchema,
+  stockRequestFeatureStatusSchema,
   listInsuranceCardsResponseSchema,
   saveInsuranceCardResponseSchema,
   updateInsuranceCardRequestSchema,
@@ -432,6 +433,24 @@ import {
   listCashAccountsQuerySchema,
   clinicPrintHeaderQuerySchema,
   stockTransferDetailSchema,
+  addStockRequestLinesRequestSchema,
+  allocateStockRequestRequestSchema,
+  cancelStockRequestRequestSchema,
+  createStockRequestRequestSchema,
+  escalateStockRequestRequestSchema,
+  escalateStockRequestResponseSchema,
+  getStockRequestLowStockQuerySchema,
+  getStockRequestLowStockResponseSchema,
+  getStockRequestOptionsResponseSchema,
+  getStockRequestPendingCountsResponseSchema,
+  listStockRequestsQuerySchema,
+  listStockRequestsResponseSchema,
+  rejectStockRequestRequestSchema,
+  stockRequestDetailSchema,
+  updateStockRequestNoteRequestSchema,
+  updateStockRequestRequestSchema,
+  versionedStockRequestRequestSchema,
+  withdrawStockRequestLinesRequestSchema,
   getStockLedgerReportQuerySchema,
   getStockLedgerReportResponseSchema,
   recordSupplierDebtOpeningBalanceRequestSchema,
@@ -3389,6 +3408,18 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/clinic-settings/stock-request-enabled',
+  tags: ['clinic'],
+  summary: '"Dùng yêu cầu cấp hàng" (#298) — chiếu tối thiểu tự-phục vụ, mọi user đã đăng nhập đọc được (không cần clinic_config.read)',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestFeatureStatusSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+  },
+});
+
 const insuranceCardParams = z.object({ patientId: z.string().uuid(), cardId: z.string().uuid() });
 
 registry.registerPath({
@@ -6030,6 +6061,278 @@ registry.registerPath({
     403: errorResponse('Không có quyền stock_count.approve'),
     404: errorResponse('Không tìm thấy'),
     409: errorResponse('version không khớp, hoặc phiếu không còn ở trạng thái Nháp (STOCK_COUNT_NOT_DRAFT)'),
+  },
+});
+
+// ============ Yêu cầu cấp hàng (docs/DECISIONS.md #298) ============
+const stockRequestIdParams = z.object({ id: z.string().uuid() });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/requests',
+  tags: ['inventory'],
+  summary: 'Danh sách Phiếu yêu cầu cấp hàng — view mine (bên xin) / incoming (kho cấp), cursor, lọc, dải đếm theo trạng thái',
+  security: [{ bearerAuth: [] }],
+  request: { query: listStockRequestsQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(listStockRequestsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.read'),
+    409: errorResponse('Công tắc "Dùng yêu cầu cấp hàng" đang tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/requests/pending-counts',
+  tags: ['inventory'],
+  summary: 'Chấm số trên menu: phiếu chờ tiếp nhận + phiếu bên xin vừa cập nhật',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(getStockRequestPendingCountsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.read'),
+    409: errorResponse('Công tắc "Dùng yêu cầu cấp hàng" đang tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/requests/options',
+  tags: ['inventory'],
+  summary: 'Các kho được phép xin kèm kho cấp suy ra theo cấp',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: jsonResponse('Thành công', envelope(getStockRequestOptionsResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.create'),
+    409: errorResponse('Công tắc "Dùng yêu cầu cấp hàng" đang tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/requests/low-stock',
+  tags: ['inventory'],
+  summary: 'Mặt hàng dưới mức tồn tối thiểu của một kho (gợi ý số xin)',
+  security: [{ bearerAuth: [] }],
+  request: { query: getStockRequestLowStockQuerySchema },
+  responses: {
+    200: jsonResponse('Thành công', envelope(getStockRequestLowStockResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.create'),
+    409: errorResponse('Công tắc "Dùng yêu cầu cấp hàng" đang tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/inventory/requests/{id}',
+  tags: ['inventory'],
+  summary: 'Chi tiết phiếu yêu cầu cấp hàng — dòng, diễn biến, phiếu điều chuyển liên kết',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.read'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('Công tắc "Dùng yêu cầu cấp hàng" đang tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests',
+  tags: ['inventory'],
+  summary: 'Lập phiếu yêu cầu cấp hàng (submit=true gửi luôn, false lưu nháp); kho cấp do máy chủ suy ra theo cấp',
+  security: [{ bearerAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: createStockRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.create'),
+    409: errorResponse('Công tắc "Dùng yêu cầu cấp hàng" đang tắt (STOCK_REQUEST_DISABLED)'),
+    422: errorResponse('Kho này không có kho cấp trên (STOCK_REQUEST_NO_SUPPLIER) hoặc mặt hàng không hợp lệ'),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/inventory/requests/{id}',
+  tags: ['inventory'],
+  summary: 'Sửa tự do khi còn Nháp/Đã gửi — thay toàn bộ dòng',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams, body: { content: { 'application/json': { schema: updateStockRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.create'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái phiếu không cho phép (STOCK_REQUEST_INVALID_STATE) hoặc công tắc tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/submit',
+  tags: ['inventory'],
+  summary: 'Gửi bản nháp',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams, body: { content: { 'application/json': { schema: versionedStockRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.create'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái phiếu không cho phép (STOCK_REQUEST_INVALID_STATE) hoặc công tắc tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/cancel',
+  tags: ['inventory'],
+  summary: 'Huỷ phiếu khi kho cấp chưa tiếp nhận (lý do bắt buộc)',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams, body: { content: { 'application/json': { schema: cancelStockRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.create'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái phiếu không cho phép (STOCK_REQUEST_INVALID_STATE) hoặc công tắc tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/note',
+  tags: ['inventory'],
+  summary: 'Nhắn bổ sung / đổi mức khẩn / đổi ngày cần',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams, body: { content: { 'application/json': { schema: updateStockRequestNoteRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.create'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái phiếu không cho phép (STOCK_REQUEST_INVALID_STATE) hoặc công tắc tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/lines',
+  tags: ['inventory'],
+  summary: 'Thêm mặt hàng vào phiếu đã gửi/đã tiếp nhận mà chưa cấp dòng nào (kho cấp được báo)',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams, body: { content: { 'application/json': { schema: addStockRequestLinesRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.create'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái phiếu không cho phép (STOCK_REQUEST_INVALID_STATE) hoặc công tắc tắt (STOCK_REQUEST_DISABLED)'),
+    422: errorResponse('Mặt hàng đã nằm trên phiếu hoặc không hợp lệ'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/withdraw-lines',
+  tags: ['inventory'],
+  summary: 'Rút dòng chưa có hàng (lý do bắt buộc)',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams, body: { content: { 'application/json': { schema: withdrawStockRequestLinesRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.create'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái phiếu không cho phép (STOCK_REQUEST_INVALID_STATE) hoặc công tắc tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/accept',
+  tags: ['inventory'],
+  summary: 'Kho cấp tiếp nhận phiếu',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams, body: { content: { 'application/json': { schema: versionedStockRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.approve'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái phiếu không cho phép (STOCK_REQUEST_INVALID_STATE) hoặc công tắc tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/reject',
+  tags: ['inventory'],
+  summary: 'Kho cấp từ chối cả phiếu (lý do bắt buộc)',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams, body: { content: { 'application/json': { schema: rejectStockRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.approve'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái phiếu không cho phép (STOCK_REQUEST_INVALID_STATE) hoặc công tắc tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/acknowledge-update',
+  tags: ['inventory'],
+  summary: 'Kho cấp bấm "Đã xem cập nhật"',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.approve'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('Công tắc "Dùng yêu cầu cấp hàng" đang tắt (STOCK_REQUEST_DISABLED)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/allocate',
+  tags: ['inventory'],
+  summary: '"Chuyển thành phiếu điều chuyển" / "Cấp tiếp": cấp số đã chọn thành một phiếu điều chuyển nháp và ghi quyết định phần còn thiếu (chờ hàng về / từ chối, lý do bắt buộc)',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams, body: { content: { 'application/json': { schema: allocateStockRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(stockRequestDetailSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.approve'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái phiếu không cho phép (STOCK_REQUEST_INVALID_STATE) hoặc công tắc tắt (STOCK_REQUEST_DISABLED)'),
+    422: errorResponse('Số cấp vượt tồn (STOCK_REQUEST_INSUFFICIENT_STOCK) hoặc quyết định không hợp lệ (STOCK_REQUEST_ALLOCATION_INVALID)'),
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/inventory/requests/{id}/escalate',
+  tags: ['inventory'],
+  summary: '"Xin phần thiếu" lên kho cấp trên — tạo phiếu con, dòng gốc chuyển Chờ hàng về',
+  security: [{ bearerAuth: [] }],
+  request: { params: stockRequestIdParams, body: { content: { 'application/json': { schema: escalateStockRequestRequestSchema } } } },
+  responses: {
+    200: jsonResponse('Thành công', envelope(escalateStockRequestResponseSchema)),
+    401: errorResponse('Thiếu hoặc sai access token'),
+    403: errorResponse('Không có quyền stock_request.approve'),
+    404: errorResponse('Không tìm thấy (không tồn tại, thuộc tenant/chi nhánh khác, hoặc ngoài Khoa/Phòng)'),
+    409: errorResponse('version không khớp (CONCURRENT_MODIFICATION), trạng thái phiếu không cho phép (STOCK_REQUEST_INVALID_STATE) hoặc công tắc tắt (STOCK_REQUEST_DISABLED)'),
+    422: errorResponse('Không có kho cấp trên (STOCK_REQUEST_NO_SUPPLIER) hoặc dòng không còn phần thiếu'),
   },
 });
 

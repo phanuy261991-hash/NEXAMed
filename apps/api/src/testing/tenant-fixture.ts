@@ -137,6 +137,12 @@ export async function createTwoTenantFixture(prisma: PrismaClient, namePrefix = 
       // này phải xoá SAU `stock_receipt`/`stock_issue` — cả hai đã xoá xong ở trên.
       await prisma.stockCount.deleteMany({ where: { tenantId: { in: tenantIds } } });
       await prisma.stockTransfer.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      // Yêu cầu cấp hàng (#298): `stock_transfer.request_id`/`stock_transfer_line.request_line_id` trỏ về đây nên xoá SAU phiếu điều chuyển; phiếu con trỏ phiếu gốc
+      // (`parent_request_id`, FK RESTRICT) và dòng chờ trỏ phiếu con (`wait_child_request_id`) nên gỡ liên kết trước khi xoá.
+      await prisma.stockRequestEvent.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.stockRequestLine.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await prisma.stockRequest.updateMany({ where: { tenantId: { in: tenantIds } }, data: { parentRequestId: null } });
+      await prisma.stockRequest.deleteMany({ where: { tenantId: { in: tenantIds } } });
       // cash_voucher/cash_account ("Thu chi tại quầy", Sổ quỹ & Thu chi GĐ1) — cash_voucher tham
       // chiếu CẢ cash_account LẪN cashier_shift (FK RESTRICT), phải xoá TRƯỚC CẢ HAI. payment cũng
       // tham chiếu cash_account (đã xoá ở trên rồi).

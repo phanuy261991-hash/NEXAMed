@@ -132,6 +132,7 @@ describe('markNoShowForAllTenants — S5-07, APP-05', () => {
       getFollowUpEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getDoctorDashboardMoneyEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getLabPartnerEnabled: () => Promise.reject(new Error('không dùng trong test này')),
+      getStockRequestEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getIcd10SuggestionLearningEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getParaclinicalBeforePaymentEnabled: () => Promise.reject(new Error('không dùng trong test này')),
       getSpecimenScanRequired: () => Promise.reject(new Error('không dùng trong test này')),

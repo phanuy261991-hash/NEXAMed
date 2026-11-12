@@ -230,6 +230,9 @@ const DOMAIN_ERROR_STATUS: Record<string, number> = {
   STOCK_TRANSFER_NOT_IN_TRANSIT: HttpStatus.CONFLICT,
   STOCK_TRANSFER_NOT_VARIANCE_PENDING: HttpStatus.CONFLICT,
   STOCK_TRANSFER_NOT_RETURNING: HttpStatus.CONFLICT,
+  // Yêu cầu cấp hàng (#298) — công tắc tắt / trạng thái phiếu không cho phép thao tác là xung đột trạng thái, không phải lỗi input; không có kho cấp trên, thiếu tồn, số cấp sai dùng mặc định 422.
+  STOCK_REQUEST_DISABLED: HttpStatus.CONFLICT,
+  STOCK_REQUEST_INVALID_STATE: HttpStatus.CONFLICT,
   // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182) — NCC đã có bút toán rồi (Q7: chỉ khai nợ
   // đầu kỳ được 1 lần) là xung đột với trạng thái hiện có, không phải lỗi input.
   SUPPLIER_DEBT_OPENING_BALANCE_ALREADY_EXISTS: HttpStatus.CONFLICT,

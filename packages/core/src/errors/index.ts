@@ -32,3 +32,4 @@ export * from './lab-partner-errors';
 export * from './platform-errors';
 export * from './idempotency-errors';
 export * from './encryption-key-errors';
+export * from './stock-request-errors';

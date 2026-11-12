@@ -32,6 +32,11 @@ import { StockBalanceExportService } from './stock-balance-export.service';
 import { ServiceConsumptionController } from './service-consumption.controller';
 import { ServiceConsumptionService } from './service-consumption.service';
 import { ServiceConsumptionRepository } from './service-consumption.repository';
+import { StockRequestController } from './stock-request.controller';
+import { StockRequestService } from './stock-request.service';
+import { StockRequestRepository } from './stock-request.repository';
+import { StockRequestSyncService } from './stock-request-sync.service';
+import { StockRequestExportService } from './stock-request-export.service';
 
 /**
  * Kho Thuốc & Vật tư y tế — Giai đoạn 2 (Nhập kho & tồn theo lô, docs/DECISIONS.md #146). Module
@@ -97,6 +102,7 @@ import { ServiceConsumptionRepository } from './service-consumption.repository';
     StockIssueController,
     StockCountController,
     StockTransferController,
+    StockRequestController,
     StockLedgerReportController,
     ServiceConsumptionController,
   ],
@@ -115,6 +121,11 @@ import { ServiceConsumptionRepository } from './service-consumption.repository';
     StockCountRepository,
     StockTransferService,
     StockTransferRepository,
+    // "Yêu cầu cấp hàng" theo cấp (docs/DECISIONS.md #298) — CÙNG module vận hành kho; hàng đi bằng `StockTransferRepository` (phiếu điều chuyển nháp tự tạo).
+    StockRequestService,
+    StockRequestRepository,
+    StockRequestSyncService,
+    StockRequestExportService,
     StockLedgerReportService,
     StockLedgerReportExportService,
     ServiceConsumptionService,

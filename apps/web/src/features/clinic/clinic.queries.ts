@@ -36,6 +36,7 @@ import {
   getInsuranceStatus,
   getFollowUpFeatureStatus,
   getLabPartnerFeatureStatus,
+  getStockRequestFeatureStatus,
   getAllowStaffSelfScheduleStatus,
   getBackupConfig,
   getBackupStatus,
@@ -307,6 +308,19 @@ export function useLabPartnerEnabledQuery() {
   return useQuery({
     queryKey: queryKey(tenantId, 'clinic', 'lab-partner-enabled'),
     queryFn: getLabPartnerFeatureStatus,
+    staleTime: STALE_REFERENCE_MS,
+  });
+}
+
+/**
+ * "Dùng yêu cầu cấp hàng" (#298) — menu và trang "Yêu cầu cấp hàng" đọc qua hook tự-phục vụ này (KHÔNG dùng `useClinicSettingsQuery()`, cần `clinic_config.read`).
+ * Máy chủ vẫn là nơi chặn thật (409 STOCK_REQUEST_DISABLED); web chỉ ẩn cho gọn.
+ */
+export function useStockRequestEnabledQuery() {
+  const { tenantId } = useAppConfig();
+  return useQuery({
+    queryKey: queryKey(tenantId, 'clinic', 'stock-request-enabled'),
+    queryFn: getStockRequestFeatureStatus,
     staleTime: STALE_REFERENCE_MS,
   });
 }

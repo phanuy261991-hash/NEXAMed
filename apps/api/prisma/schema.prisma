@@ -186,6 +186,10 @@ model Tenant {
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Điều chuyển kho.
   stockTransfers              StockTransfer[]
   stockTransferLines          StockTransferLine[]
+  // Yêu cầu cấp hàng theo cấp (docs/DECISIONS.md #298).
+  stockRequests               StockRequest[]
+  stockRequestLines           StockRequestLine[]
+  stockRequestEvents          StockRequestEvent[]
 
   @@map("tenant")
 }
@@ -2052,6 +2056,7 @@ model Drug {
   // Kho Thuốc GĐ4 (docs/DECISIONS.md #170) — Kiểm kê + Điều chuyển kho.
   stockCountLines           StockCountLine[]
   stockTransferLines        StockTransferLine[]
+  stockRequestLines         StockRequestLine[]
   priceListItems            PriceListItem[]
 
   @@unique([tenantId, id])
@@ -2243,6 +2248,9 @@ model Warehouse {
   // là đích của CẢ HAI cột `fromWarehouseId`/`toWarehouseId` trên cùng StockTransfer.
   stockTransfersFrom StockTransfer[]  @relation("StockTransferFromWarehouse")
   stockTransfersTo   StockTransfer[]  @relation("StockTransferToWarehouse")
+  // Yêu cầu cấp hàng (#298) — 2 quan hệ RIÊNG vì kho là đích của cả kho xin lẫn kho cấp.
+  stockRequestsAsRequester StockRequest[] @relation("StockRequestRequesterWarehouse")
+  stockRequestsAsSupplier  StockRequest[] @relation("StockRequestSupplierWarehouse")
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -2849,6 +2857,8 @@ model StockTransfer {
   varianceResolvedBy      String?             @map("variance_resolved_by") @db.Uuid
   varianceResolvedAt      DateTime?           @map("variance_resolved_at") @db.Timestamptz(6)
   varianceResolutionNote  String?             @map("variance_resolution_note")
+  // Yêu cầu cấp hàng (#298) — phiếu sinh từ "Chuyển thành phiếu điều chuyển"; NULL với phiếu lập tay.
+  requestId               String?             @map("request_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2862,6 +2872,7 @@ model StockTransfer {
   tenant            Tenant              @relation(fields: [tenantId], references: [id])
   fromWarehouse     Warehouse           @relation("StockTransferFromWarehouse", fields: [tenantId, fromWarehouseId], references: [tenantId, id])
   toWarehouse       Warehouse           @relation("StockTransferToWarehouse", fields: [tenantId, toWarehouseId], references: [tenantId, id])
+  request           StockRequest?       @relation(fields: [tenantId, requestId], references: [tenantId, id])
   lines             StockTransferLine[]
   // Chứng từ TỰ SINH bởi chính phiếu điều chuyển này — quan hệ NGƯỢC từ `stockReceipt.transferId`/
   // `stockIssue.transferId` (đúng khuôn `StockCount.generatedReceipts`/`generatedIssues`), CHỈ để
@@ -2914,6 +2925,8 @@ model StockTransferLine {
   varianceResolution   String? @map("variance_resolution")
   quantityReturnedBack Int?    @map("quantity_returned_back")
   returnVarianceNote   String? @map("return_variance_note")
+  // Yêu cầu cấp hàng (#298) — dòng yêu cầu mà dòng điều chuyển này đang đáp ứng (nhiều dòng lô cùng một dòng yêu cầu).
+  requestLineId        String? @map("request_line_id") @db.Uuid
 
   // 8 cột bắt buộc
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2929,9 +2942,163 @@ model StockTransferLine {
   drug     Drug            @relation(fields: [tenantId, drugId], references: [tenantId, id])
   // Composite FK (tenant_id, batch_id) -> inventory_batch(tenant_id, id), NULLABLE.
   batch    InventoryBatch? @relation(fields: [tenantId, batchId], references: [tenantId, id])
+  requestLine StockRequestLine? @relation(fields: [tenantId, requestLineId], references: [tenantId, id])
 
   @@unique([tenantId, id])
   @@map("stock_transfer_line")
+}
+
+// "Phiếu yêu cầu cấp hàng" (docs/DECISIONS.md #298, mockup chủ dự án duyệt 12/11/2026). Kho xin (phòng ban hoặc chi nhánh phụ)
+// xin hàng từ kho cấp cấp trên (suy ra theo cấp, không cho chọn tuỳ ý). Chi nhánh KẾ THỪA qua kho xin/kho cấp — không có cột
+// `branch_id` (đúng khuôn `stock_transfer`, #233). Số "đã cấp"/"đã nhận" suy ra từ dòng `stock_transfer_line.request_line_id`,
+// KHÔNG lưu trùng ở đây.
+model StockRequest {
+  id                    String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String                 @map("tenant_id") @db.Uuid
+  requestNo             String                 @map("request_no")
+  requestingWarehouseId String                 @map("requesting_warehouse_id") @db.Uuid
+  supplyingWarehouseId  String                 @map("supplying_warehouse_id") @db.Uuid
+  status                StockRequestStatus     @default(DRAFT)
+  priority              StockRequestPriority   @default(NORMAL)
+  neededBy              DateTime?              @map("needed_by") @db.Date
+  note                  String?
+  // Chuỗi xin lên: "Xin phần thiếu từ chi nhánh chính" tạo phiếu con trỏ về phiếu gốc.
+  parentRequestId       String?                @map("parent_request_id") @db.Uuid
+  submittedAt           DateTime?              @map("submitted_at") @db.Timestamptz(6)
+  submittedBy           String?                @map("submitted_by") @db.Uuid
+  acceptedAt            DateTime?              @map("accepted_at") @db.Timestamptz(6)
+  acceptedBy            String?                @map("accepted_by") @db.Uuid
+  completedAt           DateTime?              @map("completed_at") @db.Timestamptz(6)
+  rejectionReason       String?                @map("rejection_reason")
+  rejectedAt            DateTime?              @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy            String?                @map("rejected_by") @db.Uuid
+  cancellationReason    String?                @map("cancellation_reason")
+  cancelledAt           DateTime?              @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy           String?                @map("cancelled_by") @db.Uuid
+  // Bên xin vừa thêm/rút dòng SAU khi đã được tiếp nhận — kho cấp thấy nhãn "Có cập nhật mới" tới khi bấm "Đã xem cập nhật".
+  supplierUpdatePending Boolean                @default(false) @map("supplier_update_pending")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant              Tenant              @relation(fields: [tenantId], references: [id])
+  requestingWarehouse Warehouse           @relation("StockRequestRequesterWarehouse", fields: [tenantId, requestingWarehouseId], references: [tenantId, id])
+  supplyingWarehouse  Warehouse           @relation("StockRequestSupplierWarehouse", fields: [tenantId, supplyingWarehouseId], references: [tenantId, id])
+  parentRequest       StockRequest?       @relation("StockRequestChain", fields: [tenantId, parentRequestId], references: [tenantId, id])
+  childRequests       StockRequest[]      @relation("StockRequestChain")
+  lines               StockRequestLine[]  @relation("StockRequestLines")
+  waitingLines        StockRequestLine[]  @relation("StockRequestWaitChild")
+  events              StockRequestEvent[]
+  transfers           StockTransfer[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, requestNo])
+  @@map("stock_request")
+}
+
+enum StockRequestStatus {
+  DRAFT
+  SUBMITTED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  CANCELLED
+  // Bên xin rút hết mọi dòng khi chưa cấp dòng nào.
+  WITHDRAWN
+
+  @@map("stock_request_status")
+}
+
+enum StockRequestPriority {
+  NORMAL
+  URGENT
+
+  @@map("stock_request_priority")
+}
+
+// Dòng yêu cầu — số lượng ở đơn vị CƠ SỞ (như `stock_transfer_line`). `fulfil_status` chỉ lưu QUYẾT ĐỊNH của kho cấp; số đã cấp/đã nhận suy ra từ các dòng điều chuyển liên kết.
+model StockRequestLine {
+  id                    String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId              String                 @map("tenant_id") @db.Uuid
+  requestId             String                 @map("request_id") @db.Uuid
+  drugId                String                 @map("drug_id") @db.Uuid
+  requestedQty          Int                    @map("requested_qty")
+  // Chụp tồn của KHO XIN lúc gửi — chỉ số lượng, không giá (ngoại lệ liên chi nhánh duy nhất của chức năng).
+  requesterStockSnapshot Int?                  @map("requester_stock_snapshot")
+  lineNote              String?                @map("line_note")
+  fulfilStatus          StockRequestLineStatus @default(PENDING) @map("fulfil_status")
+  // Lý do kho cấp ghi khi Từ chối hoặc Chờ hàng về (bắt buộc cả hai).
+  decisionReason        String?                @map("decision_reason")
+  waitExpectedDate      DateTime?              @map("wait_expected_date") @db.Date
+  // Dòng chờ hàng về gắn với phiếu đã xin lên cấp trên (tuỳ chọn). Đơn đặt hàng NCC sẽ thêm cột riêng ở GĐ2.
+  waitChildRequestId    String?                @map("wait_child_request_id") @db.Uuid
+  // Dòng bên xin thêm SAU khi phiếu đã được tiếp nhận — hiện nhãn "Mới thêm" cho kho cấp.
+  addedAfterAccept      Boolean                @default(false) @map("added_after_accept")
+  withdrawReason        String?                @map("withdraw_reason")
+  withdrawnAt           DateTime?              @map("withdrawn_at") @db.Timestamptz(6)
+  withdrawnBy           String?                @map("withdrawn_by") @db.Uuid
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant            Tenant              @relation(fields: [tenantId], references: [id])
+  request           StockRequest        @relation("StockRequestLines", fields: [tenantId, requestId], references: [tenantId, id])
+  waitChildRequest  StockRequest?       @relation("StockRequestWaitChild", fields: [tenantId, waitChildRequestId], references: [tenantId, id])
+  drug              Drug                @relation(fields: [tenantId, drugId], references: [tenantId, id])
+  transferLines     StockTransferLine[]
+
+  @@unique([tenantId, id])
+  @@map("stock_request_line")
+}
+
+enum StockRequestLineStatus {
+  PENDING
+  WAITING_STOCK
+  ALLOCATED
+  REJECTED
+  WITHDRAWN
+
+  @@map("stock_request_line_status")
+}
+
+// Diễn biến hiển thị cho cả bên xin lẫn kho cấp (khác nhật ký kiểm toán): chỉ thêm, không sửa.
+model StockRequestEvent {
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  requestId  String   @map("request_id") @db.Uuid
+  eventType  String   @map("event_type")
+  actorId    String   @map("actor_id") @db.Uuid
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  message    String?
+  meta       Json     @default("{}")
+
+  // 8 cột bắt buộc
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedReason String?   @map("deleted_reason")
+  version       Int       @default(1)
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+
+  tenant  Tenant       @relation(fields: [tenantId], references: [id])
+  request StockRequest @relation(fields: [tenantId, requestId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@map("stock_request_event")
 }
 
 // Đơn thuốc (Sprint 4, S4-01/02/04) — .claude/docs/clinical-workflow.md mục "Kê đơn (v1: chỉ in
@@ -4193,6 +4360,8 @@ enum PrintDocumentType {
   MEDICINE_LABEL
   /// Bản in dùng chung của mọi báo cáo (docs/DECISIONS.md #287) — khổ A4.
   REPORT
+  /// Phiếu yêu cầu cấp hàng (docs/DECISIONS.md #298).
+  STOCK_REQUEST
 }
 
 /// Khổ giấy của một bản mẫu in. K80 = máy in nhiệt 80mm (chỉ 4 chứng từ tiền).

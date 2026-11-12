@@ -25,6 +25,7 @@ export const printDocumentTypeSchema = z.enum([
   'STOCK_ISSUE',
   'STOCK_COUNT',
   'STOCK_TRANSFER',
+  'STOCK_REQUEST',
   'SPECIMEN_LABEL',
   // Nhãn dán bì thuốc in từ màn Phát thuốc (docs/DECISIONS.md #267) — khổ tem LABEL_70X40 / LABEL_60X40 / LABEL_50X30.
   'MEDICINE_LABEL',
@@ -104,6 +105,7 @@ export const PRINT_DOCUMENT_TYPE_REGISTRY: Record<
   STOCK_ISSUE: { label: 'Phiếu xuất kho', group: 'Kho', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu xuất kho' },
   STOCK_COUNT: { label: 'Phiếu kiểm kê', group: 'Kho', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu kiểm kê' },
   STOCK_TRANSFER: { label: 'Phiếu điều chuyển kho', group: 'Kho', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu điều chuyển kho' },
+  STOCK_REQUEST: { label: 'Phiếu yêu cầu cấp hàng', group: 'Kho', allowedPapers: PAPERS_A, defaultPaper: 'A4', defaultTitle: 'Phiếu yêu cầu cấp hàng' },
   SPECIMEN_LABEL: { label: 'Tem mẫu xét nghiệm', group: 'Khám bệnh', allowedPapers: PAPERS_LABEL, defaultPaper: 'LABEL_35X22', defaultTitle: '' },
   MEDICINE_LABEL: { label: 'Nhãn thuốc', group: 'Kho', allowedPapers: PAPERS_MEDICINE_LABEL, defaultPaper: 'LABEL_70X40', defaultTitle: '' },
   REPORT: { label: 'Báo cáo', group: 'Báo cáo', allowedPapers: ['A4'], defaultPaper: 'A4', defaultTitle: 'Báo cáo' },

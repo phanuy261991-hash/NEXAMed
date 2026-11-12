@@ -75,6 +75,19 @@ export class StockBalanceRepository {
     return rows.map((r) => ({ drugId: r.drugId, warehouseId: r.warehouseId, quantityOnHand: r._sum.quantityOnHand ?? 0 }));
   }
 
+  /** Yêu cầu cấp hàng (#298) — tồn gộp mọi lô theo từng (kho, mặt hàng); khoá `"<warehouseId>:<drugId>"`, thiếu khoá = 0. */
+  async sumOnHandByWarehouseDrugs(tx: Prisma.TransactionClient, tenantId: string, warehouseIds: string[], drugIds: string[]): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    if (warehouseIds.length === 0 || drugIds.length === 0) return result;
+    const rows = await tx.stockBalance.groupBy({
+      by: ['warehouseId', 'drugId'],
+      where: { tenantId, warehouseId: { in: warehouseIds }, drugId: { in: drugIds }, deletedAt: null },
+      _sum: { quantityOnHand: true },
+    });
+    for (const r of rows) result.set(`${r.warehouseId}:${r.drugId}`, r._sum.quantityOnHand ?? 0);
+    return result;
+  }
+
   /** Kho Thuốc GĐ5 — tổng `quantityOnHand` GỘP MỌI KHO (khác `listAggregated` gộp theo từng kho
    * riêng) cho một danh sách thuốc, phục vụ `StockAvailabilityAdapter` (cảnh báo/chặn kê vượt tồn
    * lúc ký đơn — "tổng tồn toàn phòng khám", đã chốt qua AskUserQuestion). Luôn trả đủ MỌI id trong

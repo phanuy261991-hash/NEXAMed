@@ -71,6 +71,13 @@ export class WarehouseRepository {
     return tx.warehouse.findFirst({ where: { tenantId, branchId, isActive: true, deletedAt: null }, orderBy: { id: 'asc' } });
   }
 
+  /** Kho chính của CHI NHÁNH CHÍNH (`branch.is_default`) — đích xin hàng của kho chính chi nhánh phụ (Yêu cầu cấp hàng, #298). `null` nếu chưa có. */
+  async findMainBranchDefault(tx: Prisma.TransactionClient, tenantId: string): Promise<Warehouse | null> {
+    const marked = await tx.warehouse.findFirst({ where: { tenantId, branch: { isDefault: true, deletedAt: null }, isDefault: true, isActive: true, deletedAt: null } });
+    if (marked) return marked;
+    return tx.warehouse.findFirst({ where: { tenantId, branch: { isDefault: true, deletedAt: null }, isActive: true, deletedAt: null }, orderBy: { id: 'asc' } });
+  }
+
   /** Bỏ cờ "Kho mặc định" khỏi mọi kho KHÁC `excludeId` CÙNG CHI NHÁNH — gọi TRƯỚC khi set kho mới thành mặc
    * định, tránh vỡ partial unique `(tenant_id, branch_id) WHERE is_default AND deleted_at IS NULL`. */
   async clearDefaultExcept(tx: Prisma.TransactionClient, tenantId: string, branchId: string, excludeId: string | null, actorId: string): Promise<void> {

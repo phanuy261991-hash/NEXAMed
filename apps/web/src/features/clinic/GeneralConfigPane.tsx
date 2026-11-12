@@ -334,6 +334,19 @@ export function GeneralConfigPane() {
 
       <div className="flex items-start justify-between gap-5">
         <div>
+          <p className="text-[14.5px] font-semibold text-slate-900">Dùng yêu cầu cấp hàng</p>
+          <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">Cho phép phòng ban xin hàng lên kho chính và chi nhánh xin lên chi nhánh chính. Tắt: ẩn mục &quot;Yêu cầu cấp hàng&quot;.</p>
+        </div>
+        <ToggleSwitch
+          checked={settingsQuery.data.stockRequestEnabled}
+          disabled={updateMutation.isPending}
+          onChange={(checked) => updateMutation.mutate({ stockRequestEnabled: checked })}
+          ariaLabel="Dùng yêu cầu cấp hàng"
+        />
+      </div>
+
+      <div className="flex items-start justify-between gap-5">
+        <div>
           <p className="text-[14.5px] font-semibold text-slate-900">Ngưỡng cảnh báo hạn dùng sắp hết</p>
           <p className="mt-1 max-w-2xl text-[13px] leading-snug text-slate-500">
             Số ngày trước hạn dùng để bắt đầu hiển thị cảnh báo lô sắp hết hạn trong &quot;Tồn kho theo lô&quot; và

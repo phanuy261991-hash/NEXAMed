@@ -54,6 +54,10 @@ export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> 
   'stock_count.create': ['stock_receipt.read', 'drug.read', 'reference_catalog.read'],
   'stock_transfer.read': ['stock_receipt.read', 'drug.read'],
   'stock_transfer.create': ['stock_receipt.read', 'drug.read'],
+  // Yêu cầu cấp hàng (#298): trang chọn mặt hàng + xem phiếu điều chuyển liên kết; kho cấp còn mở phiếu điều chuyển để Duyệt xuất.
+  'stock_request.read': ['stock_receipt.read', 'stock_transfer.read', 'drug.read'],
+  'stock_request.create': ['stock_receipt.read', 'stock_transfer.read', 'drug.read'],
+  'stock_request.approve': ['stock_receipt.read', 'stock_transfer.read', 'drug.read'],
   'system_backup.manage': ['system_backup.read'],
   'lab_result.enter': ['result_template.read'],
   'imaging_result.enter': ['result_template.read'],

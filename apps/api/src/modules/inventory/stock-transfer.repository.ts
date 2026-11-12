@@ -5,6 +5,8 @@ export interface StockTransferLineData {
   drugId: string;
   batchId: string | null;
   quantityShipped: number;
+  /** Dòng yêu cầu cấp hàng mà dòng này đáp ứng (#298); `undefined`/`null` với phiếu lập tay. */
+  requestLineId?: string | null;
 }
 
 export interface CreateStockTransferData {
@@ -14,6 +16,8 @@ export interface CreateStockTransferData {
   occurredAt: Date;
   note: string | null;
   lines: StockTransferLineData[];
+  /** Phiếu sinh từ "Chuyển thành phiếu điều chuyển" của yêu cầu cấp hàng (#298). */
+  requestId?: string | null;
 }
 
 export interface UpdateStockTransferData {
@@ -121,6 +125,7 @@ export class StockTransferRepository {
         toWarehouseId: data.toWarehouseId,
         occurredAt: data.occurredAt,
         note: data.note,
+        requestId: data.requestId ?? null,
         createdBy: actorId,
         updatedBy: actorId,
       },
@@ -133,6 +138,7 @@ export class StockTransferRepository {
           drugId: line.drugId,
           batchId: line.batchId,
           quantityShipped: line.quantityShipped,
+          requestLineId: line.requestLineId ?? null,
           createdBy: actorId,
           updatedBy: actorId,
         })),
@@ -157,6 +163,9 @@ export class StockTransferRepository {
     });
     if (result.count === 0) return 0;
 
+    // Yêu cầu cấp hàng (#298): thay dòng nhưng giữ liên kết tới dòng yêu cầu theo mặt hàng (mỗi mặt hàng chỉ có một dòng trên phiếu yêu cầu).
+    const previous = await tx.stockTransferLine.findMany({ where: { tenantId, transferId: id, deletedAt: null, requestLineId: { not: null } }, select: { drugId: true, requestLineId: true } });
+    const requestLineByDrug = new Map(previous.map((l) => [l.drugId, l.requestLineId as string]));
     await tx.stockTransferLine.updateMany({
       where: { tenantId, transferId: id, deletedAt: null },
       data: { deletedAt: new Date(), deletedReason: 'replaced', updatedBy: actorId },
@@ -169,6 +178,7 @@ export class StockTransferRepository {
           drugId: line.drugId,
           batchId: line.batchId,
           quantityShipped: line.quantityShipped,
+          requestLineId: requestLineByDrug.get(line.drugId) ?? null,
           createdBy: actorId,
           updatedBy: actorId,
         })),

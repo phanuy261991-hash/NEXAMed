@@ -75,6 +75,7 @@ export const businessCodeTypeSchema = z.enum([
   'PRESCRIPTION',
   'STOCK_COUNT',
   'STOCK_TRANSFER',
+  'STOCK_REQUEST',
   'SUPPLIER_DEBT_ADJUSTMENT',
   'SUPPLIER_DEBT_RECONCILIATION',
   'INVOICE_REFUND',
@@ -138,6 +139,8 @@ export const BUSINESS_CODE_TYPE_REGISTRY: Record<BusinessCodeType, BusinessCodeT
   // Kho Thuốc GĐ4 — "Phiếu điều chuyển kho" (docs/DECISIONS.md #170), không trùng "PCK" (đã dùng cho
   // CASH_TRANSFER) hay tiền tố nào khác đã dùng ở trên.
   STOCK_TRANSFER: { label: 'Mã phiếu điều chuyển kho', internalPrefix: 'PDC' },
+  // "Phiếu yêu cầu cấp hàng" (docs/DECISIONS.md #298), không trùng tiền tố nào đã dùng ở trên.
+  STOCK_REQUEST: { label: 'Mã phiếu yêu cầu cấp hàng', internalPrefix: 'YCCH' },
   // "Công nợ nhà cung cấp" Phần D (docs/DECISIONS.md #180/#182) — "Phiếu điều chỉnh công nợ"/"Đề
   // nghị huỷ", không trùng tiền tố nào đã dùng ở trên.
   SUPPLIER_DEBT_ADJUSTMENT: { label: 'Mã phiếu điều chỉnh công nợ', internalPrefix: 'PDN' },

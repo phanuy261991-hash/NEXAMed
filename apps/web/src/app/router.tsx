@@ -116,6 +116,10 @@ const StockCountFormPage = lazy(() => import('../features/inventory/StockCountFo
 // Kho Thuốc GĐ4, phần "Điều chuyển kho" (docs/DECISIONS.md #170, kế hoạch bright-bubbling-axolotl.md).
 const StockTransferListPage = lazy(() => import('../features/inventory/StockTransferListPage').then((m) => ({ default: m.StockTransferListPage })));
 const StockTransferFormPage = lazy(() => import('../features/inventory/StockTransferFormPage').then((m) => ({ default: m.StockTransferFormPage })));
+const StockRequestListPage = lazy(() => import('../features/inventory/StockRequestListPage').then((m) => ({ default: m.StockRequestListPage })));
+const StockRequestFormPage = lazy(() => import('../features/inventory/StockRequestFormPage').then((m) => ({ default: m.StockRequestFormPage })));
+const StockRequestDetailPage = lazy(() => import('../features/inventory/StockRequestDetailPage').then((m) => ({ default: m.StockRequestDetailPage })));
+import { StockRequestFeatureGate } from '../features/inventory/StockRequestFeatureGate';
 // Kho Thuốc GĐ4, "Phiếu xuất kho mở rộng" + "Báo cáo Nhập-Xuất-Tồn" (docs/DECISIONS.md #170, kế
 // hoạch bright-bubbling-axolotl.md mục 4+5, mockup NVC5A4uZsmX9kFsAk5Td88 đã duyệt).
 const StockIssueFormPage = lazy(() => import('../features/inventory/StockIssueFormPage').then((m) => ({ default: m.StockIssueFormPage })));
@@ -257,6 +261,11 @@ export const router = createBrowserRouter([
       { path: 'inventory/transfers', element: <RequirePermissionRoute module="stock_transfer" action="read"><StockTransferListPage /></RequirePermissionRoute> },
       { path: 'inventory/transfers/new', element: <RequirePermissionRoute module="stock_transfer" action="create"><StockTransferFormPage /></RequirePermissionRoute> },
       { path: 'inventory/transfers/:id', element: <RequirePermissionRoute module="stock_transfer" action="read"><StockTransferFormPage /></RequirePermissionRoute> },
+      // Yêu cầu cấp hàng (#298): `new` đứng TRƯỚC `:id`; công tắc "Dùng yêu cầu cấp hàng" tắt thì trang báo rõ thay vì lỗi.
+      { path: 'inventory/requests', element: <RequirePermissionRoute module="stock_request" action="read"><StockRequestFeatureGate><StockRequestListPage /></StockRequestFeatureGate></RequirePermissionRoute> },
+      { path: 'inventory/requests/new', element: <RequirePermissionRoute module="stock_request" action="create"><StockRequestFeatureGate><StockRequestFormPage /></StockRequestFeatureGate></RequirePermissionRoute> },
+      { path: 'inventory/requests/:id/edit', element: <RequirePermissionRoute module="stock_request" action="create"><StockRequestFeatureGate><StockRequestFormPage /></StockRequestFeatureGate></RequirePermissionRoute> },
+      { path: 'inventory/requests/:id', element: <RequirePermissionRoute module="stock_request" action="read"><StockRequestFeatureGate><StockRequestDetailPage /></StockRequestFeatureGate></RequirePermissionRoute> },
       { path: 'inventory/reports/stock-ledger', element: <RequirePermissionRoute module="stock_receipt" action="report"><StockLedgerReportPage /></RequirePermissionRoute> },
       // Báo cáo hao hụt điều chuyển nay là tab của trang Nhập-Xuất-Tồn (chủ dự án chốt Q4, #233); giữ đường dẫn cũ chuyển hướng cho dấu trang đã lưu.
       { path: 'inventory/reports/transfer-shrinkage', element: <Navigate to="/inventory/reports/stock-ledger?tab=shrinkage" replace /> },

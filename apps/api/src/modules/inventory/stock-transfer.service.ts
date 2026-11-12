@@ -52,6 +52,7 @@ import { StockBalanceRepository } from './stock-balance.repository';
 import type { StockReceiptLineData } from './stock-receipt.repository';
 import { StockReceiptService } from './stock-receipt.service';
 import { StockIssueService } from './stock-issue.service';
+import { StockRequestSyncService } from './stock-request-sync.service';
 
 /** Nhãn lý do chênh lệch — dùng làm ghi chú mặc định khi người kiểm nhận không gõ thêm (CHECK DB bắt buộc `variance_note` khi nhận thiếu). */
 const VARIANCE_REASON_LABEL: Record<StockTransferVarianceReason, string> = {
@@ -91,6 +92,8 @@ export class StockTransferService {
     private readonly businessCodeService: BusinessCodeService,
     private readonly stockReceiptService: StockReceiptService,
     private readonly stockIssueService: StockIssueService,
+    // Yêu cầu cấp hàng (#298): phiếu sinh từ yêu cầu báo ngược trạng thái về yêu cầu trong CÙNG transaction.
+    private readonly stockRequestSyncService: StockRequestSyncService,
     @Inject(DOCTOR_DIRECTORY_PORT) private readonly doctorDirectory: DoctorDirectoryPort,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfigReader: ClinicConfigReaderPort,
   ) {}
@@ -176,6 +179,7 @@ export class StockTransferService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+      if (existing.requestId) await this.stockRequestSyncService.refresh(tx, tenantId, actorId, existing.requestId);
     });
 
     return this.getById(tenantId, branchId, actorId, dataScope, id);
@@ -322,6 +326,7 @@ export class StockTransferService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+      if (existing.requestId) await this.stockRequestSyncService.refresh(tx, tenantId, actorId, existing.requestId, { type: 'transfer_rejected', message: `Kho cấp từ chối ${existing.transferNo}`, detail: 'Các dòng quay về chờ xử lý' });
     });
 
     return this.getById(tenantId, branchId, actorId, dataScope, id);
@@ -390,6 +395,7 @@ export class StockTransferService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+      if (existing.requestId) await this.stockRequestSyncService.refresh(tx, tenantId, actorId, existing.requestId, { type: 'transfer_shipped', message: `Đã giao hàng: ${existing.transferNo}` });
     });
 
     return this.getById(tenantId, branchId, actorId, dataScope, id);
@@ -485,6 +491,7 @@ export class StockTransferService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+      if (existing.requestId) await this.stockRequestSyncService.refresh(tx, tenantId, actorId, existing.requestId, { type: 'transfer_received', message: `Đã kiểm nhận: ${existing.transferNo}`, detail: withVariance ? 'Nhận thiếu, chờ kho cấp xử lý chênh lệch' : null });
     });
 
     return this.getById(tenantId, branchId, actorId, dataScope, id);
@@ -516,6 +523,7 @@ export class StockTransferService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+      if (existing.requestId) await this.stockRequestSyncService.refresh(tx, tenantId, actorId, existing.requestId, { type: 'transfer_receive_rejected', message: `Bên xin từ chối nhận ${existing.transferNo}`, detail: 'Hàng đang trả về kho cấp' });
     });
 
     return this.getById(tenantId, branchId, actorId, dataScope, id);
@@ -600,6 +608,7 @@ export class StockTransferService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+      if (existing.requestId) await this.stockRequestSyncService.refresh(tx, tenantId, actorId, existing.requestId, { type: 'transfer_returned', message: `Kho cấp nhận lại hàng: ${existing.transferNo}` });
     });
 
     return this.getById(tenantId, branchId, actorId, dataScope, id);
@@ -679,6 +688,7 @@ export class StockTransferService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+      if (existing.requestId) await this.stockRequestSyncService.refresh(tx, tenantId, actorId, existing.requestId, { type: 'transfer_variance_resolved', message: `Đã xử lý chênh lệch: ${existing.transferNo}` });
     });
 
     return this.getById(tenantId, branchId, actorId, dataScope, id);

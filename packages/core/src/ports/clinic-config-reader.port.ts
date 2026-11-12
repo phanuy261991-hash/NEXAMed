@@ -238,6 +238,12 @@ export interface ClinicConfigReaderPort {
   getLabPartnerEnabled(tenantId: string): Promise<boolean>;
 
   /**
+   * "Dùng yêu cầu cấp hàng" (#298) — công tắc chung cả công ty, BẬT (mặc định) (`tenant_setting` key `stock_request_enabled`). Tắt thì máy chủ từ chối các API yêu cầu cấp hàng (409 `STOCK_REQUEST_DISABLED`).
+   * KHÔNG gọi hàm này bên TRONG một transaction đang mở (port mở transaction riêng) — đọc trước.
+   */
+  getStockRequestEnabled(tenantId: string): Promise<boolean>;
+
+  /**
    * Bảng ánh xạ "loại thuốc → loại đơn Bộ Y tế" (#242, giai đoạn 2) — `tenant_setting` key `prescription_kind_mapping`, vắng thì mặc định (`DEFAULT_PRESCRIPTION_KIND_MAPPING`).
    * Module `encounter` đọc qua port này (TRƯỚC transaction chính) để gắn loại đơn cho từng dòng thuốc và tách đơn khi ký.
    */

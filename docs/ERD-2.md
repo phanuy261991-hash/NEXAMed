@@ -359,3 +359,15 @@ Migration `20261112090000_service_consumption`. **Định mức CHUNG cả công
 
 Quyền mới `service_consumption.read/record/reverse/norm/report` ở catalog quyền (không ở bảng nghiệp vụ). Phiếu tiêu hao KHÔNG sinh hoá đơn, `sell_price` = 0, chỉ ghi giá vốn lô; không đụng lãi gộp.
 
+### 3.24 Yêu cầu cấp hàng theo cấp (v1.97, `docs/DECISIONS.md` #298, giai đoạn 1)
+
+Migration `20261112150000_stock_request`. Chi nhánh KẾ THỪA qua kho xin/kho cấp (không có cột `branch_id`, đúng khuôn `stock_transfer` #233). Số đã cấp/đã nhận của dòng SUY RA từ `stock_transfer_line.request_line_id`, không lưu trùng.
+
+| Bảng | Vai trò | Đặc thù |
+|---|---|---|
+| `stock_request` | Phiếu yêu cầu cấp hàng | `request_no` (YCCH), `requesting_warehouse_id` (kho xin), `supplying_warehouse_id` (kho cấp, suy ra theo cấp), `status` (DRAFT/SUBMITTED/ACCEPTED/IN_PROGRESS/COMPLETED/REJECTED/CANCELLED/WITHDRAWN), `priority`, `needed_by` DATE, `parent_request_id` (chuỗi xin lên), `supplier_update_pending`; CHECK 2 kho khác nhau, lý do bắt buộc khi từ chối/huỷ; RLS. |
+| `stock_request_line` | Dòng yêu cầu | `requested_qty` (đơn vị cơ sở), `requester_stock_snapshot`, `fulfil_status` (PENDING/WAITING_STOCK/ALLOCATED/REJECTED/WITHDRAWN), `decision_reason`, `wait_expected_date`, `wait_child_request_id`, `added_after_accept`, `withdraw_*`; chỉ mục duy nhất một phần (request, drug) khi chưa xoá; CHECK lý do bắt buộc. |
+| `stock_request_event` | Diễn biến hiển thị (chỉ thêm) | `event_type`, `actor_id`, `message` (tiêu đề), `meta` JSONB (`detail`). |
+| `stock_transfer.request_id`, `stock_transfer_line.request_line_id` | Nối phiếu điều chuyển sinh ra từ yêu cầu | NULL với phiếu lập tay; FK ghép `(tenant_id, …)`. |
+
+Enum DB mới: `stock_request_status`, `stock_request_priority`, `stock_request_line_status`; `PrintDocumentType` thêm `STOCK_REQUEST`. Quyền mới `stock_request.create/read/approve`; công tắc `tenant_setting` `stock_request_enabled` (mặc định bật).

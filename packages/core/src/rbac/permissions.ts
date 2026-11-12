@@ -308,6 +308,10 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
   { module: 'stock_transfer', action: 'create', description: 'Tạo/sửa Nháp phiếu điều chuyển kho' },
   { module: 'stock_transfer', action: 'read', description: 'Xem phiếu điều chuyển kho' },
   { module: 'stock_transfer', action: 'approve', description: 'Duyệt xuất / Xác nhận nhận hàng / Từ chối phiếu điều chuyển kho' },
+  // Yêu cầu cấp hàng theo cấp (docs/DECISIONS.md #298) — `create` cho bên xin (lập/sửa/huỷ/thêm/rút dòng), `approve` cho kho cấp (Tiếp nhận/Từ chối/Chuyển thành phiếu điều chuyển/Xin phần thiếu).
+  { module: 'stock_request', action: 'create', description: 'Lập/sửa/huỷ phiếu yêu cầu cấp hàng, thêm hoặc rút mặt hàng' },
+  { module: 'stock_request', action: 'read', description: 'Xem phiếu yêu cầu cấp hàng' },
+  { module: 'stock_request', action: 'approve', description: 'Tiếp nhận / Từ chối / Cấp hàng (chuyển thành phiếu điều chuyển) phiếu yêu cầu cấp hàng' },
   // "Công nợ nhà cung cấp" (docs/DECISIONS.md #180/#182, mở rộng phạm vi v1) — mặc định CHỈ
   // `clinic_admin` có đủ 5 quyền (chốt qua AskUserQuestion 24/09/2026, #182), vai trò khác CHƯA
   // được cấp gì, tự mở rộng sau qua "Vai trò & Phân quyền" nếu tenant cần (thận trọng với dữ liệu
@@ -465,6 +469,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // Kho Thuốc GĐ4 — điều dưỡng chỉ xem phiếu kiểm kê/điều chuyển, không tạo/duyệt.
     'stock_count.read': 'global',
     'stock_transfer.read': 'global',
+    // Yêu cầu cấp hàng (#298) — nhân viên phòng ban lập yêu cầu xin kho chính; việc tiếp nhận/cấp là của kho cấp.
+    'stock_request.create': 'global',
+    'stock_request.read': 'global',
     'work_shift_assignment.create': 'personal',
     'work_shift_assignment.read': 'personal',
     'work_shift_assignment.delete': 'personal',
@@ -544,6 +551,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     // Kho Thuốc GĐ4 — bác sĩ chỉ xem phiếu kiểm kê/điều chuyển, không tạo/duyệt.
     'stock_count.read': 'global',
     'stock_transfer.read': 'global',
+    // Yêu cầu cấp hàng (#298) — bác sĩ lập yêu cầu xin kho chính cho phòng mình.
+    'stock_request.create': 'global',
+    'stock_request.read': 'global',
     // Tự thao tác "Tạm nghỉ / Đóng ca" cho chính mình — luôn cho phép (personal), không phụ thuộc
     // 2 công tắc cấu hình (2 công tắc đó chỉ gate nhánh "hộ" của receptionist/clinic_admin).
     'doctor_availability.update': 'personal',
@@ -662,6 +672,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Partial<Record<string, D
     'stock_transfer.create': 'global',
     'stock_transfer.read': 'global',
     'stock_transfer.approve': 'global',
+    // Yêu cầu cấp hàng (#298) — clinic_admin có đủ cả 3 (phòng khám nhỏ tự làm cả hai phía).
+    'stock_request.create': 'global',
+    'stock_request.read': 'global',
+    'stock_request.approve': 'global',
     // "Công nợ nhà cung cấp" (#180/#182) — CHỈ clinic_admin có đủ 5 quyền lúc ra mắt.
     'supplier_debt.read': 'global',
     'supplier_debt.pay': 'global',

@@ -192,6 +192,14 @@ export class ClinicSettingsController {
     return { enabled };
   }
 
+  /** "Dùng yêu cầu cấp hàng" (#298) — tự-phục vụ, không gắn `@RequirePermission`: mọi nhân viên cần biết để web ẩn/hiện menu. */
+  @Get('stock-request-enabled')
+  async getStockRequestEnabled(@Req() req: Request) {
+    const { tenantId } = req.user!;
+    const enabled = await this.clinicSettingsService.getStockRequestEnabled(tenantId);
+    return { enabled };
+  }
+
   @Patch()
   @RequirePermission('clinic_config', 'update')
   async update(@Body() body: unknown, @Req() req: Request) {

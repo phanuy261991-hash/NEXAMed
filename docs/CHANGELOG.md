@@ -2,6 +2,14 @@
 
 Định dạng dựa theo [Keep a Changelog](https://keepachangelog.com/). Ghi theo ngày, mới nhất ở trên.
 
+## 12/11/2026 (phần 3) — Yêu cầu cấp hàng theo cấp, GĐ1 (`docs/DECISIONS.md` #298, chủ dự án duyệt mockup)
+
+- **Máy chủ**: module trong `inventory` — phiếu yêu cầu cấp hàng (Nháp → Đã gửi → Đã tiếp nhận → Đang xử lý → Hoàn thành; Từ chối/Huỷ/Đã rút), kho cấp suy ra theo cấp (kho phụ → kho chính chi nhánh → kho chính chi nhánh chính), "Chuyển thành phiếu điều chuyển" cấp từng phần (phần thiếu: Chờ hàng về hoặc Từ chối, lý do bắt buộc), "Cấp tiếp", "Xin phần thiếu" lên cấp trên, bên xin nhắn/đổi khẩn/thêm/rút dòng theo ma trận trạng thái, nhãn "Có cập nhật mới", gợi ý hàng dưới mức tồn tối thiểu, Excel danh sách. Phiếu điều chuyển liên kết báo ngược trạng thái trong cùng transaction (nhận thiếu giữ phiếu "Đang xử lý" tới khi kho cấp xử lý chênh lệch).
+- **Dùng chung**: hàm trạng thái thuần ở `packages/core` (`stock-request-state`, 28 test), schema `packages/shared/src/stock-request.ts`, mã phiếu YCCH, mẫu in `STOCK_REQUEST`, quyền `stock_request.*` (bác sĩ/điều dưỡng: lập + xem; clinic_admin đủ), công tắc "Dùng yêu cầu cấp hàng" (mặc định bật).
+- **Web**: danh sách (tab Của tôi/Cần duyệt, dải đếm, lọc, Xuất Excel, In danh sách, In từng phiếu), lập/sửa phiếu, chi tiết theo mockup (dải bước, bảng dòng, Diễn biến, Phiếu điều chuyển liên kết, thanh nút cố định ở đáy), menu + công tắc ở Cấu hình chung.
+- **Kiểm**: API `stock-request-http.spec` 24 ca (kể cả cô lập công ty khác và chi nhánh khác, ca nhận thiếu, từ chối phiếu điều chuyển nháp); Chrome thật qua IP LAN `scripts/ui-audit/stock-request-check.cjs` 26/26 (kể cả lỗi mạng, lỗi 500, công tắc tắt). Cần chạy `pnpm db:seed` rồi khởi động lại API để quyền mới vào vai trò.
+- **Chưa làm**: GĐ2 (Đơn đặt hàng NCC, Phiếu nhập liên kết, "Yêu cầu rút" khi đã đặt NCC, cột chi nhánh ở công nợ NCC).
+
 ## Các phần cũ (lưu trữ)
 
 File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở `docs/archive/` — **chỉ mở khi cần tra một mục cụ thể**:

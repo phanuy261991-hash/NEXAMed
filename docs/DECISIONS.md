@@ -286,3 +286,20 @@ Bối cảnh: GĐ4 trừ vật tư ở kho mặc định của chi nhánh, chủ
 **GĐ5 kiểm thử cuối**: `pnpm typecheck` + `pnpm lint` sạch; full test một lượt xanh — API 2310 (1 bỏ qua), core 841, web 773, shared 127, setup 112. Cô lập tenant B/chi nhánh khác của GĐ4, "Kho trừ" và lãi gộp dịch vụ đã nằm sẵn trong bộ test này. Không migration, không `db:seed`; cần khởi động lại API.
 
 **Còn lại của #297**: chỉ việc chủ dự án xem các quyết định kỹ thuật tự chọn ở bổ sung 2 (6 điểm) và bổ sung 4 (dòng gói chia theo giá niêm yết; dịch vụ bị bỏ ở quầy lãi gộp âm không có nhãn "Đã hoàn tiền"; dải số Tổng hợp tháng 5 + 2 ô).
+
+
+## 298 — Yêu cầu cấp hàng theo cấp + Đơn đặt hàng NCC (chủ dự án duyệt mockup 12/11/2026)
+
+**Bối cảnh**: chi nhánh/phòng ban hết hàng chưa có chứng từ xin hàng; "Điều chuyển kho" (#170/#233) chỉ chạy chiều bên gửi chủ động; chưa có chứng từ đặt hàng NCC. Kế hoạch nghiệp vụ đầy đủ ở `docs/product/stock-request-plan.md`, mockup 16 màn https://claude.ai/artifact/Ut7h7axLUPynLqwvPbaPBi (bản 5, đã duyệt, tên chức năng **"Yêu cầu cấp hàng"**, mã phiếu **YCCH**, không còn dùng "Đề xuất hàng").
+
+**Lộ trình**: GĐ1 Yêu cầu cấp hàng (kho phụ → kho chính chi nhánh → kho chính chi nhánh chính) · GĐ2 Đơn đặt hàng NCC + Phiếu nhập liên kết + công tắc/duyệt theo cấp + cột chi nhánh ở sổ công nợ. Mỗi GĐ ghi tiến độ ở `docs/TASK.md`.
+
+**Quyết định kỹ thuật GĐ1 (AI chọn trong phạm vi mockup, cần chủ dự án biết)**
+1. Bảng mới `stock_request` + `stock_request_line`; `stock_transfer_line.request_line_id` (nullable) + `stock_transfer.request_id` (nullable) để một yêu cầu liên kết nhiều phiếu điều chuyển. **Không có cột `branch_id`**: chi nhánh kế thừa qua kho xin/kho cấp, đúng khuôn `stock_transfer` (#233).
+2. Số liệu "đã cấp"/"đã nhận" của dòng yêu cầu **suy ra từ các dòng phiếu điều chuyển liên kết** (không lưu số trùng lặp, không lệch khi kho cấp sửa/từ chối phiếu nháp). Dòng chỉ lưu quyết định của kho cấp: `fulfil_status` ∈ `PENDING`/`WAITING_STOCK`/`ALLOCATED`/`REJECTED`/`WITHDRAWN` kèm lý do/ngày dự kiến.
+3. Trạng thái phiếu: `DRAFT`→`SUBMITTED`→`ACCEPTED`→`IN_PROGRESS`→`COMPLETED`, nhánh `REJECTED`/`CANCELLED`/`WITHDRAWN`; đổi trạng thái phiếu điều chuyển liên kết (Duyệt xuất, Kiểm nhận, Từ chối, Xử lý chênh lệch, Nhận lại) gọi hàm đồng bộ trong cùng transaction. Nhận thiếu giữ phiếu "Đang xử lý" cho tới khi kho chính xử lý chênh lệch (chủ dự án đồng ý 12/11/2026).
+4. Kho cấp suy ra theo cấp, không cho chọn tuỳ ý: kho phụ (có Khoa) → kho chính cùng chi nhánh; kho chính chi nhánh phụ → kho chính chi nhánh chính (`branch.is_default`); kho chính chi nhánh chính không có cấp trên (chỉ đặt NCC ở GĐ2).
+5. Công tắc `stockRequestEnabled` (tenant_setting, chung cả công ty, mặc định BẬT). Quyền mới `stock_request.create/read/approve`, phạm vi Khoa/Phòng như `stock_transfer`.
+6. Số lượng ở đơn vị CƠ SỞ của mặt hàng (giống `stock_transfer_line`). Chụp "tồn của bên xin lúc gửi" chỉ là số lượng, không giá.
+
+**Việc kế tiếp theo quy trình**: ERD-2 (nhóm bảng mới) → migration/core/API (kèm test cô lập tenant B + chi nhánh khác, test đột biến) → web → Chrome qua IP LAN → quét quyền → `pnpm typecheck`/`lint`/test.
