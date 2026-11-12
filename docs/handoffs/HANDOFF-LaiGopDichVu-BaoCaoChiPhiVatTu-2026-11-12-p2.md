@@ -1,11 +1,12 @@
 # HANDOFF — #297 bổ sung 4 "Lãi gộp dịch vụ" XONG và đã push — 2026-11-12 (phần 2)
 
 ## 1. Trạng thái một câu
-Doanh thu + lãi gộp dịch vụ trong báo cáo Chi phí vật tư (4 tab, thêm Theo vật tư và Theo chi nhánh) và lãi gộp dịch vụ/tổng ở Toàn hệ thống (So sánh chi nhánh, Tổng hợp tháng, Xếp hạng) đã làm xong, đã push `master`. Full API 2310 xanh, Chrome IP LAN 54/54 + 19/19. Không migration, không `db:seed`; môi trường khác chỉ cần khởi động lại API.
+Doanh thu + lãi gộp dịch vụ trong báo cáo Chi phí vật tư (4 tab, thêm Theo vật tư và Theo chi nhánh) và lãi gộp dịch vụ/tổng ở Toàn hệ thống (So sánh chi nhánh, Tổng hợp tháng, Xếp hạng) đã làm xong, đã push `master` (HEAD `0507858`, **CI GitHub XANH**, working tree sạch, không có việc dở nào). Full API 2310 xanh, Chrome IP LAN 54/54 + 19/19. Không migration, không `db:seed`; môi trường khác chỉ cần khởi động lại API.
 
 ## 2. Việc đầu tiên của phiên sau
-1. **Kiểm CI của commit sửa lỗi kiểu** (đứng sau `53608d4`): CI của `53608d4` ĐỎ ở bước Typecheck vì `system-report-http.spec.ts` dòng 383 (`rowOf<…>` thiếu `branchId`; vitest không kiểm kiểu nên test vẫn xanh). Đã sửa, `pnpm typecheck` + `pnpm lint` toàn cục sạch trước khi push. Cần xác nhận CI xanh (không có `gh`: dùng REST với Git credential, script nhỏ gọi `GET /repos/phanuy261991-hash/NEXAMed/actions/runs?branch=master`, xem job/step qua `jobs_url`).
-2. **Bài học**: sau khi sửa file `*.spec.ts`, chạy `pnpm typecheck` (không chỉ vitest) trước khi push.
+1. Không còn việc bắt buộc. (CI của `53608d4` từng ĐỎ ở bước Typecheck vì `system-report-http.spec.ts` dòng 383 `rowOf<…>` thiếu `branchId`; đã sửa ở `0507858` và CI xanh. Không có `gh`: kiểm CI bằng REST với Git credential — `GET /repos/phanuy261991-hash/NEXAMed/actions/runs?branch=master`, xem job/step qua `jobs_url`; CI mất khoảng 8–12 phút.)
+2. Chọn việc ở mục 5; phần lớn cần chủ dự án quyết hoặc máy/đơn vị ngoài nên hỏi chủ dự án muốn làm gì trước.
+3. **Bài học**: sau khi sửa file `*.spec.ts`, chạy `pnpm typecheck` (không chỉ vitest) trước khi push.
 
 ## 3. Đã chốt (đừng bàn lại) — chi tiết ở `docs/DECISIONS.md` #297 bổ sung 4
 - Doanh thu theo "Ghi nhận"; chỉ tính các lượt ĐÃ GHI tiêu hao (mọi tab khớp số nhau); lượt hoàn tiền mà vật tư đã hao vẫn tính chi phí, lãi gộp âm; Excel vật tư để trống "Tính chất sử dụng" giữ "chưa phân loại".
