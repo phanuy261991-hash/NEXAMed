@@ -380,7 +380,7 @@ describe('HTTP e2e — Toàn hệ thống (/api/v1/reports/system)', () => {
       expect(d.kpis.totalMargin).toMatchObject({ value: 655_650, previous: 0 });
       const a = rowOf<{ branchId: string; current: Record<string, number>; previous: Record<string, number> }>(d.rows, branchA)!;
       expect(a.current).toMatchObject({ visits: 4, newPatients: 3, recognized: 1_010_000, collected: 660_000, drugMargin: 6_000, serviceMargin: 499_700, totalMargin: 505_700 });
-      expect(rowOf<{ current: Record<string, number> }>(d.rows, branchB)!.current).toMatchObject({ serviceMargin: 149_950, totalMargin: 149_950 });
+      expect(rowOf<{ branchId: string; current: Record<string, number> }>(d.rows, branchB)!.current).toMatchObject({ serviceMargin: 149_950, totalMargin: 149_950 });
       expect(a.previous).toMatchObject({ visits: 1, newPatients: 1, recognized: 100_000, collected: 100_000 });
       expect(d.groupTotal).toBe(1_060_000);
       expect(d.trend.map((m: { month: string }) => m.month)).toEqual(['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']);

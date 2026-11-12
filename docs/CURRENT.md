@@ -61,7 +61,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-XongWebBaoCao-2026-11-12.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 12/11/2026: #297 GĐ4 + "Kho trừ" XONG và đã push `e8d9be9`; việc kế tiếp: kiểm CI, báo cáo lợi nhuận/lãi gộp theo dịch vụ + tab Theo vật tư/Theo chi nhánh (cần mockup), GĐ5 tài liệu). Bản trước: `docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-2026-11-11-p2.md` (GĐ4 đang dở, đã được bản này thay).
+**`docs/handoffs/HANDOFF-LaiGopDichVu-BaoCaoChiPhiVatTu-2026-11-12-p2.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 12/11/2026 phần 2: lãi gộp dịch vụ + 2 tab báo cáo + Toàn hệ thống XONG và đã push; CI của `53608d4` đỏ do lỗi kiểu ở spec, đã sửa — việc đầu tiên là xác nhận CI xanh). Bản trước: `docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-XongWebBaoCao-2026-11-12.md` (12/11/2026: #297 GĐ4 + "Kho trừ" XONG và đã push `e8d9be9`; việc kế tiếp: kiểm CI, báo cáo lợi nhuận/lãi gộp theo dịch vụ + tab Theo vật tư/Theo chi nhánh (cần mockup), GĐ5 tài liệu). Bản trước: `docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-2026-11-11-p2.md` (GĐ4 đang dở, đã được bản này thay).
 
 **`docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-2026-11-11-p2.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 11/11/2026 phần 2: #297 GĐ4 "Chi phí vật tư theo dịch vụ" ĐANG DỞ — máy chủ đã viết + test 8/8 nhưng CHƯA COMMIT, web chưa làm; GĐ3 đã commit `16c909c` chưa push; mục 4 liệt kê việc còn lại A–D). Bản trước: `docs/handoffs/HANDOFF-VatTuYTe-CoNoiBo-TieuHao-GD1-2026-11-11.md` (GĐ1–GĐ3 xong).
 
