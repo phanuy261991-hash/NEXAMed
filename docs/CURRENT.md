@@ -7,7 +7,7 @@ Nhật ký trạng thái đầy đủ cũ (từng đợt) ở `docs/archive/CURR
 ## Bức tranh hiện tại
 
 - Phiên bản phần mềm `0.9.5` (tag `v0.9.5` tạo cục bộ 10/11/2026, chưa push, chưa dựng gói; gói demo gần nhất đã dựng là `0.9.3`; chốt `1.0.0` SAU pilot). Đang pilot tại phòng khám thật; môi trường dev dùng tenant test cố định `01a0cc3c-8626-746b-9d2a-5ea0268ec19f`, đăng nhập `dev.admin` / `Dev@12345` (tài khoản quét quyền `rl.<vai trò>`, mật khẩu `12345678`).
-- `master` = commit "#297 GĐ4 Chi phí vật tư theo dịch vụ" (12/11/2026), cục bộ, CHƯA PUSH (cùng `16c909c` GĐ3 và `f580591` GĐ4 máy chủ; CI chưa kiểm). Khi commit: full API 2298 xanh (1 lượt), core 831, shared 127, web 766, typecheck + lint sạch.
+- `master` = commit "#297 GĐ4 Chi phí vật tư theo dịch vụ" (12/11/2026), `e8d9be9` (12/11/2026, ĐÃ PUSH; gồm GĐ3, GĐ4, "Kho trừ"; kết quả CI xem handoff mới nhất). Khi commit: full API 2298 xanh (1 lượt), core 831, shared 127, web 766, typecheck + lint sạch.
 - Phạm vi v1 đã mở rộng nhiều so với PRD gốc (danh sách chốt đầy đủ ở `CLAUDE.md`, mục Phạm vi v1): Đặt lịch, Tiếp nhận, Khám bệnh, Kê đơn, Thu ngân cơ bản, Sổ quỹ & Thu chi, Ví tạm ứng, Kho Thuốc & Vật tư GĐ1–5, Công nợ nhà cung cấp A–E, Cận lâm sàng, Điều trị & Hẹn tái khám, Lịch làm việc/đơn nghỉ/đổi ca, Bảng giá có thời hạn, Thẻ BHYT (chỉ lưu/hiển thị), Hồ sơ bệnh án MS 15/BV-01, Khách không làm dịch vụ, hệ thống báo cáo + Tổng quan theo vai trò.
 - **Tầng chi nhánh** (#231/#233/#235): Đợt 1–3 xong; chưa bật chi nhánh thứ 2 ở khách thật. Mọi chức năng mới trả lời 4 câu hỏi chi nhánh (`CLAUDE.md`). **SaaS** (#237): nền tên miền phụ + Khu quản trị nền tảng xong; còn hạ tầng thật (chờ báo giá). **Trình cài đặt `nexamed-setup`** (#238) xong; chưa kiểm Let's Encrypt/NAS/Windows sạch.
 - **Runtime Node 26** (#253), NestJS 11, Vite 6/Vitest 4 (#249, #252). Mọi mã mới chạy được ở LAN HTTP on-prem (#257); lỗi hiện qua màn thông báo cụ thể (#255); POST có `Idempotency-Key` (#257); một request = MỘT transaction (#264).
@@ -61,7 +61,7 @@ Menu con "Hẹn tái khám" ở "Tiếp nhận và Đặt lịch": 4 tab, tìm k
 
 ## Bàn giao mới nhất
 
-**`docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-XongWebBaoCao-2026-11-12.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 12/11/2026: #297 GĐ4 XONG máy chủ + web + báo cáo; việc kế tiếp: push + CI, báo cáo lợi nhuận/lãi gộp theo dịch vụ (cần mockup), GĐ5 tài liệu). Bản trước: `docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-2026-11-11-p2.md` (GĐ4 đang dở, đã được bản này thay).
+**`docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-XongWebBaoCao-2026-11-12.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 12/11/2026: #297 GĐ4 + "Kho trừ" XONG và đã push `e8d9be9`; việc kế tiếp: kiểm CI, báo cáo lợi nhuận/lãi gộp theo dịch vụ + tab Theo vật tư/Theo chi nhánh (cần mockup), GĐ5 tài liệu). Bản trước: `docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-2026-11-11-p2.md` (GĐ4 đang dở, đã được bản này thay).
 
 **`docs/handoffs/HANDOFF-ChiPhiVatTuTheoDichVu-GD4-2026-11-11-p2.md`** (MỚI NHẤT — ĐỌC TRƯỚC, 11/11/2026 phần 2: #297 GĐ4 "Chi phí vật tư theo dịch vụ" ĐANG DỞ — máy chủ đã viết + test 8/8 nhưng CHƯA COMMIT, web chưa làm; GĐ3 đã commit `16c909c` chưa push; mục 4 liệt kê việc còn lại A–D). Bản trước: `docs/handoffs/HANDOFF-VatTuYTe-CoNoiBo-TieuHao-GD1-2026-11-11.md` (GĐ1–GĐ3 xong).
 
