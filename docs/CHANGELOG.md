@@ -14,6 +14,14 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-12
 
+### Doanh thu và lãi gộp dịch vụ trong báo cáo Chi phí vật tư + "Lãi gộp tổng" ở So sánh chi nhánh (`docs/DECISIONS.md` #297 bổ sung 4)
+
+Báo cáo Chi phí vật tư theo dịch vụ có thêm doanh thu ghi nhận, lãi gộp dịch vụ (doanh thu trừ chi phí tiêu hao) và biên lãi gộp ở dải số, bảng Theo dịch vụ và bảng Theo khách (lượt khách đã hoàn tiền hiện số âm màu đỏ kèm nhãn "Đã hoàn tiền"); thêm tab "Theo vật tư" (số lượng, giá vốn trung bình, tỷ trọng, dịch vụ dùng) và tab "Theo chi nhánh" (chỉ khi công ty từ 2 chi nhánh và có quyền xem báo cáo toàn công ty); mọi tab xuất Excel và in. Toàn hệ thống › So sánh chi nhánh và Tổng hợp tháng thêm cột (và ô tổng) "Lãi gộp dịch vụ", "Lãi gộp tổng" (thuốc cộng dịch vụ); Xếp hạng thêm danh sách "Lãi gộp dịch vụ". Chỉ tính trên các lượt đã ghi tiêu hao. Không migration, không `db:seed`; khởi động lại API.
+
+### Tài liệu: hướng dẫn vật tư tiêu hao + dọn tài liệu vượt ngưỡng
+
+Thêm mục 3.10 "Vật tư y tế và vật tư tiêu hao theo dịch vụ" vào `docs/pilot-onboarding.md` (thêm vật tư, Excel, Ngày SX, định mức, ghi tiêu hao, Kho trừ, đảo phiếu, Khách không làm dịch vụ, báo cáo chi phí). Cắt `docs/DECISIONS.md` #269–#290 nguyên văn sang `docs/archive/DECISIONS-269-290.md` (file gốc từ ~229 KB còn ~89 KB, nay bắt đầu từ #291); chuyển 18 dòng lịch sử phiên bản cũ của `docs/ERD.md` (v1.75–v1.92) sang `docs/archive/ERD-lich-su-phien-ban-v1.75-v1.92.md` (còn ~77 KB) và sửa dòng Version đầu file thành v1.96. Không đổi mã.
+
 ### Chi phí vật tư theo dịch vụ — giai đoạn 4 (`docs/DECISIONS.md` #297 bổ sung 2)
 
 Khai **định mức** vật tư/thuốc tiêu hao ngay trong form Dịch vụ kỹ thuật và Dịch vụ khám; người thực hiện **ghi vật tư đã dùng** ở màn nhập kết quả cận lâm sàng và ở tab mới "Vật tư đã dùng" của màn khám (điền sẵn theo định mức, tự chọn lô theo hạn dùng, không thu thêm tiền khách); quản lý đảo phiếu có lý do để hoàn kho. Hộp "Khách không làm dịch vụ" hiện vật tư đã ghi và bắt chọn giữ nguyên hoặc đảo phiếu hoàn kho. Báo cáo mới "Chi phí vật tư theo dịch vụ" (Theo dịch vụ, Theo khách; có Excel và In; chỉ quản lý xem vì có giá vốn; phạm vi chi nhánh như các báo cáo khác). Chi phí này không trừ vào lãi gộp. Phiếu tiêu hao không huỷ được ở danh sách phiếu xuất (phải đảo ở dịch vụ, có quyền và lý do). Cần `db:deploy` (1 migration) + `db:seed` (5 quyền mới `service_consumption.*`) + khởi động lại API.

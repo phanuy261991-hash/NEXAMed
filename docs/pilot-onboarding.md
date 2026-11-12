@@ -127,6 +127,30 @@ Tìm nhầm khách? Dùng icon **kính lúp tìm kiếm** cạnh ô SĐT — m�
 - Sau khi hoàn tất, muốn sửa phải dùng "Đính chính" (ghi rõ lý do sửa) — không sửa tự do được nữa, đây là quy định bắt buộc, không phải lỗi hệ thống.
 - Cuối ca làm việc: bấm bánh răng cạnh ảnh đại diện → "Đóng ca hôm nay" — các khách chưa khám xong (nếu có) tự động chuyển về hàng chờ chung cho bác sĩ khác.
 
+### 3.10. Vật tư y tế và vật tư tiêu hao theo dịch vụ (Quản trị, bác sĩ, kỹ thuật viên)
+
+**Thêm vật tư** — "Quản lý kho" → "Thuốc & Vật tư" → Thêm, chọn loại Vật tư:
+
+- Khi thêm mới bắt buộc có **Phân nhóm VTYT** (gõ tên mới vào ô chọn để thêm nhanh) và **Số đăng ký / giấy phép nhập khẩu**. Vật tư cũ thiếu hai trường này vẫn sửa bình thường.
+- **Tính chất sử dụng** mặc định "Dùng 1 lần"; chỉ là nhãn để phân loại, không đổi cách tính giá.
+- Bật **"Chỉ dùng nội bộ, không bán"** cho hàng chỉ dùng trong phòng khám: không cần giá bán, không hiện ở màn bán, phát thuốc, kê đơn. Nếu đơn mẫu hay "sao chép đơn lần trước" còn chứa hàng này, lúc lưu hệ thống báo tên mặt hàng; bỏ dòng đó rồi lưu lại.
+- Nhập hàng loạt bằng Excel: **tải lại file mẫu mới** (file mẫu cũ không nhập được). Cột "Phân nhóm VTYT" bắt buộc với vật tư; để trống "Tính chất sử dụng" thì vật tư ở trạng thái chưa phân loại.
+
+**Nhập kho** — ở dòng phiếu nhập có thêm **Ngày SX** (tuỳ chọn) ngay trước Hạn dùng. Ngày SX không được sau hôm nay và phải trước hạn dùng. Nhập lại cùng số lô mà khác Ngày SX đã lưu thì lúc "Duyệt" hệ thống chặn và báo số lô cùng hai ngày; lô cũ chưa có Ngày SX thì được điền thêm.
+
+**Khai định mức tiêu hao** (quản trị) — mở form dịch vụ ở "Danh mục Chuyên môn" → "Dịch vụ khám" hoặc "Danh mục Cận lâm sàng" → "Dịch vụ kỹ thuật", khối **"Vật tư tiêu hao (định mức)"**: thêm vật tư hoặc thuốc và số lượng theo đơn vị cơ sở. Định mức chỉ để điền sẵn, người thực hiện vẫn sửa theo số thực dùng.
+
+**Ghi vật tư đã dùng** (người thực hiện dịch vụ):
+
+- Dịch vụ cận lâm sàng: khối "Vật tư và thuốc đã dùng" ở màn nhập kết quả. Dịch vụ khám: tab **"Vật tư đã dùng"** ở màn khám.
+- Bấm "Điền theo định mức" nếu cần, sửa số lượng theo thực tế, bấm **"Lưu vật tư đã dùng"**. Chỉ ghi được khi lượt khám đã tiếp nhận. Việc này không thu thêm tiền khách. Thiếu tồn thì hệ thống báo tên mặt hàng và số còn dùng được, không ghi gì.
+- Phòng khám có nhiều kho: ô **"Kho trừ"** mặc định là kho chính của chi nhánh, chọn kho phụ khi cần. Kho đã chọn thiếu hàng thì báo lỗi, không tự lấy bù từ kho khác. Kho phụ tạo ở "Quản trị" → "Danh mục kho".
+- Mỗi dịch vụ chỉ có một phiếu; ghi xong không tự sửa được. Ghi nhầm: người có quyền bấm **"Đảo phiếu"**, nhập lý do (hàng hoàn về đúng kho cũ), rồi ghi lại.
+
+**Khách không làm dịch vụ** — hộp ở phiếu thu chỉ bỏ được dịch vụ chưa lấy mẫu và chưa gọi vào phòng; dịch vụ đã làm thì phải trả tiền. Nếu dịch vụ đó đã ghi vật tư, hộp hỏi giữ nguyên hay "Đảo phiếu tiêu hao và hoàn kho" (cần quyền đảo phiếu và lý do).
+
+**Xem chi phí** (chỉ quản lý, vì có giá vốn) — "Báo cáo" → "Chi phí vật tư", bốn tab Theo dịch vụ, Theo khách, Theo vật tư và Theo chi nhánh (tab cuối chỉ có khi công ty từ 2 chi nhánh và bạn có quyền xem báo cáo toàn công ty), xuất Excel hoặc in. Báo cáo cho thấy doanh thu ghi nhận, chi phí vốn và lãi gộp dịch vụ (doanh thu trừ chi phí vật tư); số liệu chỉ gồm các lượt đã ghi tiêu hao nên lãi gộp có thể thấp hơn thực tế, và chưa trừ nhân sự, mặt bằng, khấu hao. Lượt khách đã hoàn tiền mà vật tư đã hao hiện lãi gộp âm. "Toàn hệ thống" → "So sánh chi nhánh" có thêm hai cột Lãi gộp dịch vụ và Lãi gộp tổng (thuốc cộng dịch vụ).
+
 ---
 
 ## 4. Câu hỏi thường gặp
