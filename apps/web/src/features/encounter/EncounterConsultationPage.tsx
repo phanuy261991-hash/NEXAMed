@@ -10,6 +10,7 @@ import {
   ClockCounterClockwise,
   FirstAidKit,
   Microscope,
+  Package,
   PencilSimple,
   Pill,
   Plus,
@@ -56,6 +57,7 @@ import type { PatientFormValues } from '../patient/PatientFormFields';
 import { formatDobDisplay } from '../../shared/format/date';
 import { ClinicalOrderPanel } from '../clinical-order/ClinicalOrderPanel';
 import { ClinicalOrderResultsTab } from '../clinical-order/ClinicalOrderResultsBlock';
+import { EncounterConsumptionTab } from '../service-consumption/EncounterConsumptionTab';
 import { LabPartnerAwaitingBlock } from '../lab-partner/LabPartnerAwaitingBlock';
 import { useClinicalOrderQuery, useMarkResultsSeenMutation } from '../clinical-order/clinical-order.queries';
 import { useHasPermission } from '../auth/usePermission';
@@ -155,6 +157,8 @@ const TABS = [
   { id: 'section-donthuoc', label: 'Kê đơn thuốc', icon: Pill },
   { id: 'section-chidinh', label: 'Chỉ định cận lâm sàng', icon: Flask },
   { id: 'section-ketqua', label: 'Kết quả cận lâm sàng', icon: Microscope },
+  // Ghi vật tư/thuốc đã dùng cho dịch vụ khám (#297 GĐ4) — chỉ hiện với ai có quyền xem tiêu hao.
+  { id: 'section-vattu', label: 'Vật tư đã dùng', icon: Package },
 ] as const;
 
 /**
@@ -170,6 +174,7 @@ export function EncounterConsultationPage() {
   const navigate = useNavigate();
   const query = useConsultationDetailQuery(encounterId);
   const canSeeClinicalOrders = useHasPermission('clinical_order', 'read');
+  const canSeeConsumption = useHasPermission('service_consumption', 'read');
   const clinicalOrderQuery = useClinicalOrderQuery(encounterId, canSeeClinicalOrders);
   // Số dịch vụ làm tại phòng khám ĐÃ có kết quả được duyệt — chấm số xanh ở tab "Kết quả cận lâm sàng" (#221).
   const resultReadyCount = clinicalOrderQuery.data?.order?.items.filter((i) => i.performance === 'IN_HOUSE' && i.resultReturnedAt !== null && !i.amendmentPending).length ?? 0;
@@ -1070,7 +1075,7 @@ export function EncounterConsultationPage() {
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Nhãn tab KHÔNG xuống dòng; màn hẹp (< 1440px) ẩn biểu tượng + thu padding cho vừa 5 tab, vẫn không vừa thì cuộn ngang (ui-guidelines mục 15). */}
           <div className="scroll-hover flex h-11 flex-shrink-0 items-center gap-1.5 overflow-x-auto border-b border-slate-200 bg-white px-4">
-            {TABS.filter((tab) => (tab.id !== 'section-chidinh' && tab.id !== 'section-ketqua') || canSeeClinicalOrders).map((tab) => (
+            {TABS.filter((tab) => (tab.id === 'section-vattu' ? canSeeConsumption : (tab.id !== 'section-chidinh' && tab.id !== 'section-ketqua') || canSeeClinicalOrders)).map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -1412,6 +1417,8 @@ export function EncounterConsultationPage() {
                 <ClinicalOrderResultsTab encounterId={encounterId} />
               </>
             )}
+
+            {activeTabId === 'section-vattu' && canSeeConsumption && <EncounterConsumptionTab encounterId={encounterId} />}
           </div>
         </main>
       </div>

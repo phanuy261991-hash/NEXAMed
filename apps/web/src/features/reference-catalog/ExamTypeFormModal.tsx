@@ -12,6 +12,7 @@ import { useSaveAttempt } from '../../shared/hooks/useSaveAttempt';
 import { RecordFormNotice } from '../../shared/ui/RecordFormNotice';
 import { formatVnd } from '../../shared/format/currency';
 import { makeDraftId } from '../../shared/make-draft-id';
+import { ServiceNormSection, useServiceNormEditor } from '../service-consumption/ServiceNormSection';
 import { useReferenceCatalogQuery } from './reference-catalog.queries';
 import type { ExamTypePriceInput, ReferenceCatalogItem } from '@nexamed/shared';
 
@@ -77,6 +78,9 @@ export function ExamTypeFormModal({
   const [draftFrom, setDraftFrom] = useState('');
   const [draftTo, setDraftTo] = useState('');
   const [rowError, setRowError] = useState<string | null>(null);
+  const [normError, setNormError] = useState<string | null>(null);
+  // Định mức vật tư tiêu hao (#297 GĐ4): lưu riêng theo MÃ dịch vụ, chỉ khi sửa dịch vụ đã có.
+  const normEditor = useServiceNormEditor(mode === 'edit' && item ? { kind: 'EXAM_TYPE', ref: item.code } : null);
 
   const priceTypeQuery = useReferenceCatalogQuery('PRICE_TYPE');
   const unitQuery = useReferenceCatalogQuery('UNIT');
@@ -156,7 +160,15 @@ export function ExamTypeFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isNameInvalid) return;
-    if (await run(() => onSubmit(buildDto()))) onCancel();
+    const invalidNorm = normEditor.validate();
+    setNormError(invalidNorm);
+    if (invalidNorm) return;
+    // Định mức lưu TRƯỚC dịch vụ: thay nguyên danh sách nên chạy lại khi lưu dịch vụ lỗi vẫn an toàn.
+    const ok = await run(async () => {
+      await normEditor.save();
+      await onSubmit(buildDto());
+    });
+    if (ok) onCancel();
   }
 
   // "Lưu và nhập tiếp" (mục 4.7) — nút `type="button"` riêng, không đụng nút submit mặc định
@@ -349,6 +361,14 @@ export function ExamTypeFormModal({
               </div>
             </div>
           </div>
+
+          <ServiceNormSection editor={normEditor} readOnly={false} idPrefix="et" />
+          {normError && (
+            <div role="alert" className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">
+              <Warning size={15} weight="fill" className="flex-none" aria-hidden="true" />
+              {normError}
+            </div>
+          )}
 
           <RecordFormNotice stale={stale} saveError={saveError} onReload={mode === 'edit' ? onReload : undefined} />
         </div>

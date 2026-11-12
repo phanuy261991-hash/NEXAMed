@@ -16,6 +16,7 @@ import { Textarea } from '../../shared/ui/Textarea';
 import { TimeInput } from '../../shared/ui/TimeInput';
 import { useHasPermission } from '../auth/usePermission';
 import { useResultTemplatesQuery } from '../paraclinical/paraclinical.queries';
+import { OrderItemConsumption } from '../service-consumption/OrderItemConsumption';
 import { formatDateTimeVn, genderShort, previewFlag, RESULT_STATUS_META, SERVICE_KIND_LABELS } from './paraclinical-result-labels';
 import { PARACLINICAL_GROUP_META, type ParaclinicalGroup } from './paraclinical-group';
 import { AmendResultDialog, CancelAmendmentDialog } from './ParaclinicalAmendDialogs';
@@ -281,6 +282,8 @@ function ResultForm({ group, itemId, form }: { group: ParaclinicalGroup; itemId:
             </div>
           </div>
         </div>
+
+        <OrderItemConsumption encounterId={form.encounterId} itemIds={form.sections.map((s) => s.itemId)} />
 
         {error && (
           <div role="alert" className="flex items-start gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">

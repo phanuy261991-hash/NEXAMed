@@ -23,6 +23,7 @@ import { useLabPartnerEnabledQuery } from '../clinic/clinic.queries';
 import { useDepartmentOptionsQuery } from '../department/department.queries';
 import { useSuppliersQuery } from '../drug/supplier.queries';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
+import { ServiceNormSection, useServiceNormEditor } from '../service-consumption/ServiceNormSection';
 import { DEFAULT_RESULT_TYPE_BY_KIND, TECHNICAL_SERVICE_KIND_LABELS } from './paraclinical-labels';
 import { convertTurnaroundText, parseTurnaround, splitTurnaround, type TurnaroundUnit } from './turnaround-model';
 import {
@@ -195,6 +196,8 @@ function ServiceForm({
   );
   const [indicatorSearch, setIndicatorSearch] = useState('');
   const [rowError, setRowError] = useState<string | null>(null);
+  // Định mức vật tư tiêu hao (#297 GĐ4): lưu riêng, CHỈ khi sửa/xem dịch vụ đã có.
+  const normEditor = useServiceNormEditor(detail ? { kind: 'TECHNICAL_SERVICE', ref: detail.id } : null);
 
   const categoryQuery = useReferenceCatalogQuery('TECH_SERVICE_CATEGORY');
   const specimenQuery = useReferenceCatalogQuery('SPECIMEN_TYPE');
@@ -295,7 +298,15 @@ function ServiceForm({
       }
     }
 
+    const normError = normEditor.validate();
+    if (normError) {
+      setRowError(normError);
+      return;
+    }
+
     const ok = await run(async () => {
+      // Định mức lưu TRƯỚC dịch vụ: thay nguyên danh sách nên chạy lại khi lưu dịch vụ lỗi vẫn an toàn.
+      await normEditor.save();
       if (isCreate) {
         const body: CreateTechnicalServiceRequest = {
           name: name.trim(),
@@ -775,6 +786,8 @@ function ServiceForm({
             </div>
           </BoxedSection>
         )}
+
+        <ServiceNormSection editor={normEditor} readOnly={readOnly} idPrefix="ts" />
 
         {rowError && (
           <div role="alert" className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-semibold text-rose-700">

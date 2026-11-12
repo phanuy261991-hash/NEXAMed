@@ -98,6 +98,7 @@ const QualityReportPage = lazy(() => import('../features/report/quality/QualityR
 const ClinicalReportPage = lazy(() => import('../features/report/clinical/ClinicalReportPage').then((m) => ({ default: m.ClinicalReportPage })));
 const PatientReportPage = lazy(() => import('../features/report/patients/PatientReportPage').then((m) => ({ default: m.PatientReportPage })));
 const PharmacyReportPage = lazy(() => import('../features/report/pharmacy/PharmacyReportPage').then((m) => ({ default: m.PharmacyReportPage })));
+const ServiceConsumptionReportPage = lazy(() => import('../features/report/service-consumption/ServiceConsumptionReportPage').then((m) => ({ default: m.ServiceConsumptionReportPage })));
 const OperationsReportPage = lazy(() => import('../features/report/operations/OperationsReportPage').then((m) => ({ default: m.OperationsReportPage })));
 const WalletListPage = lazy(() => import('../features/patient-wallet/WalletListPage').then((m) => ({ default: m.WalletListPage })));
 // Kho Thuốc GĐ2 — "Phiếu nhập kho"/"Tồn kho" (docs/DECISIONS.md #146, kế hoạch precious-humming-goblet.md).
@@ -235,6 +236,8 @@ export const router = createBrowserRouter([
       { path: 'reports/patients', element: <RequirePermissionRoute module="patient_report" action="read"><PatientReportPage /></RequirePermissionRoute> },
       // Trang báo cáo "Thuốc và vật tư" (#287): 3 tab (Đã phát, Lãi gộp, Kiểm soát đặc biệt) + 4 tab dẫn sang báo cáo kho cũ, quyền pharmacy_report.read.
       { path: 'reports/pharmacy', element: <RequirePermissionRoute module="pharmacy_report" action="read"><PharmacyReportPage /></RequirePermissionRoute> },
+      // Trang báo cáo "Chi phí vật tư theo dịch vụ" (#297 GĐ4, màn 9): 2 tab (Theo dịch vụ, Theo khách), quyền service_consumption.report (có giá vốn nên chỉ quản lý).
+      { path: 'reports/service-consumption', element: <RequirePermissionRoute module="service_consumption" action="report"><ServiceConsumptionReportPage /></RequirePermissionRoute> },
       // Trang báo cáo "Toàn hệ thống" (#287): 4 tab (So sánh chi nhánh, Xếp hạng, Tổng hợp tháng, Khám chéo chi nhánh), quyền company_report.read.
       { path: 'reports/system', element: <RequirePermissionRoute module="company_report" action="read"><SystemReportPage /></RequirePermissionRoute> },
       { path: 'reports/operations', element: <RequirePermissionRoute module="operations_report" action="read"><OperationsReportPage /></RequirePermissionRoute> },

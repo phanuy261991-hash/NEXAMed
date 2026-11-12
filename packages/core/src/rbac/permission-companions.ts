@@ -44,7 +44,8 @@ export const PERMISSION_COMPANIONS: Readonly<Record<string, readonly string[]>> 
   'service_consumption.record': ['service_consumption.read', 'drug.read', 'reference_catalog.read'],
   'service_consumption.reverse': ['service_consumption.read'],
   'service_consumption.norm': ['service_consumption.read', 'drug.read', 'reference_catalog.read'],
-  'service_consumption.report': ['service_consumption.read'],
+  // Báo cáo chi phí vật tư lọc theo bác sĩ (`GET /appointments/doctors` cần `appointment.read`) — cùng tiền lệ `operations_report.read` (quét vai trò tuỳ biến 12/11/2026).
+  'service_consumption.report': ['service_consumption.read', 'appointment.read'],
   'stock_receipt.report': ['drug.read'],
   'stock_issue.read': ['stock_receipt.read', 'drug.read', 'reference_catalog.read'],
   // Phiếu xuất mở rộng có loại "Xuất trả nhà cung cấp" chọn nhà cung cấp → `GET /suppliers` cần `supplier.read` (quét vai trò tuỳ biến 10/11/2026; #291 đã tách quyền này khỏi `drug.*`).

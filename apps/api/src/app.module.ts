@@ -26,6 +26,7 @@ import { PricingModule } from './modules/pricing/pricing.module';
 import { ClinicalOrderModule } from './modules/clinical-order/clinical-order.module';
 import { ClinicalOrderCancellationModule } from './modules/clinical-order/clinical-order-cancellation.module';
 import { ParaclinicalProgressReaderModule } from './modules/clinical-order/paraclinical-progress-reader.module';
+import { ServiceConsumptionDeclineModule } from './modules/inventory/service-consumption-decline.module';
 import { EncounterBillingReaderModule } from './modules/billing/encounter-billing-reader.module';
 import { ParaclinicalResultModule } from './modules/paraclinical-result/paraclinical-result.module';
 import { LabPartnerModule } from './modules/lab-partner/lab-partner.module';
@@ -97,6 +98,8 @@ import { TenantContextMiddleware } from './common/tenant-context.middleware';
     ParaclinicalResultsReaderModule,
     // Huỷ lượt khám → đóng dòng chỉ định chưa bắt đầu (#219) — `@Global()`, cùng khuôn trên.
     ClinicalOrderCancellationModule,
+    // Bỏ dịch vụ ở quầy thu ngân → xử lý vật tư tiêu hao đã ghi (#297 GĐ4) — `@Global()`, cùng khuôn trên.
+    ServiceConsumptionDeclineModule,
     ParaclinicalProgressReaderModule,
     EncounterBillingReaderModule,
     EncounterModule,

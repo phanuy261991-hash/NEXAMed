@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ConflictException, forwardRef, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import {
   CLINIC_CONFIG_READER_PORT,
   computeDiscountAmount,
@@ -329,6 +329,10 @@ export class StockIssueService {
       const existing = await this.stockIssueRepository.findByIdAnyWithContext(tx, tenantId, branchId, id);
       if (!existing) throw new NotFoundException();
       assertWarehouseInScope(existing.warehouse.departmentId, dataScope, actorDepartmentId);
+      // Phiếu tiêu hao dịch vụ (#297 GĐ4) chỉ đảo được qua `POST /service-consumption/records/:id/reverse` (quyền `service_consumption.reverse`, lý do bắt buộc, nhật ký riêng).
+      if (existing.issueType === 'SERVICE_CONSUMPTION') {
+        throw new ConflictException('Phiếu tiêu hao dịch vụ được đảo ở phần "Vật tư và thuốc đã dùng" của dịch vụ đó, không huỷ ở danh sách phiếu xuất.');
+      }
 
       await this.voidPostedCore(tx, tenantId, actorId, existing, dto.version, dto.reason, meta);
     });

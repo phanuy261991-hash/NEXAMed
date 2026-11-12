@@ -12,6 +12,14 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 **Quy ước**: ghi thay đổi mới vào ĐẦU file này (mới nhất ở trên). Khi file này vượt ~120 KB thì chuyển các ngày cũ nhất sang `docs/archive/CHANGELOG-<kỳ>.md` mới và thêm liên kết ở đây (xem `CLAUDE.md`, mục "Quy ước tài liệu dài").
 
+## 2026-11-12
+
+### Chi phí vật tư theo dịch vụ — giai đoạn 4 (`docs/DECISIONS.md` #297 bổ sung 2)
+
+Khai **định mức** vật tư/thuốc tiêu hao ngay trong form Dịch vụ kỹ thuật và Dịch vụ khám; người thực hiện **ghi vật tư đã dùng** ở màn nhập kết quả cận lâm sàng và ở tab mới "Vật tư đã dùng" của màn khám (điền sẵn theo định mức, tự chọn lô theo hạn dùng, không thu thêm tiền khách); quản lý đảo phiếu có lý do để hoàn kho. Hộp "Khách không làm dịch vụ" hiện vật tư đã ghi và bắt chọn giữ nguyên hoặc đảo phiếu hoàn kho. Báo cáo mới "Chi phí vật tư theo dịch vụ" (Theo dịch vụ, Theo khách; có Excel và In; chỉ quản lý xem vì có giá vốn; phạm vi chi nhánh như các báo cáo khác). Chi phí này không trừ vào lãi gộp. Phiếu tiêu hao không huỷ được ở danh sách phiếu xuất (phải đảo ở dịch vụ, có quyền và lý do). Cần `db:deploy` (1 migration) + `db:seed` (5 quyền mới `service_consumption.*`) + khởi động lại API.
+
+Sửa kèm: bước tách quyền nhà cung cấp một lần (#291) chỉ áp cho vai trò tuỳ biến, để kỹ thuật viên có `drug.read` không bị cấp thêm quyền nhà cung cấp.
+
 ## 2026-11-11
 
 ### Ngày sản xuất của lô (`docs/DECISIONS.md` #297 bổ sung 1, giai đoạn 2) + chỉnh form Vật tư

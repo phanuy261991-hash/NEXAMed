@@ -339,6 +339,7 @@ export function Sidebar() {
   const canSeeClinicalReport = useHasPermission('clinical_report', 'read');
   const canSeeQualityReport = useHasPermission('quality_report', 'read');
   const canSeePharmacyReport = useHasPermission('pharmacy_report', 'read');
+  const canSeeServiceConsumptionReport = useHasPermission('service_consumption', 'report');
   const canSeeSystemReport = useHasPermission('company_report', 'read');
   // "Báo cáo dòng tiền" (Sổ quỹ & Thu chi GĐ2) — báo cáo quản trị tổng hợp toàn phòng khám, CHỈ
   // clinic_admin (`cash_voucher.report`), khác "Phiếu thu/chi"/"Sổ quỹ" (receptionist cũng thấy).
@@ -838,6 +839,7 @@ export function Sidebar() {
                   {canSeePatientReport && <NavItem to="/reports/patients" label="Bệnh nhân" icon={Users} collapsed={false} indent />}
                   {canSeeClinicalReport && <NavItem to="/reports/clinical" label="Chuyên môn" icon={Flask} collapsed={false} indent />}
                   {canSeePharmacyReport && <NavItem to="/reports/pharmacy" label="Thuốc và vật tư" icon={Pill} collapsed={false} indent />}
+                  {canSeeServiceConsumptionReport && <NavItem to="/reports/service-consumption" label="Chi phí vật tư" icon={Stack} collapsed={false} indent />}
                   {canSeeSystemReport && <NavItem to="/reports/system" label="Toàn hệ thống" icon={Buildings} collapsed={false} indent />}
                   {canSeeOperationsReport && <NavItem to="/reports/operations" label="Khám bệnh và vận hành" icon={ChartLine} collapsed={false} indent />}
                   {canSeeQualityReport && <NavItem to="/reports/quality" label="Chất lượng và tuân thủ" icon={ShieldCheck} collapsed={false} indent />}

@@ -60,6 +60,9 @@ import {
   pharmacyDispensedReportSchema,
   pharmacyMarginReportSchema,
   pharmacyControlledReportSchema,
+  serviceConsumptionReportQuerySchema,
+  serviceConsumptionByServiceReportSchema,
+  serviceConsumptionByCustomerReportSchema,
   doctorPerformanceReportSchema,
   doctorOrderMixReportSchema,
   doctorHoursReportSchema,
@@ -4234,6 +4237,43 @@ for (const r of pharmacyReports) {
       200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
       401: errorResponse('Thiếu hoặc sai access token'),
       403: errorResponse(PHARMACY_FORBIDDEN),
+    },
+  });
+}
+
+// Báo cáo "Chi phí vật tư theo dịch vụ" (#297 GĐ4, màn 9): 2 tab, mỗi tab một route xem và một route xuất Excel.
+const SERVICE_CONSUMPTION_REPORT_FORBIDDEN = 'Không có quyền service_consumption.report hoặc company_report.read';
+const serviceConsumptionReports: Array<{ path: string; label: string; summary: string; schema: Parameters<typeof envelope>[0] }> = [
+  { path: 'by-service', label: 'Chi phí vật tư theo dịch vụ', summary: 'Chi phí vốn vật tư và thuốc tiêu hao theo dịch vụ — số lượt, chi phí vốn, trung bình mỗi lượt, mặt hàng dùng nhiều nhất; lọc theo Dịch vụ và Bác sĩ', schema: serviceConsumptionByServiceReportSchema },
+  { path: 'by-customer', label: 'Chi phí vật tư theo khách', summary: 'Chi phí vốn vật tư và thuốc tiêu hao theo từng lượt dịch vụ của từng khách; lọc theo Dịch vụ và Bác sĩ', schema: serviceConsumptionByCustomerReportSchema },
+];
+for (const r of serviceConsumptionReports) {
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/service-consumption/${r.path}`,
+    tags: ['report'],
+    summary: `${r.summary} (quyền service_consumption.report, #297; scope=all|pick cần thêm company_report.read)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: serviceConsumptionReportQuerySchema as unknown as typeof pharmacyReportQuerySchema },
+    responses: {
+      200: jsonResponse('Thành công', envelope(r.schema)),
+      400: errorResponse('Tham số không hợp lệ'),
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(SERVICE_CONSUMPTION_REPORT_FORBIDDEN),
+      404: errorResponse('Chi nhánh không thuộc công ty'),
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: `/api/v1/reports/service-consumption/${r.path}/export`,
+    tags: ['report'],
+    summary: `Xuất Excel ${r.label} (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán)`,
+    security: [{ bearerAuth: [] }],
+    request: { query: serviceConsumptionReportQuerySchema as unknown as typeof pharmacyReportQuerySchema },
+    responses: {
+      200: { description: 'Tệp .xlsx', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+      401: errorResponse('Thiếu hoặc sai access token'),
+      403: errorResponse(SERVICE_CONSUMPTION_REPORT_FORBIDDEN),
     },
   });
 }

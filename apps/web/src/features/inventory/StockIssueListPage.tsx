@@ -139,6 +139,7 @@ export function StockIssueListPage() {
               { value: 'RETURN_TO_SUPPLIER', label: 'Xuất trả nhà cung cấp' },
               { value: 'WRITE_OFF', label: 'Xuất huỷ (hỏng/hết hạn)' },
               { value: 'COUNT_SHORTAGE', label: 'Xuất cân bằng kiểm kê' },
+              { value: 'SERVICE_CONSUMPTION', label: 'Tiêu hao dịch vụ' },
             ]}
           />
           <Combobox
@@ -245,7 +246,8 @@ export function StockIssueListPage() {
                           )}
                         </>
                       )}
-                      {item.status === 'POSTED' && canVoid && <RowActionButton icon={Prohibit} label="Huỷ phiếu" tone="danger" onClick={() => setVoidTarget(item)} />}
+                      {/* Phiếu tiêu hao dịch vụ đảo ở phần "Vật tư và thuốc đã dùng" của dịch vụ (quyền + lý do riêng), không huỷ ở đây. */}
+                      {item.status === 'POSTED' && canVoid && item.issueType !== 'SERVICE_CONSUMPTION' && <RowActionButton icon={Prohibit} label="Huỷ phiếu" tone="danger" onClick={() => setVoidTarget(item)} />}
                       {item.status === 'POSTED' && !canVoid && canAdjustDebt && item.issueType === 'RETURN_TO_SUPPLIER' && Boolean(item.supplierId) && (
                         <RowActionButton icon={Prohibit} label="Đề nghị huỷ" tone="amber" onClick={() => setVoidRequestTarget(item)} />
                       )}

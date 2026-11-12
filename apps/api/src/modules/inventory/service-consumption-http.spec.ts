@@ -339,5 +339,10 @@ describe('HTTP e2e — /api/v1/service-consumption (Chi phí vật tư theo dị
     const detail = await http().get(`/api/v1/inventory/issues/${issueId}`).set(authed(adminToken));
     expect(detail.status, JSON.stringify(detail.body)).toBe(200);
     expect(detail.body.data).toMatchObject({ issueType: 'SERVICE_CONSUMPTION', status: 'POSTED', totalAmount: 0 });
+
+    // Không huỷ được ở danh sách phiếu xuất (bỏ qua quyền đảo + lý do tiêu hao) — phải đảo ở phần ghi vật tư đã dùng.
+    const voided = await http().post(`/api/v1/inventory/issues/${issueId}/void`).set(authed(adminToken)).send({ version: detail.body.data.version, reason: 'Huỷ thử ở danh sách' });
+    expect(voided.status, JSON.stringify(voided.body)).toBe(409);
+    expect((await overview(encounterId)).services[0]!.record).not.toBeNull();
   });
 });

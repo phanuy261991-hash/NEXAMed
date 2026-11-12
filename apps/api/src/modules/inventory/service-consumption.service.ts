@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { getVietnamDateString, maxDataScope, selectFefoBatches } from '@nexamed/core';
+import { getVietnamDateString, maxDataScope, selectFefoBatches, type ActiveServiceConsumption } from '@nexamed/core';
 import type {
   ConsumptionRecord,
   ConsumptionService,
@@ -246,23 +246,61 @@ export class ServiceConsumptionService {
   // ============ Đảo phiếu ============
 
   async reverse(tenantId: string, branchId: string, actorId: string, issueId: string, dto: ReverseConsumptionRequest, meta: RequestMeta): Promise<EncounterConsumptionResponse> {
-    const encounterId = await this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
-      const issue = await this.repository.findIssueForReverse(tx, tenantId, branchId, issueId);
-      if (!issue || !issue.encounterId) throw new NotFoundException();
-      if (issue.status !== 'POSTED') throw new ConflictException('Phiếu tiêu hao này đã được đảo.');
-      await this.stockIssueService.voidPostedForAdjustment(tx, tenantId, branchId, actorId, issueId, dto.reason, meta);
-      await writeAuditLog(tx, tenantId, {
-        actorId,
-        action: 'service_consumption.reversed',
-        entityType: 'stock_issue',
-        entityId: issueId,
-        afterJson: { reason: dto.reason },
-        ip: meta.ip,
-        userAgent: meta.userAgent,
-      });
-      return issue.encounterId;
-    });
+    const encounterId = await this.unitOfWork.runInTenantScope(tenantId, (tx) => this.reverseInTx(tx, tenantId, branchId, actorId, issueId, dto.reason, meta, false));
     return this.getForEncounter(tenantId, branchId, actorId, encounterId);
+  }
+
+  /** Đảo phiếu trong transaction của người gọi. `viaDecline` = đảo cùng lúc thu ngân bỏ dịch vụ (ghi vào nhật ký để truy ngược). */
+  private async reverseInTx(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, issueId: string, reason: string, meta: RequestMeta, viaDecline: boolean): Promise<string> {
+    const issue = await this.repository.findIssueForReverse(tx, tenantId, branchId, issueId);
+    if (!issue || !issue.encounterId) throw new NotFoundException();
+    if (issue.status !== 'POSTED') throw new ConflictException('Phiếu tiêu hao này đã được đảo.');
+    await this.stockIssueService.voidPostedForAdjustment(tx, tenantId, branchId, actorId, issueId, reason, meta);
+    await writeAuditLog(tx, tenantId, {
+      actorId,
+      action: 'service_consumption.reversed',
+      entityType: 'stock_issue',
+      entityId: issueId,
+      afterJson: viaDecline ? { reason, viaServiceDecline: true } : { reason },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+    return issue.encounterId;
+  }
+
+  // ============ Cho hộp "Khách không làm dịch vụ" (qua `ServiceConsumptionDeclinePort`) ============
+  // Hai hàm dưới chạy TRONG transaction của người gọi (nhận `tx`), KHÔNG tự mở transaction (#264).
+
+  async describeActiveForDecline(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, orderItemIds: string[]): Promise<{ canReverse: boolean; items: ActiveServiceConsumption[] }> {
+    const [issues, canSeeCost, canReverse] = await Promise.all([
+      this.repository.listActiveIssuesForOrderItems(tx, tenantId, branchId, orderItemIds),
+      this.canSeeCost(tx, tenantId, actorId),
+      this.canReverse(tx, tenantId, actorId),
+    ]);
+    return {
+      canReverse,
+      items: issues.flatMap((issue) =>
+        issue.clinicalOrderItemId === null
+          ? []
+          : [
+              {
+                orderItemId: issue.clinicalOrderItemId,
+                issueId: issue.id,
+                issueNo: issue.issueNo,
+                lines: issue.lines.map((l) => ({ drugName: l.drug.name, quantity: l.quantity, baseUnitCode: l.drug.baseUnitCode })),
+                totalCost: canSeeCost ? issue.lines.reduce((sum, l) => sum + Number(l.unitCost) * l.quantity, 0) : null,
+              },
+            ],
+      ),
+    };
+  }
+
+  async reverseForDecline(tx: Prisma.TransactionClient, tenantId: string, branchId: string, actorId: string, issueId: string, reason: string, meta: RequestMeta): Promise<void> {
+    await this.reverseInTx(tx, tenantId, branchId, actorId, issueId, reason, meta, true);
+  }
+
+  private async canReverse(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<boolean> {
+    return maxDataScope(await findScopesForUserPermission(tx, tenantId, actorId, 'service_consumption', 'reverse')) !== 'none';
   }
 
   private async canSeeCost(tx: Prisma.TransactionClient, tenantId: string, actorId: string): Promise<boolean> {

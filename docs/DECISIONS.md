@@ -584,3 +584,38 @@ Mockup: https://claude.ai/artifact/KcYSjc9SJUJ3xRKrpK5aNc (bản 3). Chia 5 giai
 - Không làm (ngoài mockup): Ngày SX ở phiếu xuất/điều chuyển (chỉ kế thừa, không hiện), gợi ý lô FEFO, nhãn bì thuốc; mặt hàng không quản lý theo lô vẫn thấy ô Ngày SX như ô Số lô/Hạn dùng hiện có (không khoá).
 - **Bốn câu chi nhánh**: lô/dòng phiếu theo chi nhánh qua kho như cũ; Ngày SX là cột của lô nên không thêm `branch_id`.
 - **Kiểm**: core +10 (bộ ca dùng chung), web +9 (cùng bộ ca) + sửa spec bản in; `inventory-http.spec.ts` 43 (+6: lưu/hiện, null mặc định, luật ngày, lô lệch ngày, điền lô cũ, CSDL chặn, Excel cảnh báo) với đột biến (bỏ chặn lệch ngày và bỏ kiểm luật → 2 ca đỏ, đã khôi phục), `stock-transfer-http` +1 (kế thừa NSX), `stock-count-http` +1 (lô mới có NSX, NSX sai → 422); Chrome thật qua IP LAN HTTP `scripts/ui-audit/manufacture-date-check.cjs` **15/15** (cột, báo lỗi tại ô, chặn Lưu, Tồn theo lô, Cảnh báo hạn dùng, Duyệt bị chặn khi lệch ngày; Chrome phát hiện cột Hạn dùng bị đẩy ra ngoài khung → đã thu hẹp cột). Môi trường khác cần `db:deploy` (migration mới); không cần `db:seed`.
+
+## 297 bổ sung 2 — Giai đoạn 4 "Chi phí vật tư theo dịch vụ": định mức, ghi tiêu hao, đảo phiếu, báo cáo (12/11/2026)
+
+Làm theo mockup 11 màn đã duyệt (màn 7–10), bám sát; các chỗ lệch ghi ở cuối. Chủ dự án CHƯA xem 6 quyết định kỹ thuật dưới đây (tự chọn theo đề xuất).
+
+**Quyết định kỹ thuật (cần chủ dự án xem)**
+1. Định mức lưu theo MÃ dịch vụ khám hoặc ID dịch vụ kỹ thuật, số lượng theo đơn vị cơ sở; chỉ để điền sẵn khi ghi, người thực hiện sửa theo số thực dùng.
+2. Kho trừ = kho MẶC ĐỊNH của chi nhánh đang làm việc (mockup không có ô chọn kho); FEFO bỏ lô đã hết hạn; hàng không theo lô lấy giá vốn bình quân; thiếu tồn → 422 nêu tên + số còn dùng được và KHÔNG ghi gì.
+3. Mỗi dòng dịch vụ chỉ MỘT phiếu hiệu lực; sửa nhầm = quản lý đảo phiếu (có lý do) rồi ghi lại; người thực hiện không tự sửa sau khi lưu.
+4. Lượt khám phải ở CHECKED_IN / IN_CONSULTATION / COMPLETED mới ghi được.
+5. `system_admin` KHÔNG có nhóm quyền này; kỹ thuật viên được cấp thêm `drug.read` + `reference_catalog.read` để chọn vật tư; thu ngân thấy vật tư đã ghi của dịch vụ định bỏ qua `invoice.cancel_service` (không cần `service_consumption.read`).
+6. Quyền `service_consumption.report` (xem giá vốn + báo cáo) chỉ quản lý; người ghi chỉ thấy tên và số lượng. Quyền đi kèm: `report` → `read` + `appointment.read` (ô lọc bác sĩ, cùng tiền lệ `operations_report.read`).
+
+**Đã làm**
+- Dữ liệu: bảng `service_consumption_norm` + 4 cột ở `stock_issue` (migration `20261112090000_service_consumption`, ERD v1.96, `docs/ERD-2.md` mục 3.23). Định mức CHUNG cả công ty; phiếu theo chi nhánh qua kho.
+- API (module `inventory`): `GET/PUT /service-consumption/norms`, `GET /service-consumption/encounters/:id`, `POST /service-consumption/records`, `POST /service-consumption/records/:id/reverse`; báo cáo `GET /reports/service-consumption/by-service|by-customer` (+ `/export` Excel), module `report`. Phiếu xuất loại `SERVICE_CONSUMPTION`, `sell_price` 0, chỉ ghi giá vốn lô.
+- Web: khối "Vật tư tiêu hao (định mức)" trong form Dịch vụ kỹ thuật và Dịch vụ khám; khối "Vật tư và thuốc đã dùng" ở màn nhập kết quả CLS (nhắc, không chặn duyệt, khi có định mức mà chưa ghi); tab "Vật tư đã dùng" ở màn khám (dịch vụ khám); hộp "Khách không làm dịch vụ" thêm khối vật tư + lựa chọn Giữ nguyên / Đảo phiếu (cần `service_consumption.reverse` + lý do, đảo TRONG CÙNG giao dịch với việc huỷ dịch vụ, không tự hoàn kho khi bỏ qua lựa chọn); trang "Chi phí vật tư theo dịch vụ" (menu Báo cáo, 2 tab, Excel + In, Trung tâm báo cáo 2 dòng).
+- Cổng mới `ServiceConsumptionDeclinePort` (core) + adapter + module `@Global()` để `clinical-order` không import `InventoryModule`; port nhận `tx`, không tự mở giao dịch (#264).
+
+**Phát hiện và đã sửa trong lúc làm**
+- Huỷ phiếu chung ở danh sách phiếu xuất vẫn huỷ được phiếu tiêu hao, bỏ qua quyền đảo + lý do → máy chủ 409, web ẩn nút.
+- Bước tách quyền nhà cung cấp một lần (#291, `migrateSupplierPermissions`) cấp `supplier.*` cho MỌI vai trò có `drug.*`, kể cả vai trò hệ thống vừa được cấp `drug.read` → nay chỉ áp cho vai trò tuỳ biến (3 test `sync-role-permissions.spec` đỏ → xanh).
+- Ô chọn vật tư: gõ nhanh rồi Enter chọn nhầm kết quả của từ khoá trước (kết quả trễ 300 ms) → chỉ chọn/hiện danh sách khi từ khoá đã ổn định (Chrome thật phát hiện).
+- Quét vai trò tuỳ biến: ô lọc Bác sĩ của báo cáo gọi `GET /appointments/doctors` → thêm quyền đi kèm `appointment.read`.
+
+**Lệch mockup (đã báo chủ dự án)**: nút "Lưu vật tư đã dùng" riêng (không lưu cùng lúc với kết quả); thêm cột Giá vốn + Thành tiền từng dòng ở bảng đã ghi, chỉ người có quyền xem giá vốn thấy (chủ dự án yêu cầu 12/11/2026); câu ngắn dưới khối định mức.
+
+**Giới hạn cần biết**: màn "Khách không làm dịch vụ" chỉ bỏ được dịch vụ còn `ORDERED` (chưa lấy mẫu/gọi vào phòng) mà màn nhập kết quả CĐHA chỉ mở sau "gọi vào phòng" — nên khối vật tư ở hộp huỷ chỉ xuất hiện khi tiêu hao được ghi lúc dịch vụ còn chờ (ví dụ qua tab Vật tư đã dùng/API), hiếm gặp trong luồng thật.
+
+**Kiểm (12/11/2026)**: core +9 (`service-consumption-report-math`), web +12 (mô hình) +10 (báo cáo); API `service-consumption-http` 8, `service-decline-http` 25 (+5 ca tiêu hao, đột biến 2/2), `service-consumption-report-http` 9 (cô lập tenant B, chi nhánh khác cùng công ty, vai trò thiếu quyền gộp → 403, đột biến lọc chi nhánh + phiếu đã đảo), RLS + giao dịch lồng nhau xanh. Full: API 2298 (150 file, 1 lượt), core 831, shared 127, web 766; typecheck + lint sạch. Chrome IP LAN HTTP `scripts/ui-audit/service-consumption-check.cjs` **36/36** (định mức, ghi tiêu hao, tab màn khám, lỗi 503 giữ dữ liệu, báo cáo + Excel, hộp huỷ dịch vụ); quét quyền 7 vai trò + vai trò tuỳ biến ĐẠT; 6 cỡ màn hình × 2 tab không tràn.
+
+**Môi trường khác**: `pnpm install` (không đổi), `db:deploy` (migration `20261112090000_service_consumption`), `db:seed` (5 quyền `service_consumption.*`), khởi động lại API.
+
+**Việc kế tiếp (chủ dự án yêu cầu 12/11/2026, chưa làm, cần mockup duyệt)**: rà soát báo cáo lợi nhuận hiện có, rồi "lãi gộp theo dịch vụ" + tab "Theo vật tư" + tab "Theo chi nhánh" của báo cáo chi phí vật tư — xem `docs/TASK.md`. Còn GĐ5 (tài liệu hướng dẫn nhập liệu).
+

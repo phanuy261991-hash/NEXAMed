@@ -26,6 +26,9 @@ import { PharmacyReportService } from './pharmacy-report.service';
 import { QualityReportController } from './quality-report.controller';
 import { QualityReportRepository } from './quality-report.repository';
 import { QualityReportService } from './quality-report.service';
+import { ServiceConsumptionReportController } from './service-consumption-report.controller';
+import { ServiceConsumptionReportRepository } from './service-consumption-report.repository';
+import { ServiceConsumptionReportService } from './service-consumption-report.service';
 import { SystemReportController } from './system-report.controller';
 import { SystemReportRepository } from './system-report.repository';
 import { SystemReportService } from './system-report.service';
@@ -41,7 +44,7 @@ import { RevenueReportService } from './revenue-report.service';
  */
 @Module({
   imports: [ReferenceCatalogModule, ClinicModule, IamModule],
-  controllers: [DashboardController, DailyReportController, OperationsReportController, RevenueReportController, DoctorReportController, PharmacyReportController, SystemReportController, PatientReportController, ClinicalReportController, QualityReportController],
-  providers: [DashboardService, DashboardRepository, DailyReportService, DailyReportRepository, OperationsReportService, OperationsReportRepository, RevenueReportService, RevenueReportRepository, DoctorReportService, DoctorReportRepository, PharmacyReportService, PharmacyReportRepository, SystemReportService, SystemReportRepository, PatientReportService, PatientReportRepository, ClinicalReportService, ClinicalReportRepository, QualityReportService, QualityReportRepository],
+  controllers: [DashboardController, DailyReportController, OperationsReportController, RevenueReportController, DoctorReportController, PharmacyReportController, ServiceConsumptionReportController, SystemReportController, PatientReportController, ClinicalReportController, QualityReportController],
+  providers: [DashboardService, DashboardRepository, DailyReportService, DailyReportRepository, OperationsReportService, OperationsReportRepository, RevenueReportService, RevenueReportRepository, DoctorReportService, DoctorReportRepository, PharmacyReportService, PharmacyReportRepository, ServiceConsumptionReportService, ServiceConsumptionReportRepository, SystemReportService, SystemReportRepository, PatientReportService, PatientReportRepository, ClinicalReportService, ClinicalReportRepository, QualityReportService, QualityReportRepository],
 })
 export class ReportModule {}

@@ -27,7 +27,7 @@ export class ServiceDeclineController {
   @UseInterceptors(AuditViewInterceptor)
   async preview(@Param('encounterId', ParseUUIDPipe) encounterId: string, @Query() query: unknown, @Req() req: Request) {
     const { invoiceId } = declinePreviewQuerySchema.parse(query);
-    return this.service.preview(req.user!.tenantId, requireBranchId(req.user!), encounterId, invoiceId);
+    return this.service.preview(req.user!.tenantId, requireBranchId(req.user!), req.user!.userId, encounterId, invoiceId);
   }
 
   /** Số tiền hiện ở chân hộp thoại, tính lại mỗi lần tích chọn. Chỉ đọc. */

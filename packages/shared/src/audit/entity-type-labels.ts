@@ -66,6 +66,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   stock_receipt: 'Phiếu nhập kho',
   stock_issue: 'Phiếu xuất kho',
   service_consumption_norm: 'Định mức vật tư tiêu hao',
+  service_consumption_report_export: 'Báo cáo Chi phí vật tư theo dịch vụ',
   stock_count: 'Phiếu kiểm kê',
   stock_transfer: 'Phiếu điều chuyển kho',
   stock_ledger_report: 'Báo cáo Nhập-Xuất-Tồn',

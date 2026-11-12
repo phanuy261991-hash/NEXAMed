@@ -9898,6 +9898,18 @@ export interface paths {
                                     blockedReason: "WORK_STARTED" | "ALREADY_CANCELLED" | "ALREADY_REFUNDED" | "PACKAGE_ITEM_BLOCKED" | "PACKAGE_REPRICE_PAID" | "NOT_BILLED_HERE" | null;
                                     blockedLabel: string | null;
                                 }[];
+                                consumptions: {
+                                    /** Format: uuid */
+                                    orderItemId: string;
+                                    issueNo: string;
+                                    lines: {
+                                        drugName: string;
+                                        quantity: number;
+                                        baseUnitCode: string | null;
+                                    }[];
+                                    totalCost: number | null;
+                                }[];
+                                canReverseConsumption: boolean;
                             };
                             meta: Record<string, never>;
                         };
@@ -9970,6 +9982,9 @@ export interface paths {
                         reasonCode: string;
                         reasonNote?: string;
                         invoiceVersion: number;
+                        /** @enum {string} */
+                        consumptionAction?: "KEEP" | "REVERSE";
+                        consumptionReason?: string;
                     };
                 };
             };
@@ -29279,6 +29294,409 @@ export interface paths {
                     };
                 };
                 /** @description Không có quyền pharmacy_report.read hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/service-consumption/by-service": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi phí vốn vật tư và thuốc tiêu hao theo dịch vụ — số lượt, chi phí vốn, trung bình mỗi lượt, mặt hàng dùng nhiều nhất; lọc theo Dịch vụ và Bác sĩ (quyền service_consumption.report, #297; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    serviceKey?: string;
+                    doctorId?: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                totalCost: number;
+                                visitCount: number;
+                                averageCost: number | null;
+                                serviceOptions: {
+                                    key: string;
+                                    name: string;
+                                }[];
+                                serviceCount: number;
+                                rows: {
+                                    key: string;
+                                    name: string;
+                                    visitCount: number;
+                                    cost: number;
+                                    averageCost: number | null;
+                                    topItems: string[];
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.report hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/service-consumption/by-service/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Chi phí vật tư theo dịch vụ (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    serviceKey?: string;
+                    doctorId?: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.report hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/service-consumption/by-customer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi phí vốn vật tư và thuốc tiêu hao theo từng lượt dịch vụ của từng khách; lọc theo Dịch vụ và Bác sĩ (quyền service_consumption.report, #297; scope=all|pick cần thêm company_report.read) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    serviceKey?: string;
+                    doctorId?: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Thành công */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                generatedAt: string;
+                                from: string;
+                                to: string;
+                                branchCount: number;
+                                totalCost: number;
+                                visitCount: number;
+                                averageCost: number | null;
+                                serviceOptions: {
+                                    key: string;
+                                    name: string;
+                                }[];
+                                entryCount: number;
+                                entries: {
+                                    occurredAt: string;
+                                    patientCode: string;
+                                    patientName: string;
+                                    serviceName: string;
+                                    itemsText: string;
+                                    doctorName: string | null;
+                                    performerName: string | null;
+                                    cost: number;
+                                    branchName: string;
+                                }[];
+                            };
+                            meta: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Tham số không hợp lệ */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.report hoặc company_report.read */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Chi nhánh không thuộc công ty */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/service-consumption/by-customer/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xuất Excel Chi phí vật tư theo khách (cùng tham số và số liệu với màn hình; ghi nhật ký kiểm toán) */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    serviceKey?: string;
+                    doctorId?: string;
+                    scope?: "current" | "all" | "pick";
+                    branchIds?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tệp .xlsx */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description Thiếu hoặc sai access token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Không có quyền service_consumption.report hoặc company_report.read */
                 403: {
                     headers: {
                         [name: string]: unknown;

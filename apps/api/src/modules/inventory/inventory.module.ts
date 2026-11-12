@@ -123,6 +123,6 @@ import { ServiceConsumptionRepository } from './service-consumption.repository';
   // "Công nợ nhà cung cấp" Phần D (docs/DECISIONS.md #180/#182) — `SupplierDebtService.approveAdjustment()`
   // gọi `StockReceiptService.voidPostedForAdjustment()`/`StockIssueService.voidPostedForAdjustment()`
   // để thực thi "Huỷ chứng từ" hộ lúc duyệt "Đề nghị huỷ" (VOID_REQUEST) — export thêm 2 Service này.
-  exports: [StockBalanceRepository, StockReceiptService, StockIssueService],
+  exports: [StockBalanceRepository, StockReceiptService, StockIssueService, ServiceConsumptionService],
 })
 export class InventoryModule {}

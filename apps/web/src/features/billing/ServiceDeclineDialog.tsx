@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Clock, Info, MinusCircle, ProhibitInset } from '@phosphor-icons/react';
-import type { Invoice, ServiceDeclinePreviewItem } from '@nexamed/shared';
+import { Clock, Info, MinusCircle, ProhibitInset, WarningCircle } from '@phosphor-icons/react';
+import type { DeclineConsumptionAction, Invoice, ServiceDeclinePreviewItem } from '@nexamed/shared';
 import { ApiError } from '../../shared/api/client';
 import { Button } from '../../shared/ui/Button';
 import { Combobox } from '../../shared/ui/Combobox';
@@ -10,6 +10,7 @@ import { SelectionCheckbox } from '../../shared/ui/SelectionCheckbox';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { Textarea } from '../../shared/ui/Textarea';
 import { formatVnd } from '../../shared/format/currency';
+import { unitLabel, useUnitNameByCode } from '../drug/useUnitNameByCode';
 import { useReferenceCatalogQuery } from '../reference-catalog/reference-catalog.queries';
 import { useDeclineServicesMutation, useServiceDeclinePreviewQuery, useServiceDeclineQuoteQuery } from './invoice.queries';
 
@@ -37,6 +38,10 @@ export function ServiceDeclineDialog({ invoice, onClose }: { invoice: Invoice; o
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reasonCode, setReasonCode] = useState('');
   const [note, setNote] = useState('');
+  // Vật tư tiêu hao đã ghi cho dịch vụ định bỏ (#297 GĐ4, màn 10): bắt buộc chọn giữ nguyên hay đảo phiếu + hoàn kho; chọn đảo thì phải có lý do.
+  const [consumptionAction, setConsumptionAction] = useState<DeclineConsumptionAction | null>(null);
+  const [consumptionReason, setConsumptionReason] = useState('');
+  const unitNameByCode = useUnitNameByCode();
   const [error, setError] = useState<string | null>(null);
   const mutation = useDeclineServicesMutation(invoice.encounterId);
 
@@ -66,7 +71,11 @@ export function ServiceDeclineDialog({ invoice, onClose }: { invoice: Invoice; o
   }
 
   const isRefund = preview?.action === 'REFUND';
-  const canSubmit = !!preview && preview.action !== null && selected.size > 0 && reasonCode !== '' && !quoteQuery.isError;
+  const selectedConsumptions = (preview?.consumptions ?? []).filter((c) => selected.has(c.orderItemId));
+  const hasConsumption = selectedConsumptions.length > 0;
+  const consumptionCost = selectedConsumptions.some((c) => c.totalCost !== null) ? selectedConsumptions.reduce((sum, c) => sum + (c.totalCost ?? 0), 0) : null;
+  const consumptionOk = !hasConsumption || consumptionAction === 'KEEP' || (consumptionAction === 'REVERSE' && consumptionReason.trim().length >= 3);
+  const canSubmit = !!preview && preview.action !== null && selected.size > 0 && reasonCode !== '' && !quoteQuery.isError && consumptionOk;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -79,6 +88,7 @@ export function ServiceDeclineDialog({ invoice, onClose }: { invoice: Invoice; o
         orderItemIds: selectedIds,
         reasonCode,
         ...(note.trim() ? { reasonNote: note.trim() } : {}),
+        ...(hasConsumption && consumptionAction ? { consumptionAction, ...(consumptionAction === 'REVERSE' ? { consumptionReason: consumptionReason.trim() } : {}) } : {}),
       });
       onClose();
     } catch (err) {
@@ -214,6 +224,68 @@ export function ServiceDeclineDialog({ invoice, onClose }: { invoice: Invoice; o
                 </div>
                 <Textarea id="service-decline-note" label="Ghi thêm" rows={1} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Không bắt buộc" maxLength={500} />
               </div>
+
+              {hasConsumption && (
+                <div className="mt-3.5 space-y-3 border-t border-slate-100 pt-3.5">
+                  <div role="region" aria-label="Vật tư đã ghi tiêu hao" className="flex items-start gap-2.5">
+                    <WarningCircle size={18} weight="fill" className="mt-0.5 flex-shrink-0 text-amber-600" aria-hidden="true" />
+                    <div className="min-w-0 text-sm">
+                      <div className="font-semibold text-amber-800">{selectedConsumptions.length > 1 ? 'Các dịch vụ này đã ghi tiêu hao vật tư.' : 'Dịch vụ này đã ghi tiêu hao vật tư.'}</div>
+                      {selectedConsumptions.map((c) => (
+                        <div key={c.orderItemId} className="mt-1 text-slate-700">
+                          {c.lines.map((l) => `${l.drugName} ×${l.quantity}${l.baseUnitCode ? ` ${unitLabel(unitNameByCode, l.baseUnitCode).toLowerCase()}` : ''}`).join(' · ')}
+                        </div>
+                      ))}
+                      {consumptionCost !== null && <div className="mt-1 text-slate-500">Chi phí vốn {formatVnd(consumptionCost)}</div>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span id="service-decline-consumption-label" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                      Vật tư đã ghi xử lý thế nào?<span className="text-rose-500"> *</span>
+                    </span>
+                    <div role="radiogroup" aria-labelledby="service-decline-consumption-label" className="grid gap-2 sm:grid-cols-2">
+                      {(
+                        [
+                          { value: 'KEEP', label: 'Giữ nguyên, vật tư đã dùng, không hoàn kho', hint: 'Chi phí vẫn tính vào dịch vụ đã huỷ.', disabled: false },
+                          {
+                            value: 'REVERSE',
+                            label: 'Đảo phiếu tiêu hao và hoàn kho',
+                            hint: preview.canReverseConsumption ? 'Phiếu cũ được giữ lại và đánh dấu đã đảo.' : 'Cần quyền đảo phiếu tiêu hao; nhờ quản lý.',
+                            disabled: !preview.canReverseConsumption,
+                          },
+                        ] as const
+                      ).map((opt) => {
+                        const on = consumptionAction === opt.value;
+                        return (
+                          <label
+                            key={opt.value}
+                            className={`block rounded-lg border px-3.5 py-2.5 ${opt.disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${
+                              on ? 'border-brand-teal bg-brand-teal text-white' : `border-slate-300 ${opt.disabled ? '' : 'hover:border-blue-400 hover:bg-brand-teal-tint'}`
+                            }`}
+                          >
+                            <input type="radio" name="service-decline-consumption" className="sr-only" checked={on} disabled={opt.disabled} onChange={() => setConsumptionAction(opt.value)} />
+                            <span className={`block text-[13.5px] font-semibold ${on ? '' : 'text-slate-900'}`}>{opt.label}</span>
+                            <span className={`mt-0.5 block text-[11.5px] ${on ? 'opacity-90' : 'text-slate-500'}`}>{opt.hint}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2.5">
+                      <Textarea
+                        id="service-decline-consumption-reason"
+                        label="Lý do đảo phiếu"
+                        rows={2}
+                        value={consumptionReason}
+                        onChange={(e) => setConsumptionReason(e.target.value)}
+                        disabled={consumptionAction !== 'REVERSE'}
+                        placeholder={consumptionAction === 'REVERSE' ? 'Nhập lý do đảo phiếu' : 'Chỉ nhập khi chọn "Đảo phiếu tiêu hao và hoàn kho"'}
+                        maxLength={500}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-3.5 flex items-start gap-2.5 border-t border-slate-100 pt-3">
                 <Info size={18} weight="fill" className="mt-0.5 flex-shrink-0 text-blue-600" aria-hidden="true" />

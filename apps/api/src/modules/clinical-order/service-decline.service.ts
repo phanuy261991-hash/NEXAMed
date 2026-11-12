@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { ClinicalOrderItem, Prisma } from '@prisma/client';
 import {
   allocateInvoiceDueToLines,
@@ -12,9 +12,11 @@ import {
   getVietnamDateString,
   InvoiceClosedError,
   remainingLineAmount,
+  SERVICE_CONSUMPTION_DECLINE_PORT,
   ServiceDeclineBlockedError,
   ServiceDeclineReasonInvalidError,
   type ClinicConfigReaderPort,
+  type ServiceConsumptionDeclinePort,
   type DeclinableOrderItem,
   type DeclinePackageMode,
 } from '@nexamed/core';
@@ -90,10 +92,12 @@ export class ServiceDeclineService {
     private readonly catalog: PriceableCatalogService,
     private readonly pricing: PricingService,
     @Inject(CLINIC_CONFIG_READER_PORT) private readonly clinicConfig: ClinicConfigReaderPort,
+    // Vật tư tiêu hao đã ghi cho dịch vụ định bỏ (#297 GĐ4) — port nhận `tx`, chạy trong transaction của luồng này, KHÔNG tự mở transaction.
+    @Inject(SERVICE_CONSUMPTION_DECLINE_PORT) private readonly consumption: ServiceConsumptionDeclinePort,
   ) {}
 
   /** Mở hộp thoại: các dịch vụ liên quan tới phiếu + dòng nào bỏ được / vì sao không. */
-  async preview(tenantId: string, branchId: string, encounterId: string, invoiceId: string): Promise<ServiceDeclinePreview> {
+  async preview(tenantId: string, branchId: string, actorId: string, encounterId: string, invoiceId: string): Promise<ServiceDeclinePreview> {
     const packageMode = await this.clinicConfig.getPackageDeclineMode(tenantId);
     return this.unitOfWork.runInTenantScope(tenantId, async (tx) => {
       const loaded = await this.load(tx, tenantId, branchId, encounterId, invoiceId);
@@ -101,6 +105,7 @@ export class ServiceDeclineService {
       const paid = invoice.status === 'PAID';
       const verdicts = evaluateDeclinableItems(rows.map(toDeclinable), packageMode, paid);
       const packageName = new Map((order?.packages ?? []).map((p) => [p.id, p.packageName]));
+      const consumption = await this.consumption.describeActive(tx, tenantId, branchId, actorId, rows.map((r) => r.item.id));
       return {
         invoiceId: invoice.id,
         invoiceNo: invoice.invoiceNo,
@@ -124,6 +129,8 @@ export class ServiceDeclineService {
             blockedLabel: verdict.declinable ? null : SERVICE_DECLINE_BLOCKED_LABELS[verdict.reason],
           };
         }),
+        consumptions: consumption.items.map((c) => ({ orderItemId: c.orderItemId, issueNo: c.issueNo, lines: c.lines, totalCost: c.totalCost })),
+        canReverseConsumption: consumption.canReverse,
       };
     });
   }
@@ -166,6 +173,18 @@ export class ServiceDeclineService {
       // 1) Dòng chỉ định → CANCELLED + lý do. Có điều kiện `status = ORDERED`: kỹ thuật viên vừa lấy mẫu giữa lúc thu ngân bấm xác nhận thì số dòng đổi lệch → huỷ cả giao dịch.
       const changed = await this.repository.markDeclined(tx, tenantId, selectedIds, { reasonCode: dto.reasonCode, note, actorId, at: new Date() });
       if (changed !== selectedIds.length) throw new ConcurrentModificationError();
+
+      // 1b) Vật tư tiêu hao đã ghi cho các dịch vụ này (#297 GĐ4): KHÔNG tự hoàn kho. Bắt buộc chọn "Giữ nguyên" hoặc "Đảo phiếu" (cần quyền riêng + lý do); đảo phiếu nằm trong CÙNG giao dịch.
+      const consumed = await this.consumption.describeActive(tx, tenantId, branchId, actorId, selectedIds);
+      if (consumed.items.length > 0) {
+        if (!dto.consumptionAction) throw new BadRequestException('Chọn cách xử lý vật tư đã ghi cho dịch vụ này: giữ nguyên hoặc đảo phiếu và hoàn kho.');
+        if (dto.consumptionAction === 'REVERSE') {
+          if (!consumed.canReverse) throw new ForbiddenException('Bạn không có quyền đảo phiếu tiêu hao. Chọn "Giữ nguyên" hoặc nhờ quản lý.');
+          for (const item of consumed.items) {
+            await this.consumption.reverse(tx, tenantId, branchId, actorId, item.issueId, dto.consumptionReason ?? '', meta);
+          }
+        }
+      }
 
       // 2) Tiền.
       const { reasons } = await this.repository.findDeclineNames(tx, tenantId, [dto.reasonCode], []);

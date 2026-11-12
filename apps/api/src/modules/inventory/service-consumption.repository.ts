@@ -106,6 +106,15 @@ export class ServiceConsumptionRepository {
     });
   }
 
+  /** Phiếu tiêu hao đang hiệu lực của các DÒNG CHỈ ĐỊNH (dùng khi thu ngân bỏ dịch vụ), kèm dòng hàng. */
+  listActiveIssuesForOrderItems(tx: Prisma.TransactionClient, tenantId: string, branchId: string, orderItemIds: string[]) {
+    if (orderItemIds.length === 0) return Promise.resolve([]);
+    return tx.stockIssue.findMany({
+      where: { tenantId, clinicalOrderItemId: { in: orderItemIds }, issueType: 'SERVICE_CONSUMPTION', status: 'POSTED', deletedAt: null, warehouse: { branchId } },
+      include: { lines: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' }, include: { drug: { select: { name: true, baseUnitCode: true } } } } },
+    });
+  }
+
   findActiveIssueForTarget(tx: Prisma.TransactionClient, tenantId: string, target: { kind: 'CLINICAL_ORDER_ITEM' | 'ENCOUNTER_SERVICE_ITEM'; id: string }) {
     return tx.stockIssue.findFirst({
       where: { tenantId, issueType: 'SERVICE_CONSUMPTION', status: 'POSTED', deletedAt: null, ...(target.kind === 'CLINICAL_ORDER_ITEM' ? { clinicalOrderItemId: target.id } : { encounterServiceItemId: target.id }) },

@@ -93,6 +93,19 @@ export const serviceDeclinePreviewItemSchema = z.object({
 });
 export type ServiceDeclinePreviewItem = z.infer<typeof serviceDeclinePreviewItemSchema>;
 
+/** Vật tư/thuốc đã ghi tiêu hao cho MỘT dịch vụ định bỏ (#297 GĐ4). `totalCost` chỉ có với người xem được giá vốn. */
+export const serviceDeclineConsumptionSchema = z.object({
+  orderItemId: z.string().uuid(),
+  issueNo: z.string(),
+  lines: z.array(z.object({ drugName: z.string(), quantity: z.number().int(), baseUnitCode: z.string().nullable() })),
+  totalCost: z.number().int().nullable(),
+});
+export type ServiceDeclineConsumption = z.infer<typeof serviceDeclineConsumptionSchema>;
+
+/** Cách xử lý vật tư tiêu hao đã ghi khi bỏ dịch vụ: giữ nguyên (đã dùng, không hoàn kho) hoặc đảo phiếu + hoàn kho (cần quyền riêng + lý do). */
+export const declineConsumptionActionSchema = z.enum(['KEEP', 'REVERSE']);
+export type DeclineConsumptionAction = z.infer<typeof declineConsumptionActionSchema>;
+
 export const serviceDeclinePreviewSchema = z.object({
   invoiceId: z.string().uuid(),
   invoiceNo: z.string(),
@@ -103,6 +116,10 @@ export const serviceDeclinePreviewSchema = z.object({
   /** `null` = phiếu đã đóng sổ (huỷ/hoàn hết), không còn gì để bỏ. */
   action: z.enum(['REMOVE_LINE', 'REFUND']).nullable(),
   items: z.array(serviceDeclinePreviewItemSchema),
+  /** Dịch vụ trong phiếu đã ghi vật tư tiêu hao (tên + số lượng; giá vốn chỉ khi người xem có quyền xem giá vốn). */
+  consumptions: z.array(serviceDeclineConsumptionSchema),
+  /** Người xem có quyền đảo phiếu tiêu hao hay không — không có thì chỉ chọn được "Giữ nguyên". */
+  canReverseConsumption: z.boolean(),
 });
 export type ServiceDeclinePreview = z.infer<typeof serviceDeclinePreviewSchema>;
 
@@ -144,5 +161,13 @@ export const declineServicesRequestSchema = z.object({
   reasonNote: z.string().trim().max(SERVICE_DECLINE_NOTE_MAX).optional(),
   /** Chống ghi chồng khi hai thu ngân mở cùng một phiếu. */
   invoiceVersion: z.number().int().nonnegative(),
+  /** BẮT BUỘC khi trong các dịch vụ định bỏ có dịch vụ đã ghi tiêu hao; máy chủ không tự hoàn kho khi thiếu lựa chọn này. */
+  consumptionAction: declineConsumptionActionSchema.optional(),
+  /** Lý do đảo phiếu tiêu hao — bắt buộc khi `consumptionAction = 'REVERSE'`. */
+  consumptionReason: z.string().trim().max(SERVICE_DECLINE_NOTE_MAX).optional(),
+}).superRefine((data, ctx) => {
+  if (data.consumptionAction === 'REVERSE' && (data.consumptionReason ?? '').length < 3) {
+    ctx.addIssue({ code: 'custom', path: ['consumptionReason'], message: 'Nhập lý do đảo phiếu tiêu hao.' });
+  }
 });
 export type DeclineServicesRequest = z.infer<typeof declineServicesRequestSchema>;

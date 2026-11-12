@@ -347,3 +347,15 @@ Migration `20261111100000_reference_catalog_supply_group` + `20261111100100_drug
 | `stock_count_line.new_batch_manufacture_date` | Ngày SX của lô MỚI phát hiện lúc kiểm kê | DATE NULL, chỉ có ý nghĩa cùng `new_batch_no`. CHECK `stock_count_line_new_batch_manufacture_before_expiry_chk` |
 
 "Không sau hôm nay (giờ Việt Nam)" kiểm ở máy chủ (`checkManufactureDate`), không ở CSDL vì phụ thuộc ngày hiện tại. Điều chuyển kho/trả hàng từ phiếu xuất kế thừa Ngày SX từ lô gốc khi tạo phiếu nhập tự sinh.
+### 3.23 Chi phí vật tư theo dịch vụ — định mức + phiếu tiêu hao (v1.96, `docs/DECISIONS.md` #297 bổ sung 2, giai đoạn 4)
+
+Migration `20261112090000_service_consumption`. **Định mức CHUNG cả công ty** (không `branch_id`); **phiếu tiêu hao theo chi nhánh** qua kho (`warehouse.branch_id`) và lượt khám, như mọi phiếu xuất.
+
+| Bảng / cột | Vai trò | Chi tiết |
+|---|---|---|
+| `service_consumption_norm` (bảng mới) | Định mức vật tư/thuốc tiêu hao của một dịch vụ | `service_kind` `EXAM_TYPE` (mã dịch vụ khám, `exam_type_code`) hoặc `TECHNICAL_SERVICE` (`technical_service_id`), CHECK đúng một trong hai; `drug_id`; `quantity` > 0 theo đơn vị CƠ SỞ. Duy nhất một dòng cho mỗi (dịch vụ, mặt hàng) khi chưa xoá (2 chỉ mục một phần). Có `tenant_id` + RLS + đủ cột chuẩn. Chỉ để điền sẵn khi ghi tiêu hao |
+| `stock_issue.encounter_id`, `clinical_order_item_id`, `encounter_service_item_id`, `performed_by` | Phiếu xuất loại `SERVICE_CONSUMPTION` gắn lượt khám, dòng dịch vụ và người thực hiện | FK ghép `(tenant_id, …)`. CHECK `stock_issue_service_consumption_chk`: phiếu `SERVICE_CONSUMPTION` bắt buộc có lượt khám + người thực hiện + đúng MỘT dòng dịch vụ; loại khác để trống cả bốn cột |
+| Chỉ mục duy nhất `stock_issue_consumption_order_item_uq` / `…_service_item_uq` | Mỗi dòng dịch vụ chỉ một phiếu tiêu hao hiệu lực | Một phần: `status = 'POSTED'` và chưa xoá. Đảo phiếu (`VOIDED`) thì ghi lại được; hai người ghi cùng lúc → một người bị 409 |
+
+Quyền mới `service_consumption.read/record/reverse/norm/report` ở catalog quyền (không ở bảng nghiệp vụ). Phiếu tiêu hao KHÔNG sinh hoá đơn, `sell_price` = 0, chỉ ghi giá vốn lô; không đụng lãi gộp.
+

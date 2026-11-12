@@ -612,4 +612,133 @@ describe('HTTP e2e — /api/v1/billing/invoices/:encounterId/service-decline (Kh
       }
     });
   });
+  describe('vật tư tiêu hao đã ghi cho dịch vụ định bỏ (#297 GĐ4)', () => {
+    let warehouseId: string;
+
+    async function createSupply(name: string): Promise<string> {
+      const res = await http()
+        .post('/api/v1/drugs')
+        .set(authed(adminToken))
+        .send({
+          code: `DC-${randomUUID().slice(0, 8)}`,
+          name,
+          itemType: 'SUPPLY',
+          baseUnitCode: 'VIEN',
+          manufacturerCode: 'TEST_MANUFACTURER',
+          defaultSellPrice: 1000,
+          isBatchManaged: true,
+          drugGroupCode: 'TEST_GROUP',
+          registrationNumber: 'VD-TEST-0001',
+          ingredients: [],
+          units: [],
+        });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      return res.body.data.id as string;
+    }
+
+    async function stockIn(drugId: string, quantity: number, unitCost: number) {
+      const created = await http()
+        .post('/api/v1/inventory/receipts')
+        .set(authed(adminToken))
+        .send({ warehouseId, receiptType: 'OPENING_BALANCE', lines: [{ drugId, unitCode: 'VIEN', quantity, unitCost, batchNo: `DC-${randomUUID().slice(0, 6)}`, expiryDate: '2099-01-01' }] });
+      expect(created.status, JSON.stringify(created.body)).toBe(200);
+      const approved = await http().post(`/api/v1/inventory/receipts/${created.body.data.id}/approve`).set(authed(adminToken)).send({ version: created.body.data.version });
+      expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+    }
+
+    const onHand = async (drugId: string): Promise<number> => {
+      const rows = (await http().get('/api/v1/inventory/balances').set(authed(adminToken)).query({ warehouseId })).body.data.items as { drugId: string; quantityOnHand: number }[];
+      return rows.find((r) => r.drugId === drugId)?.quantityOnHand ?? 0;
+    };
+
+    /** Lượt khám có 1 xét nghiệm đã ghi tiêu hao `used` đơn vị vật tư (kho còn `stock`). */
+    async function encounterWithConsumption(stock: number, used: number) {
+      const drugId = await createSupply(`Vật tư bỏ dịch vụ ${randomUUID().slice(0, 6)}`);
+      await stockIn(drugId, stock, 500);
+      const { encounterId } = await prepareEncounterInConsultation();
+      const order = await saveOrder(encounterId, { items: [inHouse(glucoseId)] });
+      const itemId = order.items[0]!.id;
+      const rec = await http()
+        .post('/api/v1/service-consumption/records')
+        .set(authed(adminToken))
+        .send({ encounterId, target: { kind: 'CLINICAL_ORDER_ITEM', id: itemId }, lines: [{ drugId, quantity: used }] });
+      expect(rec.status, JSON.stringify(rec.body)).toBe(200);
+      const { invoiceId, invoiceVersion } = await openInvoice(encounterId);
+      return { encounterId, itemId, drugId, invoiceId, invoiceVersion };
+    }
+
+    const previewOf = async (encounterId: string, invoiceId: string, token: string) => {
+      const res = await http().get(declineUrl(encounterId)).query({ invoiceId }).set(authed(token));
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      return res.body.data as {
+        consumptions: { orderItemId: string; issueNo: string; totalCost: number | null; lines: { drugName: string; quantity: number }[] }[];
+        canReverseConsumption: boolean;
+      };
+    };
+
+    beforeAll(async () => {
+      warehouseId = (await http().get('/api/v1/warehouses').set(authed(adminToken))).body.data.items[0].id;
+    });
+
+    it('xem trước: thu ngân thấy tên + số lượng vật tư đã ghi nhưng KHÔNG thấy giá vốn và không có quyền đảo; quản lý thấy giá vốn + được đảo; dịch vụ chưa ghi thì rỗng', async () => {
+      const ctx = await encounterWithConsumption(10, 3);
+      const asReceptionist = await previewOf(ctx.encounterId, ctx.invoiceId, receptionistToken);
+      expect(asReceptionist.canReverseConsumption).toBe(false);
+      expect(asReceptionist.consumptions).toHaveLength(1);
+      expect(asReceptionist.consumptions[0]).toMatchObject({ orderItemId: ctx.itemId, totalCost: null });
+      expect(asReceptionist.consumptions[0]!.lines).toMatchObject([{ quantity: 3 }]);
+
+      const asAdmin = await previewOf(ctx.encounterId, ctx.invoiceId, adminToken);
+      expect(asAdmin.canReverseConsumption).toBe(true);
+      expect(asAdmin.consumptions[0]!.totalCost).toBe(1500);
+
+      const plain = await prepareEncounterInConsultation();
+      await saveOrder(plain.encounterId, { items: [inHouse(glucoseId)] });
+      const plainInvoice = await openInvoice(plain.encounterId);
+      expect((await previewOf(plain.encounterId, plainInvoice.invoiceId, adminToken)).consumptions).toEqual([]);
+    });
+
+    it('dịch vụ đã ghi tiêu hao mà không chọn cách xử lý → 400, KHÔNG huỷ dịch vụ, kho không đổi', async () => {
+      const ctx = await encounterWithConsumption(10, 3);
+      const res = await decline(ctx.encounterId, { invoiceId: ctx.invoiceId, invoiceVersion: ctx.invoiceVersion, orderItemIds: [ctx.itemId], reasonCode: 'PRICE_HIGH' });
+      expect(res.status, JSON.stringify(res.body)).toBe(400);
+      expect((await getOrder(ctx.encounterId)).items[0]!.status).toBe('ORDERED');
+      expect(await onHand(ctx.drugId)).toBe(7);
+    });
+
+    it('"Giữ nguyên": huỷ dịch vụ, vật tư đã dùng KHÔNG hoàn kho và phiếu tiêu hao vẫn hiệu lực', async () => {
+      const ctx = await encounterWithConsumption(10, 3);
+      const res = await decline(ctx.encounterId, { invoiceId: ctx.invoiceId, invoiceVersion: ctx.invoiceVersion, orderItemIds: [ctx.itemId], reasonCode: 'PRICE_HIGH', consumptionAction: 'KEEP' });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      expect((await getOrder(ctx.encounterId)).items[0]!.status).toBe('CANCELLED');
+      expect(await onHand(ctx.drugId)).toBe(7);
+      const stillThere = await privileged.stockIssue.count({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: ctx.itemId, issueType: 'SERVICE_CONSUMPTION', status: 'POSTED' } });
+      expect(stillThere).toBe(1);
+    });
+
+    it('"Đảo phiếu" thiếu lý do → 400; người không có quyền đảo (thu ngân) → 403 và KHÔNG có gì thay đổi (cả dòng chỉ định lẫn kho)', async () => {
+      const ctx = await encounterWithConsumption(10, 3);
+      const body = { invoiceId: ctx.invoiceId, invoiceVersion: ctx.invoiceVersion, orderItemIds: [ctx.itemId], reasonCode: 'PRICE_HIGH', consumptionAction: 'REVERSE' };
+      expect((await decline(ctx.encounterId, body, adminToken)).status).toBe(400);
+      expect((await decline(ctx.encounterId, { ...body, consumptionReason: 'Khách đổi ý' })).status).toBe(403);
+      expect((await getOrder(ctx.encounterId)).items[0]!.status).toBe('ORDERED');
+      expect(await onHand(ctx.drugId)).toBe(7);
+    });
+
+    it('"Đảo phiếu" có lý do (quản lý): dịch vụ CANCELLED, tiền gỡ khỏi phiếu, vật tư hoàn về đúng kho, phiếu tiêu hao thành VOIDED, nhật ký ghi lý do', async () => {
+      const ctx = await encounterWithConsumption(10, 3);
+      const res = await decline(
+        ctx.encounterId,
+        { invoiceId: ctx.invoiceId, invoiceVersion: ctx.invoiceVersion, orderItemIds: [ctx.itemId], reasonCode: 'PRICE_HIGH', consumptionAction: 'REVERSE', consumptionReason: 'Khách bỏ trước khi thực hiện' },
+        adminToken,
+      );
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      expect((await getOrder(ctx.encounterId)).items[0]!.status).toBe('CANCELLED');
+      expect(await onHand(ctx.drugId)).toBe(10);
+      const issue = await privileged.stockIssue.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, clinicalOrderItemId: ctx.itemId, issueType: 'SERVICE_CONSUMPTION' } });
+      expect(issue.status).toBe('VOIDED');
+      const audit = await privileged.auditLog.findFirst({ where: { tenantId: fixture.tenantA.id, action: 'service_consumption.reversed', entityId: issue.id } });
+      expect(audit?.afterJson).toMatchObject({ reason: 'Khách bỏ trước khi thực hiện', viaServiceDecline: true });
+    });
+  });
 });
