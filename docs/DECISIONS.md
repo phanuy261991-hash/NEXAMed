@@ -276,3 +276,13 @@ Bối cảnh: GĐ4 trừ vật tư ở kho mặc định của chi nhánh, chủ
 - **Bổ sung theo yêu cầu "làm luôn" của chủ dự án (12/11/2026, mockup không vẽ nên dựng theo khuôn tab cùng trang)**: Toàn hệ thống › Tổng hợp tháng thêm hai ô tổng (Lãi gộp dịch vụ, Lãi gộp tổng, kèm % so tháng trước) và hai cột "Lãi gộp dịch vụ", "Lãi gộp tổng" ở bảng theo chi nhánh; Xếp hạng thêm lựa chọn "Lãi gộp dịch vụ" (dịch vụ xếp theo lãi gộp dịch vụ, số lượng là số lượt đã ghi tiêu hao, kèm giá trị từng chi nhánh). Kèm Excel và In của cả hai tab.
 - **Kiểm**: core +10 (15), API `service-consumption-report-http` 13 (+ ca doanh thu/lãi gộp, Theo vật tư, Theo chi nhánh, lượt hoàn tiền, cô lập tenant B và chi nhánh khác cho hai tab mới, đột biến đổi dấu lãi gộp bị 3 ca bắt), `system-report-http` 17 (dựng tiêu hao ở hai chi nhánh, kiểm cả Xếp hạng và Tổng hợp tháng), web 129 trong thư mục report, typecheck + lint toàn cục sạch; Chrome IP LAN HTTP `scripts/ui-audit/service-consumption-check.cjs` **54/54** (kể cả lỗi 503 của tab mới, tải Excel, tab Theo chi nhánh, So sánh chi nhánh) và bố cục 4 cỡ màn hình × 5 trang không tràn.
 
+
+## 297 bổ sung 5 — Đóng #297: sửa Nhập Excel vật tư lệch quyết định + kiểm thử cuối GĐ5 (12/11/2026)
+
+**Lỗi**: chủ dự án đã chốt 12/11/2026 (bổ sung 4, điểm 4) nhập Excel vật tư để trống "Tính chất sử dụng" thì GIỮ "chưa phân loại". Nhưng commit `16c909c` (GĐ3, 11/11/2026, làm TRƯỚC khi chốt) vẫn tự điền "Dùng 1 lần", và quyết định mới chỉ được ghi vào tài liệu chứ chưa sửa mã — nên mã và tài liệu lệch nhau. **Nguyên nhân gốc**: câu hỏi mở ở bổ sung 1 được trả lời ở bổ sung 4 nhưng không ai đối chiếu lại mã đã làm trước đó.
+
+**Đã sửa**: `drug-import.service.ts` bỏ `?? 'SINGLE_USE'` (để trống → `null`); `drug-import.columns.ts` câu hướng dẫn cột đổi thành "để trống nếu chưa phân loại"; ca test `drug-import-http.spec.ts` đổi sang khẳng định `null` (27/27). `docs/pilot-onboarding.md` mục 3.10 vốn đã ghi đúng "chưa phân loại" nên không đổi. Form Thêm vật tư vẫn mặc định "Dùng 1 lần" (chỉ Excel khác, đúng quyết định).
+
+**GĐ5 kiểm thử cuối**: `pnpm typecheck` + `pnpm lint` sạch; full test một lượt xanh — API 2310 (1 bỏ qua), core 841, web 773, shared 127, setup 112. Cô lập tenant B/chi nhánh khác của GĐ4, "Kho trừ" và lãi gộp dịch vụ đã nằm sẵn trong bộ test này. Không migration, không `db:seed`; cần khởi động lại API.
+
+**Còn lại của #297**: chỉ việc chủ dự án xem các quyết định kỹ thuật tự chọn ở bổ sung 2 (6 điểm) và bổ sung 4 (dòng gói chia theo giá niêm yết; dịch vụ bị bỏ ở quầy lãi gộp âm không có nhãn "Đã hoàn tiền"; dải số Tổng hợp tháng 5 + 2 ô).

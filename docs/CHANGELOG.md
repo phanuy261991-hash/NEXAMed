@@ -14,6 +14,10 @@ File này chỉ giữ thay đổi MỚI NHẤT (từ 13/10/2026). Phần cũ ở
 
 ## 2026-11-12
 
+### Nhập Excel vật tư: để trống "Tính chất sử dụng" giữ "chưa phân loại" + kiểm thử cuối vật tư (`docs/DECISIONS.md` #297 bổ sung 5)
+
+Sửa lỗi lệch quyết định: file Excel nhập vật tư để trống cột "Tính chất sử dụng" trước đây bị tự điền "Dùng 1 lần"; nay giữ "chưa phân loại" như chủ dự án đã chốt (form Thêm vật tư vẫn mặc định "Dùng 1 lần"). Câu hướng dẫn trong file mẫu đổi theo. Kèm kiểm thử cuối toàn bộ #297: typecheck, lint và full test xanh. Không migration, không `db:seed`; khởi động lại API.
+
 ### Doanh thu và lãi gộp dịch vụ trong báo cáo Chi phí vật tư + "Lãi gộp tổng" ở So sánh chi nhánh (`docs/DECISIONS.md` #297 bổ sung 4)
 
 Báo cáo Chi phí vật tư theo dịch vụ có thêm doanh thu ghi nhận, lãi gộp dịch vụ (doanh thu trừ chi phí tiêu hao) và biên lãi gộp ở dải số, bảng Theo dịch vụ và bảng Theo khách (lượt khách đã hoàn tiền hiện số âm màu đỏ kèm nhãn "Đã hoàn tiền"); thêm tab "Theo vật tư" (số lượng, giá vốn trung bình, tỷ trọng, dịch vụ dùng) và tab "Theo chi nhánh" (chỉ khi công ty từ 2 chi nhánh và có quyền xem báo cáo toàn công ty); mọi tab xuất Excel và in. Toàn hệ thống › So sánh chi nhánh và Tổng hợp tháng thêm cột (và ô tổng) "Lãi gộp dịch vụ", "Lãi gộp tổng" (thuốc cộng dịch vụ); Xếp hạng thêm danh sách "Lãi gộp dịch vụ". Chỉ tính trên các lượt đã ghi tiêu hao. Không migration, không `db:seed`; khởi động lại API.

@@ -586,14 +586,14 @@ describe('HTTP e2e — /api/v1/drugs/import-template|export|import', () => {
       }
     });
 
-    it('vật tư để trống "Tính chất sử dụng" → nhập vào là "Dùng 1 lần" (đồng bộ mặc định của form, #297 GĐ3); thuốc không có tính chất', async () => {
+    it('vật tư để trống "Tính chất sử dụng" → giữ "chưa phân loại" (không tự điền Dùng 1 lần, #297 bổ sung 4); thuốc không có tính chất', async () => {
       const blank = `TC1${tag}`;
       const med = `TC2${tag}`;
       const res = await upload('commit', clinicAdminToken, await xlsx([supply(blank), medicine(med)], [ingredient(med)]));
       expect(res.body.data).toMatchObject({ createdCount: 2, errorCount: 0 });
       const s = await privileged.drug.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, code: blank } });
       const m = await privileged.drug.findFirstOrThrow({ where: { tenantId: fixture.tenantA.id, code: med } });
-      expect(s.supplyUsageNature).toBe('SINGLE_USE');
+      expect(s.supplyUsageNature).toBeNull();
       expect(m.supplyUsageNature).toBeNull();
     });
 

@@ -437,8 +437,8 @@ export class DrugImportService {
         if (!nature.ok) itemErr('"Tính chất sử dụng" phải là Dùng 1 lần hoặc Tái sử dụng.');
         Object.assign(fields, {
           drugGroupCode: requiredCatalog(draft, 'SUPPLY_GROUP', c.supplyGroup, 'Phân nhóm VTYT', SHEET_ITEMS, r.rowNumber),
-          // Để trống → "Dùng 1 lần", đồng bộ với mặc định của form Thêm vật tư (#297 GĐ3).
-          supplyUsageNature: nature.ok ? (nature.value ?? 'SINGLE_USE') : null,
+          // Để trống → giữ "chưa phân loại" (null), KHÔNG tự điền "Dùng 1 lần" (chủ dự án chốt 12/11/2026, #297 bổ sung 4).
+          supplyUsageNature: nature.ok ? nature.value : null,
         });
       }
 
