@@ -11,7 +11,7 @@ GĐ4 đã xong code, test và kiểm Chrome thật (màn 7, 8, 9, 10 của mocku
 5. Dọn tài liệu theo ngưỡng cắt: `DECISIONS.md` ~225 KB (ngưỡng 150 KB), `ERD.md` ~85 KB (ngưỡng 80 KB; `ERD-2.md` cũng sắp tới ngưỡng) — chưa cắt vì chưa được yêu cầu.
 
 ## 3. Cần biết
-- **Giới hạn nghiệp vụ**: hộp "Khách không làm dịch vụ" chỉ bỏ được dịch vụ còn `ORDERED`, mà màn nhập kết quả CĐHA chỉ mở sau "gọi vào phòng", nên khối vật tư ở hộp huỷ hiếm khi xuất hiện trong luồng thật (xem DECISIONS #297 bổ sung 2). Nếu chủ dự án muốn xử lý, cần bàn lại quy tắc "việc đã làm vẫn phải trả tiền" (#280).
+- **Giới hạn nghiệp vụ**: hộp "Khách không làm dịch vụ" chỉ bỏ được dịch vụ còn `ORDERED`, mà màn nhập kết quả CĐHA chỉ mở sau "gọi vào phòng", nên khối vật tư ở hộp huỷ hiếm khi xuất hiện trong luồng thật (xem DECISIONS #297 bổ sung 2). **Chủ dự án chốt 12/11/2026: GIỮ NGUYÊN quy tắc "việc đã làm chắc chắn phải trả tiền" (#280), không đổi.**
 - Cổng `ServiceConsumptionDeclinePort` (core) + adapter `infrastructure/inventory` + `ServiceConsumptionDeclineModule` (`@Global()`), đảo phiếu cùng giao dịch với việc huỷ dịch vụ.
 - Phiếu tiêu hao KHÔNG huỷ được ở danh sách phiếu xuất (409); đảo ở dịch vụ, cần `service_consumption.reverse` + lý do.
 - Đã sửa `migrateSupplierPermissions` (#291) chỉ áp vai trò tuỳ biến.
